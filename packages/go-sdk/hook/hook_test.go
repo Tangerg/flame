@@ -14,6 +14,10 @@ func TestHookValidate(t *testing.T) {
 	}{
 		{name: "command", hook: Hook{Event: PreToolUse, Command: "check"}, ok: true},
 		{name: "inject", hook: Hook{Event: SessionStart, Inject: "context"}, ok: true},
+		{name: "advisory observer", hook: Hook{Event: Stop, Command: "notify", FailurePolicy: FailureAdvisory}, ok: true},
+		{name: "required tool gate", hook: Hook{Event: PreToolUse, Command: "check", FailurePolicy: FailureRequired}, ok: true},
+		{name: "required prompt gate", hook: Hook{Event: UserPromptSubmit, Command: "check", FailurePolicy: FailureRequired}, ok: true},
+		{name: "required compaction gate", hook: Hook{Event: PreCompact, Command: "check", FailurePolicy: FailureRequired}, ok: true},
 		{
 			name: "exact resource boundary",
 			hook: Hook{
@@ -28,6 +32,10 @@ func TestHookValidate(t *testing.T) {
 		{name: "blank command", hook: Hook{Event: Stop, Command: "  "}},
 		{name: "negative timeout", hook: Hook{Event: Stop, Command: "notify", TimeoutMillis: -1}},
 		{name: "timeout on inject", hook: Hook{Event: SessionStart, Inject: "context", TimeoutMillis: 100}},
+		{name: "unknown failure policy", hook: Hook{Event: PreToolUse, Command: "check", FailurePolicy: "silent"}},
+		{name: "failure policy on inject", hook: Hook{Event: PreToolUse, Inject: "context", FailurePolicy: FailureRequired}},
+		{name: "required observer", hook: Hook{Event: Stop, Command: "notify", FailurePolicy: FailureRequired}},
+		{name: "required post effect", hook: Hook{Event: PostToolUse, Command: "notify", FailurePolicy: FailureRequired}},
 		{name: "matcher on non-tool event", hook: Hook{Event: Stop, Command: "notify", Matcher: "shell"}},
 		{name: "malformed matcher", hook: Hook{Event: PreToolUse, Command: "check", Matcher: "["}},
 	}

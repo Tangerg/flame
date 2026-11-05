@@ -1,12 +1,10 @@
 package approval
 
-import "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+import (
+	"fmt"
 
-// StandingDecision is a remembered approval rule matched for this call.
-type StandingDecision struct {
-	Decision Decision
-	Matched  bool
-}
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+)
 
 // ToolCallInput is the pure policy input for one tool call. The arguments
 // themselves are not policy input: this gate decides from the call's safety
@@ -27,12 +25,18 @@ type ToolCallInput struct {
 // executed: pass, deny, or prompt. The call payload stays with the caller that
 // supplied it — this gate never rewrites arguments.
 type ToolCallPlan struct {
-	Action      GateAction
-	Denial      DenialCause
-	SafetyClass tool.SafetyClass
-	Risk        tool.RiskLevel
-	PromptCause PromptCause
+	action      GateAction
+	denial      DenialCause
+	safetyClass tool.SafetyClass
+	risk        tool.RiskLevel
+	promptCause PromptCause
 }
+
+func (t ToolCallPlan) Action() GateAction            { return t.action }
+func (t ToolCallPlan) Denial() DenialCause           { return t.denial }
+func (t ToolCallPlan) SafetyClass() tool.SafetyClass { return t.safetyClass }
+func (t ToolCallPlan) Risk() tool.RiskLevel          { return t.risk }
+func (t ToolCallPlan) PromptCause() PromptCause      { return t.promptCause }
 
 // DenialCause is the policy source of a refusal. The wording a denied call
 // reports belongs to the caller that presents it.
@@ -58,11 +62,8 @@ const (
 	PromptCauseCatastrophicCommand PromptCause = "catastrophicCommand"
 )
 
-// Plan applies hook and approval-mode policy to one tool call. It does not
-// read remembered rules and it does not trigger HITL; callers only do those
-// side effects when the returned plan asks for [GatePrompt].
 func (t ToolCallInput) Plan() ToolCallPlan {
-	plan := ToolCallPlan{Action: GatePass, SafetyClass: t.SafetyClass}
+	plan := ToolCallPlan{safetyClass: t.SafetyClass}
 	action := GateFor(t.SafetyClass, t.Mode)
 	// Bypass-immune escalation: a call dangerous enough (a mutation escaping the
 	// workspace, or a high-confidence catastrophic shell command) is confirmed
@@ -75,38 +76,38 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 	if action == GatePass && (t.RequireApproval || immunity != tool.BypassAllowed) {
 		action = GatePrompt
 	}
-	plan.Action = action
+	plan.action = action
 	switch action {
 	case GateDeny:
-		plan.Denial = DenialPlanMode
+		plan.denial = DenialPlanMode
 	case GatePrompt:
-		plan.Risk = t.SafetyClass.Risk()
-		plan.PromptCause = promptCauseForSafetyClass(t.SafetyClass)
+		plan.risk = t.SafetyClass.Risk()
+		plan.promptCause = promptCauseForSafetyClass(t.SafetyClass)
 		if immunity != tool.BypassAllowed {
-			plan.Risk = tool.RiskHigh
-			plan.PromptCause = promptCauseForBypassImmunity(immunity)
+			plan.risk = tool.RiskHigh
+			plan.promptCause = promptCauseForBypassImmunity(immunity)
 		}
 	}
 	return plan
 }
 
-// ResolvePromptShortcuts applies non-HITL prompt short-circuits: remembered
-// from remembered rules. It is a no-op unless the
-// plan is [GatePrompt].
-func (t ToolCallPlan) ResolvePromptShortcuts(standing StandingDecision) ToolCallPlan {
-	if t.Action != GatePrompt {
-		return t
+// A saved denial survives a switch to automatic approval. A saved allowance
+// cannot reopen a call that the session's read-only stance has already refused.
+func (t ToolCallPlan) ApplyRule(decision Decision) (ToolCallPlan, error) {
+	if !decision.Valid() {
+		return ToolCallPlan{}, fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, decision)
 	}
-	if standing.Matched {
-		if standing.Decision == Deny {
-			t.Action = GateDeny
-			t.Denial = DenialRememberedRule
-			return t
-		}
-		t.Action = GatePass
-		return t
+	switch t.action {
+	case GateDeny:
+		return t, nil
+	case GatePass, GatePrompt:
+	default:
+		return ToolCallPlan{}, fmt.Errorf("approval: unknown gate action %q", t.action)
 	}
-	return t
+	if decision == Deny {
+		return ToolCallPlan{action: GateDeny, denial: DenialRememberedRule, safetyClass: t.safetyClass}, nil
+	}
+	return ToolCallPlan{action: GatePass, safetyClass: t.safetyClass}, nil
 }
 
 // DecisionOf maps an approve/deny boolean to the approval domain's verdict.

@@ -16,9 +16,10 @@ import (
 // diagnostics, plus the document-sync notifications a server needs before it
 // will answer. It is deliberately NOT the full protocol: we type only what we
 // read, and let the rest pass through as jsontext.Value. LSP positions are
-// 0-based (line and character); the tool layer converts to/from 1-based.
+// 0-based lines and UTF-16 code-unit offsets; the tool layer converts both
+// coordinates to/from 1-based.
 
-// Position is a 0-based (line, character) cursor in a document.
+// Position is a 0-based (line, UTF-16 code-unit offset) cursor in a document.
 type Position struct {
 	Line      int `json:"line"`
 	Character int `json:"character"`
@@ -399,6 +400,13 @@ type diagnosticClientCapabilities struct {
 type clientCapabilities struct {
 	TextDocument textDocumentClientCapabilities `json:"textDocument"`
 	Workspace    workspaceClientCapabilities    `json:"workspace"`
+	General      generalClientCapabilities      `json:"general"`
+}
+
+const positionEncodingUTF16 = "utf-16"
+
+type generalClientCapabilities struct {
+	PositionEncodings []string `json:"positionEncodings"`
 }
 
 type textDocumentClientCapabilities struct {
@@ -450,6 +458,7 @@ func defaultCapabilities() clientCapabilities {
 			Configuration:    true,
 			WorkspaceFolders: true,
 		},
+		General: generalClientCapabilities{PositionEncodings: []string{positionEncodingUTF16}},
 	}
 }
 

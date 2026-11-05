@@ -53,9 +53,17 @@ const host = z.strictObject({
   platform: z.string().min(1).max(32),
   arch: z.string().min(1).max(32),
 });
+const receiptCapacity = z.strictObject({
+  records: z.number().int().min(0),
+  bytes: z.number().int().min(0),
+  pending: z.number().int().min(0),
+  maxRecords: z.number().int().min(1),
+  maxBytes: z.number().int().min(1),
+});
 const snapshot = z.strictObject({
   host,
   configured: z.boolean(),
+  receipts: receiptCapacity,
   session: session.optional(),
 });
 const surface = z.strictObject({
@@ -177,7 +185,7 @@ const descriptor: CapabilityDescriptor = {
     method(
       METHODS.read,
       "query",
-      "Read the actual Runtime host and current computer-control session. This does not start an engine or authorize computer access.",
+      "Read the actual Runtime host, current computer-control session and original receipt capacity including reserved outcome bytes. This does not start an engine or authorize computer access.",
       empty,
       snapshot,
     ),

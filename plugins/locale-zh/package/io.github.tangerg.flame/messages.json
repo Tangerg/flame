@@ -312,7 +312,7 @@
   "approvals.gate.deny": "拒绝",
   "approvals.gate.entry": "{{toolClass}}：{{gate}}",
   "approvals.rules": "记住的规则",
-  "approvals.rules.sub": "你保存的免审批工具决策。",
+  "approvals.rules.sub": "你保存的允许或拒绝规则；匹配的拒绝规则仍会阻止自动批准。",
   "approvals.rules.empty": "暂无规则",
   "approvals.rules.emptySub": "批准或拒绝时勾选「不再询问」即可添加。",
   "approvals.scope.session": "会话",

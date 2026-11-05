@@ -114,11 +114,15 @@ func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd str
 	if err != nil {
 		return fmt.Errorf("memory extraction: identify facts: %w", err)
 	}
+	facts, err := parseMemoryFacts(markdown)
+	if err != nil {
+		return fmt.Errorf("memory extraction: parse facts: %w", err)
+	}
 	appended, err := m.memory.AppendLedger(ctx, agentmemory.FactBatch{
 		Project:    project,
 		SessionID:  sessionID,
 		Day:        now.Format(time.DateOnly),
-		Facts:      parseMemoryFacts(markdown),
+		Facts:      facts,
 		CapturedAt: now,
 	})
 	if err != nil {
@@ -155,8 +159,12 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	if tokens := modeltext.EstimateTextTokens(content); tokens > m.policy.maxTokens {
 		return fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.policy.maxTokens)
 	}
+	facts, err := parseMemoryFacts(content)
+	if err != nil {
+		return fmt.Errorf("memory curation: parse facts: %w", err)
+	}
 	through := pending[len(pending)-1].Sequence
-	publication, err := agentmemory.NewPublication(project, state, through, observed, parseMemoryFacts(content), now)
+	publication, err := agentmemory.NewPublication(project, state, through, observed, facts, now)
 	if err != nil {
 		return fmt.Errorf("memory curation: prepare publication through watermark %d: %w", through, err)
 	}
@@ -244,6 +252,9 @@ ordered from most important to least important, without a preamble or code fence
 		return "", err
 	}
 	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return "", errors.New("memory extractor returned an empty response")
+	}
 	if strings.EqualFold(trimmed, "NO_FACTS") {
 		return "", nil
 	}

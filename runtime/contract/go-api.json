@@ -217,6 +217,42 @@
           ]
         },
         {
+          "name": "CommandOutputPage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ShellID",
+              "type": "string",
+              "tag": "json:\"shellId,omitempty\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"status,omitempty\""
+            },
+            {
+              "name": "Offset",
+              "type": "int64",
+              "tag": "json:\"offset\""
+            },
+            {
+              "name": "NextOffset",
+              "type": "int64",
+              "tag": "json:\"nextOffset\""
+            },
+            {
+              "name": "HasMore",
+              "type": "bool",
+              "tag": "json:\"hasMore\""
+            },
+            {
+              "name": "Dropped",
+              "type": "bool",
+              "tag": "json:\"dropped\""
+            }
+          ]
+        },
+        {
           "name": "CommandResult",
           "kind": "struct",
           "fields": [
@@ -229,6 +265,11 @@
               "name": "ExitCode",
               "type": "*int",
               "tag": "json:\"exitCode,omitzero\""
+            },
+            {
+              "name": "Page",
+              "type": "*CommandOutputPage",
+              "tag": "json:\"page,omitzero\""
             }
           ]
         },
@@ -263,6 +304,32 @@
           ]
         },
         {
+          "name": "SearchCoverage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ScannedFiles",
+              "type": "int",
+              "tag": "json:\"scannedFiles\""
+            },
+            {
+              "name": "SkippedFiles",
+              "type": "int",
+              "tag": "json:\"skippedFiles\""
+            },
+            {
+              "name": "RemainingFiles",
+              "type": "int",
+              "tag": "json:\"remainingFiles\""
+            },
+            {
+              "name": "SourceBytes",
+              "type": "int64",
+              "tag": "json:\"sourceBytes\""
+            }
+          ]
+        },
+        {
           "name": "SearchHit",
           "kind": "struct",
           "fields": [
@@ -291,6 +358,26 @@
               "name": "Hits",
               "type": "[]SearchHit",
               "tag": "json:\"hits\""
+            },
+            {
+              "name": "Total",
+              "type": "*int",
+              "tag": "json:\"total,omitzero\""
+            },
+            {
+              "name": "Complete",
+              "type": "*bool",
+              "tag": "json:\"complete,omitzero\""
+            },
+            {
+              "name": "Truncated",
+              "type": "bool",
+              "tag": "json:\"truncated,omitzero\""
+            },
+            {
+              "name": "Coverage",
+              "type": "*SearchCoverage",
+              "tag": "json:\"coverage,omitzero\""
             }
           ]
         },
@@ -1996,6 +2083,16 @@
           "value": "\"deny\""
         },
         {
+          "name": "FailureAdvisory",
+          "type": "FailurePolicy",
+          "value": "\"advisory\""
+        },
+        {
+          "name": "FailureRequired",
+          "type": "FailurePolicy",
+          "value": "\"required\""
+        },
+        {
           "name": "MaxArgumentsBytes",
           "type": "untyped int",
           "value": "262144"
@@ -2078,6 +2175,10 @@
       ],
       "functions": [
         {
+          "name": "RequiredFailureEvents",
+          "signature": "func() []Event"
+        },
+        {
           "name": "ValidateConfigurationFileSize",
           "signature": "func(size int64) error"
         },
@@ -2148,6 +2249,25 @@
           ]
         },
         {
+          "name": "FailurePolicy",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Effective",
+              "signature": "func() FailurePolicy"
+            },
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
           "name": "Hook",
           "kind": "struct",
           "fields": [
@@ -2175,6 +2295,11 @@
               "name": "TimeoutMillis",
               "type": "int",
               "tag": "json:\"timeoutMillis,omitzero\""
+            },
+            {
+              "name": "FailurePolicy",
+              "type": "FailurePolicy",
+              "tag": "json:\"failurePolicy,omitempty\""
             },
             {
               "name": "Scope",
@@ -3682,6 +3807,7 @@
         "github.com/Tangerg/frame/value",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/chat",
+        "github.com/Tangerg/scope/core/content",
         "github.com/Tangerg/scope/core/tool",
         "iter"
       ],
@@ -4024,6 +4150,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Use",
+              "type": "model.Use",
+              "tag": "json:\"use\""
+            },
+            {
               "name": "Provider",
               "type": "string",
               "tag": "json:\"provider\""
@@ -4056,9 +4187,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Messages",
-              "type": "[]chat.Message",
-              "tag": "json:\"messages\""
+              "name": "Content",
+              "type": "[]content.Block",
+              "tag": "json:\"content\""
             }
           ],
           "methods": [
@@ -8276,6 +8407,7 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/packages/go-sdk/builtin",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
+        "github.com/Tangerg/flame/packages/go-sdk/hook",
         "github.com/Tangerg/flame/packages/go-sdk/model",
         "github.com/Tangerg/frame/portable",
         "github.com/Tangerg/frame/process/mcp",
@@ -9807,7 +9939,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "31"
+          "value": "32"
         },
         {
           "name": "SessionStatusIdle",
@@ -10943,6 +11075,11 @@
               "tag": "json:\"body\""
             },
             {
+              "name": "ModelOnly",
+              "type": "bool",
+              "tag": "json:\"modelOnly\""
+            },
+            {
               "name": "CreatedAt",
               "type": "time.Time",
               "tag": "json:\"createdAt,omitzero\""
@@ -12011,6 +12148,32 @@
           ]
         },
         {
+          "name": "GrepCoverage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ScannedFiles",
+              "type": "int",
+              "tag": "json:\"scannedFiles\""
+            },
+            {
+              "name": "SkippedFiles",
+              "type": "int",
+              "tag": "json:\"skippedFiles\""
+            },
+            {
+              "name": "RemainingFiles",
+              "type": "int",
+              "tag": "json:\"remainingFiles\""
+            },
+            {
+              "name": "SourceBytes",
+              "type": "int64",
+              "tag": "json:\"sourceBytes\""
+            }
+          ]
+        },
+        {
           "name": "GrepMatch",
           "kind": "struct",
           "fields": [
@@ -12054,6 +12217,11 @@
               "name": "Limit",
               "type": "*int",
               "tag": "json:\"limit,omitzero\""
+            },
+            {
+              "name": "ScanAll",
+              "type": "bool",
+              "tag": "json:\"scanAll,omitzero\""
             }
           ]
         },
@@ -12070,6 +12238,16 @@
               "name": "Total",
               "type": "int",
               "tag": "json:\"total\""
+            },
+            {
+              "name": "Complete",
+              "type": "bool",
+              "tag": "json:\"complete\""
+            },
+            {
+              "name": "Coverage",
+              "type": "GrepCoverage",
+              "tag": "json:\"coverage\""
             }
           ]
         },
@@ -12106,6 +12284,11 @@
               "name": "TimeoutMillis",
               "type": "int",
               "tag": "json:\"timeoutMillis,omitzero\""
+            },
+            {
+              "name": "FailurePolicy",
+              "type": "hook.FailurePolicy",
+              "tag": "json:\"failurePolicy,omitempty\""
             },
             {
               "name": "Scope",

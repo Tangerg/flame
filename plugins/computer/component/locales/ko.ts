@@ -100,6 +100,12 @@ export const ko = {
     "결과가 확인되지 않았습니다. 원래 명령 결과를 조회하고 작업을 반복하지 마세요.",
   "command.recover": "원래 결과 확인",
   "command.accepted": "{{action}}: 원래 명령이 완료되었습니다.",
+  "receipts.title": "원본 증거 용량",
+  "receipts.records": "보존된 기록 / 한도",
+  "receipts.bytes": "계산된 바이트 / 한도",
+  "receipts.pending": "확인되지 않은 결과",
+  "receipts.help":
+    "바이트 수에는 대기 중인 결과를 위한 예약 공간이 포함됩니다. 새 작업은 제어 종료용 공간도 남기므로 전체 한도에 도달하기 전에 접수가 중단될 수 있습니다. 새 작업을 허용하기 위해 원본 증거를 삭제하지 않습니다.",
   "history.title": "원래 작업 결과",
   "history.help":
     "보관된 명령 증거를 확인합니다. 누락된 결과는 미확인 상태로 유지되며 현재 데스크톱에서 추정하지 않습니다.",

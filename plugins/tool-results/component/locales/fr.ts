@@ -1,4 +1,11 @@
 export const fr: Record<string, string> = {
+  "search.partial":
+    "Recherche partielle : au moins {{total}} résultats · {{unread}} fichiers non lus · {{skipped}} ignorés",
+  "search.truncated": "{{shown}} sur {{total}} résultats enregistrés",
+  "output.byteRange": "Plage d’octets [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete":
+    "L’enregistrement de la sortie a échoué ; les octets conservés sont incomplets.",
   "find.open": "Rechercher",
   "find.clear": "Effacer la recherche",
   "find.close": "Fermer la recherche",

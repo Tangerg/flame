@@ -527,7 +527,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || len(model.requests) != 1 {
+	if !result.Changed() || !result.Summarized() || len(model.requests) < 2 {
 		t.Fatalf(
 			"hard-input compaction = changed:%t summarized:%t summaries:%d",
 			result.Changed(),
@@ -1024,80 +1024,45 @@ func contextTokenEstimate(t *testing.T, candidate []chat.Message) int {
 	)
 }
 
-// TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing drives the
-// rung below the summary: an oversized OLD tool result is previewed in place,
-// that alone brings the request under budget, and no utility model is called.
-//
-// The durable half is the part no unit test can reach. A content-only trim
-// rewrites history through conversation.NewCompaction's cutoff==0 branch, which
-// accepts the replacement only when it has exactly as many messages as the
-// snapshot it replaces. Nothing else proves the ladder's deterministic rung is
-// count-preserving, and if it stops being so, the failure surfaces as a refused
-// model request rather than a refused compaction.
-func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.T) {
-	const sessionID = "session:trim-rung"
-	oversized := strings.Repeat("b", 8_000)
+// A summary must see the middle of original arguments and output before the
+// canonical conversation can be replaced. The old cheap trim removed both.
+func TestDurableCompactionSummarizesOriginalToolEvidenceBeforeRewriting(t *testing.T) {
+	const sessionID = "session:original-evidence"
+	arguments := `{"text":"` + strings.Repeat("a", 16_000) + "ORIGINAL_ARGUMENT_MARKER" + strings.Repeat("a", 16_000) + `"}`
+	body := strings.Repeat("b", 16_000) + "ORIGINAL_OUTPUT_MARKER" + strings.Repeat("b", 16_000)
 	history := []chat.Message{
-		chat.NewUserMessage(chat.NewTextPart("read the file")),
-		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-			ID: "c1", Name: "read", Arguments: `{"path":"big.txt"}`,
-		})),
-		chat.NewToolMessage(chat.ToolResult{
-			ID: "c1", Name: "read", Output: toolcontract.NewTextOutput(oversized),
-		}),
-		chat.NewUserMessage(chat.NewTextPart("now summarize it for me")),
-		chat.NewAssistantMessage(chat.NewTextPart("here is the summary")),
+		chat.NewUserMessage(chat.NewTextPart("retain the original markers")),
+		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "write", Arguments: arguments})),
+		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Output: toolcontract.NewTextOutput(body)}),
+		chat.NewUserMessage(chat.NewTextPart("continue")),
 	}
-	trimmed, changed := trimForBudgetBefore(history, 3)
-	if !changed {
-		t.Fatal("fixture does not reach the deterministic trim rung")
-	}
-	// Over budget before the trim, under it after: exactly the window in which
-	// the ladder stops without paying for a summary.
-	threshold := contextTokenEstimate(t, trimmed) + 1
-	if contextTokenEstimate(t, history) < threshold {
-		t.Fatal("fixture does not exceed the budget before trimming")
-	}
-
 	store := newCompactionTestStore()
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
-
-	result, err := compactor.CompactModelContext(
-		t.Context(), durableContextRequest(t, sessionID, history, 0, nil),
-	)
+	model := newTextStubModel("ORIGINAL_ARGUMENT_MARKER and ORIGINAL_OUTPUT_MARKER retained")
+	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || result.Summarized() || result.Summary() != "" {
-		t.Fatalf("result = changed:%t summarized:%t summary:%q",
-			result.Changed(), result.Summarized(), result.Summary())
+	compactor := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxTokens: intPointer(1500)})
+	result, err := compactor.CompactModelContext(t.Context(), durableContextRequest(t, sessionID, history, 0, nil))
+	if err != nil {
+		t.Fatal(err)
 	}
-	before, after := result.MessageCounts()
-	if before != len(history) || after != len(history) {
-		t.Fatalf("message counts = %d before, %d after, want %d for a content-only trim",
-			before, after, len(history))
+	if !result.Summarized() || model.calls != 1 {
+		t.Fatalf("summary = %t, calls = %d", result.Summarized(), model.calls)
 	}
-
-	rewrite, found := result.Rewrite()
-	if !found {
-		t.Fatal("trim has no durable rewrite proposal")
+	input := model.requests[0].Messages[1].Text()
+	if !strings.Contains(input, arguments) || !strings.Contains(input, body) {
+		t.Fatal("original tool evidence was cropped before summarization")
 	}
-	stored := rewrite.Messages()
-	if len(stored) != len(history) {
-		t.Fatalf("durable history length = %d, want %d unchanged", len(stored), len(history))
+	if got := result.Messages(); got[len(got)-1].Text() != "continue" {
+		t.Fatal("recent user request changed")
 	}
-	previewed := textToolOutput(t, stored[2].Parts[0].ToolResult.Output)
-	if len(previewed) >= len(oversized) || !strings.Contains(previewed, "trimmed on compaction") {
-		t.Fatalf("old Tool result was not previewed in durable history: %d bytes", len(previewed))
-	}
-	if stored[3].Text() != history[3].Text() || stored[4].Text() != history[4].Text() {
-		t.Fatalf("trim reached past the summary cutoff: %#v", stored[3:])
-	}
-	if !reflect.DeepEqual(result.Messages(), stored) {
-		t.Fatal("effective context and durable history disagree after a trim")
+	unchanged, err := store.Read(t.Context(), sessionID)
+	if err != nil || !reflect.DeepEqual(unchanged, history) {
+		t.Fatalf("proposal mutated durable history: %v", err)
 	}
 }
 

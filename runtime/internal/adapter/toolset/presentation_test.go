@@ -26,6 +26,35 @@ func TestPresenterCommandResult(t *testing.T) {
 	}
 }
 
+func TestPresenterPreservesShellPageAndSearchCoverage(t *testing.T) {
+	for _, name := range []builtincontract.Name{builtincontract.Shell, builtincontract.ReadShellOutput} {
+		presented, output := Presenter{}.Present(testsupport.BuiltInTool(t, name), tool.Arguments{}, mustToolResult(t, map[string]any{
+			"stdout": content.New([]byte("first diagnostic")), "exit_code": 0,
+			"shell_id": "original", "offset": 0, "next_offset": 16, "has_more_output": true, "status": "finished (exit 0)",
+		}))
+		var result builtincontract.CommandResult
+		encoded, err := json.Marshal(presented)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(encoded, &result); err != nil || result.Page == nil || result.Page.ShellID != "original" || !result.Page.HasMore || result.Page.NextOffset != 16 || output != "first diagnostic" {
+			t.Fatalf("%s lost original log continuation: %+v %q %v", name, result, output, err)
+		}
+	}
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, builtincontract.Grep), tool.Arguments{}, mustToolResult(t, runtimeSearchResponse{
+		Matches: []runtimeSearchResult{{Path: "a.go", Line: 1, Text: "found"}}, Total: 2, Complete: false, Truncated: true,
+		Coverage: runtimeSearchCoverage{ScannedFiles: 1, RemainingFiles: 5, SkippedFiles: 2, SourceBytes: 100},
+	}))
+	encoded, err := json.Marshal(presented)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result builtincontract.SearchResult
+	if err := json.Unmarshal(encoded, &result); err != nil || result.Complete == nil || *result.Complete || result.Total == nil || *result.Total != 2 || result.Coverage == nil || result.Coverage.RemainingFiles != 5 || result.Coverage.SkippedFiles != 2 {
+		t.Fatalf("presentation changed a partial count into a complete search: %+v, %v", result, err)
+	}
+}
+
 func TestPresenterApplyPatchResult(t *testing.T) {
 	patch := strings.Join([]string{
 		"diff --git a/new.go b/new.go",

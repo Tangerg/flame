@@ -274,6 +274,51 @@ func TestRunner_TimeoutIsNonBlocking(t *testing.T) {
 	}
 }
 
+func TestRequiredHookFailuresDenyWithoutAdmittingUntrustedMaterial(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		commands commandRunner
+		input    hookdata.Input
+	}{
+		{name: "missing runner"},
+		{name: "timeout", commands: &commandStub{results: []commandResult{{TimedOut: true, Err: context.DeadlineExceeded}}}},
+		{name: "execution failure", commands: &commandStub{results: []commandResult{{ExitCode: 3, Err: errors.New("spawn or process failure")}}}},
+		{name: "malformed decision", commands: &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{
+			Verdict: "future", InjectContext: "untrusted", RewriteArguments: `{}`,
+		}}}}},
+		{name: "unrepresentable input", commands: &commandStub{}, input: hookdata.Input{Tool: &hookdata.ToolInput{
+			Name: "shell", Arguments: strings.Repeat("a", hookdata.MaxArgumentsBytes+1),
+		}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var observed error
+			runner := newPolicyEvaluator(test.commands, func(_ context.Context, _ string, err error) { observed = err })
+			test.input.Event = hookdata.PreToolUse
+			decision := runner.Run(t.Context(), []hookdata.Hook{{
+				Event: hookdata.PreToolUse, Command: "check", Source: "/trusted/hooks.json", FailurePolicy: hookdata.FailureRequired,
+			}}, test.input)
+			if observed == nil || decision.Verdict != hookdata.CommandDeny || !strings.Contains(decision.Reason, "/trusted/hooks.json") {
+				t.Fatalf("required failure released its action: %+v, %v", decision, observed)
+			}
+			if decision.InjectContext != "" || decision.RewriteArguments != "" {
+				t.Fatalf("failed decision admitted command material: %+v", decision)
+			}
+		})
+	}
+}
+
+func TestRequiredHookValidDecisionStillReleasesAction(t *testing.T) {
+	runner := newPolicyEvaluator(&commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{
+		Verdict: hookdata.CommandAllow, InjectContext: "verified",
+	}}}}, nil)
+	decision := runner.Run(t.Context(), []hookdata.Hook{{
+		Event: hookdata.PreToolUse, Command: "check", FailurePolicy: hookdata.FailureRequired,
+	}}, hookdata.Input{Event: hookdata.PreToolUse})
+	if decision.Verdict != hookdata.CommandAllow || decision.InjectContext != "verified" {
+		t.Fatalf("valid required decision was not respected: %+v", decision)
+	}
+}
+
 func TestRunner_MatcherGatesByToolName(t *testing.T) {
 	cmds := &commandStub{results: []commandResult{{Decision: hookdata.CommandDecision{Verdict: hookdata.CommandDeny, Reason: "x"}}}}
 	r := newPolicyEvaluator(cmds, nil)

@@ -96,6 +96,12 @@ export const zh = {
     "结果尚未确认。请查询此原始命令的结果，不要重复执行其操作。",
   "command.recover": "查询原始结果",
   "command.accepted": "{{action}}：原始命令已完成。",
+  "receipts.title": "原始证据容量",
+  "receipts.records": "已保留记录 / 上限",
+  "receipts.bytes": "计入容量的字节 / 上限",
+  "receipts.pending": "未确认结果",
+  "receipts.help":
+    "字节数包含为待定结果预留的空间。新操作还会预留撤销控制的位置，因此可能在达到总上限前停止准入。不会为接纳新操作而删除原始证据。",
   "history.title": "原始操作结果",
   "history.help":
     "查看保留的命令证据。缺失的结果仍为未确认，不会通过当前桌面状态反推。",

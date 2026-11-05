@@ -1,4 +1,6 @@
 export const ko: Record<string, string> = {
+  "failure.required": "필수: 오류 시 차단",
+  "failure.advisory": "권고: 오류 시 계속",
   title: "훅",
   trust: "이 프로젝트의 훅을 신뢰",
   "trust.sub":

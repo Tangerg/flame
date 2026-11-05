@@ -3,7 +3,10 @@ package execution
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -26,13 +29,22 @@ func TestInteractionContextContributionsAreMeasuredButNeverAdoptedAsConversation
 			owner := &contextCaptureComposition{t: t}
 			compactor := &contributedContextCompactor{t: t}
 			calls := 0
+			var opening []chat.Message
 			model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				calls++
 				if countContextMaterial(request.Messages) != 1 {
 					t.Errorf("call %d lost or duplicated contributed context: %+v", calls, request.Messages)
 				}
+				last := request.Messages[len(request.Messages)-1]
+				if last.Role != chat.RoleUser || last.Text() != fmt.Sprintf("ephemeral retrieval %d", calls) {
+					t.Errorf("dynamic retrieval did not stay at the request tail: %+v", last)
+				}
 				if calls == 1 {
+					opening = cloneChatMessages(request.Messages[:len(request.Messages)-1])
 					return interactionToolResponse(chat.ToolCall{ID: "echo-call", Name: "fixture_echo", Arguments: `{}`}, 5, 1), nil
+				}
+				if !reflect.DeepEqual(opening, request.Messages[:len(opening)]) {
+					t.Error("new retrieval rewrote the existing model request prefix")
 				}
 				return interactionUsageTextResponse("done", 7, 1), nil
 			})
@@ -73,6 +85,7 @@ type contextCaptureComposition struct {
 	resolved     int
 	failure      error
 	dependencies []plugin.Dependency
+	userInputs   []*chat.Message
 }
 
 func (c *contextCaptureComposition) ResolveContext(context.Context) ([]plugins.ContributionBinding, error) {
@@ -95,15 +108,19 @@ func (c *contextCaptureComposition) ResolveContext(context.Context) ([]plugins.C
 func (*contextCaptureComposition) ValidateContext(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }
-func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, source *chat.Request, tail []chat.Message) ([]chat.Message, error) {
+func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, use modelchoice.Use, source *chat.Request, userMessage *chat.Message, tail []chat.Message) ([]chat.Message, error) {
 	request := source.Clone()
 	request.Messages = append(request.Messages, tail...)
 	c.calls++
+	if userMessage != nil {
+		userMessage = new(userMessage.Clone())
+	}
+	c.userInputs = append(c.userInputs, userMessage)
 	if executionctx.ModelCallsFromContext(ctx) == nil {
 		c.t.Error("context preparation has no original execution publisher")
 	}
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
-	if err != nil || invocation.Parent == "" || invocation.Target.Reference != invocation.ID || selection != testDefaultSelection() || len(bindings) != 1 {
+	if err != nil || invocation.Parent == "" || invocation.Target.Reference != invocation.ID || selection != testDefaultSelection() || use != modelchoice.Interaction || len(bindings) != 1 {
 		c.t.Errorf("original model/context attribution changed: %+v %v", invocation, err)
 	}
 	if countContextMaterial(request.Messages) != 0 {
@@ -112,7 +129,7 @@ func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings
 	if c.failure != nil {
 		return nil, c.failure
 	}
-	return []chat.Message{chat.NewSystemMessage("ephemeral retrieval")}, nil
+	return []chat.Message{chat.NewUserMessage(chat.NewTextPart(fmt.Sprintf("ephemeral retrieval %d", c.calls)))}, nil
 }
 func (*contextCaptureComposition) Resolve(context.Context) ([]plugins.ContributionBinding, error) {
 	return nil, nil
@@ -132,7 +149,7 @@ type contributedContextCompactor struct {
 
 func (c *contributedContextCompactor) CompactModelContext(_ context.Context, request ModelContextCompaction) (ModelContextCompactionResult, error) {
 	c.calls++
-	if countContextMaterial(request.Instructions()) != 1 || countContextMaterial(request.Candidate()) != 0 {
+	if countContextMaterial(request.Instructions()) != 0 || countContextMaterial(request.Candidate()) != 0 || countContextMaterial(request.Trailer()) != 1 {
 		c.t.Error("capacity boundary lost ephemeral context ownership")
 	}
 	return NewModelContextCompactionResult(request.Candidate(), false, "", len(request.Candidate()), 100)
@@ -140,7 +157,7 @@ func (c *contributedContextCompactor) CompactModelContext(_ context.Context, req
 func countContextMaterial(messages []chat.Message) int {
 	count := 0
 	for _, m := range messages {
-		if m.Text() == "ephemeral retrieval" {
+		if strings.HasPrefix(m.Text(), "ephemeral retrieval ") {
 			count++
 		}
 	}

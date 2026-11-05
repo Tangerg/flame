@@ -29,3 +29,19 @@ it("retains an exit receipt when command output arrived through the stream", () 
   expect(commandToolResult({ exitCode: 0 })).toEqual({ exitCode: 0 });
   expect(commandToolResult({ output: 7, exitCode: "0" })).toBeUndefined();
 });
+
+it("retains a command page without coercing its byte coordinates", () => {
+  const page = {
+    shellId: "original",
+    status: "finished (exit 0)",
+    offset: 0,
+    nextOffset: 3,
+    hasMore: true,
+    dropped: false,
+  };
+  expect(commandToolResult(JSON.stringify({ output: "abc", exitCode: 0, page }))).toEqual({
+    output: "abc",
+    exitCode: 0,
+    page,
+  });
+});

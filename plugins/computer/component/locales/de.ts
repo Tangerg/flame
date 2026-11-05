@@ -105,6 +105,12 @@ export const de = {
   "command.recover": "Ursprüngliches Ergebnis prüfen",
   "command.accepted":
     "{{action}}: Der ursprüngliche Befehl wurde abgeschlossen.",
+  "receipts.title": "Kapazität der Originalbelege",
+  "receipts.records": "Gespeicherte Datensätze / Grenze",
+  "receipts.bytes": "Angerechnete Bytes / Grenze",
+  "receipts.pending": "Unbestätigte Ergebnisse",
+  "receipts.help":
+    "Die Bytes enthalten reservierten Platz für ausstehende Ergebnisse. Neue Vorgänge reservieren außerdem Platz für den Kontrollentzug und können schon vor Erreichen der Grenzen abgewiesen werden. Originalbelege werden nie gelöscht, um weitere Aktionen zuzulassen.",
   "history.title": "Ursprüngliche Ergebnisse",
   "history.help":
     "Gespeicherte Befehlsbelege lesen. Fehlende Ergebnisse werden nicht aus dem aktuellen Desktop abgeleitet.",

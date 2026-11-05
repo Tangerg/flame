@@ -32,6 +32,7 @@ export const limits = Object.freeze({
   valueNodes: 16384,
   valueDepth: 32,
   valueText: 128 * 1024,
+  followupBytes: 16 * 1024,
 });
 
 export class InvalidPresentation extends Error {

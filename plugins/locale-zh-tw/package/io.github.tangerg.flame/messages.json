@@ -285,7 +285,7 @@
   "approvals.mode.balanced": "均衡",
   "approvals.mode.auto": "自動",
   "approvals.rules": "記住的規則",
-  "approvals.rules.sub": "你儲存的免核准工具決策。",
+  "approvals.rules.sub": "你儲存的允許或拒絕規則；符合的拒絕規則仍會阻止自動核准。",
   "approvals.rules.empty": "尚無規則",
   "approvals.rules.emptySub": "核准或拒絕時勾選「不再詢問」即可新增。",
   "approvals.scope.session": "工作階段",

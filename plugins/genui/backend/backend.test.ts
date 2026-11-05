@@ -46,7 +46,7 @@ const report = {
     },
   ],
 };
-const accepted = { ...report, bindings: [] };
+const accepted = { ...report, contributions: [] };
 
 it("publishes the document owner's schema for input and enriched retained result", async () => {
   const client = await connect();
@@ -129,7 +129,7 @@ it("keeps repeated presentation calls deterministic without creating a private h
     name: PRESENT_TOOL,
     arguments: changed,
   });
-  expect(third.structuredContent).toEqual({ ...changed, bindings: [] });
+  expect(third.structuredContent).toEqual({ ...changed, contributions: [] });
   expect(first.structuredContent).toEqual(accepted);
 });
 
@@ -208,20 +208,41 @@ it("returns a known refusal for cross-field document violations without publishi
   expect(valid.structuredContent).toEqual(accepted);
 });
 
-it("publishes pure function signatures without requiring a host callback", async () => {
+it("pages a brief function index and reads exact parameters only on demand without a host callback", async () => {
   const client = await connect();
-  const result = await client.callTool({ name: CATALOG_TOOL, arguments: {} });
+  const result = await client.callTool({
+    name: CATALOG_TOOL,
+    arguments: { kind: "functions" },
+  });
   expect(result.isError).not.toBe(true);
   expect(result.structuredContent).not.toHaveProperty("operations");
-  expect(
-    (result.structuredContent as { functions: unknown[] }).functions,
-  ).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        name: "multiply",
-        parameters: expect.any(Object),
-        description: expect.any(String),
-      }),
-    ]),
-  );
+  const page = (
+    result.structuredContent as {
+      functions: { entries: unknown[]; nextOffset: number };
+    }
+  ).functions;
+  expect(page.entries).toHaveLength(20);
+  expect(page.nextOffset).toBe(20);
+  expect(JSON.stringify(page.entries)).not.toContain('"parameters"');
+  const detail = await client.callTool({
+    name: CATALOG_TOOL,
+    arguments: { kind: "functions", name: "multiply" },
+  });
+  expect(detail.structuredContent).toMatchObject({
+    function: {
+      name: "multiply",
+      parameters: expect.any(Object),
+      description: expect.any(String),
+    },
+  });
+  const next = await client.callTool({
+    name: CATALOG_TOOL,
+    arguments: { kind: "functions", offset: page.nextOffset },
+  });
+  expect(next.structuredContent).not.toEqual(result.structuredContent);
+  const invalid = await client.callTool({
+    name: CATALOG_TOOL,
+    arguments: { kind: "functions", name: "missing" },
+  });
+  expect(invalid.isError).toBe(true);
 });

@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"
 	"github.com/Tangerg/scope/models/google"
+	anthropicprotocol "github.com/Tangerg/scope/models/protocol/anthropic"
 )
 
 func mustClientSpec(t testing.TB, provider Provider, key, endpoint string) clientSpec {
@@ -258,6 +259,64 @@ func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
 	count, err := counter.CountInputTokens(t.Context(), request)
 	if err != nil || count != 61 || countRequests.Load() != 1 {
 		t.Fatalf("direct CountInputTokens = %d, %v; requests=%d", count, err, countRequests.Load())
+	}
+}
+
+func TestAnthropicCacheDefaultUsesNativeProfileAndAllowsRequestOverride(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		provider Provider
+		override map[string]any
+		want     string
+	}{
+		{name: "native", provider: providerAnthropic, want: `{"type":"ephemeral"}`},
+		{name: "compatible", provider: providerAnthropicCompatible},
+		{name: "native explicit override", provider: providerAnthropic,
+			override: map[string]any{"cache_control": map[string]any{"type": "ephemeral", "ttl": "1h"}},
+			want:     `{"ttl":"1h","type":"ephemeral"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				requests.Add(1)
+				var body map[string]jsontext.Value
+				if err := json.UnmarshalRead(request.Body, &body); err != nil {
+					t.Error(err)
+				}
+				got := body["cache_control"]
+				if len(got) != 0 {
+					if err := got.Canonicalize(); err != nil {
+						t.Error(err)
+					}
+				}
+				if string(got) != test.want {
+					t.Errorf("cache_control = %s, want %s", got, test.want)
+				}
+				// A non-retryable response makes this a real wire-projection test
+				// without depending on a live vendor or reporting a cache hit.
+				writer.Header().Set("Content-Type", "application/json")
+				writer.WriteHeader(http.StatusBadRequest)
+				_, _ = writer.Write([]byte(`{"type":"error","error":{"type":"invalid_request_error","message":"fixture"}}`))
+			}))
+			t.Cleanup(server.Close)
+			model, err := buildModel(t.Context(), mustClientSpec(t, test.provider, "test-key", server.URL), "claude-test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.override != nil {
+				if err := request.Options.Extensions.Set(anthropicprotocol.RequestExtensionKey, test.override); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, err = model.Call(t.Context(), request)
+			if err == nil || requests.Load() != 1 {
+				t.Fatalf("request result = %v, requests = %d", err, requests.Load())
+			}
+		})
 	}
 }
 

@@ -1,4 +1,10 @@
 export const zhTW: Record<string, string> = {
+  "search.partial":
+    "部分搜尋：至少 {{total}} 個符合項目 · {{unread}} 個檔案未讀 · 已略過 {{skipped}} 個檔案",
+  "search.truncated": "顯示 {{total}} 個已記錄符合項目中的 {{shown}} 個",
+  "output.byteRange": "位元組範圍 [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete": "輸出記錄失敗；保留的位元組不完整。",
   "find.open": "尋找",
   "find.clear": "清除搜尋",
   "find.close": "關閉尋找",

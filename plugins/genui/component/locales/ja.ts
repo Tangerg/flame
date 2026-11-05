@@ -26,6 +26,11 @@ export const ja: Record<string, string> = {
   "table.pagination": "{{table}}のページ",
   "chart.data": "{{chart}}のデータ",
   "chart.empty": "描画できる値がありません。",
+  "resource.load": "外部コンテンツを読み込む：{{resource}}",
+  "resource.notice":
+    "読み込むと、このアドレスが外部サービスに送信されます。参照先が変わると、再度許可が必要です。",
+  "map.external":
+    "地図タイルを読み込むと、表示位置が OpenStreetMap に送信されます。タイルを読み込まずに位置の表を利用できます。",
   "image.unavailable": "この画像を表示できません。",
   "code.label": "コード",
   "markdown.table": "Markdown テーブル",

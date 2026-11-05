@@ -528,6 +528,86 @@ func TestSessionMarkdownRequiresAnInstalledRenderer(t *testing.T) {
 	}
 }
 
+type markdownSourceCapture struct {
+	pluginCallUseCases
+	source protocol.SessionArtifact
+}
+
+func (m *markdownSourceCapture) RenderSessionMarkdown(_ context.Context, _ string, document []byte) (string, error) {
+	if err := json.Unmarshal(document, &m.source); err != nil {
+		return "", err
+	}
+	return "# captured transcript\n", nil
+}
+
+func TestSessionMarkdownHydratesTextWithoutReplacingStructuredResults(t *testing.T) {
+	handler, runtime := rollbackHarness(t)
+	session, err := insertSessionFixture(t.Context(), runtime.sess, "Markdown", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	putRun(t, runtime, session.ID(), "markdown-run", 1, 0)
+	preview, err := tool.NewResult("bounded preview")
+	if err != nil {
+		t.Fatal(err)
+	}
+	structured, err := tool.ParseResult([]byte(`{"revision":7,"title":"report"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const fullText = "complete model-visible text"
+	const modelText = "unique diagnostic absent from the structured result"
+	for _, fixture := range []struct {
+		id        transcript.ToolResultID
+		itemID    string
+		result    tool.Result
+		body      string
+		modelOnly bool
+	}{
+		{"PLAIN234", "plain-item", preview, fullText, false},
+		{"MODEL234", "structured-item", structured, modelText, true},
+	} {
+		if err := runtime.toolResults.Stage(t.Context(), transcript.ToolResultStage{ID: fixture.id, SessionID: session.ID(), Body: fixture.body}); err != nil {
+			t.Fatal(err)
+		}
+		item := testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: session.ID(), RunID: "markdown-run", ID: fixture.itemID,
+			Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
+			OccurredAt: time.Unix(10, 0).UTC(), FinishedAt: time.Unix(11, 0).UTC(),
+			Tool: &transcript.ToolInvocation{Name: "shell", Result: &fixture.result, Offload: &transcript.ToolResultRef{ID: fixture.id, ModelOnly: fixture.modelOnly}},
+		})
+		if err := runtime.hist.AppendItem(t.Context(), item); err != nil {
+			t.Fatal(err)
+		}
+	}
+	capture := new(markdownSourceCapture)
+	handler.pluginCalls = capture
+	if _, err := handler.ExportSession(t.Context(), protocol.ExportSessionRequest{SessionID: session.ID(), Format: protocol.ExportFormatMarkdown}); err != nil {
+		t.Fatal(err)
+	}
+	fullResult, err := tool.NewResult(fullText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertArtifactToolResult(t, capture.source.Items, "plain-item", fullResult.Canonical())
+	assertArtifactToolResult(t, capture.source.Items, "structured-item", structured.Canonical())
+	if len(capture.source.ToolResults) != 1 {
+		t.Fatal("Markdown source must retain model-only evidence without duplicating expanded text")
+	}
+	body := capture.source.ToolResults[0]
+	if body.ItemID != "structured-item" || !body.ModelOnly || body.Body != modelText {
+		t.Fatalf("Markdown model-only evidence = %+v", body)
+	}
+	archive, err := handler.ExportSession(t.Context(), protocol.ExportSessionRequest{SessionID: session.ID(), Format: protocol.ExportFormatJSON})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archive.Artifact.ToolResults) != 2 {
+		t.Fatal("Markdown projection changed the portable archive's bindings")
+	}
+	assertArtifactToolResult(t, archive.Artifact.Items, "plain-item", preview.Canonical())
+}
+
 func TestSessionExportRejectsUnknownFormat(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	ctx := context.Background()

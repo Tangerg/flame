@@ -1,5 +1,5 @@
 // Package exec is the background-process mechanism: it runs shell commands
-// detached from the calling Run, buffers their output in a bounded ring so
+// detached from the calling Run, spools their output in a bounded private file so
 // the model can read it incrementally, and kills them on demand. It is pure
 // infra — no domain knowledge, no upward dependency.
 //
@@ -10,7 +10,7 @@
 // mechanism backs both the synchronous shell result and the read_shell_output /
 // stop_shell tools — the auto-background design.
 //
-// No PTY: plain pipes into a bounded ring buffer. Unix commands own an isolated
+// No PTY: plain pipes into a bounded output spool. Unix commands own an isolated
 // process group so timeout, stop, natural parent exit, and shutdown reclaim
 // their descendants. The base path is cross-platform; an opt-in [Sandbox]
 // wraps each command in an in-place OS jail (macOS Seatbelt today, fail-closed
@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -37,25 +38,30 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
-// maxBuffer caps a background shell's retained output; once exceeded the
-// oldest bytes are dropped (a poll that fell behind is told output was lost).
+// Output envelopes bound one page, one command, and this process owner's entire
+// retained log set. Exceeding a spool bound stops the original command with its
+// admitted output intact; an old prefix is never silently replaced by a tail.
 const (
-	maxBuffer        = 256 * 1024
-	processWaitDelay = time.Second
+	maxOutputPageBytes     = 256 << 10
+	maxShellOutputBytes    = 8 << 20
+	maxRetainedOutputBytes = 64 << 20
+	maxRetainedShells      = 256
+	processWaitDelay       = time.Second
 )
 
 // Shells owns background shell commands and lets callers poll their output or
 // stop them. The process handles and output buffers live here. The zero value is
 // not usable; build one with [NewShells].
 type Shells struct {
-	lifecycle sync.Mutex
-	mu        sync.Mutex
-	epoch     string
-	nextID    uint64
-	shells    map[shellID]*Shell
-	closed    bool
-	closeOnce sync.Once
-	closeErr  error
+	lifecycle     sync.Mutex
+	mu            sync.Mutex
+	epoch         string
+	nextID        uint64
+	shells        map[shellID]*Shell
+	closed        bool
+	closeOnce     sync.Once
+	closeErr      error
+	retainedBytes atomic.Int64
 	// confiner jails each command in an in-place OS sandbox (workspace-write
 	// only, network denied, $HOME hidden, env scrubbed) when non-nil. Built
 	// fail-closed at construction, so a non-nil confiner is always a working
@@ -77,6 +83,8 @@ var (
 	// errShellIdentityExhausted reports that one process-local Shells owner has
 	// consumed every addressable sequence value.
 	errShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
+	ErrShellOutputLimit       = errors.New("exec: shell output spool capacity reached; command stopped with retained output")
+	errShellCapacity          = errors.New("exec: retained shell capacity reached; read completed output or stop owned shells")
 )
 
 const (
@@ -151,8 +159,8 @@ func (s *Shells) command(cwd, command string, isolated bool) (name string, args,
 	return confined.Name, confined.Args, confined.Env, nil
 }
 
-// Shell is one background process: its handle, the tail of its combined
-// stdout+stderr (capped), and its completion state. Read its output with
+// Shell is one background process: its handle, its combined stdout+stderr spool,
+// and its completion state. Read its output with
 // [Shells.Read], wait for it with [Shell.Done], inspect its terminal state with
 // [Shell.Status] / [Shell.Outcome]; the [Shells] set owns its lifecycle.
 type Shell struct {
@@ -166,15 +174,19 @@ type Shell struct {
 	// below are written, so a reader that observed it reads a settled outcome.
 	done chan struct{}
 
-	mu       sync.Mutex
-	buf      []byte        // tail of stdout+stderr, capped at maxBuffer
-	total    int           // absolute bytes ever written (buf holds the last len(buf))
-	readPos  int           // absolute offset already returned to the caller
-	exitInfo string        // "exit 0" / "exit 2" / "signal: killed" — set on completion
-	exitCode int           // process exit code; -1 when it never ran / wasn't an exit
-	killed   bool          // terminated by ctx/timeout/kill rather than exiting on its own
-	duration time.Duration // wall time from launch to completion
-	cleanup  error         // terminal process-tree cleanup diagnostic
+	mu          sync.Mutex
+	log         *os.File
+	logPath     string // empty for an unlinked temporary file
+	logBytes    int64
+	readPos     int64
+	spoolBytes  *atomic.Int64 // the original Shells owner's aggregate charge
+	logReleased bool
+	outputErr   error
+	exitInfo    string        // "exit 0" / "exit 2" / "signal: killed" — set on completion
+	exitCode    int           // process exit code; -1 when it never ran / wasn't an exit
+	killed      bool          // terminated by ctx/timeout/kill rather than exiting on its own
+	duration    time.Duration // wall time from launch to completion
+	cleanup     error         // terminal process-tree cleanup diagnostic
 }
 
 // NoExitStatus is the exit code of a command that never reported one: it failed
@@ -266,6 +278,18 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		cancel()
 		return "", errShellIdentityExhausted
 	}
+	if len(s.shells) >= maxRetainedShells {
+		s.mu.Unlock()
+		cancel()
+		return "", errShellCapacity
+	}
+	log, logPath, logErr := openShellLog()
+	if logErr != nil {
+		s.mu.Unlock()
+		cancel()
+		return "", fmt.Errorf("exec: admit shell output spool: %w", logErr)
+	}
+	sh.log, sh.logPath, sh.spoolBytes = log, logPath, &s.retainedBytes
 	s.nextID++
 	id := newShellID(s.epoch, s.nextID)
 	// Start while holding the owner lock so shutdown cannot observe a Shell
@@ -362,13 +386,17 @@ func (s *Shells) Kill(sessionID, id string) (running bool, err error) {
 // Output is one observation of the incremental bytes and completion boundary.
 // Terminal fields are meaningful only when Finished is true.
 type Output struct {
-	Text     string
-	Dropped  bool
-	Finished bool
-	Info     string
-	ExitCode int
-	Killed   bool
-	Duration time.Duration
+	ShellID    string // retained handle; empty after the final page releases it
+	Text       string
+	Dropped    bool
+	Offset     int64
+	NextOffset int64
+	HasMore    bool
+	Finished   bool
+	Info       string
+	ExitCode   int
+	Killed     bool
+	Duration   time.Duration
 }
 
 // Read consumes available output and retires a successfully cleaned, finished
@@ -385,10 +413,16 @@ func (s *Shells) Read(sessionID, id string) (Output, error) {
 	if !found || sh.sessionID != sessionID {
 		return Output{}, fmt.Errorf("%w: %q", ErrShellNotFound, id)
 	}
-	output, err := sh.read()
-	if output.Finished && err == nil {
-		delete(s.shells, identity)
+	output, retire, err := sh.read()
+	if retire {
+		if releaseErr := sh.releaseLog(); releaseErr != nil {
+			err = errors.Join(err, releaseErr)
+		} else {
+			delete(s.shells, identity)
+			return output, err
+		}
 	}
+	output.ShellID = id
 	return output, err
 }
 
@@ -512,6 +546,10 @@ func stopDetachedShells(shells map[shellID]*Shell, action string) ([]shellID, er
 			errs = append(errs, fmt.Errorf("exec: clean shell %q %s: %w", id, action, err))
 			continue
 		}
+		if err := sh.releaseLog(); err != nil {
+			errs = append(errs, fmt.Errorf("exec: release shell %q output %s: %w", id, action, err))
+			continue
+		}
 		released = append(released, id)
 	}
 	return released, errors.Join(errs...)
@@ -581,23 +619,6 @@ func (s *Shell) cleanupFailure() error {
 	return s.cleanup
 }
 
-func (s *Shell) read() (Output, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	bufStart := s.total - len(s.buf)
-	output := Output{Dropped: s.readPos < bufStart, Finished: s.finished()}
-	position := max(s.readPos, bufStart)
-	output.Text = string(s.buf[position-bufStart:])
-	if output.Finished {
-		output.Info, output.ExitCode, output.Killed, output.Duration = s.exitInfo, s.exitCode, s.killed, s.duration
-		if s.cleanup != nil {
-			return output, s.cleanup
-		}
-	}
-	s.readPos = s.total
-	return output, nil
-}
-
 // Status reports whether the shell finished and its exit info.
 func (s *Shell) Status() (done bool, info string) {
 	if !s.finished() {
@@ -606,18 +627,4 @@ func (s *Shell) Status() (done bool, info string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return true, s.exitInfo
-}
-
-// Write funnels the shell's stdout/stderr into its capped ring buffer (the
-// process's Stdout/Stderr point straight at the Shell). On overflow the oldest
-// bytes are dropped — a poll that fell behind learns so via [Shells.Read].
-func (s *Shell) Write(p []byte) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.total += len(p)
-	s.buf = append(s.buf, p...)
-	if len(s.buf) > maxBuffer {
-		s.buf = s.buf[len(s.buf)-maxBuffer:]
-	}
-	return len(p), nil
 }

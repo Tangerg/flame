@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.24.2 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.60.0 // indirect
 	github.com/Tangerg/scope/models/protocol/openai v0.60.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/anthropics/anthropic-sdk-go/v2 v2.5.0 // indirect
@@ -64,7 +63,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.5-dev.20261105.t4e2015415530
+	github.com/Tangerg/flame/packages/go-sdk v0.1.6-dev.20261105.t6685853a20dc
 	github.com/Tangerg/frame v0.1.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.60.0
@@ -84,6 +83,7 @@ require (
 	github.com/Tangerg/scope/models/openai v0.60.0
 	github.com/Tangerg/scope/models/openrouter v0.60.0
 	github.com/Tangerg/scope/models/perplexity v0.60.0
+	github.com/Tangerg/scope/models/protocol/anthropic v0.60.0
 	github.com/Tangerg/scope/models/together v0.60.0
 	github.com/Tangerg/scope/models/xai v0.60.0
 	github.com/Tangerg/scope/models/xiaomi v0.60.0

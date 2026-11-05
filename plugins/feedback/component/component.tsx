@@ -47,6 +47,7 @@ class MessageRatings {
   async submit(
     key: string,
     rating: FeedbackRating,
+    track: ComponentContext["track"],
     create: () => MutationPromise<void>,
   ) {
     const { accepted, busy, unresolved } = this.read(key);
@@ -59,7 +60,9 @@ class MessageRatings {
     this.publish(key, { accepted, busy: true });
     let attempt = unresolved;
     try {
-      const command = unresolved ? unresolved.command.retry() : create();
+      const command = track(() =>
+        unresolved ? unresolved.command.retry() : create(),
+      );
       attempt = { rating, command };
       await command;
       this.publish(key, { accepted: rating });
@@ -67,7 +70,10 @@ class MessageRatings {
       this.publish(key, {
         accepted,
         failure,
-        unresolved: mutationSettlementIsUnknown(failure) ? attempt : undefined,
+        unresolved:
+          attempt === unresolved || mutationSettlementIsUnknown(failure)
+            ? attempt
+            : undefined,
       });
     }
   }
@@ -103,7 +109,7 @@ export const RateResponse = defineComponent((source) => {
               Boolean(state.unresolved && state.unresolved.rating !== rating)
             }
             onClick={() =>
-              void ratings.submit(key, rating, () =>
+              void ratings.submit(key, rating, context.track, () =>
                 context.runtime.feedback.create({
                   source: {
                     installationId: binding.installationId,

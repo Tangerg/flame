@@ -195,9 +195,9 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 31 preserves observed Scope ToolOutput on unresolved effects. Imported
-// process and effect identities never authorize execution or recovery.
-const SessionArtifactVersion = 31
+// Version 32 distinguishes model-only text offloads from transcript replacements;
+// importing one as the other would overwrite a structured business result.
+const SessionArtifactVersion = 32
 
 // MaximumSessionArtifactBytes bounds the complete portable JSON document across bindings.
 const MaximumSessionArtifactBytes = 64 << 20
@@ -205,8 +205,9 @@ const MaximumSessionArtifactBytes = 64 << 20
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
 // items + runs (the UI transcript), and any structurally bound full tool-result
-// bodies. Offloaded item DTOs carry only their bounded preview; ToolResults is
-// their single full-body source. Messages remain opaque chat.Message values.
+// bodies. Plain text offloads keep a bounded preview in Items; rich results keep
+// their original structured value even when their model text is offloaded.
+// Messages remain opaque chat.Message values.
 //
 // Artifact records intentionally do not reuse the live Session, RunRef, or
 // Item response DTOs. A live response includes Runtime-instance-local and derived
@@ -367,13 +368,13 @@ const (
 	ArtifactProblemToolCanceled        ArtifactProblemType = ProblemToolCanceled
 )
 
-// ArtifactToolResult carries the single full-body source for an offloaded tool
-// item. ItemID binds it structurally; the Item itself carries the preview that
-// replaced Body in model history.
+// ModelOnly prevents an archive reader from replacing structured Item data with
+// its separate model-visible text. ItemID binds the blob to its original call.
 type ArtifactToolResult struct {
 	ID        string    `json:"id"`
 	ItemID    string    `json:"itemId"`
 	Body      string    `json:"body"`
+	ModelOnly bool      `json:"modelOnly"`
 	CreatedAt time.Time `json:"createdAt,omitzero"`
 }
 

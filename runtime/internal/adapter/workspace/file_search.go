@@ -17,7 +17,7 @@ import (
 
 // Grep searches the same finite, ignore-aware file catalog exposed by the
 // workspace browser. It scans in process so source, line, retained material,
-// cancellation, and exact-total semantics remain owned by this product port
+// cancellation, and coverage semantics remain owned by this product port
 // instead of inheriting a subprocess executor's post-hoc result slicing.
 func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (_ workspaceapp.GrepResult, err error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
@@ -50,14 +50,24 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 		canonicalRoot:   canonicalRoot,
 		rootHandle:      rootHandle,
 		plan:            input,
-		result:          workspaceapp.GrepResult{Matches: []workspaceapp.GrepMatch{}},
+		result:          workspaceapp.GrepResult{Matches: []workspaceapp.GrepMatch{}, Coverage: workspaceapp.GrepCoverage{RemainingFiles: len(entries)}},
 		remainingSource: int64(workspaceapp.MaxGrepSourceBytes),
 		collectMatches:  true,
 	}
 	for _, entry := range entries {
+		if search.remainingSource <= 0 || (!input.ScanAll && (!search.collectMatches || len(search.result.Matches) >= input.Limit)) {
+			break
+		}
 		if err := search.scanEntry(entry); err != nil {
 			return workspaceapp.GrepResult{}, err
 		}
+		if search.sourceExhausted {
+			break
+		}
+		search.result.Coverage.RemainingFiles--
+	}
+	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
+		return workspaceapp.GrepResult{}, cause
 	}
 	return search.result, nil
 }
@@ -72,10 +82,12 @@ type workspaceGrep struct {
 	remainingSource int64
 	retainedBytes   int
 	collectMatches  bool
+	sourceExhausted bool
 }
 
 func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
 	if entry.Kind != workspaceapp.FileEntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
+		search.result.Coverage.SkippedFiles++
 		return nil
 	}
 	if cause := errors.Join(search.ctx.Err(), context.Cause(search.ctx)); cause != nil {
@@ -83,6 +95,9 @@ func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
 	}
 	source, usable, err := search.openSource(entry.Path)
 	if err != nil || !usable {
+		if err == nil {
+			search.result.Coverage.SkippedFiles++
+		}
 		return err
 	}
 	return search.scanSource(source)
@@ -118,8 +133,9 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 }
 
 func (search *workspaceGrep) scanSource(source grepSource) error {
-	if search.remainingSource <= 0 {
-		return errors.Join(workspaceapp.ErrGrepResultTooLarge, source.file.Close(), errors.Join(search.ctx.Err(), context.Cause(search.ctx)))
+	if source.opened.Size() > search.remainingSource {
+		search.sourceExhausted = true
+		return errors.Join(source.file.Close(), errors.Join(search.ctx.Err(), context.Cause(search.ctx)))
 	}
 	matchLimit, resultBytes := search.retentionBudget()
 	fileResult, scanErr := grepFile(
@@ -145,6 +161,7 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 		closeErr = fmt.Errorf("workspace: close search file %q: %w", source.path, closeErr)
 	}
 	search.remainingSource -= fileResult.sourceBytes
+	search.result.Coverage.SourceBytes += fileResult.sourceBytes
 	var capacityErr error
 	if search.remainingSource < 0 {
 		capacityErr = workspaceapp.ErrGrepResultTooLarge
@@ -164,6 +181,11 @@ func (search *workspaceGrep) retentionBudget() (int, int) {
 }
 
 func (search *workspaceGrep) merge(fileResult grepFileResult) error {
+	if fileResult.skipped {
+		search.result.Coverage.SkippedFiles++
+		return nil
+	}
+	search.result.Coverage.ScannedFiles++
 	if fileResult.total > math.MaxInt-search.result.Total {
 		return workspaceapp.ErrGrepResultTooLarge
 	}
@@ -182,6 +204,7 @@ type grepFileResult struct {
 	materialBytes int
 	exhausted     bool
 	sourceBytes   int64
+	skipped       bool
 }
 
 func grepFile(
@@ -228,7 +251,7 @@ func grepFile(
 	case errors.Is(err, textread.ErrInvalidText), errors.Is(err, textread.ErrLineTooLarge):
 		// Exclude the entire file only after ruling out input failure: the
 		// parser may diagnose buffered text before reaching a reader error.
-		return grepFileResult{sourceBytes: counter.bytes}, nil
+		return grepFileResult{sourceBytes: counter.bytes, skipped: true}, nil
 	case err != nil:
 		return result, fmt.Errorf("workspace: scan search file %q: %w", path, err)
 	}

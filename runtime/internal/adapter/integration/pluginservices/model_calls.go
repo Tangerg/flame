@@ -55,7 +55,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
 		}
-		captured, release, err := o.capture(ctx, selected, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
+		captured, release, err := o.capture(ctx, selected, modelchoice.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}

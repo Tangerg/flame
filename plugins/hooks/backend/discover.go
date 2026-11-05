@@ -90,17 +90,18 @@ type hooksFile struct {
 }
 
 type hookWire struct {
-	Event         hook.Event `json:"event"`
-	Matcher       string     `json:"matcher,omitempty"`
-	Command       string     `json:"command,omitempty"`
-	Inject        string     `json:"inject,omitempty"`
-	TimeoutMillis int        `json:"timeoutMillis,omitzero"`
+	Event         hook.Event         `json:"event"`
+	Matcher       string             `json:"matcher,omitempty"`
+	Command       string             `json:"command,omitempty"`
+	Inject        string             `json:"inject,omitempty"`
+	TimeoutMillis int                `json:"timeoutMillis,omitzero"`
+	FailurePolicy hook.FailurePolicy `json:"failurePolicy,omitempty"`
 }
 
 func (h hookWire) rule() hook.Hook {
 	return hook.Hook{
 		Event: h.Event, Matcher: h.Matcher, Command: h.Command,
-		Inject: h.Inject, TimeoutMillis: h.TimeoutMillis,
+		Inject: h.Inject, TimeoutMillis: h.TimeoutMillis, FailurePolicy: h.FailurePolicy,
 	}
 }
 

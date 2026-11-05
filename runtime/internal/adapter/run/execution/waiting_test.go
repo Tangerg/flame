@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -221,10 +222,16 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(requests) != 2 || len(requests[0]) < 2 || len(requests[1]) < 2 || requests[0][0].Text() != "ephemeral retrieval" || requests[1][0].Text() != "ephemeral retrieval" || requests[0][1].Text() != "current question" || requests[1][1].Text() != "current question" {
+	if len(requests) != 2 || len(requests[0]) < 2 || len(requests[1]) < 3 || requests[0][0].Text() != "current question" || requests[1][0].Text() != "current question" {
 		t.Fatalf("restored model context = %#v", requests)
 	}
-	if got := requests[1][len(requests[1])-1].Text(); got != "also include edge casesconverted resume image" {
+	for index, request := range requests {
+		last := request[len(request)-1]
+		if last.Role != chat.RoleUser || last.Text() != fmt.Sprintf("ephemeral retrieval %d", index+1) || countContextMaterial(request) != 1 {
+			t.Fatalf("restored retrieval changed the original prefix or entered history: %#v", request)
+		}
+	}
+	if got := requests[1][len(requests[1])-2].Text(); got != "also include edge casesconverted resume image" {
 		t.Fatalf("continuation follow-up = %q, want committed input", got)
 	}
 	steers := payloadsOf[runs.SteerMessagesApplied](events)

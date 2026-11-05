@@ -14,20 +14,26 @@ import (
 
 func TestShellReadRetainsOutputAndCleanupFailure(t *testing.T) {
 	shells := unconfinedShells(t)
-	t.Cleanup(func() { _ = shells.KillAll() })
 	id, err := shells.Launch(t.Context(), "session", t.TempDir(), "printf observed", Timeout{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	waitForDone(t, shells, "session", id)
 	sh := mustShell(t, shells, "session", id)
+	t.Cleanup(func() {
+		// The real process already joined; reclaim the fixture's descriptor
+		// after the injected cleanup failure has exercised owner retention.
+		if err := sh.releaseLog(); err != nil {
+			t.Error(err)
+		}
+	})
 	cause := errors.New("process cleanup failed")
 	sh.mu.Lock()
 	sh.cleanup = cause
 	sh.mu.Unlock()
-	for range 2 {
+	for index, want := range []string{"observed", ""} {
 		output, err := shells.Read("session", id)
-		if !errors.Is(err, cause) || output.Text != "observed" || !output.Finished {
+		if !errors.Is(err, cause) || output.Text != want || !output.Finished || output.Offset != int64(index*len("observed")) {
 			t.Fatalf("failed read = (%+v, %v), want retained evidence and cleanup failure", output, err)
 		}
 		if _, retained := shells.Get("session", id); !retained {

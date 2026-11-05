@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // ToolResultIDPattern is the public wire grammar shared with generated
@@ -45,13 +46,41 @@ func (i ToolResultID) Validate() error {
 	return nil
 }
 
-// ToolResultRef is the typed link carried with a transcript item after its full result
-// has been moved to durable blob storage.
+// A rich Tool result keeps its structured value in the transcript even when
+// model-visible text moves to a blob. Only a plain text replacement hydrates
+// the transcript from that blob.
 type ToolResultRef struct {
-	ID ToolResultID
+	ID        ToolResultID
+	ModelOnly bool
 }
 
 func (r ToolResultRef) Validate() error { return r.ID.Validate() }
+
+func (r ToolResultRef) ValidateResult(result *tool.Result) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	if result == nil {
+		return errors.New("transcript: offloaded Tool result is absent")
+	}
+	if _, textual := result.String(); !r.ModelOnly && !textual {
+		return errors.New("transcript: offloaded Tool result preview is not text")
+	}
+	return nil
+}
+
+func (r ToolResultRef) HydrateResult(result *tool.Result, body string) (tool.Result, error) {
+	if err := r.ValidateResult(result); err != nil {
+		return tool.Result{}, err
+	}
+	if body == "" {
+		return tool.Result{}, errors.New("transcript: offloaded Tool result body is absent")
+	}
+	if r.ModelOnly {
+		return *result, nil
+	}
+	return tool.NewResult(body)
+}
 
 // ToolResultStage is the complete unbound record persisted only after its
 // rendered preview has proven worth evicting from model context.

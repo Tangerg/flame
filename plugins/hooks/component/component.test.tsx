@@ -19,11 +19,32 @@ afterEach(cleanup);
 const globalHook = {
   event: "PreToolUse",
   command: "guard",
+  failurePolicy: "advisory",
   scope: "global",
   source: "/captured/hooks.json",
   active: true,
 } as const;
 const empty: HooksListResult = { hooks: [], projectTrusted: false };
+
+it("shows the captured command failure policy before project trust is granted", async () => {
+  const f = fixture(
+    vi.fn<() => Promise<HooksListResult>>().mockResolvedValue({
+      hooks: [
+        {
+          ...globalHook,
+          scope: "project",
+          active: false,
+          failurePolicy: "required",
+        },
+      ],
+      projectTrusted: false,
+    }),
+  );
+  render(<Hooks context={f.context} />);
+  expect(await screen.findByText("Required: errors block")).toBeTruthy();
+  expect(screen.getByText("inactive")).toBeTruthy();
+  f.controller.abort();
+});
 
 function fixture(
   list = vi.fn<() => Promise<HooksListResult>>().mockResolvedValue(empty),
@@ -95,6 +116,7 @@ it("shows each exact source, scope and literal injected payload", async () => {
         {
           ...globalHook,
           command: undefined,
+          failurePolicy: undefined,
           inject: payload,
           scope: "project",
           source: "/我的 项目/.flame/hooks.json",

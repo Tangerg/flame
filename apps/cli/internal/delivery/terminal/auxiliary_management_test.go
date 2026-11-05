@@ -101,7 +101,8 @@ func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalo
 	defer h.mu.Unlock()
 	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []protocol.HookInfo{{
 		Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: protocol.HookScopeProject,
-		Source: "/workspace/.flame/hooks.json", Active: h.trusted,
+		FailurePolicy: "required",
+		Source:        "/workspace/.flame/hooks.json", Active: h.trusted,
 	}}}, nil
 }
 
@@ -153,6 +154,7 @@ func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
 	host.Type("/hooks")
 	host.Press(input.Enter)
 	host.Shows(t, "project trust false")
+	host.Shows(t, "failure policy  required")
 
 	if err := hooks.SetProjectTrust(t.Context(), "/workspace", true); err != nil {
 		t.Fatal(err)

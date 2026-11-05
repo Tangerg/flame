@@ -145,6 +145,74 @@ func TestShellFailurePreservesObservedOutputThroughToolBinding(t *testing.T) {
 	}
 }
 
+func TestShellQuotaFailureKeepsItsPageAndContinuationThroughToolBinding(t *testing.T) {
+	shells := unconfinedShells(t)
+	id, err := shells.Launch(t.Context(), "", t.TempDir(), "sleep 30", exec.Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh, _ := shells.Get("", id)
+	if _, err := sh.Write(bytes.Repeat([]byte("x"), (8<<20)+1)); !errors.Is(err, exec.ErrShellOutputLimit) {
+		t.Fatalf("spool quota: %v", err)
+	}
+	<-sh.Done()
+	tools := &commandTools{shells: shells}
+	for index := range 2 {
+		var err error
+		if index == 0 {
+			_, err = tools.completed("", id, nil)
+		} else {
+			_, err = callTextTool(attachedRun(t), shellTool(t, shells, "read_shell_output"), `{"shell_id":"`+id+`"}`)
+		}
+		callErr, ok := errors.AsType[*toolcontract.CallError](err)
+		if !ok || !errors.Is(err, exec.ErrShellOutputLimit) {
+			t.Fatalf("output quota error %d: %v", index, err)
+		}
+		text, _ := callErr.Evidence().Text()
+		var page struct {
+			ShellID    string          `json:"shell_id"`
+			Stdout     content.Content `json:"stdout"`
+			Offset     int64           `json:"offset"`
+			NextOffset int64           `json:"next_offset"`
+			HasMore    bool            `json:"has_more_output"`
+			Dropped    bool            `json:"output_dropped"`
+		}
+		if err := json.Unmarshal([]byte(text), &page); err != nil {
+			t.Fatal(err)
+		}
+		if page.ShellID != id || !page.HasMore || !page.Dropped || page.Offset != int64(index)*(256<<10) || page.NextOffset != int64(index+1)*(256<<10) || len(page.Stdout.Bytes()) != 256<<10 {
+			t.Fatalf("failed output lost page %d or original continuation: %+v", index, page)
+		}
+	}
+}
+
+func TestCanceledOutputWaitPreservesAvailablePageAndBackgroundOwner(t *testing.T) {
+	shells := unconfinedShells(t)
+	id, err := shells.Launch(t.Context(), "", t.TempDir(), "sleep 30", exec.Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh, _ := shells.Get("", id)
+	if _, err := sh.Write([]byte("first diagnostic")); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("read canceled by owner")
+	ctx, cancel := context.WithCancelCause(attachedRun(t))
+	cancel(cause)
+	_, err = (&commandTools{shells: shells}).output(ctx, shellOutputArgs{ShellID: id, Wait: true})
+	callErr, ok := errors.AsType[*toolcontract.CallError](err)
+	if !ok || !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled read lost cause or evidence: %v", err)
+	}
+	text, _ := callErr.Evidence().Text()
+	if !strings.Contains(text, "first diagnostic") || !strings.Contains(text, id) || !strings.Contains(text, "still running") {
+		t.Fatalf("canceled read evidence: %s", text)
+	}
+	if _, ok := shells.Get("", id); !ok {
+		t.Fatal("canceling one wait retired the background process")
+	}
+}
+
 func shellIntPointer(value int) *int { return &value }
 
 // shellTool returns the named tool from a freshly-built shell tool set.
@@ -493,7 +561,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &evidence); err != nil {
 		t.Fatal(err)
 	}
-	if string(evidence.Stdout.Bytes()) != "exit -1\nobserved before cancellation" ||
+	if string(evidence.Stdout.Bytes()) != "observed before cancellation" ||
 		evidence.ExitCode != exec.NoExitStatus || !evidence.Killed {
 		t.Fatalf("canceled output = %+v, want killed command and observed evidence", evidence)
 	}
@@ -550,6 +618,7 @@ func TestShellReportsACommandThatNeverStarted(t *testing.T) {
 			var result struct {
 				Stdout   content.Content `json:"stdout"`
 				ExitCode int             `json:"exit_code"`
+				Status   string          `json:"status"`
 			}
 			if err := json.Unmarshal([]byte(out), &result); err != nil {
 				t.Fatalf("decode %q: %v", out, err)
@@ -560,7 +629,7 @@ func TestShellReportsACommandThatNeverStarted(t *testing.T) {
 			if result.ExitCode != exec.NoExitStatus {
 				t.Fatalf("exit_code = %d, want %d", result.ExitCode, exec.NoExitStatus)
 			}
-			if !strings.Contains(string(result.Stdout.Bytes()), "start failed") {
+			if len(result.Stdout.Bytes()) != 0 || !strings.Contains(result.Status, "start failed") {
 				t.Fatalf("result gives no account of the failure: %q", out)
 			}
 		})

@@ -113,10 +113,12 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if err := m.journal.StartEndpointInvocation(ctx, invocation, executionctx.InvocationOwner(ctx)); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
+	logRequestDiagnostics(ctx, invocation)
 	return invocation, nil
 }
 
 func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *chat.Response, cause error) error {
+	logResponseDiagnostics(ctx, invocation, response)
 	var cost accounting.Cost
 	var pricingErr error
 	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && m.pricing != nil {

@@ -1,4 +1,11 @@
 export const ja: Record<string, string> = {
+  "search.partial":
+    "部分検索：少なくとも {{total}} 件 · 未読 {{unread}} ファイル · 除外 {{skipped}} ファイル",
+  "search.truncated": "記録された {{total}} 件中 {{shown}} 件",
+  "output.byteRange": "バイト範囲 [{{start}}, {{end}})",
+  "output.shell": "シェル {{id}}",
+  "output.incomplete":
+    "出力の記録に失敗しました。保持されたバイトは不完全です。",
   "find.open": "検索",
   "find.clear": "検索をクリア",
   "find.close": "検索を閉じる",

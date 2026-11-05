@@ -21,9 +21,12 @@ import (
 
 // capture retains the exact contributions until all provider work has joined.
 // Admission policy belongs to the calling use case, not to this lifetime owner.
-func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, release func() error, admit func(*chat.Request) error) (models.SelectedChat, func() error, error) {
+func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, use modelchoice.Use, release func() error, admit func(*chat.Request) error) (models.SelectedChat, func() error, error) {
 	if release == nil {
 		return models.SelectedChat{}, nil, errors.New("model composition: model release is required")
+	}
+	if err := use.Validate(); err != nil {
+		return models.SelectedChat{}, nil, errors.Join(err, release())
 	}
 	if lo.IsNil(resolved.Model()) || admit == nil {
 		return models.SelectedChat{}, nil, errors.Join(errors.New("model composition: model and admission owner are required"), release())
@@ -61,7 +64,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		streamer, _ := resolved.Model().(chat.Streamer)
 		bound, stream := o.Bind(resolved.Model(), streamer, bindings)
 		lifetime, cancel := context.WithCancelCause(ctx)
-		capture = &modelCapture{activations: activations, owner: o, bindings: bindings, contexts: contexts, inputs: inputs, resolved: resolved, admit: admit, model: bound, stream: stream, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
+		capture = &modelCapture{activations: activations, owner: o, bindings: bindings, contexts: contexts, inputs: inputs, resolved: resolved, use: use, admit: admit, model: bound, stream: stream, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
 		o.mu.Lock()
 		o.captures[capture] = struct{}{}
 		o.mu.Unlock()
@@ -146,6 +149,7 @@ func (o *CallComposition) HeldDependencies() []plugin.Dependency {
 }
 
 type modelCapture struct {
+	use         modelchoice.Use
 	activations []plugin.Activation
 	owner       *CallComposition
 	bindings    []plugins.ContributionBinding
@@ -197,17 +201,12 @@ func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*cha
 	if err := c.admit(request); err != nil {
 		return nil, err
 	}
-	material, err := c.owner.PrepareContext(ctx, c.contexts, c.resolved.Selection(), request, nil)
+	material, err := c.owner.PrepareContext(ctx, c.contexts, c.resolved.Selection(), c.use, request, callerUserMessage(request.Messages), nil)
 	if err != nil {
 		return nil, err
 	}
 	sent := request.Clone()
-	prefix := 0
-	for prefix < len(request.Messages) && request.Messages[prefix].Role == chat.RoleSystem {
-		prefix++
-	}
-	sent.Messages = append(cloneContextMessages(request.Messages[:prefix]), material...)
-	sent.Messages = append(sent.Messages, cloneContextMessages(request.Messages[prefix:])...)
+	sent.Messages = append(sent.Messages, material...)
 	sent, err = c.owner.PrepareInput(ctx, c.inputs, c.resolved.Selection(), sent)
 	if err != nil {
 		return nil, err

@@ -1,4 +1,6 @@
 export const zh: Record<string, string> = {
+  "failure.required": "必需：出错时阻止",
+  "failure.advisory": "建议：出错时继续",
   title: "钩子",
   trust: "信任此项目的钩子",
   "trust.sub":

@@ -1,4 +1,11 @@
 export const es: Record<string, string> = {
+  "search.partial":
+    "Búsqueda parcial: al menos {{total}} coincidencias · {{unread}} archivos sin leer · {{skipped}} omitidos",
+  "search.truncated": "{{shown}} de {{total}} coincidencias registradas",
+  "output.byteRange": "Intervalo de bytes [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete":
+    "Falló el registro de salida; los bytes conservados están incompletos.",
   "find.open": "Buscar",
   "find.clear": "Borrar búsqueda",
   "find.close": "Cerrar búsqueda",

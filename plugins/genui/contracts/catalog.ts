@@ -144,7 +144,7 @@ export const displayDefinitions = {
   ),
   Image: component(
     { src: z.string().max(4096), alt: label, caption: text.optional() },
-    "An HTTPS image with alternative text.",
+    "An HTTPS image with alternative text. Loading requires user permission for the exact source URL; changed sources require permission again.",
   ),
   Metric: component(
     { label, value: z.union([text, finiteNumber]), detail: text.optional() },
@@ -345,7 +345,7 @@ export const displayDefinitions = {
       title: label,
       start: z.number().int().min(0).max(86400).optional(),
     },
-    "A YouTube privacy-enhanced player with an explicit video identifier.",
+    "A YouTube privacy-enhanced player with an explicit video identifier. No external frame is loaded before user permission for its exact URL.",
   ),
   Map: component(
     {
@@ -366,7 +366,7 @@ export const displayDefinitions = {
         .optional(),
       selectedState: state.optional(),
     },
-    "A Web Mercator map, supplied route and accessible marker list; latitude must fit its projection.",
+    "A Web Mercator map, supplied route and accessible marker list; latitude must fit its projection. OpenStreetMap tiles require explicit permission for the current locations; the location table is local.",
     false,
     ["selectedState"],
   ),

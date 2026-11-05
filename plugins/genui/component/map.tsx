@@ -31,10 +31,14 @@ import {
 import type { DisplayProps } from "../contracts/catalog";
 import { stateKey } from "../contracts/document";
 import { useGenUIInteraction } from "./interaction";
+import { ExternalResource } from "./externalResource";
 
 const markerLink = stylex.props(
   dress({ variant: "raised", size: "icon-sm", round: true }),
 );
+const tileSource = "https://tile.openstreetmap.org";
+const tileProvider = (x: number, y: number, zoom: number) =>
+  `${tileSource}/${zoom}/${x}/${y}.png`;
 
 type TileStatus = "loading" | "ready" | "failed";
 const TileResources = createContext<{
@@ -217,97 +221,112 @@ export function MapView({
   return (
     <RecordGroup aria-label={props.caption}>
       <span>{props.caption}</span>
-      <TileResources value={resource}>
-        <PigeonMap
-          defaultCenter={center}
-          defaultZoom={props.markers.length === 1 ? 10 : 4}
-          height={320}
-          defaultWidth={640}
-          animate={false}
-          metaWheelZoom
-          metaWheelZoomWarning={t("map.wheel")}
-          twoFingerDrag
-          twoFingerDragWarning={t("map.touch")}
-          tileComponent={TileView}
-        >
-          <MapControls t={t} />
-          {props.route && props.route.length > 1 && (
-            <GeoJson
-              data={{
-                type: "FeatureCollection",
-                features: [
-                  {
-                    type: "Feature",
-                    properties: {},
-                    geometry: {
-                      type: "LineString",
-                      coordinates: props.route.map((point) => [
-                        point.longitude,
-                        point.latitude,
-                      ]),
+      <ExternalResource
+        source={tileSource}
+        scope={JSON.stringify({
+          markers: props.markers.map(({ latitude, longitude }) => [
+            latitude,
+            longitude,
+          ]),
+          route: props.route,
+        })}
+        label={props.caption}
+        notice={t("map.external")}
+        t={t}
+      >
+        <TileResources value={resource}>
+          <PigeonMap
+            provider={tileProvider}
+            defaultCenter={center}
+            defaultZoom={props.markers.length === 1 ? 10 : 4}
+            height={320}
+            defaultWidth={640}
+            animate={false}
+            metaWheelZoom
+            metaWheelZoomWarning={t("map.wheel")}
+            twoFingerDrag
+            twoFingerDragWarning={t("map.touch")}
+            tileComponent={TileView}
+          >
+            <MapControls t={t} />
+            {props.route && props.route.length > 1 && (
+              <GeoJson
+                data={{
+                  type: "FeatureCollection",
+                  features: [
+                    {
+                      type: "Feature",
+                      properties: {},
+                      geometry: {
+                        type: "LineString",
+                        coordinates: props.route.map((point) => [
+                          point.longitude,
+                          point.latitude,
+                        ]),
+                      },
                     },
-                  },
-                ],
-              }}
-              svgAttributes={{
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: 3,
-              }}
-            />
-          )}
-          {props.markers.map((marker, index) => (
-            <MapMarker
-              key={marker.id}
-              anchor={[marker.latitude, marker.longitude]}
-              offset={[16, 16]}
-            >
-              {props.selectedState ? (
-                <Button
-                  variant={selected === marker.id ? "primary" : "raised"}
-                  round
-                  size="icon-sm"
-                  data-chrome-focus=""
-                  aria-label={marker.label}
-                  aria-pressed={selected === marker.id}
-                  onClick={() => choose(marker.id)}
-                >
-                  {index + 1}
-                </Button>
-              ) : (
-                <a
-                  href={`https://www.openstreetmap.org/?mlat=${marker.latitude}&mlon=${marker.longitude}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  data-chrome-focus=""
-                  aria-label={marker.label}
-                  {...markerLink}
-                  // The underline distinguishes navigation from selectable marker buttons.
-                  style={{
-                    ...markerLink.style,
-                    minWidth: "var(--control-target-min)",
-                    minHeight: "var(--control-target-min)",
-                    textDecorationLine: "underline",
-                    textDecorationColor: "currentColor",
-                  }}
-                >
-                  {index + 1}
-                </a>
-              )}
-            </MapMarker>
-          ))}
-        </PigeonMap>
-      </TileResources>
-      {failures > 0 ? (
-        <Toolbar label={t("map.loadingError")}>
-          <Metadata role="alert">{t("map.loadingError")}</Metadata>
-          <Button onClick={() => setRetry((value) => value + 1)}>
-            {t("retry")}
-          </Button>
-        </Toolbar>
-      ) : loading ? (
-        <Metadata role="status">{t("map.loading")}</Metadata>
-      ) : null}
+                  ],
+                }}
+                svgAttributes={{
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: 3,
+                }}
+              />
+            )}
+            {props.markers.map((marker, index) => (
+              <MapMarker
+                key={marker.id}
+                anchor={[marker.latitude, marker.longitude]}
+                offset={[16, 16]}
+              >
+                {props.selectedState ? (
+                  <Button
+                    variant={selected === marker.id ? "primary" : "raised"}
+                    round
+                    size="icon-sm"
+                    data-chrome-focus=""
+                    aria-label={marker.label}
+                    aria-pressed={selected === marker.id}
+                    onClick={() => choose(marker.id)}
+                  >
+                    {index + 1}
+                  </Button>
+                ) : (
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${marker.latitude}&mlon=${marker.longitude}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    data-chrome-focus=""
+                    aria-label={marker.label}
+                    {...markerLink}
+                    // The underline distinguishes navigation from selectable marker buttons.
+                    style={{
+                      ...markerLink.style,
+                      minWidth: "var(--control-target-min)",
+                      minHeight: "var(--control-target-min)",
+                      textDecorationLine: "underline",
+                      textDecorationColor: "currentColor",
+                    }}
+                  >
+                    {index + 1}
+                  </a>
+                )}
+              </MapMarker>
+            ))}
+          </PigeonMap>
+        </TileResources>
+        {failures > 0 ? (
+          <Toolbar label={t("map.loadingError")}>
+            <Metadata role="alert">{t("map.loadingError")}</Metadata>
+            <Button onClick={() => setRetry((value) => value + 1)}>
+              {t("retry")}
+            </Button>
+          </Toolbar>
+        ) : loading ? (
+          <Metadata role="status">{t("map.loading")}</Metadata>
+        ) : null}
+      </ExternalResource>
       <ScrollRegion label={t("map.locations", { map: props.caption })}>
         <table>
           <caption style={{ textAlign: "start" }}>

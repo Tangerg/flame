@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	"github.com/Tangerg/scope/agent/interaction"
@@ -134,20 +133,23 @@ func (i *interactionSession) publishToolReceipt(ctx context.Context, request sco
 	if err != nil {
 		return false, err
 	}
-	modelOutput, projected, err := owner.resultMetadata(ctx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, output, outcomeErr, nil)
+	projection, err := owner.projectToolResult(ctx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, output, outcomeErr, nil)
 	if err != nil {
 		return false, err
 	}
+	projected := projection.metadata
 	projected.ProcessID = request.ID().Process.String()
 	state := interaction.ResultSucceeded
-	if outcomeErr != nil {
+	if projected.Failure != nil {
 		state = interaction.ResultFailed
-		projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(outcomeErr)}
+		if projected.Failure.Kind == tool.FailureDenied {
+			state = interaction.ResultRejected
+		}
 	}
 	if err := i.rememberToolMetadata(projected); err != nil {
 		return false, err
 	}
-	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()], request, toolcontract.Result{Output: modelOutput}, state, nil)
+	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()], request, toolcontract.Result{Output: projection.output}, state, nil)
 	if err != nil {
 		return false, err
 	}

@@ -189,6 +189,7 @@ for (const theme of ["light", "dark"]) {
           hooks: [
             {
               event: "PreToolUse",
+              failurePolicy: "advisory",
               matcher,
               command,
               scope: "global",

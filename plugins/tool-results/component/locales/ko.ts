@@ -1,4 +1,11 @@
 export const ko: Record<string, string> = {
+  "search.partial":
+    "부분 검색: 최소 {{total}}개 일치 · 미검색 파일 {{unread}}개 · 제외된 파일 {{skipped}}개",
+  "search.truncated": "기록된 {{total}}개 중 {{shown}}개 일치",
+  "output.byteRange": "바이트 범위 [{{start}}, {{end}})",
+  "output.shell": "셸 {{id}}",
+  "output.incomplete":
+    "출력 기록에 실패했습니다. 보관된 바이트는 불완전합니다.",
   "find.open": "찾기",
   "find.clear": "검색 지우기",
   "find.close": "찾기 닫기",

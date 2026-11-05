@@ -22,21 +22,14 @@ func (f failingMemoryPartition) Items(_ context.Context, scope memorycontract.It
 	return []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{Content: "healthy partition fact", Pinned: true})}, nil
 }
 
-func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T) {
+func TestPinnedMemoryFailureRejectsPartialInstructionPrefix(t *testing.T) {
 	for _, scope := range []memorycontract.ItemsInputScope{memorycontract.ItemsInputScopeProject, memorycontract.ItemsInputScopeUser} {
 		t.Run(string(scope), func(t *testing.T) {
-			var diagnostics bytes.Buffer
-			previous := slog.Default()
-			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
-			t.Cleanup(func() { slog.SetDefault(previous) })
 			composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemory: failingMemoryPartition{scope: scope}})
 			cwd := t.TempDir()
 			message, err := composer.composeSystemMessage(t.Context(), cwd, cwd)
-			if err != nil || !strings.Contains(message.Text(), "healthy partition fact") {
-				t.Fatalf("healthy memory lost: message=%q error=%v", message.Text(), err)
-			}
-			if output := diagnostics.String(); !strings.Contains(output, "memory storage unavailable") || !strings.Contains(output, "scope="+string(scope)) {
-				t.Fatalf("missing scoped memory failure diagnostic: %q", output)
+			if err == nil || message.Text() != "" || !strings.Contains(err.Error(), "memory storage unavailable") || !strings.Contains(err.Error(), string(scope)) {
+				t.Fatalf("failed memory read produced a partial prefix or lost its cause: message=%q error=%v", message.Text(), err)
 			}
 		})
 	}

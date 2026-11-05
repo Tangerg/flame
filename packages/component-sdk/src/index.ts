@@ -92,6 +92,16 @@ export interface CapturedToolResult {
   readonly files?: number;
   readonly lines?: number;
   readonly exitCode?: number;
+  // Recorded display facts from this tool result, without a live process handle
+  // or a dependency on the Runtime transport record.
+  readonly outputPage?: {
+    readonly shellId?: string;
+    readonly status?: string;
+    readonly offset: number;
+    readonly nextOffset: number;
+    readonly hasMore: boolean;
+    readonly dropped: boolean;
+  };
   readonly result?: string;
   readonly command?: string;
   readonly error?: string;

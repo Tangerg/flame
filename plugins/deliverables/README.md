@@ -70,9 +70,58 @@ for spreadsheet consumers, and missing or error formula caches prevent CSV expor
 
 The workspace page supplies guided document, table and slide creation, advanced
 schema-based input, resumable imports, revision history, local edit forms, actual
-page previews, attributed reviews and download controls. The same published
-operations are available as model tools. The additional read-only `page` tool
+page previews, attributed reviews and download controls. Semantic document
+operations are available as model tools. Binary staging and transport
+(`upload`, `append`, `discard`, `download`) remain typed host/UI operations;
+models can inspect staging metadata with `uploads` and import an already complete,
+verified upload by identity. Models export immutable asset metadata instead of
+moving a file through base64 tool messages. The additional read-only `page` tool
 returns an actual retained PNG so a model can examine the render it is reviewing.
+Every method declaration explicitly selects its `model` or `host` audience;
+adding a new method cannot silently expose a new transfer operation to the model.
+
+### Bounded model inspection
+
+The native archive, complete typed contract and original receipts remain the
+business owners. `backend/model.ts` owns only a read-only model projection; no
+new evidence database or reconstructed source document is introduced. Model
+text results have a 32 KiB UTF-8 limit. Structured tool results retain the complete
+original value, including native identities, provenance and original reports.
+The same pure command projection is used for the initial result and receipt
+recovery. Actual page images remain image content, outside this text budget.
+
+`catalog` returns a short format, engine and limit overview. Request
+`{"format":"docx","section":"edit"}` for one original edit schema, or choose
+`create` or `example`; `engines` and `limits` read those exact sections. The model
+does not receive every native authoring schema on each discovery call.
+
+`read` without a path returns the document/revision/hash identity, native asset
+identity, inspection counts and whether the retained inspection was truncated
+by its original format owner. For details, pass that exact `revision`, its returned
+`sourceSha256` and a path
+such as `["inspection","items"]`, `["inspection","checks"]`,
+`["revision","provenance"]`, `["assessments"]` or `["processing"]` when present.
+Paging without both source identities is refused, and the expected hash is
+checked against the original native revision. A later edit cannot shift a
+continuation to a different native source. The document header remains the
+aggregate's current projection; its `head` can advance. Assessment headers are
+append-ordered current records for the pinned native revision, not a frozen
+historical list. Their original identities select immutable reports.
+`assessment` similarly defaults to an
+exact report summary; `["report","pages"]`, `["report","checks"]`,
+`["report","extractedText"]`, `["report","notes"]` and `["assets"]` select
+its original evidence where applicable. A rendered report still reports its
+unverified font status and error/warning counts; a successful render is not
+treated as a visual review.
+
+Large selected collections return original keys/indexes, complete small entries
+and explicit references for larger entries. Append an entry's `key` to the path
+to read that value. `offset` continues at `nextOffset`; collection pages contain
+at most 32 entries and may return fewer to fit the byte budget. Strings page by
+Unicode code points, with explicit total and continuation positions, so their
+original content can be reconstructed exactly. Missing paths, invalid offsets
+and excessive selectors are refused. Projection pagination does not alter or
+hide the format owner's separate retained-inspection truncation flag.
 
 Create and import each have one inline disclosure entry. Closing either keeps
 its local draft and native-file selection; reopening resumes the same form.

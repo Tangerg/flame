@@ -81,16 +81,61 @@ const (
 	ScopeProject Scope = "project"
 )
 
+// FailurePolicy decides whether an unavailable command decision may release the
+// action it gates. Required hooks fail closed; advisory hooks retain diagnostics.
+// An omitted policy is advisory. Explicit deny/ask decisions apply in either mode.
+type FailurePolicy string
+
+const (
+	FailureAdvisory FailurePolicy = "advisory"
+	FailureRequired FailurePolicy = "required"
+)
+
+func (FailurePolicy) Values() []string {
+	return []string{string(FailureAdvisory), string(FailureRequired)}
+}
+
+func (p FailurePolicy) JSONSchemaEnum() []string { return p.Values() }
+
+// Effective resolves the optional authored policy once for execution and review.
+func (p FailurePolicy) Effective() FailurePolicy {
+	if p == "" {
+		return FailureAdvisory
+	}
+	return p
+}
+
+func (p FailurePolicy) validate(event Event, hasCommand bool) error {
+	if p == "" {
+		return nil
+	}
+	if !slices.Contains(p.Values(), string(p)) {
+		return fmt.Errorf("%w: unsupported failurePolicy %q", ErrInvalidHook, p)
+	}
+	if !hasCommand {
+		return fmt.Errorf("%w: failurePolicy is only valid for command hooks", ErrInvalidHook)
+	}
+	if p == FailureRequired && !slices.Contains(RequiredFailureEvents(), event) {
+		return fmt.Errorf("%w: required failurePolicy needs an event that can reject its pending action", ErrInvalidHook)
+	}
+	return nil
+}
+
+// RequiredFailureEvents owns the lifecycle points whose pending action can be
+// denied by a failed required hook. Observers cannot undo a committed effect.
+func RequiredFailureEvents() []Event { return []Event{PreToolUse, UserPromptSubmit, PreCompact} }
+
 // Hook is one configured hook entry. Command and Inject are alternatives: a
 // Command is exec'd (real logic); an Inject is a literal context string added
 // with no process spawn (the declarative fast path). A Matcher (tool-name glob)
 // applies only to tool events; configuration rejects it for other events.
 type Hook struct {
-	Event         Event  `json:"event"`
-	Matcher       string `json:"matcher,omitempty"`
-	Command       string `json:"command,omitempty"`
-	Inject        string `json:"inject,omitempty"`
-	TimeoutMillis int    `json:"timeoutMillis,omitzero"`
+	Event         Event         `json:"event"`
+	Matcher       string        `json:"matcher,omitempty"`
+	Command       string        `json:"command,omitempty"`
+	Inject        string        `json:"inject,omitempty"`
+	TimeoutMillis int           `json:"timeoutMillis,omitzero"`
+	FailurePolicy FailurePolicy `json:"failurePolicy,omitempty"`
 
 	// Scope + Source are stamped by the loader (provenance + trust gating), not
 	// parsed from the file.
@@ -185,6 +230,9 @@ func (h Hook) Validate() error {
 	}
 	if hasInject && h.TimeoutMillis != 0 {
 		return fmt.Errorf("%w: timeoutMillis is only valid for command hooks", ErrInvalidHook)
+	}
+	if err := h.FailurePolicy.validate(h.Event, hasCommand); err != nil {
+		return err
 	}
 	if h.Matcher != "" {
 		if h.Event != PreToolUse && h.Event != PostToolUse {

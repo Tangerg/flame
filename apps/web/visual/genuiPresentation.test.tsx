@@ -15,7 +15,7 @@ import * as ui from "@flame/ui";
 import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { GenUIResult } from "../../../plugins/genui/component/component";
-import { MarkdownView } from "../../../plugins/genui/component/media";
+import { MarkdownView, YouTubeView } from "../../../plugins/genui/component/media";
 import { en } from "../../../plugins/genui/component/locales/en";
 import { zh } from "../../../plugins/genui/component/locales/zh";
 import {
@@ -95,7 +95,7 @@ function document(
   state: AcceptedDocument["state"] = [],
   actions: AcceptedDocument["actions"] = [],
 ): AcceptedDocument {
-  return { title: "Interactive review", state, nodes, actions, operations: [], bindings: [] };
+  return { title: "Interactive review", state, nodes, actions, operations: [], contributions: [] };
 }
 
 function show(value: AcceptedDocument, locale = "en") {
@@ -163,7 +163,18 @@ it("keeps original action recovery when a real Table search rejects an oversized
       { id: "search", value: "" },
       { id: "page", value: 0 },
     ],
-    [{ id: "send", steps: [{ type: "followup", message: { literal: "Review inventory" } }] }],
+    [
+      {
+        id: "send",
+        steps: [
+          {
+            type: "followup",
+            message: { literal: "Review inventory" },
+            payload: { object: { search: { state: "search" } } },
+          },
+        ],
+      },
+    ],
   );
   const base = capturedContext(JSON.stringify(value));
   const recover = vi.fn(async () => ({
@@ -201,6 +212,7 @@ it("keeps original action recovery when a real Table search rejects an oversized
   await waitFor(() => expect(send.disabled).toBe(false));
   await act(async () => fireEvent.click(send));
   expect(submit).toHaveBeenCalledOnce();
+  expect(submit).toHaveBeenCalledWith({ action: "Review inventory", payloadJSON: '{"search":""}' });
   const recovery = await screen.findByRole("button", { name: "Recover original action" });
   const search = screen.getByRole("searchbox", { name: "Search Inventory" }) as HTMLInputElement;
   fireEvent.change(search, { target: { value: "x".repeat(limits.valueText + 1) } });
@@ -407,6 +419,7 @@ it("retains a Markdown image failure while an independent local field changes", 
     ),
   );
   await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Recorded diagram" }));
   fireEvent.error(screen.getByRole("img", { name: "Recorded diagram" }));
   const retry = screen.getByRole("button", { name: "Retry" });
   const note = screen.getByRole("textbox", { name: "Review note" });
@@ -469,6 +482,7 @@ it("retains an open Markdown image and its zoom during an independent document u
     ),
   );
   await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Recorded diagram" }));
   fireEvent.load(screen.getByRole("img", { name: "Recorded diagram" }));
   const trigger = screen.getByRole("button", { name: "View image: Recorded diagram" });
   act(() => trigger.focus());
@@ -508,6 +522,7 @@ it("updates Markdown labels without replacing its readers or open image", async 
     />
   );
   const view = testClient.render(scene(english));
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Recorded diagram" }));
   const source = screen.getByRole("region", { name: english("code.label") });
   const table = screen.getByRole("region", { name: english("markdown.table") });
   const trigger = screen.getByRole("button", { name: "View image: Recorded diagram" });
@@ -541,15 +556,49 @@ it("retires a Markdown image preview when the actual source changes", async () =
     ),
   );
   await act(async () => {});
+  expect(screen.queryByRole("img")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Original diagram" }));
   fireEvent.click(screen.getByRole("button", { name: "View image: Original diagram" }));
   await screen.findByRole("dialog", { name: "Original diagram" });
   fireEvent.change(screen.getByRole("textbox", { name: "Markdown source", hidden: true }), {
     target: { value: "![Next diagram](https://example.test/next.png)" },
   });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("img")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Next diagram" }));
   expect(screen.getByRole("img", { name: "Next diagram" }).getAttribute("src")).toBe(
     "https://example.test/next.png",
   );
+  fireEvent.change(screen.getByRole("textbox", { name: "Markdown source" }), {
+    target: { value: "![Original diagram](https://example.test/original.png)" },
+  });
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Load external content: Original diagram" }),
+  ).toBeTruthy();
+});
+
+it("requires permission for each exact YouTube URL before mounting the external frame", () => {
+  const t = createTranslator({ en }, "en");
+  const scene = (start: number) => (
+    <YouTubeView
+      props={{ title: "Recorded walkthrough", videoId: "abcdefghijk", start }}
+      renderNode={() => null}
+      t={t}
+    />
+  );
+  const { container, rerender } = testClient.render(scene(0));
+  expect(container.querySelector("iframe")).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Load external content: Recorded walkthrough" }),
+  );
+  expect(container.querySelector("iframe")?.src).toBe(
+    "https://www.youtube-nocookie.com/embed/abcdefghijk",
+  );
+  rerender(scene(15));
+  expect(container.querySelector("iframe")).toBeNull();
+  rerender(scene(0));
+  expect(container.querySelector("iframe")).toBeNull();
 });
 
 it.each([
@@ -1471,6 +1520,9 @@ it("shows map tile failures without hiding location data and retries only when r
     [{ id: "place", value: "" }],
   );
   const { container } = show(value);
+  expect(container.querySelector('img[src*="tile.openstreetmap.org"]')).toBeNull();
+  expect(screen.getByRole("table", { name: "Locations in Review locations" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Review locations" }));
   const image = await waitFor(() => {
     const image = container.querySelector<HTMLImageElement>('img[src*="tile.openstreetmap.org"]');
     expect(image).toBeTruthy();
@@ -1515,6 +1567,7 @@ it("keeps map zoom bounds focusable and offers marker controls only inside the v
   const original = JSON.stringify(value);
   show(value);
   await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Review locations" }));
   const places = screen.getByRole("table", { name: "Locations in Review locations" });
   const marker = (name: string, pressed: boolean) =>
     screen.queryByRole("button", { name, pressed });
@@ -1582,6 +1635,7 @@ it("retires offscreen map links and restores their original destinations on zoom
   const original = JSON.stringify(value);
   show(value);
   await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Source locations" }));
   const paris = screen.getByRole("link", { name: "Paris" });
   const href = paris.getAttribute("href");
   const zoomIn = screen.getByRole("button", { name: "Zoom in" });
@@ -1616,6 +1670,8 @@ it("keeps image loading and failures explicit and retries the original URL on us
       },
     ]),
   );
+  expect(screen.queryByRole("img")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Review diagram" }));
   const image = screen.getByRole("img", { name: "Review diagram" });
   expect(image.closest("figure")?.getAttribute("aria-busy")).toBe("true");
   fireEvent.error(image);
@@ -1659,6 +1715,7 @@ it.each(["Image", "Markdown"] as const)(
       ]),
     );
     await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Load external content: Review diagram" }));
     fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
     const retry = screen.getByRole("button", { name: "Retry" });
     act(() => retry.focus());
@@ -1696,6 +1753,7 @@ it.each(["load", "error"] as const)(
       ),
     );
     await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Load external content: Review diagram" }));
     fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
     const retry = screen.getByRole("button", { name: "Retry" });
     act(() => retry.focus());

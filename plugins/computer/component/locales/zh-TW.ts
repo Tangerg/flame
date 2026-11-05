@@ -96,6 +96,12 @@ export const zhTW = {
     "結果尚未確認。請查詢此原始命令的結果，不要重複執行其操作。",
   "command.recover": "查詢原始結果",
   "command.accepted": "{{action}}：原始命令已完成。",
+  "receipts.title": "原始證據容量",
+  "receipts.records": "已保留紀錄 / 上限",
+  "receipts.bytes": "計入容量的位元組 / 上限",
+  "receipts.pending": "未確認結果",
+  "receipts.help":
+    "位元組數包含為待定結果預留的空間。新操作還會預留撤銷控制的位置，因此可能在達到總上限前停止准入。不會為接納新操作而刪除原始證據。",
   "history.title": "原始操作結果",
   "history.help":
     "查看保留的命令證據。缺失結果仍為未確認，不會透過目前桌面狀態反推。",

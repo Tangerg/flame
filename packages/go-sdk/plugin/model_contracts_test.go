@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	framevalue "github.com/Tangerg/frame/value"
 
@@ -22,7 +23,7 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 	}{
 		{"observer", ModelObserverContract, *request},
 		{"input", ModelInputContract, ModelInputRequest{Selection: ModelSelection{Provider: "provider", Model: "model"}, Request: *request}},
-		{"context", ModelContextContract, ModelContextRequest{Provider: "provider", Model: "model", Request: *request}},
+		{"context", ModelContextContract, ModelContextRequest{Use: modelchoice.Interaction, Provider: "provider", Model: "model", Request: *request}},
 		{"tool-proposal", ToolProposalContract, chat.ToolCall{ID: "logical-call", Name: "resource", Arguments: `{}`}},
 	} {
 		t.Run(test.name, func(t *testing.T) {

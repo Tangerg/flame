@@ -1368,7 +1368,10 @@ func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
 		t.Fatalf("offload calls=%d stage=%#v completions=%#v", store.calls, store.lastStage, finished)
 	}
 	if finished[0].Result == nil {
-		t.Fatal("offloaded Tool result has no inline preview")
+		t.Fatal("offloaded Tool result lost its structured value")
+	}
+	if finished[0].Offload.ModelOnly {
+		t.Fatal("plain text offload changed its hydration purpose")
 	}
 	preview, ok := finished[0].Result.String()
 	if !ok || !strings.Contains(preview, store.lastStage.ID.String()) || len(preview) >= len(store.lastStage.Body) {

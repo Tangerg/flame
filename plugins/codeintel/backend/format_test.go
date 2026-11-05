@@ -26,7 +26,7 @@ func TestFormattingTransformsCapturedContentWithoutWritingTheWorkspace(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := formatDocument(t.Context(), source)
+			result, err := (formatter{}).formatDocument(t.Context(), source)
 			if err != nil || result.Content == nil || *result.Content != test.want || result.Version != source.Version {
 				t.Fatalf("transformation: %+v %v", result, err)
 			}
@@ -42,6 +42,7 @@ func TestRunFormatterBoundsDiagnosticOutput(t *testing.T) {
 	_, err := runFormatter(
 		t.Context(),
 		nil,
+		"",
 		"/bin/sh",
 		"-c",
 		"/usr/bin/yes x | /usr/bin/head -c 131072 >&2; exit 1",
@@ -62,8 +63,20 @@ func TestRunFormatterPreservesCancellation(t *testing.T) {
 	cause := errors.New("formatting retired")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
-	_, err := runFormatter(ctx, nil, "gofmt", "-w", filepath.Join(t.TempDir(), "file.go"))
+	_, err := runFormatter(ctx, nil, "", "gofmt", "-w", filepath.Join(t.TempDir(), "file.go"))
 	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 		t.Fatalf("formatter error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestFormatterWorkspaceGrantsRejectNonAbsoluteOrNonDirectoryPaths(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".", "relative", filepath.Join(t.TempDir(), "missing"), file} {
+		if _, err := newFormatter([]string{path}); err == nil {
+			t.Errorf("workspace grant %q succeeded", path)
+		}
 	}
 }

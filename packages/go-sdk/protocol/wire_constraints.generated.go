@@ -1978,12 +1978,16 @@ func (h HookInfo) validateWire() error {
 		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
 		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
 		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"}, false),
+		closedEnum("failurePolicy", string(h.FailurePolicy), []string{"advisory", "required"}, true),
 		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
 		requiredAnyWhen(true, []string{"command", "inject"}, h),
+		requiredWhen(wireFieldPresent(h, "command"), "failurePolicy", h),
 		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
 		forbiddenWhen(wireFieldPresent(h, "inject"), "command", h),
 		forbiddenWhen(wireFieldPresent(h, "inject"), "matcher", h),
 		forbiddenWhen(wireFieldPresent(h, "inject"), "timeoutMillis", h),
+		forbiddenWhen(wireFieldPresent(h, "inject"), "failurePolicy", h),
+		allowedValuesWhen(wireFieldEquals(h, "failurePolicy", "required"), "event", h, []string{"PreToolUse", "UserPromptSubmit", "PreCompact"}),
 		forbiddenWhen(wireFieldEquals(h, "event", "UserPromptSubmit"), "matcher", h),
 		forbiddenWhen(wireFieldEquals(h, "event", "SessionStart"), "matcher", h),
 		forbiddenWhen(wireFieldEquals(h, "event", "PreCompact"), "matcher", h),
@@ -2364,8 +2368,8 @@ func (s SessionTrajectory) validateWire() error {
 
 func (s SessionArtifact) validateWire() error {
 	return collectWireViolations("SessionArtifact",
-		minimumNumber("version", s.Version, 31),
-		maximumNumber("version", s.Version, 31),
+		minimumNumber("version", s.Version, 32),
+		maximumNumber("version", s.Version, 32),
 	)
 }
 
@@ -2588,6 +2592,15 @@ func (f FileEntry) validateWire() error {
 func (g GrepResult) validateWire() error {
 	return collectWireViolations("GrepResult",
 		nonNegativeNumber("total", g.Total),
+	)
+}
+
+func (g GrepCoverage) validateWire() error {
+	return collectWireViolations("GrepCoverage",
+		nonNegativeNumber("scannedFiles", g.ScannedFiles),
+		nonNegativeNumber("skippedFiles", g.SkippedFiles),
+		nonNegativeNumber("remainingFiles", g.RemainingFiles),
+		nonNegativeNumber("sourceBytes", g.SourceBytes),
 	)
 }
 

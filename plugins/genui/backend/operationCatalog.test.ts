@@ -78,22 +78,28 @@ it("captures the selected installed contract and derives its installation target
   installed.selected.digest = "later-selection";
   const [captured] = catalog.capture([operation]);
   expect(captured).toEqual({
-    id: "capture",
-    binding: {
-      installationId: "installed-usage",
-      contribution: "reports",
-      digest: "selected-release",
-      contract: stringifyJSON(capability),
-      method: "test.reports/capture.v1",
-      target: { scope: "installation", reference: "installed-usage" },
-    },
+    installationId: "installed-usage",
+    contribution: "reports",
+    digest: "selected-release",
+    contract: stringifyJSON(capability),
   });
-  expect(catalog.describe()[0]?.methods).toContainEqual({
-    name: operation.method,
+  expect(catalog.describe()[0]).toMatchObject({
+    method: operation.method,
     kind: "command",
     target: "installation",
     streaming: false,
   });
+  expect(catalog.describe()[0]).not.toHaveProperty("contract");
+  expect(catalog.capture([operation, { ...operation, id: "second" }])).toEqual([
+    captured,
+  ]);
+  const detail = catalog.method(
+    operation.installationId,
+    operation.contribution,
+    operation.method,
+  );
+  expect(detail.methodJSON).toBe(stringifyJSON(capability.methods[0]));
+  expect(detail).not.toHaveProperty("contract");
 });
 
 it.each([

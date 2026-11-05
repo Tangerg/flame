@@ -1,4 +1,11 @@
 export const en: Record<string, string> = {
+  "search.partial":
+    "Partial search: at least {{total}} matches · {{unread}} files unread · {{skipped}} files skipped",
+  "search.truncated": "{{shown}} of {{total}} recorded matches",
+  "output.byteRange": "Byte range [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete":
+    "Output recording failed; retained bytes are incomplete.",
   "find.open": "Find",
   "find.clear": "Clear search",
   "find.close": "Close find",

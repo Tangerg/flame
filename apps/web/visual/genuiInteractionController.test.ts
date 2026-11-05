@@ -225,10 +225,7 @@ function presentation(
       ],
       operations,
     },
-    operations.map(({ id, method: name }) => ({
-      id,
-      binding: { ...route, contract, method: name },
-    })),
+    [{ installationId, digest: route.digest, contribution: route.contribution, contract }],
   );
 }
 
@@ -237,6 +234,7 @@ function controller(
   document: Presentation,
   source = "item_original",
   componentDigest = "a".repeat(64),
+  interaction?: ComponentContext["interaction"],
 ) {
   const owner = new AbortController();
   const state = new Map<string, unknown>(
@@ -252,6 +250,7 @@ function controller(
       componentId: "report",
     },
     runtime: client,
+    interaction,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     toolResult: {
       id: source,
@@ -312,6 +311,93 @@ async function recover(value: InteractionController) {
 }
 
 describe("GenUI remote interaction through the public Runtime client", () => {
+  it("sends only the explicit followup payload and retains the original followup recovery", async () => {
+    const remote = server();
+    const current = runtime(remote);
+    const recoverOriginal = vi.fn(async () => ({
+      status: "accepted" as const,
+      sessionId: "ses_original",
+      runId: "run_original",
+      userItemId: "item_followup",
+    }));
+    const submit = vi.fn<NonNullable<ComponentContext["interaction"]>["submit"]>(async () => ({
+      status: "unknown",
+      idempotencyKey: "original-followup",
+      recover: recoverOriginal,
+    }));
+    const document = Presentation.accept({
+      title: "Chosen data",
+      state: [
+        { id: "selected", value: "9007199254740993" },
+        { id: "private", value: "local draft" },
+      ],
+      nodes: [{ id: "label", type: "Text", props: { text: "Review" } }],
+      operations: [],
+      actions: [
+        {
+          id: "submit",
+          steps: [
+            {
+              type: "followup",
+              message: { literal: "Review selection" },
+              payload: { object: { selected: { state: "selected" } } },
+            },
+          ],
+        },
+      ],
+    });
+    const ui = controller(current.client, document, "item_original", "a".repeat(64), {
+      source: { runId: "run_original", itemId: "item_original" },
+      submit,
+    });
+    await ui.value.initialize();
+    await ui.value.execute("submit");
+    expect(submit).toHaveBeenCalledExactlyOnceWith({
+      action: "Review selection",
+      payloadJSON: '{"selected":"9007199254740993"}',
+    });
+    expect(ui.state.get("private")).toBe("local draft");
+    expect(ui.value.snapshot().action.status).toBe("unknown");
+    await ui.value.execute("submit");
+    expect(submit).toHaveBeenCalledOnce();
+    await recover(ui.value);
+    expect(recoverOriginal).toHaveBeenCalledOnce();
+    expect(submit).toHaveBeenCalledOnce();
+    expect(ui.value.snapshot().action.status).toBe("complete");
+  });
+
+  it("refuses an oversized followup before submission without truncating or changing its source", async () => {
+    const current = runtime(server());
+    const submit = vi.fn<NonNullable<ComponentContext["interaction"]>["submit"]>();
+    const source = "界".repeat(Math.ceil(limits.followupBytes / 3));
+    const document = Presentation.accept({
+      title: "Bounded submission",
+      state: [{ id: "selected", value: source }],
+      nodes: [{ id: "label", type: "Text", props: { text: "Review" } }],
+      operations: [],
+      actions: [
+        {
+          id: "submit",
+          steps: [
+            { type: "followup", message: { literal: "Review" }, payload: { state: "selected" } },
+          ],
+        },
+      ],
+    });
+    const ui = controller(current.client, document, "item_original", "a".repeat(64), {
+      source: { runId: "run_original", itemId: "item_original" },
+      submit,
+    });
+    await ui.value.initialize();
+    await ui.value.execute("submit");
+    expect(submit).not.toHaveBeenCalled();
+    expect(ui.value.snapshot().action).toMatchObject({
+      status: "failed",
+      error: expect.objectContaining({ message: expect.stringContaining("context capacity") }),
+    });
+    expect(ui.state.get("selected")).toBe(source);
+  });
+
   it("retains an unknown action and its original recovery after an invalid field update", async () => {
     const remote = server();
     const current = runtime(remote);

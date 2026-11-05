@@ -10,13 +10,16 @@ type WorkspaceQuery struct {
 // GrepRequest — workspace.files.search body. Query is a Go/RE2-compatible
 // regular expression of at most 64 KiB. A zero Limit selects 100 retained
 // matches; larger values are capped at 1000. The service may retain fewer rows
-// when the 8 MiB result-material budget is reached while still reporting the
-// exact Total for its admitted text corpus.
+// when the 8 MiB result-material budget is reached. By default, the service
+// stops after the complete file satisfying that budget. ScanAll asks to inspect
+// the remaining catalog within the source budget. Inspect result coverage before
+// interpreting Total as an exact count.
 type GrepRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Query     string       `json:"query"`
 	Path      string       `json:"path,omitempty"`
 	Limit     *int         `json:"limit,omitzero"`
+	ScanAll   bool         `json:"scanAll,omitzero"`
 }
 
 // ListFilesRequest is the workspace.files.list body. It lists files under
@@ -87,11 +90,22 @@ type FileEntry struct {
 }
 
 // GrepResult is the workspace.files.search result. Matches is a
-// stable whole-line prefix; Total is the exact count across admitted UTF-8 text
-// files and may exceed len(Matches) when count or material limits apply.
+// stable whole-line prefix; Total is the count observed in admitted files and
+// may exceed len(Matches). It is exact for the selected catalog only when
+// Complete is true. Skipped files and unread files are never counted as absent.
 type GrepResult struct {
-	Matches []GrepMatch `json:"matches"`
-	Total   int         `json:"total"`
+	Matches  []GrepMatch  `json:"matches"`
+	Total    int          `json:"total"`
+	Complete bool         `json:"complete"`
+	Coverage GrepCoverage `json:"coverage"`
+}
+
+// GrepCoverage describes the selected catalog's admission and read coverage.
+type GrepCoverage struct {
+	ScannedFiles   int   `json:"scannedFiles"`
+	SkippedFiles   int   `json:"skippedFiles"`
+	RemainingFiles int   `json:"remainingFiles"`
+	SourceBytes    int64 `json:"sourceBytes"`
 }
 
 // GrepMatch is one plain-text grep hit.

@@ -21,7 +21,7 @@ type lspInput struct {
 	Operation LSPOperation `json:"operation" jsonschema_description:"Language-server query to run."`
 	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace-wide symbol searches."`
 	Line      *int         `json:"line,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
-	Character *int         `json:"character,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
+	Character *int         `json:"character,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based UTF-16 code-unit offset of the symbol within its line; a supplementary Unicode character occupies two units. Required for position operations and omitted otherwise."`
 	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace-wide symbol searches."`
 }
 
@@ -125,7 +125,7 @@ func (l lspInput) position() (lspPosition, bool, error) {
 }
 
 var lspDesc = fmt.Sprintf("Query the language server (LSP) about code at a position or across the workspace. "+
-	"Use %s, %s, %s, %s, %s, or %s with path + 1-based line + character; "+
+	"Use %s, %s, %s, %s, %s, or %s with path + 1-based line + 1-based UTF-16 character offset; "+
 	"%s or %s with path; %s with query. "+
 	"%s returns the current compile errors and warnings for one file.",
 	LSPDefinition, LSPReferences, LSPImplementation, LSPHover, LSPIncomingCalls, LSPOutgoingCalls,

@@ -26,6 +26,11 @@ export const en: Record<string, string> = {
   "table.pagination": "{{table}} pages",
   "chart.data": "Data for {{chart}}",
   "chart.empty": "There are no values to plot.",
+  "resource.load": "Load external content: {{resource}}",
+  "resource.notice":
+    "Loading sends this address to an external service. A changed source requires permission again.",
+  "map.external":
+    "Loading map tiles sends the viewed locations to OpenStreetMap. The location table works without loading tiles.",
   "image.unavailable": "This image is unavailable.",
   "code.label": "Code",
   "markdown.table": "Markdown table",

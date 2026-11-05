@@ -120,7 +120,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		blob := blobs[invocation.Offload.ID]
 		out.ToolResults = append(out.ToolResults, protocol.ArtifactToolResult{
 			ID: blob.ID.String(), ItemID: item.ID(),
-			Body: blob.Body, CreatedAt: blob.CreatedAt,
+			Body: blob.Body, ModelOnly: invocation.Offload.ModelOnly, CreatedAt: blob.CreatedAt,
 		})
 	}
 	for _, row := range result.Evidence.ModelInvocations {

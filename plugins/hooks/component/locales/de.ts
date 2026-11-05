@@ -1,4 +1,6 @@
 export const de: Record<string, string> = {
+  "failure.required": "Erforderlich: Fehler blockieren",
+  "failure.advisory": "Hinweis: Bei Fehlern fortfahren",
   title: "Hooks",
   trust: "Hooks dieses Projekts vertrauen",
   "trust.sub":

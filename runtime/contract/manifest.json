@@ -3320,6 +3320,12 @@
       }
     },
     {
+      "toolName": "read_shell_output",
+      "schema": {
+        "$ref": "schema.json#/$defs/CommandResult"
+      }
+    },
+    {
       "toolName": "shell",
       "schema": {
         "$ref": "schema.json#/$defs/CommandResult"
@@ -5471,6 +5477,9 @@
               "operator": "present"
             }
           ],
+          "required": [
+            "failurePolicy"
+          ],
           "forbidden": [
             "inject"
           ]
@@ -5485,7 +5494,27 @@
           "forbidden": [
             "command",
             "matcher",
-            "timeoutMillis"
+            "timeoutMillis",
+            "failurePolicy"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "failurePolicy",
+              "operator": "equals",
+              "value": "required"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "event",
+              "values": [
+                "PreToolUse",
+                "UserPromptSubmit",
+                "PreCompact"
+              ]
+            }
           ]
         },
         {
@@ -7567,11 +7596,11 @@
       "rules": [
         {
           "field": "version",
-          "constraint": "minimum(31)"
+          "constraint": "minimum(32)"
         },
         {
           "field": "version",
-          "constraint": "maximum(31)"
+          "constraint": "maximum(32)"
         }
       ]
     },
@@ -8858,6 +8887,27 @@
       "rules": [
         {
           "field": "total",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "GrepCoverage",
+      "rules": [
+        {
+          "field": "scannedFiles",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "skippedFiles",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "remainingFiles",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "sourceBytes",
           "constraint": "nonNegative"
         }
       ]

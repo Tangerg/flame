@@ -53,7 +53,7 @@ export const GENUI_REPORT: AcceptedDocument = {
     },
   ],
   operations: [],
-  bindings: [],
+  contributions: [],
   nodes: [
     {
       id: "introduction",

@@ -1,5 +1,32 @@
 import { expect, test } from "@playwright/test";
 import { sandboxDocument } from "../../../plugins/genui/component/sandbox";
+import { readFileSync } from "node:fs";
+
+test("the application frame policy permits the exact privacy-enhanced YouTube origin", async ({
+  page,
+}) => {
+  const template = readFileSync(new URL("../index.template.html", import.meta.url), "utf8");
+  const policy = template.match(
+    /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"\s*\/>/u,
+  )?.[1];
+  expect(policy).toBeDefined();
+  const requests: string[] = [];
+  await page.route("https://www.youtube-nocookie.com/**", async (route) => {
+    requests.push(route.request().url());
+    await route.fulfill({ contentType: "text/html", body: "<p>Original media frame</p>" });
+  });
+  await page.route("https://genui-probe.invalid/**", async (route) => {
+    requests.push(route.request().url());
+    await route.fulfill({ body: "unexpected frame" });
+  });
+  await page.setContent(
+    `<meta http-equiv="Content-Security-Policy" content="${policy}"><iframe title="Allowed media" src="https://www.youtube-nocookie.com/embed/abcdefghijk"></iframe><iframe title="Other origin" src="https://genui-probe.invalid/frame"></iframe>`,
+  );
+  await expect(
+    page.frameLocator('iframe[title="Allowed media"]').getByText("Original media frame"),
+  ).toBeVisible();
+  expect(requests).toEqual(["https://www.youtube-nocookie.com/embed/abcdefghijk"]);
+});
 
 test("sandbox runs local programs and confines scripts, requests and navigation", async ({
   page,

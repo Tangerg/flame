@@ -497,6 +497,7 @@ func registerWorkspaceValues(s *Shapes) {
 		},
 	})
 	nonNegative[protocol.GrepResult](s, "total")
+	nonNegative[protocol.GrepCoverage](s, "scannedFiles", "skippedFiles", "remainingFiles", "sourceBytes")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GrepMatch](),
 		Constraints: []FieldConstraint{

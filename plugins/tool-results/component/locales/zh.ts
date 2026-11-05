@@ -1,4 +1,10 @@
 export const zh: Record<string, string> = {
+  "search.partial":
+    "部分搜索：至少 {{total}} 个匹配 · {{unread}} 个文件未读 · {{skipped}} 个文件已跳过",
+  "search.truncated": "显示 {{total}} 个已记录匹配中的 {{shown}} 个",
+  "output.byteRange": "字节范围 [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete": "输出记录失败；保留的字节不完整。",
   "find.open": "查找",
   "find.clear": "清除搜索",
   "find.close": "关闭查找",

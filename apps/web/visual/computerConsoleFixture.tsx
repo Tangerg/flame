@@ -8,6 +8,7 @@ import { stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
 import { CAPABILITY_JSON } from "../../../plugins/computer/component/methods.generated";
 import type { OperationRecord, Snapshot, Surface } from "../../../plugins/computer/component/types";
+import { LIMITS } from "../../../plugins/computer/contracts/limits";
 
 const modules = import.meta.glob("../../../plugins/computer/package/**/components/component.js");
 const installationId = "55667788-1234-4234-9234-123456789abc";
@@ -37,7 +38,17 @@ export async function createComputerConsoleFixture(locale: string) {
   const owner = new AbortController();
   const subscribers = new Set<ReadableStreamDefaultController<Uint8Array>>();
   const encoder = new TextEncoder();
-  let snapshot: Snapshot = { host, configured: true };
+  let snapshot: Snapshot = {
+    host,
+    configured: true,
+    receipts: {
+      records: 0,
+      bytes: 0,
+      pending: 0,
+      maxRecords: LIMITS.maxRecords,
+      maxBytes: LIMITS.maxBytes,
+    },
+  };
   const records = new Map<string, OperationRecord>();
   const media = new URLSearchParams(location.search).get("media");
   if (media === "unreadable") {
@@ -253,6 +264,7 @@ export async function createComputerConsoleFixture(locale: string) {
         publish({
           host,
           configured: true,
+          receipts: snapshot.receipts,
           session: {
             id: "control-browser-fixture",
             workerId: "worker-browser-fixture",

@@ -26,6 +26,11 @@ export const de: Record<string, string> = {
   "table.pagination": "Seiten von {{table}}",
   "chart.data": "Daten für {{chart}}",
   "chart.empty": "Es sind keine darstellbaren Werte vorhanden.",
+  "resource.load": "Externe Inhalte laden: {{resource}}",
+  "resource.notice":
+    "Beim Laden wird diese Adresse an einen externen Dienst gesendet. Eine geänderte Quelle erfordert erneut Ihre Erlaubnis.",
+  "map.external":
+    "Beim Laden der Kartenkacheln werden die angezeigten Orte an OpenStreetMap gesendet. Die Ortstabelle funktioniert auch ohne Kartenkacheln.",
   "image.unavailable": "Dieses Bild ist nicht verfügbar.",
   "code.label": "Code",
   "markdown.table": "Markdown-Tabelle",

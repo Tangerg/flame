@@ -11,7 +11,7 @@ import {
 } from "@flame/runtime-client";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { Presentation, type Action } from "../contracts/document";
+import { Presentation, limits, type Action } from "../contracts/document";
 
 export interface InteractionState {
   readState(id: string): unknown;
@@ -253,15 +253,18 @@ export class InteractionController {
             const message = this.#evaluate(step.message);
             if (typeof message !== "string" || !message.trim())
               throw new Error("genui: followup message must be nonempty text");
-            const payload = Object.fromEntries(
-              this.#presentation
-                .snapshot()
-                .state.map(({ id }) => [id, this.#state.readState(id)]),
-            );
+            const payloadJSON = stringifyJSON(this.#evaluate(step.payload));
+            if (
+              new TextEncoder().encode(message + payloadJSON).byteLength >
+              limits.followupBytes
+            )
+              throw new Error(
+                "genui: followup message and payload exceed model context capacity",
+              );
             await this.#followup(
               await this.#context.interaction.submit({
                 action: message,
-                payloadJSON: stringifyJSON(payload),
+                payloadJSON,
               }),
               action.id,
             );

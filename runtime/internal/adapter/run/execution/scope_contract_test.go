@@ -180,9 +180,11 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 		name    string
 		output  toolcontract.Output
 		invalid bool
+		offload bool
 	}{
 		{name: "invalid details", output: toolcontract.Output{Details: jsontext.Value(`{"unterminated":"` + text)}, invalid: true},
-		{name: "structured content", output: toolcontract.Output{Content: toolcontract.NewTextOutput(text).Content, Details: jsontext.Value(`{"revision":9007199254740993}`)}},
+		{name: "structured content", output: toolcontract.Output{Content: toolcontract.NewTextOutput(text).Content, Details: jsontext.Value(`{"revision":9007199254740993}`)}, offload: true},
+		{name: "details-only fallback", output: toolcontract.Output{Details: jsontext.Value(`{"body":"` + text + `"}`)}, offload: true},
 		{name: "cited text", output: toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: text, Citations: []corecontent.Citation{{Source: corecontent.CitationSource{Kind: corecontent.CitationSourceReference, Value: "source-1"}, Quote: "workspace observation"}}}}}},
 		{name: "annotated text", output: toolcontract.Output{Content: []corecontent.Block{{Kind: corecontent.Text, Text: text, Metadata: metadata.Map{"revision": jsontext.Value(`9007199254740993`)}}}}},
 	} {
@@ -194,8 +196,15 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 				if hasToolMessage(request.Messages) {
 					for _, message := range request.Messages {
 						for _, part := range message.Parts {
-							if part.ToolResult != nil && !reflect.DeepEqual(part.ToolResult.Output, test.output) {
-								t.Errorf("model received a lossy tool result: %+v", part.ToolResult.Output)
+							if part.ToolResult != nil {
+								if test.offload {
+									got := part.ToolResult.Output
+									if string(got.Details) != string(test.output.Details) || len(got.Content[0].Text) >= len(text) || !strings.Contains(got.Content[0].Text, store.lastStage.ID.String()) {
+										t.Errorf("model preview lost structured output or reader: %+v", got)
+									}
+								} else if !reflect.DeepEqual(part.ToolResult.Output, test.output) {
+									t.Errorf("protected output block changed: %+v", part.ToolResult.Output)
+								}
 							}
 						}
 					}
@@ -218,13 +227,27 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 					t.Errorf("invalid result continued the model: %d calls", calls)
 				}
 			}
-			if len(ends) != 1 || ends[0].Ending.Outcome() != want || store.calls != 0 {
+			wantOffloads := 0
+			if test.offload {
+				wantOffloads = 1
+			}
+			if len(ends) != 1 || ends[0].Ending.Outcome() != want || store.calls != wantOffloads {
 				t.Fatalf("tool output contract: ends=%+v offloads=%d", ends, store.calls)
 			}
 			if !test.invalid {
 				finished := payloadsOf[runs.ToolCallFinished](events)
-				if len(finished) != 1 || finished[0].ModelResult == nil || !reflect.DeepEqual(finished[0].ModelResult.Output, test.output) {
+				if len(finished) != 1 || finished[0].ModelResult == nil {
 					t.Fatalf("durable tool result lost Scope output: %+v", finished)
+				}
+				original, _, err := runtimeToolResult(test.output)
+				if err != nil || finished[0].Result == nil || !reflect.DeepEqual(*finished[0].Result, original) {
+					t.Fatalf("transcript lost its original structured result: %+v %v", finished[0], err)
+				}
+				if test.offload && (finished[0].Offload == nil || !finished[0].Offload.ModelOnly) {
+					t.Fatal("rich output did not retain its model-only offload purpose")
+				}
+				if !test.offload && !reflect.DeepEqual(finished[0].ModelResult.Output, test.output) {
+					t.Fatal("protected rich output changed in durable model evidence")
 				}
 			}
 		})

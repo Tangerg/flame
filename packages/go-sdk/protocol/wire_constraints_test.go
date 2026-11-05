@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	hookpolicy "github.com/Tangerg/flame/packages/go-sdk/hook"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
@@ -1820,7 +1821,8 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 	t.Parallel()
 
 	for _, hook := range []HookInfo{
-		{Event: HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: HookScopeProject, Source: "/repo/.flame/hooks.json"},
+		{Event: HookEventPreToolUse, Matcher: "shell*", Command: "check", FailurePolicy: hookpolicy.FailureAdvisory, Scope: HookScopeProject, Source: "/repo/.flame/hooks.json"},
+		{Event: HookEventPreToolUse, Command: "check", FailurePolicy: hookpolicy.FailureRequired, Scope: HookScopeProject, Source: "/repo/.flame/hooks.json"},
 		{Event: HookEventStop, Inject: "remember this", Scope: HookScopeGlobal, Source: "/home/.flame/hooks.json"},
 	} {
 		if err := hook.validateWire(); err != nil {
@@ -1835,6 +1837,9 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 		{field: "command|inject", hook: HookInfo{Event: HookEventStop, Scope: HookScopeGlobal, Source: "/hooks.json"}},
 		{field: "inject", hook: HookInfo{Event: HookEventStop, Command: "check", Inject: "context", Scope: HookScopeGlobal, Source: "/hooks.json"}},
 		{field: "timeoutMillis", hook: HookInfo{Event: HookEventStop, Inject: "context", TimeoutMillis: 1, Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "failurePolicy", hook: HookInfo{Event: HookEventStop, Command: "check", Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "failurePolicy", hook: HookInfo{Event: HookEventStop, Command: "check", FailurePolicy: "unknown", Scope: HookScopeGlobal, Source: "/hooks.json"}},
+		{field: "failurePolicy", hook: HookInfo{Event: HookEventStop, Inject: "context", FailurePolicy: hookpolicy.FailureAdvisory, Scope: HookScopeGlobal, Source: "/hooks.json"}},
 		{field: "matcher", hook: HookInfo{Event: HookEventStop, Matcher: "shell*", Command: "check", Scope: HookScopeGlobal, Source: "/hooks.json"}},
 		{field: "source", hook: HookInfo{Event: HookEventStop, Command: "check", Scope: HookScopeGlobal}},
 	} {

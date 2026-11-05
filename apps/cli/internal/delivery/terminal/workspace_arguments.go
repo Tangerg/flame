@@ -165,9 +165,10 @@ func parseWorkspacePreviewSelection(argument string) (workspacePreviewSelection,
 }
 
 type workspaceSearchSelection struct {
-	query string
-	path  string
-	limit workspace.SearchResultLimit
+	query   string
+	path    string
+	limit   workspace.SearchResultLimit
+	scanAll bool
 }
 
 func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, error) {
@@ -184,6 +185,8 @@ func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, e
 		switch option {
 		case "--path":
 			selection.path, err = cursor.Value(option)
+		case "--scan-all":
+			selection.scanAll = true
 		case "--limit":
 			matches, parseErr := cursor.PositiveInt(option)
 			if parseErr != nil {
@@ -199,7 +202,7 @@ func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, e
 	}
 	selection.query = cursor.Rest()
 	if selection.query == "" {
-		return workspaceSearchSelection{}, errors.New("usage: /grep [--path PATH] [--limit N] <query>")
+		return workspaceSearchSelection{}, errors.New("usage: /grep [--path PATH] [--limit N] [--scan-all] <query>")
 	}
 	return selection, nil
 }

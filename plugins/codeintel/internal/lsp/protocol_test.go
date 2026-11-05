@@ -13,7 +13,7 @@ func TestDefaultCapabilitiesHaveOneTypedWireShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal default capabilities: %v", err)
 	}
-	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":true},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{"versionSupport":true}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true}}`
+	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":true},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{"versionSupport":true}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true},"general":{"positionEncodings":["utf-16"]}}`
 	if string(encoded) != want {
 		t.Fatalf("default capabilities = %s", encoded)
 	}

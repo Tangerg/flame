@@ -15,6 +15,7 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
@@ -181,7 +182,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := pluginsdk.ModelContextRequest{Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
+	request := pluginsdk.ModelContextRequest{Use: modelchoice.Interaction, Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
 	request.UserMessage = new(request.Request.Messages[0].Clone())
 	request.Request.Messages = append(request.Request.Messages, chat.NewUserMessage(chat.NewTextPart("host-owned catalog tail")))
 	contextInput, err := framevalue.EncodeJSON(request)
@@ -200,11 +201,26 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err := json.Unmarshal(contribution.Bytes(), &contextResult); err != nil {
 		t.Fatal(err)
 	}
-	if err := contextResult.Validate(); err != nil || len(contextResult.Messages) != 1 || !strings.Contains(contextResult.Messages[0].Text(), "docs/fruit.md") {
+	if err := contextResult.Validate(); err != nil || len(contextResult.Content) != 1 || !strings.Contains(contextResult.Content[0].Text, "docs/fruit.md") {
 		t.Fatalf("context lost citation or changed conversation roles: %+v, %v", contextResult, err)
 	}
 	if calls.Load() != 4 {
 		t.Fatalf("unexpected embedding attempts: %d", calls.Load())
+	}
+	for _, use := range []modelchoice.Use{modelchoice.Utility, modelchoice.Independent} {
+		request.Use = use
+		input, err := framevalue.EncodeJSON(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contribution, err := contextBinding.InvokeWithMetadata(contextOwner, "", input, metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var result pluginsdk.ModelContextResult
+		if err := json.Unmarshal(contribution.Bytes(), &result); err != nil || len(result.Content) != 0 || calls.Load() != 4 {
+			t.Fatalf("%s context performed user retrieval: %+v calls=%d error=%v", use, result, calls.Load(), err)
+		}
 	}
 	space.Store("space-b")
 	if _, err := searchMethod.InvokeWithMetadata(owner, "", queryJSON, metadata); err == nil {

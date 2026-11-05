@@ -52,6 +52,12 @@ A binding with model discovery verifies credentials through that read. A
 stream-only binding, including DeepSeek, verifies one ordinary exchange with its
 default model; Flame does not infer discovery from the underlying wire protocol.
 The current Anthropic Messages binding sends its API key as a bearer credential.
+The native Anthropic profile opts in to automatic prompt caching through Scope's
+public Messages request extension (`cache_control: {"type":"ephemeral"}`). This
+is a provider default, not a cache-hit guarantee: the vendor still owns eligibility,
+retention and accounting. Explicit `anthropic/request` options replace that
+namespace under Scope's normal option resolution. The generic
+`anthropic-compatible` profile does not assume support for this extension.
 
 The backend retains original command input and results in its private database.
 An interrupted exchange remains unconfirmed and cannot be sent again under the

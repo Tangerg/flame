@@ -8,6 +8,14 @@
       "key": "LSP_SERVERS",
       "secret": false,
       "required": false
+    },
+    {
+      "id": "prettier-workspaces",
+      "server": "codeintel",
+      "target": "env",
+      "key": "PRETTIER_WORKSPACES",
+      "secret": false,
+      "required": false
     }
   ],
   "contributions": [

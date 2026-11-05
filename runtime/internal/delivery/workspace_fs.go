@@ -97,7 +97,7 @@ func (s *Handler) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*
 		}
 		limit = explicit
 	}
-	result, err := s.workspaceFiles.Grep(ctx, in.Workspace.Path, workspaceapp.GrepInput{Path: in.Path, Query: in.Query, Limit: limit})
+	result, err := s.workspaceFiles.Grep(ctx, in.Workspace.Path, workspaceapp.GrepInput{Path: in.Path, Query: in.Query, Limit: limit, ScanAll: in.ScanAll})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
@@ -105,7 +105,10 @@ func (s *Handler) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*
 	for _, match := range result.Matches {
 		matches = append(matches, protocol.GrepMatch{Path: match.Path, LineNumber: match.LineNumber, Text: match.Text})
 	}
-	return &protocol.GrepResult{Matches: matches, Total: result.Total}, nil
+	return &protocol.GrepResult{Matches: matches, Total: result.Total, Complete: result.Coverage.Complete(), Coverage: protocol.GrepCoverage{
+		ScannedFiles: result.Coverage.ScannedFiles, SkippedFiles: result.Coverage.SkippedFiles,
+		RemainingFiles: result.Coverage.RemainingFiles, SourceBytes: result.Coverage.SourceBytes,
+	}}, nil
 }
 
 func fileLineRangeFromWire(start, end *int) (workspaceapp.FileLineRange, error) {

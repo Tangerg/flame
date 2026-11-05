@@ -196,7 +196,11 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 		if err != nil {
 			return nil, modelRequestContext{}, nil, false, err
 		}
-		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate, tail)
+		userMessage, err := originalUserMessage(candidate.Messages)
+		if err != nil {
+			return nil, modelRequestContext{}, nil, false, err
+		}
+		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, model.Interaction, candidate, userMessage, tail)
 		if err != nil {
 			return nil, modelRequestContext{}, nil, false, err
 		}
@@ -205,7 +209,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}
-	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: append(cloneChatMessages(i.instructions), cloneChatMessages(material)...), tail: tail}
+	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: cloneChatMessages(i.instructions), tail: append(cloneChatMessages(tail), cloneChatMessages(material)...)}
 	return calling, contextView, candidate, hasPendingContinuation, nil
 }
 

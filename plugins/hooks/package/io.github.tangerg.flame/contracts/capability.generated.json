@@ -82,6 +82,17 @@
                 ],
                 "type": "string"
               },
+              "failurePolicy": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "advisory",
+                      "required"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
               "inject": {
                 "type": "string"
               },
@@ -151,6 +162,17 @@
                       "PreCompact",
                       "Stop",
                       "Notification"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "failurePolicy": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "advisory",
+                      "required"
                     ]
                   }
                 ],

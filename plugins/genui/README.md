@@ -5,9 +5,9 @@ It generates interactive documents, forms, calculators, data explorers, diagrams
 and isolated HTML demonstrations inside the existing conversation. It does not
 start a separate model conversation or create a UI database.
 
-`genui_ui_catalog` publishes the expression vocabulary and, when requested, the
-currently available installed callable contracts. `genui_ui_present` admits one
-complete JSON document and captures its actual operation bindings. Runtime's
+`genui_ui_catalog` publishes paged capability indexes and selected exact function
+or operation definitions. `genui_ui_present` admits one complete JSON document
+and captures each actual installed contribution once. Runtime's
 existing Tool/Item history retains the accepted document as structured content;
 plain text is a derived projection. The installed component reads that successful
 captured result, never the original unaccepted tool arguments.
@@ -28,6 +28,7 @@ Invalid identifiers, SVG values and other authored strings remain business refus
 | Session, Run, input acceptance and conversation history             | Runtime and the shared Agent input path                           | `CapturedToolInteraction` supplies the original source and receipt |
 | Map viewport and tile delivery                                      | The map renderer and its tile resource view                       | Marker selection remains in the OpenUI store                       |
 | HTML demonstration state                                            | The isolated frame                                                | No privileged state or executable bridge is shared with Flame      |
+| Permission to load a displayed external resource                    | Its mounted `ExternalResource`                                    | Images, Markdown images, YouTube and maps share this boundary      |
 
 Operation output has a separate, read-only expression namespace. Model documents
 cannot bind an editable field to a query result or use a `set` step to change a
@@ -58,6 +59,19 @@ literal references checked at admission.
 - Geography and media: a pannable, zoomable map with explicit marker data,
   selection and supplied route geometry; HTTPS images; privacy-enhanced YouTube
   embeds. Data acquisition remains an ordinary agent tool or installed query.
+
+External images and YouTube frames do not load at render time. The user sees the
+exact source address and explicitly authorizes that mounted resource. Changing
+the address retires permission, including a later return to a previously allowed
+address. Draft state and operation output cannot grant permission. An unrelated
+local edit or locale change preserves an unchanged resource's reading state.
+Maps separately explain that interactive tiles send the viewed locations to the
+fixed OpenStreetMap provider; location tables and selection remain local without
+loading tiles. Changed coordinates or route geometry retire that permission.
+The browser still owns HTTP redirects and remote-service behavior after an
+authorized load; this is not a redirect-filtering proxy or a permanent domain grant.
+The application CSP allows only the privacy-enhanced YouTube origin in addition
+to same-origin frames. The HTML sandbox retains its stricter independent policy.
 
 Controls use public `@flame/ui` components and the active host locale and tokens.
 A digit-only metric value gains ordinary character wrap opportunities in its own
@@ -151,6 +165,17 @@ can construct objects and arrays, map/filter/group records, and call the pure
 functions described by the catalog. Arithmetic, comparisons, formatting,
 collection transformations and statistics run locally without a model request.
 
+Call the catalog with `{"kind":"functions"}` for a short index and pass the
+returned `nextOffset` as `offset` for its next page. Add `"name":"multiply"`
+to read that one function's complete parameter schema. For business operations,
+`{"kind":"operations"}` lists at most 20 method identities and routing facts;
+`installationId` and `contribution` narrow the index. Supplying all three of
+`installationId`, `contribution` and `method` returns only that exact method's
+`methodJSON`, projected with the owner's exact-number codec. Discovery does not
+dump every installed contract or authorize a command. Presentation admission
+still captures the full, unchanged installed contract and release digest once
+per contribution; multiple methods derive their routes from that same fact.
+
 The compiler lowers expressions to registered OpenUI functions through the
 public serializer. It never concatenates authored operators into executable
 source and never uses `eval` or `Function`. Registered functions, their schemas
@@ -224,7 +249,8 @@ that asks the original conversation to explain the selected radius:
                 ]
               }
             ]
-          }
+          },
+          "payload": { "object": { "radius": { "state": "radius" } } }
         }
       ]
     }
@@ -260,7 +286,9 @@ optional resource target and an input expression. The model cannot supply the
 admitted contract, release digest or operation kind. The backend resolves these
 from the real enabled and available selected installation. It derives
 installation targets; other scopes require explicit matching targets. The
-accepted result contains the captured binding. A later release selection does
+accepted result contains `contributions`, with one exact contract and digest per
+installation/contribution. Operation methods and targets derive from their
+original requests and that captured fact. A later release selection does
 not silently change this old document's business route.
 
 Queries use public `plugins.call` or `plugins.queryStream`. Only a real query can
@@ -292,6 +320,12 @@ the ensuing agent task has finished. `unknown` keeps the original recovery
 closure; `retired` is an explicit terminal outcome. Exact JSON text and source
 identifiers travel in the ordinary user input; Runtime's history model is not
 extended just to index a UI action.
+Each followup requires an explicit `payload` expression. Only its evaluated value
+is sent; other drafts, table state and query results remain local. An empty object
+expression sends no fields. The UTF-8 message and encoded JSON payload together
+must fit 16 KiB; excess is refused before submission without truncating data or
+changing its source. Ordinary input acceptance and original recovery remain the
+only conversation-effect owners.
 
 ## HTML sandbox
 
@@ -312,7 +346,7 @@ size limit. Structured components should be preferred when they express the UI.
 
 ## Dependencies and reference projects
 
-The plugin uses the public OpenUI 1.0.1 serializer, evaluator and React renderer;
+The plugin uses the public OpenUI 1.1.0 serializer, evaluator and React renderer;
 it does not import private contexts or add its own parser. The interactive
 component ideas are informed by
 [Open Intelligent UI](https://github.com/thesysdev/open-intelligent-ui) and

@@ -12,7 +12,14 @@ import descriptor, {
   schemas,
   definitions,
 } from "../contracts/capability";
-import { Archive, toolResult } from "./archive";
+import { Archive } from "./archive";
+import {
+  commandProjection,
+  modelDescriptions,
+  modelInputs,
+  queryProjection,
+  toolResult,
+} from "./model";
 import { Application, decodeInput } from "./application";
 import { Engine } from "./engine";
 import { Formats } from "./format-process";
@@ -69,7 +76,7 @@ export function createBackend(
     };
   });
   for (const definition of definitions) {
-    const { operation, input } = definition;
+    const { operation, input, audience } = definition;
     const method = contract.portable.method(METHODS[operation]);
     backend.implement(
       method,
@@ -81,12 +88,18 @@ export function createBackend(
           : application.command(context, operation, value);
       },
     );
+    if (audience === "host") continue;
+    const modelInput =
+      operation in modelInputs
+        ? modelInputs[operation as keyof typeof modelInputs]
+        : input;
     backend.tool(
       {
         name: operation,
         title: `Deliverables: ${operation}`,
-        description: method.descriptor.description!,
-        inputSchema: z.toJSONSchema(input) as { type: "object" },
+        description:
+          modelDescriptions[operation] ?? method.descriptor.description!,
+        inputSchema: z.toJSONSchema(modelInput) as { type: "object" },
         annotations: {
           readOnlyHint: method.descriptor.kind === "query",
           destructiveHint: ["remove", "discard"].includes(operation),
@@ -95,14 +108,26 @@ export function createBackend(
         },
       },
       async (context, value) => {
-        const decoded = decodeInput(input, value) as Record<string, unknown>;
+        const decoded = decodeInput(modelInput, value) as Record<
+          string,
+          unknown
+        >;
         try {
           context.signal.throwIfAborted();
-          const result =
-            method.descriptor.kind === "query"
-              ? application.query(operation, decoded)
-              : await application.command(context, operation, decoded, "tool");
-          return toolResult({ value: result });
+          if (method.descriptor.kind === "query") {
+            const result = queryProjection(application, operation, decoded);
+            return toolResult({ value: result.retained }, result.model);
+          }
+          const result = await application.command(
+            context,
+            operation,
+            decoded,
+            "tool",
+          );
+          return toolResult(
+            { value: result },
+            commandProjection(operation, result),
+          );
         } catch (cause) {
           if (cause instanceof Refusal)
             return toolResult({
@@ -143,7 +168,13 @@ export function createBackend(
   toolReceipts(backend, (_context, request) => {
     const receipt = archive.receipt(request, "tool");
     if (!receipt.found) return {};
-    const result = toolResult(receipt.reply!);
+    const reply = receipt.reply!;
+    const result = toolResult(
+      reply,
+      "value" in reply
+        ? commandProjection(request.method, reply.value)
+        : undefined,
+    );
     return {
       result: {
         output: {

@@ -2527,6 +2527,12 @@
           }
         },
         {
+          "name": "scanAll",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -2562,6 +2568,7 @@
           "limit": {},
           "path": {},
           "query": {},
+          "scanAll": {},
           "workspace": {
             "$ref": "#/components/schemas/WorkspaceRef"
           }
@@ -8676,7 +8683,8 @@
           "body": {},
           "createdAt": {},
           "id": {},
-          "itemId": {}
+          "itemId": {},
+          "modelOnly": {}
         },
         "unevaluatedProperties": false,
         "allOf": [

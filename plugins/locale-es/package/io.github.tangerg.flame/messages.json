@@ -293,7 +293,7 @@
   "approvals.mode.balanced": "Equilibrado",
   "approvals.mode.auto": "Automático",
   "approvals.rules": "Reglas recordadas",
-  "approvals.rules.sub": "Decisiones de herramientas que omiten la aprobación.",
+  "approvals.rules.sub": "Permisos guardados. Una denegación coincidente también bloquea la aprobación automática.",
   "approvals.rules.empty": "Aún no hay reglas",
   "approvals.rules.emptySub": "Aprueba o rechaza con «no volver a preguntar» para añadir una.",
   "approvals.scope.session": "Sesión",

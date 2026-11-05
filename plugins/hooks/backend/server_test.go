@@ -150,6 +150,46 @@ func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testi
 	}
 }
 
+func TestDeclarativeOnlyEventPreservesRequiredPolicyWithoutRunningACommand(t *testing.T) {
+	cwd := t.TempDir()
+	_, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
+	method, err := hookmcp.EvaluateMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name        string
+		policy      hook.FailurePolicy
+		matcher     string
+		verdict     hook.CommandVerdict
+		diagnostics int
+	}{
+		{name: "required", policy: hook.FailureRequired, verdict: hook.CommandDeny, diagnostics: 1},
+		{name: "advisory", verdict: hook.CommandAllow, diagnostics: 1},
+		{name: "unmatched", policy: hook.FailureRequired, matcher: "write", verdict: hook.CommandAllow},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := hookprovider.Evaluation{
+				Rules: []hook.Hook{
+					{Event: hook.PreToolUse, Command: "printf forbidden > effect", FailurePolicy: test.policy, Matcher: test.matcher, Scope: hook.ScopeGlobal, Source: cwd},
+					{Event: hook.PreToolUse, Inject: "retained declarative context", Scope: hook.ScopeGlobal, Source: cwd},
+				},
+				Input:           hook.Input{Event: hook.PreToolUse, CWD: cwd, Tool: &hook.ToolInput{Name: "shell"}},
+				DeclarativeOnly: true,
+			}
+			for range 2 {
+				advice, err := hookMethod(t, session, method).CallCommand(hookContext(t), pluginmcp.CommandID(test.name), request)
+				if err != nil || advice.Decision.Verdict != test.verdict || advice.Decision.InjectContext != "retained declarative context" || len(advice.Diagnostics) != test.diagnostics {
+					t.Fatalf("declarative-only original receipt: %+v, %v", advice, err)
+				}
+			}
+			if _, err := os.Stat(filepath.Join(cwd, "effect")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("unprojectable command ran: %v", err)
+			}
+		})
+	}
+}
+
 func TestDiscoverySkipsUntrustedProjectConfigurationUnderItsCapturedRoot(t *testing.T) {
 	cwd, home := t.TempDir(), t.TempDir()
 	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global"}]}`)

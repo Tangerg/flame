@@ -1,4 +1,11 @@
 export const de: Record<string, string> = {
+  "search.partial":
+    "Teilsuche: mindestens {{total}} Treffer · {{unread}} Dateien ungelesen · {{skipped}} übersprungen",
+  "search.truncated": "{{shown}} von {{total}} erfassten Treffern",
+  "output.byteRange": "Bytebereich [{{start}}, {{end}})",
+  "output.shell": "Shell {{id}}",
+  "output.incomplete":
+    "Ausgabeaufzeichnung fehlgeschlagen; die erhaltenen Bytes sind unvollständig.",
   "find.open": "Suchen",
   "find.clear": "Suche löschen",
   "find.close": "Suche schließen",

@@ -1,5 +1,7 @@
 package protocol
 
+import "github.com/Tangerg/flame/packages/go-sdk/hook"
+
 // Lifecycle-hooks management wire types. The
 // runtime runs user-authored hooks at fixed Run lifecycle points; these
 // methods let a client review what's configured for a cwd and toggle whether a
@@ -28,14 +30,16 @@ const (
 // HookInfo is one discovered hook (global or project), for review. Command is
 // the shell command a hook runs (shown so the user can audit a project's hooks
 // before trusting); inject is the declarative no-exec context alternative.
+// Commands carry their effective failure policy; injections omit it.
 type HookInfo struct {
-	Event         HookEvent `json:"event"`
-	Matcher       string    `json:"matcher,omitempty"`
-	Command       string    `json:"command,omitempty"`
-	Inject        string    `json:"inject,omitempty"`
-	TimeoutMillis int       `json:"timeoutMillis,omitzero"`
-	Scope         HookScope `json:"scope"`
-	Source        string    `json:"source"` // absolute path of the hooks.json it came from
+	Event         HookEvent          `json:"event"`
+	Matcher       string             `json:"matcher,omitempty"`
+	Command       string             `json:"command,omitempty"`
+	Inject        string             `json:"inject,omitempty"`
+	TimeoutMillis int                `json:"timeoutMillis,omitzero"`
+	FailurePolicy hook.FailurePolicy `json:"failurePolicy,omitempty"`
+	Scope         HookScope          `json:"scope"`
+	Source        string             `json:"source"` // absolute path of the hooks.json it came from
 	// Active reports whether this hook currently runs: global hooks always do;
 	// project hooks only when the project is trusted.
 	Active bool `json:"active"`

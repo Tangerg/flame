@@ -29,7 +29,8 @@ export function createBackend(): Backend {
         "pure expressions and named actions. Inputs and calculations update local state; " +
         "operation steps use installed plugin contracts discovered with ui_catalog. " +
         "Business commands require an explicit user review. Followup actions continue the " +
-        "original conversation. HtmlView runs isolated local HTML/JavaScript without Flame " +
+        "original conversation with only their explicit payload expression (message and JSON " +
+        "payload together must fit 16 KiB). HtmlView runs isolated local HTML/JavaScript without Flame " +
         "or tool access. Keep exact identifiers and quantities as strings. " +
         "The accepted document is retained in the existing Tool result; local drafts reset " +
         "on remount. Use ordinary text when an interface does not help.",
@@ -47,13 +48,13 @@ export function createBackend(): Backend {
       let presentation: Presentation;
       try {
         const request = parseDocument(input);
-        const bindings = request.operations.length
+        const contributions = request.operations.length
           ? new OperationCatalog(
               (await (await runtime(context)).plugins.list(context.signal))
                 .data,
             ).capture(request.operations)
           : [];
-        presentation = Presentation.accept(request, bindings);
+        presentation = Presentation.accept(request, contributions);
       } catch (cause) {
         if (cause instanceof InvalidPresentation) {
           const refusal = new Refusal(INVALID_PRESENTATION, cause.message);
@@ -73,18 +74,25 @@ export function createBackend(): Backend {
       name: CATALOG_TOOL,
       title: "Discover interface functions and operations",
       description:
-        "Read the pure function signatures for a generated interface. Set includeOperations " +
-        "to also read currently available installed plugin callable contracts. Use the exact " +
-        "installationId, contribution and method in ui_present. " +
-        "The contract string contains the authoritative input/output schemas, method kind " +
-        "and target scope. Installation targets are derived automatically; other target " +
-        "references must be explicit. This does not execute any business operation.",
+        "Discover interface capabilities on demand. kind=functions lists brief function entries; " +
+        "set name to read one function's complete parameters. kind=operations lists available " +
+        "method identities and routing metadata; optionally filter by installationId and contribution. " +
+        "Set installationId, contribution and method to read that exact methodJSON with its " +
+        "input/output schemas. Index pages contain at most 20 entries; continue using nextOffset. " +
+        "Use the exact installationId, contribution and method in ui_present. Installation targets " +
+        "are derived automatically; other targets require an explicit reference. Discovery does not " +
+        "execute business operations or authorize a command.",
       inputSchema: {
         type: "object",
         properties: {
-          includeOperations: { type: "boolean" },
+          kind: { type: "string", enum: ["functions", "operations"] },
+          name: { type: "string", minLength: 1 },
           installationId: { type: "string", minLength: 1 },
+          contribution: { type: "string", minLength: 1 },
+          method: { type: "string", minLength: 1 },
+          offset: { type: "integer", minimum: 0 },
         },
+        required: ["kind"],
         additionalProperties: false,
       },
       annotations: {
@@ -95,21 +103,87 @@ export function createBackend(): Backend {
       },
     },
     async (context, input) => {
-      const { includeOperations, installationId } = input as {
-        includeOperations?: boolean;
-        installationId?: string;
+      const { kind, name, installationId, contribution, method, offset } =
+        input as {
+          kind: "functions" | "operations";
+          name?: string;
+          installationId?: string;
+          contribution?: string;
+          method?: string;
+          offset?: number;
+        };
+      const page = <T>(entries: T[]) => {
+        const start = offset ?? 0;
+        return {
+          entries: entries.slice(start, start + 20),
+          ...(start + 20 < entries.length ? { nextOffset: start + 20 } : {}),
+        };
       };
-      const catalog = {
-        functions: functionCatalog(),
-        ...(includeOperations || installationId !== undefined
-          ? {
-              operations: new OperationCatalog(
-                (await (await runtime(context)).plugins.list(context.signal))
-                  .data,
-              ).describe(installationId),
-            }
-          : {}),
-      };
+      let catalog: Record<string, unknown>;
+      if (kind === "functions") {
+        if (
+          installationId !== undefined ||
+          contribution !== undefined ||
+          method !== undefined ||
+          (name !== undefined && offset !== undefined)
+        )
+          throw new Refusal(
+            "invalid_catalog_request",
+            "Function discovery accepts only name or offset.",
+          );
+        const functions = functionCatalog();
+        if (name === undefined) {
+          catalog = {
+            functions: page(
+              functions.map(({ name, description }) => ({ name, description })),
+            ),
+          };
+        } else {
+          const selected = functions.find((value) => value.name === name);
+          if (!selected)
+            throw new Refusal(
+              "unknown_function",
+              "No such interface function: " + name,
+            );
+          catalog = { function: selected };
+        }
+      } else {
+        if (
+          name !== undefined ||
+          (contribution !== undefined && installationId === undefined) ||
+          (method !== undefined &&
+            (installationId === undefined ||
+              contribution === undefined ||
+              offset !== undefined))
+        )
+          throw new Refusal(
+            "invalid_catalog_request",
+            "Method discovery requires installationId and contribution; offset only pages an index.",
+          );
+        const operations = new OperationCatalog(
+          (await (await runtime(context)).plugins.list(context.signal)).data,
+        );
+        try {
+          catalog =
+            method === undefined
+              ? {
+                  operations: page(
+                    operations.describe(installationId, contribution),
+                  ),
+                }
+              : {
+                  operation: operations.method(
+                    installationId!,
+                    contribution!,
+                    method,
+                  ),
+                };
+        } catch (cause) {
+          if (cause instanceof InvalidPresentation)
+            throw new Refusal("invalid_catalog_request", cause.message);
+          throw cause;
+        }
+      }
       return {
         structuredContent: catalog,
         content: [{ type: "text", text: JSON.stringify(catalog) }],

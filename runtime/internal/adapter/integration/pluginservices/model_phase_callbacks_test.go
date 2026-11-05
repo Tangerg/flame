@@ -24,6 +24,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/content"
 )
 
 func phaseHostRequest(ctx context.Context, ref pluginmcp.CallbackRef) (int, error) {
@@ -89,7 +90,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					case "selection":
 						_, cycle = composition.SelectModel(r.Context(), modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: selection, Request: request})
 					case "context":
-						_, cycle = composition.PrepareContext(r.Context(), bindings, selection, request, nil)
+						_, cycle = composition.PrepareContext(r.Context(), bindings, selection, modelchoice.Interaction, request, callerUserMessage(request.Messages), nil)
 					case "input":
 						_, cycle = composition.PrepareInput(r.Context(), bindings, selection, request)
 					}
@@ -149,7 +150,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 							t.Fatal(err)
 						}
 						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
-							return pluginsdk.ModelContextResult{Messages: []chat.Message{chat.NewSystemMessage("retrieved")}}, callback(ctx)
+							return pluginsdk.ModelContextResult{Content: []content.Block{{Kind: content.Text, Text: "retrieved"}}}, callback(ctx)
 						})
 						if err != nil {
 							t.Fatal(err)
@@ -191,7 +192,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					if resolveErr != nil {
 						t.Fatal(resolveErr)
 					}
-					_, err = composition.PrepareContext(ctx, bindings, selection, request, nil)
+					_, err = composition.PrepareContext(ctx, bindings, selection, modelchoice.Interaction, request, callerUserMessage(request.Messages), nil)
 				case "input":
 					var resolveErr error
 					bindings, resolveErr = composition.ResolveInput(ctx)

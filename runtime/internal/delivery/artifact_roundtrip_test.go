@@ -37,8 +37,8 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 31 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v31", protocol.SessionArtifactVersion)
+	if protocol.SessionArtifactVersion != 32 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v32", protocol.SessionArtifactVersion)
 	}
 }
 
@@ -573,8 +573,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	}); err != nil {
 		t.Fatalf("stage tool result: %v", err)
 	}
-	preview := "offloaded preview " + id.String()
-	previewValue, err := tool.NewResult(preview)
+	structuredResult, err := tool.ParseResult([]byte(`{"revision":7,"title":"report"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +583,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: time.Unix(10, 0).UTC(), FinishedAt: time.Unix(11, 0).UTC(),
 		Tool: &transcript.ToolInvocation{
-			Name: source.ModelName(), Source: source, Result: &previewValue, Offload: &transcript.ToolResultRef{ID: id},
+			Name: source.ModelName(), Source: source, Result: &structuredResult, Offload: &transcript.ToolResultRef{ID: id, ModelOnly: true},
 		},
 	})); err != nil {
 		t.Fatalf("seed offloaded item: %v", err)

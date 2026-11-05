@@ -14,10 +14,10 @@ import (
 
 type eventAdvice struct{ hookdata.CommandDecision }
 
-// A stalled command must release the action it gates.
+// A stalled command must settle according to its captured failure policy.
 const defaultTimeout = 30 * time.Second
 
-// Only the protocol's explicit denial may stop an action.
+// Exit 2 is the command protocol's explicit denial.
 const blockExitCode = 2
 
 type commandRunner interface {
@@ -59,7 +59,7 @@ func (r *policyEvaluator) Run(ctx context.Context, hooks []hookdata.Hook, in hoo
 			commandInputReady = true
 		}
 		if commandInputErr != nil {
-			r.fail(ctx, h.Source, commandInputErr)
+			r.fail(ctx, h, commandInputErr, &dec)
 			continue
 		}
 		r.runOne(ctx, ordinal, h, commandInput, &dec)
@@ -69,7 +69,7 @@ func (r *policyEvaluator) Run(ctx context.Context, hooks []hookdata.Hook, in hoo
 
 func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Hook, in hookdata.Input, dec *eventAdvice) {
 	if r.commands == nil {
-		r.fail(ctx, h.Source, errors.New("hook command runner is not configured"))
+		r.fail(ctx, h, errors.New("hook command runner is not configured"), dec)
 		return
 	}
 	timeout := defaultTimeout
@@ -83,7 +83,7 @@ func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Ho
 		Timeout: timeout,
 	})
 	if result.TimedOut {
-		r.fail(ctx, h.Source, errors.Join(errors.New("hook timed out"), result.Err))
+		r.fail(ctx, h, errors.Join(errors.New("hook timed out"), result.Err), dec)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Ho
 		// Exit 0 must carry a complete decoded decision. Treat a missing or
 		// future verdict as a broken hook instead of silently granting it.
 		if !out.Verdict.Valid() {
-			r.fail(ctx, h.Source, errors.New("hook returned an invalid command verdict"))
+			r.fail(ctx, h, errors.New("hook returned an invalid command verdict"), dec)
 			return
 		}
 		verdict := out.Verdict
@@ -110,13 +110,16 @@ func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Ho
 		}
 		dec.Fold(verdict, reason, strings.TrimSpace(out.InjectContext), strings.TrimSpace(out.RewriteArguments))
 	default:
-		r.fail(ctx, h.Source, hookError(result.ExitCode, result.Stderr, result.Err))
+		r.fail(ctx, h, hookError(result.ExitCode, result.Stderr, result.Err), dec)
 	}
 }
 
-func (r *policyEvaluator) fail(ctx context.Context, source string, err error) {
+func (r *policyEvaluator) fail(ctx context.Context, rule hookdata.Hook, err error, dec *eventAdvice) {
 	if r.onError != nil {
-		r.onError(ctx, source, err)
+		r.onError(ctx, rule.Source, err)
+	}
+	if rule.FailurePolicy.Effective() == hookdata.FailureRequired {
+		dec.Fold(hookdata.CommandDeny, "Required hook did not return a valid decision: "+rule.Source, "", "")
 	}
 }
 

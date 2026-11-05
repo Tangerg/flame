@@ -79,9 +79,10 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 			return sessions.PortableSnapshot{}, invalidArtifact(fmt.Sprintf("artifact.toolResults[%d].id", index), "%v", parseIDErr)
 		}
 		toolResults = append(toolResults, sessions.PortableToolResult{
-			ItemID: encoded.ItemID,
+			ItemID: encoded.ItemID, ModelOnly: encoded.ModelOnly,
 			Blob: transcript.ToolResultBlob{
-				ID: id, SessionID: art.Session.ID, Body: encoded.Body, CreatedAt: encoded.CreatedAt,
+				ToolResultStage: transcript.ToolResultStage{ID: id, SessionID: art.Session.ID, Body: encoded.Body},
+				CreatedAt:       encoded.CreatedAt,
 			},
 		})
 	}

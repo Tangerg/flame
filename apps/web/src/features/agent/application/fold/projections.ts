@@ -189,22 +189,27 @@ function rawResult(result: unknown): Pick<ToolCall, "result"> | Record<string, n
     : { result: typeof result === "string" ? result : stringifyJSON(result) };
 }
 
+function shellFields(tool: AgentToolInvocation): Partial<ToolCall> {
+  const command = commandToolResult(tool.result);
+  return {
+    ...(command?.exitCode !== undefined ? { exitCode: command.exitCode } : {}),
+    ...(command?.page ? { outputPage: command.page } : {}),
+    ...(asString(tool.arguments?.command) !== undefined
+      ? { command: asString(tool.arguments?.command) }
+      : {}),
+    // An exit-only receipt does not replace the streamed output. A captured
+    // output, including the empty string, is authoritative.
+    ...rawResult(command ? command.output : tool.result),
+  };
+}
+
 function categoryFields(
   tool: AgentToolInvocation,
   result: Record<string, unknown> | undefined,
 ): Partial<ToolCall> {
   switch (tool.category) {
-    case "shell": {
-      const command = commandToolResult(tool.result);
-      const output = command ? command.output : asString(tool.result);
-      return {
-        exitCode: command?.exitCode,
-        ...(asString(tool.arguments?.command) !== undefined
-          ? { command: asString(tool.arguments?.command) }
-          : {}),
-        ...(output !== undefined ? { result: output } : {}),
-      };
-    }
+    case "shell":
+      return shellFields(tool);
     case "edit": {
       // The runtime projects the per-file change receipt, counts and all; the
       // client renders it without re-parsing the patch.

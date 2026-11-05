@@ -3,10 +3,12 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -86,6 +88,22 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 		}
 		if err := pluginsdk.ValidateModelInput(current, &result); err != nil {
 			return nil, err
+		}
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			before, beforeErr := modeladapter.DescribeRequest(current)
+			after, afterErr := modeladapter.DescribeRequest(&result)
+			if err := errors.Join(beforeErr, afterErr); err != nil {
+				slog.DebugContext(ctx, "model input diagnostics unavailable", "contribution", binding.ContributionID, "error", err)
+			} else {
+				invocation, _ := pluginmcp.InvocationFromContext(ctx)
+				slog.DebugContext(ctx, "model input projection change", "caller.id", invocation.ID,
+					"installation", binding.InstallationID, "contribution", binding.ContributionID,
+					"projection", "scope_request", "before.bytes", before.Bytes, "after.bytes", after.Bytes,
+					"messages.first_changed", before.FirstChangedMessage(after),
+					"system.changed", before.SystemDigest != after.SystemDigest,
+					"options.changed", before.OptionsDigest != after.OptionsDigest,
+					"before.messages.sha256", before.MessagesDigest, "after.messages.sha256", after.MessagesDigest)
+			}
 		}
 		current = result.Clone()
 	}

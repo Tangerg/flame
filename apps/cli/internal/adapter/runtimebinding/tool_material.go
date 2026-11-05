@@ -69,12 +69,13 @@ func projectToolResult(call *conversation.ToolCall) error {
 		return nil
 	}
 	switch builtin.Name(call.Name) {
-	case builtin.Shell:
+	case builtin.Shell, builtin.ReadShellOutput:
 		var result builtin.CommandResult
 		if json.Unmarshal(call.ResultJSON, &result) != nil {
 			return nil
 		}
 		call.Output, call.ExitCode = result.Output, result.ExitCode
+		call.OutputPage = result.Page
 	case builtin.ApplyPatch:
 		var result builtin.PatchResult
 		if json.Unmarshal(call.ResultJSON, &result) != nil {

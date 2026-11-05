@@ -52,6 +52,7 @@ type ResultContent =
       label: string;
       rows: Row[];
       continues?: boolean;
+      notice?: string;
       emptyMessage?: string;
     }
   | { kind: "output"; text: string }
@@ -387,22 +388,11 @@ function resultContent(
       if (Array.isArray(result.changes))
         return { kind: "changes", changes: result.changes.map(record) };
       break;
-    case "search":
-      if (Array.isArray(result.hits))
-        return {
-          kind: "rows",
-          label: t("caption.matches"),
-          rows: result.hits.map((hit) => {
-            const value = record(hit);
-            return {
-              kind: "located",
-              location: `${text(value.path)}${value.lineNumber === undefined ? "" : `:${text(value.lineNumber)}`}`,
-              body:
-                value.snippet === undefined ? undefined : text(value.snippet),
-            };
-          }),
-        };
+    case "search": {
+      const content = searchContent(result, t);
+      if (content) return content;
       break;
+    }
     case "command":
       if (typeof result.output === "string")
         return {
@@ -413,6 +403,38 @@ function resultContent(
       break;
   }
   return { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+}
+
+function searchContent(
+  result: Record<string, unknown>,
+  t: Translate,
+): ResultContent | undefined {
+  if (!Array.isArray(result.hits)) return undefined;
+  return {
+    kind: "rows",
+    label: t("caption.matches"),
+    notice:
+      result.complete === false
+        ? t("search.partial", {
+            total: text(result.total),
+            unread: text(record(result.coverage).remainingFiles),
+            skipped: text(record(result.coverage).skippedFiles),
+          })
+        : result.truncated === true
+          ? t("search.truncated", {
+              shown: result.hits.length,
+              total: text(result.total),
+            })
+          : undefined,
+    rows: result.hits.map((hit) => {
+      const value = record(hit);
+      return {
+        kind: "located",
+        location: `${text(value.path)}${value.lineNumber === undefined ? "" : `:${text(value.lineNumber)}`}`,
+        body: value.snippet === undefined ? undefined : text(value.snippet),
+      };
+    }),
+  };
 }
 
 function rowText(row: Row): string {
@@ -438,6 +460,7 @@ function RecordedRows({
   source,
   recorded,
   continues,
+  notice,
   emptyMessage,
   t,
 }: {
@@ -445,6 +468,7 @@ function RecordedRows({
   source: string;
   recorded: Row[];
   continues?: boolean;
+  notice?: string;
   emptyMessage?: string;
   t: Translate;
 }) {
@@ -534,6 +558,7 @@ function RecordedRows({
           wrappable={false}
         >
           {continues && <RecordMeta>{t("result.morePages")}</RecordMeta>}
+          {notice && <RecordMeta>{notice}</RecordMeta>}
           {recorded.length > RESULT_PAGE_ROWS && (
             <span role="status" style={{ fontVariantNumeric: "tabular-nums" }}>
               {filter
@@ -799,13 +824,31 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
       </table>
     );
   if (content.kind === "output")
-    return <RecordedOutput text={content.text} t={t} />;
+    return (
+      <>
+        {tool?.outputPage && (
+          <RecordMeta>
+            {t("output.byteRange", {
+              start: tool.outputPage.offset,
+              end: tool.outputPage.nextOffset,
+            })}
+            {tool.outputPage.shellId &&
+              ` · ${t("output.shell", { id: tool.outputPage.shellId })}`}
+            {tool.outputPage.status && ` · ${tool.outputPage.status}`}
+            {tool.outputPage.hasMore && ` · ${t("result.morePages")}`}
+            {tool.outputPage.dropped && ` · ${t("output.incomplete")}`}
+          </RecordMeta>
+        )}
+        <RecordedOutput text={content.text} t={t} />
+      </>
+    );
   return (
     <RecordedRows
       label={content.label}
       source={tool!.result!}
       recorded={content.rows}
       continues={content.continues}
+      notice={content.notice}
       emptyMessage={content.emptyMessage}
       t={t}
     />

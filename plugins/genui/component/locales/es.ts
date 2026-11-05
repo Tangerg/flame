@@ -26,6 +26,11 @@ export const es: Record<string, string> = {
   "table.pagination": "Páginas de {{table}}",
   "chart.data": "Datos de {{chart}}",
   "chart.empty": "No hay valores para representar.",
+  "resource.load": "Cargar contenido externo: {{resource}}",
+  "resource.notice":
+    "Al cargar se envía esta dirección a un servicio externo. Un cambio de origen requiere un nuevo permiso.",
+  "map.external":
+    "Cargar los mapas envía las ubicaciones visibles a OpenStreetMap. La tabla de ubicaciones funciona sin cargar mapas.",
   "image.unavailable": "Esta imagen no está disponible.",
   "code.label": "Código",
   "markdown.table": "Tabla Markdown",

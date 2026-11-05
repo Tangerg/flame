@@ -33,7 +33,7 @@ import {
   safeURL,
   stateKey,
   validateField,
-  type CapturedBinding,
+  type CapturedContribution,
   type UiDocument,
 } from "./document";
 
@@ -125,29 +125,24 @@ function binding(kind: "query" | "command", auto = false) {
     input: { object: { amount: { state: "amount" } } } as Expression,
     auto,
   };
-  const captured: CapturedBinding = {
-    id: "load",
-    binding: {
-      installationId: "plugin_1",
-      digest: "sha256:captured",
-      contribution: "facts",
-      method: "read",
-      target: { scope: "installation", reference: "plugin_1" },
-      contract: stringifyJSON({
-        reference: "example.facts",
-        composition: "callable",
-        scope: "installation",
-        methods: [
-          {
-            name: "read",
-            kind,
-            target: "installation",
-            input: { type: "object" },
-            output: { type: "object" },
-          },
-        ],
-      }),
-    },
+  const captured: CapturedContribution = {
+    installationId: "plugin_1",
+    digest: "sha256:captured",
+    contribution: "facts",
+    contract: stringifyJSON({
+      reference: "example.facts",
+      composition: "callable",
+      scope: "installation",
+      methods: [
+        {
+          name: "read",
+          kind,
+          target: "installation",
+          input: { type: "object" },
+          output: { type: "object" },
+        },
+      ],
+    }),
   };
   return { request, captured };
 }
@@ -164,7 +159,7 @@ it("publishes SDK-compatible request and accepted-result schemas", async () => {
   );
   await backend.close();
   expect(parseDocument(sample())).toEqual(sample());
-  expect(() => parseDocument({ ...sample(), bindings: [] })).toThrow(
+  expect(() => parseDocument({ ...sample(), contributions: [] })).toThrow(
     InvalidPresentation,
   );
   expect(functionCatalog().map((item) => item.name)).toEqual(
@@ -189,7 +184,7 @@ it("serializes the complete JSON owner through the public parser with no queries
   expect(parsed.mutationStatements).toEqual([]);
   expect(Presentation.read(presentation.json()).snapshot()).toEqual({
     ...sample(),
-    bindings: [],
+    contributions: [],
   });
 });
 
@@ -252,7 +247,7 @@ it("keeps expression-shaped text and arbitrary JSON keys literal", () => {
   expect(parsed.meta.errors).toEqual([]);
   expect(Presentation.read(presentation.json()).snapshot()).toEqual({
     ...value,
-    bindings: [],
+    contributions: [],
   });
 });
 
@@ -388,17 +383,21 @@ it("captures exactly the declared real bindings and prohibits automatic commands
   const presentation = Presentation.accept(document, [query.captured]);
   expect(presentation.operation("load")).toEqual({
     request: query.request,
-    binding: query.captured.binding,
+    binding: {
+      ...query.captured,
+      method: "read",
+      target: { scope: "installation", reference: "plugin_1" },
+    },
   });
   expect(() => Presentation.accept(document)).toThrow("correspond exactly");
   expect(() =>
     Presentation.accept(document, [
       {
         ...query.captured,
-        binding: { ...query.captured.binding, method: "other" },
+        contribution: "other",
       },
     ]),
-  ).toThrow("differs");
+  ).toThrow("correspond exactly");
   const command = binding("command", true);
   expect(() =>
     Presentation.accept({ ...sample(), operations: [command.request] }, [
@@ -406,10 +405,89 @@ it("captures exactly the declared real bindings and prohibits automatic commands
     ]),
   ).toThrow("automatic operations");
   const forged = presentation.snapshot();
-  forged.bindings[0]!.binding.target.reference = "other";
+  forged.operations[0]!.target = { scope: "installation", reference: "other" };
   expect(() => Presentation.read(stringifyJSON(forged))).toThrow(
     "target differs",
   );
+});
+
+it("retains a shared exact contribution once while deriving each operation's route", () => {
+  const query = binding("query");
+  const requests = [query.request, { ...query.request, id: "again" }];
+  const presentation = Presentation.accept(
+    { ...sample(), operations: requests },
+    [query.captured],
+  );
+  expect(presentation.snapshot().contributions).toEqual([query.captured]);
+  expect(
+    presentation.operations().map(({ binding }) => binding.contract),
+  ).toEqual([query.captured.contract, query.captured.contract]);
+  expect(Presentation.read(presentation.json()).snapshot()).toEqual(
+    presentation.snapshot(),
+  );
+  expect(() =>
+    Presentation.accept({ ...sample(), operations: requests }, [
+      query.captured,
+      query.captured,
+    ]),
+  ).toThrow("duplicate contribution");
+  expect(() =>
+    Presentation.read(
+      stringifyJSON({ ...presentation.snapshot(), bindings: [] }),
+    ),
+  ).toThrow("invalid accepted document");
+});
+
+it("admits several operations from one large original contract without multiplying its history budget", () => {
+  const query = binding("query");
+  query.captured.contract = stringifyJSON({
+    ...JSON.parse(query.captured.contract),
+    description: "Original contract evidence ".repeat(2200),
+  });
+  const operations = Array.from({ length: 4 }, (_, index) => ({
+    ...query.request,
+    id: `read${index}`,
+  }));
+  const presentation = Presentation.accept({ ...sample(), operations }, [
+    query.captured,
+  ]);
+  expect(presentation.snapshot().contributions).toHaveLength(1);
+  expect(presentation.snapshot().contributions[0]!.contract).toBe(
+    query.captured.contract,
+  );
+  expect(new TextEncoder().encode(presentation.json()).byteLength).toBeLessThan(
+    limits.valueText,
+  );
+  for (const operation of operations)
+    expect(presentation.operation(operation.id).binding.contract).toBe(
+      query.captured.contract,
+    );
+});
+
+it("requires an explicit followup payload and validates all of its references", () => {
+  const followup = {
+    type: "followup",
+    message: { literal: "Review selection" },
+  };
+  const document = (step: unknown) => ({
+    ...sample(),
+    actions: [{ id: "send", steps: [step] }],
+  });
+  expect(() => Presentation.accept(document(followup))).toThrow(
+    "invalid interactive document",
+  );
+  expect(() =>
+    Presentation.accept(
+      document({ ...followup, payload: { state: "missing" } }),
+    ),
+  ).toThrow("undeclared");
+  expect(
+    Presentation.accept(
+      document({ ...followup, payload: { object: {} } }),
+    ).snapshot().actions,
+  ).toEqual([
+    { id: "send", steps: [{ ...followup, payload: { object: {} } }] },
+  ]);
 });
 
 it("preserves operator grouping, exact equality and pure collection scopes", () => {

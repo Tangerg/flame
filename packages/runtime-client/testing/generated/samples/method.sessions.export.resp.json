@@ -1,14 +1,16 @@
 {
   "format": "json",
   "artifact": {
-      "version": 31,
+    "version": 32,
     "session": {
-        "id": "ses_01",
-        "title": "Refactor the runtime protocol",
-        "provider": "anthropic",
-        "model": "claude-opus-4-8",
-        "reasoningEffort": "high",
-      "workspace": { "path": "/Users/dev/project" },
+      "id": "ses_01",
+      "title": "Refactor the runtime protocol",
+      "provider": "anthropic",
+      "model": "claude-opus-4-8",
+      "reasoningEffort": "high",
+      "workspace": {
+        "path": "/Users/dev/project"
+      },
       "createdAt": "2026-07-07T10:00:00Z",
       "updatedAt": "2026-07-07T10:05:00Z"
     },
@@ -52,7 +54,7 @@
             "command": "ls -la",
             "description": "List the working tree"
           },
-          "result": "total 0\n\u2026[result offloaded; use read_tool_result with BLOB234]\u2026"
+          "result": "total 0\n…[result offloaded; use read_tool_result with BLOB234]…"
         },
         "safetyClass": "exec",
         "approvalDecision": "approve"
@@ -63,7 +65,8 @@
         "id": "BLOB234",
         "itemId": "item_01",
         "body": "total 0\n",
-        "createdAt": "2026-07-07T10:00:05Z"
+        "createdAt": "2026-07-07T10:00:05Z",
+        "modelOnly": false
       }
     ]
   }

@@ -32,7 +32,7 @@ func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (
 		if !ok {
 			return nil, fmt.Errorf("hooks.list: unsupported hook scope %q", h.Scope)
 		}
-		out.Hooks = append(out.Hooks, protocol.HookInfo{
+		info := protocol.HookInfo{
 			Event:         event,
 			Matcher:       h.Matcher,
 			Command:       h.Command,
@@ -41,7 +41,11 @@ func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (
 			Scope:         scope,
 			Source:        h.Source,
 			Active:        resolved.Active,
-		})
+		}
+		if h.Command != "" {
+			info.FailurePolicy = h.FailurePolicy.Effective()
+		}
+		out.Hooks = append(out.Hooks, info)
 	}
 	return out, nil
 }

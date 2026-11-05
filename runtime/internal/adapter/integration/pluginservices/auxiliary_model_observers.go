@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -22,7 +23,7 @@ func (o *CallComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Aux
 		if err != nil {
 			return models.SelectedChat{}, nil, err
 		}
-		return o.capture(ctx, resolved, release, func(request *chat.Request) error { return admitAuxiliary(budget, request) })
+		return o.capture(ctx, resolved, modelchoice.Utility, release, func(request *chat.Request) error { return admitAuxiliary(budget, request) })
 	}
 }
 

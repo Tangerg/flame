@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -208,6 +209,31 @@ func TestCatalogListsSelectableNamesInStableOrderWithoutSchemas(t *testing.T) {
 	var empty *toolset.Discovery
 	if empty.Catalog() != "" {
 		t.Fatal("an empty deferred set rendered a catalog")
+	}
+}
+
+func TestLargeDeferredDirectoryIsBoundedWithoutShrinkingDiscovery(t *testing.T) {
+	var tools []toolcontract.Tool
+	for index := range 1000 {
+		name := fmt.Sprintf("catalog_tool_%04d", index)
+		tools = append(tools, mcpTool{name: name, desc: fmt.Sprintf("unique-capability-%04d", index), server: "catalog", remote: name})
+	}
+	search := newSearch(t, tools)
+	rendered := search.Catalog()
+	if len(rendered) > 4096 || !strings.Contains(rendered, "omitted from this directory") || strings.Contains(rendered, "catalog_tool_0999") {
+		t.Fatalf("large directory was not truthfully bounded: %d bytes", len(rendered))
+	}
+	if len(search.DeferredToolNames()) != len(tools) || !strings.Contains(call(t, search, "unique-capability-0999"), "catalog_tool_0999") ||
+		!strings.Contains(call(t, search, "select:catalog_tool_0999"), "catalog_tool_0999") {
+		t.Fatal("bounded directory removed executable discovery authority")
+	}
+	var selected []string
+	for index := range 21 {
+		selected = append(selected, fmt.Sprintf("catalog_tool_%04d", index))
+	}
+	arguments, _ := json.Marshal(map[string]string{"query": "select:" + strings.Join(selected, ",")})
+	if _, err := callTextTool(t.Context(), search, string(arguments)); err == nil {
+		t.Fatal("exact selection bypassed the discovery promotion bound")
 	}
 }
 

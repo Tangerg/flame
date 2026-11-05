@@ -102,6 +102,12 @@ export const es = {
     "El resultado no está confirmado. Recupera esta orden original sin repetir sus acciones.",
   "command.recover": "Consultar resultado original",
   "command.accepted": "{{action}}: la orden original terminó.",
+  "receipts.title": "Capacidad de evidencia original",
+  "receipts.records": "Registros conservados / límite",
+  "receipts.bytes": "Bytes contabilizados / límite",
+  "receipts.pending": "Resultados sin confirmar",
+  "receipts.help":
+    "Los bytes incluyen espacio reservado para resultados pendientes. Las nuevas operaciones también reservan una plaza para revocar el control y pueden detenerse antes de alcanzar los límites. La evidencia original nunca se elimina para admitir más acciones.",
   "history.title": "Resultados originales",
   "history.help":
     "Consulta las pruebas conservadas. Los resultados ausentes no se infieren del escritorio actual.",

@@ -28,7 +28,7 @@ const (
 	maxRuntimeSearchResultBytes  = 1 << 20
 	// Keys, punctuation, total, and truncated stay below this fixed reserve;
 	// every variable JSON string or row is charged exactly below.
-	runtimeSearchFramingBytes = 128
+	runtimeSearchFramingBytes = 512
 )
 
 // Model search deliberately exposes only composable local primitives. Regex
@@ -38,7 +38,8 @@ const (
 type runtimeGrepRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching. The Tool description states its UTF-8 byte budget."`
 	Path       string `json:"path,omitempty" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root. The Tool description states its UTF-8 byte budget."`
-	MaxResults *int   `json:"max_results,omitzero" jsonschema_description:"Maximum complete matching lines to retain; total still reports the exact match count."`
+	MaxResults *int   `json:"max_results,omitzero" jsonschema_description:"Maximum complete matching lines to retain. By default stop after the file satisfying this budget; total is an observed lower bound until complete=true."`
+	ScanAll    bool   `json:"scan_all,omitzero" jsonschema_description:"Inspect remaining files after the retained result budget is full, within the source budget. Check complete and coverage; skipped or unread files prevent an exact count."`
 }
 
 type runtimeGlobRequest struct {
@@ -73,6 +74,15 @@ type runtimeSearchResponse struct {
 	Matches   []runtimeSearchResult `json:"matches"`
 	Total     int                   `json:"total"`
 	Truncated bool                  `json:"truncated"`
+	Complete  bool                  `json:"complete"`
+	Coverage  runtimeSearchCoverage `json:"coverage"`
+}
+
+type runtimeSearchCoverage struct {
+	ScannedFiles   int   `json:"scanned_files"`
+	SkippedFiles   int   `json:"skipped_files"`
+	RemainingFiles int   `json:"remaining_files"`
+	SourceBytes    int64 `json:"source_bytes"`
 }
 
 type runtimeSearchResult struct {
@@ -85,6 +95,7 @@ type runtimePathSearchResponse struct {
 	Paths     []string `json:"paths"`
 	Total     int      `json:"total"`
 	Truncated bool     `json:"truncated"`
+	Complete  bool     `json:"complete"`
 }
 
 type concurrentSearchTool struct{ toolcontract.Tool }
@@ -120,7 +131,7 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 		toolcontract.FuncConfig{
 			Name: string(builtincontract.Grep),
 			Description: "Search the finite, ignore-aware workspace text corpus with a Go/RE2 line regular expression. " +
-				"Use glob to choose files and read to inspect surrounding lines." + runtimeSearchBudgetDescription(maxRuntimeSearchPatternBytes),
+				"Use glob to choose files and read to inspect surrounding lines. Coverage reports excluded and unread files; total is exact only when complete=true. Search normally stops when enough matching lines have been found. Set scan_all=true only when an exhaustive count is useful." + runtimeSearchBudgetDescription(maxRuntimeSearchPatternBytes),
 		},
 		func(ctx context.Context, request runtimeGrepRequest) (runtimeSearchResponse, error) {
 			return runtimeGrep(ctx, root, request)
@@ -160,7 +171,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 		return runtimePathSearchResponse{}, fmt.Errorf("toolset: glob workspace: %w", err)
 	}
 
-	response := runtimePathSearchResponse{Paths: []string{}}
+	response := runtimePathSearchResponse{Paths: []string{}, Complete: true}
 	material := runtimeSearchFramingBytes
 	retain := true
 	for _, entry := range entries {
@@ -207,14 +218,17 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	}
 	limit := lo.FromPtrOr(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
-		Path: path, Pattern: pattern, Limit: limit,
+		Path: path, Pattern: pattern, Limit: limit, ScanAll: request.ScanAll,
 	})
 	if err != nil {
 		return runtimeSearchResponse{}, fmt.Errorf("toolset: grep workspace: %w", err)
 	}
 	response := runtimeSearchResponse{
-		Matches: make([]runtimeSearchResult, 0, len(result.Matches)),
-		Total:   result.Total,
+		Matches:  make([]runtimeSearchResult, 0, len(result.Matches)),
+		Total:    result.Total,
+		Complete: result.Coverage.Complete(),
+		Coverage: runtimeSearchCoverage{ScannedFiles: result.Coverage.ScannedFiles, SkippedFiles: result.Coverage.SkippedFiles,
+			RemainingFiles: result.Coverage.RemainingFiles, SourceBytes: result.Coverage.SourceBytes},
 	}
 	material := runtimeSearchFramingBytes
 	for _, match := range result.Matches {
@@ -231,7 +245,7 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 		response.Matches = append(response.Matches, row)
 		material += len(encoded) + 1
 	}
-	response.Truncated = response.Total > len(response.Matches)
+	response.Truncated = !response.Complete || response.Total > len(response.Matches)
 	return response, nil
 }
 

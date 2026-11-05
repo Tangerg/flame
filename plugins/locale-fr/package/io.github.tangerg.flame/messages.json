@@ -293,7 +293,7 @@
   "approvals.mode.balanced": "Équilibré",
   "approvals.mode.auto": "Auto",
   "approvals.rules": "Règles mémorisées",
-  "approvals.rules.sub": "Décisions d'outils qui évitent l'approbation.",
+  "approvals.rules.sub": "Autorisations enregistrées. Un refus applicable bloque aussi l’approbation automatique.",
   "approvals.rules.empty": "Aucune règle",
   "approvals.rules.emptySub": "Approuvez ou refusez en cochant « ne plus demander » pour en ajouter une.",
   "approvals.scope.session": "Session",

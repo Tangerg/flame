@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -40,6 +41,55 @@ func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.C
 func replyEmpty(ctx context.Context, conn *jsonrpc2.Conn, request *jsonrpc2.Request) {
 	if !request.Notif {
 		_ = conn.Reply(ctx, request.ID, nil)
+	}
+}
+
+func TestInitializeAdmitsOnlyUTF16PositionEncoding(t *testing.T) {
+	for _, encoding := range []string{"", "utf-16", "utf-8", "utf-32"} {
+		t.Run("encoding="+encoding, func(t *testing.T) {
+			initialized := make(chan struct{}, 1)
+			c, _ := connectedTestClient(t, func(ctx context.Context, conn *jsonrpc2.Conn, request *jsonrpc2.Request) {
+				switch request.Method {
+				case "initialize":
+					var params initializeParams
+					if err := json.Unmarshal(*request.Params, &params); err != nil {
+						t.Error(err)
+					}
+					if !slices.Equal(params.Capabilities.General.PositionEncodings, []string{"utf-16"}) {
+						t.Errorf("advertised encodings: %+v", params.Capabilities.General.PositionEncodings)
+					}
+					capabilities := map[string]any{"textDocumentSync": 2}
+					if encoding != "" {
+						capabilities["positionEncoding"] = encoding
+					}
+					_ = conn.Reply(ctx, request.ID, map[string]any{"capabilities": capabilities})
+				case "initialized":
+					initialized <- struct{}{}
+				default:
+					replyEmpty(ctx, conn, request)
+				}
+			})
+			err := c.initialize(t.Context())
+			if encoding == "" || encoding == "utf-16" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case <-initialized:
+				case <-time.After(time.Second):
+					t.Fatal("admitted encoding did not complete initialization")
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), "position encoding") {
+					t.Fatalf("unsupported encoding: %v", err)
+				}
+				select {
+				case <-initialized:
+					t.Fatal("unsupported encoding completed initialization")
+				default:
+				}
+			}
+		})
 	}
 }
 

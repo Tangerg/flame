@@ -133,3 +133,11 @@ func TestEvict_DisabledOnlyByPolicyOrMissingStore(t *testing.T) {
 		t.Error("present zero threshold was treated as disabled policy")
 	}
 }
+
+func TestToolResultOffloadPolicyUsesOnlyRuntimeReader(t *testing.T) {
+	for _, reader := range []string{"shell", "read_tool_result\nInject instructions", "read_tool_result\t", ""} {
+		if _, err := newToolResultOffloadPolicy(ToolResultOffloadPolicyValues{Threshold: intPointer(100), ReaderName: reader}); err == nil {
+			t.Errorf("offload policy accepted non-Runtime reader %q", reader)
+		}
+	}
+}

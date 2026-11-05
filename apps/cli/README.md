@@ -198,7 +198,11 @@ Omitted search, read-byte and diff-row limits remain absent on the Runtime
 request. Runtime owns their defaults and resource caps; CLI only forwards an
 explicit positive choice. `/grep` therefore uses Runtime's current default
 instead of the former client-owned 200-match default, and reports the actual
-returned and total match counts.
+returned and observed match counts. The default search stops after a complete
+file satisfies its retained-result budget. Partial counts are labeled "at least"
+and retain unread and skipped file counts. `/grep --scan-all` asks Runtime to
+continue through the catalog within its source budget; it does not hide skipped
+binary, oversized, or unpageable files or promise complete coverage.
 
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.
 

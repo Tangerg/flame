@@ -24,7 +24,8 @@ const (
 // model needs the conversation's gist, not a second lossless journal.
 //
 // Every call is bounded as a whole and gives each message an equal allocation,
-// capped by maintenanceMessageBytes. There is intentionally no uncapped mode.
+// capped by maintenanceMessageBytes. Compaction uses RenderCompactionTranscript
+// and bounded successive requests instead of this intentionally lossy projection.
 func RenderTranscript(msgs []chat.Message) string {
 	if len(msgs) == 0 {
 		return ""
@@ -39,6 +40,31 @@ func RenderTranscript(msgs []chat.Message) string {
 		transcript.WriteByte('\n')
 	}
 	return capText(transcript.String(), maintenanceTranscriptBytes)
+}
+
+// RenderCompactionTranscript preserves all model-visible text before a summary.
+// The compactor owns bounded dispatch and splits this projection without dropping
+// bytes. Media is explicitly marked, as in other text-only auxiliary requests;
+// it is not reconstructed or silently treated as text.
+func RenderCompactionTranscript(msgs []chat.Message) string {
+	var transcript strings.Builder
+	for _, message := range msgs {
+		fmt.Fprintf(&transcript, "[%s] ", message.Role)
+		if message.Role == chat.RoleTool {
+			for _, part := range message.Parts {
+				if result := part.ToolResult; result != nil {
+					fmt.Fprintf(&transcript, "[result id=%q name=%q error=%t] %s\n", result.ID, result.Name, result.IsError, renderToolOutput(result.Output))
+				}
+			}
+		} else {
+			for _, value := range transcriptValues(message) {
+				transcript.WriteString(value)
+				transcript.WriteByte('\n')
+			}
+		}
+		transcript.WriteByte('\n')
+	}
+	return transcript.String()
 }
 
 func renderTranscriptMessage(msg chat.Message, budget int) string {
@@ -154,7 +180,7 @@ func renderTranscriptParts(prefix string, values []string, budget int) string {
 // HeadTail reduces s to a head (¾) + tail (¼) preview when it exceeds limit,
 // including the elision marker inside that exact byte limit. Cuts snap to rune
 // boundaries so a multibyte rune is never split. Shared by transient model
-// rendering and the compaction ladder's stored trim.
+// rendering. It never rewrites the canonical conversation used for compaction.
 func HeadTail(s string, limit int, marker func(elided int) string) string {
 	if limit <= 0 || len(s) <= limit {
 		return s

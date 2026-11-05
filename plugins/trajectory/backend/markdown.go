@@ -10,7 +10,11 @@ import (
 // renderSessionMarkdown produces a human-readable transcript of a session — a
 // header plus each canonical item rendered by type. It is not re-importable
 // (use format=json for that).
-func renderSessionMarkdown(session protocol.ArtifactSession, items []protocol.ArtifactItem) string {
+func renderSessionMarkdown(session protocol.ArtifactSession, items []protocol.ArtifactItem, toolResults []protocol.ArtifactToolResult) (string, error) {
+	modelText, err := modelTextByItem(items, toolResults)
+	if err != nil {
+		return "", err
+	}
 	var b strings.Builder
 	title := session.Title
 	if title == "" {
@@ -24,39 +28,49 @@ func renderSessionMarkdown(session protocol.ArtifactSession, items []protocol.Ar
 		fmt.Fprintf(&b, "- model: `%s`\n", session.Model)
 	}
 	b.WriteString("\n")
+	if err := renderSessionItems(&b, items, modelText); err != nil {
+		return "", err
+	}
+	return strings.TrimRight(b.String(), "\n") + "\n", nil
+}
 
+func renderSessionItems(b *strings.Builder, items []protocol.ArtifactItem, modelText map[string]protocol.ArtifactToolResult) error {
 	for _, item := range items {
 		switch item.Type {
 		case protocol.ItemTypeUserMessage:
-			fmt.Fprintf(&b, "## User\n\n%s\n\n", contentText(item))
+			fmt.Fprintf(b, "## User\n\n%s\n\n", contentText(item))
 		case protocol.ItemTypeAgentMessage:
-			fmt.Fprintf(&b, "## Assistant\n\n%s\n\n", contentText(item))
+			fmt.Fprintf(b, "## Assistant\n\n%s\n\n", contentText(item))
 		case protocol.ItemTypeReasoning:
 			if !item.Redacted && item.Text != "" {
-				fmt.Fprintf(&b, "> _(reasoning)_ %s\n\n", item.Text)
+				fmt.Fprintf(b, "> _(reasoning)_ %s\n\n", item.Text)
 			}
 		case protocol.ItemTypeToolCall:
-			if item.Tool != nil {
-				fmt.Fprintf(&b, "→ **tool** `%s`\n\n", item.Tool.Name)
+			if err := renderToolMarkdown(b, item); err != nil {
+				return fmt.Errorf("trajectory: render tool item %q: %w", item.ID, err)
+			}
+			if evidence, present := modelText[item.ID]; present {
+				b.WriteString("### Model-visible text evidence\n\n")
+				writeMarkdownCode(b, "text", evidence.Body)
 			}
 		case protocol.ItemTypeQuestion:
 			if item.Question != nil {
 				b.WriteString("## Question\n\n")
 				for _, field := range item.Question.Fields {
-					fmt.Fprintf(&b, "- %s\n", field.Prompt)
+					fmt.Fprintf(b, "- %s\n", field.Prompt)
 				}
 				b.WriteString("\n")
 			}
 		case protocol.ItemTypeCompaction:
 			fmt.Fprintf(
-				&b,
+				b,
 				"## Context compacted\n\n- dropped messages: %d\n\n%s\n\n",
 				item.DroppedMessages,
 				item.Summary,
 			)
 		}
 	}
-	return strings.TrimRight(b.String(), "\n") + "\n"
+	return nil
 }
 
 // contentText returns the text of an item (image blocks render as "[image]").

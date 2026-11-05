@@ -218,7 +218,7 @@ function displayLibrary(
     Math: (view) => <MathView {...view} t={t} />,
     Timer: (view) => <TimerView {...view} t={t} />,
     Flashcard: (view) => <FlashcardView {...view} t={t} />,
-    YouTube: YouTubeView,
+    YouTube: (view) => <YouTubeView {...view} t={t} />,
     Map: (view) => <MapView {...view} t={t} />,
     HtmlView: ({ props }) => <SandboxView {...props} />,
     Svg: SvgView,

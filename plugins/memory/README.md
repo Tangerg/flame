@@ -19,6 +19,14 @@ proposal only when that exact revision was observed. Records omitted by the inpu
 budget or revised during model work survive. Restart reads the same durable
 predecessors; no second generation store or compatibility reader is introduced.
 
+Extraction and curation accept only complete flat Markdown fact lists (`-`, `*`,
+`+`, or numbered bullets), or their explicit empty-result sentinel. Headings,
+preambles, fenced responses, nested lists, and trailing commentary reject the
+entire proposal before publication. A malformed extraction creates no ledger
+entry; a malformed curation preserves its pending ledger and watermark for a
+later independently admitted maintenance activity. Deduplication does not make
+partially valid model output authoritative.
+
 Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
 or explicitly reactivating a record advances that revision; derived embeddings
 and unchanged edits do not. Update, review and deletion require the caller's
@@ -67,6 +75,13 @@ an error. The Tool's configured collaborator-resolution failure is explicit
 before dispatch rather than being treated as an absent model role. The same rule
 applies to human search. Callback references travel only in invocation metadata,
 never in search or maintenance business input or durable routing/receipt records.
+
+Keyword fallback separates Latin words from unspaced Chinese/Japanese text and
+uses overlapping two-character terms for the latter. Corpus document frequency
+weights distinctive terms before the existing reciprocal-rank fusion with vector
+results. A Chinese question no longer has to appear verbatim in a memory item to
+match. This remains a bounded lexical fallback, not a second semantic model or a
+guarantee that a positively ranked item answers the question.
 
 Text embedding now uses the public SDK `flame.model/embed-texts.v2` callback.
 Workspace and optional vector-space identity use `plugin.ToolContext`; callback

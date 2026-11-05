@@ -3,7 +3,6 @@ package execution
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -50,7 +49,7 @@ task is ambiguous, ask one focused question rather than guess.`
 // Run executes in a disposable copy.
 //
 // The AGENTS.md cascade is the one human-authored instruction surface.
-// Memory remains best-effort enrichment. Current Goal and Plan are authoritative
+// Pinned memory is an explicit instruction source. Current Goal and Plan are authoritative
 // Session state: read failures fail construction instead of silently
 // retaining or deleting an old snapshot. An existing Agent document is likewise
 // authoritative authored input: invalid or individually unprojectable material
@@ -72,17 +71,15 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	if project := strings.TrimSpace(workspaceCWD); project != "" {
 		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeProject, filepath.Clean(project))
 		if err != nil {
-			slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsInputScopeProject, "error", err)
-		} else {
-			pinned = appendPinned(pinned, items)
+			return corechat.Message{}, fmt.Errorf("execution: load project pinned memory: %w", err)
 		}
+		pinned = append(pinned, items...)
 	}
 	userItems, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeUser, "")
 	if err != nil {
-		slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsInputScopeUser, "error", err)
-	} else {
-		pinned = appendPinned(pinned, userItems)
+		return corechat.Message{}, fmt.Errorf("execution: load user pinned memory: %w", err)
 	}
+	pinned = append(pinned, userItems...)
 	newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
 
 	// AGENTS.md cascade. Missing/empty sources contribute nothing; an existing
@@ -170,14 +167,4 @@ func (w *WorkingContextComposer) currentSessionPlan(
 		return corechat.Message{}, false, err
 	}
 	return message, true, nil
-}
-
-// appendPinned appends the pinned items of src to dst.
-func appendPinned(dst, src []MemoryPromptItem) []MemoryPromptItem {
-	for _, item := range src {
-		if item.Pinned {
-			dst = append(dst, item)
-		}
-	}
-	return dst
 }

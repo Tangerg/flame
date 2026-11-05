@@ -57,7 +57,10 @@ retain only bounded permission, sandbox and other failure categories.
 3. Open a time-limited control lease. Only a captured human invocation can open,
    close, stop or answer permissions. A second open cannot replace a live lease.
 4. The model reads `computer_context`, including the original engine instructions
-   and argument schemas, before using `computer_js` or `computer_reset`.
+   and argument schemas, before first using `computer_js` or `computer_reset`.
+   Reuse the complete original context while session, worker and surface identities
+   remain unchanged. Read it again when an identity changes or the original context
+   is no longer available; a summary cannot replace the original constraints.
 5. Answer actual application/site/form/URL permission requests in the console.
    Only persistence scopes offered by that request are available. Closing or
    expiring the session cancels outstanding requests.
@@ -300,6 +303,15 @@ the current lease. Only an exact current-session close or current-operation stop
 can consume that reserve; stale targets and model callers cannot. Reaching a
 limit refuses other new admission while retained receipts remain queryable.
 Unknown command evidence is never discarded to make room.
+
+The console displays retained records, pending outcomes and accounted bytes
+against those original limits. Pending outcomes include their reserved maximum
+result space; settled outcomes account for their exact retained bytes. Admission
+and the read-only display use the same database query in `Receipts`, without a
+second usage ledger or a retention job. The reserved revocation capacity and each
+new operation's result reservation can refuse work before the displayed global
+limit is reached. Capacity visibility does not imply that archiving or deleting
+original identities is safe. No automatic archival subsystem is introduced.
 
 `PLUGIN_DATA/engine-ownership.json` is a durable process ownership marker,
 created before spawning the external engine. On POSIX the engine owns a distinct

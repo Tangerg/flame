@@ -44,7 +44,7 @@ func TestLoad_TagsGlobalAndProjectScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global-ctx"}]}`)
-	writeHooks(t, cwd, `{"hooks":[{"event":"PreToolUse","matcher":"shell","command":"true"}]}`)
+	writeHooks(t, cwd, `{"hooks":[{"event":"PreToolUse","matcher":"shell","command":"true","failurePolicy":"required"}]}`)
 
 	hooks, err := readTestHooks(context.Background(), cwd, home)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestLoad_TagsGlobalAndProjectScope(t *testing.T) {
 	if hooks[0].Scope != hook.ScopeGlobal || hooks[0].Inject != "global-ctx" {
 		t.Errorf("hook[0] = %+v, want global SessionStart", hooks[0])
 	}
-	if hooks[1].Scope != hook.ScopeProject || hooks[1].Event != hook.PreToolUse {
+	if hooks[1].Scope != hook.ScopeProject || hooks[1].Event != hook.PreToolUse || hooks[1].FailurePolicy != hook.FailureRequired {
 		t.Errorf("hook[1] = %+v, want project PreToolUse", hooks[1])
 	}
 	if hooks[1].Source == "" {
@@ -101,6 +101,7 @@ func TestLoadRejectsMissingAndNullConfigurationMaterial(t *testing.T) {
 		`{"hooks":[null]}`,
 		`{"hooks":[{"event":"PreToolUse","command":"check","matcher":null}]}`,
 		`{"hooks":[{"event":"PreToolUse","command":"check","timeoutMillis":null}]}`,
+		`{"hooks":[{"event":"PreToolUse","command":"check","failurePolicy":null}]}`,
 		`{"hooks":[{"event":"SessionStart","command":null,"inject":"context"}]}`,
 	} {
 		t.Run(body, func(t *testing.T) {
@@ -130,6 +131,8 @@ func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 		{name: "ambiguous action", body: `{"hooks":[{"event":"Stop","command":"notify","inject":"context"}]}`},
 		{name: "negative timeout", body: `{"hooks":[{"event":"Stop","command":"notify","timeoutMillis":-1}]}`},
 		{name: "timeout on inject", body: `{"hooks":[{"event":"SessionStart","inject":"context","timeoutMillis":100}]}`},
+		{name: "unknown failure policy", body: `{"hooks":[{"event":"PreToolUse","command":"check","failurePolicy":"ignore"}]}`},
+		{name: "required observer", body: `{"hooks":[{"event":"Stop","command":"notify","failurePolicy":"required"}]}`},
 		{name: "matcher on non-tool event", body: `{"hooks":[{"event":"Stop","command":"notify","matcher":"shell"}]}`},
 		{name: "malformed matcher", body: `{"hooks":[{"event":"PreToolUse","command":"check","matcher":"["}]}`},
 	}

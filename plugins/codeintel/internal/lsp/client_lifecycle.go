@@ -120,6 +120,7 @@ func (c *client) initialize(ctx context.Context) error {
 	var res struct {
 		Capabilities struct {
 			TextDocumentSync jsontext.Value `json:"textDocumentSync"`
+			PositionEncoding string         `json:"positionEncoding"`
 		} `json:"capabilities"`
 	}
 	params := initializeParams{
@@ -130,6 +131,9 @@ func (c *client) initialize(ctx context.Context) error {
 	}
 	if err := c.conn.Call(ctx, "initialize", params, &res); err != nil {
 		return fmt.Errorf("lsp: initialize %s: %w", c.spec.Name, err)
+	}
+	if encoding := res.Capabilities.PositionEncoding; encoding != "" && encoding != positionEncodingUTF16 {
+		return fmt.Errorf("lsp: server position encoding %q is unsupported; require %s", encoding, positionEncodingUTF16)
 	}
 	policy, err := negotiateDocumentSync(res.Capabilities.TextDocumentSync)
 	if err != nil {

@@ -47,7 +47,7 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 	for _, result := range portable.ToolResults {
 		toolResults = append(toolResults, protocol.ArtifactToolResult{
 			ID: result.Blob.ID.String(), ItemID: result.ItemID,
-			Body: result.Blob.Body, CreatedAt: result.Blob.CreatedAt,
+			Body: result.Blob.Body, ModelOnly: result.ModelOnly, CreatedAt: result.Blob.CreatedAt,
 		})
 	}
 	var source *extension.ContributionSource

@@ -29,6 +29,7 @@ const WIRE_RESULT_SHAPE: Readonly<Record<string, CapturedToolResult["resultShape
   glob: "search",
   grep: "search",
   shell: "command",
+  read_shell_output: "command",
 };
 
 function capturedContext(
@@ -36,6 +37,7 @@ function capturedContext(
   result: string,
   range?: CapturedToolResult["range"],
   locale = "en",
+  outputPage?: CapturedToolResult["outputPage"],
 ): ComponentContext {
   return Object.freeze({
     component: Object.freeze({
@@ -61,6 +63,7 @@ function capturedContext(
       status: "ok" as const,
       result,
       range: range && Object.freeze(range),
+      outputPage: outputPage && Object.freeze({ ...outputPage }),
     }),
     get runtime(): never {
       throw new Error("Captured results must not request live data");
@@ -86,6 +89,49 @@ function capturedContext(
     },
   });
 }
+
+it("keeps incomplete search coverage visible while locally filtering recorded hits", () => {
+  const result = JSON.stringify({
+    hits: [{ path: "src/a.go", lineNumber: 1, snippet: "found" }],
+    total: 2,
+    complete: false,
+    truncated: true,
+    coverage: { scannedFiles: 1, skippedFiles: 3, remainingFiles: 4, sourceBytes: 100 },
+  });
+  testClient.render(<RecordedResult context={capturedContext("grep", result)} />);
+  const notice = "Partial search: at least 2 matches · 4 files unread · 3 files skipped";
+  expect(screen.getByText(notice)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter result" }), {
+    target: { value: "absent" },
+  });
+  expect(screen.getByText(notice)).toBeTruthy();
+  expect(screen.getByText("No matching rows. Close find to see the whole result.")).toBeTruthy();
+});
+
+it.each(["shell", "read_shell_output"])(
+  "retains the original command and failed recording boundary for %s",
+  (name) => {
+    testClient.render(
+      <RecordedResult
+        context={capturedContext(name, "first diagnostic\n", undefined, "en", {
+          shellId: "bg_original",
+          offset: 0,
+          nextOffset: 17,
+          hasMore: true,
+          dropped: true,
+          status: "finished (killed)",
+        })}
+      />,
+    );
+    const meta = screen.getByText(/Byte range \[0, 17\)/);
+    expect(meta.textContent).toContain("Shell bg_original");
+    expect(meta.textContent).toContain("finished (killed)");
+    expect(meta.textContent).toContain("More pages");
+    expect(meta.textContent).toContain("Output recording failed; retained bytes are incomplete.");
+    expect(screen.getByText("first diagnostic")).toBeTruthy();
+  },
+);
 
 it.each([
   { name: "codeintel_lsp", id: "lsp", result: "src/main.go:3:1" },

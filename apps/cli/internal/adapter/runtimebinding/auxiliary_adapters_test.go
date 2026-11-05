@@ -195,11 +195,11 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 	workspace := filepath.Join(projectRoot, "nested")
 	hooks := &hookBindingStub{t: t, workspace: workspace, projectRoot: projectRoot, result: &protocol.HooksListResult{
 		ProjectRoot: projectRoot, ProjectTrusted: false,
-		Hooks: []protocol.HookInfo{{Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: protocol.HookScopeProject, Source: filepath.Join(workspace, ".flame", "hooks.json")}},
+		Hooks: []protocol.HookInfo{{Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "check", FailurePolicy: "required", Scope: protocol.HookScopeProject, Source: filepath.Join(workspace, ".flame", "hooks.json")}},
 	}}
 	hookAdapter := &Hooks{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
 	catalog, err := hookAdapter.Catalog(t.Context(), workspace)
-	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Active {
+	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Active || catalog.Hooks[0].FailurePolicy != "required" {
 		t.Fatalf("Catalog = (%+v, %v)", catalog, err)
 	}
 	hooks.result.Hooks[0].Command = "mutated"

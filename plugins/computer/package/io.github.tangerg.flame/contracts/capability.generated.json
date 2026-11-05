@@ -533,7 +533,7 @@
       "name": "flame.computer/read.v1",
       "kind": "query",
       "target": "installation",
-      "description": "Read the actual Runtime host and current computer-control session. This does not start an engine or authorize computer access.",
+      "description": "Read the actual Runtime host, current computer-control session and original receipt capacity including reserved outcome bytes. This does not start an engine or authorize computer access.",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
@@ -570,6 +570,44 @@
               "hostname",
               "platform",
               "arch"
+            ],
+            "type": "object"
+          },
+          "receipts": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxBytes": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxRecords": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pending": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "records": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "records",
+              "bytes",
+              "pending",
+              "maxRecords",
+              "maxBytes"
             ],
             "type": "object"
           },
@@ -692,7 +730,8 @@
         },
         "required": [
           "host",
-          "configured"
+          "configured",
+          "receipts"
         ],
         "type": "object"
       }
@@ -1003,6 +1042,44 @@
             ],
             "type": "object"
           },
+          "receipts": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxBytes": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxRecords": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pending": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "records": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "records",
+              "bytes",
+              "pending",
+              "maxRecords",
+              "maxBytes"
+            ],
+            "type": "object"
+          },
           "session": {
             "additionalProperties": false,
             "properties": {
@@ -1122,7 +1199,8 @@
         },
         "required": [
           "host",
-          "configured"
+          "configured",
+          "receipts"
         ],
         "type": "object"
       }

@@ -20,7 +20,33 @@ import (
 
 var errFormattedTooLarge = errors.New("code intelligence: formatted output exceeds document capacity")
 
-func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.Transformation, error) {
+// formatter captures the installation's explicit workspace grants. They do not
+// inherit hook trust or authorize descendants as separate workspace roots.
+type formatter struct{ prettierWorkspaces map[string]os.FileInfo }
+
+func newFormatter(workspaces []string) (formatter, error) {
+	result := formatter{prettierWorkspaces: make(map[string]os.FileInfo, len(workspaces))}
+	for _, workspace := range workspaces {
+		if !filepath.IsAbs(workspace) {
+			return formatter{}, errors.New("code intelligence: prettier workspace must be an absolute path")
+		}
+		canonical, err := filepath.EvalSymlinks(workspace)
+		if err != nil {
+			return formatter{}, fmt.Errorf("code intelligence: resolve admitted prettier workspace: %w", err)
+		}
+		info, err := os.Stat(canonical)
+		if err != nil {
+			return formatter{}, err
+		}
+		if !info.IsDir() {
+			return formatter{}, errors.New("code intelligence: prettier workspace must be a directory")
+		}
+		result.prettierWorkspaces[canonical] = info
+	}
+	return result, nil
+}
+
+func (f formatter) formatDocument(ctx context.Context, source codeintel.Document) (codeintel.Transformation, error) {
 	if err := source.Validate(); err != nil {
 		return codeintel.Transformation{}, err
 	}
@@ -41,6 +67,24 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 			formatted = append(formatted, '\n')
 		}
 	case ".js", ".jsx", ".ts", ".tsx", ".css", ".scss", ".html", ".md", ".yaml", ".yml":
+		if len(f.prettierWorkspaces) == 0 {
+			return result, nil
+		}
+		workspace, resolveErr := filepath.EvalSymlinks(source.Workspace)
+		if resolveErr != nil {
+			return result, resolveErr
+		}
+		admitted, allowed := f.prettierWorkspaces[workspace]
+		if !allowed {
+			return result, nil
+		}
+		current, inspectErr := os.Stat(workspace)
+		if inspectErr != nil {
+			return result, inspectErr
+		}
+		if !os.SameFile(admitted, current) {
+			return result, errors.New("code intelligence: admitted prettier workspace was replaced; reconfigure its grant")
+		}
 		prettier, lookupErr := exec.LookPath("prettier")
 		if errors.Is(lookupErr, exec.ErrNotFound) {
 			return result, nil
@@ -48,7 +92,7 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 		if lookupErr != nil {
 			return result, lookupErr
 		}
-		formatted, err = runFormatter(ctx, input, prettier, "--no-config", "--no-editorconfig", "--stdin-filepath", filepath.Base(source.Path))
+		formatted, err = runFormatter(ctx, input, workspace, prettier, "--stdin-filepath", filepath.Join(workspace, source.Path))
 	default:
 		return result, nil
 	}
@@ -59,11 +103,12 @@ func formatDocument(ctx context.Context, source codeintel.Document) (codeintel.T
 	return result, result.Validate(source)
 }
 
-func runFormatter(ctx context.Context, input []byte, name string, args ...string) ([]byte, error) {
+func runFormatter(ctx context.Context, input []byte, directory, name string, args ...string) ([]byte, error) {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = directory
 	stdout := capture.NewWriter(int(codeintel.MaxDocumentBytes))
 	stderr := capture.NewWriter(codeintel.MaxSummaryBytes)
 	cmd.Stdin = bytes.NewReader(input)

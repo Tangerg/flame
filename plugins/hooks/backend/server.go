@@ -7,7 +7,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
@@ -80,14 +79,14 @@ func evaluateEvent(ctx context.Context, db *sql.DB, method string, command plugi
 	}
 	advice := hookprovider.Advice{Diagnostics: []hookprovider.Diagnostic{}}
 	executor := &eventCommands{db: db, eventID: command.ID, reconcileOnly: !receipt.NewlyAdmitted()}
-	rules := command.Input.Rules
+	var commands commandRunner = executor
 	if command.Input.DeclarativeOnly {
-		rules = slices.DeleteFunc(slices.Clone(rules), func(rule hook.Hook) bool { return rule.Command != "" })
+		commands = nil
 	}
-	evaluator := newPolicyEvaluator(executor, func(_ context.Context, source string, err error) {
+	evaluator := newPolicyEvaluator(commands, func(_ context.Context, source string, err error) {
 		advice.Diagnostics = append(advice.Diagnostics, hookprovider.Diagnostic{Source: source, Message: err.Error()})
 	})
-	decision := evaluator.Run(ctx, rules, command.Input.Input)
+	decision := evaluator.Run(ctx, command.Input.Rules, command.Input.Input)
 	if executor.uncertain != nil {
 		return hookprovider.Advice{}, executor.uncertain
 	}

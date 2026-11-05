@@ -112,8 +112,8 @@ func TestWorkspaceEscapingMutationStillPromptsUnderYolo(t *testing.T) {
 		FileMutation: fileMutationScope(escaping, domaintool.Arguments{}, workspace),
 	}).Plan()
 
-	if plan.Action != approval.GatePrompt ||
-		plan.PromptCause != approval.PromptCauseOutsideWorkspace {
+	if plan.Action() != approval.GatePrompt ||
+		plan.PromptCause() != approval.PromptCauseOutsideWorkspace {
 		t.Fatalf("plan = %+v, want a prompt naming the workspace escape", plan)
 	}
 }

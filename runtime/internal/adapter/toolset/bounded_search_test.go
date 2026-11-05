@@ -22,9 +22,11 @@ type runtimeSearchMatch struct {
 }
 
 type runtimeGrepResponse struct {
-	Matches   []runtimeSearchMatch `json:"matches"`
-	Total     int                  `json:"total"`
-	Truncated bool                 `json:"truncated"`
+	Matches   []runtimeSearchMatch  `json:"matches"`
+	Total     int                   `json:"total"`
+	Truncated bool                  `json:"truncated"`
+	Complete  bool                  `json:"complete"`
+	Coverage  runtimeSearchCoverage `json:"coverage"`
 }
 
 type runtimeGlobResponse struct {
@@ -195,8 +197,29 @@ func TestRuntimeGrepExcludesUnpageableTextFileAsAWhole(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &response); err != nil {
 		t.Fatalf("decode grep response: %v", err)
 	}
-	if len(response.Matches) != 0 || response.Total != 0 || response.Truncated {
+	if len(response.Matches) != 0 || response.Total != 0 || !response.Truncated || response.Complete || response.Coverage.SkippedFiles != 1 {
 		t.Fatalf("grep response = %+v, want pathological file excluded as a whole", response)
+	}
+}
+
+func TestRuntimeGrepExposesPartialCoverageAndExplicitFullScan(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"a.txt", "b.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("needle\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, request := range []runtimeGrepRequest{
+		{Pattern: "needle", MaxResults: new(1)},
+		{Pattern: "needle", MaxResults: new(1), ScanAll: true},
+	} {
+		response, err := runtimeGrep(t.Context(), root, request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.Complete != request.ScanAll || response.Coverage.ScannedFiles+response.Coverage.RemainingFiles != 2 || !response.Truncated {
+			t.Fatalf("scan_all=%v lost coverage: %+v", request.ScanAll, response)
+		}
 	}
 }
 

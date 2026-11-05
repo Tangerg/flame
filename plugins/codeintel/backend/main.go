@@ -24,12 +24,22 @@ func run(ctx context.Context) (err error) {
 			return errors.New("code intelligence: LSP_SERVERS must be an array")
 		}
 	}
+	var prettierWorkspaces []string
+	if raw, configured := os.LookupEnv("PRETTIER_WORKSPACES"); configured {
+		if err := json.Unmarshal([]byte(raw), &prettierWorkspaces); err != nil || prettierWorkspaces == nil {
+			return errors.New("code intelligence: PRETTIER_WORKSPACES must be an array of absolute workspace paths")
+		}
+	}
+	formatting, err := newFormatter(prettierWorkspaces)
+	if err != nil {
+		return err
+	}
 	analysis, err := analyzer.New(ctx, servers)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, analysis.Close()) }()
-	server, err := newServer(analysis)
+	server, err := newServer(analysis, formatting)
 	if err != nil {
 		return err
 	}

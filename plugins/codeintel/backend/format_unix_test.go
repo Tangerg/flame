@@ -24,7 +24,7 @@ func TestRunFormatterRetainsDeadlineAndProcessFailure(t *testing.T) {
 	ctx, cancel := context.WithTimeoutCause(t.Context(), 100*time.Millisecond, cause)
 	defer cancel()
 	started := time.Now()
-	_, err := runFormatter(ctx, nil, "/bin/sh", "-c", "sleep 3 & wait")
+	_, err := runFormatter(ctx, nil, "", "/bin/sh", "-c", "sleep 3 & wait")
 	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, cause) {
 		t.Errorf("formatter error = %v, want deadline and owner cause", err)
 	}
@@ -37,7 +37,7 @@ func TestRunFormatterRetainsDeadlineAndProcessFailure(t *testing.T) {
 }
 
 func TestRunFormatterRetainsCapacityAndExitFailure(t *testing.T) {
-	output, err := runFormatter(t.Context(), nil, "/bin/sh", "-c", fmt.Sprintf(
+	output, err := runFormatter(t.Context(), nil, "", "/bin/sh", "-c", fmt.Sprintf(
 		"/usr/bin/head -c %d /dev/zero; exit 17", codeintel.MaxDocumentBytes+1))
 	if output != nil {
 		t.Errorf("formatter admitted %d bytes after an output refusal", len(output))
@@ -67,7 +67,11 @@ func TestFormatPathRefusesImplicitWorkingDirectoryFormatter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := formatDocument(t.Context(), source); !errors.Is(err, exec.ErrDot) {
+	formatting, err := newFormatter([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := formatting.formatDocument(t.Context(), source); !errors.Is(err, exec.ErrDot) {
 		t.Fatalf("formatter lookup error = %v, want refusal of implicit executable", err)
 	}
 	if got, err := os.ReadFile(path); err != nil || !bytes.Equal(got, input) {
@@ -78,7 +82,7 @@ func TestFormatPathRefusesImplicitWorkingDirectoryFormatter(t *testing.T) {
 func TestRunFormatterRetiresDescendantsAfterSuccessfulRootExit(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "child.pid")
 	input := []byte("complete\n")
-	output, err := runFormatter(t.Context(), input, "/bin/sh", "-c",
+	output, err := runFormatter(t.Context(), input, "", "/bin/sh", "-c",
 		"sleep 10 >/dev/null 2>&1 & printf '%s' \"$!\" >\"$1\"; cat", "formatter", pidFile)
 	if err != nil || !bytes.Equal(output, input) {
 		t.Fatalf("formatter result = %q, %v; want complete source", output, err)
@@ -116,20 +120,71 @@ func TestRunFormatterRetiresDescendantsAfterSuccessfulRootExit(t *testing.T) {
 	}
 }
 
-func TestPrettierDoesNotLoadWorkspaceConfiguration(t *testing.T) {
+func TestPrettierRequiresAnExactExplicitWorkspaceGrant(t *testing.T) {
 	directory := t.TempDir()
+	nested := filepath.Join(directory, "nested")
+	if err := os.Mkdir(nested, 0700); err != nil {
+		t.Fatal(err)
+	}
 	toolDirectory := t.TempDir()
-	probe := "#!/bin/sh\n[ \"$1\" = --no-config ] && [ \"$2\" = --no-editorconfig ] && [ \"$3\" = --stdin-filepath ] && [ \"$4\" = file.ts ] || exit 1\n/bin/cat\n"
+	probe := "#!/bin/sh\n[ \"$PWD\" = \"$EXPECTED_WORKSPACE\" ] && [ \"$#\" = 2 ] && [ \"$1\" = --stdin-filepath ] && [ \"$2\" = \"$EXPECTED_WORKSPACE/file.ts\" ] || exit 1\n/bin/cat\n"
 	if err := os.WriteFile(filepath.Join(toolDirectory, "prettier"), []byte(probe), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", toolDirectory)
+	t.Setenv("EXPECTED_WORKSPACE", directory)
 	document, err := codeintel.NewDocument(directory, "file.ts", "const value=1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	formatted, err := formatDocument(t.Context(), document)
+	if formatted, err := (formatter{}).formatDocument(t.Context(), document); err != nil || formatted.Content != nil {
+		t.Fatalf("unadmitted formatting: %+v, %v", formatted, err)
+	}
+	formatting, err := newFormatter([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	formatted, err := formatting.formatDocument(t.Context(), document)
 	if err != nil || formatted.Content == nil || *formatted.Content != document.Content {
 		t.Fatalf("format: %+v, %v", formatted, err)
+	}
+	child, err := codeintel.NewDocument(nested, "file.ts", "const value=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if formatted, err := formatting.formatDocument(t.Context(), child); err != nil || formatted.Content != nil {
+		t.Fatalf("nested workspace inherited grant: %+v, %v", formatted, err)
+	}
+}
+
+func TestFormatterGrantCanonicalizesSymlinksAndRejectsWorkspaceReplacement(t *testing.T) {
+	parent := t.TempDir()
+	directory := filepath.Join(parent, "workspace")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(parent, "alias")
+	if err := os.Symlink(directory, alias); err != nil {
+		t.Fatal(err)
+	}
+	formatting, err := newFormatter([]string{alias})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := formatting.prettierWorkspaces[directory]; !ok {
+		t.Fatal("symlink grant did not capture the physical workspace")
+	}
+	if err := os.Rename(directory, filepath.Join(parent, "old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	document, err := codeintel.NewDocument(directory, "file.ts", "const value=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := formatting.formatDocument(t.Context(), document); err == nil || !strings.Contains(err.Error(), "workspace was replaced") {
+		t.Fatalf("replaced workspace: %v", err)
 	}
 }

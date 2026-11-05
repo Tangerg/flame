@@ -26,6 +26,10 @@ export const zhTW: Record<string, string> = {
   "table.pagination": "{{table}}分頁",
   "chart.data": "{{chart}}的資料",
   "chart.empty": "沒有可繪製的數值。",
+  "resource.load": "載入外部內容：{{resource}}",
+  "resource.notice": "載入會將此位址傳送給外部服務。來源變更後需要重新授權。",
+  "map.external":
+    "載入地圖圖磚會將檢視的位置傳送給 OpenStreetMap。不載入圖磚也可以使用位置表。",
   "image.unavailable": "此圖片無法顯示。",
   "code.label": "程式碼",
   "markdown.table": "Markdown 表格",

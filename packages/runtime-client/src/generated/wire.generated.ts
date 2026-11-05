@@ -12,7 +12,7 @@
 export const PROTOCOL_VERSION = "2026-10-30.2";
 
 // The only Session Artifact version this runtime imports or exports.
-export const SESSION_ARTIFACT_VERSION = 31;
+export const SESSION_ARTIFACT_VERSION = 32;
 
 export const GOAL_WORKFLOW = "flame.goal-workflow.v1";
 // The maximum length of one opaque pagination cursor on the public wire.
@@ -384,6 +384,7 @@ export interface ArtifactToolResult {
   createdAt: string;
   id: string;
   itemId: string;
+  modelOnly: boolean;
 }
 
 export interface CallPluginRequest {
@@ -436,9 +437,19 @@ export interface ClosePluginBrowserRealmRequest {
   realm: PluginBrowserRealm;
 }
 
+export interface CommandOutputPage {
+  dropped: boolean;
+  hasMore: boolean;
+  nextOffset: number;
+  offset: number;
+  shellId?: string;
+  status?: string;
+}
+
 export interface CommandResult {
   exitCode?: number;
   output: string;
+  page?: CommandOutputPage;
 }
 
 export type ComponentPlacement = "workspaceChangesAction" | "sharedClientEffect" | "export" | "workspaceView" | "settingsPane" | "clientEffect" | "messageAction" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
@@ -546,6 +557,8 @@ export interface ExportTrajectoryRequest {
 export interface ExportTrajectoryResponse {
   trajectory: SessionTrajectory;
 }
+
+export type FailurePolicy = "advisory" | "required";
 
 export interface FeatureCapability {
   clientOptIn: boolean;
@@ -686,6 +699,13 @@ export interface GoalUsage {
   steps: number;
 }
 
+export interface GrepCoverage {
+  remainingFiles: number;
+  scannedFiles: number;
+  skippedFiles: number;
+  sourceBytes: number;
+}
+
 export interface GrepMatch {
   lineNumber: number;
   path: string;
@@ -696,10 +716,13 @@ export interface GrepRequest {
   limit?: number;
   path?: string;
   query: string;
+  scanAll?: boolean;
   workspace: WorkspaceRef;
 }
 
 export interface GrepResult {
+  complete: boolean;
+  coverage: GrepCoverage;
   matches: GrepMatch[];
   total: number;
 }
@@ -712,6 +735,7 @@ export interface HookInfo {
   active: boolean;
   command?: string;
   event: HookEvent;
+  failurePolicy?: FailurePolicy;
   inject?: string;
   matcher?: string;
   scope: HookScope;
@@ -1969,6 +1993,13 @@ export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | 
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
+export interface SearchCoverage {
+  remainingFiles: number;
+  scannedFiles: number;
+  skippedFiles: number;
+  sourceBytes: number;
+}
+
 export interface SearchHit {
   lineNumber?: number;
   path: string;
@@ -1976,7 +2007,11 @@ export interface SearchHit {
 }
 
 export interface SearchResult {
+  complete?: boolean;
+  coverage?: SearchCoverage;
   hits: SearchHit[];
+  total?: number;
+  truncated?: boolean;
 }
 
 export interface SelectPluginProviderRequest {
@@ -2473,6 +2508,7 @@ export const WIRE_ENUMS = {
   DiffMode: ["worktree", "base"],
   DiffRowType: ["hunk", "context", "added", "deleted"],
   ExportFormat: ["md", "json"],
+  FailurePolicy: ["advisory", "required"],
   FeedbackRating: ["positive", "negative"],
   FileEntryType: ["file", "dir", "symlink"],
   FileStatus: ["added", "modified", "deleted", "renamed", "untracked"],

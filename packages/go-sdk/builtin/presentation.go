@@ -40,7 +40,7 @@ var presentations = map[Name]presentation{
 	LoadSkill:         {category: CategoryTask},
 	ProposeSkill:      {category: CategoryTask},
 	Read:              {category: CategoryRead},
-	ReadShellOutput:   {category: CategoryShell},
+	ReadShellOutput:   {category: CategoryShell, shape: extension.ResultShapeCommand},
 	ReadSkillResource: {category: CategoryRead},
 	ReadToolResult:    {category: CategoryRead},
 	ReportGoalOutcome: {category: CategoryTask},

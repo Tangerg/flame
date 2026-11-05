@@ -102,6 +102,12 @@ export const en = {
     "The outcome is unconfirmed. Recover this original command; do not repeat its actions.",
   "command.recover": "Check original outcome",
   "command.accepted": "{{action}}: the original command completed.",
+  "receipts.title": "Original evidence capacity",
+  "receipts.records": "Retained records / limit",
+  "receipts.bytes": "Accounted bytes / limit",
+  "receipts.pending": "Unconfirmed outcomes",
+  "receipts.help":
+    "Bytes include reserved space for pending outcomes. New work also reserves a revocation slot and may stop before these totals are full. Original evidence is never deleted to admit more actions.",
   "history.title": "Original outcomes",
   "history.help":
     "Read retained command evidence. Missing results remain unconfirmed and are never reconstructed from the current desktop.",

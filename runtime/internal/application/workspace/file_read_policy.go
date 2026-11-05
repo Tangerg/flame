@@ -3,8 +3,8 @@ package workspace
 // Each limit below keeps one count: zero is the named default, and its
 // constructor admits only a positive count, so no other state is reachable.
 
-// GrepResultLimit is the caller's retained whole-match count. The search still
-// computes its honest Total; this value only bounds the stable prefix returned.
+// GrepResultLimit is the caller's retained whole-match count. The search owner
+// stops at this budget by default; an explicit ScanAll keeps counting files.
 type GrepResultLimit struct{ matches int }
 
 func DefaultGrepResultLimit() GrepResultLimit { return GrepResultLimit{} }

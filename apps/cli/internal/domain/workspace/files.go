@@ -103,6 +103,7 @@ type SearchRequest struct {
 	Query     string
 	Path      string
 	Limit     SearchResultLimit
+	ScanAll   bool
 }
 
 func (s SearchRequest) Validate() error {
@@ -113,8 +114,10 @@ func (s SearchRequest) Validate() error {
 }
 
 type SearchResult struct {
-	Matches []protocol.GrepMatch
-	Total   int
+	Matches  []protocol.GrepMatch
+	Total    int
+	Complete bool
+	Coverage protocol.GrepCoverage
 }
 
 func (s SearchResult) Validate() error {

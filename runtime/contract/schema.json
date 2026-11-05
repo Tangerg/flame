@@ -1286,13 +1286,17 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "modelOnly": {
+          "type": "boolean"
         }
       },
       "required": [
         "body",
         "createdAt",
         "id",
-        "itemId"
+        "itemId",
+        "modelOnly"
       ]
     },
     "CallPluginRequest": {
@@ -1617,6 +1621,35 @@
         "realm"
       ]
     },
+    "CommandOutputPage": {
+      "type": "object",
+      "properties": {
+        "dropped": {
+          "type": "boolean"
+        },
+        "hasMore": {
+          "type": "boolean"
+        },
+        "nextOffset": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "shellId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dropped",
+        "hasMore",
+        "nextOffset",
+        "offset"
+      ]
+    },
     "CommandResult": {
       "type": "object",
       "properties": {
@@ -1625,6 +1658,9 @@
         },
         "output": {
           "type": "string"
+        },
+        "page": {
+          "$ref": "#/$defs/CommandOutputPage"
         }
       },
       "required": [
@@ -2121,6 +2157,13 @@
       },
       "required": [
         "trajectory"
+      ]
+    },
+    "FailurePolicy": {
+      "type": "string",
+      "enum": [
+        "advisory",
+        "required"
       ]
     },
     "FeatureCapability": {
@@ -3018,6 +3061,33 @@
         "steps"
       ]
     },
+    "GrepCoverage": {
+      "type": "object",
+      "properties": {
+        "remainingFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scannedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "remainingFiles",
+        "scannedFiles",
+        "skippedFiles",
+        "sourceBytes"
+      ]
+    },
     "GrepMatch": {
       "type": "object",
       "properties": {
@@ -3053,6 +3123,9 @@
           "type": "string",
           "minLength": 1
         },
+        "scanAll": {
+          "type": "boolean"
+        },
         "workspace": {
           "$ref": "#/$defs/WorkspaceRef"
         }
@@ -3065,6 +3138,12 @@
     "GrepResult": {
       "type": "object",
       "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "coverage": {
+          "$ref": "#/$defs/GrepCoverage"
+        },
         "matches": {
           "type": "array",
           "items": {
@@ -3077,6 +3156,8 @@
         }
       },
       "required": [
+        "complete",
+        "coverage",
         "matches",
         "total"
       ]
@@ -3112,6 +3193,9 @@
         },
         "event": {
           "$ref": "#/$defs/HookEvent"
+        },
+        "failurePolicy": {
+          "$ref": "#/$defs/FailurePolicy"
         },
         "inject": {
           "type": "string"
@@ -3162,7 +3246,10 @@
           "then": {
             "properties": {
               "inject": false
-            }
+            },
+            "required": [
+              "failurePolicy"
+            ]
           }
         },
         {
@@ -3174,8 +3261,32 @@
           "then": {
             "properties": {
               "command": false,
+              "failurePolicy": false,
               "matcher": false,
               "timeoutMillis": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "failurePolicy": {
+                "const": "required"
+              }
+            },
+            "required": [
+              "failurePolicy"
+            ]
+          },
+          "then": {
+            "properties": {
+              "event": {
+                "enum": [
+                  "PreToolUse",
+                  "UserPromptSubmit",
+                  "PreCompact"
+                ]
+              }
             }
           }
         },
@@ -11200,6 +11311,29 @@
         "network"
       ]
     },
+    "SearchCoverage": {
+      "type": "object",
+      "properties": {
+        "remainingFiles": {
+          "type": "integer"
+        },
+        "scannedFiles": {
+          "type": "integer"
+        },
+        "skippedFiles": {
+          "type": "integer"
+        },
+        "sourceBytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "remainingFiles",
+        "scannedFiles",
+        "skippedFiles",
+        "sourceBytes"
+      ]
+    },
     "SearchHit": {
       "type": "object",
       "properties": {
@@ -11220,11 +11354,23 @@
     "SearchResult": {
       "type": "object",
       "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "coverage": {
+          "$ref": "#/$defs/SearchCoverage"
+        },
         "hits": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/SearchHit"
           }
+        },
+        "total": {
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -11470,8 +11616,8 @@
         },
         "version": {
           "type": "integer",
-          "minimum": 31,
-          "maximum": 31
+          "minimum": 32,
+          "maximum": 32
         }
       },
       "required": [

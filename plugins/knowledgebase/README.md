@@ -42,19 +42,22 @@ requiring the embedding role. Import, reindex and delete remain explicit durable
 commands.
 
 The initial corpus admits 32 active documents, each up to 16,384 Unicode code
-points, split into chunks of 1,024 code points. One import uses at most one
-embedding exchange over at most 16 chunks. Search uses one query embedding and a
+points. Paragraphs and fenced blocks are packed into chunks of at most 1,024
+code points; a block larger than that limit is split at the limit. One import uses at most one
+embedding exchange over at most 32 chunks. Search uses one query embedding and a
 bounded scan of the private index. There is no automatic provider retry.
 
 ## Model context
 
-Add `knowledgebase-context` to the ordered `flame.model-context.v2` composition
+Add `knowledgebase-context` to the ordered `flame.model-context.v3` composition
 through `plugins.setComposition`. Enablement alone does not select a composition.
 It retrieves four chunks using the final 4,096 code points of the host-captured
 original `userMessage`. Host-added user-role catalogs cannot replace that input.
-A text-free input or empty corpus contributes nothing.
-The system contribution marks document material as untrusted reference data and
-retains source/document/chunk citations. Authored messages and Session history
+A text-free input or empty corpus contributes nothing. Only `use: interaction`
+performs retrieval; utility and independent model calls contribute no material and
+perform no query embedding. The contribution contains role-free reference data;
+Runtime frames it as untrusted material after the conversation, preserving the
+stable instruction prefix and source/document/chunk citations. Authored messages and Session history
 remain unchanged. Callback/storage failures refuse preparation explicitly.
 
 Every embedding reply carries the actual provider/model/endpoint-derived vector
@@ -62,6 +65,12 @@ space. Index publication captures that identity with its vectors. Search refuses
 `embedding_space_changed` after a role/endpoint change, even when dimensions match.
 Reindex existing documents at their current revisions to rebuild them from the
 original content already owned by the library; reads remain available throughout.
+Snapshots retain their exact `chunkEnds`, so source citations keep the boundaries
+used for indexing. Reindexing is the explicit boundary for changing those chunks.
+Snapshots without `chunkEnds`, or with invalid boundaries, are refused. Development
+upgrades from that older format require a fresh private data directory and reimport;
+the former directory remains separate. A positive cosine score admits a candidate,
+but does not by itself establish that its excerpt answers the question.
 
 ## Durable publication
 

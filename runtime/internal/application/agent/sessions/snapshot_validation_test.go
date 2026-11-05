@@ -32,6 +32,55 @@ func TestSnapshotHydratedItemsJoinBodiesWithoutMutatingSource(t *testing.T) {
 	}
 }
 
+func TestSnapshotModelOnlyOffloadPreservesStructuredResultAndPortableReference(t *testing.T) {
+	snapshot := offloadedSnapshot("preview")
+	result, err := tool.ParseResult([]byte(`{"revision":7,"title":"report"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutateSnapshotItem(&snapshot, func(item *transcript.ItemSnapshot) {
+		call := item.Body.(transcript.ToolCallBody)
+		call.Invocation.Offload.ModelOnly = true
+		call.Invocation.Result = &result
+		item.Body = call
+	})
+	if err := snapshot.ValidateToolResults(); err != nil {
+		t.Fatal(err)
+	}
+	items, err := snapshot.HydratedItems()
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation, _ := testsupport.ToolInvocationOf(items[0])
+	if !invocation.Result.Equal(result) {
+		t.Fatal("model text overwrote the structured transcript result")
+	}
+	portable, err := snapshot.PortableSnapshot()
+	if err != nil || len(portable.ToolResults) != 1 || !portable.ToolResults[0].ModelOnly {
+		t.Fatalf("portable reference lost model-only semantics: %+v, %v", portable.ToolResults, err)
+	}
+	portableInvocation, _ := testsupport.ToolInvocationOf(portable.Items[0])
+	if portableInvocation.Offload != nil {
+		t.Fatal("portable Item duplicates the archive's tool-result binding")
+	}
+	originalInvocation, _ := testsupport.ToolInvocationOf(snapshot.Items[0])
+	if originalInvocation.Offload == nil || !originalInvocation.Offload.ModelOnly {
+		t.Fatal("portable projection changed its source Item")
+	}
+}
+
+func TestPortableSnapshotRejectsCompetingToolResultBindings(t *testing.T) {
+	snapshot := portableSnapshotWithCollections()
+	portable, err := snapshot.PortableSnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	portable.Items = snapshot.Items
+	if _, err := portable.CanonicalSnapshot(); !errors.Is(err, ErrInvalidPortableSnapshot) || !strings.Contains(err.Error(), "duplicates its tool-result binding") {
+		t.Fatalf("competing portable binding = %v", err)
+	}
+}
+
 func TestSnapshotPortableSnapshotOwnsMessages(t *testing.T) {
 	snapshot := portableSnapshotWithMessage()
 

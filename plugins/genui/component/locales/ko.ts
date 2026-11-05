@@ -26,6 +26,11 @@ export const ko: Record<string, string> = {
   "table.pagination": "{{table}} 페이지",
   "chart.data": "{{chart}} 데이터",
   "chart.empty": "표시할 수치가 없습니다.",
+  "resource.load": "외부 콘텐츠 불러오기: {{resource}}",
+  "resource.notice":
+    "불러오면 이 주소가 외부 서비스에 전송됩니다. 출처가 변경되면 다시 허용해야 합니다.",
+  "map.external":
+    "지도 타일을 불러오면 보고 있는 위치가 OpenStreetMap에 전송됩니다. 타일을 불러오지 않아도 위치 표를 사용할 수 있습니다.",
   "image.unavailable": "이 이미지를 표시할 수 없습니다.",
   "code.label": "코드",
   "markdown.table": "Markdown 표",

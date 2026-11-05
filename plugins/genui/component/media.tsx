@@ -33,6 +33,7 @@ import type { DisplayProps } from "../contracts/catalog";
 import { isSafeURL, stateKey } from "../contracts/document";
 import { useGenUIInteraction } from "./interaction";
 import { useLocalValue } from "./state";
+import { ExternalResource } from "./externalResource";
 
 function ImageResource({
   src,
@@ -100,7 +101,15 @@ export function ImageView({
 }: ComponentRenderProps<DisplayProps["Image"]> & { t: Translate }) {
   if (!isSafeURL(props.src, "image"))
     throw new Error("genui: invalid image source");
-  return <ImageResource key={props.src} {...props} t={t} />;
+  return (
+    <ExternalResource
+      source={props.src}
+      label={props.alt || props.caption || t("image.view")}
+      t={t}
+    >
+      <ImageResource key={props.src} {...props} t={t} />
+    </ExternalResource>
+  );
 }
 
 function codeLabels(t: Translate) {
@@ -148,7 +157,14 @@ const markdownComponents: Components = {
   img: function MarkdownImage({ src, alt }) {
     const t = useMarkdownT();
     return typeof src === "string" && src ? (
-      <ImageResource key={src} src={src} alt={alt ?? ""} inline t={t} />
+      <ExternalResource
+        source={src}
+        label={alt || t("image.view")}
+        inline
+        t={t}
+      >
+        <ImageResource key={src} src={src} alt={alt ?? ""} inline t={t} />
+      </ExternalResource>
     ) : (
       <ImageNotice label={alt} detail={t("image.unavailable")} />
     );
@@ -327,24 +343,28 @@ export function FlashcardView({
 
 export function YouTubeView({
   props,
-}: ComponentRenderProps<DisplayProps["YouTube"]>) {
+  t,
+}: ComponentRenderProps<DisplayProps["YouTube"]> & { t: Translate }) {
   const start = props.start ? `?start=${props.start}` : "";
+  const source = `https://www.youtube-nocookie.com/embed/${props.videoId}${start}`;
   return (
     <figure style={{ margin: 0, minWidth: 0 }}>
-      <iframe
-        title={props.title}
-        src={`https://www.youtube-nocookie.com/embed/${props.videoId}${start}`}
-        loading="lazy"
-        allow="fullscreen; picture-in-picture"
-        allowFullScreen
-        referrerPolicy="strict-origin-when-cross-origin"
-        style={{
-          display: "block",
-          width: "100%",
-          aspectRatio: "16 / 9",
-          border: 0,
-        }}
-      />
+      <ExternalResource source={source} label={props.title} t={t}>
+        <iframe
+          title={props.title}
+          src={source}
+          loading="lazy"
+          allow="fullscreen; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="no-referrer"
+          style={{
+            display: "block",
+            width: "100%",
+            aspectRatio: "16 / 9",
+            border: 0,
+          }}
+        />
+      </ExternalResource>
       <figcaption>
         <a
           href={`https://www.youtube.com/watch?v=${props.videoId}`}

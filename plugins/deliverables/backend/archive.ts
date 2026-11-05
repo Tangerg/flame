@@ -78,15 +78,6 @@ function conflict(): never {
   );
 }
 
-export function toolResult(reply: Reply) {
-  const value = "value" in reply ? { value: reply.value } : reply;
-  return {
-    content: [{ type: "text" as const, text: canonicalJSON(value) }],
-    structuredContent: value,
-    ...("failure" in reply ? { isError: true } : {}),
-  };
-}
-
 export class Archive {
   readonly #db: DatabaseSync;
   #closed = false;

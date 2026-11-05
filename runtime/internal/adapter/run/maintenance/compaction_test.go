@@ -4,11 +4,9 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"context"
-	"encoding/json/jsontext"
 	"errors"
 	"iter"
 	"math"
-	"strings"
 	"testing"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -196,51 +194,6 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 			t.Fatalf("token trigger overflowed to %d", trigger)
 		}
 	})
-}
-
-func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
-	bigArgs := strings.Repeat("a", 5_000)
-	bigResult := strings.Repeat("b", 5_000)
-	msgs := []chat.Message{
-		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: "c1", Name: "write", Arguments: bigArgs})),
-		chat.NewToolMessage(chat.ToolResult{ID: "c1", Name: "write", Output: toolcontract.NewTextOutput(bigResult)}),
-		chat.NewToolMessage(chat.ToolResult{ID: "c2", Name: "read", Output: toolcontract.NewTextOutput(bigResult)}),
-		chat.NewAssistantMessage(chat.NewTextPart("x")),
-	}
-	trimmed, changed := trimForBudgetBefore(msgs, 2)
-	if !changed {
-		t.Fatal("expected the old oversized parts to be trimmed")
-	}
-	gotArgs := trimmed[0].Parts[0].ToolCall.Arguments
-	if len(gotArgs) >= len(bigArgs) || !strings.Contains(gotArgs, "_trimmed") {
-		t.Fatalf("args not trimmed: %q", gotArgs)
-	}
-	if !jsontext.Value(gotArgs).IsValid() {
-		t.Fatalf("trimmed args must stay valid JSON, got %q", gotArgs)
-	}
-	if got := textToolOutput(t, trimmed[1].Parts[0].ToolResult.Output); len(got) >= len(bigResult) || !strings.Contains(got, "trimmed on compaction") {
-		t.Fatalf("old result not previewed: len %d", len(got))
-	}
-	if got := textToolOutput(t, trimmed[2].Parts[0].ToolResult.Output); got != bigResult {
-		t.Fatal("recent result must be left full")
-	}
-	if msgs[0].Parts[0].ToolCall.Arguments != bigArgs || textToolOutput(t, msgs[1].Parts[0].ToolResult.Output) != bigResult {
-		t.Fatal("trimForBudget mutated its input's shared parts")
-	}
-	if _, changed := trimForBudgetBefore(trimmed, 2); changed {
-		t.Fatal("already bounded tool results reported another compaction trim")
-	}
-}
-
-func TestTrimForBudgetPreservesTextAtBodyLimit(t *testing.T) {
-	body := strings.Repeat(`"`, ladderResultCap)
-	message := chat.NewToolMessage(chat.ToolResult{
-		ID: "quoted", Name: "shell", Output: toolcontract.NewTextOutput(body),
-	})
-	trimmed, changed := trimForBudgetBefore([]chat.Message{message}, 1)
-	if changed || textToolOutput(t, trimmed[0].Parts[0].ToolResult.Output) != body {
-		t.Fatal("JSON escaping or envelope bytes triggered a text-body trim")
-	}
 }
 
 type textStubModel struct {

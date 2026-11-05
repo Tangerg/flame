@@ -77,8 +77,14 @@ func commandResultContract() resultProjectionContract {
 // commandExecutionResult is the shell tool's own result shape. The shell
 // captures one interleaved stream, so there is no separate stderr to carry.
 type commandExecutionResult struct {
-	Stdout   content.Content `json:"stdout"`
-	ExitCode *int            `json:"exit_code"`
+	Stdout     content.Content `json:"stdout"`
+	ExitCode   *int            `json:"exit_code"`
+	ShellID    string          `json:"shell_id"`
+	Status     string          `json:"status"`
+	Offset     *int64          `json:"offset"`
+	NextOffset int64           `json:"next_offset"`
+	HasMore    bool            `json:"has_more_output"`
+	Dropped    bool            `json:"output_dropped"`
 }
 
 func presentCommandResult(result tool.Result) (tool.Result, string) {
@@ -98,6 +104,9 @@ func presentCommandResult(result tool.Result) (tool.Result, string) {
 		output = string(encoded)
 	}
 	presentation := builtincontract.CommandResult{Output: output, ExitCode: raw.ExitCode}
+	if raw.Offset != nil {
+		presentation.Page = &builtincontract.CommandOutputPage{ShellID: raw.ShellID, Status: raw.Status, Offset: *raw.Offset, NextOffset: raw.NextOffset, HasMore: raw.HasMore, Dropped: raw.Dropped}
+	}
 	return projectResult(result, presentation), output
 }
 
@@ -106,10 +115,14 @@ func searchResultContract() resultProjectionContract {
 }
 
 type localSearchExecutionResult struct {
-	Matches []localSearchMatch `json:"matches"`
-	Files   []string           `json:"files"`
-	Paths   []string           `json:"paths"`
-	Counts  []localSearchCount `json:"counts"`
+	Matches   []localSearchMatch     `json:"matches"`
+	Files     []string               `json:"files"`
+	Paths     []string               `json:"paths"`
+	Counts    []localSearchCount     `json:"counts"`
+	Total     *int                   `json:"total"`
+	Complete  *bool                  `json:"complete"`
+	Truncated bool                   `json:"truncated"`
+	Coverage  *runtimeSearchCoverage `json:"coverage"`
 }
 
 type localSearchMatch struct {
@@ -144,7 +157,14 @@ func presentSearchResult(result tool.Result) tool.Result {
 	for _, count := range raw.Counts {
 		hits = append(hits, builtincontract.SearchHit{Path: count.Path, Snippet: strconv.Itoa(count.Count) + " matches"})
 	}
-	return projectResult(result, builtincontract.SearchResult{Hits: hits})
+	presentation := builtincontract.SearchResult{Hits: hits, Total: raw.Total, Complete: raw.Complete, Truncated: raw.Truncated}
+	if raw.Coverage != nil {
+		presentation.Coverage = &builtincontract.SearchCoverage{
+			ScannedFiles: raw.Coverage.ScannedFiles, SkippedFiles: raw.Coverage.SkippedFiles,
+			RemainingFiles: raw.Coverage.RemainingFiles, SourceBytes: raw.Coverage.SourceBytes,
+		}
+	}
+	return projectResult(result, presentation)
 }
 
 func patchResultContract() resultProjectionContract {

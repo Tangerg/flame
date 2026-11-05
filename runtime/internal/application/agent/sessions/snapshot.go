@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -12,27 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
-
-// ExportSession reserves the session's single-writer slot and derives its
-// portable archive and presentation from one coherent canonical state. Active
-// and parked runs are rejected because their executor state is process-local
-// and therefore cannot be represented by a portable session artifact.
-func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (PortableSnapshot, error) {
-	admission, err := c.ClaimIdleSession(ctx, sessionID)
-	if err != nil {
-		return PortableSnapshot{}, err
-	}
-	defer admission.Release()
-	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
-	if err != nil {
-		return PortableSnapshot{}, err
-	}
-	portable, err := snapshot.PortableSnapshot()
-	if err != nil {
-		return PortableSnapshot{}, fmt.Errorf("sessions: prepare portable snapshot: %w", err)
-	}
-	return portable, nil
-}
 
 // Validate checks the complete Session and the snapshot's referential integrity
 // before the coordinator hands it out.

@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/scope/models/openai"
 	"github.com/Tangerg/scope/models/openrouter"
 	"github.com/Tangerg/scope/models/perplexity"
+	anthropicprotocol "github.com/Tangerg/scope/models/protocol/anthropic"
 	"github.com/Tangerg/scope/models/together"
 	"github.com/Tangerg/scope/models/xai"
 	"github.com/Tangerg/scope/models/xiaomi"
@@ -147,6 +148,22 @@ var providers = mustProviderCatalog(
 )
 
 func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
+	if Provider(spec.connection.Provider) == providerAnthropic {
+		// Native Messages requires an explicit cache opt-in. A generic compatible
+		// endpoint makes no promise to implement this vendor extension. Use Scope's
+		// public request extension so request overrides retain their normal meaning.
+		defaults := chat.Options{Model: opts.Model}
+		if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, map[string]any{
+			"cache_control": map[string]any{"type": "ephemeral"},
+		}); err != nil {
+			return nil, err
+		}
+		var err error
+		opts, err = defaults.Resolve(opts)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return anthropic.NewMessages(ctx, anthropic.MessagesConfig{
 		APIKey:         spec.sdkAPIKey(),
 		DefaultOptions: opts,

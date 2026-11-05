@@ -54,6 +54,7 @@ export type WireTypeName =
   | "ClientCapabilities"
   | "ClientInfo"
   | "ClosePluginBrowserRealmRequest"
+  | "CommandOutputPage"
   | "CommandResult"
   | "ComponentPlacement"
   | "ComponentScope"
@@ -80,6 +81,7 @@ export type WireTypeName =
   | "ExportSessionResponse"
   | "ExportTrajectoryRequest"
   | "ExportTrajectoryResponse"
+  | "FailurePolicy"
   | "FeatureCapability"
   | "FeaturePreference"
   | "FeedbackRating"
@@ -105,6 +107,7 @@ export type WireTypeName =
   | "GoalRequest"
   | "GoalStatus"
   | "GoalUsage"
+  | "GrepCoverage"
   | "GrepMatch"
   | "GrepRequest"
   | "GrepResult"
@@ -351,6 +354,7 @@ export type WireTypeName =
   | "RuntimeSubscribeResponse"
   | "RuntimeTopic"
   | "SafetyClass"
+  | "SearchCoverage"
   | "SearchHit"
   | "SearchResult"
   | "SelectPluginProviderRequest"
@@ -870,7 +874,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     createdAt: text(),
     id: allOf([text(), pattern("^[A-Z2-7]{2,64}$")]),
     itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["body", "createdAt", "id", "itemId"]),
+    modelOnly: flag(),
+  }, ["body", "createdAt", "id", "itemId", "modelOnly"]),
   CallPluginRequest: allOf([
     object({
       contract: allOf([text(), minLength(1)]),
@@ -972,9 +977,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ClosePluginBrowserRealmRequest: object({
     realm: ref(() => CHECKS.PluginBrowserRealm),
   }, ["realm"]),
+  CommandOutputPage: object({
+    dropped: flag(),
+    hasMore: flag(),
+    nextOffset: integer(),
+    offset: integer(),
+    shellId: text(),
+    status: text(),
+  }, ["dropped", "hasMore", "nextOffset", "offset"]),
   CommandResult: object({
     exitCode: integer(),
     output: text(),
+    page: ref(() => CHECKS.CommandOutputPage),
   }, ["output"]),
   ComponentPlacement: enumOf(["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"]),
   ComponentScope: enumOf(["installation", "workspace", "session", "client", "file", "toolResult"]),
@@ -1115,6 +1129,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ExportTrajectoryResponse: object({
     trajectory: ref(() => CHECKS.SessionTrajectory),
   }, ["trajectory"]),
+  FailurePolicy: enumOf(["advisory", "required"]),
   FeatureCapability: object({
     clientOptIn: flag(),
     enabled: flag(),
@@ -1401,6 +1416,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: allOf([integer(), minimum("0")]),
     steps: allOf([integer(), minimum("0")]),
   }, ["runs", "steps"]),
+  GrepCoverage: object({
+    remainingFiles: allOf([integer(), minimum("0")]),
+    scannedFiles: allOf([integer(), minimum("0")]),
+    skippedFiles: allOf([integer(), minimum("0")]),
+    sourceBytes: allOf([integer(), minimum("0")]),
+  }, ["remainingFiles", "scannedFiles", "skippedFiles", "sourceBytes"]),
   GrepMatch: object({
     lineNumber: allOf([integer(), minimum("1")]),
     path: allOf([text(), minLength(1)]),
@@ -1410,12 +1431,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     limit: allOf([integer(), minimum("1")]),
     path: text(),
     query: allOf([text(), minLength(1)]),
+    scanAll: flag(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["query", "workspace"]),
   GrepResult: object({
+    complete: flag(),
+    coverage: ref(() => CHECKS.GrepCoverage),
     matches: array(ref(() => CHECKS.GrepMatch)),
     total: allOf([integer(), minimum("0")]),
-  }, ["matches", "total"]),
+  }, ["complete", "coverage", "matches", "total"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"]),
   HookInfo: allOf([
@@ -1423,6 +1447,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       active: flag(),
       command: text(),
       event: ref(() => CHECKS.HookEvent),
+      failurePolicy: ref(() => CHECKS.FailurePolicy),
       inject: text(),
       matcher: text(),
       scope: ref(() => CHECKS.HookScope),
@@ -1434,14 +1459,23 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({}, ["command"]),
       fields({
         inject: absent(),
-      }, []),
+      }, ["failurePolicy"]),
     ),
     ifThen(
       fields({}, ["inject"]),
       fields({
         command: absent(),
+        failurePolicy: absent(),
         matcher: absent(),
         timeoutMillis: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        failurePolicy: literal("required"),
+      }, ["failurePolicy"]),
+      fields({
+        event: enumOf(["PreToolUse", "UserPromptSubmit", "PreCompact"]),
       }, []),
     ),
     ifThen(
@@ -4044,13 +4078,23 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeSubscribeResponse: object({}, []),
   RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
+  SearchCoverage: object({
+    remainingFiles: integer(),
+    scannedFiles: integer(),
+    skippedFiles: integer(),
+    sourceBytes: integer(),
+  }, ["remainingFiles", "scannedFiles", "skippedFiles", "sourceBytes"]),
   SearchHit: object({
     lineNumber: integer(),
     path: text(),
     snippet: text(),
   }, ["path"]),
   SearchResult: object({
+    complete: flag(),
+    coverage: ref(() => CHECKS.SearchCoverage),
     hits: array(ref(() => CHECKS.SearchHit)),
+    total: integer(),
+    truncated: flag(),
   }, ["hits"]),
   SelectPluginProviderRequest: object({
     contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
@@ -4102,7 +4146,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum("31"), maximum("31")]),
+    version: allOf([integer(), minimum("32"), maximum("32")]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),

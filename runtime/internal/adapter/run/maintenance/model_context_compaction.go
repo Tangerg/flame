@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/scope/core/chat"
@@ -180,15 +181,20 @@ func (c *Compactor) materializeModelContextPlan(
 	err error,
 ) {
 	switch plan.action {
-	case trimCompaction:
-		return plan.trimmed, "", 0, 0, nil
 	case summarizeCompaction:
+		references, hasReferences, err := modeladapter.RetainedToolResultReferences(plan.older)
+		if err != nil {
+			return nil, "", 0, 0, fmt.Errorf("maintenance: retain tool-result references: %w", err)
+		}
 		summary, err := c.summarize(ctx, plan.older)
 		if err != nil {
 			return nil, "", 0, 0, fmt.Errorf("maintenance: summarize model context: %w", err)
 		}
 		replacement = make([]chat.Message, 0, 2+len(plan.recent))
 		replacement = append(replacement, chat.NewSystemMessage(compactionModelPrefix+summary))
+		if hasReferences {
+			replacement = append(replacement, references)
+		}
 		if c.liveState != nil {
 			if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
 				replacement = append(replacement, reminder)

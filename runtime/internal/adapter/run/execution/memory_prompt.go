@@ -19,15 +19,16 @@ func newPinnedMemoryPrompt(items []MemoryPromptItem, maxTokens int) pinnedMemory
 	if len(items) == 0 {
 		return pinnedMemoryPrompt{}
 	}
-	ordered := slices.Clone(items)
-	slices.SortStableFunc(ordered, func(a, b MemoryPromptItem) int {
-		if a.Pinned != b.Pinned {
-			if a.Pinned {
-				return -1
-			}
-			return 1
+	ordered := make([]MemoryPromptItem, 0, len(items))
+	for _, item := range items {
+		if item.Pinned {
+			ordered = append(ordered, item)
 		}
-		return b.UpdatedAt.Compare(a.UpdatedAt)
+	}
+	// Recency belongs to recall ranking, not the persistent instruction prefix.
+	// Editing a note changes that note's bytes without moving every other note.
+	slices.SortFunc(ordered, func(a, b MemoryPromptItem) int {
+		return strings.Compare(a.ID, b.ID)
 	})
 
 	var prompt strings.Builder

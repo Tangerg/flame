@@ -9,7 +9,8 @@
 //     resolution through the durable continuation boundary.
 //   - Rules: persistent, fine-grained "remember this decision" rules. A rule
 //     gates a (tool, subject) pair under a scope (session / project / global),
-//     so the user can approve once and not be re-asked for matching calls. The
+//     so a saved denial survives a mode change and an allowance can skip a
+//     matching prompt. The
 //     subject is the per-tool part that actually matters, so a remembered rule
 //     can stay narrower than allowing every operation of that tool.
 package approval

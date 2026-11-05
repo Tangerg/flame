@@ -163,11 +163,11 @@ func TestFileBrowserGrepReturnsExactTotalBeyondSharedExecutorCountCap(t *testing
 		}
 	}
 
-	got, err := (FileBrowser{}).Grep(t.Context(), root, workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 1})
+	got, err := (FileBrowser{}).Grep(t.Context(), root, workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 1, ScanAll: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Total != 300 || len(got.Matches) != 1 {
+	if got.Total != 300 || len(got.Matches) != 1 || !got.Coverage.Complete() {
 		t.Fatalf("Grep = %d retained / total %d, want 1/300", len(got.Matches), got.Total)
 	}
 }
@@ -182,7 +182,7 @@ func TestFileBrowserGrepBoundsRetainedMatchMaterial(t *testing.T) {
 		}
 	}
 
-	got, err := (FileBrowser{}).Grep(t.Context(), root, workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 9})
+	got, err := (FileBrowser{}).Grep(t.Context(), root, workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 9, ScanAll: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,6 +226,64 @@ func TestFileBrowserGrepSearchesOnlyCompleteAdmittedTextFiles(t *testing.T) {
 	}
 	if got.Total != 1 || len(got.Matches) != 1 || got.Matches[0].Path != "valid.txt" || got.Matches[0].LineNumber != 1 {
 		t.Fatalf("Grep = %+v, want only the complete normalized UTF-8 file", got)
+	}
+	if got.Coverage.Complete() || got.Coverage.ScannedFiles != 1 || got.Coverage.SkippedFiles != 3 || got.Coverage.RemainingFiles != 0 {
+		t.Fatalf("excluded files disappeared from search coverage: %+v", got.Coverage)
+	}
+}
+
+func TestFileBrowserGrepStopsAtWholeFileBoundaryWithHonestCoverage(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"a.txt", "b.txt", "c.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("needle\nneedle\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, scanAll := range []bool{false, true} {
+		got, err := (FileBrowser{}).Grep(t.Context(), root, workspaceapp.GrepPlan{
+			Pattern: regexp.MustCompile("needle"), Limit: 1, ScanAll: scanAll,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantTotal, wantScanned, wantRemaining := 2, 1, 2
+		if scanAll {
+			wantTotal, wantScanned, wantRemaining = 6, 3, 0
+		}
+		if got.Total != wantTotal || len(got.Matches) != 1 || got.Coverage.ScannedFiles != wantScanned || got.Coverage.RemainingFiles != wantRemaining || got.Coverage.Complete() != scanAll {
+			t.Fatalf("scanAll=%v reported false coverage: %+v", scanAll, got)
+		}
+	}
+}
+
+func TestGrepSourceBudgetKeepsVerifiedResultsAndLeavesNextFileUnread(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"first.txt", "next.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("needle\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	search := workspaceGrep{ctx: t.Context(), rootHandle: root,
+		plan: workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10, ScanAll: true}, remainingSource: 10, collectMatches: true}
+	for _, name := range []string{"first.txt", "next.txt"} {
+		file, opened, err := filesystem.OpenFileAt(root, name, workspaceapp.MaxGrepFileBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := search.scanSource(grepSource{path: name, file: file, opened: opened}); err != nil {
+			t.Fatalf("bounded source search discarded verified results: %v", err)
+		}
+		if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+			t.Fatal("source budget exhaustion leaked the opened file")
+		}
+	}
+	if !search.sourceExhausted || search.result.Total != 1 || len(search.result.Matches) != 1 || search.result.Coverage.ScannedFiles != 1 || search.result.Coverage.SourceBytes != 7 {
+		t.Fatalf("source budget overstated its coverage: %+v", search.result)
 	}
 }
 

@@ -20,7 +20,11 @@ const (
 	maxSourceRunes  = 2048
 	MaxQueryRunes   = 4096
 	chunkRunes      = 1024
-	MaxResults      = 8
+	// Adjacent packed chunks always cover more than one full chunk unless the
+	// final chunk is short. Whole paragraphs and fences can therefore require
+	// at most twice the fixed-width count.
+	MaxChunks  = 2 * ((maxContentRunes + chunkRunes - 1) / chunkRunes)
+	MaxResults = 8
 )
 
 var (
@@ -59,18 +63,26 @@ type Header struct {
 }
 
 type Snapshot struct {
-	Content  Content     `json:"content"`
-	Revision int64       `json:"revision"`
-	Space    string      `json:"space"`
-	Vectors  [][]float32 `json:"vectors"`
+	Content   Content     `json:"content"`
+	Revision  int64       `json:"revision"`
+	Space     string      `json:"space"`
+	ChunkEnds []int       `json:"chunkEnds"`
+	Vectors   [][]float32 `json:"vectors"`
 }
 
 type Draft struct {
-	content Content
-	chunks  []string
+	content   Content
+	chunkEnds []int
 }
 
 func NewDraft(content Content) (Draft, error) {
+	if err := validateContent(content); err != nil {
+		return Draft{}, err
+	}
+	return Draft{content: content, chunkEnds: packBlocks([]rune(content.Text))}, nil
+}
+
+func validateContent(content Content) error {
 	for _, field := range []struct {
 		value   string
 		maximum int
@@ -78,20 +90,22 @@ func NewDraft(content Content) (Draft, error) {
 		{content.ID, MaxIDRunes}, {content.Title, maxTitleRunes}, {content.Source, maxSourceRunes}, {content.Text, maxContentRunes},
 	} {
 		if !utf8.ValidString(field.value) || strings.TrimSpace(field.value) == "" || utf8.RuneCountInString(field.value) > field.maximum {
-			return Draft{}, ErrInvalidDocument
+			return ErrInvalidDocument
 		}
 	}
-	text := []rune(content.Text)
-	chunks := make([]string, 0, (len(text)+chunkRunes-1)/chunkRunes)
-	for len(text) > 0 {
-		end := min(chunkRunes, len(text))
-		chunks = append(chunks, string(text[:end]))
-		text = text[end:]
-	}
-	return Draft{content: content, chunks: chunks}, nil
+	return nil
 }
 
-func (d Draft) Texts() []string { return slices.Clone(d.chunks) }
+func (d Draft) Texts() []string {
+	text := []rune(d.content.Text)
+	chunks := make([]string, 0, len(d.chunkEnds))
+	start := 0
+	for _, end := range d.chunkEnds {
+		chunks = append(chunks, string(text[start:end]))
+		start = end
+	}
+	return chunks
+}
 
 func (d Draft) Content() Content { return d.content }
 
@@ -106,7 +120,7 @@ type IndexedDraft struct {
 }
 
 func (d Draft) Index(space string, vectors [][]float32) (IndexedDraft, error) {
-	if space == "" || len(vectors) == 0 || len(vectors) != len(d.chunks) {
+	if space == "" || len(vectors) == 0 || len(vectors) != len(d.chunkEnds) {
 		return IndexedDraft{}, ErrInvalidIndex
 	}
 	for _, vector := range vectors {
@@ -124,10 +138,25 @@ type Document struct {
 }
 
 func Restore(snapshot Snapshot) (Document, error) {
-	draft, err := NewDraft(snapshot.Content)
-	if err != nil {
+	if err := validateContent(snapshot.Content); err != nil {
 		return Document{}, err
 	}
+	// Vectors describe these exact source ranges. Re-running the latest
+	// chunker here could silently attach retained vectors to different text.
+	if len(snapshot.ChunkEnds) == 0 || len(snapshot.ChunkEnds) > MaxChunks {
+		return Document{}, ErrInvalidIndex
+	}
+	length, start := utf8.RuneCountInString(snapshot.Content.Text), 0
+	for _, end := range snapshot.ChunkEnds {
+		if end <= start || end > length || end-start > chunkRunes {
+			return Document{}, ErrInvalidIndex
+		}
+		start = end
+	}
+	if start != length {
+		return Document{}, ErrInvalidIndex
+	}
+	draft := Draft{content: snapshot.Content, chunkEnds: slices.Clone(snapshot.ChunkEnds)}
 	indexed, err := draft.Index(snapshot.Space, snapshot.Vectors)
 	if err != nil {
 		return Document{}, err
@@ -139,7 +168,7 @@ func Restore(snapshot Snapshot) (Document, error) {
 }
 
 func (d Document) Replace(expected int64, indexed IndexedDraft) (Document, error) {
-	if len(indexed.draft.chunks) == 0 {
+	if len(indexed.draft.chunkEnds) == 0 {
 		return Document{}, ErrInvalidDocument
 	}
 	if err := d.CheckReplacement(expected, indexed.draft.content.ID); err != nil {
@@ -175,17 +204,17 @@ func (d Document) PrepareReindex(expected int64) (Draft, error) {
 	if err := d.CheckReplacement(expected, d.draft.content.ID); err != nil {
 		return Draft{}, err
 	}
-	return d.draft, nil
+	return NewDraft(d.draft.content)
 }
 
 func (d Document) Content() Content { return d.draft.content }
 
 func (d Document) Header() Header {
-	return Header{ID: d.draft.content.ID, Title: d.draft.content.Title, Source: d.draft.content.Source, Revision: d.revision, Chunks: len(d.draft.chunks), Space: d.index.space}
+	return Header{ID: d.draft.content.ID, Title: d.draft.content.Title, Source: d.draft.content.Source, Revision: d.revision, Chunks: len(d.draft.chunkEnds), Space: d.index.space}
 }
 
 func (d Document) Snapshot() Snapshot {
-	return Snapshot{Content: d.draft.content, Revision: d.revision, Space: d.index.space, Vectors: cloneVectors(d.index.vectors)}
+	return Snapshot{Content: d.draft.content, Revision: d.revision, Space: d.index.space, ChunkEnds: slices.Clone(d.draft.chunkEnds), Vectors: cloneVectors(d.index.vectors)}
 }
 
 type Match struct {
@@ -203,14 +232,18 @@ func (d Document) Search(space string, query []float32) ([]Match, error) {
 	if queryNorm == 0 || len(query) != len(d.index.vectors[0]) {
 		return nil, ErrInvalidIndex
 	}
-	matches := make([]Match, 0, len(d.draft.chunks))
+	texts := d.draft.Texts()
+	matches := make([]Match, 0, len(texts))
 	for i, vector := range d.index.vectors {
 		var dot float64
 		for j, value := range vector {
 			dot += float64(value) * float64(query[j])
 		}
 		score := dot / (queryNorm * vectorNorm(vector))
-		matches = append(matches, Match{Document: d.Header(), Chunk: i + 1, Text: d.draft.chunks[i], Score: max(-1, min(1, score))})
+		if score <= 0 {
+			continue
+		}
+		matches = append(matches, Match{Document: d.Header(), Chunk: i + 1, Text: texts[i], Score: min(1, score)})
 	}
 	return matches, nil
 }

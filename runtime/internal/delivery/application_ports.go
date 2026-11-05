@@ -37,7 +37,7 @@ type sessionUseCases interface {
 	DeleteSession(ctx context.Context, sessionID string) error
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
 	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
-	ExportSession(ctx context.Context, sessionID string) (sessions.PortableSnapshot, error)
+	ExportSession(ctx context.Context, sessionID string, results sessions.ToolResultExport) (sessions.PortableSnapshot, error)
 	MaterialView(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, sessions.View, error)
 	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error)
 	Rollback(ctx context.Context, spec sessions.RollbackSpec) (sessions.RollbackResult, error)

@@ -26,6 +26,13 @@ const installationId = "12345678-1234-4234-9234-123456789abc";
 const digest = "a".repeat(64);
 const initial: Snapshot = {
   configured: true,
+  receipts: {
+    records: 0,
+    bytes: 0,
+    pending: 0,
+    maxRecords: LIMITS.maxRecords,
+    maxBytes: LIMITS.maxBytes,
+  },
   host: { hostname: "isolated-runtime", platform: "linux", arch: "x64" },
   session: {
     id: "control-1",
@@ -591,6 +598,23 @@ it("opens an explicit bounded lease on the displayed Runtime host only after a h
   const [original] = setup.server.originals.values();
   expect(original!.method).toBe(METHODS.open);
   expect(JSON.parse(original!.input)).toEqual({ leaseSeconds: LIMITS.minLeaseSeconds });
+});
+
+it("displays the original receipt owner's capacity without making room or opening a control lease", async () => {
+  const receipts = {
+    records: 9999,
+    bytes: 500000000,
+    pending: 2,
+    maxRecords: LIMITS.maxRecords,
+    maxBytes: LIMITS.maxBytes,
+  };
+  const setup = rig(fixture({ ...initial, session: undefined, receipts }));
+  setup.mount();
+  expect(await screen.findByText("Original evidence capacity")).toBeTruthy();
+  expect(screen.getByText("9,999 / 10,000")).toBeTruthy();
+  expect(screen.getByText("500,000,000 / 536,870,912")).toBeTruthy();
+  expect(screen.getByText(/Original evidence is never deleted/)).toBeTruthy();
+  expect(setup.server.originals.size).toBe(0);
 });
 
 it("displays original native risks and offers only upstream persistence choices", async () => {

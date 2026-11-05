@@ -720,6 +720,16 @@ func TestBuiltinMaterialConsumesTheProducerContracts(t *testing.T) {
 				t.Fatalf("command projection = %+v", call)
 			}
 		}},
+		{builtin.ReadShellOutput, builtin.CategoryShell, map[string]any{"shell_id": "bg_1"}, builtin.CommandResult{Output: "earlier evidence", Page: &builtin.CommandOutputPage{ShellID: "bg_1", Offset: 0, NextOffset: 16, HasMore: true, Dropped: true, Status: "finished (killed)"}}, func(t *testing.T, call conversation.ToolCall) {
+			if call.Output != "earlier evidence" || call.OutputPage == nil || call.OutputPage.ShellID != "bg_1" || !call.OutputPage.HasMore || !call.OutputPage.Dropped || call.OutputPage.NextOffset != 16 {
+				t.Fatalf("shell continuation projection = %+v", call)
+			}
+			cloned := call.Clone()
+			cloned.OutputPage.ShellID = "changed"
+			if call.OutputPage.ShellID != "bg_1" || cloned.Equal(call) {
+				t.Fatal("shell page projection aliases a mutable snapshot or ignores page changes")
+			}
+		}},
 		{builtin.Read, builtin.CategoryRead, fs.ReadRequest{Path: "main.go"}, fs.ReadResponse{Content: "package main", StartLine: 1, EndLine: 1, TotalLines: 1}, func(t *testing.T, call conversation.ToolCall) {
 			if call.Path != "main.go" || call.Summary != "main.go" || !strings.Contains(call.Output, "package main") {
 				t.Fatalf("read projection = %+v", call)

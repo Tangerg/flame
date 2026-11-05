@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
 	"unicode/utf8"
+
+	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -34,7 +37,11 @@ func renderMarkdown(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Com
 			yield(markdownEvent{}, err)
 			return
 		}
-		body := renderSessionMarkdown(source.Session, source.Items)
+		body, err := renderSessionMarkdown(source.Session, source.Items, source.ToolResults)
+		if err != nil {
+			yield(markdownEvent{}, err)
+			return
+		}
 		result := plugin.IdentifyDocument([]byte(body))
 		if err = result.Validate(); err != nil {
 			yield(markdownEvent{}, err)
@@ -85,11 +92,27 @@ func readSessionSnapshot(ctx context.Context, id plugin.DocumentIdentity, read f
 	if plugin.IdentifyDocument(body) != id {
 		return archive, errors.New("trajectory: original snapshot digest mismatch")
 	}
-	if err := json.Unmarshal(body, &archive, json.RejectUnknownMembers(true)); err != nil {
+	numbers, _ := json.GetOption(framevalue.Numbers(), json.WithUnmarshalers)
+	decoders := json.JoinUnmarshalers(numbers, json.UnmarshalFromFunc(decodeOpaqueNull))
+	if err := json.Unmarshal(body, &archive, json.RejectUnknownMembers(true), json.WithUnmarshalers(decoders)); err != nil {
 		return archive, err
 	}
 	if archive.Version != protocol.SessionArtifactVersion {
 		return archive, fmt.Errorf("trajectory: unsupported archive version %d", archive.Version)
 	}
 	return archive, nil
+}
+
+// A present JSON null result is evidence; nil would instead be omitted by the
+// public invocation codec and incorrectly read as an unrecorded result.
+func decodeOpaqueNull(decoder *jsontext.Decoder, target *any) error {
+	if decoder.PeekKind() != 'n' {
+		return errors.ErrUnsupported
+	}
+	value, err := decoder.ReadValue()
+	if err != nil {
+		return err
+	}
+	*target = value.Clone()
+	return nil
 }

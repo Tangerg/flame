@@ -101,14 +101,8 @@ func (t toolResultMetadata) validate() error {
 		return err
 	}
 	if t.Offload != nil {
-		if err := t.Offload.Validate(); err != nil {
+		if err := t.Offload.ValidateResult(t.Result); err != nil {
 			return err
-		}
-		if t.Result == nil {
-			return errors.New("execution: offloaded Tool metadata has no preview")
-		}
-		if _, text := t.Result.String(); !text {
-			return errors.New("execution: offloaded Tool preview must be text")
 		}
 	}
 	if t.Failure != nil {

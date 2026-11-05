@@ -10,7 +10,6 @@ import {
 } from "@openuidev/lang-core";
 import { pluginMethod } from "@flame/runtime-client";
 import {
-  equalJSON,
   isJSONNumber,
   parseJSON,
   projectNumber,
@@ -123,7 +122,12 @@ const actionSchema = z.strictObject({
         z.strictObject({ type: z.literal("operation"), operation: identifier }),
         z.strictObject({
           type: z.literal("followup"),
-          message: expressionSchema,
+          message: expressionSchema.describe(
+            "The request submitted to the original conversation.",
+          ),
+          payload: expressionSchema.describe(
+            "Only this explicitly selected JSON value is sent with the followup. Use {object:{}} for no fields. Message and encoded payload together must fit 16 KiB.",
+          ),
         }),
         z.strictObject({ type: z.literal("copy"), text: expressionSchema }),
         z.strictObject({ type: z.literal("openUrl"), url: expressionSchema }),
@@ -146,21 +150,17 @@ const operationSchema = z.strictObject({
   auto: z.boolean().optional(),
 });
 export type OperationRequest = z.infer<typeof operationSchema>;
-export type CapturedBinding = {
-  id: string;
-  binding: Omit<CallPluginRequest, "input">;
-};
-const capturedBindingSchema: z.ZodType<CapturedBinding> = z.strictObject({
-  id: identifier,
-  binding: z.strictObject({
+export type CapturedContribution = Pick<
+  CallPluginRequest,
+  "contract" | "contribution" | "digest" | "installationId"
+>;
+const capturedContributionSchema: z.ZodType<CapturedContribution> =
+  z.strictObject({
     contract: z.string().min(1).max(limits.html),
     contribution: routeText,
     digest: routeText,
     installationId: routeText,
-    method: routeText,
-    target: targetSchema,
-  }),
-});
+  });
 
 export const requestSchema = z
   .strictObject({
@@ -177,7 +177,7 @@ export const requestSchema = z
   );
 export type UiDocument = z.infer<typeof requestSchema>;
 export const documentSchema = requestSchema.extend({
-  bindings: z.array(capturedBindingSchema).max(limits.operations),
+  contributions: z.array(capturedContributionSchema).max(limits.operations),
 });
 export type AcceptedDocument = z.infer<typeof documentSchema>;
 
@@ -527,7 +527,7 @@ function checkDocument(document: UiDocument): void {
           throw new InvalidPresentation(
             "action refers to undeclared operation",
           );
-      } else
+      } else {
         evaluations += expression(
           step.type === "followup"
             ? step.message
@@ -535,6 +535,8 @@ function checkDocument(document: UiDocument): void {
               ? step.text
               : step.url,
         );
+        if (step.type === "followup") evaluations += expression(step.payload);
+      }
     }
   if (rendered > limits.renderedNodes || evaluations > limits.evaluationSteps)
     throw new InvalidPresentation(
@@ -560,52 +562,71 @@ function freeze<T>(value: T): T {
   return value;
 }
 
-function capture(document: UiDocument, values: unknown): CapturedBinding[] {
+function contributionKey(
+  value: Pick<CapturedContribution, "installationId" | "contribution">,
+): string {
+  return JSON.stringify([value.installationId, value.contribution]);
+}
+
+function operationBinding(
+  request: OperationRequest,
+  contribution: CapturedContribution,
+): Omit<CallPluginRequest, "input"> {
+  const binding = { ...contribution, method: request.method };
+  let method;
+  try {
+    method = pluginMethod(binding);
+  } catch (cause) {
+    if (cause instanceof TypeError || cause instanceof SyntaxError)
+      throw new InvalidPresentation("captured method is invalid", cause);
+    throw cause;
+  }
+  const target =
+    method.target === "installation"
+      ? { scope: "installation", reference: contribution.installationId }
+      : request.target;
+  if (
+    !target ||
+    target.scope !== method.target ||
+    (request.target !== undefined &&
+      (request.target.scope !== target.scope ||
+        request.target.reference !== target.reference))
+  )
+    throw new InvalidPresentation("captured target differs from its method");
+  if (request.auto && method.kind !== "query")
+    throw new InvalidPresentation("automatic operations must be queries");
+  return { ...binding, target };
+}
+
+function capture(
+  document: UiDocument,
+  values: unknown,
+): CapturedContribution[] {
   const result = z
-    .array(capturedBindingSchema)
+    .array(capturedContributionSchema)
     .max(limits.operations)
     .safeParse(values);
   if (!result.success)
-    throw new InvalidPresentation("invalid captured bindings", result.error);
-  unique(
-    result.data.map((value) => value.id),
-    "binding",
-  );
-  if (result.data.length !== document.operations.length)
     throw new InvalidPresentation(
-      "bindings must correspond exactly to declared operations",
+      "invalid captured contributions",
+      result.error,
+    );
+  unique(result.data.map(contributionKey), "contribution");
+  const requested = new Set(document.operations.map(contributionKey));
+  if (
+    result.data.length !== requested.size ||
+    result.data.some((value) => !requested.has(contributionKey(value)))
+  )
+    throw new InvalidPresentation(
+      "captured contributions must correspond exactly to declared operations",
     );
   for (const request of document.operations) {
-    const captured = result.data.find((value) => value.id === request.id);
+    const captured = result.data.find(
+      (value) => contributionKey(value) === contributionKey(request),
+    );
     if (!captured)
-      throw new InvalidPresentation("missing captured operation binding");
-    const binding = captured.binding;
-    if (
-      binding.installationId !== request.installationId ||
-      binding.contribution !== request.contribution ||
-      binding.method !== request.method ||
-      (request.target !== undefined &&
-        !equalJSON(request.target, binding.target))
-    )
-      throw new InvalidPresentation(
-        "captured binding differs from declared operation",
-      );
-    let method;
-    try {
-      method = pluginMethod(binding);
-    } catch (cause) {
-      if (cause instanceof TypeError || cause instanceof SyntaxError)
-        throw new InvalidPresentation("captured method is invalid", cause);
-      throw cause;
-    }
-    if (
-      method.target !== binding.target.scope ||
-      (method.target === "installation" &&
-        binding.target.reference !== binding.installationId)
-    )
-      throw new InvalidPresentation("captured target differs from its method");
-    if (request.auto && method.kind !== "query")
-      throw new InvalidPresentation("automatic operations must be queries");
+      throw new InvalidPresentation("missing captured contribution");
+    operationBinding(request, captured);
   }
   return result.data;
 }
@@ -618,10 +639,13 @@ export class Presentation {
 
   static accept(
     value: unknown,
-    bindings: CapturedBinding[] = [],
+    contributions: CapturedContribution[] = [],
   ): Presentation {
     const document = parseDocument(value);
-    const accepted = { ...document, bindings: capture(document, bindings) };
+    const accepted = {
+      ...document,
+      contributions: capture(document, contributions),
+    };
     checkContent(accepted);
     const presentation = new Presentation(accepted);
     presentation.#validateProjection();
@@ -644,9 +668,9 @@ export class Presentation {
         "invalid accepted document",
         accepted.error,
       );
-    const { bindings, ...document } = accepted.data;
+    const { contributions, ...document } = accepted.data;
     // Transport indentation is not authored content and does not consume this budget.
-    return Presentation.accept(document, bindings);
+    return Presentation.accept(document, contributions);
   }
 
   snapshot(): AcceptedDocument {
@@ -677,12 +701,17 @@ export class Presentation {
     binding: Omit<CallPluginRequest, "input">;
   } {
     const request = this.#document.operations.find((value) => value.id === id);
-    const binding = this.#document.bindings.find(
-      (value) => value.id === id,
-    )?.binding;
-    if (!request || !binding)
+    const contribution =
+      request &&
+      this.#document.contributions.find(
+        (value) => contributionKey(value) === contributionKey(request),
+      );
+    if (!request || !contribution)
       throw new InvalidPresentation("undeclared operation");
-    return structuredClone({ request, binding });
+    return structuredClone({
+      request,
+      binding: operationBinding(request, contribution),
+    });
   }
   operations(): Array<{
     request: OperationRequest;

@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
@@ -20,14 +21,6 @@ import (
 // transcript (not re-importable).
 // Portable JSON uses the same encoded document budget on import and export.
 func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
-	result, err := s.sessions.ExportSession(ctx, request.SessionID)
-	if err != nil {
-		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID))
-		}
-		return nil, wireSessionErr(err)
-	}
-
 	format := request.Format
 	if format == "" {
 		format = protocol.ExportFormatJSON
@@ -36,15 +29,31 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	if format != protocol.ExportFormatJSON && format != protocol.ExportFormatMarkdown {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported export format %q", format))
 	}
+	results := sessions.ReferencedToolResults
+	if format == protocol.ExportFormatMarkdown {
+		if s.pluginCalls == nil {
+			return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "no session Markdown renderer is available")
+		}
+		results = sessions.ExpandedToolResults
+	}
+	result, err := s.sessions.ExportSession(ctx, request.SessionID, results)
+	if err != nil {
+		if errors.Is(err, rundomain.ErrSessionBusy) {
+			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID))
+		}
+		return nil, wireSessionErr(err)
+	}
 	artifact, err := artifactFromPortable(result)
 	if err != nil {
 		return nil, fmt.Errorf("sessions.export: encode artifact: %w", err)
 	}
 
 	if format == protocol.ExportFormatMarkdown {
-		if s.pluginCalls == nil {
-			return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "no session Markdown renderer is available")
-		}
+		// Ordinary text is already expanded in its Item. Model-only bodies may
+		// contain evidence absent from the structured result and must survive.
+		artifact.ToolResults = slices.DeleteFunc(artifact.ToolResults, func(body protocol.ArtifactToolResult) bool {
+			return !body.ModelOnly
+		})
 		document, err := json.Marshal(artifact)
 		if err != nil {
 			return nil, err

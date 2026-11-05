@@ -656,8 +656,8 @@ TypeScript validator from this single registry projection.
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
-| `SessionArtifact` | `version` | `minimum(31)` |
-| `SessionArtifact` | `version` | `maximum(31)` |
+| `SessionArtifact` | `version` | `minimum(32)` |
+| `SessionArtifact` | `version` | `maximum(32)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |
@@ -911,6 +911,10 @@ TypeScript validator from this single registry projection.
 | `FileEntry` | `name` | `nonEmpty` |
 | `FileEntry` | `sizeBytes` | `nonNegative` |
 | `GrepResult` | `total` | `nonNegative` |
+| `GrepCoverage` | `scannedFiles` | `nonNegative` |
+| `GrepCoverage` | `skippedFiles` | `nonNegative` |
+| `GrepCoverage` | `remainingFiles` | `nonNegative` |
+| `GrepCoverage` | `sourceBytes` | `nonNegative` |
 | `GrepMatch` | `path` | `nonEmpty` |
 | `GrepMatch` | `lineNumber` | `positive` |
 | `FileDiff` | `path` | `nonEmpty` |

@@ -336,6 +336,7 @@ for (const width of [1120, 320]) {
         hooks: [
           {
             event: "PreToolUse",
+            failurePolicy: "advisory",
             matcher: "shell",
             command,
             scope: "project",

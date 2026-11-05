@@ -545,10 +545,11 @@ The backend's existing MCP value/receipt envelopes are unchanged.
 
 ## Primary Interaction context composition
 
-`ModelContextContract` publishes the ordered `flame.model-context.v2` context
+`ModelContextContract` publishes the ordered `flame.model-context.v3` context
 contribution point. An installed backend registers `ModelContextMethod`, binds
 its declared capability export and returns `ModelContextResult`. The query
-receives the captured provider/model and the complete current Scope request;
+receives the captured provider/model, `model.Use` (`interaction`, `utility` or
+`independent`) and the complete current Scope request;
 its invocation metadata identifies the original model call and parent effect.
 It has no command identity, execution continuation or model-routing authority.
 `userMessage` is the latest user message from the original caller's request,
@@ -557,18 +558,22 @@ It is absent when that source has no user message. Retrieval consumers use this
 projection instead of inferring authored input from the final request's last role.
 Earlier contributors cannot replace it.
 
-Context v2 replaces the former v1 method and contract without an adapter. Rebuild
-context backends and select the v2 composition explicitly. Finish waiting v1 work
+Context v3 replaces the former context method and contract without an adapter. Rebuild
+context backends and select the v3 composition explicitly. Finish waiting older work
 with its original build; captured bindings are not retargeted.
 
-Only valid system messages may be contributed. Later contributors see earlier
+Contributors return role-free Scope `Content` blocks, not messages or instructions.
+Runtime wraps each nonempty contribution as untrusted reference data in a User-role
+tail after the original request. Text is quoted as a JSON string; media and citations
+retain their content representation. The framing identifies its source and explicitly
+distinguishes reference data from a new user request. Later contributors see earlier
 material in the explicit captured order. Runtime validates exact installation,
 release, contribution, export and contract before each invocation. A failed,
 withdrawn or changed contributor refuses preparation before provider dispatch.
 
 Primary Interaction captures this order with its execution configuration and
 checkpoint and retains its installation dependencies. Contributions enter the
-existing capacity/compaction input as fixed instructions; they reach the provider
+existing capacity/compaction input as measured trailers; they reach the provider
 through the same one-call preparation record as the current Session tail.
 Neither enters Scope's retained WorkingContext or authored durable conversation.
 The physical model journal records the complete request actually dispatched.
@@ -577,7 +582,10 @@ The checkpoint now requires `model_contexts`, including an explicit empty array;
 former payloads are refused rather than interpreted as an empty composition.
 
 Auxiliary text use cases capture the same context contract and observer order for
-their complete lifetime. The host captures the actual role selection and caller's
+their complete lifetime, with `use: utility`. Independent selected calls carry
+`use: independent`; the primary interaction carries `use: interaction`. Context
+backends decide applicability from this explicit use, rather than treating an
+auxiliary transcript as a fresh retrieval query. The host captures the actual role selection and caller's
 input-text byte/output-token budget before building the request; each final request
 includes contributed context in that byte check. Memory extraction/curation share
 one capture and retain their original per-call identities. A failure or over-budget

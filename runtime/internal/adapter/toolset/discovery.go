@@ -31,12 +31,13 @@ import (
 const (
 	discoveryDefaultLimit = 5
 	discoveryMaxLimit     = 20
+	discoveryCatalogBytes = 4096
 )
 
 // discoveryDescription is static because the tool declarations open the
 // provider prompt-cache prefix. The Run's deferred catalog changes whenever an
 // integration or plugin does, so it travels in a per-request message instead.
-const discoveryDescription = "Load deferred built-in or integration tools on demand. The deferred tools available in this run are listed in the conversation. " +
+const discoveryDescription = "Load deferred built-in or integration tools on demand. A bounded directory in the conversation gives examples; search covers the complete deferred set. " +
 	"Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step."
 
 // selectPrefix switches search_tools from keyword search to exact selection:
@@ -44,7 +45,7 @@ const discoveryDescription = "Load deferred built-in or integration tools on dem
 const discoverySelectPrefix = "select:"
 
 type discoveryArgs struct {
-	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Describe the capability you need, or use select:name1,name2 to load exact tool names. Prefix a keyword with + to require it."`
+	Query string `json:"query" jsonschema:"minLength=1,maxLength=4096" jsonschema_description:"Describe the capability you need, or use select:name1,name2 to load up to 20 exact tool names. Prefix a keyword with + to require it."`
 	Limit *int   `json:"limit,omitzero" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
 }
 
@@ -147,8 +148,8 @@ func (d *Discovery) InputValidator() func([]byte) error {
 }
 
 // Catalog renders the Run's deferred catalog for a per-request model context
-// message. It lists the exact names select: accepts, grouped in the stable
-// source-then-name order, and no schemas, so loading still goes through
+// message. It lists a bounded set of exact names select: accepts, grouped in the
+// stable source-then-name order, and no schemas, so loading still goes through
 // search_tools. Scope may already have advertised some entries; only the
 // execution strategy owns that visibility, so the catalog does not claim it.
 func (d *Discovery) Catalog() string {
@@ -156,17 +157,25 @@ func (d *Discovery) Catalog() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("Deferred tools for this run. Until loaded they are not in your tool list; load them with search_tools before calling them, either by capability (query=\"...\") or by exact name (query=\"select:name1,name2\").")
+	fmt.Fprintf(&b, "Deferred tools for this run: %d total. Until loaded they are not in your tool list; load them with search_tools before calling them, either by capability (query=\"...\") or by exact name (query=\"select:name1,name2\").", len(d.entries))
 	lastSource := ""
-	for index, e := range d.entries {
-		if index == 0 || e.source != lastSource {
-			lastSource = e.source
-			fmt.Fprintf(&b, "\n[%s] ", e.source)
-			b.WriteString(e.definition.Name)
+	omitted := 0
+	for _, e := range d.entries {
+		entry := ", " + e.definition.Name
+		if e.source != lastSource {
+			entry = fmt.Sprintf("\n[%s] %s", e.source, e.definition.Name)
+		}
+		// Keep complete identities and leave room for the omission notice. The
+		// search index remains complete; this is only a bounded request projection.
+		if b.Len()+len(entry)+200 > discoveryCatalogBytes {
+			omitted++
 			continue
 		}
-		b.WriteString(", ")
-		b.WriteString(e.definition.Name)
+		b.WriteString(entry)
+		lastSource = e.source
+	}
+	if omitted > 0 {
+		fmt.Fprintf(&b, "\n%d additional tools are omitted from this directory. Search by capability to find them; every tool remains searchable and exact-selectable.", omitted)
 	}
 	return b.String()
 }
@@ -209,6 +218,9 @@ func (d *Discovery) search(_ context.Context, args discoveryArgs) (discoveryResu
 	var matches []discoverableTool
 	if rest, ok := strings.CutPrefix(query, discoverySelectPrefix); ok {
 		matches = d.selectByName(rest)
+		if len(matches) > discoveryMaxLimit {
+			return discoveryResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("search_tools: select at most %d tools per call", discoveryMaxLimit))
+		}
 	} else {
 		matches = d.searchByKeyword(query, limit)
 	}

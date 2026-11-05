@@ -94,6 +94,12 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 		Hooks: []hookdata.Hook{{
 			Event: hookdata.SessionStart, Command: "audit", TimeoutMillis: 2500,
 			Scope: hookdata.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
+		}, {
+			Event: hookdata.SessionStart, Inject: "captured context",
+			Scope: hookdata.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
+		}, {
+			Event: hookdata.PreToolUse, Command: "required check", FailurePolicy: hookdata.FailureRequired,
+			Scope: hookdata.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
 		}},
 	}}})
 
@@ -101,12 +107,15 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListHooks: %v", err)
 	}
-	if len(result.Hooks) != 1 {
-		t.Fatalf("hooks = %+v, want one", result.Hooks)
+	if len(result.Hooks) != 3 {
+		t.Fatalf("hooks = %+v, want three", result.Hooks)
 	}
 	hook := result.Hooks[0]
-	if hook.Event != protocol.HookEventSessionStart || hook.TimeoutMillis != 2500 || !hook.Active {
+	if hook.Event != protocol.HookEventSessionStart || hook.TimeoutMillis != 2500 || !hook.Active || hook.FailurePolicy != hookdata.FailureAdvisory {
 		t.Fatalf("hook = %+v, want complete active hook", hook)
+	}
+	if result.Hooks[1].FailurePolicy != "" || result.Hooks[2].FailurePolicy != hookdata.FailureRequired {
+		t.Fatalf("hook policies were not projected from their configured action: %+v", result.Hooks)
 	}
 }
 

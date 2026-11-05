@@ -11,7 +11,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func newServer(analysis *analyzer.Analyzer) (*sdk.Server, error) {
+func newServer(analysis *analyzer.Analyzer, formatting formatter) (*sdk.Server, error) {
 	if analysis == nil {
 		return nil, errors.New("code intelligence: analyzer is required")
 	}
@@ -39,7 +39,7 @@ func newServer(analysis *analyzer.Analyzer) (*sdk.Server, error) {
 	if err := errors.Join(
 		pluginsdk.RegisterTools(server, lsp),
 		format.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[codeintel.Document]) (codeintel.Transformation, error) {
-			return formatDocument(ctx, command.Input)
+			return formatting.formatDocument(ctx, command.Input)
 		}),
 		inspect.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[codeintel.Inspection]) (codeintel.Report, error) {
 			return analysis.Inspect(ctx, command.Input)

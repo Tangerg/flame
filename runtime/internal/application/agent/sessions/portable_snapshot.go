@@ -39,8 +39,9 @@ type PortableSnapshot struct {
 // Items do not carry their offload, so the archive links each body to the Item
 // that offloaded it from this side instead.
 type PortableToolResult struct {
-	ItemID string
-	Blob   transcript.ToolResultBlob
+	ItemID    string
+	Blob      transcript.ToolResultBlob
+	ModelOnly bool
 }
 
 // PortableSession is the terminal archive identity. It intentionally excludes
@@ -198,6 +199,9 @@ func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) e
 		if _, duplicate := items[item.ID()]; duplicate {
 			return fmt.Errorf("sessions: portable snapshot contains duplicate item %q", item.ID())
 		}
+		if call, present := item.ToolCall(); present && call.Invocation.Offload != nil {
+			return fmt.Errorf("sessions: portable item %q duplicates its tool-result binding", item.ID())
+		}
 		items[item.ID()] = index
 	}
 	for _, result := range results {
@@ -212,7 +216,7 @@ func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) e
 		if !isToolCall {
 			return fmt.Errorf("sessions: portable tool result %q references non-tool item %q", blob.ID, item.ID())
 		}
-		call.Invocation.Offload = &transcript.ToolResultRef{ID: blob.ID}
+		call.Invocation.Offload = &transcript.ToolResultRef{ID: blob.ID, ModelOnly: result.ModelOnly}
 		itemSnapshot.Body = call
 		restored, err := transcript.RestoreItem(itemSnapshot)
 		if err != nil {
@@ -250,11 +254,19 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 	for _, blob := range s.ToolResults {
 		blobs[blob.ID] = blob
 	}
-	for _, item := range s.Items {
+	for index, item := range s.Items {
 		if call, present := item.ToolCall(); present && call.Invocation.Offload != nil {
 			portable.ToolResults = append(portable.ToolResults, PortableToolResult{
-				ItemID: item.ID(), Blob: blobs[call.Invocation.Offload.ID],
+				ItemID: item.ID(), Blob: blobs[call.Invocation.Offload.ID], ModelOnly: call.Invocation.Offload.ModelOnly,
 			})
+			call.Invocation.Offload = nil
+			projection := item.Snapshot()
+			projection.Body = call
+			projected, err := transcript.RestoreItem(projection)
+			if err != nil {
+				return PortableSnapshot{}, fmt.Errorf("sessions: project portable item %q: %w", item.ID(), err)
+			}
+			portable.Items[index] = projected
 		}
 	}
 	for _, run := range s.Runs {

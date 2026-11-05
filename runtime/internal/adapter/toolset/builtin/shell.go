@@ -23,7 +23,7 @@ import (
 // Every command — foreground or explicitly backgrounded — starts as a detached
 // job in that shell set. A foreground command races its completion against an
 // auto-background window: finishing in time yields its output inline and the
-// job is removed; outliving the window leaves it running, addressable by the
+// final output page removes the job; outliving the window leaves it running, addressable by the
 // same shell id, so the lifecycle tools work on it unchanged. This is the
 // auto-background design — flame selects on the per-shell done channel
 // instead of polling. cwd is read per call (executionctx.CWD) so a command runs in the
@@ -57,7 +57,7 @@ func shellAutoBackgroundAfter(seconds *int) (time.Duration, error) {
 }
 
 type shellOutputArgs struct {
-	ShellID       string `json:"shell_id" jsonschema:"required" jsonschema_description:"Background shell id returned by shell when a long-running command was moved to the background."`
+	ShellID       string `json:"shell_id" jsonschema:"required" jsonschema_description:"Shell id returned by shell for a running command or a completed command with unread output pages."`
 	Wait          bool   `json:"wait,omitzero" jsonschema_description:"Wait for the shell to exit before returning new output. Use this instead of sleep polling; avoid waiting indefinitely on a server or watcher."`
 	TimeoutMillis *int   `json:"timeout_millis,omitzero" jsonschema:"minimum=1" jsonschema_description:"When wait=true, maximum milliseconds to wait before returning current output. Omit to wait until exit. Do not pass when wait=false."`
 }
@@ -100,6 +100,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 				"Set description to a concise action label that explains the command's purpose while it runs. " +
 				"Avoid `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk` here — use the dedicated `glob`, `grep`, and `read` tools instead; use `apply_patch` for file changes. Reserve `shell` for operations that genuinely need a shell (build commands, git, package managers, etc.). " +
 				"Each invocation starts a fresh shell — `cd`, exported variables, and shell options do not persist between calls. " +
+				"Output is read from the beginning in 256 KiB pages. If has_more_output is true, continue with read_shell_output using shell_id even after exit. Logs are limited to 8 MiB per command and 64 MiB across retained commands; exceeding capacity stops the command and reports the retained prefix. " +
 				"A command still running after auto_background_after_seconds is moved to the background; continue with read_shell_output or stop_shell. Set run_in_background to background it immediately.",
 		},
 		t.run,
@@ -110,7 +111,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	outputTool, err := toolcontract.NewFunc[shellOutputArgs, string](
 		toolcontract.FuncConfig{
 			Name:        string(builtincontract.ReadShellOutput),
-			Description: "Read only the new output produced by a background shell since the previous read and report whether it is still running. Reading the final output of a finished shell releases its shell_id. Set wait=true to wait event-first for exit instead of sleep polling; bound that wait with timeout_millis for servers or watchers.",
+			Description: "Read the next unread output page (up to 256 KiB) from a shell's complete retained log and report whether the command is still running. Continue while has_more_output is true, including after exit. Only the final page of a finished shell releases its shell_id. offset and next_offset are byte coordinates in the combined stdout/stderr stream. Set wait=true to wait event-first for exit instead of sleep polling; bound that wait with timeout_millis for servers or watchers.",
 		},
 		t.output,
 	)
@@ -198,10 +199,13 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 		// Join cleanup before consuming the final output; a cleanup failure must
 		// leave its resource in the owner ledger for teardown.
 		if _, err := c.shells.Kill(executionctx.SessionID(ctx), id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
-			return "", errors.Join(ctx.Err(), fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err))
+			output, readErr := c.shells.Read(executionctx.SessionID(ctx), id)
+			result, resultErr := shellOutputJSON(output, id)
+			return shellResult(result, errors.Join(ctx.Err(), context.Cause(ctx),
+				fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err), readErr, resultErr))
 		}
 		<-sh.Done()
-		return c.completed(executionctx.SessionID(ctx), id, ctx.Err())
+		return c.completed(executionctx.SessionID(ctx), id, errors.Join(ctx.Err(), context.Cause(ctx)))
 	}
 }
 
@@ -213,33 +217,41 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	if !ok {
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
 	}
+	var waitErr error
 	if a.Wait {
 		timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
 		if err != nil {
 			return "", pluginsdk.DefiniteToolFailure(err)
 		}
-		if err := waitForShell(ctx, sh, timeout); err != nil {
-			return "", err
-		}
+		waitErr = waitForShell(ctx, sh, timeout)
 	}
 	output, readErr := c.shells.Read(executionctx.SessionID(ctx), a.ShellID)
 	if errors.Is(readErr, exec.ErrShellNotFound) {
-		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
+		return shellResult(fmt.Sprintf("No background shell %s.", a.ShellID), waitErr)
 	}
+	result, resultErr := shellOutputJSON(output, a.ShellID)
+	return shellResult(result, errors.Join(waitErr, readErr, resultErr))
+}
+
+func shellOutputJSON(output exec.Output, id string) (string, error) {
 	state := "still running"
 	if output.Finished {
 		state = "finished (" + output.Info + ")"
 	}
 	encoded, err := json.Marshal(struct {
-		ShellID string          `json:"shell_id"`
-		Status  string          `json:"status"`
-		Stdout  content.Content `json:"stdout"`
-		Dropped bool            `json:"output_dropped,omitzero"`
-	}{ShellID: a.ShellID, Status: state, Stdout: content.New([]byte(output.Text)), Dropped: output.Dropped})
+		ShellID    string          `json:"shell_id"`
+		Status     string          `json:"status"`
+		Stdout     content.Content `json:"stdout"`
+		Dropped    bool            `json:"output_dropped,omitzero"`
+		Offset     int64           `json:"offset"`
+		NextOffset int64           `json:"next_offset"`
+		HasMore    bool            `json:"has_more_output"`
+	}{ShellID: id, Status: state, Stdout: content.New([]byte(output.Text)), Dropped: output.Dropped,
+		Offset: output.Offset, NextOffset: output.NextOffset, HasMore: output.HasMore})
 	if err != nil {
-		return "", errors.Join(readErr, fmt.Errorf("shell: encode background command output: %w", err))
+		return "", fmt.Errorf("shell: encode background command output: %w", err)
 	}
-	return shellResult(string(encoded), readErr)
+	return string(encoded), nil
 }
 
 // A failed cleanup or canceled wait does not erase observed process output.
@@ -275,25 +287,23 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 }
 
 // completedJSON shapes a finished foreground command's result. The combined
-// stdout+stderr goes in "stdout" because the execution ring preserves their
+// stdout+stderr goes in "stdout" because the execution spool preserves their
 // combined arrival order. exit_code is always present for a finished command.
 func completedJSON(output exec.Output) (string, error) {
 	out := output.Text
-	if output.Dropped {
-		out = "[earlier output dropped — buffer overflowed]\n" + out
-	}
-	// A command with no exit status never reported one: it failed to start, or
-	// could not be waited on, and info carries the only account of why. An
-	// ordinary exit restates exit_code there, which is worth nothing here.
-	if output.ExitCode == exec.NoExitStatus && strings.TrimSpace(output.Info) != "" {
-		out = strings.TrimLeft(output.Info+"\n"+out, "\n")
-	}
 	b, err := json.Marshal(struct {
-		Stdout   content.Content `json:"stdout"`
-		ExitCode int             `json:"exit_code"`
-		Killed   bool            `json:"killed,omitzero"`
-		Duration string          `json:"duration"`
-	}{Stdout: content.New([]byte(out)), ExitCode: output.ExitCode, Killed: output.Killed, Duration: output.Duration.String()})
+		Stdout     content.Content `json:"stdout"`
+		ExitCode   int             `json:"exit_code"`
+		Killed     bool            `json:"killed,omitzero"`
+		Duration   string          `json:"duration"`
+		Status     string          `json:"status"`
+		ShellID    string          `json:"shell_id,omitempty"`
+		Dropped    bool            `json:"output_dropped,omitzero"`
+		Offset     int64           `json:"offset"`
+		NextOffset int64           `json:"next_offset"`
+		HasMore    bool            `json:"has_more_output"`
+	}{Stdout: content.New([]byte(out)), ExitCode: output.ExitCode, Killed: output.Killed, Duration: output.Duration.String(), Status: "finished (" + output.Info + ")",
+		ShellID: output.ShellID, Dropped: output.Dropped, Offset: output.Offset, NextOffset: output.NextOffset, HasMore: output.HasMore})
 	if err != nil {
 		return "", fmt.Errorf("shell: encode completed command result: %w", err)
 	}
@@ -320,14 +330,14 @@ func backgroundedJSON(id string) (string, error) {
 // elapses. It reuses the same per-shell done channel the shell
 // foreground path selects on (no polling). A timeout is NOT an error: the
 // caller then reports the current still-running output, just as if wait were
-// off. Returns ctx.Err() when the caller context ends.
+// off. Preserves both cancellation category and owner cause when the caller ends.
 func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) error {
 	duration, enabled := timeout.Duration()
 	if !enabled {
 		select {
 		case <-sh.Done():
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Join(ctx.Err(), context.Cause(ctx))
 		}
 		return nil
 	}
@@ -337,7 +347,7 @@ func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) err
 	case <-sh.Done():
 	case <-timer.C: // still running — fall through to report current state
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 	return nil
 }

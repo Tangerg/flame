@@ -40,7 +40,9 @@ function context(create: ReturnType<typeof vi.fn>, target?: CapturedMessage) {
     locale: "en",
     binding,
     runtime: { feedback: { create } },
-    track: (run: () => unknown) => run(),
+    track: vi.fn((run: (signal: AbortSignal) => unknown) =>
+      run(new AbortController().signal),
+    ),
   } as unknown as ComponentContext;
 }
 it("submits the displayed item to the captured producer and marks it only after acceptance", async () => {
@@ -49,10 +51,16 @@ it("submits the displayed item to the captured producer and marks it only after 
     accept = resolve;
   });
   const create = vi.fn(() => promise);
-  const view = render(<Rate context={context(create, message)} />);
+  const captured = context(create, message);
+  const view = render(<Rate context={captured} />);
   const good = screen.getByRole("button", { name: "Good response" });
   fireEvent.click(good);
   fireEvent.click(good);
+  expect(captured.track).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(captured.track).mock.invocationCallOrder[0]).toBeLessThan(
+    create.mock.invocationCallOrder[0]!,
+  );
+  expect(vi.mocked(captured.track).mock.results[0]!.value).toBe(promise);
   expect(create).toHaveBeenCalledExactlyOnceWith({
     source: {
       installationId: binding.installationId,
@@ -115,4 +123,38 @@ it("recovers an unconfirmed vote with its original command after remount", async
   );
   expect(retry).toHaveBeenCalledTimes(1);
   expect(create).toHaveBeenCalledTimes(1);
+  expect(props.context.track).toHaveBeenCalledTimes(2);
+  expect(
+    vi.mocked(props.context.track).mock.invocationCallOrder[1],
+  ).toBeLessThan(retry.mock.invocationCallOrder[0]!);
+});
+
+it("keeps an unknown original vote when a retired component refuses to start its retry", async () => {
+  const retry = vi.fn(() => Promise.resolve());
+  const create = vi.fn(() =>
+    Object.assign(Promise.reject(new RpcTransportError("reply lost")), {
+      retry,
+      idempotencyKey: "retained-original",
+    }),
+  );
+  const captured = context(create, { ...message, itemId: "item_retired" });
+  const view = render(<Rate context={captured} />);
+  fireEvent.click(screen.getByRole("button", { name: "Poor response" }));
+  await screen.findByRole("alert");
+  vi.mocked(captured.track).mockImplementationOnce(() => {
+    throw new Error("component retired");
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Poor response" }));
+  expect(retry).not.toHaveBeenCalled();
+  view.unmount();
+  render(
+    <Rate context={context(create, { ...message, itemId: "item_retired" })} />,
+  );
+  expect(
+    screen.getByRole<HTMLButtonElement>("button", { name: "Good response" })
+      .disabled,
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Poor response" }));
+  await waitFor(() => expect(retry).toHaveBeenCalledOnce());
+  expect(create).toHaveBeenCalledOnce();
 });

@@ -104,7 +104,7 @@ export function createBackend(
       name: "context",
       title: "Read computer-use instructions and current targets",
       description:
-        "Read the current computer-control session, original CUA engine instructions, and complete js/js_reset argument schemas before using computer_js or computer_reset. Follow those original instructions and pass the exact returned sessionId, workerId and surfaceDigest. The human operator must first open a time-limited control session. The computer is the Runtime host, which may differ from the user's browser device. This only reads context; it never opens a session or grants permissions.",
+        "Read the current computer-control session, original CUA engine instructions, and complete js/js_reset argument schemas before first using computer_js or computer_reset. Reuse this complete context while sessionId, workerId and surfaceDigest are unchanged; read it again after any identity changes or when its original instructions/schema are no longer available. A summary cannot replace the original constraints. Follow those instructions and pass the exact returned identities. The human operator must first open a time-limited control session. The computer is the Runtime host, which may differ from the user's browser device. This only reads context; it never opens a session or grants permissions.",
       inputSchema: z.toJSONSchema(schemas.empty) as { type: "object" },
       annotations: {
         readOnlyHint: true,

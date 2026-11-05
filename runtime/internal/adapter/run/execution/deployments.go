@@ -356,17 +356,12 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		if err := messages[index].Validate(); err != nil {
 			return nil, fmt.Errorf("execution: invalid Interaction instruction[%d]: %w", index, err)
 		}
-		provenance, found, decodeErr := messages[index].Metadata.Decode[contextSources](
-			contextProvenanceMetadataKey,
-		)
+		_, found, decodeErr := readContextSources(messages[index].Metadata)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("execution: decode Interaction instruction[%d] provenance: %w", index, decodeErr)
 		}
 		if !found {
 			break
-		}
-		if err := provenance.validate(); err != nil {
-			return nil, fmt.Errorf("execution: Interaction instruction[%d] provenance: %w", index, err)
 		}
 		instructions = append(instructions, messages[index].Clone())
 	}

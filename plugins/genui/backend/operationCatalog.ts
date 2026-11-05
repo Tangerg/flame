@@ -1,11 +1,12 @@
 import { pluginContract, pluginMethod } from "@flame/runtime-client";
+import { stringifyJSON } from "@frame/sdk/json";
 import type {
   PluginContribution,
   PluginInstallation,
 } from "@flame/runtime-client/wire";
 import {
   InvalidPresentation,
-  type CapturedBinding,
+  type CapturedContribution,
   type OperationRequest,
 } from "../contracts/document";
 
@@ -36,45 +37,87 @@ export class OperationCatalog {
     });
   }
 
-  describe(installationId?: string) {
+  describe(installationId?: string, contributionId?: string) {
     return this.#callables
       .filter(
-        ({ installation }) =>
-          installationId === undefined || installation.id === installationId,
+        ({ installation, contribution }) =>
+          (installationId === undefined ||
+            installation.id === installationId) &&
+          (contributionId === undefined || contribution.id === contributionId),
       )
-      .map(({ installation, contribution }) => {
+      .flatMap(({ installation, contribution }) => {
         const contract = pluginContract(contribution.contract);
-        return {
+        const identity = {
           installationId: installation.id,
           name: installation.selected.name,
           contribution: contribution.id,
-          contract: contribution.contract,
           reference: contract.reference,
-          methods: contract.methods.map((value) => {
-            if (
-              value === null ||
-              typeof value !== "object" ||
-              !("name" in value) ||
-              typeof value.name !== "string"
-            ) {
-              throw new Error(
-                "genui: admitted contract contains an invalid method",
-              );
-            }
-            return {
-              name: value.name,
-              ...pluginMethod({
-                contract: contribution.contract,
-                method: value.name,
-              }),
-            };
-          }),
         };
+        return contract.methods.map((value) => {
+          if (
+            value === null ||
+            typeof value !== "object" ||
+            !("name" in value) ||
+            typeof value.name !== "string"
+          ) {
+            throw new Error(
+              "genui: admitted contract contains an invalid method",
+            );
+          }
+          return {
+            ...identity,
+            method: value.name,
+            ...pluginMethod({
+              contract: contribution.contract,
+              method: value.name,
+            }),
+          };
+        });
       });
   }
 
-  capture(requests: readonly OperationRequest[]): CapturedBinding[] {
-    return requests.map((request) => {
+  method(installationId: string, contributionId: string, name: string) {
+    const matches = this.#callables.filter(
+      ({ installation, contribution }) =>
+        installation.id === installationId &&
+        contribution.id === contributionId,
+    );
+    if (matches.length !== 1)
+      throw new InvalidPresentation(
+        "operation requires one available admitted contribution",
+      );
+    const { installation, contribution } = matches[0]!;
+    const contract = pluginContract(contribution.contract);
+    try {
+      pluginMethod({ contract: contribution.contract, method: name });
+    } catch (cause) {
+      if (cause instanceof TypeError)
+        throw new InvalidPresentation(
+          "operation does not name an admitted method",
+          cause,
+        );
+      throw cause;
+    }
+    const method = contract.methods.find(
+      (value) =>
+        value !== null &&
+        typeof value === "object" &&
+        "name" in value &&
+        value.name === name,
+    );
+    return {
+      installationId: installation.id,
+      contribution: contribution.id,
+      reference: contract.reference,
+      // Keep exact schema numbers in the owner's JSON codec. This is a selected
+      // method projection; the accepted document captures the complete original contract.
+      methodJSON: stringifyJSON(method),
+    };
+  }
+
+  capture(requests: readonly OperationRequest[]): CapturedContribution[] {
+    const captured = new Map<string, CapturedContribution>();
+    for (const request of requests) {
       const matches = this.#callables.filter(
         ({ installation, contribution }) =>
           installation.id === request.installationId &&
@@ -87,16 +130,18 @@ export class OperationCatalog {
         );
       }
       const { installation, contribution } = matches[0]!;
-      const binding = {
+      const contributionBinding = {
         installationId: installation.id,
         digest: installation.selected.digest,
         contribution: contribution.id,
         contract: contribution.contract,
-        method: request.method,
       };
       let method;
       try {
-        method = pluginMethod(binding);
+        method = pluginMethod({
+          ...contributionBinding,
+          method: request.method,
+        });
       } catch (cause) {
         if (cause instanceof TypeError) {
           throw new InvalidPresentation(
@@ -121,7 +166,11 @@ export class OperationCatalog {
           "operation target differs from its admitted method: " + request.id,
         );
       }
-      return { id: request.id, binding: { ...binding, target: { ...target } } };
-    });
+      captured.set(
+        JSON.stringify([installation.id, contribution.id]),
+        contributionBinding,
+      );
+    }
+    return [...captured.values()];
   }
 }

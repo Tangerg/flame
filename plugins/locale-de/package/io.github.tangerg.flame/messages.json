@@ -287,7 +287,7 @@
   "approvals.mode.balanced": "Ausgewogen",
   "approvals.mode.auto": "Auto",
   "approvals.rules": "Gemerkte Regeln",
-  "approvals.rules.sub": "Werkzeug-Entscheidungen, die Freigaben überspringen.",
+  "approvals.rules.sub": "Gespeicherte Berechtigungen. Eine passende Ablehnung verhindert auch die automatische Freigabe.",
   "approvals.rules.empty": "Noch keine Regeln",
   "approvals.rules.emptySub": "Beim Genehmigen/Ablehnen „nicht mehr fragen“ wählen, um eine hinzuzufügen.",
   "approvals.scope.session": "Sitzung",

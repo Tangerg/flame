@@ -6,6 +6,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -577,11 +578,20 @@ func registerObjectConstraints(s *Shapes) {
 		RequiredAny: []string{"command", "inject"},
 	}, {
 		When:      []delivery.FieldCondition{{Field: "command", Operator: delivery.OperatorPresent}},
+		Required:  []string{"failurePolicy"},
 		Forbidden: []string{"inject"},
 	}, {
 		When:      []delivery.FieldCondition{{Field: "inject", Operator: delivery.OperatorPresent}},
-		Forbidden: []string{"command", "matcher", "timeoutMillis"},
+		Forbidden: []string{"command", "matcher", "timeoutMillis", "failurePolicy"},
 	}}
+	requiredHookEvents := make([]string, 0)
+	for _, event := range hookdata.RequiredFailureEvents() {
+		requiredHookEvents = append(requiredHookEvents, string(event))
+	}
+	hookRules = append(hookRules, ConditionalRule{
+		When:          []delivery.FieldCondition{{Field: "failurePolicy", Operator: delivery.OperatorEquals, Value: string(hookdata.FailureRequired)}},
+		AllowedValues: []AllowedValueSet{{Field: "event", Values: requiredHookEvents}},
+	})
 	for _, event := range []protocol.HookEvent{protocol.HookEventUserPromptSubmit, protocol.HookEventSessionStart, protocol.HookEventPreCompact, protocol.HookEventStop, protocol.HookEventNotification} {
 		hookRules = append(hookRules, ConditionalRule{
 			When:      []delivery.FieldCondition{{Field: "event", Operator: delivery.OperatorEquals, Value: string(event)}},

@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -73,14 +71,8 @@ func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) 
 	if !present || invocation.Offload == nil {
 		return "", nil
 	}
-	if err := invocation.Offload.Validate(); err != nil {
+	if err := invocation.Offload.ValidateResult(invocation.Result); err != nil {
 		return "", fmt.Errorf("sqlite: history item offload: %w", err)
-	}
-	if invocation.Result == nil {
-		return "", errors.New("sqlite: offloaded history item result is absent")
-	}
-	if _, ok := invocation.Result.String(); !ok {
-		return "", errors.New("sqlite: offloaded history item result must be a preview string")
 	}
 	return invocation.Offload.ID, nil
 }
@@ -89,16 +81,16 @@ func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) 
 // preview, which is the form every writer holds.
 func (t *TranscriptStore) storedItem(ctx context.Context, itemID string) (transcript.Item, bool, error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (transcript.Item, bool, error) {
-		var sessionID, runID, payload, offloadID string
-		var occurredAt int64
-		err := t.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`, itemID).Scan(&sessionID, &runID, &occurredAt, &payload, &offloadID)
+		var stored storedTranscriptRow
+		row := t.db.connection(ctx).QueryRowContext(ctx, `SELECT `+storedTranscriptColumns+` FROM history_items AS h WHERE h.item_id = ?`, itemID)
+		err := row.Scan(stored.fields()...)
 		if errors.Is(err, sql.ErrNoRows) {
 			return transcript.Item{}, false, nil
 		}
 		if err != nil {
 			return transcript.Item{}, false, fmt.Errorf("sqlite: inspect history item: %w", err)
 		}
-		snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, offloadID)
+		snapshot, err := stored.snapshot()
 		if err != nil {
 			return transcript.Item{}, false, err
 		}
@@ -121,15 +113,20 @@ func (t *TranscriptStore) writeItemRecord(ctx context.Context, item transcript.I
 				return fmt.Errorf("sqlite: history item %q offloads to %q, which session %q does not hold", item.ID(), offloadID, item.SessionID())
 			}
 		}
-		result, err := q.ExecContext(ctx, `INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id)
-		 VALUES (?, ?, ?, ?, ?, ?)
+		modelOnly := false
+		if call, present := item.ToolCall(); present && call.Invocation.Offload != nil {
+			modelOnly = call.Invocation.Offload.ModelOnly
+		}
+		result, err := q.ExecContext(ctx, `INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id, offload_model_only)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(item_id) DO UPDATE SET
 		   payload = excluded.payload,
-		   offload_id = excluded.offload_id
+		   offload_id = excluded.offload_id,
+		   offload_model_only = excluded.offload_model_only
 		 WHERE history_items.session_id = excluded.session_id
 		   AND history_items.run_id = excluded.run_id
 		   AND history_items.occurred_at = excluded.occurred_at
-		   AND (history_items.offload_id = '' OR history_items.offload_id = excluded.offload_id)`, item.SessionID(), item.RunID(), item.ID(), item.OccurredAt().UnixNano(), string(payload), offloadID)
+		   AND (history_items.offload_id = '' OR (history_items.offload_id = excluded.offload_id AND history_items.offload_model_only = excluded.offload_model_only))`, item.SessionID(), item.RunID(), item.ID(), item.OccurredAt().UnixNano(), string(payload), offloadID, modelOnly)
 		if err != nil {
 			return t.explainItemAppendError(ctx, item.SessionID(), item.ID(), offloadID, err)
 		}
@@ -167,11 +164,11 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.I
 		if err := identity.ValidateItem(itemID); err != nil {
 			return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
 		}
-		row := t.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
-		        (SELECT body FROM tool_result_blobs WHERE id = history_items.offload_id
-		          AND session_id = history_items.session_id)
-		   FROM history_items
-		  WHERE item_id = ?`, itemID)
+		row := t.db.connection(ctx).QueryRowContext(ctx, `SELECT `+storedTranscriptColumns+`,
+		        (SELECT body FROM tool_result_blobs WHERE id = h.offload_id
+		          AND session_id = h.session_id)
+		   FROM history_items AS h
+		  WHERE h.item_id = ?`, itemID)
 		item, err := scanTranscriptItem(row)
 		if errors.Is(err, sql.ErrNoRows) {
 			return transcript.Item{}, false, nil
@@ -181,73 +178,6 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.I
 		}
 		return item, true, nil
 	})
-}
-func scanTranscriptItem(row scanRow) (transcript.Item, error) {
-	var (
-		sessionID    string
-		runID        string
-		itemID       string
-		payload      string
-		rawOffloadID string
-		offloaded    sql.NullString
-		occurredAt   int64
-	)
-	if err := row.Scan(&sessionID, &runID, &itemID, &occurredAt, &payload, &rawOffloadID, &offloaded); err != nil {
-		return transcript.Item{}, err
-	}
-	return materializeTranscriptItem(sessionID, runID, itemID, occurredAt, payload, rawOffloadID, offloaded)
-}
-func materializeTranscriptItem(sessionID, runID, itemID string, occurredAt int64, payload, rawOffloadID string, offloaded sql.NullString) (transcript.Item, error) {
-	snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, rawOffloadID)
-	if err != nil {
-		return transcript.Item{}, err
-	}
-	if call, ok := snapshot.Body.(transcript.ToolCallBody); ok && call.Invocation.Offload != nil {
-		if !offloaded.Valid {
-			return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, call.Invocation.Offload.ID)
-		}
-		body, err := tool.NewResult(offloaded.String)
-		if err != nil {
-			return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offloaded text: %w", itemID, err)
-		}
-		call.Invocation.Result = &body
-		snapshot.Body = call
-	}
-	item, err := transcript.RestoreItem(snapshot)
-	if err != nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
-	}
-	return item, nil
-}
-
-// storedTranscriptItem decodes one row as written: an offloaded Tool result
-// keeps the preview that replaced its body.
-func storedTranscriptItem(sessionID, runID, itemID string, occurredAt int64, payload, rawOffloadID string) (transcript.ItemSnapshot, error) {
-	snapshot, err := decodeTranscriptItem([]byte(payload))
-	if err != nil {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q: %w", itemID, err)
-	}
-	snapshot.Identity = transcript.ItemIdentity{SessionID: sessionID, RunID: runID, ItemID: itemID, OccurredAt: time.Unix(0, occurredAt).UTC()}
-	if rawOffloadID == "" {
-		return snapshot, nil
-	}
-	id, err := transcript.ParseToolResultID(rawOffloadID)
-	if err != nil {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q offload: %w", itemID, err)
-	}
-	call, ok := snapshot.Body.(transcript.ToolCallBody)
-	if !ok {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no tool invocation", itemID)
-	}
-	if call.Invocation.Result == nil {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview", itemID)
-	}
-	if _, ok := call.Invocation.Result.String(); !ok {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview string", itemID)
-	}
-	call.Invocation.Offload = &transcript.ToolResultRef{ID: id}
-	snapshot.Body = call
-	return snapshot, nil
 }
 
 // DeleteRun removes one run's items from a session's history. The Run's own row
@@ -304,10 +234,10 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID string) ([]transcr
 // portable Session snapshot captures this form beside the bodies it offloads.
 func (t *TranscriptStore) ListStored(ctx context.Context, sessionID string) ([]transcript.Item, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.Item, error) {
-		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT session_id, run_id, item_id, occurred_at, payload, offload_id
-		   FROM history_items
-		  WHERE session_id = ?
-		  ORDER BY seq`, sessionID)
+		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT `+storedTranscriptColumns+`
+		   FROM history_items AS h
+		  WHERE h.session_id = ?
+		  ORDER BY h.seq`, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
 		}
@@ -316,18 +246,17 @@ func (t *TranscriptStore) ListStored(ctx context.Context, sessionID string) ([]t
 		}()
 		var out []transcript.Item
 		for rows.Next() {
-			var session, runID, itemID, payload, rawOffloadID string
-			var occurredAt int64
-			if err := rows.Scan(&session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID); err != nil {
+			var stored storedTranscriptRow
+			if err := rows.Scan(stored.fields()...); err != nil {
 				return nil, fmt.Errorf("sqlite: scan stored history item: %w", err)
 			}
-			snapshot, err := storedTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID)
+			snapshot, err := stored.snapshot()
 			if err != nil {
 				return nil, err
 			}
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {
-				return nil, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+				return nil, fmt.Errorf("sqlite: decoded history item %q: %w", stored.itemID, err)
 			}
 			out = append(out, item)
 		}
@@ -395,7 +324,7 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 		if limit < 0 {
 			return nil, errors.New("sqlite: history page limit must not be negative")
 		}
-		query := `SELECT h.seq, h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, h.offload_id, b.body
+		query := `SELECT h.seq, ` + storedTranscriptColumns + `, b.body
 		 FROM history_items AS h
 		 LEFT JOIN tool_result_blobs AS b
 		   ON b.id = h.offload_id AND b.session_id = h.session_id
@@ -423,13 +352,15 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 		}()
 		var out []transcript.SequencedItem
 		for rows.Next() {
-			var session, runID, itemID, payload, rawOffloadID string
+			var stored storedTranscriptRow
 			var offloadedBody sql.NullString
-			var sequence, occurredAt int64
-			if err := rows.Scan(&sequence, &session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID, &offloadedBody); err != nil {
+			var sequence int64
+			fields := append([]any{&sequence}, stored.fields()...)
+			fields = append(fields, &offloadedBody)
+			if err := rows.Scan(fields...); err != nil {
 				return nil, fmt.Errorf("sqlite: scan history item: %w", err)
 			}
-			item, err := materializeTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID, offloadedBody)
+			item, err := stored.materialize(offloadedBody)
 			if err != nil {
 				return nil, err
 			}

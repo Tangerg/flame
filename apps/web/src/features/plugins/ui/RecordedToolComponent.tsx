@@ -17,6 +17,7 @@ export function RecordedToolComponent({
         ? Object.freeze({ ...value.source, ref: Object.freeze(value.source.ref) })
         : undefined,
       range: value.range ? Object.freeze(value.range) : undefined,
+      outputPage: value.outputPage ? Object.freeze(value.outputPage) : undefined,
       changes: value.changes
         ? Object.freeze(value.changes.map((change) => Object.freeze(change)))
         : undefined,

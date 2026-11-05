@@ -66,7 +66,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		FileMutation:    request.FileMutation,
 		ShellCommand:    request.ShellCommand,
 	}).Plan()
-	if plan.Action == approval.GatePrompt {
+	if plan.Action() != approval.GateDeny {
 		subject, err := t.subjects.ApprovalSubject(request.Tool, request.Arguments)
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive Tool approval subject: %w", err)
@@ -80,23 +80,26 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
 		}
-		plan = plan.ResolvePromptShortcuts(
-			approval.StandingDecision{Decision: decision, Matched: matched},
-		)
+		if matched {
+			plan, err = plan.ApplyRule(decision)
+			if err != nil {
+				return ToolAuthorizationDecision{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
+			}
+		}
 	}
-	switch plan.Action {
+	switch plan.Action() {
 	case approval.GatePass:
 		return allowTool(), nil
 	case approval.GateDeny:
-		return denyTool(approvalDenialMessage(plan.Denial, request.Tool.PublishedName(request.QualifiedName))), nil
+		return denyTool(approvalDenialMessage(plan.Denial(), request.Tool.PublishedName(request.QualifiedName))), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
 			CallID: request.CallID,
 			Tool:   request.Tool, QualifiedName: request.QualifiedName, SourceFingerprint: request.SourceFingerprint,
 			Arguments:    request.Arguments.Canonical(),
-			SafetyClass:  plan.SafetyClass,
-			Risk:         plan.Risk,
-			Reason:       approvalPromptReason(plan.PromptCause),
+			SafetyClass:  plan.SafetyClass(),
+			Risk:         plan.Risk(),
+			Reason:       approvalPromptReason(plan.PromptCause()),
 			Rememberable: true,
 		}
 		return askToolApproval(prompt)

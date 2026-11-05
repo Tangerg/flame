@@ -266,6 +266,13 @@ function HookRow({ value, t }: { value: HookInfo; t: Translate }) {
         >
           <Badge>{value.event}</Badge>
           <Metadata>{t(`scope.${value.scope}`)}</Metadata>
+          {value.failurePolicy && (
+            <Badge
+              tone={value.failurePolicy === "required" ? "warning" : undefined}
+            >
+              {t(`failure.${value.failurePolicy}`)}
+            </Badge>
+          )}
           {!value.active ? (
             <Badge tone="warning" title={t("inactive.hint")}>
               {t("inactive")}

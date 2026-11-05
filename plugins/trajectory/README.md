@@ -13,6 +13,23 @@ fragments, and confirms the size and digest of its output. The host returns a co
 document after final verification. Disabling the selected renderer withdraws new
 Markdown exports. Portable JSON remains available through the core Session API.
 
+Markdown tool sections include the captured call record: original name and source,
+Item/Run identity, admitted or rejected input, recorded status, timing, approval,
+and failure when present. The complete result follows as literal text or JSON;
+there is no preview limit or tool replay. Runtime supplies hydrated plain-text
+results and preserves structured business results. When a result also has retained
+model-visible text, the renderer joins the existing `ModelOnly` record by Item ID
+and shows its original body in a separate evidence section, without replacing the
+structured result. This is a read-only projection of the supplied records; the
+renderer has no blob reader or recovery policy of its own. Missing or duplicate
+model-text bindings refuse the export before any fragment is emitted.
+Opaque JSON numbers retain their original literals,
+and an explicit `null` result remains distinct from an absent result. Tool data is
+enclosed by a code fence longer than any backtick sequence it contains, so result
+headings, links, HTML and fences cannot escape into document markup. Encoding
+failure refuses the export before any Markdown fragment is emitted. Markdown is a
+readable projection; portable JSON remains the restoration format.
+
 The effect registers Markdown, JSON and complete trajectory exports in the actual
 command catalog, with ordinary user shortcut overrides. Dispatch captures the
 selected Session before reading. The plugin owns command labels, format choice,

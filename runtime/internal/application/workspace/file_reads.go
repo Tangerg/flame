@@ -124,9 +124,10 @@ type FileReadResult struct {
 
 // GrepInput specifies one root-scoped content search.
 type GrepInput struct {
-	Path  string
-	Query string
-	Limit GrepResultLimit
+	Path    string
+	Query   string
+	Limit   GrepResultLimit
+	ScanAll bool
 }
 
 // GrepPlan is the normalized, compiled search accepted by the filesystem port.
@@ -136,6 +137,7 @@ type GrepPlan struct {
 	Path    string
 	Pattern *regexp.Regexp
 	Limit   int
+	ScanAll bool
 }
 
 // GrepMatch is one content-search match.
@@ -145,11 +147,25 @@ type GrepMatch struct {
 	Text       string
 }
 
-// GrepResult is a capped content search plus its honest total match count.
+// GrepResult retains whole-line matches and the coverage that gives Total its
+// meaning. Total is an observed lower bound until Complete reports true.
 type GrepResult struct {
-	Matches []GrepMatch
-	Total   int
+	Matches  []GrepMatch
+	Total    int
+	Coverage GrepCoverage
 }
+
+// GrepCoverage counts the finite catalog entries actually admitted, excluded,
+// and left unread. SourceBytes charges all attempted text input, including a
+// file later excluded as binary or unpageable.
+type GrepCoverage struct {
+	ScannedFiles   int
+	SkippedFiles   int
+	RemainingFiles int
+	SourceBytes    int64
+}
+
+func (c GrepCoverage) Complete() bool { return c.SkippedFiles == 0 && c.RemainingFiles == 0 }
 
 const (
 	defaultFileListPageLimit = 1000
@@ -167,10 +183,10 @@ const (
 	MaxFileReadLineBytes   = maxFileReadBytes
 )
 
-// Workspace search returns an exact total over a finite searchable corpus and
-// retains only a bounded, whole-row prefix for its caller. Oversized/non-text
-// individual files are outside that corpus; crossing its aggregate source or
-// candidate boundary fails explicitly instead of publishing a partial total.
+// Workspace search stops after the first complete file that satisfies its
+// retention budget unless ScanAll was explicitly requested. Source exhaustion
+// returns verified partial results; unsupported files remain visible in coverage.
+// Candidate admission, changed files, I/O failure and cancellation still fail.
 const (
 	DefaultGrepLimit         = 100
 	MaxGrepLimit             = 1000
@@ -252,8 +268,8 @@ func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (
 	return f.files.Read(ctx, root, input)
 }
 
-// Grep searches a workspace root or an existing subdirectory. A truncated
-// search returns an honest total rather than silently under-reporting hits.
+// Grep searches a workspace root or an existing subdirectory. Coverage separates
+// a partial observation from a complete count, independently of retained rows.
 func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResult, error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return GrepResult{}, cause
@@ -278,7 +294,7 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 			return GrepResult{}, err
 		}
 	}
-	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: input.Limit.Matches()})
+	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: input.Limit.Matches(), ScanAll: input.ScanAll})
 }
 
 func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit pagination.RequestedLimit) ([]FileEntry, string, error) {

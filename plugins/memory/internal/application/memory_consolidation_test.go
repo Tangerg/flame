@@ -297,6 +297,37 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 	}
 }
 
+func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *testing.T) {
+	for _, malformed := range []string{"", "Here are the facts:\n- durable fact", "```markdown\n- durable fact\n```"} {
+		t.Run("extraction="+malformed, func(t *testing.T) {
+			consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: malformed})
+			if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil {
+				t.Fatal("malformed extraction was accepted")
+			}
+			pending, err := memory.PendingLedger(t.Context(), "/repo", 0, 10)
+			if err != nil || len(pending) != 0 || len(model.requests) != 1 {
+				t.Fatalf("malformed extraction changed ledger or invoked curation: pending=%v requests=%d error=%v", pending, len(model.requests), err)
+			}
+		})
+		t.Run("curation="+malformed, func(t *testing.T) {
+			consolidator, memory, _ := memoryConsolidationFixture(t,
+				scriptedReply{text: "- durable fact"}, scriptedReply{text: malformed},
+			)
+			if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil {
+				t.Fatal("malformed curation was accepted")
+			}
+			state, err := memory.State(t.Context(), "/repo")
+			if err != nil || state.Watermark != 0 {
+				t.Fatalf("malformed curation advanced watermark: state=%v error=%v", state, err)
+			}
+			pending, err := memory.PendingLedger(t.Context(), "/repo", 0, 10)
+			if err != nil || len(pending) != 1 || pending[0].Content != "durable fact" {
+				t.Fatalf("malformed curation lost source facts: pending=%v error=%v", pending, err)
+			}
+		})
+	}
+}
+
 func TestCurationGateAndTokenEstimate(t *testing.T) {
 	consolidator := &MemoryConsolidator{policy: memoryCurationPolicy{minPendingFacts: 3, maxAge: time.Hour}}
 	now := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)

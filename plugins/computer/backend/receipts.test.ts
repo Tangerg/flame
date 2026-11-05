@@ -63,6 +63,53 @@ function request(command: OriginalCommand) {
 }
 
 describe("original computer receipts", () => {
+  it("reports the same retained and reserved capacity used for admission without pruning original identities", () => {
+    const { store, open } = database();
+    expect(store.capacity()).toEqual({
+      records: 0,
+      bytes: 0,
+      pending: 0,
+      maxRecords: limits.maxRecords,
+      maxBytes: limits.maxBytes,
+    });
+    const command = original("capacity-original", "command", {
+      text: "原始证据🙂",
+    });
+    store.admit(command);
+    const pending = store.capacity();
+    expect(pending.records).toBe(1);
+    expect(pending.pending).toBe(1);
+    expect(pending.bytes).toBeGreaterThan(limits.maxResultBytes);
+    expect(pending.bytes).toBe(
+      [
+        command.id,
+        command.kind,
+        command.method,
+        command.input,
+        command.inputDigest,
+        canonicalJSON(command.invocation),
+        command.admittedAt,
+      ].reduce(
+        (sum, value) => sum + Buffer.byteLength(value),
+        limits.maxResultBytes,
+      ),
+    );
+    store.settleCommand(command.id, { value: true });
+    const settled = store.capacity();
+    expect(settled.records).toBe(1);
+    expect(settled.pending).toBe(0);
+    expect(settled.bytes).toBe(
+      pending.bytes -
+        limits.maxResultBytes +
+        Buffer.byteLength(canonicalJSON({ value: true })),
+    );
+    store.close();
+    const restarted = open();
+    expect(restarted.capacity()).toEqual(settled);
+    expect(restarted.admit(command).fresh).toBe(false);
+    expect(restarted.capacity()).toEqual(settled);
+  });
+
   it("durably admits before dispatch and never readmits an original action", () => {
     const { store, open } = database();
     const command = original();

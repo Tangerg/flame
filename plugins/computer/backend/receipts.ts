@@ -325,6 +325,27 @@ export class Receipts {
     return row ? this.#decode(row) : undefined;
   }
 
+  #usage() {
+    // SQLite reads a column's octet length from its record metadata, including
+    // large media results, without materializing another payload in the UI path.
+    return this.#db
+      .prepare(
+        "SELECT count(*) AS count, coalesce(sum(CASE WHEN outcome IS NULL THEN 1 ELSE 0 END),0) AS pending, coalesce(sum(octet_length(id)+octet_length(kind)+octet_length(method)+octet_length(input)+octet_length(digest)+octet_length(invocation)+octet_length(admitted_at)+CASE WHEN outcome IS NULL THEN ? ELSE octet_length(outcome) END),0) AS bytes FROM commands",
+      )
+      .get(this.#limits.maxResultBytes)!;
+  }
+
+  capacity() {
+    const usage = this.#usage();
+    return {
+      records: Number(usage.count),
+      bytes: Number(usage.bytes),
+      pending: Number(usage.pending),
+      maxRecords: this.#limits.maxRecords,
+      maxBytes: this.#limits.maxBytes,
+    };
+  }
+
   admit(
     original: OriginalCommand,
     admission: "ordinary" | "reserved" = "ordinary",
@@ -343,11 +364,7 @@ export class Receipts {
           conflict();
         return { fresh: false, record: previous };
       }
-      const usage = this.#db
-        .prepare(
-          "SELECT count(*) AS count, coalesce(sum(length(CAST(id AS BLOB))+length(CAST(kind AS BLOB))+length(CAST(method AS BLOB))+length(CAST(input AS BLOB))+length(CAST(digest AS BLOB))+length(CAST(invocation AS BLOB))+length(CAST(admitted_at AS BLOB))+CASE WHEN outcome IS NULL THEN ? ELSE length(CAST(outcome AS BLOB)) END),0) AS bytes FROM commands",
-        )
-        .get(this.#limits.maxResultBytes)!;
+      const usage = this.#usage();
       const reserve = admission === "ordinary";
       const maxRecords = this.#limits.maxRecords - (reserve ? 1 : 0);
       const maxBytes =

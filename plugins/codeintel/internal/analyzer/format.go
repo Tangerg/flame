@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/plugins/codeintel/internal/lsp"
 )
 
-// toPosition converts a 1-based (line, column) — what the model reads off a
-// file — to the 0-based LSP wire position, clamping at the document origin.
+// toPosition converts the model's 1-based line and UTF-16 code-unit offset to
+// the 0-based LSP wire position, clamping at the document origin.
 func toPosition(line, column int) lsp.Position {
 	if line < 1 {
 		line = 1
@@ -44,7 +44,7 @@ func diagnosticsSection(file string, diags []lsp.Diagnostic) string {
 	return fmt.Sprintf("Language server flagged %d new problem(s) in %s after this edit:\n%s", len(lines), file, strings.Join(lines, "\n"))
 }
 
-// --- result formatting (1-based, workspace-relative paths) ---
+// --- result formatting (1-based UTF-16 coordinates, workspace-relative paths) ---
 
 func relPath(root, abs string) string {
 	if rel, err := filepath.Rel(root, abs); err == nil && !strings.HasPrefix(rel, "..") {

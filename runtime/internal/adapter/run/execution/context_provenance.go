@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
@@ -82,6 +83,58 @@ func (c contextSources) attach(target *coremetadata.Map, targetName string) erro
 		return fmt.Errorf("execution: attach %s context provenance: %w", targetName, err)
 	}
 	return nil
+}
+
+// originalUserMessage removes only the context this owner attributed. Retrieval
+// must query the caller's text instead of querying hook or recalled-memory text
+// appended to the same durable User message. The provider still sees both.
+func originalUserMessage(messages []corechat.Message) (*corechat.Message, error) {
+	for index := len(messages) - 1; index >= 0; index-- {
+		message := messages[index]
+		if message.Role != corechat.RoleUser {
+			continue
+		}
+		reminder, err := modeladapter.IsToolResultReferenceReminder(message)
+		if err != nil {
+			return nil, err
+		}
+		if reminder {
+			continue
+		}
+		_, hostMessage, err := readContextSources(message.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		if hostMessage {
+			continue
+		}
+		projected := message.Clone()
+		projected.Parts = nil
+		for _, part := range message.Parts {
+			_, hostPart, err := readContextSources(part.Metadata)
+			if err != nil {
+				return nil, err
+			}
+			if !hostPart {
+				projected.Parts = append(projected.Parts, part.Clone())
+			}
+		}
+		if len(projected.Parts) > 0 {
+			return &projected, nil
+		}
+	}
+	return nil, nil
+}
+
+func readContextSources(values coremetadata.Map) (contextSources, bool, error) {
+	sources, found, err := values.Decode[contextSources](contextProvenanceMetadataKey)
+	if err != nil || !found {
+		return nil, found, err
+	}
+	if err := sources.validate(); err != nil {
+		return nil, true, err
+	}
+	return sources, true, nil
 }
 
 type promptSection struct {

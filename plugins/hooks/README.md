@@ -20,6 +20,17 @@ one event receipt. Direct public plugin calls cannot originate trusted lifecycle
 Observe-only events cannot change an already committed outcome. A captured rule
 set retains its exact source until all of its events finish and close.
 
+Command rules may set `"failurePolicy": "required"` for `PreToolUse`,
+`UserPromptSubmit`, or `PreCompact`. A timeout, unavailable runner, invalid input
+projection, malformed decision, or execution failure then denies the pending
+action and retains the original diagnostic. An omitted policy or
+`"failurePolicy": "advisory"` reports the failure and continues. A valid explicit
+deny or approval request keeps its meaning in both modes. Required policies are
+rejected on declarative injections and events that cannot veto their pending
+action; they cannot undo an effect from an observe-only event. The policy is part
+of the captured rule, so changing the authored file does not change an admitted
+event's interpretation.
+
 Fresh Runtime catalogs select this backend. Existing installations must install,
 enable and select its `hook-provider` contribution for `flame.hooks.v1`. There is
 no built-in discovery or shell fallback. Disabling or uninstalling the backend

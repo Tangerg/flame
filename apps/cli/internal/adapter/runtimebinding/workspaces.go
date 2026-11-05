@@ -127,7 +127,7 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	}
 	value, err := r.workspaces.SearchWorkspaceFiles(ctx, protocol.GrepRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Query: request.Query,
-		Path: request.Path, Limit: protocolOptionalPositiveInt(request.Limit.Matches()),
+		Path: request.Path, Limit: protocolOptionalPositiveInt(request.Limit.Matches()), ScanAll: request.ScanAll,
 	}, r.callOptions())
 	if err != nil {
 		return workspace.SearchResult{}, classifyError(err)
@@ -135,7 +135,7 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	if value == nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned nil")
 	}
-	result := workspace.SearchResult{Total: value.Total, Matches: value.Matches}
+	result := workspace.SearchResult{Total: value.Total, Matches: value.Matches, Complete: value.Complete, Coverage: value.Coverage}
 	if err := result.Validate(); err != nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned an invalid projection: %v", err)
 	}

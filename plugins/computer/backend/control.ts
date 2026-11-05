@@ -147,6 +147,7 @@ export class Control {
     return {
       host: { ...this.#host },
       configured: this.#config !== undefined,
+      receipts: this.#receipts.capacity(),
       ...(resource
         ? {
             session: {

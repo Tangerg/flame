@@ -281,7 +281,7 @@
   "approvals.mode.balanced": "균형",
   "approvals.mode.auto": "자동",
   "approvals.rules": "기억된 규칙",
-  "approvals.rules.sub": "승인을 건너뛰도록 저장한 도구 결정.",
+  "approvals.rules.sub": "저장된 허용 및 거부 규칙. 일치하는 거부 규칙은 자동 승인도 차단합니다.",
   "approvals.rules.empty": "아직 규칙이 없습니다",
   "approvals.rules.emptySub": "승인 또는 거부 시 '다시 묻지 않기'로 추가하세요.",
   "approvals.scope.session": "세션",

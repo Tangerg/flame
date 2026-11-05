@@ -168,7 +168,8 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
 			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main"), NoNewline: true}},
 		}}},
-		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
+		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1,
+			Coverage: protocol.GrepCoverage{ScannedFiles: 1, SkippedFiles: 2, RemainingFiles: 3, SourceBytes: 120}},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
 			"": protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
 			"next": protocol.NewPage([]protocol.FileEntry{{
@@ -210,9 +211,9 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		t.Fatal("workspace diff projection aliases runtime row storage")
 	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
-		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(),
+		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(), ScanAll: true,
 	})
-	if err != nil || search.Total != 1 || len(search.Matches) != 1 {
+	if err != nil || search.Total != 1 || len(search.Matches) != 1 || search.Complete || search.Coverage != stub.search.Coverage || !stub.searchRequests[0].ScanAll {
 		t.Fatalf("Search = (%+v, %v)", search, err)
 	}
 	stub.search.Matches[0].Text = "mutated"

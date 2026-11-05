@@ -115,6 +115,7 @@ func (w *workspaceScreens) SearchWorkspace(argument string) error {
 	}
 	request := workspace.SearchRequest{
 		Workspace: w.session.current.Workspace.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
+		ScanAll: selection.scanAll,
 	}
 	w.runWorkspaceQuery("searching workspace",
 		func(ctx context.Context) (readerDocument, error) {
@@ -126,13 +127,21 @@ func (w *workspaceScreens) SearchWorkspace(argument string) error {
 			for _, match := range result.Matches {
 				lines = append(lines, fmt.Sprintf("%s:%d  %s", match.Path, match.LineNumber, match.Text))
 			}
-			detail := fmt.Sprintf("%d/%d matches", len(result.Matches), result.Total)
+			detail := workspaceSearchSummary(result)
 			if request.Path != "" {
 				detail += " · " + request.Path
 			}
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
 		})
 	return nil
+}
+
+func workspaceSearchSummary(result workspace.SearchResult) string {
+	if result.Complete {
+		return fmt.Sprintf("%d/%d matches", len(result.Matches), result.Total)
+	}
+	return fmt.Sprintf("%d shown · at least %d matches · %d files unread · %d files skipped",
+		len(result.Matches), result.Total, result.Coverage.RemainingFiles, result.Coverage.SkippedFiles)
 }
 
 func (w *workspaceScreens) BrowseWorkspace(argument string) error {

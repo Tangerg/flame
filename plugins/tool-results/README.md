@@ -20,6 +20,14 @@ projection containing the original call/Run IDs, arguments, result, status, rang
 errors. This data does not follow navigation or reread a historical producer. File
 navigation, copy, approvals and explicit mutation actions retain their existing owners.
 
+Shell captures keep their original process handle, byte range, completion status,
+continuation and recording-failure metadata beside the exact output page. The
+renderer never reads the process or joins pages. Local output expansion reveals
+only that captured page. Search captures retain the producer's observed match
+count and coverage: an incomplete scan remains labelled as a lower bound with
+unread and skipped file counts, including during local Find. A complete scan
+whose recorded rows were capped says how many were retained from that count.
+
 Filters, ANSI styles, line numbers and incremental expansion are local presentation.
 ANSI foreground colours and the `error`/`warning` line fallbacks use the host's readable
 text roles (`--color-negative`, `--color-success`, `--color-warning`, `--color-accent-text`,

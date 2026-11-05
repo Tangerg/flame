@@ -102,6 +102,12 @@ export const fr = {
     "Le résultat est non confirmé. Retrouvez cette commande d’origine sans répéter ses actions.",
   "command.recover": "Vérifier le résultat d’origine",
   "command.accepted": "{{action}} : la commande d’origine est terminée.",
+  "receipts.title": "Capacité des preuves originales",
+  "receipts.records": "Enregistrements conservés / limite",
+  "receipts.bytes": "Octets comptabilisés / limite",
+  "receipts.pending": "Résultats non confirmés",
+  "receipts.help":
+    "Les octets incluent l’espace réservé aux résultats en attente. Les nouvelles opérations réservent aussi une place pour révoquer le contrôle et peuvent être refusées avant d’atteindre les limites. Les preuves originales ne sont jamais supprimées pour accepter de nouvelles actions.",
   "history.title": "Résultats d’origine",
   "history.help":
     "Consultez les preuves conservées. Les résultats absents ne sont jamais déduits du bureau actuel.",

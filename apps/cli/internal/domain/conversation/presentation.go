@@ -223,6 +223,8 @@ type ToolCall struct {
 	// ExitCode is set for completed process-like tools. Nil distinguishes an
 	// absent code from a successful zero.
 	ExitCode *int
+	// OutputPage preserves the original shell's retained-log coordinates.
+	OutputPage *builtin.CommandOutputPage
 	// Duration is how long the call took, once it has finished.
 	Duration time.Duration
 }
@@ -234,23 +236,26 @@ func (t ToolCall) Clone() ToolCall {
 	if t.ExitCode != nil {
 		t.ExitCode = new(*t.ExitCode)
 	}
+	if t.OutputPage != nil {
+		t.OutputPage = new(*t.OutputPage)
+	}
 	return t
 }
 
 // Equal reports whether two tool projections describe the same invocation
 // state. An absent exit code remains distinct from an explicit successful zero.
 func (t ToolCall) Equal(other ToolCall) bool {
-	if t.Kind != other.Kind || t.Name != other.Name || t.Summary != other.Summary ||
-		t.Status != other.Status || t.Safety != other.Safety || !t.StartedAt.Equal(other.StartedAt) ||
-		!t.FinishedAt.Equal(other.FinishedAt) || t.Command != other.Command || t.Path != other.Path ||
-		t.Query != other.Query || t.Output != other.Output ||
-		t.ArgumentsText != other.ArgumentsText || !bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
+	if !t.sameInvocation(other) || t.Status != other.Status || t.Safety != other.Safety ||
+		!t.StartedAt.Equal(other.StartedAt) || !t.FinishedAt.Equal(other.FinishedAt) ||
+		t.Output != other.Output || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
 		!failure.Equal(t.Problem, other.Problem) ||
 		t.Diff != other.Diff || t.Duration != other.Duration ||
-		(t.ExitCode == nil) != (other.ExitCode == nil) {
+		(t.ExitCode == nil) != (other.ExitCode == nil) ||
+		(t.OutputPage == nil) != (other.OutputPage == nil) {
 		return false
 	}
-	return t.ExitCode == nil || *t.ExitCode == *other.ExitCode
+	return (t.ExitCode == nil || *t.ExitCode == *other.ExitCode) &&
+		(t.OutputPage == nil || *t.OutputPage == *other.OutputPage)
 }
 
 // sameInvocation compares the provider-visible call while deliberately

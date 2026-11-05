@@ -377,7 +377,9 @@ func currentSchema() []string {
 			item_id     TEXT    NOT NULL UNIQUE,
 			occurred_at INTEGER NOT NULL,
 			payload     TEXT    NOT NULL,
-			offload_id  TEXT    NOT NULL DEFAULT ''
+			offload_id  TEXT    NOT NULL DEFAULT '',
+			offload_model_only INTEGER NOT NULL DEFAULT 0 CHECK (offload_model_only IN (0, 1)),
+			CHECK (offload_id != '' OR offload_model_only = 0)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_history_items_session
 			ON history_items(session_id, seq)`,

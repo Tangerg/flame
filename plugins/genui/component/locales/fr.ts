@@ -26,6 +26,11 @@ export const fr: Record<string, string> = {
   "table.pagination": "Pages de {{table}}",
   "chart.data": "Données de {{chart}}",
   "chart.empty": "Aucune valeur à tracer.",
+  "resource.load": "Charger le contenu externe : {{resource}}",
+  "resource.notice":
+    "Le chargement transmet cette adresse à un service externe. Un changement de source nécessite une nouvelle autorisation.",
+  "map.external":
+    "Le chargement de la carte transmet les lieux affichés à OpenStreetMap. Le tableau des lieux reste utilisable sans charger la carte.",
   "image.unavailable": "Cette image n’est pas disponible.",
   "code.label": "Code",
   "markdown.table": "Tableau Markdown",

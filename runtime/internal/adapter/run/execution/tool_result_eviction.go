@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -52,8 +53,8 @@ func newToolResultOffloadPolicy(values ToolResultOffloadPolicyValues) (toolResul
 	if *values.Threshold <= 0 {
 		return toolResultOffloadPolicy{}, errors.New("execution: Tool-result offload threshold must be positive")
 	}
-	if strings.TrimSpace(values.ReaderName) == "" || values.ReaderName != strings.TrimSpace(values.ReaderName) {
-		return toolResultOffloadPolicy{}, errors.New("execution: Tool-result reader name is required without surrounding whitespace")
+	if err := modeladapter.ValidateToolResultReader(values.ReaderName); err != nil {
+		return toolResultOffloadPolicy{}, err
 	}
 	return toolResultOffloadPolicy{enabled: true, threshold: *values.Threshold, readerName: values.ReaderName}, nil
 }

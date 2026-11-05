@@ -56,6 +56,9 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 		if hook.TimeoutMillis > 0 {
 			metadata = append(metadata, "timeout  "+strconv.Itoa(hook.TimeoutMillis)+"ms")
 		}
+		if hook.FailurePolicy != "" {
+			metadata = append(metadata, "failure policy  "+string(hook.FailurePolicy))
+		}
 		actionTitle, action := "Injected context", hook.Inject
 		if hook.Command != "" {
 			actionTitle, action = "Shell command", hook.Command

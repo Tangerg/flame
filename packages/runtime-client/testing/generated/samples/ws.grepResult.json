@@ -3,5 +3,12 @@
     { "path": "src/main.go", "lineNumber": 42, "text": "func main() {" },
     { "path": "src/util.go", "lineNumber": 7, "text": "func helper() error {" }
   ],
-  "total": 2
+  "total": 2,
+  "complete": true,
+  "coverage": {
+    "scannedFiles": 2,
+    "skippedFiles": 0,
+    "remainingFiles": 0,
+    "sourceBytes": 2048
+  }
 }

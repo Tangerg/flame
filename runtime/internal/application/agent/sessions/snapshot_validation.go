@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -31,14 +30,8 @@ func (s Snapshot) ValidateToolResults() error {
 			continue
 		}
 		ref := *invocation.Offload
-		if err := ref.Validate(); err != nil {
+		if err := ref.ValidateResult(invocation.Result); err != nil {
 			return fmt.Errorf("sessions: item %q offload: %w", item.ID(), err)
-		}
-		if invocation.Result == nil {
-			return fmt.Errorf("sessions: item %q offloaded result is absent", item.ID())
-		}
-		if _, ok := invocation.Result.String(); !ok {
-			return fmt.Errorf("sessions: item %q offloaded result is not a string", item.ID())
 		}
 		owner, exists := owners[ref.ID]
 		if !exists {
@@ -75,7 +68,7 @@ func (s Snapshot) HydratedItems() ([]transcript.Item, error) {
 		if !found {
 			return nil, fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), call.Invocation.Offload.ID)
 		}
-		result, err := tool.NewResult(body)
+		result, err := call.Invocation.Offload.HydrateResult(call.Invocation.Result, body)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: hydrate item %q: %w", item.ID(), err)
 		}

@@ -43,7 +43,7 @@
     "name": "flame.computer/read.v1",
     "kind": "query",
     "target": "installation",
-    "description": "Read the actual Runtime host and current computer-control session. This does not start an engine or authorize computer access.",
+    "description": "Read the actual Runtime host, current computer-control session and original receipt capacity including reserved outcome bytes. This does not start an engine or authorize computer access.",
     "input": "schema.json#/$defs/ReadV1Input",
     "output": "schema.json#/$defs/ReadV1Output"
   },

@@ -117,6 +117,28 @@ describe("reducer — commandExecution output durability", () => {
     expect(s.toolCalls["t1"]?.exitCode).toBeUndefined();
   });
 
+  it.each([
+    ["object", { output: "", exitCode: 0 }],
+    ["JSON text", '{"output":"","exitCode":0}'],
+  ])("an %s receipt's explicit empty output replaces the streamed preview", (_encoding, result) => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
+    s = reduce(s, delta("t1", { type: "toolOutput", text: "preview" }));
+    s = reduce(
+      s,
+      completed(
+        item({
+          id: "t1",
+          status: "completed",
+          type: "toolCall",
+          tool: { ...cmd({}), result },
+        }),
+      ),
+    );
+
+    expect(s.toolCalls["t1"]).toMatchObject({ result: "", exitCode: 0, status: "ok" });
+  });
+
   it("while running the toolOutput delta is the live preview (no settled fields yet)", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));

@@ -7,7 +7,7 @@
 37 apps/web/src/features/agent/adapters/agentRuntimeGateway.ts:RuntimeAgentGateway.loadSessionSnapshot
 24 apps/web/src/features/agent/application/conversation/transcriptRows.ts:readTurnFacts
 23 apps/web/src/features/agent/application/fold/itemHandlers.ts:assertItemProjectionIdentity
-33 apps/web/src/features/agent/application/fold/projections.ts:categoryFields
+27 apps/web/src/features/agent/application/fold/projections.ts:categoryFields
 22 apps/web/src/features/agent/application/fold/projections.ts:rawLabelSource
 23 apps/web/src/features/chat/message/ui/MessageBlock.tsx:MessageBlockInner
 34 apps/web/src/features/composer/quote-selection/SelectionQuote.tsx:<anonymous>

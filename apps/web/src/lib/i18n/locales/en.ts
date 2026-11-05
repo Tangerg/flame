@@ -329,7 +329,7 @@ export const en: Record<string, string> = {
   "approvals.gate.deny": "refused",
   "approvals.gate.entry": "{{toolClass}}: {{gate}}",
   "approvals.rules": "Remembered rules",
-  "approvals.rules.sub": "Tool decisions you saved to skip approval.",
+  "approvals.rules.sub": "Saved permissions. A matching denial still blocks automatic approval.",
   "approvals.rules.empty": "No rules yet",
   "approvals.rules.emptySub": "Approve or deny with “don't ask again” to add one.",
   "approvals.scope.session": "Session",

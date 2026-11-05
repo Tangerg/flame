@@ -275,7 +275,7 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 		show  string
 	}{
 		{input: "/preview --lines 25 dir with spaces/main.go", show: "File preview"},
-		{input: "/grep --path internal --limit 75 transition conflict", show: "Workspace search"},
+		{input: "/grep --path internal --limit 75 --scan-all transition conflict", show: "Workspace search"},
 		{input: "/browse --recursive --ignored --glob *.go dir with spaces", show: "Workspace files"},
 		{input: "/read --start 10 --end 20 --max-bytes 4096 dir with spaces/main.go", show: "Workspace file"},
 	} {
@@ -299,7 +299,7 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 		t.Errorf("preview request = %+v", preview)
 	}
 	searchLimit := search.Limit.Matches()
-	if search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
+	if search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" || !search.ScanAll {
 		t.Errorf("search request = %+v", search)
 	}
 	if files.Path != "dir with spaces" || files.Glob != "*.go" || !files.Recursive || !files.IncludeIgnored {
@@ -311,6 +311,19 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 		t.Errorf("read request = %+v", read)
 	}
 	stop()
+}
+
+func TestWorkspaceSearchSummaryDoesNotPresentPartialCountAsExhaustive(t *testing.T) {
+	result := workspace.SearchResult{Matches: []protocol.GrepMatch{{Path: "a.go", LineNumber: 1}}, Total: 3,
+		Coverage: protocol.GrepCoverage{ScannedFiles: 1, SkippedFiles: 2, RemainingFiles: 5}}
+	if got := workspaceSearchSummary(result); got != "1 shown · at least 3 matches · 5 files unread · 2 files skipped" {
+		t.Fatalf("partial search presented an exact total: %q", got)
+	}
+	result.Complete = true
+	result.Coverage = protocol.GrepCoverage{ScannedFiles: 1}
+	if got := workspaceSearchSummary(result); got != "1/3 matches" {
+		t.Fatalf("complete search lost its exact count: %q", got)
+	}
 }
 
 func TestWorkspacePreviewRendersTheAcceptedWindowAndTruncation(t *testing.T) {

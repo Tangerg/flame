@@ -26,6 +26,10 @@ export const zh: Record<string, string> = {
   "table.pagination": "{{table}}分页",
   "chart.data": "{{chart}}的数据",
   "chart.empty": "没有可绘制的数值。",
+  "resource.load": "加载外部内容：{{resource}}",
+  "resource.notice": "加载会将此地址发送给外部服务。来源更改后需要重新授权。",
+  "map.external":
+    "加载地图瓦片会将查看的位置发送给 OpenStreetMap。不加载瓦片也可以使用位置表。",
   "image.unavailable": "此图片无法显示。",
   "code.label": "代码",
   "markdown.table": "Markdown 表格",

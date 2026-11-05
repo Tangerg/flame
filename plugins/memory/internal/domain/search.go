@@ -30,21 +30,35 @@ func keywordRanked(query string, items []Item, limit int) []Item {
 	}
 	type scored struct {
 		item  Item
-		score int
+		score float64
 	}
-	ranked := make([]scored, 0, len(items))
-	for _, item := range items {
-		content := strings.ToLower(item.Content())
-		hits := 0
-		for _, term := range terms {
+	contents := make([]string, len(items))
+	for index, item := range items {
+		contents[index] = strings.ToLower(item.Content())
+	}
+	weights := make([]float64, len(terms))
+	for index, term := range terms {
+		documents := 0
+		for _, content := range contents {
 			if strings.Contains(content, term) {
-				hits++
+				documents++
 			}
 		}
-		if hits == 0 {
+		weights[index] = math.Log(1 + (float64(len(items)-documents)+0.5)/(float64(documents)+0.5))
+	}
+	ranked := make([]scored, 0, len(items))
+	for itemIndex, item := range items {
+		content := contents[itemIndex]
+		var score float64
+		for index, term := range terms {
+			if strings.Contains(content, term) {
+				score += weights[index]
+			}
+		}
+		if score == 0 {
 			continue
 		}
-		ranked = append(ranked, scored{item: item, score: hits})
+		ranked = append(ranked, scored{item: item, score: score})
 	}
 	slices.SortStableFunc(ranked, func(a, b scored) int { return cmp.Compare(b.score, a.score) })
 	return capItems(ranked, limit, func(s scored) Item { return s.item })
@@ -137,17 +151,41 @@ func cosineSim(query []float32, qn float64, v []float32) float64 {
 func tokenize(text string) []string {
 	seen := make(map[string]struct{})
 	var terms []string
-	for _, field := range strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-	}) {
-		if len([]rune(field)) < 2 {
-			continue
+	add := func(term string) {
+		if _, duplicate := seen[term]; !duplicate {
+			seen[term] = struct{}{}
+			terms = append(terms, term)
 		}
-		if _, dup := seen[field]; dup {
-			continue
-		}
-		seen[field] = struct{}{}
-		terms = append(terms, field)
 	}
+	var word []rune
+	segmented := false
+	flush := func() {
+		if segmented {
+			// Unspaced scripts need partial phrase matches; treating the whole
+			// question as one term makes the lexical fallback an exact sentence lookup.
+			if len(word) == 1 {
+				add(string(word))
+			}
+			for index := 0; index+1 < len(word); index++ {
+				add(string(word[index : index+2]))
+			}
+		} else if len(word) >= 2 {
+			add(string(word))
+		}
+		word = word[:0]
+	}
+	for _, character := range strings.ToLower(text) {
+		if !unicode.IsLetter(character) && !unicode.IsNumber(character) {
+			flush()
+			continue
+		}
+		current := unicode.Is(unicode.Han, character) || unicode.Is(unicode.Hiragana, character) || unicode.Is(unicode.Katakana, character)
+		if len(word) > 0 && current != segmented {
+			flush()
+		}
+		segmented = current
+		word = append(word, character)
+	}
+	flush()
 	return terms
 }

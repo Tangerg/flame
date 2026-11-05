@@ -89,6 +89,54 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 	}
 }
 
+func TestTranscriptModelOnlyOffloadKeepsStructuredResultAcrossAllReads(t *testing.T) {
+	store, blobs := openTranscriptAndBlobs(t)
+	const sessionID = "session-model-text"
+	id := stageShellResult(t, blobs, sessionID, "full model-visible text")
+	result, err := tool.ParseResult([]byte(`{"revision":7,"title":"report"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := toolItem(sessionID, "model-text-item", "preview", &transcript.ToolResultRef{ID: id, ModelOnly: true}).Snapshot()
+	call := item.Body.(transcript.ToolCallBody)
+	call.Invocation.Result = &result
+	item.Body = call
+	original, err := transcript.RestoreItem(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AppendItem(t.Context(), original); err != nil {
+		t.Fatal(err)
+	}
+	for _, read := range []struct {
+		name  string
+		items func() ([]transcript.Item, error)
+	}{
+		{"stored", func() ([]transcript.Item, error) { return store.ListStored(t.Context(), sessionID) }},
+		{"hydrated", func() ([]transcript.Item, error) { return store.List(t.Context(), sessionID) }},
+		{"single", func() ([]transcript.Item, error) {
+			value, found, err := store.Item(t.Context(), original.ID())
+			if !found {
+				return nil, err
+			}
+			return []transcript.Item{value}, err
+		}},
+	} {
+		t.Run(read.name, func(t *testing.T) {
+			items, err := read.items()
+			if err != nil || len(items) != 1 {
+				t.Fatalf("read = %d items, %v", len(items), err)
+			}
+			if !items[0].Equal(original) {
+				t.Fatal("read changed the result or model-only reference")
+			}
+		})
+	}
+	if err := store.AppendItem(t.Context(), original); err != nil {
+		t.Fatalf("idempotent write changed after hydration: %v", err)
+	}
+}
+
 func TestTranscriptSurfacesMissingOffloadedToolResult(t *testing.T) {
 	tr, blobs := openTranscriptAndBlobs(t)
 	const sess = "sess-2"

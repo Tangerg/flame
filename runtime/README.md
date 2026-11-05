@@ -384,8 +384,10 @@ or settling a command. `plugins.changed` describes installation lifecycle.
 
 Knowledge base is another ordinary backend with its own document revisions,
 chunk/vector index and private import receipts. Typed operations and MCP search
-share retrieval; context v2 supplies original user input separately from host
-trailers. Embedding v2 returns the actual vector space with its vectors. See
+share retrieval; context v3 supplies the captured model use and original user input
+separately from host trailers and provenance-attributed hook/recall parts, and returns
+role-free reference data. Embedding v2
+returns the actual vector space with its vectors. See
 [`Knowledge base`](../plugins/knowledgebase/README.md) and the public
 [`SDK contracts`](../packages/go-sdk/plugin/README.md) for use and coordinated rebuild requirements.
 
@@ -1242,7 +1244,21 @@ Unicode characters in both the transcript owner and its schema projection.
 
 ## Background shell lifetime
 
-Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.
+Background commands remain addressable after they exit until `read_shell_output`
+consumes their final output page. The original process owner holds one temporary
+log and its cursor; there is no second log registry. Reads return at most 256 KiB,
+with byte offsets and a `has_more_output` continuation indicator. Final consumption
+releases the original shell handle and log; later reads report absence. Compaction
+reminders retain finished handles with unread pages. Stopping a command preserves
+its unread output, while Session, workspace and Runtime teardown reclaim the
+owned process and log. These temporary logs do not survive a Runtime restart;
+already observed pages remain in their ordinary durable Tool results.
+
+Output admission is bounded to 8 MiB per command, 64 MiB across the Runtime's
+retained logs and 256 retained handles. Capacity or disk failure stops the original
+command and reports the failure together with the recorded prefix. Later bytes
+never evict earlier diagnostics. Remaining pages stay readable under the same
+handle, including when a waiting read is canceled.
 
 The shell owner reads output and retires a completed handle as one operation.
 A terminal cleanup failure retains the handle and unread bytes for teardown,
@@ -1252,7 +1268,13 @@ execution; that evidence does not declare an uncertain command safe to retry.
 
 Reading or stopping a shell requires its owning Session, even when another Session knows the exact shell ID. Host teardown retains its authority to stop a Session, a shared workspace, or the complete Runtime. A call canceled before process admission cannot launch a detached command.
 
-Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `encoding` (`utf8` or `base64`) and `data`. Both foreground completion and `read_shell_output` preserve arbitrary process bytes, including output truncated inside a UTF-8 character. Background launch responses include an explicit `shell_id`; incremental reads include `shell_id`, `status`, `stdout`, and an optional `output_dropped` flag. The command transcript still renders valid text directly and represents binary output with its lossless encoded content. Consumers of raw Tool output must use this current shape; there is no string-output compatibility decoder.
+Shell output uses Scope's `tools/content.Content`: `stdout` has `encoding`
+(`utf8` or `base64`) and `data`. A page may end inside a UTF-8 character without
+losing the original bytes. Background and unread terminal output retains its
+`shell_id`; pages report `status`, `offset`, `next_offset` and
+`has_more_output`. `output_dropped` reports an explicit recording failure, never
+silent ring-buffer eviction. The transcript and clients preserve paging metadata
+and render valid text directly or retain binary output losslessly.
 
 ## Execution lifecycle
 
@@ -1404,6 +1426,17 @@ effects. The probe's finer reason and cause stay in the trace.
 
 Waiting checkpoints declare the offloaded result IDs required by their continuation. SQLite saves these references atomically with the checkpoint, verifies Session ownership, and releases them when the checkpoint is replaced or consumed. Startup and failed-write cleanup delete only bodies held by neither a checkpoint nor an Item. Restoring an executor verifies that the declared references exactly match its pending result metadata; old checkpoints missing this ownership information are rejected under the existing recovery policy, without a compatibility reader.
 
+Offload references distinguish plain text replacements from model-only text.
+The transcript owns that distinction: structured results retain their original
+value while the model receives bounded text previews and byte-range retrieval
+instructions. Media and text blocks with citations or opaque metadata retain
+their original semantics; they are not flattened into an unreconstructable text
+blob. All reads, forks and exports preserve the same reference. Markdown export
+hydrates plain text before invoking the renderer and leaves structured results
+intact. Session artifact version 32 carries `modelOnly` explicitly. The private
+history schema also changes; use a fresh development data directory and rebuild
+all consumers, without a migration or former-format reader.
+
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
 
 Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, detail, and any observed Tool result details through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
@@ -1449,6 +1482,15 @@ and the caller's cause. Search excludes a binary or unpageable text file only
 when its actual input did not fail; buffered text cannot conceal a pending read
 failure. Read, version verification, capacity and close failures survive together,
 and no matches enter the result until the file passes that complete admission.
+
+Grep normally stops at a verified file boundary once its result budget is met.
+`scanAll` (`scan_all` on the model Tool, `--scan-all` in the CLI) requests further
+scanning within the same resource limits. Exhausting the 512 MiB aggregate source
+budget returns explicit partial coverage. `total` counts observed matches;
+`complete` derives from scanned, skipped and remaining files. Binary, oversized
+or unpageable files are reported as skipped. The CLI and Tool result presentation
+show partial totals as lower bounds. Ordinary read, version, cancellation and
+close failures remain errors rather than becoming successful partial results.
 
 Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, and patches continue to address that directory after a rename or pathname replacement. Path-based search and installed code intelligence require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
 
@@ -2038,6 +2080,12 @@ plus remote tool name; each variant's data is reachable only through that varian
 same key replaces both its decision and source fingerprint. Equally specific
 distinct patterns still resolve to deny when they conflict.
 
+The winning saved denial applies to every ordinary Tool call, including read-only
+Tools and calls that Balanced or Yolo mode would otherwise approve automatically.
+A saved allowance skips a prompt but cannot override Plan mode's read-only
+refusal. Rule lookup failures remain policy errors; automatic approval never
+substitutes for an unavailable rule store.
+
 Every pending Tool approval retains its source reference and authority fingerprint,
 including one-off decisions that cannot be remembered. Restoration validates this
 identity together with the call ID, model-visible name, and effective arguments;
@@ -2068,10 +2116,13 @@ legacy rule conversion. Update Runtime and every client together.
 
 ## Cache prefix and the request tail
 
-A model request is ordered so that everything a provider may have cached stays byte-stable:
-tool declarations, then the single System message of stable instructions (base prompt,
-pinned memory, agent documents), then the conversation. Nothing that changes during a
-Session precedes the conversation. Memory recalled for a prompt is a text part framed
+A model request keeps its Run's frozen instructions (base prompt, pinned memory and
+agent documents) ahead of authored conversation. Current Goal, Plan and installed
+context data are measured request tails, so their changes do not rewrite that
+instruction/conversation prefix. This ordering does not guarantee a provider cache
+hit: provider serialization, tool advertisement, model selection and cache policy
+still determine the reusable wire prefix. A newly opened Run captures current
+instructions again. Memory recalled for a prompt is a text part framed
 as `<flame-context kind="recalled-memory">` after the user-authored parts of that prompt.
 The opening commits that exact annotated User message; a new recall never rewrites an
 earlier message or adds an unpersisted conversation entry. It is not inherited by
@@ -2081,13 +2132,21 @@ with the deferred catalog below, into that call's tail (`session-goal`, `session
 `deferred-tools`). The reducer measures that tail in the compaction budget and hands the
 same messages to the model boundary for exactly that invocation, which appends them after
 the conversation. A Goal or Plan change therefore alters only the tail of the next call.
+Installed context contributors also append role-free reference material at this tail,
+with explicit untrusted-data framing and the original caller's model use. They cannot
+insert System messages. Their data stays outside authored conversation and Scope's
+retained working context; the complete dispatched request remains physical evidence.
+Pinned memory is ordered by stable identity, not update time. A failed pinned-memory
+read refuses prompt construction instead of dispatching a prefix with one partition
+silently missing. Unpinned relevance recall remains separate optional enrichment.
 Waiting checkpoints written by an earlier build carry the former context shape and are
 not resumed, under the existing build-identity rule.
 
 ## Deferred tool catalog
 
-A Run's tool declarations open the provider prompt-cache prefix, so they do not depend on
-which tools are deferred. Built-in, Skill and MCP (user and installation origin)
+A Run's tool declarations may open the provider prompt-cache prefix. The discovery
+declaration itself is stable and does not enumerate the deferred catalog. Built-in,
+Skill and MCP (user and installation origin)
 tools withheld from the initial manifest form the Run's frozen deferred set, which the
 Run's `search_tools` owns. Its declaration is static text; plugin activation, MCP
 reconnects and catalog changes reach later Runs only through that set.
@@ -2095,16 +2154,68 @@ reconnects and catalog changes reach later Runs only through that set.
 Each model request of a layer with deferred tools ends with one Runtime-owned User
 message framed as `<flame-context kind="deferred-tools">`, the single framing Runtime
 uses for the context it authors (recalled memory and retained shells use the same frame
-with their own kind). It lists the deferred model names, the exact
-names `select:` accepts, grouped by source in source-then-name order, without
-descriptions or schemas. It is a User message because providers hoist System messages
+with their own kind). Its directory is bounded to 4,096 bytes and lists complete
+deferred model names in source-then-name order, without descriptions or schemas.
+An explicit notice reports omitted entries; capability search and exact selection
+still cover the complete frozen set. Exact selection admits at most 20 tools in one
+call, matching the keyword promotion ceiling. It is a User message because providers hoist System messages
 into the instruction block ahead of the conversation. The message is a per-request
 projection appended at the model boundary after Scope fixes the context it adopts, so it
 never enters the Interaction context, checkpoints, durable conversation history,
-compaction input or the transcript. Compaction budgets count it. Restoring a waiting Run
+compaction's mutable candidate or the transcript. Compaction budgets count it. Restoring a waiting Run
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
+Scope v0.60.0 retains advertised tools and rebuilds their ordinary function definitions
+in canonical name order. Loading another tool can therefore change the tools prefix;
+Flame does not claim native provider tool-search or append-only wire ordering. That
+framework capability must be implemented and released by Scope rather than shadowed
+by a second advertisement owner in Runtime.
+
+## Compaction evidence
+
+Compaction summarizes the original foldable prefix. It does not replace tool arguments
+or results with irretrievable previews before the summary. Long text is partitioned
+without dropping bytes into bounded auxiliary requests, then their summaries are
+combined; media remains explicitly marked in this text-only projection. Every final
+request still passes the selected model's capacity admission. A failed chunk, failed
+reduction or inadmissible final context leaves the original durable history unchanged.
+
+Offloaded tool bodies retain a typed model projection of their existing blob identity
+and reader. Compaction carries those handles in a separate retained-reference message,
+independently of the summary model's prose, and retains them again on recompaction.
+The reminder is User-role JSON retrieval data, not proof of blob existence or access.
+Only the SDK-defined Runtime reader is accepted. External Tool success and failure
+outputs lose the reserved metadata key before Runtime adds its own staged references;
+ordinary message metadata is not a reference source. Imported opaque Tool results can
+still contain matching retrieval data, so the reader remains responsible for checking
+the owning Session, availability and authorization. The projection creates no second
+blob owner.
+For rich results, eligible text blocks share one existing text blob and carry exact
+byte ranges in both previews and typed reference data. Compaction deduplicates the
+same blob/range while retaining distinct ranges, so adjacent blocks remain separately
+readable even when summaries omit their coordinates. Plain-text references cover the
+explicit zero-offset full body. `ModelOnly` keeps the original structured transcript value while its
+model-visible Content contains previews; parallel Details and media stay intact.
+Blocks with citations or opaque metadata remain complete because their positional
+semantics cannot be inferred. Such protected media/annotated content can still exceed
+the selected model's budget and is refused by normal final admission.
+The same projection applies to an acknowledged Scope `FailureKindFailed` output,
+including an MCP `isError` response, while preserving its error flag and original
+diagnostic. Rejection reasons remain complete. An unclassified error or `CallError`
+with observed evidence still establishes no completed Tool result and is never
+converted into model feedback by offloading. Failed blob staging retains the original
+output and publishes no reference.
+
+At debug log level, physical endpoint diagnostics derive separate system, tool,
+message and option digests and request size from the captured Scope request. Input
+contributors also report the first changed message index and whether instructions or
+options changed. The records join existing physical evidence by caller/endpoint ID;
+they contain no prompt text and do not create another billing ledger. These hashes
+describe the Scope projection, not vendor wire bytes or a promised cache hit. Response
+diagnostics retain the distinction between unreported usage, unreported cache fields
+and explicitly reported zero. Vendor TTL/eviction and actual wire-prefix attribution
+remain provider observations rather than conclusions inferred from equal hashes.
 
 ## Physical model evidence and accounting
 
@@ -2164,6 +2275,12 @@ set, and owns final authorization, approval and argument admission. The selected
 and folds the captured rules, retaining the event and its original shell receipts. Disabled
 sources contribute no new rules; there is no direct Runtime shell fallback.
 Existing installations explicitly select `flame.hooks.v1`; fresh catalogs select
-the shipped backend. The `hooks.json` document format and Runtime trust store are
-unchanged. Commands use the installed process environment rather than inheriting
-ambient Runtime variables.
+the shipped backend. Command hooks accept `failurePolicy`: omitted means
+`advisory`, while `required` rejects the pending action when the command times out,
+fails or returns an invalid decision. Required policies apply only to
+`PreToolUse`, `UserPromptSubmit` and `PreCompact`; post-effect observers cannot
+undo completed work. Explicit deny and ask decisions retain their existing
+semantics under either policy. The SDK owns the default and the permitted events;
+clients display that resolved policy. Project trust remains Runtime-owned.
+Commands use the installed process environment rather than inheriting ambient
+Runtime variables.

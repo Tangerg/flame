@@ -14,7 +14,7 @@ import {
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
-import { parseJSON } from "@frame/sdk/json";
+import { parseJSON, projectNumber } from "@frame/sdk/json";
 import {
   Badge,
   Button,
@@ -36,7 +36,7 @@ import {
   TextField,
   Toolbar,
 } from "@flame/ui";
-import type { ExecuteInput, Surface } from "./types";
+import type { ExecuteInput, Snapshot, Surface } from "./types";
 import { LIMITS } from "../contracts/limits";
 import { ApprovalForm } from "./approval";
 import { Outcome, Source } from "./result";
@@ -232,6 +232,36 @@ function ExecuteForm({
   );
 }
 
+function ReceiptCapacity({
+  value,
+  locale,
+  t,
+}: {
+  value: Snapshot["receipts"];
+  locale: string;
+  t: Translate;
+}) {
+  const number = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  return (
+    <PanelSection title={t("receipts.title")}>
+      <Facts
+        values={[
+          [
+            t("receipts.records"),
+            `${number.format(projectNumber(value.records))} / ${number.format(projectNumber(value.maxRecords))}`,
+          ],
+          [
+            t("receipts.bytes"),
+            `${number.format(projectNumber(value.bytes))} / ${number.format(projectNumber(value.maxBytes))}`,
+          ],
+          [t("receipts.pending"), number.format(projectNumber(value.pending))],
+        ]}
+      />
+      <Metadata>{t("receipts.help")}</Metadata>
+    </PanelSection>
+  );
+}
+
 export function Computer({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
   const state = useComputer(context);
@@ -377,29 +407,36 @@ export function Computer({ context }: { context: ComponentContext }) {
         </PanelSection>
       )}
       {state.snapshot && (
-        <PanelSection title={t("host.title")}>
-          <Facts
-            values={[
-              [t("host.name"), state.snapshot.host.hostname],
-              [
-                t("host.platform"),
-                `${state.snapshot.host.platform} / ${state.snapshot.host.arch}`,
-              ],
-              [
-                t("host.configuration"),
-                t(
-                  state.snapshot.configured
-                    ? "host.configured"
-                    : "host.missing",
-                ),
-              ],
-            ]}
+        <>
+          <PanelSection title={t("host.title")}>
+            <Facts
+              values={[
+                [t("host.name"), state.snapshot.host.hostname],
+                [
+                  t("host.platform"),
+                  `${state.snapshot.host.platform} / ${state.snapshot.host.arch}`,
+                ],
+                [
+                  t("host.configuration"),
+                  t(
+                    state.snapshot.configured
+                      ? "host.configured"
+                      : "host.missing",
+                  ),
+                ],
+              ]}
+            />
+            <Metadata>{t("host.scope")}</Metadata>
+            {!state.snapshot.configured && (
+              <Callout kind="warning">{t("host.setup")}</Callout>
+            )}
+          </PanelSection>
+          <ReceiptCapacity
+            value={state.snapshot.receipts}
+            locale={context.locale}
+            t={t}
           />
-          <Metadata>{t("host.scope")}</Metadata>
-          {!state.snapshot.configured && (
-            <Callout kind="warning">{t("host.setup")}</Callout>
-          )}
-        </PanelSection>
+        </>
       )}
       {session && (
         <PanelSection

@@ -1,10 +1,11 @@
-import { type RecordedFileChange } from "@flame/component-sdk";
+import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
 import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
 import { isJSONNumber, parseJSON, projectNumber } from "@frame/sdk/json";
 
 export interface CommandResult {
   exitCode?: number;
   output?: string;
+  page?: CapturedToolResult["outputPage"];
 }
 
 export interface PatchResult {
@@ -86,9 +87,28 @@ export function commandToolResult(raw: unknown): CommandResult | undefined {
   if (!value) return undefined;
   const output = typeof value.output === "string" ? value.output : undefined;
   const exitCode = readRepresentableNumber(value.exitCode);
+  const rawPage = readToolResultObject(value.page);
+  const offset = readRepresentableNumber(rawPage?.offset);
+  const nextOffset = readRepresentableNumber(rawPage?.nextOffset);
+  const page =
+    rawPage &&
+    offset !== undefined &&
+    nextOffset !== undefined &&
+    typeof rawPage.hasMore === "boolean" &&
+    typeof rawPage.dropped === "boolean"
+      ? {
+          offset,
+          nextOffset,
+          hasMore: rawPage.hasMore,
+          dropped: rawPage.dropped,
+          ...(typeof rawPage.shellId === "string" ? { shellId: rawPage.shellId } : {}),
+          ...(typeof rawPage.status === "string" ? { status: rawPage.status } : {}),
+        }
+      : undefined;
   if (output === undefined && exitCode === undefined) return undefined;
   return {
     ...(output === undefined ? {} : { output }),
     ...(exitCode === undefined ? {} : { exitCode }),
+    ...(page === undefined ? {} : { page }),
   };
 }

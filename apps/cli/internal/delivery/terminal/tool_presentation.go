@@ -152,6 +152,21 @@ func toolSections(call conversation.ToolCall, output toolSection) []toolSection 
 	if !call.FinishedAt.IsZero() {
 		metadata = append(metadata, "finished "+call.FinishedAt.Format(time.RFC3339))
 	}
+	if page := call.OutputPage; page != nil {
+		metadata = append(metadata, fmt.Sprintf("output bytes [%d, %d)", page.Offset, page.NextOffset))
+		if page.ShellID != "" {
+			metadata = append(metadata, "shell    "+page.ShellID)
+		}
+		if page.Status != "" {
+			metadata = append(metadata, "process  "+page.Status)
+		}
+		if page.HasMore {
+			metadata = append(metadata, "more output remains in the original shell")
+		}
+		if page.Dropped {
+			metadata = append(metadata, "output recording failed; retained bytes are incomplete")
+		}
+	}
 	if len(metadata) > 0 {
 		sections = append(sections, toolSection{
 			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),

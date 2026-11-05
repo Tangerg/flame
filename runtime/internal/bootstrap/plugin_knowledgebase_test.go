@@ -55,7 +55,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 			if len(input.Tools) > 0 {
 				name := toolName.Load().(string)
 				for _, message := range input.Messages {
-					if message.Role == "system" && strings.Contains(message.Content, "docs/fruit.md") {
+					if message.Role == "user" && strings.Contains(message.Content, "Runtime reference material") && strings.Contains(message.Content, "docs/fruit.md") {
 						sawContext.Store(true)
 					}
 					if message.Role == "tool" && message.ToolCallID == "retrieve-knowledge" {
@@ -196,7 +196,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	}
 	items := r.must(delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: session.ID}}, "")
 	encoded, err := json.Marshal(items)
-	if err != nil || strings.Contains(string(encoded), "Retrieved user reference material") {
+	if err != nil || strings.Contains(string(encoded), "Retrieved document excerpts") || strings.Contains(string(encoded), "Runtime reference material") {
 		t.Fatalf("context contribution became authored history: %s, %v", encoded, err)
 	}
 	beforeRead := embeddings.Load()

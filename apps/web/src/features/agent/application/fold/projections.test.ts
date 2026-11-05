@@ -81,6 +81,26 @@ describe("toolLabel — name-keyed specialised tools", () => {
 });
 
 describe("toolFields — runtime wire shapes", () => {
+  it.each(["shell", "read_shell_output"])(
+    "%s retains captured log coordinates beside exact output",
+    (name) => {
+      const page = {
+        shellId: "original",
+        status: "finished (exit 0)",
+        offset: 0,
+        nextOffset: 16,
+        hasMore: true,
+        dropped: false,
+      };
+      expect(
+        toolFields(tool(name, {}, { output: "first diagnostic", exitCode: 0, page })),
+      ).toMatchObject({
+        result: "first diagnostic",
+        exitCode: 0,
+        outputPage: page,
+      });
+    },
+  );
   it("delegate_task: projects the completed reply as text and preserves failure results", () => {
     const reply = '## Findings\n\nThe "child" completed.\n\n末尾。';
     expect(toolFields(tool("delegate_task", {}, { reply })).result).toBe(reply);

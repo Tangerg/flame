@@ -262,14 +262,8 @@ func (t ToolInvocation) Validate(pending bool) error {
 		return errors.New("transcript: pending Tool invocation carries a result")
 	}
 	if t.Offload != nil {
-		if err := t.Offload.Validate(); err != nil {
+		if err := t.Offload.ValidateResult(t.Result); err != nil {
 			return fmt.Errorf("transcript: Tool offload: %w", err)
-		}
-		if t.Result == nil {
-			return errors.New("transcript: offloaded Tool result has no preview")
-		}
-		if _, textual := t.Result.String(); !textual {
-			return errors.New("transcript: offloaded Tool result preview is not text")
 		}
 	}
 	return nil

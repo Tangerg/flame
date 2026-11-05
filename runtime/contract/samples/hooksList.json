@@ -6,6 +6,7 @@
       "event": "PreToolUse",
       "matcher": "shell",
       "command": "./.flame/hooks/guard.sh",
+      "failurePolicy": "advisory",
       "timeoutMillis": 5000,
       "scope": "project",
       "source": "/Users/dev/project/.flame/hooks.json",

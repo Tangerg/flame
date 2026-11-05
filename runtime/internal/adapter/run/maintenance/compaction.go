@@ -26,14 +26,12 @@ type compactionAction uint8
 
 const (
 	noCompaction compactionAction = iota
-	trimCompaction
 	summarizeCompaction
 )
 
 type compactionPlan struct {
 	action          compactionAction
 	cutoff          int
-	trimmed         []chat.Message
 	older           []chat.Message
 	recent          []chat.Message
 	estimatedTokens int
@@ -97,46 +95,22 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	if cutoff == 0 {
 		return compactionPlan{}, errModelContextCannotFit
 	}
-	trimmed, changed := trimForBudgetBefore(messages, cutoff)
-	trimmedOverBudget, trimmedEstimate, err := budget.exceeded(ctx, trimmed)
-	if err != nil {
-		return compactionPlan{}, err
-	}
-	if changed && !trimmedOverBudget {
-		return compactionPlan{
-			action:          trimCompaction,
-			trimmed:         trimmed,
-			estimatedTokens: trimmedEstimate,
-		}, nil
-	}
 	// The latest turn is not a license to preserve a suffix that is already over
 	// budget by itself. In that case a prefix summary cannot converge, so widen
-	// the deterministic rung first and summarize the complete foldable history
-	// only when cheap trimming still cannot make it executable.
-	recentOverBudget, _, err := budget.exceeded(ctx, trimmed[cutoff:])
+	// to the complete foldable history. Original arguments and output must reach
+	// the summarizer before any lossy reduction is proposed.
+	recentOverBudget, _, err := budget.exceeded(ctx, messages[cutoff:])
 	if err != nil {
 		return compactionPlan{}, err
 	}
 	if recentOverBudget {
 		cutoff = foldableLimit
-		trimmed, changed = trimForBudgetBefore(messages, cutoff)
-		trimmedOverBudget, trimmedEstimate, err = budget.exceeded(ctx, trimmed)
-		if err != nil {
-			return compactionPlan{}, err
-		}
-		if changed && !trimmedOverBudget {
-			return compactionPlan{
-				action:          trimCompaction,
-				trimmed:         trimmed,
-				estimatedTokens: trimmedEstimate,
-			}, nil
-		}
 	}
 	return compactionPlan{
 		action:          summarizeCompaction,
 		cutoff:          cutoff,
-		older:           trimmed[:cutoff],
-		recent:          trimmed[cutoff:],
+		older:           messages[:cutoff],
+		recent:          messages[cutoff:],
 		estimatedTokens: estimatedTokens,
 	}, nil
 }

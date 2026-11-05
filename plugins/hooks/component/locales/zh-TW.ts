@@ -1,4 +1,6 @@
 export const zhTW: Record<string, string> = {
+  "failure.required": "必要：出錯時阻止",
+  "failure.advisory": "建議：出錯時繼續",
   title: "Hooks",
   trust: "信任此專案的 hooks",
   "trust.sub":

@@ -32,7 +32,7 @@
 22 runtime/internal/adapter/integration/pluginpackage/modules.go:componentModule
 24 runtime/internal/adapter/integration/pluginservices/commands.go:CommandCalls.admitCommandRoute
 23 runtime/internal/adapter/integration/pluginservices/commands.go:invokeRawCommand
-24 runtime/internal/adapter/integration/pluginservices/model_context.go:CallComposition.PrepareContext
+23 runtime/internal/adapter/integration/pluginservices/model_context.go:CallComposition.PrepareContext
 31 runtime/internal/adapter/integration/pluginservices/model_observers.go:streamedObservedModel.Stream
 27 runtime/internal/adapter/integration/pluginservices/model_selection.go:CallComposition.SelectModel
 28 runtime/internal/adapter/integration/pluginservices/streams.go:installedStream.Stream
@@ -49,7 +49,7 @@
 26 runtime/internal/adapter/run/execution/executor.go:InteractionExecutor.restoreWaitingTree
 23 runtime/internal/adapter/run/execution/model_context_compaction.go:newModelContextCompaction
 24 runtime/internal/adapter/run/execution/recovery_probe.go:InteractionExecutor.CanResumeWaitingExecution
-29 runtime/internal/adapter/run/execution/tool.go:observedInteractionTool.Call
+25 runtime/internal/adapter/run/execution/tool.go:observedInteractionTool.Call
 21 runtime/internal/adapter/run/execution/tree.go:interactionSession.captureHumanInputBarrier
 26 runtime/internal/adapter/run/segment/effects_commit.go:Effects.applyCommit
 24 runtime/internal/adapter/toolset/code_intelligence.go:withCodeIntelligence

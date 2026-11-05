@@ -5,7 +5,6 @@ import (
 
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -23,13 +22,14 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.output.Details = details
+			visible := tc.output.Clone()
+			visible.Details = nil
 			before, err := json.Marshal(tc.output)
 			if err != nil {
 				t.Fatal(err)
 			}
-			trimmed, changed := trimToolOutput(tc.output)
-			if changed || !reflect.DeepEqual(trimmed, tc.output) {
-				t.Error("hidden details triggered loss of visible content")
+			if encodedVisibleToolOutputBytes(tc.output) != encodedVisibleToolOutputBytes(visible) {
+				t.Error("hidden details counted as model-visible content")
 			}
 			after, err := json.Marshal(tc.output)
 			if err != nil {
@@ -44,13 +44,9 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 
 func TestToolOutputMaintenancePreservesDetailsOnlyFallback(t *testing.T) {
 	output := toolcontract.Output{Details: jsontext.Value(`{"value":"visible"}`)}
-	if trimmed, changed := trimToolOutput(output); changed || !reflect.DeepEqual(trimmed, output) {
-		t.Fatal("small details-only output changed")
-	}
+	small := encodedVisibleToolOutputBytes(output)
 	output.Details = jsontext.Value(`{"value":"` + strings.Repeat("x", 5000) + `"}`)
-	trimmed, changed := trimToolOutput(output)
-	text, textual := trimmed.Text()
-	if !changed || !textual || len(text) > ladderResultCap || !strings.Contains(text, "trimmed on compaction") {
-		t.Fatal("large details-only output was not bounded")
+	if encodedVisibleToolOutputBytes(output) <= small+4000 {
+		t.Fatal("details-only model fallback was not counted")
 	}
 }

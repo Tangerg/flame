@@ -40,3 +40,15 @@ export const LIMITS = Object.freeze({
   formatOpenFiles: 64,
   previewFileBytes: 4 * 1024 * 1024,
 } as const);
+
+// Model projections never change retained evidence or native transfer limits.
+export const MODEL_LIMITS = Object.freeze({
+  textBytes: 32 * 1024,
+  projectionBytes: 24 * 1024,
+  entryBytes: 8 * 1024,
+  entries: 20,
+  maximumEntries: 32,
+  textCharacters: 2048,
+  maximumTextCharacters: 4096,
+  pathBytes: 2048,
+} as const);

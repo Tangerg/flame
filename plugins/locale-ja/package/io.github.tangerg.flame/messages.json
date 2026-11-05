@@ -281,7 +281,7 @@
   "approvals.mode.balanced": "バランス",
   "approvals.mode.auto": "自動",
   "approvals.rules": "記憶したルール",
-  "approvals.rules.sub": "承認をスキップする保存済みのツール決定。",
+  "approvals.rules.sub": "保存した許可・拒否ルール。一致する拒否は自動承認でも適用されます。",
   "approvals.rules.empty": "ルールはまだありません",
   "approvals.rules.emptySub": "承認・拒否時に「今後確認しない」を選ぶと追加されます。",
   "approvals.scope.session": "セッション",
