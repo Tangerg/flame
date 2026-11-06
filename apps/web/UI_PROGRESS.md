@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Command-menu choices now expose complete names and carry their source into view navigation. The requested main updates are merged through `a4015b243`; actual English/Chinese Wails tasks qualify visible destinations at native 200%, retained draft carets, Settings search return and the 320 px Files/main-area path. All 4,570 frontend tests, 449 focused tests and 38 serial gates pass on the merged source. See **Complete command names and visible view handoff (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Fresh remote/local main merges remain up to date at `204190cf5`, including the requested user changes through `a4015b243`. Captured shell-page metadata now has actual English/Chinese Wails reading coverage through expansion, Find, native 200% zoom and continued draft carets; no new actionable alignment defect is found in that flow. All 126 focused tests and 11 serial preparation checks pass, with all 6,655 non-Markdown inputs unchanged. See **Captured shell page reading after main (2026-11-06)**. Preserve the shared controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -16,6 +16,17 @@ This engineering change preserves the task qualifications and historical receipt
 below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
+
+The renewed captured shell-page review on `204190cf5` finds no new alignment or
+return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
+Both cover native 200% reading, complete page provenance, local Find, caption/row
+closure and continued draft carets. Chinese also covers the native Top Left
+window arrangement. The 126 focused tests and all 11 serial preparation checks
+pass; fresh remote/local main merges remain up to date. See **Captured shell page
+reading after main (2026-11-06)**. Product inputs stay unchanged, and the primary
+checkout's main `a4015b243` remains clean and untouched. Owned qualification
+resources are retired. Continue from actual task evidence; whole-product
+acceptance remains open.
 
 Command-menu names now wrap in their existing text track, preserving shortcut
 width. The shared overlay hands its captured opener to view navigation, allowing
@@ -23490,6 +23501,110 @@ only the reusable private toolchain remains. User data, root dependencies,
 shared caches, reference sources and parallel work are preserved. Continue from
 fresh content/Dock task evidence; this caption and the earlier Find repair are
 complete within their stated scope, while the whole-product UI goal stays active.
+
+### Captured shell page reading after main (2026-11-06)
+
+Scope is reply → recorded command → captured page provenance → output preview →
+expanded local Find → close/collapse → continue the original conversation draft.
+The fresh fetch and both remote/local main merges report already up to date:
+remote main and this worktree are `204190cf5`; local main `a4015b243` is already
+an ancestor. No product source, generated resource, test or assertion changes.
+This qualification covers the shell-page facts added by the requested main
+update; it does not reopen the completed output Find/caption repairs above.
+
+`RecordedResult` renders the production fold's immutable `outputPage` through
+shared `RecordMeta`, then the existing `RecordedOutput`/CodeFrame reader. The
+source retains the byte interval, original shell identity, terminal status,
+continuation fact and recording failure. `RecordMeta` already wraps with
+`minWidth: 0` and `overflowWrap: anywhere`; actual native reading confirms these
+facts remain complete. The output reader owns preview, expansion, local Find,
+virtualized reading and collapse. It neither retrieves nor joins later shell
+pages. Runtime/producer authority, result identity and installation lifetime
+remain unchanged.
+
+Recon uses AGENTS, PROJECT_RULES, DEVELOPMENT, the Web/Desktop/visual/Tool-results
+READMEs and all six better-interface owning skills. Read-only ZCode
+`ToolCallBlocks/renderers/ExecuteOutput.tsx` provides evidence for literal output
+as bounded supporting content; it supplies neither Flame's paging metadata nor
+locale/focus policy. Prior ChatGPT, HeroUI, Arc, Radix and Ace research retains
+its documented boundary. The existing React, Base UI-backed controls, StyleX,
+semantic tokens and Flame themes remain in place.
+
+| Domain        | Evidence inspected                                                          | Scoped result                                                                                   |
+| ------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Accessibility | Named output/search, Tab/Return, Cmd+F, Escape, collapse and Composer focus | Exercised keyboard paths and visible focus pass; no VoiceOver speech or physical IME claim.     |
+| Layout        | Complete source metadata, preview/Find controls, native resize and 200%     | Long shell identity and failure text wrap; exercised controls and selected lines are reachable. |
+| Writing       | EN/ZH range, continuation, recording-failure, Find and no-match copy        | Captured facts remain explicit; producer status stays literal. No new labels or helper text.    |
+| Typography    | EN 14 px, ZH 18 px, literal code output and full source identity            | Existing text roles and wrapping hold in inspected native captures; no type-system change.      |
+| Color         | Light/Orange and dark/custom `#6699FF` focus and selection                  | Existing semantic roles retained; numerical rendered contrast is not freshly measured.          |
+| UI polish     | Preview/expanded transitions, query changes, source/reader/draft return     | No new actionable finding in the exercised task; no fresh motion-timing qualification.          |
+
+No actionable interface findings. **Approve** covers the inspected captured-page
+task and observations above. A fresh 320 CSS px viewport, RTL, forced colors,
+other native locales/platforms, native clipboard writes and the whole-product
+award-level objective are not verified by this batch.
+
+Verification:
+
+- The existing four-file frontend baseline passes **126 tests** in **5.909 s**:
+  `visual/recordedResultPresentation.test.tsx`,
+  `src/features/chat/public/tools/toolResult.test.ts`,
+  `src/features/agent/application/fold/projections.test.ts` and
+  `src/features/agent/application/fold/reducer.tooloutput.test.ts`, using
+  `npm test --workspace @flame/web -- --project frontend --no-file-parallelism`
+  followed by those paths. This includes both `shell` and `read_shell_output`
+  metadata contracts and preserved streamed-output projection. All **11** serial
+  preparation checks pass: Icons/UI/plugin builds, that baseline, private plist
+  and Go formatting, fixture assets, Wails host build, signing, signature check
+  and registration. The previous full **4,570-test** frontend/native qualification
+  remains applicable to the identical product inputs; those broad suites are
+  not rerun here. No browser visual suite or benchmark runs.
+- Private fixture input changes only the canonical command's captured result:
+  **160 lines / 10,193 UTF-8 bytes**, range **[8192, 18385)**, original shell
+  `shell-5e534856-213d-4c4f-9f03-7029e3cf0a32`, `finished (killed)`, more pages
+  and incomplete recording. Lines **62** and **111** contain the two matches.
+  The normal fold and installed-component wrapper consume this frozen evidence.
+  A private composition import selects the normally built Tool-results ESM
+  instead of the visual fixture's default source import. No product handler,
+  DOM observer, focus policy or live shell execution is substituted.
+- Actual **Wails v3.1.0** EN/light/14 px/Orange/full-motion workspace: the full
+  metadata precedes the nine-line preview. Twenty native Zoom In commands from
+  Actual Size reach **200%**. Tab/Return enters expanded output; Cmd+F `needle`
+  reveals line 62, and Return reveals line 111 with **1 of 2 → 2 of 2** while
+  retaining field focus. Escape returns to Tool output, caption collapse to the
+  preview control, and row closure to the command. Ordinary Cmd+L focuses the
+  original Composer; native paste at its retained position changes
+  `Keep the output page draft.` to `Keep Continued. the output page draft.`.
+- Actual ZH/dark/18 px/custom-blue/motion-off workspace: normal metadata reading
+  and the native **Top Left** window arrangement pass. Twenty native zoom steps
+  qualify the **2240 × 1456** Retina capture at **200%**. Metadata wraps completely;
+  the preview expander is visible and focused. Keyboard expansion and Cmd+F
+  `保留原始输出页` reveal both selected lines with **1 / 2 → 2 / 2**. A missing query
+  reports **无匹配** without losing input focus; Escape returns to the output.
+  Collapse/row closure and ordinary Cmd+L retain the original draft/caret:
+  `保留原始草稿。` becomes `保留检查后的原始草稿。` after native paste.
+- The initial smaller Agent fixture also confirms EN source metadata, both
+  matches, no-match recovery and ordinary Tab draft continuation. Its documented
+  inert sidebar and absent workspace Composer command exclude it from workspace
+  collapse/200% acceptance. The final tasks use the existing full workspace
+  fixture with `agent-state=tool-shells`. One setup-only Chinese URL used the
+  unregistered `zh-CN`; it is closed and corrected to the installed `zh` locale
+  before final acceptance. The four launches exit normally with code zero.
+
+All **6,655** tracked non-Markdown inputs, **331** private Web assets, **24** host
+inputs and **4** signed bundle files retain their baseline hashes after native
+acceptance. Independent cleanup checks restore all **12** checkout output/cache
+presence/content/mode baselines, preserving **3,773** pre-existing files, and
+remove **1,029** new Vitest cache files and **17** unique-bundle Library files.
+The exact app is unregistered; all six bundle-specific Library paths are absent.
+User data, dependencies, shared compiler caches, read-only references and the
+parallel primary checkout remain untouched. Private-root retirement removes
+**4,227** verified files and **63** empty directories; the exact native process
+and endpoint are inactive. The in-memory, round-trip-verified gzip retains
+**95** UTF-8 records and **19** native image metadata records, **1,208,578 bytes**,
+SHA-256 `b4ff0ef3b2b98589e57f33a3565e8b9c7c96c1cde3e390ba1cf11cbce75c2104`.
+Scoped Prettier and diff checks pass. Continue inspecting other task paths from
+fresh evidence; this bounded flow has no justified product repair.
 
 ### Recorded result filter position
 
