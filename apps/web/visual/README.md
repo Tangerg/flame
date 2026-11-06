@@ -3,6 +3,11 @@
 This is a test-only Vite entry for isolated browser interaction checks and manual design review. It is intentionally separate from the production router and Wails
 bootstrap.
 
+The [component lab](lab/README.md) provides searchable foundation and product
+catalogs, interactive previews, theme comparisons and local event inspection.
+After the normal workspace setup, run `npm run lab --workspace @flame/web` from
+the repository root and open `/visual/lab/`.
+
 Rules:
 
 - import production components, styles, selectors, projections, and view models;

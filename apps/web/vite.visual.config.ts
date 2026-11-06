@@ -28,7 +28,14 @@ export default defineConfig({
   build: {
     outDir: "../../out/web/visual",
     emptyOutDir: true,
-    rollupOptions: { input: path.resolve(import.meta.dirname, "visual/index.html") },
+    rollupOptions: {
+      input: [
+        "visual/index.html",
+        "visual/lab/index.html",
+        "visual/lab/preview.html",
+        "visual/lab/fixture.html",
+      ].map((entry) => path.resolve(import.meta.dirname, entry)),
+    },
   },
   preview: {
     host: "127.0.0.1",
