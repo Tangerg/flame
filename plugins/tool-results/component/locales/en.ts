@@ -12,6 +12,7 @@ export const en: Record<string, string> = {
   "action.copied": "Copied",
   "action.wrap": "Enable word wrap",
   "action.unwrap": "Disable word wrap",
+  "output.empty": "No output.",
   "output.copy": "Copy output",
   "output.showEarlier_one": "Show {{count}} earlier line · {{total}} total",
   "output.showEarlier_other": "Show {{count}} earlier lines · {{total}} total",

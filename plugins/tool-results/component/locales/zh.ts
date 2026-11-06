@@ -11,6 +11,7 @@ export const zh: Record<string, string> = {
   "action.copied": "已复制",
   "action.wrap": "启用自动换行",
   "action.unwrap": "关闭自动换行",
+  "output.empty": "无输出。",
   "output.copy": "复制输出",
   "output.showEarlier_other": "显示前面 {{count}} 行 · 共 {{total}} 行",
   "output.collapse": "折叠",

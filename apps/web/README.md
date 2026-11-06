@@ -74,6 +74,10 @@ whitespace. Agent projections, approval drafts, Tool inspection and conversation
 archives consume those helpers directly, sharing numeric preservation with
 portable reading components.
 
+Tool inspection keeps arguments secondary when a specialized result presentation
+owns the body, including an empty captured page. Without a specialized presenter,
+the generic inspector opens arguments when the result body is absent or empty.
+
 Expanded images, figures and captured documents use shared `LightboxDialog`.
 The transcript gallery retains collection, active-image and save-command ownership
 and uses shared `ImageViewport` for fitting, zoom and panning. Portable evidence

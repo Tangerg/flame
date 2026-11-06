@@ -117,7 +117,10 @@ export function ToolInspector({
         </ToolResultLayout>
       )}
       {model.args.text && (
-        <Disclosure title={t("toolInspector.arguments")} defaultOpen={!hasResult}>
+        <Disclosure
+          title={t("toolInspector.arguments")}
+          defaultOpen={!hasResult && children === undefined}
+        >
           <ShikiCodeBlock
             lang={sourceLang(model.args)}
             code={model.args.text}

@@ -12,6 +12,7 @@ export const fr: Record<string, string> = {
   "action.copied": "Copié",
   "action.wrap": "Activer le retour à la ligne",
   "action.unwrap": "Désactiver le retour à la ligne",
+  "output.empty": "Aucune sortie.",
   "output.copy": "Copier la sortie",
   "output.showEarlier_one":
     "Afficher {{count}} ligne précédente · {{total}} au total",

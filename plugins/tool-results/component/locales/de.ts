@@ -12,6 +12,7 @@ export const de: Record<string, string> = {
   "action.copied": "Kopiert",
   "action.wrap": "Zeilenumbruch aktivieren",
   "action.unwrap": "Zeilenumbruch deaktivieren",
+  "output.empty": "Keine Ausgabe.",
   "output.copy": "Ausgabe kopieren",
   "output.showEarlier_one":
     "{{count}} frühere Zeile zeigen · {{total}} insgesamt",

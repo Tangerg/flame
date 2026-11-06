@@ -23,8 +23,10 @@ navigation, copy, approvals and explicit mutation actions retain their existing 
 Shell captures keep their original process handle, byte range, completion status,
 continuation and recording-failure metadata beside the exact output page. The
 renderer never reads the process or joins pages. Local output expansion reveals
-only that captured page. Search captures retain the producer's observed match
-count and coverage: an incomplete scan remains labelled as a lower bound with
+only that captured page. An explicitly empty output shows a localized empty
+state without a blank code reader or empty Copy action; captured whitespace and
+blank lines still use the output reader. Search captures retain the producer's
+observed match count and coverage: an incomplete scan remains labelled as a lower bound with
 unread and skipped file counts, including during local Find. A complete scan
 whose recorded rows were capped says how many were retained from that count.
 
