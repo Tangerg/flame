@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": ["visual/**/*.browser.spec.ts", "src/app/builtinPlugins.ts"],
+  "entry": [
+    "lab/**/*.browser.spec.ts",
+    "lab/**/*.lab.spec.ts",
+    "lab/**/*.perf.spec.ts",
+    "src/app/builtinPlugins.ts"
+  ],
   "ignoreExportsUsedInFile": false,
   "ignoreBinaries": ["go"]
 }

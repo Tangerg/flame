@@ -114,12 +114,14 @@ export function createAgentViewSelectors(
 
   function useAgentProblem(): AgentProblem | null {
     const sessionId = navigation.use((location) => location.session);
-    return useAgentStore((state) => {
-      const entry = state.sessions[sessionId];
-      return entry
-        ? selectVisibleProblem(entry.view, entry.problem)
-        : selectVisibleProblem(EMPTY_AGENT_SESSION_VIEW, EMPTY_PROBLEM_PRESENTATION);
-    });
+    return useAgentStore(
+      useShallow((state) => {
+        const entry = state.sessions[sessionId];
+        return entry
+          ? selectVisibleProblem(entry.view, entry.problem)
+          : selectVisibleProblem(EMPTY_AGENT_SESSION_VIEW, EMPTY_PROBLEM_PRESENTATION);
+      }),
+    );
   }
 
   function useAgentPlan(): AgentProjectionMaterial<AgentPlan> {

@@ -33,7 +33,7 @@ export default defineConfig({
           // Playwright owns rendered geometry and appearance.
           include: [
             "src/**/*.test.{ts,tsx}",
-            "visual/**/*.test.{ts,tsx}",
+            "lab/**/*.test.{ts,tsx}",
             "tests/integration/**/*.test.{ts,tsx}",
           ],
           exclude: [...configDefaults.exclude, runtimeLifecycleTest],

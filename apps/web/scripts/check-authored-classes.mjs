@@ -34,7 +34,7 @@ function walk(dir) {
 
 const defined = new Set();
 const sheets = walk(STYLES).filter((path) => path.endsWith(".css"));
-for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "visual"))].filter((path) =>
+for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "lab"))].filter((path) =>
   /\.tsx?$/.test(path),
 )) {
   for (const match of readFileSync(file, "utf8").matchAll(/import\s+"([^"]+\.css)"/g)) {
@@ -79,7 +79,7 @@ const BARE = new Set(
 
 const violations = [];
 let examined = 0;
-const roots = [join(ROOT, "src"), join(ROOT, "visual"), SHARED];
+const roots = [join(ROOT, "src"), join(ROOT, "lab"), SHARED];
 const scanned = roots.flatMap(walk);
 assertSourceCoverage(roots.flatMap(sourceFiles), scanned);
 for (const path of scanned) {

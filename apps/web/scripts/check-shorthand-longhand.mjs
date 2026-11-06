@@ -83,7 +83,7 @@ function walk(dir) {
 
 const violations = [];
 let examined = 0;
-const roots = [join(ROOT, "src"), join(ROOT, "visual")];
+const roots = [join(ROOT, "src"), join(ROOT, "lab")];
 const scanned = roots.flatMap(walk);
 assertSourceCoverage(roots.flatMap(sourceFiles), scanned);
 for (const path of scanned) {

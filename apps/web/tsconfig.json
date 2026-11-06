@@ -28,6 +28,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "visual", "tests/integration"],
+  "include": ["src", "lab", "tests/integration"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

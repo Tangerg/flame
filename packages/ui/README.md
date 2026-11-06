@@ -438,7 +438,7 @@ selected rows together; semantic tones keep their existing fills.
 
 ## Review preview
 
-The Desktop visual fixture renders the library with the real Flame appearance owner. Run `npm run browser:dev --prefix apps/web` from the repository root and open `/visual/?fixture=atoms&theme=light` or the dark counterpart. The shared-panel specimen includes the Memory toolbar, status filter and record row. This preview uses an isolated in-memory transport and does not contact a user Runtime.
+The component lab renders the library with the real Flame appearance owner. Run `npm run lab --workspace @flame/web` from the repository root and open `/lab/?story=product-atoms&mode=inspect&theme=light` or the dark counterpart. The shared-panel specimen includes the Memory toolbar, status filter and record row. This preview uses an isolated in-memory transport and does not contact a user Runtime.
 
 Field `invalid` owns both error styling and the accessible invalid state. Search
 clear actions require an explicit localized label. Compact controls retain a

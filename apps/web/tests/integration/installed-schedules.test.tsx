@@ -23,8 +23,8 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
-import { VISUAL_CAPABILITIES } from "../../visual/agentFixtureFacts";
-import { VISUAL_SCHEDULES_PAGE } from "../../visual/componentSnapshots";
+import { VISUAL_CAPABILITIES } from "../../lab/scenarios/agentFixtureFacts";
+import { VISUAL_SCHEDULES_PAGE } from "../../lab/scenarios/componentSnapshots";
 let transport: ReturnType<typeof createMemoryTransport>;
 
 let client: ReturnType<typeof createFlameClient>;

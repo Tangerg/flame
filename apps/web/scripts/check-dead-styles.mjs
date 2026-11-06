@@ -12,7 +12,7 @@ import { extname, join, relative } from "node:path";
 const ROOT = new URL("../", import.meta.url).pathname;
 const SRC = join(ROOT, "src");
 const STYLES = join(SRC, "styles");
-const VISUAL = join(ROOT, "visual");
+const LAB = join(ROOT, "lab");
 
 function walk(dir) {
   const out = [];
@@ -24,7 +24,7 @@ function walk(dir) {
   return out;
 }
 
-const consumers = [...walk(SRC), ...walk(VISUAL)]
+const consumers = [...walk(SRC), ...walk(LAB)]
   .filter((path) => [".ts", ".tsx"].includes(extname(path)) && !path.startsWith(STYLES))
   .map((path) => readFileSync(path, "utf8"));
 consumers.push(readFileSync(join(ROOT, "index.html"), "utf8"));

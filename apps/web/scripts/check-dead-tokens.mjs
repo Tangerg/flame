@@ -29,7 +29,7 @@ import { extname, join, relative } from "node:path";
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const require = createRequire(import.meta.url);
-const SOURCE_DIRS = ["src", "visual", "../../packages/ui/src"];
+const SOURCE_DIRS = ["src", "lab", "../../packages/ui/src"];
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {

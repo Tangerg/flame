@@ -40,6 +40,62 @@ afterEach(() => {
 });
 
 describe("agent view selectors react to session switch", () => {
+  it("keeps a lost Run problem stable while observing changes and dismissal", () => {
+    const run: AgentRunView = {
+      id: "lost",
+      sessionId: "a",
+      parentRunId: null,
+      rootRunId: "lost",
+      spawnedByItemId: null,
+      status: "finished",
+      activeSegmentId: null,
+      outcome: { type: "lost", loss: { reason: "restart" } },
+      metrics: {
+        steps: 0,
+        activeDurationMillis: 0,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+      },
+      progress: null,
+      contextTokens: null,
+      createdAt: "2026-01-01T00:00:00Z",
+      finishedAt: "2026-01-01T00:00:01Z",
+    };
+    const entry = {
+      ...seed(null, {}),
+      view: { ...EMPTY_AGENT_SESSION_VIEW, runsById: { lost: run } },
+    };
+    testClient.agent.projection.store.setState({ sessions: { a: entry } });
+    testClient.navigation.go({ session: "a" });
+    const { result, rerender } = testClient.renderHook(() =>
+      testClient.selectors.useAgentProblem(),
+    );
+    expect(result.current).toEqual({ lossReason: "restart", recovery: "promptUser" });
+    const original = result.current;
+    rerender();
+    expect(result.current).toBe(original);
+    act(() =>
+      testClient.agent.projection.store.setState({ sessions: { a: { ...entry, viewEpoch: 1n } } }),
+    );
+    expect(result.current).toBe(original);
+    act(() =>
+      testClient.agent.projection.store.setState({
+        sessions: { a: { ...entry, problem: { commandError: null, dismissedRunId: run.id } } },
+      }),
+    );
+    expect(result.current).toBeNull();
+    act(() =>
+      testClient.agent.projection.store.setState({
+        sessions: {
+          a: {
+            ...entry,
+            problem: { commandError: { message: "Local command failed" }, dismissedRunId: run.id },
+          },
+        },
+      }),
+    );
+    expect(result.current).toEqual({ message: "Local command failed" });
+  });
+
   it("derives the target's preceding root from its active Session projection", () => {
     const first: AgentRunView = {
       id: "first",

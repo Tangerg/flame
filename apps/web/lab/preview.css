@@ -1,0 +1,19 @@
+html[data-lab-document="component"],
+html[data-lab-document="component"] body,
+html[data-lab-document="component"] #root {
+  min-height: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+html[data-lab-document="component"] #root {
+  position: static;
+  inset: auto;
+}
+
+html[data-lab-document="component"] body {
+  margin: 0;
+  overflow: auto;
+  background: var(--color-bg);
+  color: var(--color-text);
+}

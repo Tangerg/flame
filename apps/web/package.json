@@ -8,13 +8,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "perf:baseline": "playwright test --config playwright.perf.config.ts",
-    "perf:composition": "vite build --config vite.composition.config.ts && vite preview --config vite.composition.config.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint src visual scripts --deny-warnings",
+    "lint": "oxlint src lab scripts --deny-warnings",
     "lint:fix": "oxlint src --fix --deny-warnings",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
@@ -44,12 +42,10 @@
     "check:shorthand": "node scripts/check-shorthand-longhand.mjs",
     "check:dead-tokens": "node scripts/check-dead-tokens.mjs",
     "check:styles": "node scripts/check-dead-styles.mjs",
-    "browser:dev": "vite --config vite.visual.config.ts",
-    "lab": "vite --config vite.visual.config.ts --open /visual/lab/",
-    "lab:build": "vite build --config vite.visual.config.ts",
-    "browser:test": "playwright test --config playwright.browser.config.ts",
-    "browser:genui": "playwright test --config playwright.genui.config.ts",
-    "browser:computer": "playwright test --config playwright.computer.config.ts"
+    "lab": "vite --config vite.lab.config.ts --open /lab/",
+    "lab:build": "vite build --config vite.lab.config.ts && node scripts/check-lab-build.mjs",
+    "lab:verify": "playwright test --config playwright.lab.config.ts --project=light-en --project=dark-zh --project=interactions",
+    "lab:measure": "playwright test --config playwright.lab.config.ts --project=performance"
   },
   "dependencies": {
     "@flame/brand-assets": "*",

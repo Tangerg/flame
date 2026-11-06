@@ -63,7 +63,7 @@ function walk(dir) {
   return out;
 }
 const probes = new Map();
-for (const path of walk(join(ROOT, "visual"))) {
+for (const path of walk(join(ROOT, "lab"))) {
   if (![".ts", ".tsx"].includes(extname(path))) continue;
   const text = readFileSync(path, "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")

@@ -28,7 +28,7 @@ current ownership and dependency structure.
 | `src/lib/`                       | Shared technical mechanisms, including query caching, navigation contracts, publication identity, task lifetimes, highlighting, and telemetry |
 | `src/foundation/`                | Consumer-neutral scalar contracts, including exact sequence values                                                                            |
 | `src/styles/`                    | Product stylesheets and application palette defaults                                                                                          |
-| `src/test/`, `visual/`           | Test setup and explicit visual-fixture composition                                                                                            |
+| `src/test/`, `lab/`              | Test setup and explicit visual-fixture composition                                                                                            |
 | `../../packages/runtime-client/` | Generated wire contract and reusable HTTP/SSE client                                                                                          |
 | `../../packages/icons/`          | Original icon geometry, optical masters, SVG exports, and React components                                                                    |
 
@@ -568,7 +568,7 @@ port consumers. Product tests cover failure ordering, installation replacement,
 connection retirement, command identity, and surviving feature behavior.
 
 `test/renderClient.tsx` constructs independent feature instances for each test.
-Visual fixtures use `visual/client.tsx` and pass the fixture explicitly to their
+Visual fixtures use `lab/scenarios/client.tsx` and pass the fixture explicitly to their
 setup functions; browser checks read that fixture rather than private production
 singletons. Visual fixtures compose their own plugins and memory-transport clients. Their
 resources belong to fixture cleanup; they do not discover a default production

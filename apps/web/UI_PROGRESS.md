@@ -1,8 +1,151 @@
 # Desktop UI progress and handoff
 
-Empty captured output now shows a concise localized state, retaining its source metadata while keeping arguments secondary. All 4,578 frontend tests, 168 focused tests and 24 final serial gates pass; actual English/Chinese Wails reading and draft-return tasks pass at native 200%, with an additional smaller-height Chinese window. See **Empty captured output and secondary arguments (2026-11-06)**. The requested main changes remain included and the primary checkout is preserved. The user requested a milestone pause after this delivery and cleanup; whole-product acceptance remains unfinished.
+The component lab is now the sole UI visual verification entry. The previous visual app, fixtures, browser suites and composition scene are consolidated under `lab/`, with one catalog, Vite configuration and Playwright configuration. The final focused qualification passes 214 browser checks, including 148 catalog checks with 548 image attachments; all final contact sheets were inspected. Frontend, Runtime integration, the 25 non-unit Web gates and the supported native build pass. Actual Wails inspection covers English/Chinese, font scaling, native zoom, composition and retained drafts. The broader migrated interaction audit and an unchanged main complexity failure remain unresolved, as detailed in **Component lab and UI visual verification (2026-11-06)**. The goal is active; whole-product acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
+
+## Component lab and UI visual verification (2026-11-06)
+
+### One visual verification owner
+
+`apps/web/lab/` owns component inspection, independent captures and all migrated
+visual fixtures and browser checks. `foundationCatalog.ts` and
+`businessCatalog.ts` feed one validated catalog; `cases.ts` projects its named
+variants into independent preview URLs. It does not maintain another scenario
+manifest. The catalog includes the former Foundation, Atoms, Agent, Workspace,
+Settings, Sidebar, Computer and installed-composition scenes.
+
+The former `visual/` directory, standalone visual/composition HTML entries,
+four browser/performance configurations and separate composition Vite
+configuration are removed. There are no compatibility routes or command aliases.
+`vite.lab.config.ts` builds the gallery, component preview and complete fixture
+documents together. `playwright.lab.config.ts` owns captures, migrated browser
+interactions, WebKit and optional existing measurements. Build and development
+execution share the same documents, catalog, providers and fixture owners;
+development mode supports the existing scripted protocol transitions.
+
+Use `npm run lab --workspace @flame/web` to inspect `/lab/` and
+`npm run lab:verify --workspace @flame/web` to run visual and interaction checks.
+`lab:build` writes `out/web/lab`; `lab:measure` selects the optional measurement
+project. The [lab README](lab/README.md) documents filtering, extension and
+isolation. No production router or Runtime debug route is added. The migrated
+`scenarios/` files retain normal authored-code complexity coverage; the three
+existing complexity entries only change paths, without changing thresholds.
+
+### Presentation and preview continuity
+
+The gallery uses two quiet columns and the focused inspector appears only when
+requested. Decorative tiles, repeated secondary labels, dashed frames, negative
+tracking and blanket icon overrides are removed. Shared controls, semantic
+tokens and the real font-scale provider own appearance. A compact story selector
+and stacked inspector accommodate narrow widths; labels wrap, and the camera
+toolbar reserves space outside the transformed document. Skip navigation and
+stable live notices remain available.
+
+Component previews use native control sizes; complete product scenes use
+thumbnails. Viewport and camera changes resize the same document and preserve
+its input. Theme, locale, font, motion, scenario or explicit reload creates a new
+document. The observation log accepts only bounded same-origin messages from
+the exact active iframe and instance. It records text length rather than draft
+content, redacts credential-shaped values and omits readiness-event noise.
+
+The real independent build exposed two CSS defects. StyleX extraction appended
+rules to only one CSS asset, leaving other HTML entries incompletely styled.
+The lab now shares that asset and `check-lab-build.mjs` checks every emitted
+document. Sharing CSS also exposed unscoped gallery/preview root resets. Their
+HTML document identities now scope those resets, preserving the full fixture's
+production fixed, clipped root. The added root-position regression failed twice
+before the fix and passed all 10 focused checks after it.
+
+Opened-overlay captures initially included 13 of 32 first animation frames that
+were visually identical to their closed state. Captures now wait for the actual
+visible overlay and its ancestor opacity, finish finite animations and assert
+that opening changes the image. All 32 final opened states differ and were
+visually inspected. This is rendering evidence, not automatic pixel approval.
+
+The composition scenes use the existing fixture root, feature instances,
+appearance and teardown. Recorded Frame messages exercise production browser
+Realm admission, module evaluation, installed composition and close-proof code.
+The transport intercepts only its fixed control endpoint and retires after its
+module owner closes. One/eight/thirty-two-frame variants replace the obsolete
+standalone benchmark scene; its unconsumed console timing API is removed.
+
+The recovered-Run scene also exposed a production selector defect:
+`useAgentProblem` created a fresh lost-Run projection on every store snapshot,
+causing React's update-depth failure. The existing `useShallow` contract now
+stabilizes it while preserving dismissal and later command errors. The regression
+test failed before the fix; the focused related suite passed 130 tests afterward.
+
+### Qualification and limits
+
+- The final combined browser qualification passes **214 tests**: **148**
+  independent catalog checks and **66** Lab/migrated interaction checks. It
+  covers all 41 stories, every named variant, English/light/14 px and
+  Chinese/dark/18 px, catalog dimensions and 390 px component widths.
+  All **548** final image attachments were reviewed through all 18 contact
+  sheets, with full-resolution checks for inspected details. The selected
+  interactions include Atoms, GenUI sandbox/report, Computer, WebKit, file
+  references and Schedule drafts. Screenshot collection is part of this lab,
+  rather than another visual application or golden-image pipeline.
+- The final frontend project passes **430 files / 4,689 tests**. The Runtime
+  integration project passes **52 tests**. The **25 non-unit Web check stages**
+  pass serially, including typecheck, lint, formatting, dependency/layer guards,
+  StyleX/token checks, localization and the production bundle. These were
+  verified in stages; no single clean full `check` invocation is claimed.
+- The supported **`make check-native` passes**, including Desktop test, vet,
+  build and the Wails macOS build. Existing SDK/macOS linker warnings remain.
+  No backend source or protocol contract is changed by this batch.
+- Actual Wails v3.1.0 inspection uses a private app identity and data home,
+  the real DesktopHost/zoom/menu implementation and the built lab over an owned
+  localhost origin. English and Chinese/dark/18 px tasks cover typing, paste,
+  camera Fit/zoom, viewport changes, retained drafts, native resizing and
+  one/eight/thirty-two-frame composition. Native 200% inspection includes an
+  untransformed Chinese modal with retained input, cancellation/reopening and
+  Escape focus return. The final scoped build's Chinese recovery scene renders
+  and retains its same iframe and draft through 1440-to-1280 viewport changes.
+  A scaled canvas thumbnail is not evidence of untransformed 200% reading.
+
+All **1,037** interaction titles survive the migration, including the 13 Lab
+tests. The broader interaction audit was interrupted after exposing unresolved
+failures: **174 passed, 96 failed, 2 interrupted and 765 did not run**. Repeated
+failures identify visible model/effort/approval values missing from Composer
+accessible names; other failures include older expanded-Diff and presentation
+assumptions and focus/layout assertions that still need individual triage.
+The naming source is unchanged from incoming main, but the full set of failures
+has not been individually established as pre-existing. The default `lab:verify`
+retains all these tests and remains unqualified as a complete suite. Nothing is
+skipped or excluded to manufacture a pass.
+
+The root complexity check also fails on
+`plugins/providers/component/providerRow.tsx:ProviderRow` growing from 31 to 34.
+That file is byte-identical to incoming HEAD and is outside this batch; its
+threshold is not raised. Optional performance measurements and live Runtime
+business execution were not run. Native inspection and focused checks do not
+establish whole-product acceptance.
+
+Next use this same lab to distinguish obsolete expectations from actual
+accessibility, focus and layout failures. Repair real shared contracts before
+updating their checks; retain assertions for current behavior. Do not create a
+second fixture app, browser configuration or scenario registry.
+
+### References and delivery
+
+[Cards](https://cards.uidesigncourse.com/) and its
+[source](https://github.com/oliur/cards) informed the navigable gallery;
+[Component Canvas](https://www.ui-skills.com/skills/ibelick/component-canvas)
+informed real component comparisons and bounded camera input;
+[Stageshow](https://github.com/benjitaylor/skills/tree/main/stageshow) informed
+focused document isolation and explicit reload. Better-interface guidance was
+applied to layout, type, writing, color, control details and accessibility.
+No reference kit, asset collection or virtual-clock runtime is vendored.
+
+Qualification writers are stopped. The 12 tracked output/cache roots are
+restored to their original contents and modes, or retired when originally absent;
+the six private native identity paths return to their absent baseline. The
+primary checkout's unrelated `go.work.sum` bytes and Git status are unchanged.
+Delivery retires the private qualification app, reports, logs and temporary data
+before ordinary publication to main; reusable tools remain available. This is
+the only maintained progress record. No user-data migration is required.
 
 ## Engineering organization
 
@@ -17,17 +160,19 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-An explicitly empty captured command page now shows **No output.** / **无输出。**
-through existing Metadata, preserving range, shell identity and terminal status.
-Its specialized result keeps arguments collapsed until requested; generic empty
-results retain their existing defaults. All 4,578 frontend tests, 168 focused
-tests and 24 final serial gates pass. Native EN/light/14 px and ZH/dark/18 px
-reading/parameter/draft-return tasks pass at 200%, including a separate smaller
-Chinese window. See **Empty captured output and secondary arguments
-(2026-11-06)**. The requested main updates are included; the primary checkout's
-main `a4015b243` stays clean and untouched. The user has requested a milestone
-pause after publication and cleanup. Await the user's next direction; the
-whole-product UI goal remains unfinished.
+The requested main updates through `bd95d9f72` are included. UI inspection and
+visual checks now share the component lab; new coverage extends this owner rather
+than creating another visual entry. The lab's independent documents, migrated
+protocol scenarios and actual Wails checks are qualified within the bounds below.
+Next triage the retained broad interaction failures through this same lab,
+starting with Composer accessible names and obsolete presentation assumptions.
+The primary checkout's unrelated `go.work.sum` changes are preserved. The user
+resumed the goal; no milestone pause is currently requested.
+
+An explicitly empty captured command page continues to show **No output.** /
+**无输出。**, preserving source metadata and collapsed secondary arguments.
+See **Empty captured output and secondary arguments (2026-11-06)** for its
+earlier qualification. Whole-product UI acceptance remains open.
 
 Command-menu names now wrap in their existing text track, preserving shortcut
 width. The shared overlay hands its captured opener to view navigation, allowing

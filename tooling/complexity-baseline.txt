@@ -24,9 +24,9 @@
 28 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
-21 apps/web/visual/computerConsoleFixture.tsx:fetch
-25 apps/web/visual/createVisualRuntimeTransport.ts:resultFor
-23 apps/web/visual/createVisualRuntimeTransport.ts:send
+21 apps/web/lab/scenarios/computerConsoleFixture.tsx:fetch
+25 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:resultFor
+23 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:send
 21 apps/web/vite.config.ts:name
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
 34 packages/runtime-client/src/client.ts:dispatchMessage

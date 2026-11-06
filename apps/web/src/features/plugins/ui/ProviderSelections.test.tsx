@@ -21,8 +21,11 @@ import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { queryClient } from "@/lib/queryClient";
 import { PROVIDERS_KEY, type PackageOperations } from "@/features/plugins/adapters/packages";
 import { ProviderSelections } from "./ProviderSelections";
-import { VISUAL_PACKAGES, VISUAL_PLUGIN_PROVIDERS } from "../../../../visual/componentSnapshots";
-import { VISUAL_CAPABILITIES } from "../../../../visual/agentFixtureFacts";
+import {
+  VISUAL_PACKAGES,
+  VISUAL_PLUGIN_PROVIDERS,
+} from "../../../../lab/scenarios/componentSnapshots";
+import { VISUAL_CAPABILITIES } from "../../../../lab/scenarios/agentFixtureFacts";
 
 let host: Host | undefined;
 let client: FlameClient | undefined;

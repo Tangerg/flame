@@ -86,7 +86,7 @@ images use the same reading boundary, with their captured source and local label
 The composition root creates each feature instance and its backing state once.
 React consumers use that owner's Provider; commands and plugin factories capture
 explicit dependencies. Tests construct independent instances in `test/renderClient.tsx`,
-and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
+and visual fixtures compose them in `lab/scenarios/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
 Provider settings keep mutation generations and sensitive credential drafts in
@@ -816,6 +816,8 @@ a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; repository Go cross-product checks live in
-`../../tooling/integration`. Visual fixtures live in `visual`. The full check includes
+`../../tooling/integration`. All UI visual fixtures, capture cases and browser checks live in [`lab`](lab/README.md).
+Use `npm run lab` for inspection and `npm run lab:verify` for verification; new
+visual coverage extends this catalog and configuration. The full check includes
 compiler-resolved dependency/contract guards, lifecycle tests, resource drift,
 styles, localization and the production bundle.

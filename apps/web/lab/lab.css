@@ -1,0 +1,17 @@
+html[data-lab-document="gallery"],
+html[data-lab-document="gallery"] body,
+html[data-lab-document="gallery"] #root {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+html[data-lab-document="gallery"] #root {
+  position: static;
+  inset: auto;
+}
+[data-lab-shell] * {
+  box-sizing: border-box;
+}
+:where([data-lab-shell]) :where(h1, h2, h3, p) {
+  margin: 0;
+}

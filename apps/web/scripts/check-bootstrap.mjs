@@ -6,9 +6,11 @@ import { checkPresentation } from "../../../tooling/presentation.mjs";
 const repository = fileURLToPath(new URL("../../../", import.meta.url));
 await checkPresentation(repository);
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const [html, visualHtml, modality, documentCss] = await Promise.all([
+const [html, labHtml, previewHtml, fixtureHtml, modality, documentCss] = await Promise.all([
   read("../index.html"),
-  read("../visual/index.html"),
+  read("../lab/index.html"),
+  read("../lab/preview.html"),
+  read("../lab/fixture.html"),
   read("../public/focus-modality.js"),
   read("../../../packages/ui/src/globals.css"),
 ]);
@@ -26,7 +28,7 @@ if (
   !documentCss.includes(`html[${attribute}="keyboard"]`)
 )
   throw new Error("the input-modality owner and shared focus stylesheet disagree");
-for (const entry of [html, visualHtml])
+for (const entry of [html, labHtml, previewHtml, fixtureHtml])
   if (!entry.includes('src="/focus-modality.js"'))
-    throw new Error("both Web entries must load the input-modality owner");
+    throw new Error("all Web and lab entries must load the input-modality owner");
 console.log("[check-bootstrap] presentation projections and input modality agree");

@@ -346,7 +346,7 @@ From the repository root, use the normal workspace prerequisites, then:
 ```sh
 npm run generate --workspace @flame/plugins
 npm run check --workspace @flame/plugins
-npm run browser:computer --workspace @flame/web
+npm run lab:verify --workspace @flame/web -- scenarios/computerConsole
 node plugins/scripts/build-packages.mjs --plugin computer --output /absolute/new/packages
 node plugins/scripts/build-author-kit.mjs --plugin computer --output /absolute/new/author --offline
 ```
