@@ -24,7 +24,7 @@ require (
 
 require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
-	github.com/Tangerg/go-sdk v1.8.1-scope.3 // indirect
+	github.com/Tangerg/go-sdk v1.8.1-scope.5 // indirect
 	github.com/Tangerg/scope/agent v0.60.0 // indirect
 	github.com/Tangerg/scope/core v0.60.0 // indirect
 	github.com/Tangerg/scope/mcp v0.60.0 // indirect

@@ -44,7 +44,7 @@ require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.6-dev.20261105.t6685853a20dc
 	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
 	github.com/Tangerg/frame v0.1.1
-	github.com/Tangerg/go-sdk v1.8.1-scope.3
+	github.com/Tangerg/go-sdk v1.8.1-scope.5
 	github.com/Tangerg/scope/agent v0.60.0
 	github.com/Tangerg/scope/core v0.60.0
 	github.com/Tangerg/scope/mcp v0.60.0
