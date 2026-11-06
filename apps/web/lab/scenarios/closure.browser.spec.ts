@@ -452,14 +452,37 @@ const INTERACTION_SURFACES: readonly {
     },
   },
   {
-    name: "the goal editor",
+    name: "the goal reader",
     route: { fixture: "workspace", state: "dock-light" },
     open: async (page) => {
-      await page
-        .getByRole("button", { name: /Pursuing goal/ })
-        .first()
-        .click();
-      await expect(page.getByRole("textbox")).toBeVisible();
+      const summary = page.locator('[data-goal="summary"]');
+      const objective = await summary.getAttribute("title");
+      expect(objective, "the summary has to carry the full objective").toBeTruthy();
+      await summary.click();
+      const dialog = page.getByRole("dialog", { name: en["goal.edit.label"]!, exact: true });
+      await expect(dialog).toBeVisible();
+      const region = dialog.getByRole("region");
+      await expect(region).toBeFocused();
+      await expect(region.getByText(objective!, { exact: true })).toBeVisible();
+      await expect(dialog.getByRole("textbox")).toHaveCount(0);
+      await expect(
+        dialog.getByRole("button", { name: en["goal.edit.save"]!, exact: true }),
+      ).toHaveCount(0);
+    },
+  },
+  {
+    name: "the goal editor",
+    route: { fixture: "agent", state: "running" },
+    open: async (page) => {
+      const summary = page.locator('[data-goal="summary"]');
+      const objective = await summary.getAttribute("title");
+      expect(objective, "the summary has to carry the full objective").toBeTruthy();
+      await summary.click();
+      const dialog = page.getByRole("dialog", { name: en["goal.edit.title"]!, exact: true });
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByRole("textbox", { name: en["goal.edit.label"]!, exact: true }),
+      ).toHaveValue(objective!);
     },
   },
 ];
@@ -1298,7 +1321,7 @@ const OVERLAYS: ReadonlyArray<{
   readonly label: string;
   readonly route: FixtureRoute;
   readonly open: string | RegExp;
-  readonly by?: "hover";
+  readonly reached?: (page: Page) => Promise<void>;
 }> = [
   {
     label: "approval mode menu",
@@ -1315,7 +1338,12 @@ const OVERLAYS: ReadonlyArray<{
     label: "plan step list",
     route: { fixture: "agent", state: "running" },
     open: /^Step \d+ \/ \d+$/,
-    by: "hover",
+    reached: async (page) => {
+      const plan = page.getByRole("dialog", { name: "Plan", exact: true });
+      await expect(plan).toBeVisible();
+      await expect(plan.locator("li")).toHaveCount(3);
+      await expect(plan.locator('[data-slot="active-plan-reader"]')).toBeFocused();
+    },
   },
 ];
 
@@ -1323,14 +1351,13 @@ for (const overlay of OVERLAYS) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit ${overlay.label} ${theme}`, async ({ page }) => {
       await openFixture(page, { ...overlay.route, theme });
-      const trigger = page.getByRole("button", { name: overlay.open }).first();
-      if (overlay.by === "hover") await trigger.hover();
-      else await trigger.click();
+      await page.getByRole("button", { name: overlay.open }).first().click();
       const popup = page
         .locator(':is([role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]):visible')
         .first();
       await expect(popup).toBeVisible();
       await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+      await overlay.reached?.(page);
 
       await expectNoWcagViolations(page);
     });
@@ -1500,13 +1527,49 @@ for (const state of ["waves", "tool-shells", "tool-search", "tool-tail"] as cons
     await page.setViewportSize({ width: 1120, height: 720 });
     await openFixture(page, { fixture: "agent", state, fontSize: 18 });
 
-    for (let round = 0; round < 4; round += 1) {
-      const shut = await page.locator('[aria-expanded="false"]:visible').all();
-      if (shut.length === 0) break;
-      for (const toggle of shut) await toggle.click({ timeout: 2_000 }).catch(() => undefined);
+    const transcript = page.locator(".msg-scroll-viewport");
+    const closed = transcript.locator('button[aria-expanded="false"]:not([aria-haspopup]):visible');
+    const record: { panel: string | null; trigger: string }[] = [];
+    while ((await closed.count()) > 0) {
+      // Pin the physical trigger while expansion changes the live list and mounts nested controls.
+      const trigger = await closed.first().elementHandle();
+      if (!trigger) throw new Error("The next transcript disclosure disappeared before opening.");
+      await trigger.scrollIntoViewIfNeeded();
+      const label = (await trigger.innerText()).trim();
+      await trigger.click();
+      await expect.poll(() => trigger.getAttribute("aria-expanded")).toBe("true");
+      const panel = await trigger.getAttribute("aria-controls");
+      if (panel) await expect(page.locator(`[id=${JSON.stringify(panel)}]`)).toBeVisible();
+      record.push({ panel, trigger: label });
+      await trigger.dispose();
     }
+    await test.info().attach("opened-disclosures", {
+      body: JSON.stringify(record, null, 2),
+      contentType: "application/json",
+    });
 
+    expect(record.length, "the audit has to be looking at opened disclosures").toBeGreaterThan(0);
+    await expect(closed).toHaveCount(0);
+    await expect(
+      page.locator('[data-slot=composer-root] [aria-haspopup][aria-expanded="true"]'),
+    ).toHaveCount(0);
+
+    for (const block of await transcript.locator('.shiki-block[data-variant="code"]').all()) {
+      const source = await block.getAttribute("data-markdown-copy-text");
+      expect(source).not.toBeNull();
+      await expect(block.locator('[data-slot="code-body"]')).toHaveText(source!);
+    }
     await expectNoWcagViolations(page, TRANSCRIPT_CLIPPED_TARGET);
+
+    for (const edge of ["start", "end"] as const) {
+      await transcript.evaluate((node, position) => {
+        node.scrollTop = position === "start" ? 0 : node.scrollHeight;
+      }, edge);
+      await test.info().attach(`opened-transcript-${edge}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+    }
   });
 }
 

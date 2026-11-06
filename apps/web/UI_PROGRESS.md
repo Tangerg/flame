@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Visible control names now retain their current options, PNG format and work-row text boundaries. The same component lab passes 30 focused tests, including all 14 formerly failing name audits, with 34 inspected captures. The complete Web check passes 431 files / 4,743 tests and every later gate; plugin checks and the supported native build pass. Actual Wails verifies English/Chinese settings selection, 18 px/native 200% reading, resize, draft continuation and work-index menu/search return. See **Visible control names and Lab task coverage (2026-11-07)**. Seven previously observed Goal/Plan/open-all-disclosure entry failures still need individual triage; the full 260-case audit is not rerun this batch. The goal remains active and whole-product acceptance is unfinished.
+The component lab remains the sole UI visual verification owner. Its complete WCAG subset now passes **261 audits**, including the seven previously failing Goal/Plan/disclosure entries; two new English/Chinese reading flows also pass. Final captures show fully opened readers and nested tool content, with actual Wails checks for focus, cancellation, retained drafts, 18 px/200% reading and native resize. See **Goal and Plan reading contracts in the Lab (2026-11-07)**. This batch changes Lab checks and documentation only; the previous complete Web/plugin checks still apply to unchanged production source. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -179,8 +179,9 @@ than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
 Composer choice names, live reasoning names/contrast, footnote return cues and
 the 14 work-index/Appearance/Brand name failures are repaired and qualified below.
-Next trace the seven Goal/Plan/open-all-disclosure entry failures and timeouts
-through this same Lab, then the observed narrow installed-report table headings.
+The seven Goal/Plan/open-all-disclosure entry failures are now resolved in the
+Lab, and its complete 261-case WCAG subset passes. Next trace the observed narrow
+installed-report table headings through the same catalog and installed renderer.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user
@@ -24804,6 +24805,85 @@ source/resource change remain identical. Delivery retires the exact task-owned
 app, reports, dependency cache and temporary root before publication to main;
 reusable tools and user data remain. Prepare current shared packages before
 using the restored cached outputs for a new baseline.
+
+### Goal and Plan reading contracts in the Lab (2026-11-07)
+
+This batch starts from synchronized main `f705672a5`. All seven previously
+reported entry failures reproduce unchanged in **147.161 s**. Traced contracts
+and actual Wails inspection establish verification defects, without requiring a
+production UI or Runtime change. The Workspace fixture replaces the installed
+workflow catalog, making its captured Goal author unavailable; the Goal remains
+readable but cannot be edited. The Agent running scene retains its registered
+author and permits editing. Plan opens by click or keyboard, not hover.
+
+`closure.browser.spec.ts` now audits both the named read-only Goal reader and
+the named editor, requiring the complete captured objective and their actual
+focus/input contracts. Plan checks require its focused reader and three steps.
+The largest-font expansion loop is confined to transcript buttons, retains each
+physical trigger while expansion changes the live control list, and verifies
+the resulting expanded state and any controlled panel. It includes nested
+arguments whose Base UI panel relation appears only after mounting, and a full
+output control without `aria-controls`. Session and Composer menus remain
+outside this path. No click failure is swallowed; no timeout, retry, WCAG tag or
+exception is relaxed.
+
+The four scenes open **12 / 12 / 7 / 11 controls** respectively: waves,
+tool-shells, tool-search and tool-tail. Each Shiki body must contain its captured
+source. The same Lab report records opened controls and captures both ends of
+the transcript after content checks and the audit settle. Initial captures
+exposed a transparent Plan entry frame and an unpainted inner code body; these
+are not accepted as final visual evidence.
+
+`goalPlanReading.browser.spec.ts` projects the existing Agent/Workspace variants
+through the catalog's preview URL. English/light/14 px and Chinese/dark/18 px
+verify keyboard opening, initial focus, three distinct Plan step states,
+cancelled Goal edits, restoration of the original objective, Escape/Cancel
+return and each document's independent Composer draft. The same document is
+resized from **1440 to 560 px**. Reading captures require a fully visible,
+fully opaque surface; no production debug route or second scenario owner is
+introduced.
+
+The complete WCAG subset passes **261 audits** in a **263-test** combined run
+with the two new flows (**560.351 s**), zero skipped/flaky. The final strengthened
+reading flows pass again in **11.682 s**, and the four final expansion audits
+pass in **17.936 s**. Their **14 final PNGs** are reviewed together, including
+full-resolution Goal, Plan, complete arguments and nested tool details. Related
+source verification passes **40 files / 842 tests** in **18.331 s**; typecheck,
+lint and formatting pass. The supported **`make check-native` passes in
+15.323 s**, including staging and Desktop test/vet/build. The prior full Web
+and plugin checks are reused for unchanged production source and resources.
+
+Three private Wails v3.1.0 generations use the real DesktopHost, zoom and menus
+with the same built Lab. English verifies the full read-only objective and
+Plan's completed/current/pending steps, pointer and Return entry, Escape focus
+return and the retained draft. Chinese/18 px verifies a local Goal edit followed
+by Escape, reopening the unchanged original objective and Cancel, then Plan
+reading and keyboard return. Actual Size plus **20 native Zoom In actions**
+establishes **200%**; Window Zoom changes bounds from **2878×1798** to
+**3024×1898**, and both reading surfaces remain readable. Actual Size and the
+original window bounds are restored before Quit. A separate Chinese tool scene
+reads full command output, nested arguments, failure and denial, scrolls, then
+collapses by keyboard and returns to its unchanged message draft.
+
+The fixture's fixed sidebar controls are inert; these checks do not qualify
+whole-workspace 200% behavior. No live Runtime Goal mutation, execution,
+recovery, VoiceOver audio or performance measurement is run. The complete
+migrated interaction suite remains unqualified outside these scoped checks.
+The incoming `ProviderRow` complexity debt (**31 → 34**) is unchanged and its
+threshold is not raised. Continue with the observed narrow installed-report
+headings, not another visual entry.
+
+[WAI Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/) and the
+existing better-accessibility/layout guidance support semantic keyboard
+activation, current expansion state and reachable reading content. There are no
+dependency, production API or user-data migrations. The exact three native
+processes and owned HTTP server are stopped and the private app is unregistered.
+All **12** output/cache baselines and **six** private identity-path baselines are
+restored. All **6,702** pre-existing non-Markdown inputs outside the modified Lab
+audit remain identical; the new flow is the only additional source file. The
+primary checkout's unrelated `go.work.sum` bytes and Git status are unchanged.
+Delivery retires the exact private app, reports, logs, cache and temporary root
+before ordinary publication to main; reusable tools remain available.
 
 ### Native footnote reading and return
 

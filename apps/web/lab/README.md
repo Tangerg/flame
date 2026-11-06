@@ -205,6 +205,20 @@ their production rows and installed component resources. WCAG failures attach
 the rule results and complete rendered button text/HTML to the same report,
 preserving evidence when the audit's summarized markup is truncated.
 
+Goal and Plan reading checks use the existing Agent and Workspace catalog
+variants. The Workspace's unavailable captured Goal author permits reading;
+the registered Agent author permits editing. Checks preserve that distinction,
+cancelled edits, keyboard entry/return and each document's independent Composer
+draft through narrow resizing. Captures wait for the whole reading surface to
+be in view and fully opaque.
+
+Largest-font transcript audits open inline disclosures within the transcript,
+including newly mounted arguments and full output. Each click retains the
+physical trigger while the remaining control list changes, then verifies its
+expanded state and any controlled panel. The same report records every opened
+control and captures both ends of the transcript. Session and Composer menus
+are outside this expansion path.
+
 The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
 attachment record exact inputs and reproducible preview URLs. The verifier waits
 for the production fixture's ready signal and never qualifies an errored document
