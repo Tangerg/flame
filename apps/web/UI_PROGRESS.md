@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Live reasoning now keeps its changing preview outside the toggle name and uses the existing readable supporting-text color. Its four states are independently inspectable in the sole component lab. This repair passes 32 focused browser checks with 52 inspected captures, all 4,690 frontend tests, 25 non-unit Web gates and the supported native build. Actual Wails checks cover English draft/reading return, Chinese/18 px/native 200% component reading and resizing, and short content without an extra scroll target. See **Stable live previews and readable supporting text (2026-11-06)**. The broader Lab audit and an unchanged main complexity failure remain unresolved; the goal is active and whole-product acceptance remains unfinished.
+Footnote return links now retain their shared underline, and native fragment return keeps the selected marker clear of the viewport edge. The sole component lab adds independent short/long reference reading and passes 18 focused browser checks with 30 inspected captures. The complete Web check passes 431 files / 4,742 tests and every later gate; shared UI and the supported native build also pass. Actual Wails qualifies English draft return and Chinese/18 px/native 200% reading, resizing and both return identities. See **Footnote return cues and independent Lab reading (2026-11-07)**. The complete 260-case WCAG audit now has 239 passes and 21 unresolved failures; the goal is active and whole-product acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -124,6 +124,11 @@ catalog, bringing it to **42 stories**. Its current qualification is recorded in
 **Stable live previews and readable supporting text (2026-11-06)** below. The
 41-story migration results above retain their original scope.
 
+Reference reading adds a further direct component story to this same catalog,
+bringing it to **43 stories**. Its focused qualification and the latest complete
+WCAG audit are recorded under **Footnote return cues and independent Lab reading
+(2026-11-07)**. Earlier catalog-wide capture totals remain historical.
+
 The root complexity check also fails on
 `plugins/providers/component/providerRow.tsx:ProviderRow` growing from 31 to 34.
 That file is byte-identical to incoming HEAD and is outside this batch; its
@@ -168,14 +173,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The requested main updates through `96ea7041b` are included. UI inspection and
+The requested main updates through `5d91b2473` are included. UI inspection and
 visual checks now share the component lab; new coverage extends this owner rather
 than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
-Composer choice names and live reasoning names/contrast are now repaired and
+Composer choice names, live reasoning names/contrast and footnote return cues are repaired and
 qualified below. Next triage the remaining broader findings through this same
-lab, starting with reference-link distinguishability and its reading/return path,
-then obsolete Goal/Plan/open-all-disclosure probes. Prepare current shared packages before
+lab: 14 visible-name audit failures across work-index, Appearance and Brand,
+then the seven Goal/Plan/open-all-disclosure entry failures and timeouts.
+Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user
 resumed the goal; no milestone pause is currently requested.
@@ -24611,15 +24617,120 @@ to remote `main`. A fresh `ls-remote` matched that exact commit, the **24**
 reviewed product/resource inputs matched acceptance, and the owned checkout was
 clean with zero unpushed commits. This in-place receipt adds no product change.
 
+### Footnote return cues and independent Lab reading (2026-11-07)
+
+This repair starts from synchronized main `5d91b2473`. Fresh normal icons/UI
+builds reproduce both `reference-notes` WCAG failures while the two existing
+navigation/return tests pass. Return arrows have no underline and only
+**1.43:1** light / **1.18:1** dark contrast against neighboring note text.
+The shared prose rule already underlines ordinary links; its footnote exception
+incorrectly suppresses that cue for return links too.
+
+`packages/ui/src/globals.css` now limits that exception to the superscript
+reference markers. Return links inherit the existing tinted underline, hover
+strengthening and host accent ink. Tabular numerals, nowrap, supporting type,
+paragraph spacing, generated identities and native fragment navigation remain
+unchanged. No click handler, focus restoration effect, color role or local Web
+override is added. The bounded Claude Code CLI supplies the two-file CSS/README
+candidate; primary review owns the final reading clearance and Lab coverage.
+
+The new independent 320 px case exposes another boundary: native fragment return
+rounds an English marker's top to **−0.0625 px**, producing a **0.99479** viewport
+intersection and leaving no room for its focus perimeter. The measured margin is
+zero. Reference targets now reserve one existing prose-font unit through
+`scroll-margin-block-start`; the complete-visibility assertion is retained.
+Final marker tops are **15.9375 px** English and **21.34375 px** Chinese, with
+**16 px** and **21 px** margins. The renderer still owns all destinations and
+return identities; the existing panel's more specific clearance rule retains
+its host role.
+
+The existing Lab catalog, providers, preview document and browser configuration
+now include `business-references`. It renders the actual `MarkdownRenderer` with
+fixed English/Chinese short and long notes, a non-Latin label, repeated references
+and distinct return links. It introduces no Runtime transition, alternate visual
+application or separate scenario registry. The same capture suite produces eight
+independent images at 560/390 px in both environments. Interaction coverage also
+checks 320 px keyboard reading, return focus, no horizontal overflow and retained
+drafts in the complete Agent fixture.
+
+All **18** focused browser tests pass: four catalog checks and 14 interaction
+checks, including both complete reference WCAG audits, four existing custom
+palette checks and four installed interactive-report lifecycles. All **30** PNG
+attachments are inspected through three contact sheets with full-resolution
+reference and return checks. The direct audits have zero color-contrast and
+link-in-text-block violations. Return-link foreground/background pairs are
+**#ae3f00 on #f5f5f5, 5.48:1**, and **#fb9871 on #0f0f0f, 8.97:1**. The underline
+provides a cue beyond color rather than changing the chosen palette.
+
+Shared UI's complete check passes: build, type, lint, format, **14 files / 247
+tests** and the independent packed consumer. The first packed check reports
+`ENOTCACHED` for the task-local npm cache. A disposable locked consumer prepares
+that cache with scripts disabled; the original offline check then passes
+unchanged. No global npm settings, installed project graph or check assertions
+are modified.
+
+The complete Web `check` passes in **241.398 s**: **431 files / 4,742 tests**,
+including all **4,690 frontend tests** and **52 isolated Runtime integration
+tests**, followed by every Web gate. Backend fixture processes use their own
+temporary data, local fake provider and prepared verified Node companion.
+`make check-native` passes in **20.605 s**, including Desktop tests, vet, build
+and the supported Wails macOS build. Existing SDK/macOS linker warnings remain
+separate. Root complexity still fails only on unchanged incoming `ProviderRow`
+(**31 → 34**); no threshold is raised.
+
+Actual Wails v3.1.0 uses a private identity, the real DesktopHost/menu/zoom and
+these same compiled Lab assets. English/light/14 px qualifies visible underlines,
+Option-Tab order, the second answer's second return identity and continued
+Composer draft `Reference draft — Keep Continue`. Chinese/dark/18 px uses Actual
+Size plus **20 native Zoom In actions** for **200%**. Pointer entry, wheel reading,
+native Window Zoom/reflow, both localized return links and their distinct focused
+references pass. Actual Size is restored before quitting. Ordinary macOS Tab
+preferences are preserved. An initial fixture story opened in the component
+document is closed and excluded; the accepted Agent task uses the existing
+fixture document, while direct reference reading uses its component document.
+Neither adds another UI verification owner.
+
+The complete **260-case WCAG audit** finishes with **239 passed, 21 failed,
+zero skipped and zero flaky**. Fourteen cases report visible-label/name mismatch
+in work-index, Appearance and Brand controls. Seven others fail to enter the
+expected Goal/Plan editor or time out while repeatedly opening disclosures;
+they do not establish seven actual accessibility violations. These require
+individual triage, remain in the same Lab and are not skipped or weakened.
+The complete migrated browser suite is not rerun. Live Runtime presentation,
+audible VoiceOver, OS IME and performance measurements are not qualified by the
+fixed native examples.
+
+The installed report's 360 px capture also shows long table headings split inside
+words. This repair does not change table layout. Revisit that native narrow-table
+reading path after the remaining visible-name failures; screenshot inspection is
+not whole-product visual acceptance.
+
+[WCAG Use of Color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html)
+and [G183](https://www.w3.org/WAI/WCAG22/Techniques/general/G183) distinguish text
+readability from a link's visual affordance. Existing better-interface guidance
+informs the supporting hierarchy, alignment, focus perimeter and use of shared
+tokens. No dependency or external component kit is added.
+
+Qualification writers are stopped and the private app identity is unregistered.
+All 12 observed output/cache roots return to their original contents and modes,
+or to absence when originally absent; all six private native identity paths are
+absent. Four normal rebuilds replace directory inodes, so their comparison
+preserves original contents and modes rather than inode identity. The primary
+checkout's unrelated `go.work.sum` bytes and status remain unchanged. Delivery
+retires the task-owned app, captures, reports, logs, dependency cache and temporary
+files before publication to main; reusable tools remain available. No user-data
+migration is required.
+
 ### Native footnote reading and return
 
-The existing `reference-notes` canonical fixture supplies two answers, each with
+The earlier unchanged-navigation qualification used the `reference-notes`
+canonical fixture: two answers, each with
 two references to the same non-Latin footnote label and two corresponding return
 links. Current `MarkdownRenderer`, `rehypeFootnoteLabels`, TextLink and shared
 prose styles already preserve unique per-message IDs, localized names, ordinary
 local anchors and the note's reading hierarchy. This inspection found no
-actionable defect in that task. Product source, state, typography and native
-preferences remain unchanged; no speculative focus or navigation handler was
+actionable navigation defect in that task. That qualification left product source,
+state, typography and native preferences unchanged; no speculative focus or navigation handler was
 added, and no implementation task was sent to Claude CLI.
 
 Actual Wails EN/light/14 px/Orange qualifies pointer entry, the first answer's
@@ -27609,12 +27720,13 @@ OS IME composition and performance measurements are not newly qualified. The
 52 Runtime integration tests from the previous batch are not rerun here.
 
 The focused original WCAG sample has two passes and six failures. The four
-reasoning scene failures now pass; both reference-notes themes still fail link
-distinguishability and remain unchanged. The earlier complete 260-case WCAG
-audit and entire migrated browser suite have not been rerun. Root complexity
-still fails only on unchanged incoming `ProviderRow` (**31 → 34**); its threshold
-is preserved. The next useful path is reading a reference and returning to the
-answer, using this same Lab. Whole-product acceptance remains open.
+reasoning scene failures are repaired. At that delivery, both reference-notes
+themes remained unchanged, and the earlier complete 260-case WCAG audit and
+entire migrated browser suite had not been rerun. The subsequent **Footnote
+return cues and independent Lab reading (2026-11-07)** records that repair and
+the later complete WCAG audit. Root complexity still fails only on unchanged
+incoming `ProviderRow` (**31 → 34**); its threshold is preserved. Whole-product
+acceptance remains open.
 
 [WCAG Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html)
 and the [disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)

@@ -393,7 +393,11 @@ content visibly separated even at the deepest levels; weight and ink distinguish
 levels that share the body size. The host owns the prose size, independently of
 its interface and code roles.
 Generated footnotes use a quiet supporting-text section and retain their native
-reference links. The renderer owns document-local identities and navigation.
+reference links. Return links keep the common link underline beside surrounding
+text; superscript reference markers keep their raised numeric cue instead.
+Reference targets reserve reading space above the marker for native fragment return,
+keeping the marker and its focus perimeter clear of the viewport edge.
+The renderer owns document-local identities and navigation.
 The link appearance marks content that navigates: anchors with a destination
 and actionable workspace file references, which mark themselves as the
 `file-reference` slot. Both read as accent text with a tinted underline that

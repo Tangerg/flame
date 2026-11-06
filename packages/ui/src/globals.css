@@ -505,8 +505,11 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
   margin-block: 0;
 }
 :where([data-prose]) :where([data-footnote-ref], [data-footnote-backref]) {
-  text-decoration: none;
   font-variant-numeric: tabular-nums;
+}
+:where([data-prose]) :where([data-footnote-ref]) {
+  text-decoration: none;
+  scroll-margin-block-start: calc(var(--prose-space) * 4);
 }
 :where([data-prose]) :where([data-footnote-backref]) {
   white-space: nowrap;

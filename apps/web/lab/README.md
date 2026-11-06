@@ -24,6 +24,7 @@ Direct entry points:
 - `/lab/?story=checkbox&variant=editable&mode=inspect&compare=on`
 - `/lab/?panel=business&story=business-agent-scenarios&variant=waiting&mode=inspect`
 - `/lab/?panel=business&story=business-reasoning&variant=running&mode=inspect`
+- `/lab/?panel=business&story=business-references&variant=long&mode=inspect`
 
 The catalog owns the valid story and variant IDs. An invalid deep link displays
 its error instead of silently opening a different example. Copy current link
@@ -101,6 +102,13 @@ public props through the existing providers and preview document. They isolate
 disclosure, text hierarchy and reading continuity without adding a Runtime
 transition or requiring a complete workspace. The streaming sample does not
 generate tokens or simulate provider execution.
+
+The reference reading example mounts the production `MarkdownRenderer` with
+fixed localized Markdown. Short and long notes repeat a non-Latin reference
+label, preserving the renderer's native fragment destinations and distinct
+return links. The same catalog capture and interaction suites check supporting
+text, link cues and keyboard return without a workspace sidebar or another
+navigation implementation.
 
 `environment.tsx` composes Flame's actual appearance plugins, locale packages,
 Theme, FontScale, Tooltip, Callout and code highlighting providers. It does not

@@ -103,6 +103,11 @@ export const activityVariants = [
   },
 ] as const satisfies readonly ActivityVariant[];
 
+export const referenceVariants = [
+  { id: "short", title: messages.variants.short, long: false },
+  { id: "long", title: messages.variants.long, long: true },
+] as const satisfies readonly (LabVariant & { long: boolean })[];
+
 export const reasoningVariants = [
   { id: "running", title: messages.variants.running, status: "running", short: false },
   { id: "complete", title: messages.variants.complete, status: "complete", short: false },

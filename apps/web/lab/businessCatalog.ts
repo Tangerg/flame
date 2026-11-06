@@ -11,6 +11,7 @@ import {
   fileVariants,
   messageVariants,
   navigationVariants,
+  referenceVariants,
   reasoningVariants,
   statusVariants,
 } from "./businessVariants";
@@ -80,6 +81,19 @@ export const businessStories: readonly LabStory[] = [
     variants: activityVariants,
     load: () =>
       import("./businessActivity").then((module) => ({ default: module.ActivityExample })),
+  },
+  {
+    kind: "component",
+    panel: "business",
+    id: "business-references",
+    ...messages.stories.references,
+    group: messages.groups.conversation,
+    source: "apps/web/src/features/chat/message/ui/markdown/MarkdownRenderer.tsx",
+    width: 560,
+    height: 640,
+    variants: referenceVariants,
+    load: () =>
+      import("./businessReferences").then((module) => ({ default: module.ReferencesExample })),
   },
   {
     kind: "component",

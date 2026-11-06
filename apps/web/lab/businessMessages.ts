@@ -33,6 +33,13 @@ export const businessMessages = {
         en: "Choose a local sample model through a real popover and inspect width and disabled behavior.",
       },
     },
+    references: {
+      title: { "zh-CN": "引用阅读", en: "Reference reading" },
+      summary: {
+        "zh-CN": "检查脚注、重复引用和返回原文的路径。",
+        en: "Inspect supporting notes, repeated references and return to the answer.",
+      },
+    },
     reasoning: {
       title: { "zh-CN": "推理阅读", en: "Reasoning reader" },
       summary: {
@@ -153,6 +160,27 @@ export const businessMessages = {
     activityFailure: {
       "zh-CN": "示例读取失败。\n  workspace/example.tsx\n  原始详情仍由生产组件展示。",
       en: "The sample read failed.\n  workspace/example.tsx\n  The production component retains the captured details.",
+    },
+    referenceAnswer: {
+      "zh-CN":
+        '# 带来源的结论\n\n已确认的观察支持当前结论。[^来源] 阅读[来源说明](https://example.test/contract "查看来源说明")可以了解上下文。\n\n继续比较材料时，再次引用同一份来源。[^来源] 返回后仍应停留在选中的这处引用。',
+      en: '# A supported answer\n\nThe accepted observation supports the current conclusion.[^来源] The [source guide](https://example.test/contract "Read the source guide") supplies its context.\n\nCompare the same supporting material again.[^来源] Returning should keep this chosen reference in view.',
+    },
+    referenceShort: {
+      "zh-CN": "保留原始观察及其对应的上下文。",
+      en: "Keep the original observation with the context that supports it.",
+    },
+    referenceLong: {
+      "zh-CN": [
+        "来源说明保留已经观察到的材料，并说明它与当前结论之间的关系。读者可以先检查这份说明，再决定是否继续查看原始记录。这里的文字属于支持材料，使用较轻的视觉层级，但仍然需要保持清楚可读。引用的对象不会因为展开来源、调整窗口或改变字号而发生变化。",
+        "比较多份材料时，需要区分原始记录和读者对记录的解释。同一段说明可以被正文中的不同位置引用，每个返回入口都应该回到对应的引用位置。来源内容较长时，读者可以在当前文档里继续阅读，不必关闭整个任务或重新寻找刚才的结论。",
+        "完成比较后，返回原文并继续当前工作。保留已经确认的观察，明确仍然未知的部分，并让来源与结论之间的联系保持可见。返回入口应当直接可辨识，而不依赖悬停之后才出现的提示。较窄的窗口和较大的字号仍需保留完整的来源内容和各自的返回路径。",
+      ].join("\n\n"),
+      en: [
+        "The source note retains the observed material and explains how it supports the current conclusion. Read this context before deciding whether to inspect the original record. Supporting text keeps a quieter hierarchy while remaining readable. Opening a source, resizing the window or changing the text size must not change the object being referenced. The note belongs to this answer and keeps its original identity throughout the reading task.",
+        "When comparing several materials, distinguish the captured record from an interpretation of that record. Different parts of an answer can refer to the same source, and each return link must lead to its corresponding reference. A longer note remains readable within the current document. The reader should not need to close the task or search for the conclusion again merely because the supporting context takes more than one screen to read.",
+        "After comparing the material, return to the answer and continue the current work. Retain confirmed observations, identify what remains unknown and keep the relationship between source and conclusion clear. Return links should be recognizable before hovering over them. Narrow windows and larger text must retain the full note and each distinct return path. The reader can then use the same source to check another part of the answer without starting the task over.",
+      ].join("\n\n"),
     },
     reasoningShort: {
       "zh-CN": "已核对当前回复与来源材料之间的关系。",
