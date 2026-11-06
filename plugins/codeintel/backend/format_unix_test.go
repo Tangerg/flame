@@ -121,7 +121,10 @@ func TestRunFormatterRetiresDescendantsAfterSuccessfulRootExit(t *testing.T) {
 }
 
 func TestPrettierRequiresAnExactExplicitWorkspaceGrant(t *testing.T) {
-	directory := t.TempDir()
+	directory, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	nested := filepath.Join(directory, "nested")
 	if err := os.Mkdir(nested, 0700); err != nil {
 		t.Fatal(err)
@@ -158,7 +161,10 @@ func TestPrettierRequiresAnExactExplicitWorkspaceGrant(t *testing.T) {
 }
 
 func TestFormatterGrantCanonicalizesSymlinksAndRejectsWorkspaceReplacement(t *testing.T) {
-	parent := t.TempDir()
+	parent, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	directory := filepath.Join(parent, "workspace")
 	if err := os.Mkdir(directory, 0700); err != nil {
 		t.Fatal(err)

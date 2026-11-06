@@ -40,8 +40,8 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 
 	sh := run("printf inside > inside.txt")
 	if code, _, _, _ := sh.Outcome(); code != 0 {
-		out, _ := sh.read()
-		t.Fatalf("inside write exited %d: %q", code, out.Text)
+		out, _, readErr := sh.read()
+		t.Fatalf("inside write exited %d: %q (%v)", code, out.Text, readErr)
 	}
 	content, err := os.ReadFile(filepath.Join(workspace, "inside.txt"))
 	if err != nil || string(content) != "inside" {
