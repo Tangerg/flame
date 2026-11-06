@@ -25879,6 +25879,108 @@ zero unpushed commits at that checkpoint. The auxiliary MCP tool-data recovery
 follow-up is now qualified below. Do not repeat this resolved classification
 defect or infer a focus failure solely from pending body focus.
 
+### Approval selection across Settings and Composer (2026-11-06)
+
+The read-recovery qualification above deliberately admitted no policy writes.
+This follow-up qualifies accepted selection and return paths at current main
+`e3a9eb93ddc9882b28638d2b118bf8f2f7b4f2c7`. Fresh remote and local main merges
+were already up to date. No product implementation changes were warranted.
+
+Runtime remains the policy owner. `ModeRow` presents the intended pending choice
+through the existing focus-preserving `ChoiceList`/`ChoiceOption` contract;
+`agent/application/approvalPolicy.ts` serializes changes, commits the accepted
+reply and repairs the one approval-mode query. Composer reads that query and
+uses the same policy descriptions. Neither surface creates a competing accepted
+mode. The unmodified visual transport supplies its canonical mode catalog and
+updates its own in-memory approval response. No command interception, observer,
+alternate component or fixture-only presentation state was added.
+
+The scope is the shared React/Base UI/StyleX Settings and Composer task, using
+the existing semantic tokens, `SettingRow`, `Panel`, menus and workspace
+navigation. Repository AGENTS, PROJECT_RULES, DEVELOPMENT and the Web, visual
+and Desktop READMEs establish the boundaries. The six owning `better-*` skills
+were re-read for the review; prior reference research remains contextual rather
+than fresh evidence about another product.
+
+| Domain        | Evidence inspected                                                                                         | Result                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Accessibility | Native AX names, radio state, arrow selection, menu navigation, Escape, reader PageDown and visible focus. | Clear in the accepted flow; VoiceOver is not verified.                        |
+| Layout        | Mode rows, independent rules and Composer menu in both native profiles, normal size and 200%.              | No new clipping, overlap or alignment finding.                                |
+| Writing       | Actual EN/ZH policy labels, canonical gate descriptions and remembered-rules empty state.                  | Clear for the accepted and empty scenes.                                      |
+| Typography    | Existing mode title/description styles and native 14/18 px rendering through resize and zoom.              | No actionable finding in the inspected text.                                  |
+| Color         | Existing semantic selected/focus tokens and redundant radio/check/label state.                             | No semantic finding; rendered contrast pairs were not measured.               |
+| UI polish     | Existing row, menu, icon, selected and focus presentation with full motion and motion off.                 | No actionable finding in the observed states; no slow-motion timeline review. |
+
+No actionable interface findings in this scope. In particular, normal radio
+focus already survives selection and the native zoom sequence; adding another
+focus or scrolling owner would not address an observed defect.
+
+Passed verification:
+
+- The focused frontend baseline passed **5 files / 38 tests** in **6.974 s**
+  including the wrapper: `ApprovalsPane`, `ModeRow`, `RulesRow`, Agent approval
+  policy and `SettingsPage`. The existing cases cover pending admission,
+  rejection, canonical descriptions, independent reads and serialized writes.
+  No assertion or product source changed.
+- All **11 serial preparation steps** passed: current icons, UI and installed
+  resources; the baseline; private plist/format; current fixture assets; exact
+  Wails **v3.1.0** native build; signing, strict verification and registration.
+  Native compilation took **3.238 s**. All **6,631 non-Markdown tracked inputs**,
+  **331** private Web files, **24** private host files and **4** bundle files
+  remained byte-exact through acceptance.
+- English/light/14 px/Flame Orange/full motion: Tab enters the selected Balanced
+  radio and Up accepts Safe with its focus perimeter. Composer then reports
+  Safe and its menu checks Safe. Keyboard menu selection accepts Balanced and
+  reopening Settings shows Balanced. With `approval` retained in search,
+  native Top Left plus **20 Zoom In actions from Actual Size** preserves the
+  selected radio's focus and complete title/description. Up/Down reaches all
+  three accepted choices. Auto remains explicit in the narrow Composer; its
+  menu fits and checks Auto. Highlighting Balanced then Escape retains Auto
+  and returns to the trigger; pointer selection subsequently accepts Balanced.
+  Actual Size, keyboard **320 px** Files Dock, `README.md` in main, and return
+  to Composer retain the file and exact draft
+  `Keep the approval task draft. Mode and return verified.`
+- Chinese/dark/18 px/custom blue `#2563EB`/motion off: `审批` filtering and
+  keyboard selection accept Safe. The same native resize/20-action zoom
+  sequence retains Safe focus. Down/Down accepts Auto, Up accepts Balanced;
+  each complete row and perimeter is visible. Shift-Tab enters the named
+  reader; two PageDown actions expose the independent rules empty state in
+  full. Composer checks Balanced, keyboard selection accepts Safe, and
+  reopened Settings shows Safe. An Appearance/category-filter round trip at
+  200% preserves Safe; returning through `审批` and Tab reveals it again.
+  Escape, Actual Size, a **320 px** Files Dock, `README.md` Source in main and
+  Composer return preserve source selection and the exact continued draft
+  `保留审批切换前的草稿。 模式和返回路径已核对。`
+- Both owned native launches exit **0**, after **159.100 s** and **110.695 s**.
+  All **21** capture pairs use stable **2238 × 1720** or **2240 × 1456** native
+  rasters. A Tab/Shift-Tab entry probe that did not establish intended radio
+  focus was repeated through the observed search/category/reader path. Two
+  guarded AX helper lookups stopped before clicks and were corrected against
+  fresh observed labels; they establish no product failure.
+
+These are isolated presentation and routing checks over canonical in-memory
+responses. They do not qualify live Runtime policy enforcement or persistence,
+native pending/rejected mutations, remembered-rule mutation, VoiceOver, OS IME,
+pixel contrast, the other six locales or platforms. Browser suites, performance
+baselines and the broad product gates were not repeated: product inputs remain
+exactly those already qualified in the preceding main deliveries. No migration
+is required. Continue with a different evidenced task rather than repeating
+this accepted selection flow or the resolved read-recovery classification.
+
+The exact app registration, two processes and **17** UID Library files are
+retired; all six UID paths are absent. Seven pre-existing output trees containing
+**3,773 files** are restored with their original bytes and modes. Five initially
+absent outputs are absent, including **1,027** new Vitest cache files. Independent
+verification reconfirms all 12 output baselines, 6,631 source hashes, the pinned
+Node tool and the unchanged clean primary checkout at `00c172c73a`. The private
+root's **4,225 files / 64 directories** are retired with identity/hash guards.
+Only this progress record changes. The in-memory evidence archive retains
+**91 UTF-8 records / 21 capture metadata records**; its round-trip-verified gzip
+SHA-256 is `adc57317fbd1ad1e914a4299bbe08df57e57b49fe05ab87cd2993b7a0bb43f42`.
+
+Verdict: **Approve** for the inspected accepted task. Screen-reader behavior,
+measured color contrast and the explicitly excluded states remain unqualified.
+
 ### MCP editor clarity and literal configuration
 
 The actual frozen editor silently disables Save/Test for timeout 0 while its
