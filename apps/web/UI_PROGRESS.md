@@ -24869,8 +24869,8 @@ The fixture's fixed sidebar controls are inert; these checks do not qualify
 whole-workspace 200% behavior. No live Runtime Goal mutation, execution,
 recovery, VoiceOver audio or performance measurement is run. The complete
 migrated interaction suite remains unqualified outside these scoped checks.
-The incoming `ProviderRow` complexity debt (**31 → 34**) is unchanged and its
-threshold is not raised. Continue with the observed narrow installed-report
+The root complexity check fails only on the unchanged incoming `ProviderRow`
+(**31 → 34**); its threshold is not raised. Continue with the observed narrow installed-report
 headings, not another visual entry.
 
 [WAI Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/) and the
@@ -24884,6 +24884,13 @@ audit remain identical; the new flow is the only additional source file. The
 primary checkout's unrelated `go.work.sum` bytes and Git status are unchanged.
 Delivery retires the exact private app, reports, logs, cache and temporary root
 before ordinary publication to main; reusable tools remain available.
+
+The additional unprotected native temporary root and three BlobRegistry child
+directories are retired. Three empty macOS-managed WebKit helper roots remain
+in the Darwin user temporary directory, each named with the exact private app
+identity. macOS marks them `sunlnk` / `com.apple.rootless`; an exact `rmdir`
+returns `EPERM`. They contain no remaining qualification data. System protection
+flags are unchanged.
 
 ### Native footnote reading and return
 
