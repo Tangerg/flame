@@ -273,6 +273,13 @@ Session port uses the snapshot installer's actions and does not start live Run
 recovery. These scenarios qualify presentation and command routing, not live
 Runtime execution.
 
+Workspace scenarios mount the production working-tree action through its host
+adapter in the conversation header. Its change counts and Diff reads project the
+same captured report. A file-specific Diff entry requests that path; the Files
+action explicitly reads the workspace overview before list tasks. Split-column
+checks retain source identities and before/after order across paired and unpaired
+changes instead of assuming one displayed row per source row.
+
 Tool invocations retain Runtime delivery categories, approvals and streamed
 items. Recorded Web pages in `scenarios/web-pages.json` are offline captures;
 offsets, limits and counts are Unicode codepoints. The lab never fetches those

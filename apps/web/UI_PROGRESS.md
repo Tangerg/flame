@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner; the current-source audit confirms the migration is complete. Horizontal reader focus now stays revealed through narrow resizing. Eight focused Lab checks pass; the broader run records **39 passed / 10 failed**, with all **49 report captures** reviewed. Complete UI, Web and plugin gates and supported native checks pass. Actual Wails tasks qualify the horizontal focus repair at 18 px/200% in English/light and Chinese/dark, retaining selection, clear focus and continued drafts. See **Horizontal reader focus and shrinking windows (2026-11-07)** for the results and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **96** tracked browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The retained ten content-layout failures are resolved: **57 related Lab checks pass**, followed by **31 affected checks** after loading the published working-tree action. All **49 report captures** are reviewed. Web verification passes **431 files / 4,743 tests** across stages, and supported native checks pass. Actual Wails review covers search, Diff entry, source columns, exact return and continued drafts, including Chinese/dark at 18 px/200%. See **Lab search and Diff verification contracts (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,77 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Lab search and Diff verification contracts (2026-11-07)
+
+The retained ten failures are triaged against current main and real Wails
+behavior. Eight arise from obsolete checks: the inner semantic listbox does not
+own scrolling; source-targeted Diff entry does not start at the workspace list;
+and split Diff pairs deleted and added source lines. The other two expose an
+omitted production contribution in the Workspace fixture as well as an old
+accessible name. Production controls and Runtime behavior need no repair.
+
+The existing Workspace fixture now mounts the published `WorktreeChanges` ESM
+through the production `WorkspaceChangesAction` host adapter and existing
+conversation-header slot. Its input projects the same captured report as Diff.
+The real action opens the full workspace overview. It shares the existing Diff
+contribution lifetime; no scenario, catalog, presentation state owner or visual
+runner is added. The normal compiled-package import also preserves the SDK's
+opaque component-input boundary.
+
+`contentLayout.browser.spec.ts` now observes actual wheel displacement and
+complete result reveal, query focus and active-descendant identity. File tasks
+explicitly enter the overview before filtering. Reader scroll checks retain
+Back, layout, Refresh and the accepted comparison, baseline and read time;
+Comparison remains reachable on return to the list. Source checks retain every
+original row identity and before/after sequence, paired and unpaired cells,
+column alignment, horizontal displacement and the document-overflow boundary.
+
+The bounded Claude Code CLI makes the initial spec edits but reaches its turn
+limit; primary review and implementation finish the fixture, current scope
+checks and validation. The first candidate passes **21 / 23**; its remaining
+two failures prove the missing contribution. The expanded same-Lab invocation
+passes **57 / 57**, with all **49 image attachments** reviewed. After switching
+the action to its published ESM, all **31 affected checks** pass, including the
+existing WebKit cases. No retries, skips or assertion suppression are added.
+
+Web type, lint and formatting pass. Its frontend project passes **430 files /
+4,691 tests**. The first combined check stops because Runtime's offline Node
+artifact is absent; its failed fixture residue is retired after all writers exit.
+Preparing the pinned, checksum-verified artifact allows all **52 Runtime tests**
+to pass. The remaining **22 Web stages** pass serially. A single successful full
+`check` invocation is not claimed. Supported `make check-native` passes after
+the component-entry typing correction; production and private Lab builds pass.
+
+Actual Wails qualifies the published working-tree entry, two-file overview,
+paired/unpaired split source, keyboard panning, exact row return and continued
+mixed-language drafts. Chinese/dark/custom purple at 18 px/native 200% keeps the
+header action visible and opens a full reading pane; a retained `session` filter
+returns focus to `session.go`, then returns to the continued conversation draft.
+A 543-character directory stays outside persistent controls; focusing its code
+reveals reading space after native narrowing. Commands and Finder qualify wheel
+reading, filter/clear visibility and Finder keyboard/trigger return at 18 px/200%.
+Controlled Lab checks qualify exact first-result selection; native pointer hover
+can change the active command row. No live message or provider mutation runs.
+
+Evidence includes **33 native captures**, of which **29** use separate
+full-resolution screenshots. Four early combined-state images are preliminary.
+An unraised cold shell probe and a temporary diagnostic reload are excluded;
+the final build loads through its exposed native Raise action without that
+diagnostic. Whole-product coverage, the remaining migrated interactions,
+VoiceOver and native IME are not newly qualified. Continue filling those gaps
+only through this Lab.
+
+The root complexity check retains only the unchanged ProviderRow 31-to-34
+baseline growth; its limit is not raised. All twelve output/cache roots return
+to their original contents and modes or absence, including the pre-existing UI
+build output. The owned HTTP server exits and the private app is unregistered.
+Six private Library paths and the ordinary native temp root return to absence;
+three pre-existing helper roots retain their identities and modes while only
+this batch's seven empty Networking children are retired. Qualification files
+are retired after verified in-memory evidence retention. The primary checkout,
+including its committed `go.work.sum`, stays unchanged. No functional checks run
+against the restored older UI output.
 
 ### Intrinsic table headings and Agent reading frames (2026-11-07)
 
@@ -318,8 +389,10 @@ unchanged `contentLayout.browser.spec.ts`: two read a non-scrolling listbox
 instead of its overflow parent, two expect the former Diff summary name, two
 expect separate split rows where the current presenter pairs changed lines, and
 four do not reach the file list in their current initial scenario. These are
-retained failures, not a qualified full navigation suite or whole-product pass.
-Continue their triage through this same Lab owner.
+retained failures at that checkpoint, not a qualified full navigation suite or
+whole-product pass. They are now resolved under **Lab search and Diff verification
+contracts (2026-11-07)** above; the entire migrated interaction suite remains
+unfinished.
 
 The complete UI gate passes **247 component tests** and the offline packed
 consumer. The complete Web gate passes **431 files / 4,743 tests**, including

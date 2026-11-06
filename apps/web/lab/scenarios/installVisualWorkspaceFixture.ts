@@ -1,6 +1,7 @@
 import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
+import { WorkspaceChangesAction } from "@/features/plugins/ui/WorkspaceChangesAction";
 import { Schedules } from "../../../../plugins/schedules/component/component";
 import { Hooks } from "../../../../plugins/hooks/component/component";
 import { type ComponentDefinition, type PluginComponent } from "@flame/component-sdk";
@@ -43,6 +44,7 @@ import { VISUAL_MEMORY_BINDING, VISUAL_SCHEDULES_BINDING } from "./componentSnap
 import { Skills } from "../../../../plugins/skills/component/component";
 import { fileView } from "@/features/workspace/views";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { contributeLayout } from "@/extensions/contributeHelpers";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
@@ -86,6 +88,12 @@ const MCPServers = Object.values(
     { eager: true },
   ),
 )[0]!.MCPServers;
+const WorktreeChanges = Object.values(
+  import.meta.glob<{ WorktreeChanges: PluginComponent }>(
+    "../../../../plugins/diff/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.WorktreeChanges;
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
@@ -295,6 +303,21 @@ function workspaceDataPlugin(
             ...diffSources,
             scope: "workspace",
             entry: WorkspaceDiff,
+          }),
+      });
+      const worktreeSources = visualComponentProps(
+        runtimeClient(),
+        diffLifetime,
+        "worktree-changes",
+      );
+      contributeLayout(diffLifetime, "chat.header.meta", {
+        id: "visual-worktree-changes",
+        component: () =>
+          createElement(WorkspaceChangesAction, {
+            ...worktreeSources,
+            scope: "workspace",
+            targetView: "package:visual:diff",
+            entry: WorktreeChanges,
           }),
       });
       const usageLifetime = ctx.contributions.child("visual-usage");
