@@ -53,10 +53,14 @@ describe("business component examples", () => {
   it("chooses a local model through the actual chip popover", async () => {
     const observe = vi.fn();
     renderExample(<ComposerChipExample variant="default" locale="en" observe={observe} />);
-    fireEvent.click(screen.getByRole("button", { name: "Local sample model" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Local sample model, Choose a sample model" }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Reasoning sample model" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByRole("button", { name: "Reasoning sample model" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Reasoning sample model, Choose a sample model" }),
+    ).toBeTruthy();
     expect(screen.getByRole("status", { name: "Current sample selection" }).textContent).toBe(
       "reasoning-preview",
     );

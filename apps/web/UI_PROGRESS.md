@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab is now the sole UI visual verification entry. The previous visual app, fixtures, browser suites and composition scene are consolidated under `lab/`, with one catalog, Vite configuration and Playwright configuration. The final focused qualification passes 214 browser checks, including 148 catalog checks with 548 image attachments; all final contact sheets were inspected. Frontend, Runtime integration, the 25 non-unit Web gates and the supported native build pass. Actual Wails inspection covers English/Chinese, font scaling, native zoom, composition and retained drafts. The broader migrated interaction audit and an unchanged main complexity failure remain unresolved, as detailed in **Component lab and UI visual verification (2026-11-06)**. The goal is active; whole-product acceptance remains unfinished.
+Composer choices now retain their current value in the accessible name, including when narrow layouts hide secondary text. The sole component lab qualifies this repair with 22 focused browser checks, a later corrected Dock-popup check and 20 inspected captures. All 4,689 frontend tests, 52 Runtime integration tests, 25 non-unit Web gates and the supported native build pass with current shared-package outputs. Rebuilt Wails previews pass English, Chinese/18 px/native 200%, window resizing, retained drafts and compact hidden-label selection. See **Current choice names and native return (2026-11-06)**. The broader Lab audit and an unchanged main complexity failure remain unresolved; the goal is active and whole-product acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -105,16 +105,19 @@ test failed before the fix; the focused related suite passed 130 tests afterward
   and retains its same iframe and draft through 1440-to-1280 viewport changes.
   A scaled canvas thumbnail is not evidence of untransformed 200% reading.
 
-All **1,037** interaction titles survive the migration, including the 13 Lab
-tests. The broader interaction audit was interrupted after exposing unresolved
+All **1,037** interaction titles survived the migration, including the 13 Lab
+tests. The initial broader interaction audit was interrupted after exposing unresolved
 failures: **174 passed, 96 failed, 2 interrupted and 765 did not run**. Repeated
 failures identify visible model/effort/approval values missing from Composer
 accessible names; other failures include older expanded-Diff and presentation
 assumptions and focus/layout assertions that still need individual triage.
-The naming source is unchanged from incoming main, but the full set of failures
-has not been individually established as pre-existing. The default `lab:verify`
+At migration delivery, the naming source was unchanged from incoming main, but
+the full set of failures was not individually established as pre-existing. The default `lab:verify`
 retains all these tests and remains unqualified as a complete suite. Nothing is
-skipped or excluded to manufacture a pass.
+skipped or excluded to manufacture a pass. The Composer-name failures are now
+repaired under **Current choice names and native return (2026-11-06)**, which also
+records the subsequent complete WCAG subset audit. Two new Composer flow tests
+extend the same Lab suite; the entire interaction suite has not been rerun.
 
 The root complexity check also fails on
 `plugins/providers/component/providerRow.tsx:ProviderRow` growing from 31 to 34.
@@ -123,7 +126,7 @@ threshold is not raised. Optional performance measurements and live Runtime
 business execution were not run. Native inspection and focused checks do not
 establish whole-product acceptance.
 
-Next use this same lab to distinguish obsolete expectations from actual
+Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
@@ -160,12 +163,15 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The requested main updates through `bd95d9f72` are included. UI inspection and
+The requested main updates through `118d3f83a` are included. UI inspection and
 visual checks now share the component lab; new coverage extends this owner rather
 than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
-Next triage the retained broad interaction failures through this same lab,
-starting with Composer accessible names and obsolete presentation assumptions.
+Composer choice names and their keyboard/draft return are now repaired and
+qualified below. Next triage the remaining broader findings through this same
+lab, starting with reasoning/disclosure names, rendered contrast and obsolete
+Goal/Plan/open-all-disclosure probes. Prepare current shared packages before
+using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user
 resumed the goal; no milestone pause is currently requested.
 
@@ -15651,6 +15657,82 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+### Current choice names and native return (2026-11-06)
+
+The shared `src/ui/agent/composer-chip.tsx` now owns a choice's accessible name.
+Its `label` is the displayed current value and `actionLabel` is the localized
+action; the value comes first. A fallback that already displays the action
+announces it once. Model, reasoning-effort, approval-mode and Lab example callers
+use this contract instead of overriding the name with a generic action.
+Responsive text hiding retains the current value in the name without adding
+visible copy, markup, another state owner or a second selection path.
+
+The original Lab WCAG audit failed on all three production chips, and original
+Wails accessibility inspection exposed only Switch model / Switch reasoning
+effort / Approval mode despite displaying their selected values. The repair
+follows [WCAG 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html),
+including its recommendation to put the visible text first. Existing action-based
+interaction queries now accept the current value; exact name assertions cover
+authored unavailable values, published effort values, fallback actions and the
+interactive Lab example.
+
+The existing Lab toolbar suite adds English/light/14 px and Chinese/dark/18 px
+keyboard flows. Their documents come from the same catalog and preview URL
+projection as the inspector and captures. They check initial values, model-picker
+cancellation/focus return, effort and policy selection, hidden secondary labels in
+a 320 px Composer, a replacement model and retained input. The inherited overlay
+audit now inspects the actual visible popup instead of the first hidden panel
+listbox in the document. No rule, exception, threshold or test is disabled.
+
+Expanded verification discovered restored shared UI build outputs from an earlier
+source state. Seven compiled UI files differed from the current build, including
+the Modal reader contract. Those preliminary results are not final qualification.
+After the normal icons/UI builds, all **430 frontend files / 4,689 tests pass**,
+including the two Goal reader tests that failed with stale output. Later batches
+must prepare current dependencies after main integration and output restoration.
+
+The final focused Lab run passes **22 tests**: four Composer story/width/theme
+checks and 18 production/interaction checks. All **20 image attachments** were
+reviewed through two contact sheets, with native full-size inspection. The new
+keyboard probes wait for actual menu-item focus before issuing selection keys;
+they do not depend on an arbitrary delay. A later correction applies the same
+visible-popup lookup to the Dock catalogue, whose focused WCAG check passes.
+
+The **52-test Runtime integration project passes** after preparing its exact
+isolated Runtime, runner, CLI and plugin builds. Its first cold setup exceeded
+the existing 60-second hook deadline and skipped all 52 tests; the prepared
+rerun passes without changing that deadline. All **25 non-unit Web stages** and
+**`make check-native` pass**. Web checks were verified in stages rather than one
+uninterrupted full `check` invocation. Existing SDK/macOS linker warnings remain.
+
+Actual Wails v3.1.0 inspection repeats the task with the rebuilt Lab, private
+identity/data home and inactive Runtime endpoint. English/light/14 px covers
+picker cancellation, effort/policy selection, a searched replacement model,
+updated accessible names, focus return and a retained draft. Chinese/dark/18 px
+covers those choice controls at actual native **200%**, popup reading and window
+resizing with the same draft and choices. The independent compact Lab preview
+keeps its complete name while text is hidden, changes to the second sample via
+keyboard and returns focus to the original trigger. Native accessibility-tree
+names, roles and focus are inspected; audible VoiceOver and OS Voice Control
+were not run. These inert scenarios do not qualify live Runtime authority.
+
+The completed broader **260-case WCAG audit reports 226 passed / 34 failed**.
+The later Dock lookup repair resolves one of those false failures with its own
+passing check; the entire subset was not rerun after that localized query fix.
+Remaining findings include reasoning/reference/wave labels and contrast,
+work-index/appearance/brand contrast or names, and outdated Goal/Plan/open-all
+interaction assumptions. They require individual reproduction and triage, not
+blanket expectation updates. The whole Lab suite remains unqualified. The root
+complexity check still reports the unchanged `ProviderRow` 31-to-34 failure;
+no thresholds, rules or exceptions are weakened.
+
+Qualification writers are stopped. All 12 observed output/cache roots have their
+original contents and modes restored, or are absent again when originally absent.
+The six private native identity paths are absent again. The primary checkout's
+unrelated `go.work.sum` bytes and Git status remain unchanged. Delivery retires the
+private app, reports, logs and temporary data before ordinary publication to main;
+reusable tools remain available. No source-data or protocol migration is required.
 
 ### Model catalog reading and recovery
 

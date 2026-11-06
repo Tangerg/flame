@@ -63,7 +63,7 @@ export function ReasoningEffortPill() {
         render={
           <AgentComposerChip
             type="button"
-            aria-label={t("composer.switchReasoningEffort")}
+            actionLabel={t("composer.switchReasoningEffort")}
             variant="ghost"
             leading={
               <EffortMeter index={levels.indexOf(current)} count={levels.length} size="composer" />

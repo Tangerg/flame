@@ -3,9 +3,10 @@ import { type ReactNode } from "react";
 import { color } from "@flame/ui/tokens.stylex";
 import { Button, type ButtonProps, vocab } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
-interface Props extends Omit<ButtonProps, "children" | "size"> {
+interface Props extends Omit<ButtonProps, "children" | "size" | "aria-label" | "aria-labelledby"> {
   leading: ReactNode;
   label: string;
+  actionLabel: string;
   shrink?: "holds" | "gives";
   labelVisibility?: "always" | "wide";
 }
@@ -23,6 +24,7 @@ export function AgentComposerChip({
   variant = "ghost",
   leading,
   label,
+  actionLabel,
   className,
   shrink = "holds",
   title,
@@ -38,6 +40,7 @@ export function AgentComposerChip({
       styles={[chipStyles.grid, shrink === "gives" ? chipStyles.gives : chipStyles.holds]}
       className={className}
       {...props}
+      aria-label={label === actionLabel ? label : `${label}, ${actionLabel}`}
     >
       <span {...stylex.props(chipStyles.leading)}>{leading}</span>
       <span

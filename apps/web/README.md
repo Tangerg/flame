@@ -385,6 +385,11 @@ picker owns only presentation: feedback sits outside options, recovery stays in 
 bounded footer, an arriving preferred group respects later explicit browsing,
 and the complete popup fits the available height.
 
+The shared Composer chip owns the accessible name for its current choice and
+localized action. Callers provide `label` and `actionLabel`; the current value
+comes first and remains announced when a narrow container hides its text.
+An unresolved choice that displays only its action announces that action once.
+
 Language selection records the requested preference before activating its source,
 including synchronous activation failures. A source shares its current or successful
 dictionary task, but a failed task permits another explicit attempt. Settings

@@ -603,7 +603,7 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
   await expect(footer).toHaveCSS("padding-bottom", "6px");
   await expect(footer).toHaveCSS("padding-right", "8px");
   await expect(page.getByRole("button", { name: "Add to message" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Switch model" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Switch model$/ })).toBeVisible();
 
   const box = await composer.boundingBox();
   expect(box?.width).toBe(
@@ -655,13 +655,13 @@ test("model capabilities drive the picker and image admission together", async (
 
   const add = page.getByRole("button", { name: "Add to message" });
   const attach = page.getByRole("menuitem", { name: /Attach image/ });
-  const trigger = page.getByRole("button", { name: "Switch model" });
+  const trigger = page.getByRole("button", { name: /Switch model$/ });
   const triggerLabel = trigger.locator('[data-slot="composer-chip-label"]');
   await add.click();
   await expect(attach).toBeEnabled();
   await page.keyboard.press("Escape");
   await expect(triggerLabel).toHaveText("GPT-5.6 Sol");
-  const effort = page.getByRole("button", { name: "Switch reasoning effort" });
+  const effort = page.getByRole("button", { name: /Switch reasoning effort$/ });
   const effortLabel = effort.locator('[data-slot="composer-chip-label"]');
   await expect(effortLabel).toHaveText("Medium");
   await effort.click();
@@ -700,7 +700,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=empty`);
     await page.locator("html[data-visual-ready]").waitFor();
 
-    await page.getByRole("button", { name: "Switch model" }).click();
+    await page.getByRole("button", { name: /Switch model$/ }).click();
     const surface = page.getByRole("dialog", { name: "Switch model" });
     await expect(surface).toBeVisible();
     await expect(page.getByPlaceholder("Search models…")).toBeFocused();

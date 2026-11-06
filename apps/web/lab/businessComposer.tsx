@@ -33,7 +33,7 @@ export function ComposerChipExample({ variant, locale, observe }: LabExampleProp
               <AgentComposerChip
                 leading={<ProviderIcon provider={selected.provider} />}
                 label={label}
-                aria-label={label}
+                actionLabel={localize(messages.samples.modelChoice, locale)}
                 disabled={scenario.disabled}
                 shrink="gives"
                 labelVisibility={scenario.compact ? "wide" : "always"}

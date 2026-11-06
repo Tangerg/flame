@@ -324,7 +324,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
 
 test("the model remains readable when the dock narrows the composer", async ({ page }) => {
   await openWorkspace(page, { state: "dock-review" });
-  const model = page.getByRole("button", { name: "Switch model" });
+  const model = page.getByRole("button", { name: /Switch model$/ });
   for (const width of [1800, 1120]) {
     await page.setViewportSize({ width, height: 800 });
     await expect(model.locator('[data-slot="composer-chip-label"]')).toBeVisible();

@@ -44,7 +44,7 @@ describe("ReasoningEffortPill", () => {
   it("offers exactly the levels the model publishes and sets one without re-choosing it", async () => {
     state.selection = { model: model(["low", "high", "max"]), reasoningEffort: "high" };
     testClient.render(<ReasoningEffortPill />);
-    const pill = screen.getByRole("button", { name: "Switch reasoning effort" });
+    const pill = screen.getByRole("button", { name: "High, Switch reasoning effort" });
     expect(pill.textContent).toContain("High");
 
     fireEvent.click(pill);
@@ -62,14 +62,14 @@ describe("ReasoningEffortPill", () => {
   it("shows the authored effort even when the catalog no longer offers it", () => {
     state.selection = { model: model(["low", "high", "max"]), reasoningEffort: "medium" };
     testClient.render(<ReasoningEffortPill />);
-    expect(screen.getByRole("button", { name: "Switch reasoning effort" }).textContent).toContain(
-      "Medium",
-    );
+    expect(
+      screen.getByRole("button", { name: "Medium, Switch reasoning effort" }).textContent,
+    ).toContain("Medium");
   });
 
   it("is absent for a model that thinks but publishes no levels", () => {
     state.selection = { model: model([]), reasoningEffort: undefined };
     testClient.render(<ReasoningEffortPill />);
-    expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Switch reasoning effort$/ })).toBeNull();
   });
 });

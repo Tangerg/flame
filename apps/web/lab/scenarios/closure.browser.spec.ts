@@ -410,9 +410,12 @@ const INTERACTION_SURFACES: readonly {
     name: `the composer's ${control} popup`,
     route: { fixture: "workspace" as const, state: "dock-light" },
     open: async (page: Page) => {
-      await page.getByRole("button", { name: control }).first().click();
+      await page
+        .getByRole("button", { name: new RegExp(`${control}$`) })
+        .first()
+        .click();
       await expect(
-        page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
+        page.locator(':is([role="menu"], [role="listbox"], [role="dialog"]):visible').first(),
       ).toBeVisible();
     },
   })),
@@ -425,7 +428,7 @@ const INTERACTION_SURFACES: readonly {
         .first()
         .click();
       await expect(
-        page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
+        page.locator(':is([role="menu"], [role="listbox"], [role="dialog"]):visible').first(),
       ).toBeVisible();
     },
   },
@@ -1281,13 +1284,13 @@ const OVERLAYS: ReadonlyArray<{
   {
     label: "approval mode menu",
     route: { fixture: "agent", state: "idle" },
-    open: "Approval mode",
+    open: /Approval mode$/,
   },
-  { label: "model picker", route: { fixture: "agent", state: "idle" }, open: "Switch model" },
+  { label: "model picker", route: { fixture: "agent", state: "idle" }, open: /Switch model$/ },
   {
     label: "reasoning effort menu",
     route: { fixture: "agent", state: "idle" },
-    open: "Switch reasoning effort",
+    open: /Switch reasoning effort$/,
   },
   {
     label: "plan step list",
@@ -1305,7 +1308,7 @@ for (const overlay of OVERLAYS) {
       if (overlay.by === "hover") await trigger.hover();
       else await trigger.click();
       const popup = page
-        .locator('[role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]')
+        .locator(':is([role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]):visible')
         .first();
       await expect(popup).toBeVisible();
       await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
@@ -1397,7 +1400,10 @@ test("a menu owns both its own bounds, not its call sites", async ({ page }) => 
 test("the catalogue holds its measure whatever its group contains", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
 
-  await page.getByRole("button", { name: "Switch model" }).first().click();
+  await page
+    .getByRole("button", { name: /Switch model$/ })
+    .first()
+    .click();
   const body = page.locator('[data-slot="catalog-body"]');
   await expect(body).toBeVisible();
 
@@ -1740,7 +1746,7 @@ test("no floating surface carries two StyleX rules for one property", async ({ p
     "Switch reasoning effort",
     "Add to message",
   ]) {
-    await page.getByRole("button", { name }).click();
+    await page.getByRole("button", { name: new RegExp(`${name}$`) }).click();
     await page.waitForTimeout(250);
     await collect(name);
     await page.keyboard.press("Escape");

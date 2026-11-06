@@ -187,7 +187,7 @@ export function ModelPicker() {
       }}
       trigger={
         <AgentComposerChip
-          aria-label={t("composer.switchModel")}
+          actionLabel={t("composer.switchModel")}
           title={
             selection
               ? `${label} · ${providerDisplayName(selection.provider)}${selected || data === undefined ? "" : ` · ${t("composer.model.unavailable")}`}`

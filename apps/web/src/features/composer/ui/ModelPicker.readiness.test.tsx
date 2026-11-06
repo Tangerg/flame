@@ -77,7 +77,7 @@ it.each(cases)("keeps the first paused $name catalog unknown", async ({ result }
       data: undefined,
     }),
   );
-  const trigger = screen.getByRole("button", { name: "Switch model" });
+  const trigger = screen.getByRole("button", { name: /Switch model$/ });
   expect(trigger.textContent).toContain("kept-model");
   expect(trigger.title).not.toContain("Unavailable in the current catalog");
   fireEvent.click(trigger);
@@ -111,7 +111,7 @@ it("keeps the same search through the first failure, retry and result", async ()
     .mockImplementation(() => arrival.promise);
   await mount(read);
   await waitFor(() => expect(queryClient.getQueryState([MODELS_KEY])?.status).toBe("error"));
-  const trigger = screen.getByRole("button", { name: "Switch model" });
+  const trigger = screen.getByRole("button", { name: /Switch model$/ });
   fireEvent.click(trigger);
   const search = await screen.findByRole<HTMLInputElement>("combobox", { name: "Search models…" });
   fireEvent.change(search, { target: { value: "kept" } });
@@ -142,7 +142,7 @@ it.each(cases)("retains the accepted $name catalog during a paused reread", asyn
   read.mockClear();
   pauseQueries();
   act(() => void queryClient.refetchQueries({ queryKey: [MODELS_KEY] }));
-  fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+  fireEvent.click(screen.getByRole("button", { name: /Switch model$/ }));
   await screen.findByRole("combobox", { name: "Search models…" });
   expect(screen.queryByText("Loading")).toBeNull();
   const content = result.length
@@ -160,7 +160,7 @@ it("keeps accepted choices beside a failed refresh and retains the current ident
   await mount(read);
   await waitFor(() => expect(queryClient.getQueryState([MODELS_KEY])?.status).toBe("success"));
   await act(async () => queryClient.refetchQueries({ queryKey: [MODELS_KEY] }));
-  fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+  fireEvent.click(screen.getByRole("button", { name: /Switch model$/ }));
   await screen.findByRole("combobox", { name: "Search models…" });
   expect(screen.getByRole("alert").textContent).toContain("Couldn't load models.");
   expect(screen.getByRole("option", { name: /Kept model/ })).toBeTruthy();
@@ -175,7 +175,7 @@ it("keeps accepted choices beside a failed refresh and retains the current ident
 it("offers provider configuration after an accepted empty read without choosing a model", async () => {
   await mount(async () => [], false);
   await waitFor(() => expect(queryClient.getQueryState([MODELS_KEY])?.status).toBe("success"));
-  fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+  fireEvent.click(screen.getByRole("button", { name: /Switch model$/ }));
   await screen.findByText("No models found");
   fireEvent.click(screen.getByRole("button", { name: "Configure a provider" }));
   expect(testClient.navigation.get().settings).toBe("package:chosen:models");
@@ -186,7 +186,7 @@ it("offers provider configuration after an accepted empty read without choosing 
 it("keeps a model search usable before any current model is resolved", async () => {
   const arrival = Promise.withResolvers<SelectableModel[]>();
   await mount(() => arrival.promise, false);
-  fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+  fireEvent.click(screen.getByRole("button", { name: /Switch model$/ }));
   const search = await screen.findByRole<HTMLInputElement>("combobox", { name: "Search models…" });
   fireEvent.change(search, { target: { value: "kept" } });
   expect(screen.getByRole("status").textContent?.replaceAll("\u2060", "")).toBe("Loading");
