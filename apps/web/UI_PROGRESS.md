@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Provider role choices now retain their trigger focus while the original command
+is pending or unconfirmed. All 244 UI tests, 60 Provider tests, 4,557 frontend
+tests and 18 serial gates pass, including packed UI consumption and the native
+build. Actual English accepted/refused and Chinese dark/18 px/200% recovery,
+later editing and Files/conversation returns pass. See **Provider role selection
+and retained editing (2026-11-06)**. Fresh remote/local main merges are already
+up to date and owned resources are retired. Continue checking focus reveal when
+an already focused control reflows during native zoom; whole-product acceptance
+remains open.
+
 Provider Save with an unknown outcome and focused original-command recovery now
 retain keyboard position through the existing shared controls. All 52 Provider
 tests and 16 serial gates pass. Native English accepted/refused/repeated-unknown,
@@ -32961,6 +32971,148 @@ other-platform GUIs and OS reduced-motion preference. No protocol, persisted-dat
 dependency or external-consumer migration is needed. Verdict: **Approve** for
 the inspected domains and paths. Whole-product and award-level acceptance remain
 open; continue with fresh evidence from remaining tasks.
+
+### Provider role selection and retained editing (2026-11-06)
+
+Qualified from clean main `5dba6fd82`. The user's renewed main synchronization
+request is handled before implementation and again before delivery. Freshly
+fetched `origin/main` and local `main` are already contained in this worktree;
+there are no incoming changes or merge conflicts. The clean primary checkout
+stays on `00c172c73` throughout.
+
+In the original actual Wails app, selecting the embedding model native-disables
+its trigger, drops focus to HTML during Saving, and leaves it there after
+acceptance. An independent endpoint draft survives. This matches the previously
+observed Utility submission defect. The responsible shared Select already
+renders Flame's Button, but does not expose that Button's focusable-disabled
+contract.
+
+`packages/ui/src/select.tsx:59` adds the optional `focusableWhenDisabled` prop to
+its existing Button composition. The disabled trigger retains its tab position
+only when explicitly requested. Base UI's disabled root continues to block
+opening, navigation, typeahead and selection. Ordinary disabled controls retain
+native disabled behavior. `plugins/providers/component/roles.tsx:167` opts in
+for both real role consumers without changing `disabled={Boolean(command)}`.
+ProviderSettings still owns accepted roles, drafts, original commands, retries
+and source retirement. There is no new focus state, effect, timer, event guard,
+style, dependency or command transition in product code.
+
+Read-only HeroUI Select implementation and asynchronous/disabled Select and
+pending Button demos inform composition and state separation. Its React Aria
+behavior is not evidence for Flame's native command lifecycle. ZCode's actual
+ModelProviderSection and SectionLayout inform grouping and keeping unrelated
+edits separate from catalog refresh. Flame retains its shared Base UI, StyleX,
+filled controls and existing theme owners; all six inspected reference files
+remain byte-identical.
+
+Two bounded Read/Edit-only Claude Code CLI attempts are recorded. The first
+reaches its 16-turn limit without implementation (66.035 s); the second times
+out at 240 s after writing Select, its six regressions and the role opt-in.
+Root reviews those changes, adds eight real Provider integration cases and owns
+all verification. No subagent or CLI completion claim substitutes for evidence.
+
+| Check                                 | Actual result                                                                                                                                                                                                                |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original baselines                    | UI: 13 files / **238 tests**; Provider: 3 files / **52 tests**                                                                                                                                                               |
+| Final UI package                      | Build/type/lint/format, 14 files / **244 tests**, independent offline packed UI/icon consumption; 10.069 s                                                                                                                   |
+| Final Provider suite                  | 3 files / **60 tests**, 2.135 s                                                                                                                                                                                              |
+| Original shared Select counterfactual | **5 failures / 1 pass**, 3.697 s; the ordinary disabled case still passes                                                                                                                                                    |
+| Original role caller counterfactual   | **9 failures / 51 passes**, 10.628 s                                                                                                                                                                                         |
+| Complete frontend project             | 424 files / **4,557 tests**, 395.981 s                                                                                                                                                                                       |
+| Final serial gates                    | All **18 pass**: scoped format, UI check, Provider tests, plugin type/lint/format/i18n/build/resource reproduction, frontend tests, Web type/lint/design-system/tokens/bundle/module checks, native check and private assets |
+| Native build                          | `make check-native`, 28.281 s; existing successful-build linker warnings remain                                                                                                                                              |
+
+Counterfactuals rebuild the original shared source before testing and restore
+exact candidate bytes in finally blocks. Deferred tests cover both role choices
+through accepted, refused and unknown outcomes, previous accepted text, exact
+single submission, original recovery, later endpoint focus and independent key
+and endpoint drafts. UI regressions use compiled real primitives and include
+popup-close focus, ordinary disabled behavior, activation/submission guards,
+re-enabling and unrelated keys. Existing assertions remain, apart from the
+intentional native-disabled to focusable-disabled expectation.
+
+Actual Wails observations use the installed generated Provider component,
+public client, shared controls, native keyboard/pointer input, AX and images:
+
+- **English embedding, light/14 px/Orange:** Return selection retains its visible
+  focused disabled trigger and previous Off while pending. Repeated Return,
+  Space and Down cannot open another choice. Acceptance keeps the same trigger
+  focused. At actual 200%, keyboard entry reveals the complete model value.
+  An unsubmitted endpoint survives category return. Conversation continues as
+  `Continue after embedding role selection. English verified.` with Files at
+  a real 320 px width.
+- **English Utility refusal:** pending and known refusal retain trigger focus
+  and the previous exact model. The literal refusal is readable at 100% and,
+  using the existing Settings reading region and Page Up, fully at 200%.
+  Conversation returns as `Continue after the refused role choice. Refusal reviewed.`
+  No corrected role command is issued.
+- **Chinese Utility, dark/18 px/custom Blue/motion off/native Top Left/200%:**
+  pending and unknown retain the complete previous role and visible focus.
+  Return, Space, Down and typeahead remain blocked. Two Tabs reach original
+  recovery through Refresh models; the warning, detail and recovery action are
+  readable. Recovery confirms the Runtime-default role, and leaving the
+  confirmed action retires it. Category return retains the independent URL.
+  The 320 px Files return continues `模型角色核对后继续对话。 已核对未知结果。`
+- **Chinese embedding, same appearance and resized native window:** a capture
+  explicitly shows Saving, previous Off and the later edited URL field focused.
+  Acceptance leaves that exact URL and field focus in place. Keyboard re-entry
+  reveals the full accepted model at 200%; category return retains the draft.
+  The 320 px Files return continues `嵌入模型保存后继续编辑。 后续字段草稿已保留。`
+
+The private producer admits only the exact empty Utility selection or the exact
+OpenAI embedding pair. It preserves original method/input/key/namespace and
+advances its existing canonical fixture owner once on acceptance. Its first
+observation is delayed eight seconds; recovery uses four. The first later-field
+frame has already completed and is excluded as pending proof. A private-only
+16-second observation window and one additional asset build (2.591 s) produce
+the explicit pending-field evidence without changing any product source.
+Likewise the capture named recovery-pending already shows confirmation and is
+not pending evidence. Both 786 × 604 and 706 × 460 intermediate images are
+excluded from visual judgment; subsequent stable EN 2240 × 1720 and resized
+ZH 2240 × 1456 frames qualify reading and return.
+
+All six native processes exit 0: original **287.059 s**, English accepted
+**222.567 s**, English refused **198.397 s**, Chinese unknown **182.461 s**,
+later-field observation **92.925 s**, and qualified later-field **163.616 s**.
+This covers the isolated installed UI/public-client path, not a live Runtime
+receipt, real response loss, vendor validation or real credentials. Provider
+Save/Test/key removal and conversation Send are not run. The unchanged Runtime
+integration project, CLI/backend suites and VoiceOver audio are not rerun.
+Browser visual suites and benchmarks remain excluded.
+
+| Domain        | Inspected evidence                                                                 | Result within this flow                                                                |
+| ------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Accessibility | Real Select/Button semantics, popup closure, native focus and local recovery order | Disabled commands retain position without enabling activation; VoiceOver audio not run |
+| Layout        | Both role grids, EN/ZH, native resize, 200% reading and 320 px Files returns       | Existing shared edges and complete reachable controls hold; RTL not newly run          |
+| Writing       | Existing accepted role, Saving, refusal, unknown and confirmed copy                | State and original-command meaning remain distinct; no new product copy                |
+| Typography    | Complete model identity, descriptions and literal refusal in native reading        | Existing wrapping and font scale remain readable                                       |
+| Colors        | Existing Orange/light and custom Blue/dark focus perimeters                        | Focus remains visible; no new palette or new contrast measurement                      |
+| UI            | Shared Button composition, guarded pointer/keys, full/off motion scenes            | Existing controls and motion ownership remain unchanged                                |
+
+| Severity | Domain        | Location                                                                      | Before                                           | After                                                                               | Why                                                                  |
+| -------- | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| MEDIUM   | Accessibility | `packages/ui/src/select.tsx:108`; `plugins/providers/component/roles.tsx:167` | Submitting either role removes keyboard position | Existing disabled Button retains trigger focus while the Select root blocks changes | Keep role selection, result reading and recovery in the current task |
+
+Cleanup unregisters the app, restores seven baseline output/dependency trees
+containing **3,773 files**, removes five previously absent output/cache roots
+(including **3,542** Vitest cache files), and removes **17** owned Library files
+across the six UID paths. All 12 output baselines, six absent UID paths, all
+**6,631** candidate non-Markdown source inputs and six reference files pass an
+independent check. The 6,626 source inputs outside this change, 58 pre-existing
+Web dependency files, two original UI cache files, primary checkout and pinned
+toolchain remain preserved. The private root is retired after hashing its
+4,406 files and 198 directories.
+
+The verified in-memory gzip retains **193 UTF-8 records** and **28 JPEG metadata
+records**, including exclusions, exact source/artifact maps, test receipts and
+cleanup evidence. It is **1,594,277 bytes**, SHA-256
+`89c8410ad79a8676336d8ae5d1620adbc87e1c1774deb3253702976ae4a79061`.
+Only this maintained progress file is used for handoff.
+
+**Approve** the inspected role submission, result/recovery and continued-editing
+flow. No HIGH finding remains in that scope. This is not whole-product acceptance.
+Next recheck automatic focus reveal when an already focused control reflows at
+native zoom; this batch qualifies ordinary keyboard re-entry and reading.
 
 ### Provider original-command recovery and retained work (2026-11-06)
 

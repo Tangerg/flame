@@ -601,7 +601,8 @@ it("distinguishes identical model names and waits for the accepted exact role", 
     model: model.id,
   });
   expect(trigger.textContent).toContain(provider.id);
-  expect(trigger.hasAttribute("disabled")).toBe(true);
+  expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  expect(trigger.hasAttribute("disabled")).toBe(false);
   f.getUtilityRole.mockRejectedValue(new Error("refresh unavailable"));
   await act(async () =>
     response.resolve({ provider: second.id, model: model.id }),
@@ -610,7 +611,7 @@ it("distinguishes identical model names and waits for the accepted exact role", 
   expect(f.setUtilityRole).toHaveBeenCalledOnce();
 });
 
-it.each([
+const roleChoices = [
   {
     kind: "utility" as const,
     title: "Utility model",
@@ -623,7 +624,120 @@ it.each([
     option: "embed-default",
     value: { provider: provider.id, model: "embed-default" },
   },
-])(
+] as const;
+
+function attemptRoleChoice(trigger: HTMLElement) {
+  attempt(trigger);
+  for (const key of ["ArrowDown", "ArrowUp", "Home", "End", "u", "e"])
+    fireEvent.keyDown(trigger, { key });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("listbox")).toBeNull();
+}
+
+async function chooseRole(trigger: HTMLElement, option: string) {
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const picked = await screen.findByRole("option", {
+    name: new RegExp(option),
+  });
+  fireEvent.pointerDown(picked, { pointerType: "mouse" });
+  fireEvent.click(picked);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+}
+
+it.each(
+  roleChoices.flatMap((choice) =>
+    (["accepted", "refused", "unknown"] as const).map((outcome) => ({
+      ...choice,
+      outcome,
+    })),
+  ),
+)(
+  "keeps the $kind choice focused through its $outcome original outcome",
+  async ({ kind, title, option, value, outcome }) => {
+    const { f } = await mount();
+    const setter = kind === "utility" ? f.setUtilityRole : f.setEmbeddingRole;
+    const original = setter.getMockImplementation()!;
+    const response = Promise.withResolvers<void>();
+    setter.mockImplementationOnce((input) =>
+      mutation(
+        response.promise.then(() => {
+          if (outcome === "refused") throw new Error("role choice refused");
+          if (outcome === "unknown")
+            throw new RpcTransportError("role choice response lost");
+          return original(input);
+        }),
+      ),
+    );
+    const endpoint = "https://independent-role.example.test/v1";
+    fireEvent.change(endpointInput(), { target: { value: endpoint } });
+    fireEvent.change(keyInput(), {
+      target: { value: "independent-key-draft" },
+    });
+    const trigger = await screen.findByRole("combobox", { name: title });
+    const acceptedText = trigger.textContent;
+    await chooseRole(trigger, option);
+
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    expect(trigger.hasAttribute("disabled")).toBe(false);
+    expect(trigger.tabIndex).toBe(0);
+    expect(trigger.textContent).toBe(acceptedText);
+    attemptRoleChoice(trigger);
+    expect(setter).toHaveBeenCalledExactlyOnceWith(value);
+
+    await act(async () => response.resolve());
+    if (outcome === "accepted") {
+      await waitFor(() => expect(trigger.textContent).toContain(option));
+    } else {
+      if (outcome === "refused") await screen.findByText("role choice refused");
+      else await screen.findByRole("button", { name: reconcileName });
+      expect(trigger.textContent).toBe(acceptedText);
+    }
+    expect(screen.getByRole("combobox", { name: title })).toBe(trigger);
+    expect(document.activeElement).toBe(trigger);
+    if (outcome === "unknown") {
+      expect(trigger.getAttribute("aria-disabled")).toBe("true");
+      attemptRoleChoice(trigger);
+    } else {
+      expect(trigger.getAttribute("aria-disabled")).not.toBe("true");
+    }
+    expect(setter).toHaveBeenCalledExactlyOnceWith(value);
+    expect(f.update).not.toHaveBeenCalled();
+    expect(endpointInput().value).toBe(endpoint);
+    expect(keyInput().value).toBe("independent-key-draft");
+  },
+);
+
+it.each(roleChoices)(
+  "leaves later endpoint editing focused when the $kind choice settles",
+  async ({ kind, title, option, value }) => {
+    const { f } = await mount();
+    const setter = kind === "utility" ? f.setUtilityRole : f.setEmbeddingRole;
+    const original = setter.getMockImplementation()!;
+    const response = Promise.withResolvers<void>();
+    setter.mockImplementationOnce((input) =>
+      mutation(response.promise.then(() => original(input))),
+    );
+    const trigger = await screen.findByRole("combobox", { name: title });
+    await chooseRole(trigger, option);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    const endpoint = endpointInput();
+    const later = "https://later-role-draft.example.test/v1";
+    act(() => endpoint.focus());
+    fireEvent.change(endpoint, { target: { value: later } });
+
+    await act(async () => response.resolve());
+
+    await waitFor(() => expect(trigger.textContent).toContain(option));
+    expect(document.activeElement).toBe(endpoint);
+    expect(endpoint.value).toBe(later);
+    expect(setter).toHaveBeenCalledExactlyOnceWith(value);
+    expect(f.update).not.toHaveBeenCalled();
+  },
+);
+
+it.each(roleChoices)(
   "keeps the focused $kind recovery and its independent credential draft",
   async ({ kind, title, option, value }) => {
     const { f } = await mount();

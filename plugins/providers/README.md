@@ -22,6 +22,12 @@ No plugin-owned credential registry, role state machine or module-global present
 is introduced. Role controls fill their grid track, so they share the description's
 reading axis when the row stacks.
 
+Utility and embedding choices retain their trigger focus while the original
+command is pending or unconfirmed, using the shared Select's focusable-disabled
+contract. The accepted role stays visible until a known response changes it.
+Disabled interaction cannot open another choice or submit another command, and
+settlement leaves later credential editing and focus with that field.
+
 A Save with an accepted or unknown outcome keeps the same unavailable action
 focusable through the shared Button contract. Completion retains its current
 focus without moving focus from a later field. Initial unedited and invalid

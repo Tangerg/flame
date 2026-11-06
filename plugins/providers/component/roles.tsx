@@ -164,6 +164,7 @@ export function RoleSection({
                 value={value}
                 options={options}
                 disabled={Boolean(command)}
+                focusableWhenDisabled
                 onValueChange={pick}
               />
               {command?.phase === "running" && (

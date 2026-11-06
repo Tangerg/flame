@@ -56,6 +56,7 @@ export function Select({
   label,
   id,
   disabled,
+  focusableWhenDisabled,
   invalid,
   "aria-describedby": describedBy,
   size = "md",
@@ -66,6 +67,7 @@ export function Select({
   label: string;
   id?: string;
   disabled?: boolean;
+  focusableWhenDisabled?: boolean;
   invalid?: boolean;
   "aria-describedby"?: string;
   size?: "sm" | "md" | "lg";
@@ -93,6 +95,7 @@ export function Select({
           <Button
             variant="bare"
             size={size}
+            focusableWhenDisabled={focusableWhenDisabled}
             styles={[
               FIELD_SURFACE.face,
               FIELD_SURFACE.trigger,
@@ -101,6 +104,8 @@ export function Select({
             ]}
           />
         }
+        // Base UI drops a disabled trigger from the tab order; keep the focusable Button reachable.
+        {...(disabled && focusableWhenDisabled ? { tabIndex: 0 } : {})}
         id={id}
         aria-label={label}
         aria-invalid={invalid || undefined}

@@ -260,6 +260,11 @@ active-anchor policies remain with the control.
 text input. Its `aria-describedby` links the trigger to field-specific feedback;
 `FormGroup` accepts that description and invalid state for composite choices.
 Consumers own validation and error content.
+`Select.focusableWhenDisabled` keeps a disabled trigger available to keyboard
+focus through its existing Button. The Select root still blocks opening,
+typeahead and selection, and ordinary disabled controls retain native disabled
+behavior. Consumers own the pending command and accepted value; the control
+neither moves later focus nor creates another command state.
 When Base UI reports the trigger fully clipped, the Select retires its own root
 without choosing a value. It returns focus to the nearest focusable scrolling
 owner without moving that viewport, and preserves any later outside focus.
