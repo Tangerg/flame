@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Shared Panel geometry now includes the clipping host's borders and scroll padding, keeping already focused controls completely visible during native zoom. All 247 UI tests, 60 Provider tests, 4,557 frontend tests and 17 final serial gates pass. Actual English light/14 px and Chinese dark/18 px/native resize/200% tasks preserve focus, selections, drafts and Files/conversation return. Evidence and cleanup are recorded under **Retained focus through native zoom (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Shared Panel's native-zoom clearance repair is published as `711d7d442`. The latest shortcut review qualifies accepted recording, conflicts, replacement, single/all reset and persistence across three actual Wails launches, including English/Chinese 200% reading and file/conversation return. All 34 focused tests pass; product source remains unchanged. See **Shortcut recording, persistence and reset after main (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -16,6 +16,16 @@ This engineering change preserves the task qualifications and historical receipt
 below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
+
+The current native shortcut review closes the previously unqualified accepted
+rebind/reset persistence path. English light/14 px and Chinese dark/18 px/custom
+Purple scenes cover filtering, recording, fixed/editable conflicts, replacement,
+single/all reset, native resize/200%, empty-result keyboard reading and continued
+drafts. Three fresh Wails processes verify persisted changes and persisted
+defaults. All 34 related tests and preparation gates pass; no actionable alignment
+or interaction finding requires a product edit. See **Shortcut recording,
+persistence and reset after main (2026-11-06)**. Main merges remain already up to
+date and owned resources are retired. Continue with other actual task paths.
 
 Already focused Settings controls now remain fully visible when native zoom
 shrinks the reading frame. Shared Panel uses each clipped host's inner edges
@@ -33874,6 +33884,116 @@ and test-pinned. Three defects were fixed:
 Left as correct, not a defect: the palette input does not take Home/End for
 first/last option — for an editable combobox the ARIA APG assigns Home/End to the
 text cursor, which is the current behavior; list navigation stays on the arrows.
+
+### Shortcut recording, persistence and reset after main (2026-11-06)
+
+Qualified on `711d7d442` after the shared Panel clearance repair. Fresh main fetch
+and remote/local main merges remain already up to date. The primary checkout
+stays clean on `00c172c73`. Scope: Composer draft → Keyboard shortcuts → filter,
+record, inspect conflict, cancel/replace/reset → Files main/Dock → continue the
+same draft. Two actual restarts qualify accepted override and reset persistence.
+This closes the explicit native acceptance gap in the earlier shortcut records.
+
+Recon reads the current command editor, persisted shortcut owner, combo formatter,
+Settings navigation, related tests and Web/native/fixture documentation. Existing
+React, StyleX, Base UI, semantic tokens and shared SettingRow remain the stack.
+`ShortcutsPane` owns its local query/capture and surviving-trigger/filter focus
+return. `shortcutOverrides` owns persisted overrides and derives effective command
+bindings; recording remains an unapplied local interaction. Read-only ZCode
+`useShortcutRecording.ts` supports bounded capture and explicit conflict ownership,
+without establishing Flame's behavior or persistence. Earlier reference research
+retains its recorded scope.
+
+Actual Wails 3.1.0 uses the normal deterministic workspace fixture, native menus,
+keyboard/pointer input, production commands and the existing preference owner.
+There is no added observer or substituted command/transport handler. The same **331
+Web assets**, **24 native host inputs** and **four signed bundle files** remain
+byte-identical through all three launches:
+
+- **English light/14 px/Flame Orange/full motion:** filter `composer`, record
+  Control+Option+J, and observe Change retaining focus with `⌃ ⌥ J`. Cmd+L no
+  longer navigates; the new binding reveals the unchanged original draft.
+  Cancel preserves the custom binding. At native Top Left/200%, an already
+  focused Change remains completely visible through 20 native zoom actions.
+  Recording Cmd+N identifies the fixed New session conflict without a replacement
+  action; Tab reaches Cancel and Escape returns to Change. Category return retains
+  the query and custom binding. A real 320 px Files Dock opens README.md in the
+  main area; the new binding restores the conversation with
+  `Keep the accepted shortcut task. Binding verified.`
+- **Chinese dark/18 px/custom Purple/motion off:** a fresh process displays the
+  persisted `⌃ ⌥ J`. The spaced, case-varied glyph query `⌃ ⌥ j` finds its row.
+  At native Top Left/200%, recording Cmd+comma identifies Settings and exposes
+  the complete replacement and cancellation controls. Tab/Return on the existing
+  replacement applies the binding to Focus composer and leaves Settings unbound.
+  The old glyph query then has no match and focus returns to that retained filter.
+  Clearing it exposes both exact owners; Cmd+comma now reveals the conversation.
+  Cmd+slash returns to the shortcut editor. At 200%, single Reset returns focus
+  to Change with Cmd+L, retaining `聚焦`. A separate `⌘ ,` query has no match until
+  Reset all restores Settings, removes its own action and focuses the unchanged
+  query. Cmd+L and Cmd+comma resume their default navigation. The 320 px Files/
+  main-area return retains `重启后核对快捷键。 替换与重置已核对。`
+- **Second fresh English process:** both defaults survive restart, Reset/Reset
+  all are absent and Control+Option+J no longer dispatches. An unmatched query
+  renders the existing empty state. At 200%, Shift+Tab enters the named Settings
+  reader; Page Down exposes the complete result. Home and Tab/Tab/Return reach
+  Clear search, restore the rows and return focus to the filter. Cmd+L continues
+  `Restored shortcut defaults. Persistence confirmed.`
+
+All three processes quit normally: **166.814 s**, **181.211 s**, **70.749 s**.
+The intermediate 650 × 422 English category-return image is excluded from visual
+judgment; stable 2240 × 1456 resized scenes qualify the controls and return paths.
+Local queries survive retained category switching; a newly opened Settings view
+keeps its existing query lifetime. Composer drafts are qualified within each
+launch, not as persisted conversation data across fixture restarts.
+
+| Domain        | Evidence inspected                                                                             | Result within this flow                                            |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Accessibility | Named recorder, native Tab/Escape/Return, accepted/reset focus, reader Page Down/Home          | Clear; complete controls and local/global key ownership hold       |
+| Layout        | SettingRow, filter/actions, both languages, native resize, 200%, 320 px Files/main/Dock return | Clear; existing shared edges and stacked controls remain reachable |
+| Writing       | Target labels, fixed/editable conflict identity, unbound text and empty result                 | Clear; choices and affected command owners remain explicit         |
+| Typography    | Keycaps, EN 14 px, ZH 18 px, complete conflict/action text and draft values                    | Clear for inspected reading; no font or copy changes               |
+| Colors        | Existing Orange/light, Purple/dark, selected/focus and warning treatments                      | Clear for inspected states; no fresh numeric contrast measurement  |
+| UI            | Existing recording, replacement, cancel/reset, full/off motion and native restart              | Clear for inspected task; no new interaction or decoration         |
+
+No actionable interface findings. Product source, tests, catalogs, resources,
+dependencies and persisted schema remain unchanged. No detail implementation or
+new test is needed for this qualification.
+
+Verification passes **3 files / 34 tests** through the unchanged ShortcutsPane,
+ShortcutsProvider and SettingsPage suites, 5.293 s wrapper:
+
+```sh
+npm test --workspace @flame/web -- --project frontend --no-file-parallelism \
+  src/features/command/shortcuts/ShortcutsPane.test.tsx \
+  src/features/command/ShortcutsProvider.test.tsx \
+  src/features/settings/public/SettingsPage.test.tsx
+```
+
+All **11 serial preparation steps** pass, including icons/UI/
+resources, focused tests, private assets, current production-tag native host,
+signing/verification and registration. Fresh broad frontend, packed-consumer,
+Runtime/CLI/backend and `make check-native` gates are not rerun: all **6,631**
+non-Markdown product inputs remain exact against the previously qualified main.
+Browser suites and performance benchmarks remain excluded. VoiceOver, physical
+OS IME, RTL, other-platform GUI, OS-reserved bindings, live Runtime work and Send
+are not qualified here. No migration is needed.
+
+Cleanup unregisters the exact app, restores seven baseline output/dependency trees
+containing **3,773 files**, removes the new **1,019-file** Vitest cache root and
+**17** owned Library files. Independent checks confirm all **12** output baselines,
+all six absent UID paths, all **6,631** unchanged product inputs and the read-only
+reference hash. The primary checkout, pinned toolchain, 58 original Web dependency
+files and two original UI cache files are preserved. The owned process and endpoint
+are inactive. The private root is retired after identity and exact-content guards
+over **4,253 files / 64 directories**.
+
+The verified in-memory gzip retains **107 UTF-8 records** and **33 JPEG metadata
+records**, including artifact/source maps, test/native receipts, exclusions and
+cleanup. It is **1,015,376 bytes**, SHA-256
+`78da80f346d3da1803aab943932fda18fe2053fbaaa350213aeaf46627381ed9`.
+Only this maintained progress file changes. **Approve** the inspected shortcut
+recording, persistence and reset flow. Whole-product and award-level acceptance
+remain open; continue from fresh evidence in other task paths.
 
 ### Searching displayed shortcut keys (2026-11-05)
 
