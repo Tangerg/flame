@@ -12,7 +12,6 @@ export const zhTW: Record<string, string> = {
   "color.description": "品牌標準色保持固定，不隨介面主題變化。",
   "color.name": "火苗橙",
   copyFailed: "無法複製顏色，請選取 HEX 色值後複製。",
-  download: "下載{{name}}",
   downloadPng: "下載 PNG",
   downloadFailed: "無法儲存圖片，請再試一次。",
   copied: "已複製",

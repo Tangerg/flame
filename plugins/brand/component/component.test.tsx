@@ -38,7 +38,7 @@ it("saves the selected embedded bytes through the captured host and preserves fa
   f.saveFile.mockRejectedValueOnce(new Error("destination unavailable"));
   render(<Brand context={f.context} />);
   fireEvent.click(
-    screen.getByRole("button", { name: "Download Primary logo" }),
+    screen.getByRole("button", { name: "Download PNG — Primary logo" }),
   );
   await screen.findByRole("alert");
   expect(f.saveFile).toHaveBeenCalledExactlyOnceWith({
@@ -50,7 +50,7 @@ it("saves the selected embedded bytes through the captured host and preserves fa
     "destination unavailable",
   );
   fireEvent.click(
-    screen.getByRole("button", { name: "Download 3D companion" }),
+    screen.getByRole("button", { name: "Download PNG — 3D companion" }),
   );
   await waitFor(() => expect(f.saveFile).toHaveBeenCalledTimes(2));
   expect(f.saveFile.mock.calls[1]![0].bytes).toEqual(new Uint8Array([4, 5, 6]));
@@ -62,9 +62,12 @@ it("joins an accepted save through locale changes and refuses new work after ret
   f.saveFile.mockReturnValue(accepted.promise);
   const view = render(<Brand context={f.context} />);
   fireEvent.click(
-    screen.getByRole("button", { name: "Download Primary logo" }),
+    screen.getByRole("button", { name: "Download PNG — Primary logo" }),
   );
   view.rerender(<Brand context={{ ...f.context, locale: "zh" }} />);
+  expect(
+    screen.getByRole("button", { name: "下载 PNG — 立体形象" }).textContent,
+  ).toContain("下载 PNG");
   for (const button of screen.getAllByRole("button"))
     if (button.textContent?.includes("PNG")) fireEvent.click(button);
   expect(f.saveFile).toHaveBeenCalledOnce();

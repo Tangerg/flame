@@ -199,6 +199,12 @@ compatibility route. Stop a manually running lab before starting verification.
 IDs fail. Use file arguments or `--grep` to select interaction coverage. The normal
 Web check runs colocated unit tests; it does not launch browser verification.
 
+Appearance interaction checks follow current theme, font and language values
+through keyboard selection and focus return. Work-index and Brand audits use
+their production rows and installed component resources. WCAG failures attach
+the rule results and complete rendered button text/HTML to the same report,
+preserving evidence when the audit's summarized markup is truncated.
+
 The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
 attachment record exact inputs and reproducible preview URLs. The verifier waits
 for the production fixture's ready signal and never qualifies an errored document

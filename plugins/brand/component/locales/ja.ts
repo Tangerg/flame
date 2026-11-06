@@ -14,7 +14,6 @@ export const ja: Record<string, string> = {
   "color.description": "ブランドカラーは外観テーマにかかわらず一定です。",
   "color.name": "Flame オレンジ",
   copyFailed: "色をコピーできませんでした。HEX値を選択してコピーしてください。",
-  download: "{{name}}をダウンロード",
   downloadPng: "PNGをダウンロード",
   downloadFailed: "画像を保存できませんでした。もう一度お試しください。",
   copied: "コピーしました",

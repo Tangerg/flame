@@ -25,14 +25,19 @@ const styles = stylex.create({
   chevronInk: { flexShrink: 0, color: color.fgFaint },
 });
 
-export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
-  label: ReactNode;
+export interface SelectTriggerProps extends Omit<
+  PressableProps,
+  "children" | "aria-label" | "aria-labelledby"
+> {
+  label: string;
+  purpose: string;
   leading?: ReactNode;
   styles?: StyleXArray<StyleXStyles | null | false>;
 }
 
 export function SelectTrigger({
   label,
+  purpose,
   leading: lead,
   styles: extra,
   className,
@@ -50,14 +55,12 @@ export function SelectTrigger({
     <Pressable
       {...props}
       type={props.type ?? "button"}
+      aria-label={`${label}, ${purpose}`}
       {...styled}
       className={cn(styled.className, className)}
     >
       {lead}
-      <span
-        title={typeof label === "string" ? label : undefined}
-        {...stylex.props(styles.label, vocab.truncate)}
-      >
+      <span title={label} {...stylex.props(styles.label, vocab.truncate)}>
         {label}
       </span>
       <Icon name="chevron-down" size="xs" {...stylex.props(styles.chevronInk)} />

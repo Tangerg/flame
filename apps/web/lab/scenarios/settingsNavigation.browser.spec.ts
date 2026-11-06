@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "./test";
 import de from "../../../../plugins/locale-de/package/io.github.tangerg.flame/messages.json" with { type: "json" };
+import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { en } from "@/lib/i18n/locales/en";
 import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
 const providerTitle = providersDeclaration.components[0]!.title;
@@ -45,6 +46,78 @@ async function geometry(list: Locator) {
       contentOverflow: panel.scrollWidth - panel.clientWidth,
       pageOverflow: document.documentElement.scrollWidth - innerWidth,
     };
+  });
+}
+
+for (const environment of [
+  { locale: "en", theme: "light", messages: en },
+  { locale: "zh", theme: "dark", messages: zh },
+]) {
+  test(`appearance choices keep visible names through keyboard selection in ${environment.locale}`, async ({
+    page,
+  }, testInfo) => {
+    const messages: Record<string, string> = environment.messages;
+    await openSettings(page, { width: 1440, height: 900, ...environment });
+    const pane = page.getByRole("tabpanel");
+    const theme = pane.getByRole("button", {
+      name: new RegExp(`, ${messages["settings.theme"]}$`),
+    });
+    await expect(theme).toHaveAccessibleName(
+      `${await theme.innerText()}, ${messages["settings.theme"]}`,
+    );
+    await theme.focus();
+    await theme.press("Enter");
+    await page.keyboard.press("Home");
+    await expect(
+      page.getByRole("menuitemradio", {
+        name: messages["settings.theme.system"],
+        exact: true,
+      }),
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(theme).toHaveAccessibleName(
+      `${messages["settings.theme.system"]}, ${messages["settings.theme"]}`,
+    );
+    await expect(theme).toBeFocused();
+
+    for (const key of ["settings.font.ui", "settings.font.code"]) {
+      const purpose = messages[key]!;
+      const trigger = pane.getByRole("button", { name: new RegExp(`, ${purpose}$`) });
+      await expect(trigger).toHaveAccessibleName(`${await trigger.innerText()}, ${purpose}`);
+      await trigger.focus();
+      await trigger.press("Enter");
+      const options = page.getByRole("menuitemradio");
+      await expect(options.first()).toBeFocused();
+      expect(await options.count(), "a real system font must be available").toBeGreaterThan(1);
+      const choice = await options.last().innerText();
+      await page.keyboard.press("End");
+      await expect(options.last()).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(trigger).toHaveAccessibleName(`${choice}, ${purpose}`);
+      await expect(trigger).toHaveText(choice);
+      await expect(trigger).toBeFocused();
+    }
+
+    const language = pane.getByRole("button", {
+      name: new RegExp(`, ${messages["settings.language.label"]}$`),
+    });
+    await expect(language).toHaveAccessibleName(
+      `${await language.innerText()}, ${messages["settings.language.label"]}`,
+    );
+    await language.focus();
+    await language.press("Enter");
+    await page.keyboard.press("Home");
+    await expect(page.getByRole("menuitemradio", { name: "English", exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    const english = pane.getByRole("button", { name: "English, Language", exact: true });
+    await expect(english).toBeFocused();
+    await page.setViewportSize({ width: 560, height: 900 });
+    await expect(english).toHaveText("English");
+    expect(await pane.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    await testInfo.attach("appearance-current-choices", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
   });
 }
 

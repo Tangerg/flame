@@ -42,7 +42,7 @@ it("retries an initially failed saved language by choosing its current entry", a
   );
   await waitFor(() => expect(load).toHaveBeenCalledOnce());
   testClient.render(<LanguageSection />);
-  fireEvent.click(screen.getByRole("button", { name: "Language" }));
+  fireEvent.click(screen.getByRole("button", { name: "Saved language, Language" }));
   fireEvent.click(await screen.findByRole("menuitemradio", { name: "Saved language" }));
   await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   expect(activeLocale()).toBe("retry-locale");
@@ -63,7 +63,7 @@ it("does not label an unavailable preference as another registered locale", asyn
   );
   setLocale("und");
   testClient.render(<LanguageSection />);
-  expect(screen.getByRole("button", { name: "Language" }).textContent).toContain("und");
+  expect(screen.getByRole("button", { name: "und, Language" }).textContent).toContain("und");
 });
 
 it("shows a failed dictionary activation without discarding the selected preference", async () => {
@@ -87,7 +87,7 @@ it("shows a failed dictionary activation without discarding the selected prefere
     }),
   );
   testClient.render(<LanguageSection />);
-  fireEvent.click(screen.getByRole("button", { name: "Language" }));
+  fireEvent.click(screen.getByRole("button", { name: "English, Language" }));
   fireEvent.click(await screen.findByRole("menuitemradio", { name: "Japanese" }));
   expect(await screen.findByText("dictionary unavailable")).toBeTruthy();
   expect(activeLocale()).toBe("ja");
@@ -126,7 +126,7 @@ async function failDictionary(load: () => Promise<Record<string, string>>) {
       <textarea aria-label="Independent draft" />
     </>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Language" }));
+  fireEvent.click(screen.getByRole("button", { name: "English, Language" }));
   fireEvent.click(await screen.findByRole("menuitemradio", { name: "Recovery language" }));
   expect(await screen.findByText("dictionary unavailable")).toBeTruthy();
   return screen.getByRole("button", { name: "Retry" });
@@ -142,10 +142,14 @@ it("retries the selected language, reports pending and updates independent readi
   retry.focus();
   fireEvent.click(retry);
   expect(screen.getByRole("status").textContent).toContain("Loading");
-  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Language" }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Recovery language, Language" }),
+  );
   await act(async () => dictionary.resolve(recoveredDictionary));
   expect(await screen.findByText("Recovered reading context")).toBeTruthy();
-  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Recovered language" }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Recovery language, Recovered language" }),
+  );
   expect(activeLocale()).toBe(recoveryLocale);
   expect(localStorage.getItem("flame.locale")).toBe(recoveryLocale);
   expect(load).toHaveBeenCalledTimes(2);
@@ -177,13 +181,15 @@ it("does not let an older retry replace a later language choice", async () => {
     .mockRejectedValueOnce(new Error("dictionary unavailable"))
     .mockImplementationOnce(() => dictionary.promise);
   fireEvent.click(await failDictionary(load));
-  fireEvent.click(screen.getByRole("button", { name: "Language" }));
+  fireEvent.click(screen.getByRole("button", { name: "Recovery language, Language" }));
   fireEvent.click(await screen.findByRole("menuitemradio", { name: "English" }));
   await waitFor(() => expect(activeLocale()).toBe("en"));
   await act(async () => dictionary.resolve(recoveredDictionary));
   expect(activeLocale()).toBe("en");
   expect(localStorage.getItem("flame.locale")).toBe("en");
-  expect(screen.getByRole("button", { name: "Language" }).textContent).toContain("English");
+  expect(screen.getByRole("button", { name: "English, Language" }).textContent).toContain(
+    "English",
+  );
   expect(screen.queryByText("Recovered reading context")).toBeNull();
   expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
 });

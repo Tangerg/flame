@@ -118,7 +118,7 @@ export function ThemeSection() {
             <SelectTrigger
               label={triggerLabel}
               leading={triggerSwatch}
-              aria-label={t("settings.theme")}
+              purpose={t("settings.theme")}
             />
           }
         />

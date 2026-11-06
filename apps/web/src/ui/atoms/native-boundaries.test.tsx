@@ -6,11 +6,13 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ColorPickerInput } from "@/ui/atoms/color-picker-input";
 import { TextLink } from "@/ui/atoms/text-link";
 import { HiddenFileInput } from "@/ui/atoms/hidden-file-input";
+import { SelectTrigger } from "@/ui/atoms/select-trigger";
 describe("native design-system boundaries", () => {
   it("owns browser-native input types inside atoms", () => {
     const { container } = testClient.render(
@@ -27,6 +29,27 @@ describe("native design-system boundaries", () => {
     expect(screen.getAllByRole("button", { name: "Accent", description: "#FB6E30" })).toHaveLength(
       1,
     );
+  });
+
+  it("names a select trigger by its visible current value and purpose", () => {
+    const ref = createRef<HTMLButtonElement>();
+    const onClick = vi.fn();
+    const view = testClient.render(
+      <SelectTrigger ref={ref} label="Inter" purpose="Interface font" onClick={onClick} />,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Inter, Interface font" });
+    expect(trigger.textContent).toContain("Inter");
+    expect(ref.current).toBe(trigger);
+    fireEvent.click(trigger);
+    expect(onClick).toHaveBeenCalledOnce();
+
+    view.rerender(
+      <SelectTrigger ref={ref} label="Georgia" purpose="Interface font" onClick={onClick} />,
+    );
+    expect(screen.getByRole("button", { name: "Georgia, Interface font" })).toBe(trigger);
+    expect(trigger.textContent).toContain("Georgia");
+    expect(screen.queryByRole("button", { name: "Inter, Interface font" })).toBeNull();
   });
 
   it("owns safe external-link policy", () => {

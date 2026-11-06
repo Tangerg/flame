@@ -48,6 +48,25 @@ async function expectNoWcagViolations(
     }),
   );
   const violations = excused.filter((violation) => violation !== null);
+  if (violations.length > 0) {
+    await test.info().attach("wcag-violations", {
+      body: JSON.stringify(violations, null, 2),
+      contentType: "application/json",
+    });
+    await test.info().attach("wcag-buttons", {
+      body: JSON.stringify(
+        await page.locator("button").evaluateAll((buttons) =>
+          buttons.map((button) => ({
+            text: (button as HTMLButtonElement).innerText,
+            html: button.outerHTML,
+          })),
+        ),
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    });
+  }
   expect(
     violations,
     violations

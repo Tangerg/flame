@@ -12,7 +12,6 @@ export const zh: Record<string, string> = {
   "color.description": "品牌标准色保持固定，不随界面主题变化。",
   "color.name": "火苗橙",
   copyFailed: "无法复制颜色，请选中 HEX 色值后复制。",
-  download: "下载{{name}}",
   downloadPng: "下载 PNG",
   downloadFailed: "无法保存图片，请重试。",
   copied: "已复制",

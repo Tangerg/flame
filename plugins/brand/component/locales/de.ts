@@ -17,7 +17,6 @@ export const de: Record<string, string> = {
   "color.name": "Flame Orange",
   copyFailed:
     "Die Farbe konnte nicht kopiert werden. Wählen Sie den HEX-Wert zum Kopieren aus.",
-  download: "{{name}} herunterladen",
   downloadPng: "PNG herunterladen",
   downloadFailed:
     "Das Bild konnte nicht gespeichert werden. Versuchen Sie es erneut.",

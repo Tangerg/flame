@@ -310,9 +310,13 @@ export function VisualAtomsFixture() {
         </div>
       </Specimen>
       <Specimen name="select-trigger">
-        <SelectTrigger label="gpt-5 · high" leading={<Icon name="sparkle" size="sm" />} />
-        <SelectTrigger label="Disabled selection" disabled />
-        <SelectTrigger label="Pending selection" pending />
+        <SelectTrigger
+          label="gpt-5 · high"
+          purpose="Model"
+          leading={<Icon name="sparkle" size="sm" />}
+        />
+        <SelectTrigger label="Disabled selection" purpose="Model" disabled />
+        <SelectTrigger label="Pending selection" purpose="Model" pending />
         <Select
           disabled
           label="Disabled status"

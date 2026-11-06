@@ -36,7 +36,7 @@ export function LanguageSection() {
             <SelectTrigger
               ref={trigger}
               label={active?.label ?? locale}
-              aria-label={t("settings.language.label")}
+              purpose={t("settings.language.label")}
             />
           }
         />

@@ -105,7 +105,7 @@ export function Brand({ context }: { context: ComponentContext }) {
                 size="sm"
                 pending={savingID === asset.id}
                 disabled={savingID !== undefined && savingID !== asset.id}
-                aria-label={t("download", { name: t(`${asset.id}.title`) })}
+                aria-label={`${t("downloadPng")} — ${t(`${asset.id}.title`)}`}
                 style={{ marginBlockStart: "auto" }}
                 onClick={() => void download(asset)}
               >

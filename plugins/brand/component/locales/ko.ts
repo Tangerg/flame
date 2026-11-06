@@ -16,7 +16,6 @@ export const ko: Record<string, string> = {
     "브랜드 색상은 화면 테마가 바뀌어도 동일하게 유지됩니다.",
   "color.name": "Flame 오렌지",
   copyFailed: "색상을 복사하지 못했습니다. HEX 값을 선택해 복사하세요.",
-  download: "{{name}} 다운로드",
   downloadPng: "PNG 다운로드",
   downloadFailed: "이미지를 저장하지 못했습니다. 다시 시도하세요.",
   copied: "복사됨",

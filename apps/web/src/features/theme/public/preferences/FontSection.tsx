@@ -41,7 +41,7 @@ function FontPicker({
         render={
           <SelectTrigger
             label={custom ? value : defaultLabel}
-            aria-label={label}
+            purpose={label}
             style={custom ? { fontFamily: `"${value}"` } : undefined}
             styles={[fsx.trigger, mono && custom && face.mono]}
           />

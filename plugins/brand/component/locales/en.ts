@@ -16,7 +16,6 @@ export const en: Record<string, string> = {
     "The fixed brand color stays the same across appearance themes.",
   "color.name": "Flame Orange",
   copyFailed: "Couldn't copy the color. Select the HEX value to copy it.",
-  download: "Download {{name}}",
   downloadPng: "Download PNG",
   downloadFailed: "Couldn't save the image. Try again.",
   copied: "Copied",

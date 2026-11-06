@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Footnote return links now retain their shared underline, and native fragment return keeps the selected marker clear of the viewport edge. The sole component lab adds independent short/long reference reading and passes 18 focused browser checks with 30 inspected captures. The complete Web check passes 431 files / 4,742 tests and every later gate; shared UI and the supported native build also pass. Actual Wails qualifies English draft return and Chinese/18 px/native 200% reading, resizing and both return identities. See **Footnote return cues and independent Lab reading (2026-11-07)**. The complete 260-case WCAG audit now has 239 passes and 21 unresolved failures; the goal is active and whole-product acceptance remains unfinished.
+Visible control names now retain their current options, PNG format and work-row text boundaries. The same component lab passes 30 focused tests, including all 14 formerly failing name audits, with 34 inspected captures. The complete Web check passes 431 files / 4,743 tests and every later gate; plugin checks and the supported native build pass. Actual Wails verifies English/Chinese settings selection, 18 px/native 200% reading, resize, draft continuation and work-index menu/search return. See **Visible control names and Lab task coverage (2026-11-07)**. Seven previously observed Goal/Plan/open-all-disclosure entry failures still need individual triage; the full 260-case audit is not rerun this batch. The goal remains active and whole-product acceptance is unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -173,14 +173,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The requested main updates through `5d91b2473` are included. UI inspection and
+The requested main updates through `b1b03b72f` are included. UI inspection and
 visual checks now share the component lab; new coverage extends this owner rather
 than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
-Composer choice names, live reasoning names/contrast and footnote return cues are repaired and
-qualified below. Next triage the remaining broader findings through this same
-lab: 14 visible-name audit failures across work-index, Appearance and Brand,
-then the seven Goal/Plan/open-all-disclosure entry failures and timeouts.
+Composer choice names, live reasoning names/contrast, footnote return cues and
+the 14 work-index/Appearance/Brand name failures are repaired and qualified below.
+Next trace the seven Goal/Plan/open-all-disclosure entry failures and timeouts
+through this same Lab, then the observed narrow installed-report table headings.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user
@@ -24721,6 +24721,90 @@ retires the task-owned app, captures, reports, logs, dependency cache and tempor
 files before publication to main; reusable tools remain available. No user-data
 migration is required.
 
+### Visible control names and Lab task coverage (2026-11-07)
+
+This repair starts from synchronized main `b1b03b72f`. Fresh normal icons/UI
+builds reproduce all 14 remaining visible-label/name failures. They have three
+owners: Appearance dropdowns replace their current value with a field-only name;
+Brand omits the visible PNG format; work-row flex gaps separate title/time
+visually but leave adjacent DOM text joined together.
+
+`SelectTrigger` now requires a string current label and a purpose, and owns the
+name as `current value, purpose`. Its three production callers and the existing
+Atoms samples use that contract. Theme/font/language names follow the same
+canonical selection and translation as their visible content; no state,
+palette, interaction handler or combobox replacement is added. The shared
+`AgentRow` adds text boundaries between its existing title, trailing and detail
+slots while preserving richer Session names and row geometry. Brand derives
+each action name from its existing translated `downloadPng` and asset title;
+the unused action dictionary key is removed in all eight locales and the
+normal installed ESM is rebuilt. Byte export, cancellation and error ownership
+remain with the existing captured host.
+
+All coverage stays in the existing Lab catalog, fixture documents and Playwright
+configuration. New English/Chinese Appearance flows choose actual system fonts,
+change theme/language, verify current names and Escape/selection focus return,
+then retain readable controls at 560 px. The WCAG helper attaches rule results
+and complete rendered button text/HTML on failure. The existing Brand checks
+still verify image decoding, 320 px layout, copied HEX, exported PNG filename,
+focus return and installed-pane availability. No second visual entry, registry
+or assertion exception is introduced. The active maintenance guidance now names
+the migrated `lab/scenarios/` source tests instead of the removed `visual/` path.
+
+The final combined Lab run passes **30 tests**, zero skipped/flaky: six catalog
+checks for Atoms, all ten Settings panes and all four work-index states in both
+environments, the **14** previously failing WCAG audits and ten task checks.
+All **34** PNG attachments are inspected through three contact sheets, with
+full-resolution Appearance, Brand and work-row review. The first new Chinese
+keyboard probe sent End before initial menu focus had settled; waiting for that
+existing focus contract preserves the End/selection assertions and passes.
+The first full type check also finds three unmigrated Atoms callers; they are
+migrated, and the later complete check passes without relaxing the new prop.
+
+The complete Web `check` passes in **240.950 s**, **431 files / 4,743 tests**,
+including **52** isolated Runtime integration tests, and all later gates.
+The focused source regressions pass **19 tests**. The plugin `check` passes in
+**65.358 s**: 47 tooling tests and **633** source tests; its existing two optional
+native files / **17 tests** remain skipped. Type, lint, format, all eight locale
+catalogs and published ESM checks pass. `make check-native` passes in **20.645 s**,
+including Desktop test/vet/build and the supported Wails macOS build. Root
+complexity still fails only on incoming, byte-identical `ProviderRow` (**31 → 34**);
+the threshold is unchanged.
+
+Actual Wails v3.1.0 loads the same Lab and production components under one private
+identity. English/light/14 px moves to Dark, Helvetica Neue and Monaco; keyboard
+selection and Escape return keep current names and focus. Choosing Chinese
+updates field purposes without replacing the choices. Chinese/18 px uses Actual
+Size plus **20 native Zoom In actions** for **200%**. All three distinct PNG
+actions remain keyboard-reachable, the font rows keep readable alignment, and
+Window Zoom changes capture bounds from **2878×1798** to **3024×1898**. Choosing
+the default interface font updates its translated name; Actual Size is restored.
+Closing Settings preserves the independent Composer draft, which accepts further
+editing. The work-index generation verifies the two repaired title/time rows,
+row-menu Escape return and a typed search followed by launcher focus return.
+
+The shell scenario's inert destination is not live Session navigation. The Lab
+BrowserHost owns its file download, so this does not qualify the native save
+picker. Audible VoiceOver, live Runtime business execution, full-workspace 200%
+acceptance and performance measurements are not run. The previous complete
+**260-case** audit remains historical (**239 passed / 21 failed**); its 14 name
+failures now pass the focused rerun, while seven entry/time-limit probes remain
+unresolved. No new complete-audit total is claimed.
+
+[WCAG 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html)
+and the existing better-accessibility guidance support using visible text as the
+start of a control's name. No dependency or user-data migration is required.
+Qualification apps and servers are stopped and the exact private identity is
+unregistered. All **12** output/cache roots return to their original contents
+and modes, or to absence when originally absent; all **six** private identity
+paths are absent. The generated Node tree's three package links are retired
+without following them. The primary checkout's unrelated `go.work.sum` bytes and
+status are unchanged, and all **6,681** non-Markdown inputs outside the 22-file
+source/resource change remain identical. Delivery retires the exact task-owned
+app, reports, dependency cache and temporary root before publication to main;
+reusable tools and user data remain. Prepare current shared packages before
+using the restored cached outputs for a new baseline.
+
 ### Native footnote reading and return
 
 The earlier unchanged-navigation qualification used the `reference-notes`
@@ -38843,7 +38927,7 @@ against current owners before selecting a repair.
 - Implementation follows the 2026-11-02 goal: prefer Claude Code CLI for bounded detail development, and complete verified batch commits and publication to main. Earlier CLI prohibitions, milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
-- A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.
+- A `plugins/*/component` change is not verified by `npm run check --workspace @flame/plugins` alone: `apps/web/lab/scenarios/*.test.tsx` imports several plugin sources directly and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run the affected Lab source tests or the complete Web check before committing. Verify the rebuilt installed ESM through the same Lab when its rendering changes; treat a broken contract as a signal to reconsider the change, not just to update the test.
 - After cleaning generated outputs, run `make stage-web` before the standalone Web check: it builds the current icons, shared UI and production resources. Web's `check` does not stage those prerequisites. The native coordinator includes staging. Keep builds, module checks and native acceptance serial so cleared shared outputs cannot appear as missing-resource or dependency failures.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.

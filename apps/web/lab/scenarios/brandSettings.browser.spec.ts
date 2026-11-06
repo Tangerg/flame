@@ -59,7 +59,7 @@ test("brand settings can be found, copied and downloaded", async ({
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("#FB6E30");
 
   const downloadEvent = page.waitForEvent("download");
-  const save = panel.getByRole("button", { name: "Download Primary logo", exact: true });
+  const save = panel.getByRole("button", { name: "Download PNG — Primary logo", exact: true });
   await save.click();
   const download = await downloadEvent;
   expect(download.suggestedFilename()).toBe("flame-mark.png");

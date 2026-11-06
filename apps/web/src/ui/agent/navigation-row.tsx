@@ -175,7 +175,7 @@ export function AgentRow({
             <span {...label} className={cn(label.className, "truncate-fade")}>
               {children}
             </span>
-          )}
+          )}{" "}
           {trailing && (
             <span
               data-reveal={action ? "rest" : undefined}
@@ -184,7 +184,7 @@ export function AgentRow({
               {trailing}
             </span>
           )}
-        </span>
+        </span>{" "}
         {detail != null && (
           <span {...detailBox} className={cn(detailBox.className, "truncate-fade")}>
             {detail}
