@@ -216,6 +216,113 @@ it("intersects nested host clips and the window when sizing source readers", () 
   expect(revealed).toEqual([]);
 });
 
+it("budgets nested readers inside each host's border and scroll padding", () => {
+  render(
+    <div
+      data-testid="outer"
+      style={{
+        overflowY: "hidden",
+        borderStyle: "solid",
+        borderTopWidth: 2,
+        borderBottomWidth: 2,
+      }}
+    >
+      <div
+        data-testid="inner"
+        style={{
+          overflowY: "auto",
+          scrollPaddingTop: 16,
+          scrollPaddingBottom: 16,
+        }}
+      >
+        <Panel label="Captured evidence">
+          <CodeBlock label="Original source">
+            Complete original source
+          </CodeBlock>
+        </Panel>
+      </div>
+    </div>,
+  );
+  const panel = screen.getByRole("region", { name: "Captured evidence" });
+  // The inner padding bounds the start; the outer border bounds the end.
+  rectangles.set(screen.getByTestId("outer"), new DOMRect(0, 80, 800, 380));
+  rectangles.set(screen.getByTestId("inner"), new DOMRect(0, 70, 800, 410));
+  resize(screen.getByTestId("inner"));
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("372px");
+  expect(revealed).toEqual([]);
+});
+
+function paddedScene() {
+  render(
+    <div
+      data-testid="viewport"
+      style={{
+        overflowY: "auto",
+        borderStyle: "solid",
+        borderTopWidth: 2,
+        borderBottomWidth: 2,
+        scrollPaddingTop: 16,
+        scrollPaddingBottom: 16,
+      }}
+    >
+      <Panel label="Providers">
+        <div data-focus-unit="" data-testid="unit">
+          <span>Embedding model</span>
+          <input aria-label="Embedding model" />
+        </div>
+      </Panel>
+    </div>,
+  );
+  const viewport = screen.getByTestId("viewport");
+  const unit = screen.getByTestId("unit");
+  const field = screen.getByRole("textbox", {
+    name: "Embedding model",
+  }) as HTMLInputElement;
+  rectangles.set(viewport, new DOMRect(0, 200, 800, 300));
+  rectangles.set(unit, new DOMRect(0, 230, 300, 172));
+  rectangles.set(field, new DOMRect(0, 360, 200, 32));
+  return {
+    viewport,
+    unit,
+    field,
+    panel: field.closest<HTMLElement>('[data-slot="panel"]')!,
+  };
+}
+
+it("reveals a visible field whose context outgrows the padded host frame during reflow", () => {
+  const { viewport, unit, field, panel } = paddedScene();
+  field.value = "text-embedding-3-large";
+  field.setSelectionRange(5, 14, "backward");
+  act(() => field.focus());
+  expect(revealed).toEqual([]);
+
+  // The 172px context fits the 189px border box but not its 153px reading frame.
+  rectangles.set(viewport, new DOMRect(0, 174, 560, 189));
+  rectangles.set(unit, new DOMRect(0, 192, 300, 172));
+  rectangles.set(field, new DOMRect(0, 332, 200, 32));
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("153px");
+  expect(document.activeElement).toBe(field);
+  expect(field.value).toBe("text-embedding-3-large");
+  expect([
+    field.selectionStart,
+    field.selectionEnd,
+    field.selectionDirection,
+  ]).toEqual([5, 14, "backward"]);
+});
+
+it("reveals a context that fits the padded host frame but starts inside its padding", () => {
+  const { viewport, unit, field } = paddedScene();
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 174, 560, 220));
+  rectangles.set(unit, new DOMRect(0, 180, 300, 172));
+  rectangles.set(field, new DOMRect(0, 320, 200, 32));
+  resize(viewport);
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(field);
+});
+
 it("retires and renews the reader budget with retained content visibility", () => {
   const { viewport, field, hide, show, unmount } = scene("unit", true);
   const panel = field.closest<HTMLElement>('[data-slot="panel"]')!;

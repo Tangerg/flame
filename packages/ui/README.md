@@ -114,7 +114,6 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
-`Panel` projects its own controls' measured height on its root to keep focused content and anchors
 
 The panel owns its stable DOM ref; forwarded refs project that same element without
 retiring it while new children receive focus during a commit.
@@ -122,11 +121,13 @@ retiring it while new children receive focus during a commit.
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Its existing viewport observation also projects the clipped host height as
 `--reading-frame-height` for nested source readers. Sizing and body focus use
-the same intersection of host clips and the window; reader sizing continues
-after focus moves outside, and retires with inactive content or unmount.
-`readingUnitFor` gives
-Panel and transcript readers the same context rule: use the nearest declared
-`data-focus-unit` when it fits, then the wrapping native label, then the control.
+the same intersection of the window and each host clip's inner edges, less its
+block scroll padding, because native start alignment places content inside that
+clearance; a context that fits only a host's border box falls back to a smaller
+unit. Reader sizing continues after focus moves outside, and retires with
+inactive content or unmount. `readingUnitFor` gives
+Panel and transcript readers the same context rule: use the outermost declared
+`data-focus-unit` that fits, then the wrapping native label, then the control.
 An option's label cannot hide the heading of its fitting group. Each reader owns
 its available frame and scrolling. `FormGroup` and the application's `SettingRow`
 declare this boundary at their existing roots. Taller units retain the focused

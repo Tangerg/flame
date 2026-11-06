@@ -233,10 +233,22 @@ function panelViewport(panel: HTMLElement) {
     parent;
     parent = parent.parentElement
   ) {
-    if (getComputedStyle(parent).overflowY !== "visible") {
+    const style = getComputedStyle(parent);
+    if (style.overflowY !== "visible") {
       const clipped = parent.getBoundingClientRect();
-      top = Math.max(top, clipped.top);
-      bottom = Math.min(bottom, clipped.bottom);
+      // Native start alignment lands inside the border and the host's scroll padding.
+      top = Math.max(
+        top,
+        clipped.top +
+          (Number.parseFloat(style.borderTopWidth) || 0) +
+          (Number.parseFloat(style.scrollPaddingTop) || 0),
+      );
+      bottom = Math.min(
+        bottom,
+        clipped.bottom -
+          (Number.parseFloat(style.borderBottomWidth) || 0) -
+          (Number.parseFloat(style.scrollPaddingBottom) || 0),
+      );
       width = Math.min(width, clipped.width);
     }
   }

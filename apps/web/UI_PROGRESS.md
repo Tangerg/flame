@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Language loading now has explicit recovery and updates complete reading surfaces, including memoized copy, while retaining later preferences, drafts and focus, published as `1029a1052`. All 172 focused/related tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200%, native resize and observer-free tasks pass. Evidence, cleanup and delivery are recorded under **Language loading and complete reading updates**. Model-catalog recovery is published as `147c7dcae`, Hooks/Plugins hierarchy as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Shared Panel geometry now includes the clipping host's borders and scroll padding, keeping already focused controls completely visible during native zoom. All 247 UI tests, 60 Provider tests, 4,557 frontend tests and 17 final serial gates pass. Actual English light/14 px and Chinese dark/18 px/native resize/200% tasks preserve focus, selections, drafts and Files/conversation return. Evidence and cleanup are recorded under **Retained focus through native zoom (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -17,15 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-Provider role choices now retain their trigger focus while the original command
-is pending or unconfirmed. All 244 UI tests, 60 Provider tests, 4,557 frontend
-tests and 18 serial gates pass, including packed UI consumption and the native
-build. Actual English accepted/refused and Chinese dark/18 px/200% recovery,
-later editing and Files/conversation returns pass. See **Provider role selection
-and retained editing (2026-11-06)**. Fresh remote/local main merges are already
-up to date and owned resources are retired. Continue checking focus reveal when
-an already focused control reflows during native zoom; whole-product acceptance
-remains open.
+Already focused Settings controls now remain fully visible when native zoom
+shrinks the reading frame. Shared Panel uses each clipped host's inner edges
+and existing block scroll padding for both context selection and nested reader
+sizing. All 247 UI tests, 60 Provider tests, 4,557 frontend tests and 17 final
+serial gates pass, including packed UI consumption and the native build. Matched
+original/candidate Chinese embedding checks and English/Chinese font, selected
+URL, category/draft and 320 px Files/conversation returns pass. See **Retained
+focus through native zoom (2026-11-06)**. Fresh remote/local main merges are
+already up to date and owned resources are retired. Continue inspecting remaining
+task paths from actual native evidence; whole-product acceptance remains open.
 
 Provider Save with an unknown outcome and focused original-command recovery now
 retain keyboard position through the existing shared controls. All 52 Provider
@@ -32971,6 +32972,151 @@ other-platform GUIs and OS reduced-motion preference. No protocol, persisted-dat
 dependency or external-consumer migration is needed. Verdict: **Approve** for
 the inspected domains and paths. Whole-product and award-level acceptance remain
 open; continue with fresh evidence from remaining tasks.
+
+### Retained focus through native zoom (2026-11-06)
+
+Qualified from clean main `0ce461225`. The user's fresh synchronization request
+is handled before implementation and again before delivery. Fetched `origin/main`
+and local `main` are already contained; both merges report already up to date.
+The primary checkout remains clean on `00c172c73` and is never updated.
+
+In the original actual Wails app, an already focused Chinese Embedding Select
+keeps focus through 20 native zoom actions, but its lower edge is clipped at
+200%. A second stable capture confirms the cut; Shift+Tab/Tab re-entry exposes
+the complete control. The shared Panel selects a surrounding context using the
+host's border box, although native start alignment places that context inside
+the host's border and scroll padding. A group can therefore appear to fit while
+its focused control extends below the actual readable frame.
+
+A clean diagnostic reproduces this without intervening input: 147 records,
+20 resize notifications and zero wheel, pointer, key or focus-out events during
+zoom. At the reported 560 × 364 CSS px viewport/DPR 4, the context is 171.594 px
+tall, the raw host clip is y=173.797–362.5, its borders are 2 px and its block
+scroll padding is 16 px. The focused control still ends at y=371.203 after two
+native reveals. The actual safe height is about 152.703 px, so the context cannot
+fit. This establishes a geometry error; adding asynchronous retries would not
+repair it. The first diagnostic's external-input boundary and endpoint named
+200% that actually reports DPR 3.9 are excluded from causal proof. An additional
+observed native zoom establishes its real DPR 4 endpoint.
+
+`packages/ui/src/panel.tsx:233` intersects the window with each clipping
+ancestor's inner vertical edges less its existing block scroll padding. The same
+geometry owns context fitting and `--reading-frame-height`. Existing
+`readingUnitFor` chooses the outermost fitting declared unit and falls back to
+the label or control when that context cannot fit. There is no new focus state,
+effect, timer, scroll API, wrapper, theme token or Provider/Runtime transition.
+The Panel README now states that contract and removes an incomplete duplicate
+sentence. CodeBlock and Markdown consumers continue using the same reading
+height projection.
+
+The existing read-only ZCode SectionLayout informs form grouping. Previously
+recorded HeroUI/Radix composition and focus research remains applicable; static
+references do not establish this WebKit behavior. Better Layout and Accessibility
+guide the native resize, complete-focus, selection and return checks. This batch
+adds no palette, decoration, product copy or component system. Reference
+repositories remain read-only.
+
+A bounded read-only Claude Code CLI attempt times out at 150.010 s. The second
+Read/Edit-only attempt succeeds in 16 turns, 165.299 s, within three allowed
+paths. Root reviews the actual diff, moves the regression's target assertion
+before its numeric-budget assertion, and owns counterfactuals, all checks, native
+acceptance, cleanup and delivery. No subagent is used.
+
+| Check                          | Actual result                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Original baselines             | **50 Panel tests** and **56 Settings/reading tests** pass                                                                                                          |
+| Final focused Panel            | **53 tests**, 1.326 s; three added observable regressions                                                                                                          |
+| Original-source counterfactual | **3 failures / 50 passes**, 1.087 s; original build and exact candidate restoration both pass                                                                      |
+| UI package                     | Build/type/lint/format, **14 files / 247 tests**, independent offline packed UI/icon consumption; 40.983 s                                                         |
+| Settings and reading           | **56 tests**, 7.212 s                                                                                                                                              |
+| Provider lifecycle             | **3 files / 60 tests**, 5.490 s                                                                                                                                    |
+| Complete frontend project      | **424 files / 4,557 tests**, 342.561 s                                                                                                                             |
+| Final serial gates             | All **17 pass**: UI, Settings/reading, Provider, plugin type/lint/format/i18n/build/resources, frontend, Web type/lint/design-system/tokens/bundle/modules, native |
+| Native build                   | `make check-native`, 24.399 s; existing successful-build linker warnings remain                                                                                    |
+
+Regressions cover nested border/padding intersections, an existing focused
+field whose context outgrows the real frame during reflow, and a fitting context
+starting inside scroll padding. They use the real compiled Panel and retain the
+field's exact draft, backward selection and focus. All three expose the original
+source defect; exact candidate bytes are restored in a finally block and rebuilt.
+
+The first UI check passes its 247 tests/type/lint/format but fails the packed
+consumer's offline prerequisite with ENOTCACHED for `use-sync-external-store`.
+The initial overly broad cache preparation is stopped at its owned process.
+The actual packed consumer lock is then pruned offline and 21 missing tarballs
+from its 29-package graph are cached privately using exact root-lock URLs and
+integrities. The unchanged full UI check passes. Both initial receipts remain
+in the in-memory evidence; no check, assertion, manifest or global npm setting
+is weakened or changed.
+
+Actual candidate Wails qualification uses pure deterministic workspace fixtures,
+with no additional observer, script or transport overlay:
+
+- **Chinese dark/18 px/custom Blue/motion off/native Top Left:** each of the
+  already focused Embedding, Interface font and selected endpoint paths receives
+  20 native View → Zoom In actions from Actual Size, without web re-entry during
+  zoom. At 200%, complete focused perimeters are visible; Return opens both
+  menus and Escape cancels. Endpoint selection survives and replacement produces
+  exactly `https://api.anthropic.com/focus-clearance-zh-reviewed`. Category return
+  retains that draft and both accepted role values.
+- **English light/14 px/custom Orange/full motion/native Top Left:** independent
+  Interface font, endpoint-selection and Utility paths repeat the same retained
+  focus sequence and popup cancellation. The exact endpoint becomes
+  `https://api.anthropic.com/focus-clearance-en-reviewed` and survives category
+  return. Native screenshots confirm complete controls and option menus.
+- **Both languages:** close Settings, resume the original composer draft, set
+  the Files splitter to a real 320 px with keyboard Home, inspect
+  `reading-blocks.md` in Markdown and source, open it in the main area and return
+  to the Dock/conversation. English source scrolling reaches line 64. Final
+  drafts are `缩放边界修复后继续对话。 已核对完整控件。` and
+  `Continue after checking scroll clearance. Confirmed in the native window.`
+
+Both candidate apps exit 0: Chinese 1,580.989 s including the locked-Mac wait
+and serial gates, English 176.957 s. Four completed baseline/diagnostic launches
+also exit 0. The interrupted original Chinese launch has no normal-exit receipt
+and is not counted as a completed qualification. The original English setup is
+not a full passing qualification. The private observer is stopped and exits 0;
+its 385 records provide diagnosis only. Candidate qualification assets remain
+exactly 331 files, with the same 24-file native host and four-file signed bundle.
+
+| Domain        | Evidence and result within this flow                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Existing focus survives native reflow; complete controls, text selection and popup cancellation pass; VoiceOver audio not run |
+| Layout        | Correct inner clipping budget, nested intersections, EN/ZH resize/200% and 320 px file/main/Dock return pass                  |
+| Writing       | Existing role descriptions, exact drafts and return meaning remain intact; no new product copy                                |
+| Typography    | EN 14 px and ZH 18 px preserve readable labels, model identities, URL editing and source text                                 |
+| Colors        | Existing light Orange and dark Blue focus perimeters remain visible; no new palette or contrast measurement                   |
+| UI            | Native menus, existing filled controls, full/off motion and reading continuity pass without new interaction state             |
+
+| Severity | Domain                 | Location                        | Before                                                                            | After                                                                | Why                                                        |
+| -------- | ---------------------- | ------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM   | Layout / Accessibility | `packages/ui/src/panel.tsx:233` | An oversized context leaves its retained focused Select clipped after native zoom | Use the host's actual safe frame and reveal the smaller fitting unit | Keep the current editing position reachable through reflow |
+
+Guarded cleanup unregisters the app, restores seven baseline output/dependency
+trees containing **3,773 files**, removes five initially absent output/cache
+roots including **3,542** Vitest cache files, and removes **20** owned Library
+files. All 12 output baselines, six absent UID paths, all **6,631** candidate
+non-Markdown source inputs and **6,629** inputs outside the two owned source edits
+pass independent preservation checks. The primary checkout, pinned toolchain,
+58 original Web dependency files and two original UI cache files are preserved.
+Both owned ports and all native/observer processes are inactive. The private
+root is retired after identity fencing and exact hashes of **5,643 files /
+940 directories**.
+
+The verified in-memory gzip retains **254 UTF-8 records** and **67 JPEG metadata
+records**, including original/candidate maps, exclusions, diagnostic observations,
+counterfactuals, checks and cleanup. It is **1,898,689 bytes**, SHA-256
+`0053c8f7dab83a7b390d1fa47626575c950142400e641273af26035ba8b376c8`.
+Only this maintained progress file is used for handoff.
+
+**Approve** the inspected retained-focus reflow and reading-return flow. No HIGH
+finding remains in that scope. This does not qualify live Runtime/provider
+commands, real credentials, Save/Test/model changes/Send, production bootstrap,
+all other page states, native 320 CSS px Settings, VoiceOver/OS IME/RTL or other
+platform GUIs. Runtime integration and CLI/backend suites are not rerun; browser
+visual suites and performance benchmarks remain excluded. No migration is needed.
+Whole-product and award-level acceptance remain open. Continue selecting the
+next batch from fresh native evidence in remaining task paths.
 
 ### Provider role selection and retained editing (2026-11-06)
 
