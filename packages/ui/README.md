@@ -30,6 +30,10 @@ Pending buttons enter that same focusable-disabled activation boundary, includin
 native form submission. Non-activation keys also reach composed trigger handlers,
 so Escape closes a tooltip before an enclosing reader handles another Escape.
 
+Bare buttons preserve whole words in intrinsic width calculations, including
+table sorting and location selection. A constrained label can still wrap inside
+a word when it cannot fit; consumers do not need local sizing overrides.
+
 Filled primary buttons, selected checkboxes and switches keep their focus
 perimeter on the surrounding surface. Their `data-focus-outset` marker takes
 precedence over an ancestor's `data-focus-inset`, so the focus color cannot

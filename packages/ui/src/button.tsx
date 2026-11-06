@@ -275,6 +275,8 @@ const styles = stylex.create({
     backgroundColor: "transparent",
     paddingInline: 0,
     paddingBlock: 0,
+    // anywhere would shrink auto table columns below whole words.
+    overflowWrap: "break-word",
     lineHeight: "inherit",
     fontWeight: weight.regular,
   },
@@ -283,7 +285,6 @@ const styles = stylex.create({
     display: "inline-block",
     cursor: "pointer",
     whiteSpace: "normal",
-    overflowWrap: "break-word",
     color: {
       default: color.fg,
       ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {

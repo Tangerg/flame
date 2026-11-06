@@ -91,9 +91,11 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
 export function VisualAgentStateFixture({
   state,
   view,
+  sidebarOpen,
 }: {
   state: VisualAgentState;
   view: AgentSessionView;
+  sidebarOpen: boolean;
 }) {
   const attention = selectCurrentRootAttention(view);
   const send = useChatSend();
@@ -102,7 +104,7 @@ export function VisualAgentStateFixture({
     <AgentAppShell
       sidebarLabel="Agent fixture states"
       sidebarResizeLabel="Resize the agent fixture sidebar"
-      sidebarOpen
+      sidebarOpen={sidebarOpen}
       sidebarWidth={SIDEBAR_DEFAULT_WIDTH_PX}
       onResize={() => undefined}
       onSidebarToggle={() => undefined}

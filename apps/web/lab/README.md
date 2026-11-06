@@ -282,6 +282,11 @@ accent colors and recorded long results. Motion defaults to `off`; only `off` an
 `full` are accepted. New UI visual scenarios belong in this catalog and their
 checks belong under `lab/`.
 
+Agent reading scenes also honor `sidebar=collapsed`, leaving their full reading
+frame available while viewport changes preserve local drafts. Recorded
+state-sidebar navigation and resize handlers remain inert; the query selects the
+initial fixture frame rather than simulating a Runtime transition.
+
 ## Optional measurements
 
 The same Playwright configuration owns the `performance` project:

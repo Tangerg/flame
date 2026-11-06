@@ -406,7 +406,7 @@ async function fixtureNode(): Promise<ReactNode> {
     snapshot,
     VISUAL_CAPABILITIES,
   );
-  return <VisualAgentStateFixture state={state} view={view} />;
+  return <VisualAgentStateFixture state={state} view={view} sidebarOpen={sidebarOpen} />;
 }
 
 const { i18nPlugin } = await import("@/features/i18n/index");

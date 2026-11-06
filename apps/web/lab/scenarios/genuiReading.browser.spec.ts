@@ -1,5 +1,28 @@
 import { expect, test } from "./test";
 
+test("the Agent reading scene honors the shared collapsed-sidebar parameter", async ({ page }) => {
+  await page.setViewportSize({ width: 520, height: 900 });
+  await page.goto("/lab/fixture.html?fixture=agent&state=idle&sidebar=collapsed");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const expand = page.getByRole("button", {
+    name: "Expand the agent fixture sidebar",
+    exact: true,
+  });
+  await expect(expand).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Collapse the agent fixture sidebar", exact: true }),
+  ).toHaveCount(0);
+  const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
+  await composer.fill("Keep this reading draft through viewport changes.");
+  await page.setViewportSize({ width: 1120, height: 900 });
+  await expect(expand).toBeVisible();
+  await expect(composer).toHaveValue("Keep this reading draft through viewport changes.");
+  await test.info().attach("collapsed-agent-reading-frame", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
+});
+
 for (const theme of ["light", "dark"] as const) {
   for (const width of [360, 1280]) {
     test(`published interactive report works in ${theme} at ${width}px`, async ({ page }) => {
@@ -118,6 +141,47 @@ for (const theme of ["light", "dark"] as const) {
       await expect(
         table.getByRole("checkbox", { name: "Select browser", exact: true }),
       ).toBeChecked();
+
+      const sortButtons = table.getByRole("button", { name: /^Sort by / });
+      await expect(sortButtons).toHaveCount(8);
+      const headerWords = await sortButtons.evaluateAll((buttons) =>
+        buttons.map((button) => {
+          const words = [];
+          const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            for (const match of node.textContent!.matchAll(/[A-Za-z]+/g)) {
+              const range = document.createRange();
+              range.setStart(node, match.index!);
+              range.setEnd(node, match.index! + match[0].length);
+              const rects = [...range.getClientRects()]
+                .filter((rect) => rect.width > 0 && rect.height > 0)
+                .map(({ left, top, width, height }) => ({ left, top, width, height }));
+              const lowestTop = Math.max(...rects.map((rect) => rect.top));
+              const highestBottom = Math.min(...rects.map((rect) => rect.top + rect.height));
+              words.push({
+                word: match[0],
+                oneLine: rects.length > 0 && lowestTop < highestBottom,
+                rects,
+              });
+            }
+          }
+          return { label: button.getAttribute("aria-label"), words };
+        }),
+      );
+      await test.info().attach("published-table-header-words", {
+        body: JSON.stringify(headerWords, null, 2),
+        contentType: "application/json",
+      });
+      const headers = test.info().outputPath(`genui-${theme}-${width}-headers.png`);
+      await tableRegion.screenshot({ path: headers });
+      await test.info().attach("published-table-headers", { path: headers });
+      expect(
+        headerWords.flatMap(({ label, words }) =>
+          words.length === 0
+            ? [`${label}: no rendered words`]
+            : words.filter((word) => !word.oneLine).map(({ word }) => `${label}: ${word}`),
+        ),
+      ).toEqual([]);
 
       await tableRegion.scrollIntoViewIfNeeded();
       await tableRegion.focus();

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. Its complete WCAG subset now passes **261 audits**, including the seven previously failing Goal/Plan/disclosure entries; two new English/Chinese reading flows also pass. Final captures show fully opened readers and nested tool content, with actual Wails checks for focus, cancellation, retained drafts, 18 px/200% reading and native resize. See **Goal and Plan reading contracts in the Lab (2026-11-07)**. This batch changes Lab checks and documentation only; the previous complete Web/plugin checks still apply to unchanged production source. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. Shared bare buttons now preserve whole-word table headings after sorting, and Agent scenes honor the existing collapsed-sidebar input. The final focused Lab run passes **26 checks**, with all **63 captures** reviewed; the complete UI, plugin, Web and supported native gates also pass within the qualifications below. Actual Wails tasks cover English/Chinese, dark/light, 18 px/200% reading, retained selections, cancellation and continued drafts. See **Intrinsic table headings and Agent reading frames (2026-11-07)**. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -141,6 +141,95 @@ accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
 
+### Intrinsic table headings and Agent reading frames (2026-11-07)
+
+At main `530160e04`, the installed GenUI report initially keeps whole headings,
+but sorting Capability changes the visible rows and splits **Presentation** and
+**Recovery** within their words. The initial baseline passes; the sorted-state
+regression fails before the repair, with actual text ranges on two separate
+lines. Eight sorting controls are checked after the existing selection and sort
+assertions in `lab/scenarios/genuiReading.browser.spec.ts`; their rendered words
+must exist and occupy one line. This does not assert CSS values or replace the
+existing report flow with another fixture.
+
+The shared bare Button inherited `overflow-wrap: anywhere`, which contributes
+arbitrary breaks to intrinsic sizing. The [CSS Text overflow-wrap definition](https://www.w3.org/TR/css-text-3/#overflow-wrap-property)
+distinguishes that behavior from `break-word`. The shared bare variant now owns
+the latter rule, retaining emergency wrapping in a constrained label while
+preserving whole-word column contributions. The link variant inherits the same
+unchanged behavior, and GenUI Map removes its equivalent local override. Normal
+resource generation removes only that inline Map style from the installed ESM.
+No table width, overflow owner, theme, dependency or Runtime transition changes.
+
+The existing `sidebar=collapsed` fixture input was already parsed by the shared
+root but ignored by the Agent branch. Passing that value into its existing shell
+provides the full reading frame for native zoom tasks. Its baseline fails before
+the projection repair; the new Lab flow confirms the initial control and retained
+Composer draft across 520-to-1120 px viewport changes. Recorded sidebar navigation
+and resizing remain inert, as documented in the Lab README. There is no new route,
+scenario registry, browser configuration or fixture state owner.
+
+The expanded check also exposes two old Atoms failures: exact names omit the
+SelectTrigger's current value-and-purpose contract. The unchanged production
+owner and actual accessibility snapshots show `Disabled selection, Model`,
+`Pending selection, Model` and `gpt-5 · high, Model`. Updating those three Lab
+locators preserves every disabled, pending, hover and selection assertion.
+
+Verification passes serially:
+
+- The final single Lab invocation passes **26 checks**, without retries, skips
+  or flaky results. It covers Button/TextField/Select catalog variants at their
+  component and 390 px widths in EN/light/14 px and ZH/dark/18 px, shared control
+  interactions, the four 360/1280 px report flows and both Goal/Plan return flows.
+  All **63 PNG attachments** are inspected through all six contact sheets,
+  with full-resolution and native checks for the affected details.
+- The complete UI gate passes **247 tests** and its packed-consumer check.
+  The complete plugin gate passes **47 tooling tests** and **633 source tests**;
+  its existing **17 skipped tests** remain explicit. Initial isolated prerequisite
+  failures were a missing offline npm tarball and an unprepared Node archive.
+  Preparing the task-local cache and the normal verified companion resolves
+  those failures without changing any check.
+- The complete Web gate passes **431 files / 4,743 tests**, including its Runtime
+  integration project, then every declared owner/resource/bundle check in one
+  **242.14 s** invocation. After correcting only the old Playwright names, Web
+  typecheck, lint and formatting pass again. `make check-native` passes in
+  **21.105 s**, including Desktop tests, vet, builds and Wails macOS packaging.
+  Existing SDK/macOS linker warnings remain.
+- Root complexity still reports only the unchanged ProviderRow **31-to-34**
+  finding described above; its threshold is not changed. The complete WCAG
+  audit and entire migrated interaction suite are not rerun in this batch.
+
+Actual Wails v3.1.0 runs the same **483 qualified Lab assets**, with current
+DesktopHost/menu/zoom code and a private identity/home. EN/light/18 px verifies
+keyboard Select choice and focus return, paging, retained row selection through
+filter/clear/sort, complete far-end reading with the focused table region and
+continued Composer input after collapsing the report. Both EN and ZH/dark tasks
+use Actual Size followed by 20 native Zoom In actions for **200%** reading, and
+native Window Zoom changes captures from **2878×1798** to **3024×1898** while
+retaining drafts and report state. Chinese filtering also verifies the empty
+result and localized clear action. A separate ZH/dark/18 px/200% Goal task verifies
+the shared summary, editing focus, Escape/Cancel return, discarded local edits,
+the original objective on reopening and continued independent Composer input.
+The first Chinese launch uses an invalid direct-fixture locale parameter and is
+closed; the corrected registered `zh` route supplies the qualified result.
+
+These are recorded product projections and local UI tasks, not live provider or
+Runtime mutation acceptance. Native resizing qualifies retained data and manual
+return; the Chinese Window Zoom observation moves non-tail reading toward the
+transcript tail, so automatic focus reveal through that resize remains unqualified.
+Next reproduce that observation and inspect the empty table's two-line Chinese
+selection heading through this same Lab before choosing another repair.
+
+All four native generations exit 0, including the invalid-parameter attempt.
+The owned HTTP server exits and the private app is unregistered. Seven original
+output/cache trees are restored in bytes and modes; five initially absent output
+roots are retired. Six private Library identity paths return to absence. The
+ordinary native temporary root is removed, and the three pre-existing empty
+WebKit helper roots retain their original identities, modes and empty contents.
+All **6,704** non-Markdown source inputs are reviewed: only the seven intended
+source/resource paths differ. The primary checkout's unrelated `go.work.sum`
+bytes and Git status remain unchanged. No user-data migration is required.
+
 ### References and delivery
 
 [Cards](https://cards.uidesigncourse.com/) and its
@@ -180,8 +269,10 @@ protocol scenarios and actual Wails checks are qualified within the bounds below
 Composer choice names, live reasoning names/contrast, footnote return cues and
 the 14 work-index/Appearance/Brand name failures are repaired and qualified below.
 The seven Goal/Plan/open-all-disclosure entry failures are now resolved in the
-Lab, and its complete 261-case WCAG subset passes. Next trace the observed narrow
-installed-report table headings through the same catalog and installed renderer.
+Lab, and its last complete 261-case WCAG subset passes. Installed-report table
+headings now preserve whole words after sorting; the shared-control and reading
+qualification is recorded above. Next reproduce Chinese non-tail reading through
+native Window Zoom and inspect the empty table's selection heading in this Lab.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user

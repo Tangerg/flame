@@ -137,9 +137,9 @@ also consumes the host's coarse-pointer minimum rather than borrowing button
 semantics for sizing. Local open-URL actions briefly attach their hidden native
 anchor so the host's document navigation boundary can handle activation, then
 remove it. Neither path owns another platform opener or advances captured facts.
-Location-name buttons preserve whole-word contributions to the table's intrinsic
-column width. Long names keep ordinary wrapping and the existing local scroll
-region rather than reducing short names to a character-wide column.
+Sort headers and location-name buttons use the shared bare Button's whole-word
+contributions to intrinsic column width. Long names keep ordinary wrapping and
+the existing local scroll region.
 
 Image and Markdown-image thumbnails open their original source in the shared
 image reader. The authored alternative text and caption retain their meaning;
@@ -371,7 +371,7 @@ Use the toolchain in `DEVELOPMENT.md` and install at the repository root:
 ```sh
 npm run build --workspace @flame/plugins
 npm run check --workspace @flame/plugins
-npm test --workspace @flame/web -- visual/genui
+npm test --workspace @flame/web -- lab/scenarios/genui
 node plugins/scripts/build-packages.mjs --plugin genui --output /absolute/new/packages --archives /absolute/new/releases
 ```
 

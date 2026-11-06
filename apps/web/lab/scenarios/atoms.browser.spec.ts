@@ -210,10 +210,13 @@ for (const theme of THEMES) {
   }) => {
     await openGallery(page, theme);
     const triggers = page.locator('[data-atom="select-trigger"]');
-    const disabled = triggers.getByRole("button", { name: "Disabled selection", exact: true });
+    const disabled = triggers.getByRole("button", {
+      name: "Disabled selection, Model",
+      exact: true,
+    });
     await expect(disabled).toHaveJSProperty("disabled", true);
     await expectStableHover(page, disabled);
-    const pending = triggers.getByRole("button", { name: "Pending selection", exact: true });
+    const pending = triggers.getByRole("button", { name: "Pending selection, Model", exact: true });
     await expect(pending).toHaveJSProperty("disabled", false);
     await expect(pending).toHaveAttribute("aria-disabled", "true");
     await expectStableHover(page, pending);
@@ -225,7 +228,7 @@ for (const theme of THEMES) {
     await expectStableHover(page, disabledSelect);
 
     const enabled = [
-      triggers.getByRole("button", { name: "gpt-5 · high", exact: true }),
+      triggers.getByRole("button", { name: "gpt-5 · high, Model", exact: true }),
       page.getByRole("combobox", { name: "Memory status", exact: true }),
     ];
     for (const trigger of enabled) {
