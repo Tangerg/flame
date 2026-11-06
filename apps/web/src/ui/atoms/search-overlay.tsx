@@ -41,8 +41,8 @@ const styles = stylex.create({
 
 interface SearchOption {
   key: string;
-  /** Runs after dismissal so the action can focus outside the modal. */
-  onSelect: () => void;
+  /** Runs after dismissal with the captured opener so the action can focus outside the modal. */
+  onSelect: (origin?: HTMLElement) => void;
   children: ReactNode;
 }
 
@@ -58,7 +58,7 @@ interface SearchOverlayProps {
 
 interface Delivery {
   readonly completion: symbol;
-  run: (() => void) | undefined;
+  run: SearchOption["onSelect"] | undefined;
   opener: HTMLElement | null;
   popup: HTMLElement | null;
 }
@@ -106,7 +106,7 @@ export function SearchOverlay({
     if ((active === doc.body || delivery.popup?.contains(active)) && delivery.opener?.isConnected) {
       delivery.opener.focus({ preventScroll: true });
     }
-    run();
+    run(delivery.opener ?? undefined);
   }, [completion, open]);
 
   return (

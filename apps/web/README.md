@@ -289,6 +289,13 @@ to the surviving dialog through DataError's existing host rule; settlement does
 not reclaim later focus. Dialog dismissal and reopening retain their existing
 return-focus and query-reset contracts.
 
+Command-menu rows wrap complete command and view names in their existing label
+track, retaining the shortcut group's intrinsic width. Similar names remain
+distinguishable before invocation. The shared search overlay retains query,
+selection, scrolling, dismissal and action handoff ownership.
+Its handoff supplies the captured opener to view navigation, so the Workspace
+host can present a narrow destination full width and return to that source.
+
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation

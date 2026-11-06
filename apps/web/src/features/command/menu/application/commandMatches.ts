@@ -1,12 +1,7 @@
-export interface CommandChoice {
-  key: string;
-  label: string;
-  icon?: string;
-  combo?: string;
-  run: () => void;
-}
-
-export function matchCommands(commands: readonly CommandChoice[], query: string): CommandChoice[] {
+export function matchCommands<Row extends { label: string }>(
+  commands: readonly Row[],
+  query: string,
+): Row[] {
   const needle = query.trim().toLowerCase();
   const matched =
     needle === ""

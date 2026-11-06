@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Shared Panel's native-zoom clearance repair is published as `711d7d442`. The latest shortcut review qualifies accepted recording, conflicts, replacement, single/all reset and persistence across three actual Wails launches, including English/Chinese 200% reading and file/conversation return. All 34 focused tests pass; product source remains unchanged. See **Shortcut recording, persistence and reset after main (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Command-menu choices now expose complete names and carry their source into view navigation. The requested main updates are merged through `a4015b243`; actual English/Chinese Wails tasks qualify visible destinations at native 200%, retained draft carets, Settings search return and the 320 px Files/main-area path. All 4,570 frontend tests, 449 focused tests and 38 serial gates pass on the merged source. See **Complete command names and visible view handoff (2026-11-06)**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -17,15 +17,18 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The current native shortcut review closes the previously unqualified accepted
-rebind/reset persistence path. English light/14 px and Chinese dark/18 px/custom
-Purple scenes cover filtering, recording, fixed/editable conflicts, replacement,
-single/all reset, native resize/200%, empty-result keyboard reading and continued
-drafts. Three fresh Wails processes verify persisted changes and persisted
-defaults. All 34 related tests and preparation gates pass; no actionable alignment
-or interaction finding requires a product edit. See **Shortcut recording,
-persistence and reset after main (2026-11-06)**. Main merges remain already up to
-date and owned resources are retired. Continue with other actual task paths.
+Command-menu names now wrap in their existing text track, preserving shortcut
+width. The shared overlay hands its captured opener to view navigation, allowing
+the existing workspace host to reveal narrow destinations and return to the
+actual source. English light/14 px and Chinese dark/18 px/custom Purple native
+tasks pass, including 200%, retained draft carets, Settings query/focus return
+and 320 px Files/main-area navigation. The full frontend project passes 424 files
+and 4,570 tests; 449 focused tests and all 38 serial gates pass on the requested
+main update through `a4015b243` (two commits, 309 files, no conflicts).
+See **Complete command names and visible view handoff (2026-11-06)**. Fresh
+remote/local main merges are already up to date. Owned resources are retired;
+parallel work in the primary checkout is preserved. Continue inspecting other
+actual task paths; whole-product acceptance remains open.
 
 Already focused Settings controls now remain fully visible when native zoom
 shrinks the reading frame. Shared Panel uses each clipped host's inner edges
@@ -33986,6 +33989,180 @@ and test-pinned. Three defects were fixed:
 Left as correct, not a defect: the palette input does not take Home/End for
 first/last option — for an editable combobox the ARIA APG assigns Home/End to the
 text cursor, which is the current behavior; list navigation stays on the arrows.
+
+### Complete command names and visible view handoff (2026-11-06)
+
+Qualified from `db2e4c0ff` after fresh remote/local main merges. The original
+native palette makes two names with a shared prefix indistinguishable: both
+meaningful suffixes become ellipses, including on the selected row. English
+18 px and native Top Left/200% reproduce this; long Chinese names do the same.
+During candidate task inspection, choosing Workspace diff at Chinese 200%
+closes the palette but leaves the requested material in a hidden Dock. Manually
+opening material full width is required to see it.
+
+| Principle                      | Original finding                                      | Responsible repair                                                                                       | Result                                                                                              |
+| ------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Complete readable choices      | High: command identities disappear through truncation | `CommandMenu` wraps its existing label track with body leading; shortcut width remains intrinsic         | Complete EN/CJK names at normal size and native 200%; selection survives resize/zoom                |
+| Visible destination and return | High: the selected view is hidden at narrow widths    | `SearchOverlay` delivers its captured opener after dismissal; `CommandMenu` passes it to view navigation | Existing inspection presentation reveals the view and returns to the actual draft or Settings field |
+
+`SearchOverlay` remains the sole owner of modal query, selection, scrolling,
+dismissal, captured opener and once-only action delivery. Its private option
+callback now accepts that optional opener. Ordinary command wrappers still call
+`command.run()` with zero arguments; Session search ignores the extra delivery
+context. Workspace navigation already accepts this origin, and its existing
+inspection owner and host decide Dock/full-width presentation and source return.
+No second origin ref, focus timer, navigation state or presentation workaround is
+added. The UI-specific choice shape moves into `CommandMenu`; the pure matcher
+preserves its filtering/sorting behavior and only requires a label. Web README
+records the contract.
+
+Read-only ZCode CommandCenter/QuickPick implementations inform name/icon/key
+grouping and close-before-run ordering. Their own truncation is not adopted as
+evidence of complete-name readability. Better Layout, Typography and Accessibility
+guide text growth, native zoom, selection and focus return; the React skill
+supports retaining one transient handoff owner. Flame keeps its existing StyleX,
+Base UI, semantic tokens, brand, themes and functional shortcut keycaps.
+
+A bounded Read/Edit-only Claude CLI attempt reaches its 12-turn cap without edits
+in 30.401 s; root implements the small label repair. A second bounded task supplies
+the origin handoff in 37.785 s, within three product source paths and README.
+Tests remain immutable during that task. Root reviews the actual diff, owns the
+regressions, all checks and native acceptance. Neither attempt has permission
+denials; no subagent is used.
+
+Before the origin repair, regressions fail **7 / 22 tests**, with 15 passes, in 9.423 s.
+They cover pointer/keyboard delivery, later outside focus, a removed opener,
+Dock/content-card view navigation and a real menu-to-material-to-draft integration.
+The integration retains the exact draft, caret and destination focus. The
+ordinary-command regression also pins zero arguments. An intermediate candidate
+run has one failure because its new test assumes a unique named region while
+the existing host and panel both expose that name. The corrected query accepts
+those existing nested regions while still requiring visible material, target
+focus and the real Back action. No product behavior or valid assertion is weakened.
+
+| Verification                           | Actual result                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Final focused owners and consumers     | **8 files / 171 tests**, 19.286 s; palette, matcher, shared overlay, real workspace commands, Session search/readiness, inspection and navigation                                                                                                             |
+| Complete frontend project              | **424 files / 4,558 tests**, 534.174 s wrapper; production source remains identical through final acceptance                                                                                                                                                  |
+| Final serial gates after focused tests | All **27 pass**: Web types/lint/format/knip, architecture/contract/port/consumer/lifecycle guards, design/token/style/class/chrome/locale/lookup/bootstrap checks, plugin resources, production bundle/module linkage, native check and private native assets |
+| Supported native build                 | `make check-native` passes, 32.285 s; existing non-failing linker diagnostics remain separate                                                                                                                                                                 |
+
+The full frontend run passes before lint identifies a conditional assertion in
+the new test. Root replaces it with one exact expected call-list assertion,
+covering selection and cancellation, then reruns all 171 focused tests and the
+27 subsequent gates. The full project is not repeated for that test-only rewrite.
+Earlier label-only 24-test/13-gate receipts remain scoped to that earlier source.
+
+Actual Wails 3.1.0 uses production components and deterministic workspace data.
+The private native composition adds the real command-menu plugin, which the
+default workspace fixture does not register. Four frozen, inert public command
+metadata inputs reproduce same-prefix names, with and without shortcuts; their
+callbacks are never invoked. There is no substituted business command, observer,
+focus injection or geometry override. The first missing-menu setup launch is
+excluded. A later English launch started before asset preparation completed is
+also excluded, quit normally and receives no task input. Each accepted asset set
+has **331 Web files**, the same **24 native host inputs** and **four signed bundle
+files**; the final English build removes all four synthetic metadata inputs.
+
+- **English light/18 px/Orange/full motion, original and label candidate:**
+  normal and native Top Left/200% comparisons expose then resolve both hidden
+  suffixes. Arrow selection survives zoom; CJK names, empty results, ordinary
+  command delivery and Settings navigation are inspected. A native macOS spelling
+  suggestion panel is observed separately: its dismissal is not counted as an
+  application Escape failure.
+- **Final Chinese dark/18 px/Purple/motion off:** complete CJK names remain two
+  lines and keyed English names remain three lines at native Top Left/200%.
+  The second selected choice survives resizing and 20 Zoom In actions from
+  Actual Size. Return on the actual Workspace diff choice directly reveals and
+  focuses the full-width material; Page Down reads its metadata. Back restores
+  the original caret, where inserting `原样` produces exactly
+  `保留原样命令选择前的草稿。`. From Settings search `字体`, the same menu action
+  displays Back to Settings; returning preserves the query and focuses that
+  exact search field. The ordinary Focus composer menu action resumes the same
+  draft. Final resized captures are **2240 × 1456**.
+- **Final English light/14 px/Orange/full motion, real command catalogue:**
+  the synthetic-name query has no matches and Escape restores the draft. Pointer
+  selection reveals Workspace diff in the visible Dock and Back restores the
+  original caret. Six Tabs and Home set the real splitter to **320 px**. README
+  preview opens in the main area; the actual Focus composer menu action returns
+  to the draft and retained caret. At 200%, Return on Workspace diff directly
+  reveals the full-width destination. Back and continued insertion produce
+  exactly `Keep accepted verified zoomed the real command task.`. The native
+  initial-size captures are **2238 × 1720**, including at 200%.
+
+Both final native processes quit normally: Chinese **153.807 s**, English
+**162.655 s**. Browser suites and performance benchmarks remain excluded. Live
+Runtime/Send, the Runtime test project, unrelated backend/CLI suites, VoiceOver,
+physical OS IME, RTL, other-platform GUI and fresh numeric pixel-contrast checks
+are not qualified here. No protocol or persisted-data migration is needed.
+
+Cleanup unregisters the exact app, restores seven baseline output/dependency
+trees containing **3,773 files**, removes the new **2,120-file** Vitest cache and
+four generated native files, and removes **17** owned Library files. Independent
+checks confirm all **12** output baselines, six absent UID stores, all **6,631**
+non-Markdown product inputs with exactly six intentional source/test changes,
+both read-only reference hashes and the pinned toolchain. The primary checkout
+independently advances to `957a99b94` on its audit branch with unrelated work in
+progress; it receives only read commands and remains untouched. The owned app
+process and endpoint are inactive. Identity/content guards retire the private
+root containing **4,401 files / 64 directories**.
+
+The verified in-memory gzip retains **246 UTF-8 records** and **35 JPEG metadata
+records**, including source/artifact maps, actual receipts, exclusions and
+cleanup. It is **1,878,066 bytes**, SHA-256
+`0a8dc5dfac08634b7d2bb27e1b5728db6b6a28a217935ecea60285a534c5fa42`.
+
+The subsequent requested main update merges `957a99b94` and `a4015b243` by
+fast-forward: **309 upstream files**, no conflicts and no overlap with the eight
+local UI/doc paths. All eight local files retain their exact bytes through that
+merge. The preceding receipts describe the earlier base; the following checks
+requalify the combined source. Upstream Runtime, SDK, plugin resources, tool result
+projection, external-content permission and locale changes remain intact.
+
+All **38 serial steps pass** after merging: current icons/UI/plugin resources,
+**15 files / 449 focused tests** in **27.782 s**, the complete frontend project
+with **424 files / 4,570 tests** in **224.976 s** using two bounded workers, all
+Web static/contract/style/resource/bundle gates, `make check-native` in
+**22.789 s**, private native assets, metadata/format, host build, signing,
+verification and registration. Happy DOM reports that iframe loading is disabled
+in the new exact-URL external-content authorization test; no remote page loads and
+all assertions pass. No checks or assertions are disabled. The actual host now
+consumes the updated Go SDK; Wails remains exactly 3.1.0.
+
+The fresh native environment has no synthetic command inputs. Its **331 Web
+assets**, **24 host inputs** and **four signed bundle files** remain exact across
+both launches. Chinese dark/18 px/Purple/motion off repeats native Top Left/200%,
+direct Workspace diff reveal, Back and insertion at the original caret, producing
+`合并已核对 main 后保留草稿。`. Settings search `字体` and its exact field focus
+survive the material round trip. English light/14 px/Orange/full motion repeats
+pointer Dock navigation, source-caret insertion, Home to a **320 px** Files Dock,
+README main preview and the ordinary Focus composer menu action. Native 200%
+selection directly reveals the material; Back and insertion produce exactly
+`Main verified retained zoomed merged carefully.`. Stable captures remain
+**2240 × 1456** in Chinese and **2238 × 1720** in English. One **664 × 510**
+transient English frame is excluded from visual judgment and replaced by the
+stable destination capture. A stale automation handle is rebound before current
+UI input; it neither changes product code nor affects the accepted task. Both
+processes quit normally: **151.916 s** and **162.242 s**.
+
+Post-merge cleanup again restores all **12** output baselines (seven existing
+trees, **3,773 files**), removes **2,111** new Vitest cache files, four generated
+native files and **17** owned Library files. Independent checks verify all
+**6,655** frozen non-Markdown product inputs, both references, the pinned toolchain
+and six absent UID paths. The primary checkout is clean on main `a4015b243`,
+unchanged during this requalification. Its working tree receives only read
+commands. The private root is retired with identity/content guards over
+**4,264 files / 63 directories**; its process and endpoint are inactive.
+
+The additional verified in-memory gzip retains **136 UTF-8 records** and **eight
+JPEG metadata records**, **1,125,779 bytes**, SHA-256
+`02a50e854bebb399e962b70a8a8b0622c25efb459b8735395d5636344f9d1217`.
+The six intentional source/test changes remain exact through the main merge and
+requalification; no further implementation repair is required. Native coverage
+retains the deterministic-data and excluded-platform boundaries stated above.
+**Approve** the inspected command reading, visible-view and source-return flow.
+Whole-product and award-level acceptance remain open; continue from fresh native
+evidence in other task paths.
 
 ### Shortcut recording, persistence and reset after main (2026-11-06)
 

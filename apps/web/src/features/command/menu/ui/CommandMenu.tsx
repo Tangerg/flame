@@ -6,7 +6,7 @@ import { splitCombo } from "@/lib/combo";
 import { Icon } from "@/ui/index";
 import { Kbd } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
-import { EmptyState, vocab } from "@flame/ui";
+import { EmptyState } from "@flame/ui";
 import { knownIconName } from "@/ui/icons/index";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
@@ -16,21 +16,29 @@ import {
   openWorkspaceView,
   openWorkspaceViewInDock,
 } from "@/features/workspace/public/navigation";
-import {
-  matchCommands,
-  type CommandChoice,
-} from "@/features/command/menu/application/commandMatches";
+import { matchCommands } from "@/features/command/menu/application/commandMatches";
 import { useCommandMenuStore } from "@/features/command/menu/application/commandMenuState";
-import { color, space } from "@flame/ui/tokens.stylex";
+import { color, leading, space } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
   glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
   label: {
     minWidth: 0,
     flex: 1,
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+    lineHeight: leading.body,
   },
   keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
 });
+
+interface CommandChoice {
+  key: string;
+  label: string;
+  icon?: string;
+  combo?: string;
+  run: (origin?: HTMLElement) => void;
+}
 
 export function CommandMenu() {
   const workspaceAccess = useWorkspace();
@@ -49,10 +57,10 @@ export function CommandMenu() {
     key: `view:${id}`,
     label: t("commandMenu.view", { title: t(title) }),
     icon,
-    run: () =>
+    run: (origin) =>
       docked.has(id)
-        ? openWorkspaceViewInDock(workspaceAccess, id)
-        : openWorkspaceView(workspaceAccess, id),
+        ? openWorkspaceViewInDock(workspaceAccess, id, origin)
+        : openWorkspaceView(workspaceAccess, id, origin),
   });
 
   const choices: CommandChoice[] = [
@@ -96,7 +104,7 @@ export function CommandMenu() {
               ) : (
                 <span aria-hidden {...stylex.props(cmd.glyphSlot)} />
               )}
-              <span {...stylex.props(cmd.label, vocab.truncate)}>{choice.label}</span>
+              <span {...stylex.props(cmd.label)}>{choice.label}</span>
               {choice.combo && (
                 <span {...stylex.props(cmd.keys)}>
                   {splitCombo(choice.combo).map((part, index) => (

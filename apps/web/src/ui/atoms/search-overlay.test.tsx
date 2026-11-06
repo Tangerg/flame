@@ -84,6 +84,7 @@ describe("search overlay", () => {
       });
 
       await waitFor(() => expect(choose).toHaveBeenCalledOnce());
+      expect(choose).toHaveBeenCalledWith(trigger);
       await drainBrowserTasks();
       expect(document.activeElement).toBe(destination);
     },
@@ -154,6 +155,7 @@ describe("search overlay", () => {
     await drainBrowserTasks();
     expect(document.activeElement).toBe(destination);
     expect(choose).toHaveBeenCalledTimes(intent === "select" ? 1 : 0);
+    expect(choose.mock.calls).toEqual(intent === "select" ? [[trigger]] : []);
   });
 
   it("can deliver a destination after its opener disappears", async () => {
@@ -169,6 +171,7 @@ describe("search overlay", () => {
     fireEvent.click(screen.getByRole("option"));
 
     await waitFor(() => expect(choose).toHaveBeenCalledOnce());
+    expect(choose).toHaveBeenCalledWith(trigger);
     await drainBrowserTasks();
     expect(document.activeElement).toBe(destination);
   });

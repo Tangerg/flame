@@ -1,12 +1,13 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { executeCommand } from "@/features/command/public/commands";
+import commandMenu from "@/features/command/menu/index";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { queryClient } from "@/lib/queryClient";
-import { resetKernelForTest } from "@/test/kernel";
+import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { createVisualClient, type VisualClient } from "./client";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import {
@@ -102,6 +103,34 @@ it("leaves Escape in the focused Settings search to that field", async () => {
 
   expect(visual.navigation.get().view).toBe("settings");
   expect(document.activeElement).toBe(search);
+});
+
+it("reveals a command-menu material in the narrow workspace and returns to its source", async () => {
+  await act(() => loadPluginsForTest(commandMenu));
+  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+  fireEvent.change(draft, { target: { value: "Keep this command source — 保留" } });
+  act(() => {
+    draft.focus();
+    draft.setSelectionRange(5, 5);
+  });
+  await act(() => executeCommand("command.menu"));
+  const query = await screen.findByRole("combobox", { name: "Run a command…" });
+  fireEvent.change(query, { target: { value: "Workspace diff" } });
+
+  await act(async () => fireEvent.keyDown(query, { key: "Enter" }));
+
+  const material = await screen.findAllByRole("region", { name: "Workspace diff" });
+  await waitFor(() =>
+    expect(material.some((region) => region.contains(document.activeElement))).toBe(true),
+  );
+  expect(draft.value).toBe("Keep this command source — 保留");
+  const back = screen.getByRole("button", { name: "Back to conversation" });
+  fireEvent.click(back);
+
+  await waitFor(() => expect(document.activeElement).toBe(draft));
+  expect(draft.selectionStart).toBe(5);
+  expect(draft.selectionEnd).toBe(5);
+  expect(draft.value).toBe("Keep this command source — 保留");
 });
 
 it.each(["sidebar", "settings"])(

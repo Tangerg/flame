@@ -105,9 +105,13 @@ describe("command menu", () => {
 
     expect(useCommandMenuStore.getState().open).toBe(false);
     await waitFor(() => expect(newChat).toHaveBeenCalledOnce());
+    expect(newChat).toHaveBeenCalledWith();
   });
 
   it("lists the workspace views, which nothing else reaches by keyboard", async () => {
+    testClient.render(<button>Source</button>);
+    const source = screen.getByRole("button", { name: "Source" });
+    source.focus();
     await withCommands();
 
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "terminal" } });
@@ -117,18 +121,25 @@ describe("command menu", () => {
     row.click();
 
     await waitFor(() =>
-      expect(openViewInDock).toHaveBeenCalledWith(testClient.workspace.access, "terminal"),
+      expect(openViewInDock).toHaveBeenCalledWith(testClient.workspace.access, "terminal", source),
     );
   });
 
   it("opens a view the dock does not carry on the content card", async () => {
+    testClient.render(<button>Source</button>);
+    const source = screen.getByRole("button", { name: "Source" });
+    source.focus();
     await withCommands();
 
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "icon gallery" } });
     screen.getByRole("option").click();
 
     await waitFor(() =>
-      expect(openViewOnCard).toHaveBeenCalledWith(testClient.workspace.access, "icon-gallery"),
+      expect(openViewOnCard).toHaveBeenCalledWith(
+        testClient.workspace.access,
+        "icon-gallery",
+        source,
+      ),
     );
     expect(openViewInDock).not.toHaveBeenCalled();
   });
