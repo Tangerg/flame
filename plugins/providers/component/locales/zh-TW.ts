@@ -67,6 +67,7 @@ export const zhTW: Record<string, string> = {
   "command.uncertain":
     "原始命令的結果未確認。在發出另一條命令或切換目錄前請先核對。",
   "command.reconcile": "核對原始命令",
+  "command.confirmed": "原始結果已確認",
   "read.retained": "保留上次接受的讀取。",
   close: "關閉",
   "providers.embedding.noPreset": "已設定的供應商未提供預設的嵌入模型。",

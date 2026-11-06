@@ -17,6 +17,16 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
+Provider Save with an unknown outcome and focused original-command recovery now
+retain keyboard position through the existing shared controls. All 52 Provider
+tests and 16 serial gates pass. Native English accepted/refused/repeated-unknown,
+Chinese dark/18 px/200% later editing, and Utility recovery/return pass within the
+boundaries below. See **Provider original-command recovery and retained work
+(2026-11-06)**. Fresh remote/local main merges remain already up to date and owned
+resources are retired. Next inspect the observed role Select submission focus
+loss and recheck retained-focus reveal during native zoom; whole-product
+acceptance remains open.
+
 Provider Save now retains its focused completed action through the shared Button
 contract and respects later field focus. All 44 Provider tests and 16 final serial
 gates pass, as do matched English native completion/200% reading and Chinese
@@ -32951,6 +32961,151 @@ other-platform GUIs and OS reduced-motion preference. No protocol, persisted-dat
 dependency or external-consumer migration is needed. Verdict: **Approve** for
 the inspected domains and paths. Whole-product and award-level acceptance remain
 open; continue with fresh evidence from remaining tasks.
+
+### Provider original-command recovery and retained work (2026-11-06)
+
+Qualified from main `c9bc46b92`. The user's fresh main synchronization request is
+handled before implementation and checked again before delivery: fetched
+`origin/main` and local `main` are already ancestors of the active worktree.
+The parallel primary checkout remains clean on `00c172c73` and is never updated.
+
+In the original actual Wails app, keyboard Save reaches an unknown outcome and
+becomes native-disabled, dropping focus to HTML. Tab reaches Reconcile original
+command, but Return unmounts that focused action during its original retry; the
+eventual Saved result still leaves focus on HTML. The submitted endpoint and
+masked stored-key projection survive. This reproduces two presentation defects
+before any product edit.
+
+`providerRow.tsx` extends its completed-Save focusable-disabled contract to
+unknown outcomes. `feedback.tsx` follows the qualified MCP recovery pattern:
+onFocus/onBlur project only the recovery Button's DOM focus. Its existing grid
+becomes one focus unit. The same focused action survives running and known
+outcomes until focus leaves; another unknown remains actionable. All eight
+Provider catalogs reuse MCP's confirmed label, which means the original outcome
+is known, including a refusal shown beside it. Later focus and later edits are
+never reclaimed or submitted by this presentation state.
+
+ProviderSettings remains the single owner of drafts, commands, original
+MutationPromise retries, accepted reads and source retirement. Its phases,
+guards, error classification, original identity and feedback association stay
+unchanged. No effect, timer, focus call, new command phase, dependency, shared
+control override or theme value is added. Normal generation changes only the
+Provider component among the 22 installed component resources.
+
+One bounded Read/Edit-only Claude Code CLI task writes the implementation,
+catalogs and six regression cases. It stops at its 16-turn limit (exit 1,
+212.469 s, 17 reported turns), with no permission denial or subagent. Root
+reviews the actual diff, adds two real role-consumer cases and owns verification.
+Existing assertions remain intact; the completed-Save activation helper is
+reused without weakening its checks.
+
+| Check                            | Actual result                                                                                                                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original Provider baseline       | 3 files / **44 tests**, 2.616 s                                                                                                                                                                                     |
+| Final Provider suite             | 3 files / **52 tests**, 2.370 s                                                                                                                                                                                     |
+| Original Save counterfactual     | **1 failure / 51 passes**, 1.967 s; unknown Save lacks the focusable-disabled contract                                                                                                                              |
+| Original feedback counterfactual | **5 failures / 47 passes**, 1.881 s; focused credential and both role recoveries lose their control                                                                                                                 |
+| Final serial gates               | All **16 pass**: scoped formatting; plugin typecheck/lint/format/i18n/build/resource drift; Web typecheck/lint/design-system/tokens/bundle/plugin modules; `make check-native` (19.111 s); private assets (3.443 s) |
+
+Both counterfactuals restore exact candidate bytes in finally blocks and verify
+their hashes. Deferred regressions cover pending/accepted/refused/repeated unknown,
+same-element focus, repeated pointer/Enter/Space guards, later API-key/endpoint
+edits, both Utility/Embedding consumers and independent credential drafts.
+Accepted fixture updates use the existing canonical setters so later reads agree.
+The un-focused recovery disappearance test still passes. Full UI, Web/Runtime
+integration, CLI and plugin backend suites are not rerun for this Provider-only
+change. Browser visual suites and benchmarks remain excluded.
+
+Actual native observations use production views, generated installed Provider
+ESM, shared controls, native input, accessibility and screenshots:
+
+- **English/light/14 px/Orange:** unknown Save retains its visible focus perimeter.
+  Tab/Return recovery retains focus through pending and confirmed outcomes.
+  Repeated Return/Space stay blocked. At actual 200%, Saved and the full confirmed
+  action are readable. Tab retires that control. A later endpoint survives an
+  Appearance/Providers return. The original conversation continues exactly
+  `Continue after original provider recovery. English verified.` beside a real
+  320 px Files Dock.
+- **English definite refusal:** the literal qualification refusal remains beside
+  the focused disabled confirmed action at 100% and 200%. Pending and confirmed
+  Return/Space stay guarded. Tab retires only the action and leaves the error.
+  The unaccepted endpoint stays a draft; no corrected Save is issued.
+- **English repeated unknown:** an endpoint edited after the first unknown stays
+  untouched while the same captured original retries to another unknown, then
+  acceptance. Focus stays on the actionable/reconfirmed recovery; Saved is not
+  attached to the later draft. Conversation return continues exactly
+  `Continue after repeated unknown. Verified.`
+- **Chinese/dark/18 px/custom Blue/motion off:** native Top Left resizing reaches
+  2240 × 1456. Actual 200% keyboard entry reveals the complete unknown warning,
+  literal detail and recovery control. While recovery is running,
+  Shift+Tab/Shift+Tab moves to the endpoint and a new URL is entered; a pending
+  capture proves the edit precedes settlement. Acceptance leaves that exact field
+  and later URL focused, with no stale Saved or confirmed control. Category
+  return retains the draft. Closing continues the original conversation with
+  `原命令恢复后继续对话。 中文已核对。` and a real 320 px Files Dock.
+- **Chinese Utility consumer, same theme/font/200%/resize:** Home/Return selects
+  Use Runtime default. Keyboard recovery reaches the accepted exact role and
+  retains the fully readable `原始结果已确认` control; leaving retires it.
+  A separate unsubmitted Provider endpoint survives acceptance and category
+  return. The original conversation continues with
+  `模型角色核对后继续。 已保留独立草稿。` Embedding recovery has real component
+  regression coverage, not a new native write.
+
+All six native processes exit 0: original **291.442 s**, English accepted
+**136.088 s**, refused **82.014 s**, repeated unknown **81.498 s**, Chinese later
+focus **312.968 s** and Chinese Utility **265.463 s**. The private fixture admits
+only the captured endpoint update or empty Utility-role selection. It checks
+exact method/input/idempotency key/namespace on every observation and advances
+its same canonical in-memory owner on acceptance. Protocol `internal_error`
+produces the unknown outcome without automatic transport replay; a 1.4-second
+original retry supplies the chosen result. Refusal uses a canonical known
+protocol failure. This qualifies the installed UI/public-client path in isolation,
+not a live Runtime receipt, real wire loss, vendor validation or live credentials.
+No connection Test, stored-key removal, later Save, live endpoint or Send runs.
+
+The unchanged Utility Select exposes a separate entry defect: submission makes
+it native-disabled and drops focus to HTML; two Tabs reach Settings search.
+An initial navigation assertion catches that mistaken Tab assumption before
+recovery activation. Fresh AX and bounded native Tab navigation reach recovery.
+Inspect this Select transition next, including native Embedding before assuming
+identical behavior. Intermediate resize captures at 736 × 478 and 1996 × 1300
+do not qualify settled layout; later 2240 × 1456 keyboard-entry/category-return
+frames do. The Utility capture labelled pending already contains confirmation,
+so that frame supplies no native pending evidence; deferred tests cover that
+consumer's pending contract. Recheck retained-focus reveal during native zoom
+separately; an intermediate frame does not establish a persistent product defect.
+
+The six-domain review uses the loaded better-* owners, existing MCP qualification
+and its recorded HeroUI state-composition reference, current shared Button and
+Provider ownership. No reference repository is edited.
+
+| Domain        | Evidence                                                                              | Result and limit                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | ProviderRow/CommandFeedback, 52 tests, native recovery/later focus/continued drafts   | Recovery lifetimes repaired; role Select entry needs follow-up; VoiceOver speech/physical IME are not newly verified.      |
+| Layout        | Stable EN 100%/200%, ZH 18 px/200%/Top Left frames and both 320 px Files returns      | Inspected feedback/actions and field tops align; intermediate frames excluded; native 320 CSS px Settings is not verified. |
+| Writing       | Eight confirmed catalogs copied from MCP; actual EN refusal/ZH confirmation           | Known outcome and success remain distinct; literal failures retained.                                                      |
+| Typography    | Complete recovery text and literal endpoints at 14/18 px/native zoom                  | Existing wrapping and reading axes retained; no font or tracking change.                                                   |
+| Colors        | Orange/light and custom-blue/dark pending, disabled and focus states                  | Existing semantic roles retained; numeric contrast is not newly measured.                                                  |
+| UI            | Stable shared Button, focus-unit reading and native blur/category/conversation return | No new decoration or motion; timing/RTL/other platforms and every permutation are not verified.                            |
+
+| Severity          | Domain        | Location                                 | Before                                                                            | After / next action                                                                                  | Why                                                                                      |
+| ----------------- | ------------- | ---------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| MEDIUM, repaired  | Accessibility | `providerRow.tsx:138`, `feedback.tsx:50` | Unknown Save becomes native-disabled; recovery unmounts on retry and drops focus. | Retain the same unavailable Save and actually focused original recovery through the shared contract. | Preserve task position and the next keyboard step without duplicating command ownership. |
+| MEDIUM, follow-up | Accessibility | `roles.tsx` Select disabled projection   | Utility selection drops focus to HTML when its command starts.                    | Reproduce separately and repair the actual control boundary, retaining the command owner.            | Avoid restarting keyboard navigation after a role choice.                                |
+
+**Approve for unknown-Save and original-recovery lifetimes only.** The observed
+role-selection entry issue and whole-product acceptance remain open.
+
+Final verification covers **6,630 tracked non-Markdown sources**, **331 Web /
+24 private host / 4 signed bundle files** and seven unchanged owner/reference
+files. Cleanup unregisters the app, restores six pre-existing output trees
+(including all 58 real Web dependency files), removes five initially absent owned
+build/cache roots (including 762 Vitest cache files), removes all 17 files under
+six initially absent UID-specific Library paths, and retires the exact private
+qualification root. Both pre-existing UI cache files, the pinned toolchain and
+parallel primary checkout remain exact. No owned process or endpoint remains.
+In-thread evidence retains **161 UTF-8 records / 36 capture metadata records**;
+gzip SHA-256 `31d28f6beab92a73d9544f60f46fb99f286a6905af20c4eda8ee988684f71b11`.
 
 ### Provider Save completion and retained work (2026-11-06)
 

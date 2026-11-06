@@ -78,6 +78,7 @@ export const fr: Record<string, string> = {
   "command.uncertain":
     "Le résultat de la commande d’origine n’est pas confirmé. Rapprochez-le avant d’émettre une autre commande ou de changer de catalogue.",
   "command.reconcile": "Rapprocher la commande d’origine",
+  "command.confirmed": "Résultat d’origine confirmé",
   "read.retained": "La dernière lecture acceptée est conservée.",
   close: "Fermer",
   "providers.embedding.noPreset":

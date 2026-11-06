@@ -76,6 +76,7 @@ export const en: Record<string, string> = {
   "command.uncertain":
     "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs.",
   "command.reconcile": "Reconcile original command",
+  "command.confirmed": "Original outcome confirmed",
   "read.retained": "The last accepted read is retained.",
   close: "Close",
   "providers.embedding.noPreset":

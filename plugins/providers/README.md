@@ -22,11 +22,18 @@ No plugin-owned credential registry, role state machine or module-global present
 is introduced. Role controls fill their grid track, so they share the description's
 reading axis when the row stacks.
 
-An accepted Save keeps the same unavailable action focusable through the shared
-Button contract. Completion retains its current focus without moving focus from
-a later field. Initial unedited and invalid drafts keep native disabled behavior;
-editing retires the saved feedback through the existing draft owner and enables
-the next valid Save. Repeated activation cannot submit the completed draft again.
+A Save with an accepted or unknown outcome keeps the same unavailable action
+focusable through the shared Button contract. Completion retains its current
+focus without moving focus from a later field. Initial unedited and invalid
+drafts keep native disabled behavior; editing retires the saved feedback through
+the existing draft owner and enables the next valid Save. Repeated activation
+cannot submit the completed or unconfirmed draft again.
+
+A focused original-command recovery stays mounted through its pending and known
+outcome until focus leaves. The confirmed label means the original outcome is
+known, including a refusal shown beside it; another unknown result keeps recovery
+available. This local DOM-focus projection changes neither command ownership nor
+the original retry identity and never reclaims later focus or submits later edits.
 
 Runtime supplies an immutable credential snapshot when opening a model. One
 private handle retains the actual client and its supported capabilities. A

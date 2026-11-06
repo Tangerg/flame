@@ -79,6 +79,7 @@ export const ja: Record<string, string> = {
   "command.uncertain":
     "元のコマンドの結果は未確認です。別のコマンドを実行したりカタログを切り替えたりする前に照合してください。",
   "command.reconcile": "元のコマンドを照合",
+  "command.confirmed": "元の結果を確認済み",
   "read.retained": "最後に受け入れた読み取りを保持しています。",
   close: "閉じる",
   "providers.embedding.noPreset":

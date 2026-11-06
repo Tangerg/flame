@@ -58,6 +58,29 @@ async function mount(f = create()) {
   await screen.findByLabelText(keyLabel);
   return { f, view };
 }
+const reconcileName = "Reconcile original command";
+const confirmedName = "Original outcome confirmed";
+function attempt(button: HTMLElement) {
+  fireEvent.pointerDown(button, { pointerType: "mouse" });
+  fireEvent.click(button);
+  fireEvent.keyDown(button, { key: "Enter" });
+  fireEvent.keyDown(button, { key: " " });
+  fireEvent.keyUp(button, { key: " " });
+}
+// Accepts through the fixture's original update so later provider reads agree.
+function loseSave(f: ReturnType<typeof create>) {
+  const original = f.update.getMockImplementation()!;
+  const retry = vi.fn();
+  let accept!: () => Promise<Provider>;
+  f.update.mockImplementationOnce((input) => {
+    accept = () => original(input);
+    return mutation(
+      Promise.reject(new RpcTransportError("response lost")),
+      retry,
+    );
+  });
+  return { retry, accept: () => accept() };
+}
 
 it("retains an unsaved credential draft when a view is closed and reopened", async () => {
   const { f, view } = await mount();
@@ -126,15 +149,8 @@ it("keeps a completed Save focused and blocked until the next edit", async () =>
   const { f } = await mount();
   const original = f.update.getMockImplementation()!;
   const save = screen.getByRole("button", { name: "Save" });
-  const attempt = () => {
-    fireEvent.pointerDown(save, { pointerType: "mouse" });
-    fireEvent.click(save);
-    fireEvent.keyDown(save, { key: "Enter" });
-    fireEvent.keyDown(save, { key: " " });
-    fireEvent.keyUp(save, { key: " " });
-  };
   expect(save.hasAttribute("disabled")).toBe(true);
-  attempt();
+  attempt(save);
   expect(f.update).not.toHaveBeenCalled();
 
   const edited = "https://edited.example.test/v1";
@@ -147,7 +163,7 @@ it("keeps a completed Save focused and blocked until the next edit", async () =>
   fireEvent.click(save);
   expect(save.textContent).toBe("Saving…");
   expect(document.activeElement).toBe(save);
-  attempt();
+  attempt(save);
   expect(f.update).toHaveBeenCalledOnce();
 
   await act(async () => first.resolve());
@@ -159,7 +175,7 @@ it("keeps a completed Save focused and blocked until the next edit", async () =>
   expect(save.hasAttribute("disabled")).toBe(false);
   expect(save.tabIndex).toBe(0);
   expect(endpointInput().value).toBe(edited);
-  attempt();
+  attempt(save);
   expect(f.update).toHaveBeenCalledOnce();
 
   fireEvent.change(keyInput(), { target: { value: "second-key" } });
@@ -183,6 +199,24 @@ it("keeps a completed Save focused and blocked until the next edit", async () =>
     [{ provider: provider.id, baseUrl: { type: "set", value: edited } }],
     [{ provider: provider.id, apiKey: { type: "set", value: "second-key" } }],
   ]);
+});
+
+it("keeps an unknown Save focused and blocked until reconciliation", async () => {
+  const { f } = await mount();
+  const save = screen.getByRole("button", { name: "Save" });
+  expect(save.hasAttribute("disabled")).toBe(true);
+  loseSave(f);
+  fireEvent.change(keyInput(), { target: { value: "original-secret" } });
+  act(() => save.focus());
+  fireEvent.click(save);
+  await screen.findByRole("button", { name: reconcileName });
+  expect(screen.getByRole("button", { name: "Save" })).toBe(save);
+  expect(document.activeElement).toBe(save);
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(save.hasAttribute("disabled")).toBe(false);
+  attempt(save);
+  expect(f.update).toHaveBeenCalledOnce();
+  expect(keyInput().value).toBe("original-secret");
 });
 
 it("saves the displayed draft before testing and then clears only submitted secrets", async () => {
@@ -251,6 +285,118 @@ it("reconciles a response loss through the original command without submitting e
   expect(f.update).toHaveBeenCalledOnce();
   expect(keyInput().value).toBe("later-secret");
 });
+
+async function focusReconcile() {
+  fireEvent.change(keyInput(), { target: { value: "original-secret" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const reconcile = await screen.findByRole("button", { name: reconcileName });
+  act(() => reconcile.focus());
+  fireEvent.click(reconcile);
+  return reconcile;
+}
+
+it.each([
+  { outcome: "accepted", message: "Saved", key: "" },
+  { outcome: "refused", message: "save refused", key: "original-secret" },
+])(
+  "keeps a focused reconciliation through its $outcome outcome",
+  async ({ outcome, message, key }) => {
+    const { f } = await mount();
+    const lost = loseSave(f);
+    const settled = Promise.withResolvers<void>();
+    lost.retry.mockImplementationOnce(() =>
+      mutation(
+        settled.promise.then(() =>
+          outcome === "accepted"
+            ? lost.accept()
+            : Promise.reject(new Error("save refused")),
+        ),
+      ),
+    );
+    const reconcile = await focusReconcile();
+    expect(screen.getByRole("button", { name: reconcileName })).toBe(reconcile);
+    expect(document.activeElement).toBe(reconcile);
+    expect(reconcile.getAttribute("aria-disabled")).toBe("true");
+    attempt(reconcile);
+    expect(lost.retry).toHaveBeenCalledOnce();
+
+    await act(async () => settled.resolve());
+    await screen.findByText(message, { exact: true });
+    expect(screen.getByRole("button", { name: confirmedName })).toBe(reconcile);
+    expect(document.activeElement).toBe(reconcile);
+    expect(reconcile.getAttribute("aria-disabled")).toBe("true");
+    expect(reconcile.hasAttribute("disabled")).toBe(false);
+    attempt(reconcile);
+    expect(lost.retry).toHaveBeenCalledOnce();
+    expect(f.update).toHaveBeenCalledOnce();
+    expect(keyInput().value).toBe(key);
+
+    act(() => keyInput().focus());
+    expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
+    expect(screen.getByText(message, { exact: true })).toBeTruthy();
+  },
+);
+
+it("keeps a repeated unknown reconciliation actionable for the original command", async () => {
+  const { f } = await mount();
+  const lost = loseSave(f);
+  const first = Promise.withResolvers<void>();
+  const second = Promise.withResolvers<void>();
+  lost.retry
+    .mockImplementationOnce(() =>
+      mutation(
+        first.promise.then(() =>
+          Promise.reject(new RpcTransportError("still lost")),
+        ),
+      ),
+    )
+    .mockImplementationOnce(() => mutation(second.promise.then(lost.accept)));
+  const reconcile = await focusReconcile();
+  await act(async () => first.resolve());
+  await waitFor(() =>
+    expect(reconcile.getAttribute("aria-disabled")).not.toBe("true"),
+  );
+  expect(screen.getByRole("button", { name: reconcileName })).toBe(reconcile);
+  expect(document.activeElement).toBe(reconcile);
+  expect(screen.getByRole("alert").textContent).toContain(
+    "The original command outcome is not confirmed.",
+  );
+
+  fireEvent.click(reconcile);
+  await act(async () => second.resolve());
+  await screen.findByText("Saved", { exact: true });
+  expect(screen.getByRole("button", { name: confirmedName })).toBe(reconcile);
+  expect(document.activeElement).toBe(reconcile);
+  expect(lost.retry).toHaveBeenCalledTimes(2);
+  expect(f.update).toHaveBeenCalledOnce();
+});
+
+it.each([
+  { field: keyInput, value: "later-secret" },
+  { field: endpointInput, value: "https://later.example.test/v1" },
+])(
+  "keeps a later field focused and edited when reconciliation settles",
+  async ({ field, value }) => {
+    const { f } = await mount();
+    const lost = loseSave(f);
+    const settled = Promise.withResolvers<void>();
+    lost.retry.mockImplementationOnce(() =>
+      mutation(settled.promise.then(lost.accept)),
+    );
+    await focusReconcile();
+    act(() => field().focus());
+    fireEvent.change(field(), { target: { value } });
+    await act(async () => settled.resolve());
+    await screen.findByRole("button", { name: "Save" });
+    expect(document.activeElement).toBe(field());
+    expect(field().value).toBe(value);
+    expect(screen.queryByText("Saved", { exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
+    expect(screen.queryByRole("button", { name: reconcileName })).toBeNull();
+    expect(lost.retry).toHaveBeenCalledOnce();
+    expect(f.update).toHaveBeenCalledOnce();
+  },
+);
 
 it("allows a new corrected save after a definite refusal", async () => {
   const { f } = await mount();
@@ -463,6 +609,72 @@ it("distinguishes identical model names and waits for the accepted exact role", 
   await waitFor(() => expect(trigger.textContent).toContain(second.id));
   expect(f.setUtilityRole).toHaveBeenCalledOnce();
 });
+
+it.each([
+  {
+    kind: "utility" as const,
+    title: "Utility model",
+    option: "Use Runtime default",
+    value: {},
+  },
+  {
+    kind: "embedding" as const,
+    title: "Embedding model",
+    option: "embed-default",
+    value: { provider: provider.id, model: "embed-default" },
+  },
+])(
+  "keeps the focused $kind recovery and its independent credential draft",
+  async ({ kind, title, option, value }) => {
+    const { f } = await mount();
+    const setter = kind === "utility" ? f.setUtilityRole : f.setEmbeddingRole;
+    const original = setter.getMockImplementation()!;
+    const settled = Promise.withResolvers<void>();
+    const retry = vi.fn();
+    setter.mockImplementationOnce((input) => {
+      retry.mockImplementationOnce(() =>
+        mutation(settled.promise.then(() => original(input))),
+      );
+      return mutation(
+        Promise.reject(new RpcTransportError("role response lost")),
+        retry,
+      );
+    });
+    fireEvent.change(keyInput(), { target: { value: "independent-draft" } });
+    const trigger = await screen.findByRole("combobox", { name: title });
+    fireEvent.click(trigger);
+    const picked = await screen.findByRole("option", {
+      name: new RegExp(option),
+    });
+    fireEvent.pointerDown(picked, { pointerType: "mouse" });
+    fireEvent.click(picked);
+    const reconcile = await screen.findByRole("button", {
+      name: reconcileName,
+    });
+    act(() => reconcile.focus());
+    fireEvent.click(reconcile);
+    expect(document.activeElement).toBe(reconcile);
+    expect(reconcile.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByRole("button", { name: reconcileName })).toBe(reconcile);
+    attempt(reconcile);
+    expect(retry).toHaveBeenCalledOnce();
+
+    await act(async () => settled.resolve());
+    await waitFor(() => expect(trigger.textContent).toContain(option));
+    expect(screen.getByRole("button", { name: confirmedName })).toBe(reconcile);
+    expect(document.activeElement).toBe(reconcile);
+    expect(reconcile.getAttribute("aria-disabled")).toBe("true");
+    expect(trigger.hasAttribute("disabled")).toBe(false);
+    attempt(reconcile);
+    expect(retry).toHaveBeenCalledOnce();
+    expect(setter).toHaveBeenCalledExactlyOnceWith(value);
+    expect(f.update).not.toHaveBeenCalled();
+    expect(keyInput().value).toBe("independent-draft");
+    act(() => keyInput().focus());
+    expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
+    expect(document.activeElement).toBe(keyInput());
+  },
+);
 
 it("keeps a custom embedding identity after a rejected default-model choice", async () => {
   const f = create();

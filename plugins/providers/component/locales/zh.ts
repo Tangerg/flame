@@ -67,6 +67,7 @@ export const zh: Record<string, string> = {
   "command.uncertain":
     "原始命令的结果未确认。在发出另一条命令或切换目录前请先核对。",
   "command.reconcile": "核对原始命令",
+  "command.confirmed": "原始结果已确认",
   "read.retained": "保留上次接受的读取。",
   close: "关闭",
   "providers.embedding.noPreset": "已配置的供应商没有提供预设的嵌入模型。",
