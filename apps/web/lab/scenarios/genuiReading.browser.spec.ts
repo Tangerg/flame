@@ -265,5 +265,88 @@ for (const theme of ["light", "dark"] as const) {
       ).toBeLessThanOrEqual(1);
       expect(remoteRequests).toEqual([]);
     });
+
+    test(`Chinese report selection survives an empty search in ${theme} at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 960 });
+      await page.goto(
+        `/lab/fixture.html?fixture=agent&state=genui-report&locale=zh&theme=${theme}&font-size=18&sidebar=collapsed`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      const composer = page.getByRole("textbox", { name: "消息输入框", exact: true });
+      await composer.fill("保留这条草稿，直到筛选结束。");
+      await page.locator('[data-tool="genui_ui_present"]').click();
+      const report = page.getByRole("region", {
+        name: "Agent plugin delivery review",
+        exact: true,
+      });
+      await expect(report).toBeVisible();
+
+      const tableRegion = report.getByRole("region", {
+        name: "Plugin delivery responsibilities",
+        exact: true,
+      });
+      const table = tableRegion.getByRole("table", { name: "Plugin delivery responsibilities" });
+      const generated = table.getByRole("checkbox", { name: "选择generated", exact: true });
+      await generated.click();
+      await expect(generated).toBeChecked();
+      const search = report.getByRole("searchbox", {
+        name: "搜索Plugin delivery responsibilities",
+        exact: true,
+      });
+      await search.fill("no responsibility matches this query");
+      await expect(table.getByRole("row")).toHaveCount(2);
+      await expect(
+        table.getByRole("cell", { name: "没有可显示的数据行。", exact: true }),
+      ).toBeVisible();
+      await expect(generated).toHaveCount(0);
+      await expect(
+        report.getByText("Selected evidence rows", { exact: true }).locator(".."),
+      ).toContainText("1");
+
+      const selectionHeader = table.getByRole("columnheader", { name: "选择", exact: true });
+      await expect(selectionHeader).toBeVisible();
+      const label = await selectionHeader.evaluate((header) => {
+        const walker = document.createTreeWalker(header, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const start = node.textContent!.indexOf("选择");
+          if (start < 0) continue;
+          const range = document.createRange();
+          range.setStart(node, start);
+          range.setEnd(node, start + "选择".length);
+          const rects = [...range.getClientRects()].map(({ left, top, width, height }) => ({
+            left,
+            top,
+            width,
+            height,
+          }));
+          const positive = rects.filter((rect) => rect.width > 0 && rect.height > 0);
+          const lowestTop = Math.max(...positive.map((rect) => rect.top));
+          const highestBottom = Math.min(...positive.map((rect) => rect.top + rect.height));
+          return {
+            rects,
+            oneLine:
+              positive.length > 0 && positive.length === rects.length && lowestTop < highestBottom,
+          };
+        }
+        return { rects: [], oneLine: false };
+      });
+      await test.info().attach("chinese-selection-header-geometry", {
+        body: JSON.stringify(label, null, 2),
+        contentType: "application/json",
+      });
+      const emptySelection = test.info().outputPath(`genui-zh-${theme}-${width}-selection.png`);
+      await tableRegion.screenshot({ path: emptySelection });
+      await test.info().attach("chinese-empty-selection-table", { path: emptySelection });
+      expect(label.oneLine).toBe(true);
+
+      await report.getByRole("button", { name: "清除搜索", exact: true }).click();
+      await expect(search).toBeFocused();
+      await expect(search).toHaveValue("");
+      await expect(generated).toBeChecked();
+      await expect(composer).toHaveValue("保留这条草稿，直到筛选结束。");
+    });
   }
 }

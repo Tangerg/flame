@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. Shared bare buttons now preserve whole-word table headings after sorting, and Agent scenes honor the existing collapsed-sidebar input. The final focused Lab run passes **26 checks**, with all **63 captures** reviewed; the complete UI, plugin, Web and supported native gates also pass within the qualifications below. Actual Wails tasks cover English/Chinese, dark/light, 18 px/200% reading, retained selections, cancellation and continued drafts. See **Intrinsic table headings and Agent reading frames (2026-11-07)**. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. Short Chinese selection headings now stay intact through an empty report search. The current report and sandbox qualification passes **12 checks**, with all **25 report captures** reviewed, plus the complete plugin gate, **113 GenUI unit tests**, Web typecheck/lint and supported native checks. Actual Wails tasks confirm the repaired heading at 18 px/200%, retained selection, clear focus and continued drafts in Chinese/dark and English/light. See **Intrinsic table headings and Agent reading frames (2026-11-07)** for the qualifications and remaining horizontal focus-reveal observation. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -169,13 +169,23 @@ Composer draft across 520-to-1120 px viewport changes. Recorded sidebar navigati
 and resizing remain inert, as documented in the Lab README. There is no new route,
 scenario registry, browser configuration or fixture state owner.
 
+The empty Chinese table has a separate module-owned defect at `ccf1707bc`:
+removing its checkbox rows leaves the short selection heading with a one-glyph
+minimum contribution, splitting **选择** vertically. All four added Lab cases
+fail before the repair in light/dark at 360/1280 px and 18 px text. Their actual
+glyph rectangles occupy two lines. `TableView` now keeps only its own short
+selection heading together. Authored headings retain ordinary word wrapping;
+the shared table grammar, column widths, scroll region and OpenUI state owners
+are unchanged. Normal resource generation adds exactly that heading style to
+the installed component.
+
 The expanded check also exposes two old Atoms failures: exact names omit the
 SelectTrigger's current value-and-purpose contract. The unchanged production
 owner and actual accessibility snapshots show `Disabled selection, Model`,
 `Pending selection, Model` and `gpt-5 · high, Model`. Updating those three Lab
 locators preserves every disabled, pending, hover and selection assertion.
 
-Verification passes serially:
+The shared-button and reading-frame qualification passes serially:
 
 - The final single Lab invocation passes **26 checks**, without retries, skips
   or flaky results. It covers Button/TextField/Select catalog variants at their
@@ -199,6 +209,18 @@ Verification passes serially:
   finding described above; its threshold is not changed. The complete WCAG
   audit and entire migrated interaction suite are not rerun in this batch.
 
+The current selection-heading follow-up passes **9 report checks** and the
+existing **3 sandbox checks**, without retries, skips or flaky results. All
+**25 PNG report attachments** are reviewed through three contact sheets and
+the four repaired details at full resolution. The new cases inspect actual text
+rectangles before asserting one line, then verify restored search focus,
+selection and independent Composer drafts. The plugin gate passes **47 tooling
+tests** and **633 source tests**, with its existing **17 skips** unchanged.
+Web's **3 GenUI files / 113 tests**, typecheck and lint pass; `make check-native`
+passes in **60.064 s**. Full UI/Web gates, the complete WCAG audit, optional
+measurements and the entire migrated interaction suite are not rerun for this
+module-only change.
+
 Actual Wails v3.1.0 runs the same **483 qualified Lab assets**, with current
 DesktopHost/menu/zoom code and a private identity/home. EN/light/18 px verifies
 keyboard Select choice and focus return, paging, retained row selection through
@@ -214,11 +236,9 @@ The first Chinese launch uses an invalid direct-fixture locale parameter and is
 closed; the corrected registered `zh` route supplies the qualified result.
 
 These are recorded product projections and local UI tasks, not live provider or
-Runtime mutation acceptance. Native resizing qualifies retained data and manual
-return; the Chinese Window Zoom observation moves non-tail reading toward the
-transcript tail, so automatic focus reveal through that resize remains unqualified.
-Next reproduce that observation and inspect the empty table's two-line Chinese
-selection heading through this same Lab before choosing another repair.
+Runtime mutation acceptance. That shared-button batch observes Chinese Window
+Zoom moving non-tail reading toward the transcript tail; it does not qualify
+automatic focus reveal through that resize.
 
 All four native generations exit 0, including the invalid-parameter attempt.
 The owned HTTP server exits and the private app is unregistered. Seven original
@@ -229,6 +249,35 @@ WebKit helper roots retain their original identities, modes and empty contents.
 All **6,704** non-Markdown source inputs are reviewed: only the seven intended
 source/resource paths differ. The primary checkout's unrelated `go.work.sum`
 bytes and Git status remain unchanged. No user-data migration is required.
+
+The selection-heading follow-up uses the same Lab build in a private Wails
+host, copied from all **24 current Desktop source/module inputs**, retaining the
+real menu, page zoom and window behavior. The original Chinese empty heading
+also splits in the native baseline. The candidate keeps it on one line at 18 px
+and native **200%**, set through Actual Size and 20 native Zoom In actions.
+Chinese/dark and English/light tasks clear the empty query, restore input focus
+and the selected row, sort, resize, collapse the report and append to the same
+Composer draft. Three native generations exit 0. The prior Chinese jump is not
+reproduced through three baseline and two candidate Window Zoom transitions;
+no shared reading-follow change is justified by this bounded result.
+
+The native evidence retains **18 JPEG captures**, including two reduced
+722×452/748×470 captures that do not establish full-resolution 200% reading.
+After English Window Zoom, the reduced last-column capture shows the focused
+Review decision control clipped at its right edge. Full horizontal focus reveal
+remains unqualified; reproduce that keyboard path through this same Lab before
+choosing another owner repair. The repaired Chinese empty heading has a separate
+full-resolution native capture above the Composer.
+
+All 12 output/cache roots return to their original contents and modes or their
+original absence. Six private Library paths and the ordinary native temporary
+root return to absence; the three pre-existing empty WebKit helper roots retain
+their identities and modes, with only this batch's three empty Networking
+children retired. The owned server exits and the private app is unregistered.
+All **6,704** non-Markdown source inputs are reviewed: only the intended Lab spec,
+TableView and generated installed component differ. The primary checkout's
+unrelated `go.work.sum` bytes and status remain unchanged. No user-data migration
+is required.
 
 ### References and delivery
 
@@ -271,8 +320,11 @@ the 14 work-index/Appearance/Brand name failures are repaired and qualified belo
 The seven Goal/Plan/open-all-disclosure entry failures are now resolved in the
 Lab, and its last complete 261-case WCAG subset passes. Installed-report table
 headings now preserve whole words after sorting; the shared-control and reading
-qualification is recorded above. Next reproduce Chinese non-tail reading through
-native Window Zoom and inspect the empty table's selection heading in this Lab.
+qualification is recorded above. The current Chinese native Window Zoom flow
+does not reproduce the prior jump; the empty
+Chinese selection heading is repaired and qualified. Next reproduce full
+horizontal reveal of the far-right sorting control after native Window Zoom,
+and continue triaging the remaining migrated interactions through this Lab.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user

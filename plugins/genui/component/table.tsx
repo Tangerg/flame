@@ -87,7 +87,11 @@ export function TableView({
           <caption style={{ textAlign: "start" }}>{props.caption}</caption>
           <thead>
             <tr>
-              {props.selectState && <th scope="col">{t("table.selection")}</th>}
+              {props.selectState && (
+                <th scope="col" style={{ whiteSpace: "nowrap" }}>
+                  {t("table.selection")}
+                </th>
+              )}
               {props.columns.map((column) => (
                 <th
                   key={column.key}

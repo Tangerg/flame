@@ -212,6 +212,13 @@ cancelled edits, keyboard entry/return and each document's independent Composer
 draft through narrow resizing. Captures wait for the whole reading surface to
 be in view and fully opaque.
 
+Installed-report checks also exercise Chinese selection through an empty search
+in both themes at narrow and desktop widths. They capture the actual heading's
+text rectangles and table before asserting that the short selection label stays
+on one line. Clearing restores search focus and the selected row while retaining
+the independent Composer draft. English authored headings keep their existing
+whole-word and wide-table reading checks in the same scenario suite.
+
 Largest-font transcript audits open inline disclosures within the transcript,
 including newly mounted arguments and full output. Each click retains the
 physical trigger while the remaining control list changes, then verifies its

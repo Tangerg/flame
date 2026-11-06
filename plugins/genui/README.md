@@ -93,6 +93,8 @@ popup. Sorting, selected rows and captured values retain their existing owners.
 Row selection uses the stable identifier as the checkbox's localized accessible
 name. The visible selection column contains the control; authored columns remain
 the reading content, without duplicated technical identifiers.
+Its short selection heading stays on one line when filtering removes every row;
+authored column headings retain their ordinary word wrapping.
 Pagination keeps its boundary buttons in the local keyboard order through the
 shared Button's focusable disabled contract. Unavailable activation stays blocked;
 Tab, Escape and native commands retain their existing owners.
