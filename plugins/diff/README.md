@@ -50,6 +50,10 @@ comparison; an absent file returns to the overview with an explicit notice. Fail
 reads keep the accepted comparison visibly identified beside the scope control.
 The package remains a read-only current-workspace view, not a stored Tool diff.
 
+The working-tree action's accessible name combines its localized purpose with
+the same visible line totals or file count rendered inside the button. Native
+labelling references those nodes rather than serializing a second count label.
+
 The generic material key `diff` participates in the existing workspace navigation
 consumer. Absent/competing candidates open the catalogue. Disablement/uninstall
 withdraws registrations and package resources without changing files, Git history,

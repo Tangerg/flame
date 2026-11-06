@@ -1,5 +1,6 @@
 import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
+import { type NotificationLevel } from "@/features/notifications/public/types";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { WorkspaceChangesAction } from "@/features/plugins/ui/WorkspaceChangesAction";
 import { Schedules } from "../../../../plugins/schedules/component/component";
@@ -445,9 +446,11 @@ function workspaceDataPlugin(
 const visualNotifier = definePlugin({
   name: "flame.visual.notifier",
   setup(ctx) {
-    const host = window as unknown as { flameVisualNotify?: (message: string) => void };
-    host.flameVisualNotify = (message: string) =>
-      notifyFrom(ctx.metadata.pluginName, message, "info");
+    const host = window as unknown as {
+      flameVisualNotify?: (message: string, level: NotificationLevel) => void;
+    };
+    host.flameVisualNotify = (message, level) =>
+      notifyFrom(ctx.metadata.pluginName, message, level);
     ctx.lifetime.defer(() => delete host.flameVisualNotify);
   },
 });

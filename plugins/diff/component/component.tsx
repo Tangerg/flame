@@ -2,6 +2,7 @@ import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -708,6 +709,7 @@ export function WorktreeChanges({
   context: ComponentContext;
   input?: WorkspaceChangesActionInput;
 }) {
+  const labelId = useId();
   const t = useTranslator(CATALOGS, context.locale);
   const summary = summarizeWorkingTreeChanges(input?.changes);
   if (!input || !summary) return null;
@@ -720,16 +722,25 @@ export function WorktreeChanges({
       chip
       face="mono"
       title={t("worktree.open", { count: summary.files })}
-      aria-label={t("worktree.open", { count: summary.files })}
+      aria-labelledby={`${labelId} ${labelId}-value`}
       onClick={(event) => {
         context.signal.throwIfAborted();
         input.openView(event.currentTarget);
       }}
     >
+      <span id={labelId} className="sr-only">
+        {t("worktree.open", { count: summary.files })}
+      </span>
       {counted ? (
-        <DiffStat added={summary.added} removed={summary.removed} />
+        <DiffStat
+          id={`${labelId}-value`}
+          added={summary.added}
+          removed={summary.removed}
+        />
       ) : (
-        t("worktree.files", { count: summary.files })
+        <span id={`${labelId}-value`}>
+          {t("worktree.files", { count: summary.files })}
+        </span>
       )}
     </Button>
   );

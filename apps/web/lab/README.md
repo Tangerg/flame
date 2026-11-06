@@ -280,6 +280,13 @@ action explicitly reads the workspace overview before list tasks. Split-column
 checks retain source identities and before/after order across paired and unpaired
 changes instead of assuming one displayed row per source row.
 
+The `dock-schedules-models` variant joins the same Workspace catalog and captures
+its long model list before constructing the Runtime transport. The real Schedule
+editor reads and refreshes that capture; tests do not mutate a retired seed after
+the transport has cloned it. Its named Model popup retains keyboard selection,
+scrolling and focus independently of the editor body. The fixture notifier forwards
+the requested notification level through the production notification owner.
+
 Tool invocations retain Runtime delivery categories, approvals and streamed
 items. Recorded Web pages in `scenarios/web-pages.json` are offline captures;
 offsets, limits and counts are Unicode codepoints. The lab never fetches those

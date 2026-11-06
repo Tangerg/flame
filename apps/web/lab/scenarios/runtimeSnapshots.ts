@@ -69,6 +69,19 @@ export const VISUAL_MODEL_FACTS: VisualModelFacts = {
   embedding: {},
 };
 
+export const SCROLLING_MODEL_FACTS: VisualModelFacts = {
+  ...VISUAL_MODEL_FACTS,
+  models: [
+    ...VISUAL_MODELS,
+    ...Array.from({ length: 20 }, (_, index) => ({
+      ...VISUAL_MODELS[0]!,
+      id: `panel-focus-${index}`,
+      displayName: `Panel focus model ${index}`,
+      default: false,
+    })),
+  ],
+};
+
 export const LONG_MODEL_NAME =
   "Research model for detailed workspace analysis with extended context";
 export const LONG_MODEL_ID = "workspace-analysis-2026-10-extended-context";

@@ -6,6 +6,7 @@ import { en } from "@/lib/i18n/locales/en";
 import { en as providersEnglish } from "../../../../plugins/providers/component/locales/en";
 import { en as hooksEnglish } from "../../../../plugins/hooks/component/locales/en";
 import { solidFill } from "@/features/theme/kit/scale";
+import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
   DOCK_MIN_WIDTH_PX,
   CONVERSATION_READING_MIN_PX,
@@ -21,8 +22,21 @@ import {
   type VisualWorkspaceState,
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
+// The Browse panels trigger also carries the active view id; only the retained view hosts its body.
+function dockView(page: Page, id: string) {
+  return page
+    .locator(`[data-dock-view-id="${id}"]`)
+    .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
+}
+
 function pluginView(page: Page, view = "trajectory") {
-  return page.locator(`[data-dock-view-id="package:visual:${view}"]`);
+  return dockView(page, `package:visual:${view}`);
+}
+
+function dockCatalog(page: Page) {
+  return page
+    .locator(".agent-context-dock")
+    .getByRole("listbox", { name: en["dock.catalog.title"]!, exact: true });
 }
 
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
@@ -85,8 +99,13 @@ test("a full view keeps its catalog title in prose and its file identity in mono
   const identity = page
     .locator('[data-slot="workspace-view-header"]:visible')
     .getByTitle(ACTIVE_FILE_PATH, { exact: true });
-  await expect(identity).toHaveCount(1);
-  const path = await readTitle(identity);
+  await expect(identity).toHaveText("DockResizer.tsx");
+  const reader = page
+    .getByRole("main")
+    .getByRole("region", { name: ACTIVE_FILE_PATH, exact: true });
+  const canonical = reader.locator('[data-slot="file-path"]');
+  await expect(canonical).toHaveCount(1);
+  const path = await readTitle(canonical);
   expect(path.text).toBe(ACTIVE_FILE_PATH);
   expect(path.isMono, `a PATH is mono, got ${path.family}`).toBe(true);
 });
@@ -129,12 +148,23 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-review") {
+    const view = pluginView(page, "diff");
+    const tab = page.getByRole("tab", { name: "Workspace diff", exact: true });
+    await expect(tab).toBeVisible();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    const identity = view.getByRole("heading", { name: "Workspace diff", exact: true });
+    await expect(identity).toHaveCount(1);
+    await expect(identity).toHaveClass(/(^|\s)sr-only(\s|$)/);
     await expect(
-      pluginView(page, "diff").getByRole("heading", { name: "Workspace diff", exact: true }),
+      view.getByRole("heading", { name: "DockResizer.tsx", exact: true }),
     ).toBeInViewport();
-    await expect(pluginView(page, "diff").locator("[data-diff-file]")).toHaveCount(1);
+    const changes = view.getByRole("region", {
+      name: `Changes in ${ACTIVE_FILE_PATH}`,
+      exact: true,
+    });
+    await expect(changes.getByRole("table")).toBeVisible();
     await expect(
-      pluginView(page, "diff").getByRole("cell", {
+      changes.getByRole("cell", {
         name: "const rail = railRef.current;",
         exact: true,
       }),
@@ -148,11 +178,11 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-loading") {
+    const view = pluginView(page, "diff");
     await expect(
-      page
-        .locator(".agent-context-dock [data-dock-view-id]:visible")
-        .getByText("Reading workspace diff…", { exact: true }),
+      view.getByRole("status").filter({ hasText: "Reading uncommitted changes…" }),
     ).toBeVisible();
+    await expect(view.getByRole("button", { name: "Refresh", exact: true })).toBeDisabled();
     return;
   }
   if (state === "dock-runs" || state === "dock-trajectory") {
@@ -180,7 +210,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     );
     return;
   }
-  if (state === "dock-schedules") {
+  if (state === "dock-schedules" || state === "dock-schedules-models") {
     await expect(
       pluginView(page, "schedules").getByText("1 enabled · 1 disabled on this page"),
     ).toBeVisible();
@@ -194,8 +224,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   }
   if (state === "dock-feature-off") {
     await expect(
-      page
-        .locator('[data-dock-view-id="package:visual:skills"]')
+      pluginView(page, "skills")
         .getByRole("alert")
         .filter({ hasText: "skills.discovered.list requires skills" }),
     ).toBeVisible();
@@ -238,7 +267,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   if (state === "dock-catalog") {
     await expect(page.getByText(en["dock.catalog.title"]!, { exact: true })).toBeVisible();
     await expect(
-      page.locator(".agent-context-dock").getByRole("button", { name: "Files" }),
+      dockCatalog(page).getByRole("option", { name: "Files", exact: true }),
     ).toBeVisible();
     return;
   }
@@ -382,22 +411,32 @@ test("files browse and preview share one dock tab", async ({ page }) => {
   await dock.getByRole("treeitem", { name: "resizer.ts", exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
   await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
-  const focusAppearance = (node: Element) => {
-    const style = getComputedStyle(node);
-    return { style: style.outlineStyle, width: style.outlineWidth, color: style.outlineColor };
-  };
-  await page.keyboard.press("Tab");
   const back = dock.getByRole("button", { name: "Back to files" });
-  await back.focus();
-  const controlFocus = await back.evaluate(focusAppearance);
-  await back.press("Enter");
+  await expect(back).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(back).toBeFocused();
+  // Header chrome paints keyboard focus as a fill; tree rows draw the shared outline.
+  expect(await back.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
+  await expect(back).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await page.keyboard.press("Enter");
   await expect(dock.getByRole("treeitem", { name: "apps", exact: true })).toHaveAttribute(
     "aria-expanded",
     "true",
   );
   const file = dock.getByRole("treeitem", { name: "resizer.ts", exact: true });
   await expect(file).toBeFocused();
-  expect(await file.evaluate(focusAppearance)).toEqual(controlFocus);
+  const rowFocus = await file.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      visible: node.matches(":focus-visible"),
+      style: style.outlineStyle,
+      width: Number.parseFloat(style.outlineWidth),
+    };
+  });
+  expect(rowFocus.visible).toBe(true);
+  expect(rowFocus.style).not.toBe("none");
+  expect(rowFocus.width).toBeGreaterThan(0);
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
 
@@ -405,7 +444,7 @@ test("portable Skills captures discovery, review and personal targets in one doc
   page,
 }) => {
   await openWorkspace(page, { state: "dock-skills" });
-  const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
+  const view = pluginView(page, "skills");
   const catalog = view.getByRole("radiogroup", { name: "Catalog" });
   await expect(view).toContainText("2 available Skills");
   await catalog.getByRole("radio", { name: "Skill proposals", exact: true }).click();
@@ -436,7 +475,7 @@ for (const theme of ["light", "dark"] as const) {
   for (const section of ["Review", "Personal"] as const) {
     test(`skills ${section.toLowerCase()} catalog ${theme}`, async ({ page }) => {
       await openWorkspace(page, { state: "dock-skills", theme });
-      const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
+      const view = pluginView(page, "skills");
       await view
         .getByRole("radiogroup", { name: "Catalog" })
         .getByRole("radio", {
@@ -507,7 +546,7 @@ test("file and portable trajectory tabs render through their production views", 
 
   await page.getByRole("tab", { name: "File" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
-  const fileView = page.locator('[data-dock-view-id="file"]');
+  const fileView = dockView(page, "file");
   await expect(fileView.getByTitle(ACTIVE_FILE_PATH)).toBeVisible();
   await expect(fileView.getByText(/const currentWidth = readDockWidth/)).toBeVisible();
 
@@ -517,7 +556,7 @@ test("file and portable trajectory tabs render through their production views", 
   const run = pluginView(page).locator('[data-trajectory-record="run:run_root"]');
   await expect(run).toBeVisible();
   await expect(run.getByRole("button", { expanded: false })).toHaveAccessibleName(
-    "Run · openai/gpt-5.6-sol running run_root 8:00:00 AM",
+    "Run · openai/gpt-5.6-sol Running run_root 8:00:00 AM",
   );
 });
 
@@ -737,12 +776,15 @@ test("dock add-panel control names itself and dismisses on Escape", async ({ pag
   await openWorkspace(page, { state: "dock-light" });
 
   const add = page.getByRole("button", { name: "Browse panels" });
-  await expect(add).toHaveAttribute("title", "Browse panels");
+  await expect(add).toHaveAccessibleName("Browse panels");
+  await expect(add).toHaveAttribute("aria-expanded", "false");
 
   await add.click();
+  await expect(add).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("listbox")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(add).toHaveAttribute("aria-expanded", "false");
   await expect(add).toBeFocused();
 });
 
@@ -810,7 +852,7 @@ for (const theme of ["light", "dark"] as const) {
 
     await page.evaluate(() => {
       const host = window as unknown as {
-        flameVisualNotify?: (message: string, level?: "info" | "warn" | "error") => void;
+        flameVisualNotify?: (message: string, level: NotificationLevel) => void;
       };
       if (!host.flameVisualNotify) throw new Error("the fixture notifier plugin did not install");
       host.flameVisualNotify("Provider credentials were rejected", "error");
@@ -932,6 +974,7 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   const item = pluginView(page, "schedules")
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Nightly dependency audit", exact: true }) });
+  await item.getByRole("button", { name: "Schedule details", exact: true }).click();
   await expect(item.getByText("0 2 * * *", { exact: true })).toBeVisible();
   const trigger = item.getByRole("button", {
     name: "More actions for Nightly dependency audit",
@@ -963,14 +1006,14 @@ test("the portable trajectory preserves canonical Tool evidence for inspection",
   await expect(tool.getByRole("button", { expanded: false })).toContainText("delegate_task");
   await tool.getByRole("button", { expanded: false }).click();
   await expect(tool).toContainText("Verify package dependencies");
-  await expect(view.getByRole("button", { name: /Cancel|Allow once|Deny/ })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: /^(Cancel|Allow once|Deny)$/ })).toHaveCount(0);
 });
 
 test("choosing a subagent swaps the panel's name for the way back", async ({ page }) => {
   await openWorkspace(page, { state: "dock-subagents" });
   await waitForWorkspaceState(page, "dock-subagents");
 
-  const panel = page.locator('[data-dock-view-id="subagents"]');
+  const panel = dockView(page, "subagents");
   await expect(panel.getByRole("button", { name: "All subagents", exact: true })).toHaveCount(0);
 
   await panel.locator('[data-slot="delegated-run-link"] button').first().click();
@@ -996,9 +1039,8 @@ test("every dock view the app offers is a view some state opens", async ({ page 
   await openWorkspace(page, { state: "dock-catalog" });
   await waitForWorkspaceState(page, "dock-catalog");
 
-  const offered = await page
-    .locator(".agent-context-dock")
-    .getByRole("button")
+  const offered = await dockCatalog(page)
+    .getByRole("option")
     .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? "").trim()).filter(Boolean));
   const opened = new Set(
     Object.entries(DOCK_VIEW_BY_STATE)
@@ -1014,10 +1056,7 @@ test("every dock view the app offers is a view some state opens", async ({ page 
   for (const label of offered) {
     await openWorkspace(page, { state: "dock-catalog" });
     await waitForWorkspaceState(page, "dock-catalog");
-    await page
-      .locator(".agent-context-dock")
-      .getByRole("button", { name: label, exact: true })
-      .click();
+    await dockCatalog(page).getByRole("option", { name: label, exact: true }).click();
     const id = await page.getByTestId("active-dock-view").textContent();
     expect(id).not.toBeNull();
     visited.add(id!);
@@ -1031,7 +1070,9 @@ test("every dock state keeps its visible view within the dock canvas", async ({ 
     await openWorkspace(page, { state: state as VisualWorkspaceState });
     await waitForWorkspaceState(page, state as VisualWorkspaceState);
     const dock = page.locator(".agent-context-dock");
-    const view = dock.locator("[data-dock-view-id]:visible");
+    const view = dock
+      .locator("[data-dock-view-id]:visible")
+      .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
     await expect(view).toHaveCount(1);
     const [canvas, content] = await Promise.all([dock.boundingBox(), view.boundingBox()]);
     expect(canvas, state).not.toBeNull();
@@ -1046,8 +1087,8 @@ test("every dock state keeps its visible view within the dock canvas", async ({ 
 });
 
 for (const answer of [
-  { button: "Allow once", decision: "approve" },
-  { button: "Deny", decision: "deny" },
+  { button: "Allow once", decision: "approve", label: "Approved" },
+  { button: "Deny", decision: "deny", label: "Denied" },
 ] as const) {
   test(`answering an approval with ${answer.button} exposes its retained tool decision`, async ({
     page,
@@ -1056,7 +1097,7 @@ for (const answer of [
     await waitForWorkspaceState(page, "dock-trajectory");
 
     const view = pluginView(page);
-    await expect(view.getByRole("button", { name: /Allow once|Deny/ })).toHaveCount(0);
+    await expect(view.getByRole("button", { name: /^(Allow once|Deny)$/ })).toHaveCount(0);
 
     const workbench = page.locator("main");
     await workbench.getByRole("button", { name: answer.button, exact: true }).click();
@@ -1066,11 +1107,16 @@ for (const answer of [
 
     await view.getByRole("button", { name: "Refresh" }).click();
     const settled = view.locator('[data-trajectory-record="item:item_approval"]');
-    await expect(settled.getByRole("button", { expanded: false })).toContainText(answer.decision);
+    await expect(settled.getByRole("button", { expanded: false })).toContainText(
+      `Approval: ${answer.label}`,
+    );
     await settled.getByRole("button", { expanded: false }).click();
     await expect(settled).toContainText("go test -race ./...");
     await expect(settled.getByText("Approval", { exact: true })).toBeVisible();
-    await expect(settled.getByText(answer.decision, { exact: true }).last()).toBeVisible();
+    await expect(settled.getByText(answer.label, { exact: true })).toBeVisible();
+    await expect(
+      settled.getByRole("region", { name: "Recorded evidence", exact: true }),
+    ).toContainText(`"approvalDecision": "${answer.decision}"`);
   });
 }
 
@@ -1094,7 +1140,7 @@ test("memory cards keep state compact and preserve full record evidence behind d
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`short disclosure actions share a row when their content fits ${theme}`, async ({
+  test(`Schedule menus keep actions aligned with identity and details independent ${theme}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1120, height: 720 });
@@ -1102,14 +1148,24 @@ for (const theme of ["light", "dark"] as const) {
     await waitForWorkspaceState(page, "dock-schedules");
     const card = pluginView(page, "schedules").getByRole("article").first();
     const details = card.getByRole("button", { name: "Schedule details", exact: true });
-    const run = card.getByRole("button", { name: "Run now", exact: true });
-    const summary = (await details.boundingBox())!;
-    const action = (await run.boundingBox())!;
+    const title = card.getByRole("heading", { name: "Nightly dependency audit", exact: true });
+    const menu = card.getByRole("button", {
+      name: "More actions for Nightly dependency audit",
+      exact: true,
+    });
+    const summary = (await title.boundingBox())!;
+    const action = (await menu.boundingBox())!;
     expect(
       Math.min(summary.y + summary.height, action.y + action.height) -
         Math.max(summary.y, action.y),
     ).toBeGreaterThan(0);
     expect(action.x).toBeGreaterThanOrEqual(summary.x + summary.width);
+    await expect(details).toHaveAttribute("aria-expanded", "false");
+    await menu.press("Enter");
+    await expect(page.getByRole("menuitem", { name: "Run now", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeFocused();
+    await expect(details).toHaveAttribute("aria-expanded", "false");
     await details.click();
     await expect(details).toHaveAttribute("aria-expanded", "true");
     await expect(card.getByText("sch_nightly", { exact: true })).toBeVisible();
@@ -1164,22 +1220,23 @@ for (const theme of ["light", "dark"] as const) {
     await openWorkspace(page, { state: "dock-files", theme });
     await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
     const document = page.locator('[data-slot="document-body"]');
-    const view = page.locator('[data-dock-view-id="file"]');
+    const view = dockView(page, "file");
     await expect(view.getByRole("heading", { name: "README.md", exact: true })).toHaveCount(0);
     await expect(view.getByText("Captured file content", { exact: true })).toHaveCount(0);
     const header = view.locator('[data-slot="workspace-view-header"]');
     await expect(header).toContainText("24 lines");
+    await expect(view.locator('[data-slot="file-path"]')).toHaveText("README.md");
     await expect(
       document.getByRole("heading", { name: "Workspace notes", exact: true }),
     ).toBeVisible();
     const introduction = await document.evaluate((node) => {
       const host = node.closest('[data-dock-view-id="file"]')!;
-      const header = host.querySelector('[data-slot="workspace-view-header"]')!;
+      const path = host.querySelector('[data-slot="file-path"]')!;
       const content = node.closest('[data-slot="panel"]')!.firstElementChild!;
       return {
         gap:
           node.querySelector("h1")!.getBoundingClientRect().top -
-          header.getBoundingClientRect().bottom,
+          path.getBoundingClientRect().bottom,
         inset: Number.parseFloat(getComputedStyle(content).paddingBlockStart),
       };
     });
@@ -1215,6 +1272,7 @@ test("bounded schedule fields and submission remain reachable by keyboard", asyn
   const title = editor.getByRole("textbox", { name: "Title", exact: true });
   const instructions = editor.getByRole("textbox", { name: "Instructions", exact: true });
   const cron = editor.getByRole("textbox", { name: "Cron expression", exact: true });
+  const timeZone = editor.getByRole("textbox", { name: "Time zone", exact: true });
   const workspace = editor.getByRole("textbox", { name: "Workspace path", exact: true });
   const model = editor.getByRole("combobox", { name: "Model", exact: true });
   const save = editor.getByRole("button", { name: "Save schedule", exact: true });
@@ -1230,6 +1288,9 @@ test("bounded schedule fields and submission remain reachable by keyboard", asyn
   await expect(cron).toBeFocused();
   await cron.fill("0 9 * * 1");
   await cron.press("Tab");
+  await expect(timeZone).toBeFocused();
+  await expect(timeZone).toHaveValue("UTC");
+  await timeZone.press("Tab");
   await expect(workspace).toBeFocused();
   await workspace.press("Tab");
   await expect(editor.getByRole("checkbox", { name: "Enabled" })).toBeFocused();

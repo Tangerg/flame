@@ -14,7 +14,9 @@ const ROUTE_BUDGET_MS = 90_000;
 
 const MAX_DISTINCT_ANSWERS = 8;
 
-const MAY_ANSWER_NOTHING = 'input, textarea, [role="switch"], [role="checkbox"]';
+// A selected radio already carries the current choice; hovering it offers no new choice.
+const MAY_ANSWER_NOTHING =
+  'input, textarea, [role="switch"], [role="checkbox"], [role="radio"][aria-checked="true"]';
 
 const VISIBLE_STATE = `(el) => {
   const s = getComputedStyle(el);
@@ -121,6 +123,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
           skip:
             node.matches(':disabled, [aria-disabled="true"]') ||
             node.matches('input[type="range"]') ||
+            node.closest('[inert], [aria-hidden="true"]') !== null ||
             style.pointerEvents === "none" ||
             style.opacity === "0",
           label: (node.getAttribute("aria-label") ?? node.textContent ?? "")
@@ -224,3 +227,60 @@ test("a tooltip opening does not press the button under the pointer", async ({ p
   await page.waitForTimeout(250);
   expect(await copy.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hovered);
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`a focused tooltip leaves overlapping workspace tabs pointer-reachable in ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1472, height: 900 });
+    await page.goto(
+      `/lab/fixture.html?fixture=workspace&state=dock-light&theme=${theme}&font-size=14`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const back = page.getByRole("button", { name: "Back to files", exact: true });
+    await back.focus();
+    const tooltip = page.getByRole("tooltip", { name: "Back to files", exact: true });
+    await expect(tooltip).toBeVisible();
+    const tab = page.getByRole("tab", { name: "Files", exact: true });
+    const tip = (await tooltip.boundingBox())!;
+    const target = (await tab.boundingBox())!;
+    const left = Math.max(tip.x, target.x);
+    const right = Math.min(tip.x + tip.width, target.x + target.width);
+    const top = Math.max(tip.y, target.y);
+    const bottom = Math.min(tip.y + tip.height, target.y + target.height);
+    expect(right - left).toBeGreaterThan(0);
+    expect(bottom - top).toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        tab.evaluate((node, point) => node.contains(document.elementFromPoint(point.x, point.y)), {
+          x: (left + right) / 2,
+          y: (top + bottom) / 2,
+        }),
+      )
+      .toBe(true);
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Session trajectory", exact: true }).click();
+    await expect(
+      page.getByRole("tab", { name: "Session trajectory", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
+  });
+
+  test(`a hover tooltip remains readable when the pointer enters its content in ${theme}`, async ({
+    page,
+  }) => {
+    await page.goto(`/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    const copy = page.getByRole("button", { name: "Copy message", exact: true }).last();
+    await copy.hover();
+    const tooltip = page
+      .getByRole("tooltip", { name: "Copy message", exact: true })
+      .and(page.locator("[data-open]"));
+    await expect(tooltip).toBeVisible();
+    await expect(copy).toHaveAttribute("data-popup-open", "");
+    await tooltip.hover();
+    await page.waitForTimeout(300);
+    await expect(tooltip).toBeVisible();
+    await expect(copy).toHaveAttribute("data-popup-open", "");
+  });
+}

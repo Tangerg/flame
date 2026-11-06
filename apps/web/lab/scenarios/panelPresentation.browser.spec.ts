@@ -8,7 +8,9 @@ for (const theme of ["light", "dark"]) {
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=18`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    const view = page.locator('[data-dock-view-id="package:visual:diff"]');
+    const view = page
+      .locator('[data-dock-view-id="package:visual:diff"]')
+      .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
     const viewport = view.locator('[data-slot="workspace-view-body"]');
     const heading = view.getByRole("heading", { name: "Workspace diff", exact: true });
     await expect(heading).toHaveCount(1);

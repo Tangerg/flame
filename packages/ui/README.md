@@ -60,6 +60,9 @@ keep their existing presentation.
 that reveal a label only while it is truncated keep the same trigger mounted
 and disable its tooltip when the complete text fits. Plain `Tooltip` labels wrap
 unbroken paths and identifiers within their existing bounded width.
+Focus-opened tips retain their keyboard owner while pointer activation passes
+through to overlapping controls. Hover-opened tips remain pointer-reachable,
+so moving from a trigger into its supporting text keeps it readable.
 
 `Popover` owns the same portal, floating surface, Base UI nesting and focus
 contract for application controls and portable views. Focus-managed floating

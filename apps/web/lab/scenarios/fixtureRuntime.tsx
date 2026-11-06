@@ -7,7 +7,7 @@ import {
   VISUAL_REMOVE_SCHEDULE_EVENT,
   createVisualRuntimeTransport,
 } from "./createVisualRuntimeTransport";
-import { LONG_MODEL_FACTS } from "./runtimeSnapshots";
+import { LONG_MODEL_FACTS, SCROLLING_MODEL_FACTS } from "./runtimeSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -213,7 +213,12 @@ async function installVisualRuntimeClient(
 ): Promise<FlameClient> {
   const transport = createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
     acceptSkillProposals,
-    modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
+    modelFacts:
+      workspaceState === "dock-schedules-models"
+        ? SCROLLING_MODEL_FACTS
+        : query.has("long-models")
+          ? LONG_MODEL_FACTS
+          : undefined,
     mcpServers: query.has("mcp-transport")
       ? [
           {

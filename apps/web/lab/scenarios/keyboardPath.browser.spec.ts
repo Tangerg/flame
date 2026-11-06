@@ -188,12 +188,11 @@ test("a context menu opens from the keyboard and hands focus back", async ({ pag
   const row = page.getByRole("button", { name: /^Refine Runtime protocol/ }).first();
   await row.focus();
   await page.keyboard.press("Shift+F10");
-  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+  const menu = page.getByRole("menu", { name: "Refine Runtime protocol", exact: true });
+  await expect(menu.getByRole("menuitem", { name: "Unpin", exact: true })).toBeVisible();
   const ink = (name: string) =>
-    page.getByRole("menuitem", { name }).evaluate((el) => getComputedStyle(el).color);
-  expect(await ink("Delete"), "a destructive item says so in its ink").not.toBe(
-    await ink("Rename"),
-  );
+    menu.getByRole("menuitem", { name, exact: true }).evaluate((el) => getComputedStyle(el).color);
+  expect(await ink("Delete"), "a destructive item says so in its ink").not.toBe(await ink("Unpin"));
   await expect
     .poll(
       () => page.evaluate(() => Boolean(document.activeElement?.closest('[role="menu"]'))),

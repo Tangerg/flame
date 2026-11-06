@@ -80,7 +80,7 @@ for (const theme of ["light", "dark"]) {
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     const summary = view.locator('[data-slot="panel-controls"]');
     const worktree = page.getByRole("button", {
-      name: "Review working tree changes (2)",
+      name: "Review working tree changes (2) +25 −9",
       exact: true,
     });
     const inks = async (root: typeof summary, added: string, removed: string) =>

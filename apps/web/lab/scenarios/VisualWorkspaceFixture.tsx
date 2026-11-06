@@ -25,6 +25,7 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-skills": "Skills",
   "dock-usage": "Usage",
   "dock-schedules": "Schedules",
+  "dock-schedules-models": "Schedules · model choices",
   "dock-agent-memory": "Agent memory",
   "dock-feature-off": "Features off",
   "dock-file": "File viewer",

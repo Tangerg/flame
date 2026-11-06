@@ -191,10 +191,10 @@ test.describe("compact Memory editing", () => {
 test("a body-owned Select portal retains its own focus and scrolling", async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 360 });
   await page.goto(
-    "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&font-size=18&theme=dark",
+    "/lab/fixture.html?fixture=workspace&state=dock-schedules-models&sidebar=collapsed&font-size=18&theme=dark",
   );
   await page.locator("html[data-visual-ready]").waitFor();
-  await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+  await page.getByRole("button", { name: /^Open material full width/ }).click();
   const panel = page
     .getByRole("region", { name: "Schedules", exact: true })
     .and(page.locator('[data-slot="panel"]'));
@@ -202,18 +202,6 @@ test("a body-owned Select portal retains its own focus and scrolling", async ({ 
   await expect(add).toBeEnabled();
   await add.click();
   const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
-  await page.evaluate(async () => {
-    const modulePath = "/lab/scenarios/runtimeSnapshots.ts";
-    const { VISUAL_MODELS }: typeof import("./runtimeSnapshots") = await import(modulePath);
-    const original = VISUAL_MODELS[0]!;
-    VISUAL_MODELS.push(
-      ...Array.from({ length: 20 }, (_, index) => ({
-        ...original,
-        id: `panel-focus-${index}`,
-        displayName: `Panel focus model ${index}`,
-      })),
-    );
-  });
   const refresh = editor.getByRole("button", { name: "Refresh model choices", exact: true });
   await refresh.click();
   await expect(refresh).toBeEnabled();
@@ -221,6 +209,7 @@ test("a body-owned Select portal retains its own focus and scrolling", async ({ 
   const popup = page.getByRole("listbox");
   const last = popup.getByRole("option", { name: "openai / Panel focus model 19", exact: true });
   await model.click();
+  await expect(popup.getByRole("option")).toHaveCount(22);
   await expect(
     popup.getByRole("option", { name: "Runtime default model", exact: true }),
   ).toBeFocused();

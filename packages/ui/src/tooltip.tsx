@@ -6,11 +6,16 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
 const tip = stylex.create({
+  layer: { pointerEvents: "none" },
   measure: {
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
     fontFamily: "var(--font-sans)",
     lineHeight: leading.snug,
+    pointerEvents: {
+      default: "auto",
+      ':is([data-instant="focus"])': "none",
+    },
   },
   label: { maxWidth: "280px", overflowWrap: "anywhere" },
 });
@@ -84,7 +89,7 @@ export function RichTooltip({
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Positioner
-          {...stylex.props(FLOATING_LAYER)}
+          {...stylex.props(FLOATING_LAYER, tip.layer)}
           side={side}
           sideOffset={sideOffset}
         >

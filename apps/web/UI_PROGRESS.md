@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **96** tracked browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The retained ten content-layout failures are resolved: **57 related Lab checks pass**, followed by **31 affected checks** after loading the published working-tree action. All **49 report captures** are reviewed. Web verification passes **431 files / 4,743 tests** across stages, and supported native checks pass. Actual Wails review covers search, Diff entry, source columns, exact return and continued drafts, including Chinese/dark at 18 px/200%. See **Lab search and Diff verification contracts (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **96** tracked browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest **127 related Workspace/shared-control cases pass across stages**, and all **40 current Workspace captures** are reviewed. Full UI and Web checks pass, including **431 Web files / 4,743 tests**. Full plugin and supported native checks also pass. Actual Wails review qualifies panel navigation, Schedule model selection, tooltip/tab pointer access, the working-tree action name and exact return to continued drafts, including native 200%. See **Workspace navigation and shared control regression (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,88 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Workspace navigation and shared control regression (2026-11-07)
+
+At main `9bfe1c0b7`, a focused six-spec audit passes **62 / 92**.
+Current source explains obsolete view/trigger selectors, expanded-Diff and
+Schedule-action assumptions, localized trajectory facts, and the added Time zone
+field. The updated checks retain object identity, canonical evidence, catalog
+coverage, alignment, keyboard order and exact return instead of requiring the
+old presentation. Header chrome uses its existing focus fill; tree rows retain
+the shared outline.
+
+Judgment follows better-accessibility/better-layout guidance, WCAG label-in-name
+and the installed Base UI popup/Radio contracts.
+
+The same audit exposes two production defects. A focus-opened shared tooltip
+covers the Files tab and intercepts its pointer. The tooltip positioner now
+passes pointer activation through; its popup does so only for Base UI's public
+focus-open state. Hover-opened tips remain reachable for reading. Four same-Lab
+regressions check actual geometric overlap/hit testing, tab switching and
+pointer movement into tooltip text in both themes. Axe also finds the published
+working-tree action's visible `+25 −9` missing from its accessible name. Native
+labelling now references its localized purpose and the existing visible totals
+or file count; no duplicate number formatting or state owner is introduced.
+
+Two fixture defects are repaired at their source. The notification adapter
+forwards the requested level. The named `dock-schedules-models` variant captures
+its model facts before the transport clones them, replacing mutation of the
+seed after capture. This same catalog entry exercises 22 choices, End/Return,
+selected-option reveal, popup scrolling and Escape/Cancel return. No additional
+visual app, runner or scenario registry is added; the catalog still has 43
+stories, with 20 Workspace variants. The hover sweep respects inert content and
+modal-hidden background while retaining hit/feedback checks on active controls.
+Selected radios retain their existing choice/backplate, like native radio inputs;
+unselected options still have to answer hover. Active-tooltip checks bind to the
+open popup while its predecessor finishes exiting.
+
+The selected **127 Lab cases now pass across stages**: the expanded invocation
+passes **125 / 127**, the affected rerun passes **8 / 9**, and the final hover
+sweep passes **1 / 1**, reaching **182 controls** with no failed pointer targets.
+The final rerun resolves the remaining selected-radio audit expectation. These
+are scoped, combined results; no single green 127-case invocation is claimed.
+All **40 current Workspace captures** are reviewed: 36 are byte-identical to the
+reviewed preceding generation, and the four changed Diff captures are reviewed
+at full resolution with their current read times. All 20 Workspace variants
+cover English/light/14 px and Chinese/dark/18 px. No retries or skipped cases
+are introduced. The bounded Claude Code CLI reaches its turn limit after initial
+spec edits; primary implementation, review and verification finish the batch.
+
+Native Wails uses the current built Lab and real DesktopHost, menu and zoom in
+a private app/data identity. English/light/18 px exercises the panel picker,
+Memory draft, cancellation, source return and continued conversation through
+narrowing and native 200%. Chinese/dark/custom Purple/18 px/200% exercises the
+Schedule object menu, current field order/local time zone, 22 model choices,
+End/Return selection, Space reopening, Escape to Model and Cancel to Add,
+then returns to a continued draft. The final repaired build verifies pointer
+activation through the focused tooltip, Files/trajectory switching, the full
+working-tree action name and two-file overview, native 200% and exact draft
+continuation. All 15 separate screenshot/AX records are reviewed; 14 captures
+qualify these tasks. The first direct URL's unregistered `zh-CN` and a misnamed
+Space probe that targeted the editor body are excluded; final native entry uses
+registered `zh` and explicit selector activation.
+
+The full UI check passes **14 files / 247 tests** plus the independent packed
+consumer test. The full Web check passes **431 files / 4,743 tests** and all
+subsequent package checks, including the production build. Full plugin checks
+pass **47 script tests** and **44 files / 633 source tests**;
+17 existing Linux-only tests in two unchanged files remain skipped on macOS.
+The supported **make check-native passes**, including the Wails build and
+Desktop test/vet/build. Existing macOS linker warnings remain.
+
+The root complexity check retains only unchanged ProviderRow 31-to-34 growth;
+its threshold is not raised. No complete migrated interaction-suite pass,
+whole-product acceptance, live Schedule save/provider action/message send,
+VoiceOver, native IME or optional performance result is claimed. The private
+app is unregistered, its owned server has exited, six private Library paths and
+the ordinary native temp root return to absence. Three pre-existing helper roots
+retain their identities and modes; only four new empty Networking children are
+removed. All twelve output/cache roots return to their original contents and
+modes or absence, including the pre-existing older UI build. Qualification files are
+retired after verified in-memory evidence retention. The primary checkout,
+including its committed go.work.sum, stays unchanged. No functional checks run
+against the restored older UI output.
 
 ### Lab search and Diff verification contracts (2026-11-07)
 
@@ -477,12 +559,15 @@ qualification is recorded above. The current Chinese native Window Zoom flow
 does not reproduce the prior jump; the empty
 Chinese selection heading is repaired and qualified. The far-right sorting
 control now retains complete horizontal visibility through native Window Zoom.
-Next triage the ten retained content-layout failures and the remaining migrated
-interactions through this same Lab; distinguish obsolete assumptions from real
-navigation or layout defects before changing assertions.
+The retained content-layout failures and selected Workspace navigation and
+shared control failures are now resolved within the scopes above. Four current Diff
+captures vary with their accepted read time while the other 36 are byte-identical;
+next inspect fixture-owned time determinism, then continue the remaining migrated
+interaction triage through this same Lab. Preserve production time semantics and
+distinguish obsolete assumptions from real navigation or layout defects.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
-The primary checkout's unrelated `go.work.sum` changes are preserved. The user
+The primary checkout, including its committed `go.work.sum`, is preserved. The user
 resumed the goal; no milestone pause is currently requested.
 
 An explicitly empty captured command page continues to show **No output.** /
