@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Fresh remote/local main merges remain up to date at `204190cf5`, including the requested user changes through `a4015b243`. Captured shell-page metadata now has actual English/Chinese Wails reading coverage through expansion, Find, native 200% zoom and continued draft carets; no new actionable alignment defect is found in that flow. All 126 focused tests and 11 serial preparation checks pass, with all 6,655 non-Markdown inputs unchanged. See **Captured shell page reading after main (2026-11-06)**. Preserve the shared controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Empty captured output now shows a concise localized state, retaining its source metadata while keeping arguments secondary. All 4,578 frontend tests, 168 focused tests and 24 final serial gates pass; actual English/Chinese Wails reading and draft-return tasks pass at native 200%, with an additional smaller-height Chinese window. See **Empty captured output and secondary arguments (2026-11-06)**. The requested main changes remain included and the primary checkout is preserved. The user requested a milestone pause after this delivery and cleanup; whole-product acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -17,16 +17,17 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The renewed captured shell-page review on `204190cf5` finds no new alignment or
-return defect in the inspected English light/14 px and Chinese dark/18 px tasks.
-Both cover native 200% reading, complete page provenance, local Find, caption/row
-closure and continued draft carets. Chinese also covers the native Top Left
-window arrangement. The 126 focused tests and all 11 serial preparation checks
-pass; fresh remote/local main merges remain up to date. See **Captured shell page
-reading after main (2026-11-06)**. Product inputs stay unchanged, and the primary
-checkout's main `a4015b243` remains clean and untouched. Owned qualification
-resources are retired. Continue from actual task evidence; whole-product
-acceptance remains open.
+An explicitly empty captured command page now shows **No output.** / **无输出。**
+through existing Metadata, preserving range, shell identity and terminal status.
+Its specialized result keeps arguments collapsed until requested; generic empty
+results retain their existing defaults. All 4,578 frontend tests, 168 focused
+tests and 24 final serial gates pass. Native EN/light/14 px and ZH/dark/18 px
+reading/parameter/draft-return tasks pass at 200%, including a separate smaller
+Chinese window. See **Empty captured output and secondary arguments
+(2026-11-06)**. The requested main updates are included; the primary checkout's
+main `a4015b243` stays clean and untouched. The user has requested a milestone
+pause after publication and cleanup. Await the user's next direction; the
+whole-product UI goal remains unfinished.
 
 Command-menu names now wrap in their existing text track, preserving shortcut
 width. The shared overlay hands its captured opener to view navigation, allowing
@@ -23605,6 +23606,113 @@ and endpoint are inactive. The in-memory, round-trip-verified gzip retains
 SHA-256 `b4ff0ef3b2b98589e57f33a3565e8b9c7c96c1cde3e390ba1cf11cbce75c2104`.
 Scoped Prettier and diff checks pass. Continue inspecting other task paths from
 fresh evidence; this bounded flow has no justified product repair.
+
+#### Empty captured output and secondary arguments (2026-11-06)
+
+The follow-up inspects a different source boundary: a settled command whose
+captured `output` is explicitly the empty string. Original Wails on `06a254812`
+preserves the correct zero-byte range and terminal status, but puts them above
+a blank Output frame with a Copy action and automatically expanded arguments.
+At normal size and native 200%, the empty frame and duplicate command JSON
+overstate supporting details. This is a MEDIUM hierarchy issue; no output loss
+or failed execution is inferred from the empty body.
+
+| Severity         | Domain           | Location                                                                                                | Before                                                                                                      | After                                                                                                           | Why                                                                                                              |
+| ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| MEDIUM, repaired | Layout / writing | `plugins/tool-results/component/component.tsx`; `apps/web/src/features/chat/tools/ui/ToolInspector.tsx` | Explicit empty output mounts an empty reader; the host bases argument disclosure only on nonempty raw text. | The existing Metadata presents the empty state, and an installed result presentation keeps arguments secondary. | An empty captured result still has meaning and provenance; supporting JSON should not dominate its reading task. |
+
+`RecordedResult` checks only the exact empty string before mounting
+`RecordedOutput`. Its existing `RecordMeta` stays intact. Eight catalogs supply
+`output.empty`; every nonempty string, including whitespace and blank lines,
+retains the existing reader. `ToolInspector` includes the existing `children`
+presentation in its Arguments default, without changing generic body rendering.
+Generic absent/empty results keep immediately readable arguments, and the
+existing Disclosure continues to own manual state. No new style, state, event
+handler, focus repair, wrapper, shared API, protocol or persistence migration is
+introduced. The normal builder regenerates the Tool-results ESM; all other
+tracked non-Markdown inputs outside the **13** intended files remain unchanged.
+
+Read-only ZCode `ToolCallBlocks/renderers/ExecuteOutput.tsx` keeps literal output
+as bounded supporting evidence, without supplying Flame's empty-page semantics.
+The prior HeroUI/Arc/Radix/ChatGPT/Ace research retains its recorded scope.
+Better-interface's six owning domains guide the existing React, Base UI-backed
+controls, StyleX and semantic-token composition:
+
+| Domain        | Evidence inspected                                                                           | Scoped result                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native named controls, Tab/Return into Arguments, keyboard reading and ordinary Cmd+L return | The exercised task retains accessible entry and draft focus; VoiceOver speech and physical IME remain unverified. |
+| Layout        | Matched original/candidate EN, ZH 18 px, native 200% and smaller-height reading              | Empty framing is removed; source and requested parameter reading remain reachable in inspected scenes.            |
+| Writing       | Eight `output.empty` catalogs, native EN/ZH status and source facts                          | The empty result is explicit and localized; producer status remains literal.                                      |
+| Typography    | Shared Metadata/RecordMeta, literal parameter JSON, 14/18 px and 200%                        | Existing roles and leading edges are retained; no type-system change.                                             |
+| Color         | Light/Orange and dark/custom `#6699FF`, visible keyboard focus                               | Existing semantic colors retained; no fresh numerical contrast measurement.                                       |
+| UI polish     | Removed blank surface/action, progressive parameters and continued drafts                    | No new animation; full/off motion and existing disclosure ownership remain.                                       |
+
+Verification:
+
+- The original six-file baseline passes **148 tests** in **6.951 s**. Eight
+  added regressions cover both command renderer names in EN/ZH, nonempty
+  whitespace, specialized empty-result arguments and generic empty-result
+  defaults. The original implementation fails **5** of **97** tests in the two
+  changed test files, with **92** passing. Candidate focused checks pass
+  **8 files / 168 tests**, **9.858 s**. The first focused command includes a
+  nonexistent recorded-wrapper filename; the actual eight-file count is used.
+  The complete frontend run includes the real installed-component suite.
+- All **424 frontend files / 4,578 tests** pass in **364.360 s**. All **24**
+  final serial gates pass: scoped formatting and resource building; plugin
+  typecheck/lint/format/i18n/exact resources; Web typecheck/lint/frontend/format,
+  knip, design-system, tokens, chrome, styles, classes, locales, layers,
+  port-surface, bundle and plugin modules; supported `make check-native`
+  (**30.724 s**); and final private assets. The unchanged iframe-loading denial
+  in happy-dom and native linker/build notices remain non-failing. Broad
+  Runtime/CLI/backend suites, browser visual suites and benchmarks are not run.
+- Bounded Read/Edit-only Claude CLI returns in **46.273 s** with **10** denied
+  Edit calls and no file changes: its path permissions did not match. Primary
+  implements the reviewed patch and all tests directly. No CLI completion
+  report substitutes for verification.
+- The private canonical shell result is `output: ""`, exit **0**, range
+  **[18385, 18385)**, the original shell UUID and `finished (exit 0)`, with both
+  continuation/failure flags false. Its normal fold and installed wrapper load
+  the normally built Tool-results ESM. No live process is executed, and no
+  product handler, DOM observer or focus policy is replaced.
+- Actual **Wails v3.1.0**, EN/light/14 px/Orange/full motion: normal and 200%
+  captures show complete source metadata, **No output.** and initially collapsed
+  Arguments, with no empty reader/Copy action. Tab/Return and then Tab reach the
+  complete parameter JSON. Closure and ordinary Cmd+L preserve the original
+  insertion point: `Keep the empty page draft.` becomes
+  `Keep Continued. the empty page draft.`. Final stable capture is **2240 × 1720**.
+- ZH/dark/18 px/custom blue/motion off: **无输出。**, source metadata and collapsed
+  参数 pass at normal size and 200%. Keyboard entry exposes the complete JSON;
+  Shift+Tab returns to 参数, Return closes it, and Cmd+L restores Composer.
+  `保留原始草稿。` becomes `保留检查后的原始草稿。` at the retained insertion point.
+  A separate frozen private-host height of **720** produces the smaller
+  **2238 × 1508** Retina capture. At 200%, named argument reading and End reach
+  the closing brace, and the original draft continues as
+  `最小窗口检查草稿。继续。`. Four private build/format/signature steps pass for
+  that height input with identical Web assets.
+
+Three transient small captures are excluded from geometry evidence. The native
+Window-menu/pointer resize attempts do not establish a stable changed frame;
+the smaller-height qualification uses a separate constructor input. Menu setup
+also changes the open row/focus in one EN sequence, with no established cause;
+200% acceptance qualifies reading after explicit entry, not zoom-state retention.
+Interactive resize continuity, fresh 320 CSS px reading, RTL/forced colors,
+other native locales/platforms and native clipboard writes remain unverified.
+**Approve** covers the repaired empty-result hierarchy and inspected task only;
+whole-product and award-level acceptance remain open.
+
+All **6,642** other product inputs, read-only references and the primary checkout
+are preserved. Cleanup restores **12** output/cache baselines and **3,773**
+pre-existing files, removes **2,126** new Vitest cache files plus four owned native
+build files, and retires **17** unique-bundle Library files. The app is
+unregistered and all six bundle-specific Library paths are absent. Private-root
+retirement removes **4,301** verified files, **63** empty directories and one
+CLI-generated log link after checking its exact private target without following
+it. The native process and endpoint are inactive. The round-trip-verified memory
+archive retains **164** UTF-8 records and **17** native image metadata records,
+**1,377,379 bytes**, SHA-256
+`c187d4f9a56c9c03dd7c756cb7e7fd2d803354db5654d78660e590ebf2c307d3`.
+This closes the current batch for the user-requested milestone pause; resume
+only with the user's next direction.
 
 ### Recorded result filter position
 

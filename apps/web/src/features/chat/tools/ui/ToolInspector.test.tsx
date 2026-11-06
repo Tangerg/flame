@@ -92,6 +92,30 @@ describe("ToolInspector", () => {
     expect(container.querySelector("script, component, a")).toBeNull();
   });
 
+  it("keeps arguments secondary when an empty captured result has its own presentation", async () => {
+    const call = tool({ result: "" });
+    testClient.render(
+      <ToolInspector tool={call}>{() => <p>Captured empty page</p>}</ToolInspector>,
+    );
+    expect(screen.getByText("Captured empty page")).toBeTruthy();
+    const argumentsToggle = screen.getByRole("button", { name: "Arguments" });
+    expect(argumentsToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("region", { name: "Arguments" })).toBeNull();
+    fireEvent.click(argumentsToggle);
+    expect((await screen.findByRole("region", { name: "Arguments" })).textContent).toBe(
+      JSON.stringify(JSON.parse(call.args), null, 2),
+    );
+  });
+
+  it("keeps empty generic results and their arguments immediately readable", () => {
+    testClient.render(<ToolInspector tool={tool({ result: "" })} />);
+    expect(screen.getByText("(no result body — tool returned empty)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Arguments" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("region", { name: "Arguments" })).toBeTruthy();
+  });
+
   it("presents and copies the exact JSON tokens the tool reported", async () => {
     const call = tool({
       args: String.raw`{"id":9007199254740993,"label":"caf\u00e9 \"{x}\"","id":18446744073709551615}`,

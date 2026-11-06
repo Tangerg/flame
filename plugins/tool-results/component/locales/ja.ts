@@ -12,6 +12,7 @@ export const ja: Record<string, string> = {
   "action.copied": "コピーしました",
   "action.wrap": "折り返しを有効にする",
   "action.unwrap": "折り返しを無効にする",
+  "output.empty": "出力なし。",
   "output.copy": "出力をコピー",
   "output.showEarlier_other": "前の {{count}} 行を表示 · 合計 {{total}} 行",
   "output.collapse": "折りたたむ",

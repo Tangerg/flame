@@ -12,6 +12,7 @@ export const ko: Record<string, string> = {
   "action.copied": "복사됨",
   "action.wrap": "자동 줄 바꿈 사용",
   "action.unwrap": "자동 줄 바꿈 사용 안 함",
+  "output.empty": "출력 없음.",
   "output.copy": "출력 복사",
   "output.showEarlier_other": "이전 {{count}}줄 보기 · 총 {{total}}줄",
   "output.collapse": "접기",

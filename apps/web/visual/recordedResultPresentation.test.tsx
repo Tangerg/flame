@@ -133,6 +133,47 @@ it.each(["shell", "read_shell_output"])(
   },
 );
 
+it.each(
+  ["shell", "read_shell_output"].flatMap((name) =>
+    [
+      { locale: "en", empty: "No output.", range: "Byte range [18385, 18385)" },
+      { locale: "zh", empty: "无输出。", range: "字节范围 [18385, 18385)" },
+    ].map((language) => ({ name, ...language })),
+  ),
+)(
+  "describes an empty $name page in $locale without an empty reader",
+  ({ name, locale, empty, range }) => {
+    testClient.render(
+      <RecordedResult
+        context={capturedContext(name, "", undefined, locale, {
+          shellId: "original",
+          offset: 18385,
+          nextOffset: 18385,
+          hasMore: false,
+          dropped: false,
+          status: "finished (exit 0)",
+        })}
+      />,
+    );
+    expect(screen.getByText(empty)).toBeTruthy();
+    const metadata = screen.getByText(range, { exact: false });
+    expect(metadata.textContent).toContain("Shell original");
+    expect(metadata.textContent).toContain("finished (exit 0)");
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  },
+);
+
+it.each(["shell", "read_shell_output"])(
+  "keeps nonempty whitespace in the %s output reader",
+  (name) => {
+    testClient.render(<RecordedResult context={capturedContext(name, "\n \t \n")} />);
+    expect(screen.getByRole("region", { name: "Tool output preview" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy output" })).toBeTruthy();
+    expect(screen.queryByText("No output.")).toBeNull();
+  },
+);
+
 it.each([
   { name: "codeintel_lsp", id: "lsp", result: "src/main.go:3:1" },
   { name: "web_http_request", id: "http-request", result: '{"status":200}' },

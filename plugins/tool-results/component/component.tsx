@@ -839,7 +839,11 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
             {tool.outputPage.dropped && ` · ${t("output.incomplete")}`}
           </RecordMeta>
         )}
-        <RecordedOutput text={content.text} t={t} />
+        {content.text === "" ? (
+          <Metadata>{t("output.empty")}</Metadata>
+        ) : (
+          <RecordedOutput text={content.text} t={t} />
+        )}
       </>
     );
   return (
