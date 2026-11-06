@@ -218,6 +218,11 @@ text rectangles and table before asserting that the short selection label stays
 on one line. Clearing restores search focus and the selected row while retaining
 the independent Composer draft. English authored headings keep their existing
 whole-word and wide-table reading checks in the same scenario suite.
+The same report supplies horizontal focus regressions for Chromium and WebKit.
+Keyboard entry and narrowing must reveal the complete final sorting control;
+manual horizontal reading and later Composer focus must retain their positions
+through resizing. These checks use the existing Lab fixture, shared console
+checks and browser configuration, without another visual runner or test app.
 
 Largest-font transcript audits open inline disclosures within the transcript,
 including newly mounted arguments and full output. Each click retains the

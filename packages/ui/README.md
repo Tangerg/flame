@@ -505,6 +505,14 @@ it moves its own horizontal position by 10% of its visible width, including at
 either boundary. Child controls, composing or modified keys and vertical reading
 retain their existing behavior. Caller key handlers run first and can prevent this
 default. The DOM scroll position remains the only owner of the reading position.
+A fitting focused descendant is revealed within this reader's inner horizontal
+clip after keyboard or programmatic entry, and remains visible when the reader
+or control resizes. This moves only the reader's horizontal DOM position;
+focus, values and enclosing vertical reading remain with their existing owners.
+A horizontal wheel gesture or a moved scrollbar that leaves the control behind
+retires following until a new focus entry. Outside focus, inactive content and
+unmount also retire it.
+Pointer-caused focus does not move a pressed control before activation finishes.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.

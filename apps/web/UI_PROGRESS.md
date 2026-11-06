@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. Short Chinese selection headings now stay intact through an empty report search. The current report and sandbox qualification passes **12 checks**, with all **25 report captures** reviewed, plus the complete plugin gate, **113 GenUI unit tests**, Web typecheck/lint and supported native checks. Actual Wails tasks confirm the repaired heading at 18 px/200%, retained selection, clear focus and continued drafts in Chinese/dark and English/light. See **Intrinsic table headings and Agent reading frames (2026-11-07)** for the qualifications and remaining horizontal focus-reveal observation. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner; the current-source audit confirms the migration is complete. Horizontal reader focus now stays revealed through narrow resizing. Eight focused Lab checks pass; the broader run records **39 passed / 10 failed**, with all **49 report captures** reviewed. Complete UI, Web and plugin gates and supported native checks pass. Actual Wails tasks qualify the horizontal focus repair at 18 px/200% in English/light and Chinese/dark, retaining selection, clear focus and continued drafts. See **Horizontal reader focus and shrinking windows (2026-11-07)** for the results and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -18,6 +18,10 @@ Settings, Sidebar, Computer and installed-composition scenes.
 The former `visual/` directory, standalone visual/composition HTML entries,
 four browser/performance configurations and separate composition Vite
 configuration are removed. There are no compatibility routes or command aliases.
+The current-source audit also finds no browser, capture or performance specs
+outside `lab/`, no tracked paths in the former `visual/` directory, and only the
+single Lab Playwright configuration. Migration is complete; full interaction
+qualification and whole-product visual coverage remain separate, unfinished work.
 `vite.lab.config.ts` builds the gallery, component preview and complete fixture
 documents together. `playwright.lab.config.ts` owns captures, migrated browser
 interactions, WebKit and optional existing measurements. Build and development
@@ -279,6 +283,82 @@ TableView and generated installed component differ. The primary checkout's
 unrelated `go.work.sum` bytes and status remain unchanged. No user-data migration
 is required.
 
+### Horizontal reader focus and shrinking windows (2026-11-07)
+
+The next native baseline reproduces the final sorting control's clipping in
+seven full-resolution captures. At 18 px and native 200%, Window Zoom expands
+the frame from 2878×1798 to 3024×1898; the final Review decision button fits.
+Restoring the narrower frame clips its right edge without moving focus.
+Expanding and shrinking repeats the defect, and keyboard re-entry does not
+fully reveal it. This establishes the defect beyond the prior reduced capture.
+
+The same registered report supplies four failing Lab regressions. WebKit leaves
+35.71875 CSS pixels clipped after narrowing; Chromium already clips 56.65625
+pixels on initial keyboard entry. `genuiFocus.ts` shares the real selection,
+empty-search clear, sorting and Composer draft path. Chromium and WebKit use
+the existing Lab configuration and console fixture, with no independent browser
+launch or added fixture registry. Browser CSS-frame changes do not substitute
+for native page zoom.
+
+The shared `ScrollRegion` now reveals a fitting focused descendant through its
+own horizontal DOM position and observes the reader and focused control for
+reflow. Its stable native ref, caller keys, div/span forms and content visibility
+lifetime remain intact. It does not refocus controls, change table widths or
+move an enclosing vertical viewport. A horizontal wheel gesture or a moved
+scrollbar that leaves focus behind retires following; keyboard re-entry resumes
+it. Outside focus and inactive content retire it, and a held pointer keeps the
+pressed control in place. The first candidate exposes a WebKit wheel/reflow
+race; the retained intent assertions fail until the shared owner handles the
+horizontal wheel gesture directly.
+
+All eight focus and reading-intent checks pass in both engines and themes.
+The expanded Lab invocation records **39 passed and 10 failed**, without retries
+or skips; all **49 report captures** are reviewed. The failures remain in the
+unchanged `contentLayout.browser.spec.ts`: two read a non-scrolling listbox
+instead of its overflow parent, two expect the former Diff summary name, two
+expect separate split rows where the current presenter pairs changed lines, and
+four do not reach the file list in their current initial scenario. These are
+retained failures, not a qualified full navigation suite or whole-product pass.
+Continue their triage through this same Lab owner.
+
+The complete UI gate passes **247 component tests** and the offline packed
+consumer. The complete Web gate passes **431 files / 4,743 tests**, including
+its boundary, resource and bundle checks. The current-source complexity check
+still reports only the unchanged ProviderRow 31-to-34 baseline growth above;
+its threshold is not raised. The main refresh includes the Go SDK fork upgrade
+and checksum commits through `8f1b97873`. UI edits survive the fast-forward
+unchanged; plugin checks and supported native checks pass on that settled main.
+The settled-main Runtime lifecycle project separately passes **52 tests**. The
+complete plugin gate passes **47 script tests** and **633 component tests**, with
+its existing **17 skipped tests** retained.
+
+The candidate uses the same **483 qualified Lab assets** and all **24 current
+Desktop source/module inputs**, keeping the production Wails host, menu and page
+zoom behavior. English/light and Chinese/dark at 18 px/native 200% retain the
+complete final sorting control through repeated Window Zoom transitions. Native
+reader arrow-key panning, keyboard re-entry, mouse sorting, selected-row recovery,
+clear-search focus and continued Composer drafts pass. Chinese empty selection
+also remains on one line. Three native generations exit 0.
+
+The evidence retains **28 native JPEGs** at 2878×1798 or 3024×1898. One first
+English shrink frame catches the lower control edge in the Composer fade during
+window animation; later shrinking and keyboard-return frames show its complete
+perimeter. Native horizontal wheel calls do not produce a confirmed inline
+displacement, so wheel-intent qualification remains the Chromium/WebKit Lab
+result, not a native pass. These recorded UI tasks do not qualify live provider
+mutations, the remaining Diff navigation cases or the entire product.
+
+All twelve output/cache roots return to their original contents and modes or
+their original absence. Six private Library paths and the ordinary native temp
+root return to absence. The three pre-existing empty WebKit helper roots retain
+their identities and modes; only this batch's three empty Networking children
+are retired. Both owned servers exit, and the private app is unregistered.
+All **6,704** tracked non-Markdown source inputs are audited against the synced
+main: only the shared reader and existing GenUI Lab spec differ, plus two new
+Lab scenario files. The primary checkout advances through the user's checksum
+commit during this batch; its original checksum bytes and subsequent clean
+state are preserved. No user-data migration is required.
+
 ### References and delivery
 
 [Cards](https://cards.uidesigncourse.com/) and its
@@ -311,7 +391,7 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The requested main updates through `b1b03b72f` are included. UI inspection and
+The requested main updates through `8f1b97873` are included. UI inspection and
 visual checks now share the component lab; new coverage extends this owner rather
 than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
@@ -322,9 +402,11 @@ Lab, and its last complete 261-case WCAG subset passes. Installed-report table
 headings now preserve whole words after sorting; the shared-control and reading
 qualification is recorded above. The current Chinese native Window Zoom flow
 does not reproduce the prior jump; the empty
-Chinese selection heading is repaired and qualified. Next reproduce full
-horizontal reveal of the far-right sorting control after native Window Zoom,
-and continue triaging the remaining migrated interactions through this Lab.
+Chinese selection heading is repaired and qualified. The far-right sorting
+control now retains complete horizontal visibility through native Window Zoom.
+Next triage the ten retained content-layout failures and the remaining migrated
+interactions through this same Lab; distinguish obsolete assumptions from real
+navigation or layout defects before changing assertions.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user

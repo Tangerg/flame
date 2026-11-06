@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { keepFinalSortRevealed, respectHorizontalReading } from "./genuiFocus";
 
 test("the Agent reading scene honors the shared collapsed-sidebar parameter", async ({ page }) => {
   await page.setViewportSize({ width: 520, height: 900 });
@@ -349,4 +350,13 @@ for (const theme of ["light", "dark"] as const) {
       await expect(composer).toHaveValue("保留这条草稿，直到筛选结束。");
     });
   }
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`Chromium keeps the focused final sort control revealed in ${theme}`, async ({ page }) => {
+    await keepFinalSortRevealed(page, theme);
+  });
+  test(`Chromium respects manual horizontal reading in ${theme}`, async ({ page }) => {
+    await respectHorizontalReading(page, theme);
+  });
 }
