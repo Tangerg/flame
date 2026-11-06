@@ -78,6 +78,36 @@ for (const story of catalog.stories) {
               contentType: "image/png",
             });
           }
+          if (entry.storyId === "business-reasoning") {
+            const toggle = page.getByRole("button");
+            await expect(toggle).toHaveAttribute("aria-expanded", "false");
+            await toggle.click();
+            await expect(toggle).toHaveAttribute("aria-expanded", "true");
+            const reader = page.locator('[data-slot="reasoning-scroller"]');
+            await expect(reader.locator(".md p").first()).toBeVisible();
+            await expect
+              .poll(() =>
+                reader.evaluate((element) => {
+                  let opacity = 1;
+                  for (let node: Element | null = element; node; node = node.parentElement) {
+                    opacity *= Number(getComputedStyle(node).opacity);
+                  }
+                  return opacity;
+                }),
+              )
+              .toBe(1);
+            const openedImage = await page.screenshot({ fullPage: true, animations: "disabled" });
+            expect(openedImage.equals(initialImage)).toBe(false);
+            await testInfo.attach(entry.id + "-open-" + entry.width + "px", {
+              body: openedImage,
+              contentType: "image/png",
+            });
+            await toggle.click();
+            await expect(toggle).toHaveAttribute("aria-expanded", "false");
+            await expect(reader).not.toBeInViewport();
+            await reader.focus();
+            await expect(toggle).toBeFocused();
+          }
           const copy = foundationMessages[chinese ? "zh-CN" : "en"];
           if (entry.storyId === "popover" || entry.storyId === "modal-dialog") {
             await page

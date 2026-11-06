@@ -84,10 +84,15 @@ describe("ReasoningBlock disclosure policy", () => {
     expect(glimpse(), "the line it is on, not the one it has left").toBe(
       "What it is weighing right now.",
     );
+    const toggle = screen.getByRole("button", { name: "Thinking" });
+
+    view.rerender(<ReasoningBlock text={`${text}\nThe next token arrives.`} status="running" />);
+    expect(glimpse(), "the preview follows the newest line").toBe("The next token arrives.");
     expect(
-      live().getAttribute("aria-label"),
+      screen.getByRole("button", { name: "Thinking" }),
       "the glimpse changes on every token, so it stays out of the name",
-    ).toBe("Thinking");
+    ).toBe(toggle);
+    expect(toggle.querySelector('[data-slot="reasoning-glimpse"]')).toBeNull();
 
     fireEvent.click(live());
     expect(glimpse(), "open, the material itself is on screen and the row would repeat it").toBe(

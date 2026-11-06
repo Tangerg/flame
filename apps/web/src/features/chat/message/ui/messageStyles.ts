@@ -53,7 +53,7 @@ export const messageStyles = stylex.create({
     lineHeight: leading.body,
     color: color.fg,
   },
-  quote: { lineHeight: leading.prose, color: "var(--color-text-reasoning)" },
+  quote: { lineHeight: leading.prose, color: color.fgFaint },
   identity: {
     display: "flex",
     minWidth: 0,

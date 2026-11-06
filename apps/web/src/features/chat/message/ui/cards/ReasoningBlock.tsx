@@ -34,7 +34,7 @@ const rb = stylex.create({
     WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
   },
   glimpseTail: { justifyContent: "flex-end" },
-  glimpseLine: { flexShrink: 0, whiteSpace: "nowrap", color: "var(--color-text-reasoning)" },
+  glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   aside: {
     marginTop: space.s3,
     paddingBottom: space.s1_5,
@@ -131,13 +131,12 @@ export function ReasoningBlock({ text, status }: Props) {
       shell="line"
       ink="dim"
       label={streaming ? <Loader text={label} /> : label}
-      detail={
+      preview={
         glimpse && (
           <span
             ref={glimpseBoxRef}
             data-slot="reasoning-glimpse"
             data-clipped={glimpseClipped ? "" : undefined}
-            aria-hidden
             style={{ "--glimpse-lead": glimpseClipped ? GLIMPSE_LEAD : "0px" } as CSSProperties}
             {...stylex.props(rb.glimpse, glimpseClipped && rb.glimpseTail)}
           >
@@ -147,7 +146,6 @@ export function ReasoningBlock({ text, status }: Props) {
           </span>
         )
       }
-      toggleLabel={label}
       open={isOpen}
       onToggle={toggle}
       contentClassName={stylex.props(rb.aside).className}

@@ -25,7 +25,6 @@
 }
 :root {
   --color-line-soft: transparent;
-  --color-text-reasoning: color-mix(in oklab, var(--color-text) 58%, transparent);
   --color-negative-badge: color-mix(in srgb, var(--tone-negative) 18%, transparent);
   --color-warning-badge: color-mix(in srgb, var(--tone-warning) 18%, transparent);
   --color-success-badge: color-mix(in srgb, var(--tone-success) 18%, transparent);
@@ -264,8 +263,6 @@ html.theme-dark {
 
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
-
-  --color-text-reasoning: color-mix(in oklab, var(--color-text) 45%, transparent);
 
   --color-scrim: #00000022;
 }

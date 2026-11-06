@@ -45,7 +45,7 @@ for (const [theme, fontSize, width] of [
   });
 }
 
-test("expanded reasoning preserves the same Markdown line and list rhythm as the answer", async ({
+test("expanded reasoning preserves Markdown rhythm at its supporting text size", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1120, height: 1100 });
@@ -101,21 +101,26 @@ test("expanded reasoning preserves the same Markdown line and list rhythm as the
 
   const measured = await page.evaluate(() => {
     const inspect = (root: Element) => {
+      const style = getComputedStyle(root);
+      const fontSize = Number.parseFloat(style.fontSize);
+      const lineHeight = Number.parseFloat(style.lineHeight);
       const paragraphs = [...root.querySelectorAll(":scope > p")].map((node) =>
         node.getBoundingClientRect(),
       );
       const list = root.querySelector("ul")!.getBoundingClientRect();
       const items = [...root.querySelectorAll("li")].map((node) => node.getBoundingClientRect());
       return {
-        lineHeight: Number.parseFloat(getComputedStyle(root).lineHeight),
-        height: root.getBoundingClientRect().height,
-        paragraphHeights: paragraphs.map((paragraph) => paragraph.height),
-        paragraphGap: paragraphs[1]!.top - paragraphs[0]!.bottom,
-        paragraphToListGap: list.top - paragraphs[1]!.bottom,
-        listHeight: list.height,
-        listTopInset: items[0]!.top - list.top,
-        itemHeights: items.map((item) => item.height),
-        itemGap: items[1]!.top - items[0]!.bottom,
+        fontSize,
+        rhythm: {
+          leading: lineHeight / fontSize,
+          paragraphLines: paragraphs.map((paragraph) => paragraph.height / lineHeight),
+          paragraphGap: paragraphs[1]!.top - paragraphs[0]!.bottom,
+          paragraphToListGap: list.top - paragraphs[1]!.bottom,
+          listContentLines: (list.height - (items[1]!.top - items[0]!.bottom)) / lineHeight,
+          listTopInset: items[0]!.top - list.top,
+          itemLines: items.map((item) => item.height / lineHeight),
+          itemGap: items[1]!.top - items[0]!.bottom,
+        },
       };
     };
     const port = document.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]')!;
@@ -129,8 +134,10 @@ test("expanded reasoning preserves the same Markdown line and list rhythm as the
       reasoningOverflow: port.scrollHeight - port.clientHeight,
     };
   });
-  expect(measured.answer.paragraphHeights[0]).toBe(measured.answer.lineHeight * 2);
-  expect(measured.reasoning.paragraphHeights[0]).toBe(measured.reasoning.lineHeight * 2);
-  expect(measured.reasoning).toEqual(measured.answer);
+  expect(measured.reasoning.fontSize).toBeLessThan(measured.answer.fontSize);
+  expect(measured.reasoning.rhythm).toEqual(measured.answer.rhythm);
+  expect(measured.reasoning.rhythm.paragraphLines).toEqual([2, 1]);
+  expect(measured.reasoning.rhythm.itemLines).toEqual([1, 1]);
+  expect(measured.reasoning.rhythm.listContentLines).toBe(2);
   expect(measured.reasoningOverflow).toBe(0);
 });

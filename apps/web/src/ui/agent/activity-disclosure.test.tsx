@@ -55,6 +55,40 @@ describe("AgentActivityDisclosure", () => {
     expect(screen.getByText("Search result")).toBeTruthy();
   });
 
+  it("names the toggle by its summary and detail, never by a changing preview", () => {
+    const { rerender } = testClient.render(
+      <AgentActivityDisclosure
+        icon="search"
+        shell="line"
+        label="Search source"
+        detail="runtime"
+        open={false}
+        onToggle={() => {}}
+      >
+        body
+      </AgentActivityDisclosure>,
+    );
+    expect(screen.getByRole("button", { name: /Search source.*runtime/ })).toBeTruthy();
+
+    for (const glimpse of ["first line", "second line"]) {
+      rerender(
+        <AgentActivityDisclosure
+          icon="brain"
+          shell="line"
+          label="Thinking"
+          preview={glimpse}
+          open={false}
+          onToggle={() => {}}
+        >
+          body
+        </AgentActivityDisclosure>,
+      );
+      const toggle = screen.getByRole("button", { name: "Thinking" });
+      expect(screen.getByText(glimpse), "the preview stays on screen").toBeTruthy();
+      expect(toggle.textContent).not.toContain(glimpse);
+    }
+  });
+
   it("lets a caller describe its actions by the summary it already shows", () => {
     const actions = (
       <button type="button" aria-describedby="caller-summary">

@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import type { AgentActivityDisclosure, AgentRow } from "@/ui/agent/index";
+import type { ReasoningBlock } from "@/features/chat/message/ui/cards/ReasoningBlock";
 import type { DotTone } from "@/lib/tone";
 import type { SystemMessage } from "@/ui/atoms/system-message";
 import type { LabVariant } from "./story";
@@ -101,6 +102,16 @@ export const activityVariants = [
     failed: true,
   },
 ] as const satisfies readonly ActivityVariant[];
+
+export const reasoningVariants = [
+  { id: "running", title: messages.variants.running, status: "running", short: false },
+  { id: "complete", title: messages.variants.complete, status: "complete", short: false },
+  { id: "incomplete", title: messages.variants.incomplete, status: "incomplete", short: false },
+  { id: "short", title: messages.variants.short, status: "complete", short: true },
+] as const satisfies readonly (LabVariant & {
+  status: ComponentProps<typeof ReasoningBlock>["status"];
+  short: boolean;
+})[];
 
 export const composerVariants = [
   {

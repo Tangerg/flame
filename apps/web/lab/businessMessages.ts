@@ -33,6 +33,13 @@ export const businessMessages = {
         en: "Choose a local sample model through a real popover and inspect width and disabled behavior.",
       },
     },
+    reasoning: {
+      title: { "zh-CN": "推理阅读", en: "Reasoning reader" },
+      summary: {
+        "zh-CN": "检查实时预览、正文阅读与收起后保留的阅读位置。",
+        en: "Inspect live previews, supporting text and retained reading position.",
+      },
+    },
     catalog: {
       title: { "zh-CN": "面板目录", en: "Panel catalog" },
       summary: {
@@ -98,6 +105,10 @@ export const businessMessages = {
     disabled: { "zh-CN": "禁用", en: "Disabled" },
     line: { "zh-CN": "行式", en: "Line" },
     card: { "zh-CN": "卡片", en: "Card" },
+    running: { "zh-CN": "生成中", en: "Streaming" },
+    complete: { "zh-CN": "已完成", en: "Complete" },
+    incomplete: { "zh-CN": "已中断", en: "Interrupted" },
+    short: { "zh-CN": "短内容", en: "Short content" },
     progress: { "zh-CN": "进度", en: "Progress" },
     failure: { "zh-CN": "失败", en: "Failure" },
     compact: { "zh-CN": "窄容器", en: "Narrow container" },
@@ -142,6 +153,32 @@ export const businessMessages = {
     activityFailure: {
       "zh-CN": "示例读取失败。\n  workspace/example.tsx\n  原始详情仍由生产组件展示。",
       en: "The sample read failed.\n  workspace/example.tsx\n  The production component retains the captured details.",
+    },
+    reasoningShort: {
+      "zh-CN": "已核对当前回复与来源材料之间的关系。",
+      en: "The current reply and its supporting material have been compared.",
+    },
+    reasoningBody: {
+      "zh-CN": [
+        "当前回复需要区分已经观察到的结果和支持这个结果的材料。读者应当先理解结论，再决定是否展开细节，而不必从一长串过程记录里自行拼出答案。来源和结果之间的关系需要保持清楚。",
+        "检查材料时，应当保留对象原来的身份和上下文。文件、工具记录和引用可以支持同一个判断，但它们表达的内容各不相同。展开其中一项时，其余材料仍然应该留在原来的阅读顺序中。",
+        "未完成的工作需要保留原始输入。已经确认的结果可以继续阅读，还在等待的部分则保留自己的状态。新的内容到达时，不应当覆盖已经接受的记录，也不应当让读者失去刚才正在比较的位置。",
+        "展开后的详情应当提供足够的阅读空间。较长的文字可以在自己的范围内滚动，短内容则按自然高度展示。无论内容长短，标题、展开入口和下一项材料之间的对齐关系都应当保持稳定。",
+        "当读者停下来检查前文时，后续到达的内容仍然留在下方。关闭详情可以暂时回到结果摘要，再次展开时则继续刚才的阅读位置。这里不需要重新开始整个任务，也不需要重新输入问题。",
+        "返回回复之后，原来的草稿仍然可用。读者可以继续补充说明、选择另一份材料，或者把刚才得到的信息用于下一步操作。这些操作应当沿用同一个对象和范围，避免把返回变成新的入口。",
+        "文字本身也需要清楚可读。次要内容可以保持较轻的视觉层级，但阅读不应当依赖悬停。不同主题、较大的字号和较窄的窗口都需要保留完整内容及明确的展开和收起方式。",
+        "最后，再次核对结论与证据是否一致。保留已经确认的观察，明确仍未解决的部分，并让读者能够回到来源继续检查。此时，当前回复和后续对话应当组成一条连续的阅读路径。",
+      ].join("\n\n"),
+      en: [
+        "The current reply needs a clear distinction between an observed result and the material supporting it. Readers should understand the conclusion before deciding whether to open the details, without having to reconstruct the answer from a long sequence of activity records.",
+        "Supporting material keeps its original identity and context. A file, a tool record and a reference may support the same decision while describing different observations. Opening one item should preserve the order and availability of the other material.",
+        "Unfinished work retains its original input. Confirmed results remain available while pending observations keep their own state. New material should neither overwrite an accepted record nor displace the passage the reader is comparing.",
+        "Expanded details need enough space for reading. Long text scrolls within its own window, while short content uses its natural height. Both preserve the alignment between the heading, the disclosure control and the next supporting item.",
+        "When the reader pauses to inspect an earlier passage, new content stays below it. Closing the details returns to the summary. Reopening continues at the retained reading position, without requiring the task or question to be started again.",
+        "Returning to the reply leaves the draft available. Readers can add context, choose another source or use the observation in their next action. These steps should retain the same object and scope so the return continues the current task.",
+        "Supporting text still needs to be readable. A quieter hierarchy should not depend on hovering to reveal the words. Both themes, larger text and narrower windows retain the content and a clear way to open and close its details.",
+        "Finally, compare the conclusion with its evidence once more. Keep confirmed observations, identify unresolved questions and preserve access to the original material. Reading the reply and continuing the conversation then remain one continuous path.",
+      ].join("\n\n"),
     },
     progress: { "zh-CN": "示例进度", en: "Sample progress" },
     modelChoice: { "zh-CN": "选择示例模型", en: "Choose a sample model" },

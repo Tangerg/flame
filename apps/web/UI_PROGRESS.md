@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Composer choices now retain their current value in the accessible name, including when narrow layouts hide secondary text. The sole component lab qualifies this repair with 22 focused browser checks, a later corrected Dock-popup check and 20 inspected captures. All 4,689 frontend tests, 52 Runtime integration tests, 25 non-unit Web gates and the supported native build pass with current shared-package outputs. Rebuilt Wails previews pass English, Chinese/18 px/native 200%, window resizing, retained drafts and compact hidden-label selection. See **Current choice names and native return (2026-11-06)**. The broader Lab audit and an unchanged main complexity failure remain unresolved; the goal is active and whole-product acceptance remains unfinished.
+Live reasoning now keeps its changing preview outside the toggle name and uses the existing readable supporting-text color. Its four states are independently inspectable in the sole component lab. This repair passes 32 focused browser checks with 52 inspected captures, all 4,690 frontend tests, 25 non-unit Web gates and the supported native build. Actual Wails checks cover English draft/reading return, Chinese/18 px/native 200% component reading and resizing, and short content without an extra scroll target. See **Stable live previews and readable supporting text (2026-11-06)**. The broader Lab audit and an unchanged main complexity failure remain unresolved; the goal is active and whole-product acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -119,6 +119,11 @@ repaired under **Current choice names and native return (2026-11-06)**, which al
 records the subsequent complete WCAG subset audit. Two new Composer flow tests
 extend the same Lab suite; the entire interaction suite has not been rerun.
 
+The subsequent reasoning repair adds one direct component story to this same
+catalog, bringing it to **42 stories**. Its current qualification is recorded in
+**Stable live previews and readable supporting text (2026-11-06)** below. The
+41-story migration results above retain their original scope.
+
 The root complexity check also fails on
 `plugins/providers/component/providerRow.tsx:ProviderRow` growing from 31 to 34.
 That file is byte-identical to incoming HEAD and is outside this batch; its
@@ -163,14 +168,14 @@ below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
-The requested main updates through `118d3f83a` are included. UI inspection and
+The requested main updates through `96ea7041b` are included. UI inspection and
 visual checks now share the component lab; new coverage extends this owner rather
 than creating another visual entry. The lab's independent documents, migrated
 protocol scenarios and actual Wails checks are qualified within the bounds below.
-Composer choice names and their keyboard/draft return are now repaired and
+Composer choice names and live reasoning names/contrast are now repaired and
 qualified below. Next triage the remaining broader findings through this same
-lab, starting with reasoning/disclosure names, rendered contrast and obsolete
-Goal/Plan/open-all-disclosure probes. Prepare current shared packages before
+lab, starting with reference-link distinguishability and its reading/return path,
+then obsolete Goal/Plan/open-all-disclosure probes. Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout's unrelated `go.work.sum` changes are preserved. The user
 resumed the goal; no milestone pause is currently requested.
@@ -27523,6 +27528,111 @@ reader stopped at **96 px**, closing the disclosure removed its **240 px** viewp
 bound. Its height expanded to **440 px**, which clamped `scrollTop` to **0** and
 re-enabled following; reopening jumped to the **200 px** end. The scrollable Tab
 target also had no accessible name.
+
+### Stable live previews and readable supporting text (2026-11-06)
+
+On synchronized main `96ea7041b`, the collapsed running disclosure visually
+included its changing glimpse inside the button while an explicit name omitted
+that text. The same reasoning text used a translucent local color: rendered
+contrast was **4.10:1** on light and **4.04:1** on dark. These are supporting
+reading materials, so they must remain readable without hovering.
+
+`AgentActivityDisclosure` now owns a presentation-only `preview` beside its
+existing button. `ReasoningBlock` supplies its current glimpse there; the preview
+is hidden from accessibility and cannot rename the stable visible
+**Thinking** / **思考中** control. Ordinary `detail` and trailing values remain in
+the existing summary name. The obsolete `toggleLabel` override is removed from
+its only caller and the shared contract. Expansion, duration, glimpse selection,
+stream following, retained reader position and localized names keep their
+existing owners.
+
+The shared dim activity and reasoning quote use the existing opaque `fgFaint`
+role. The retired reasoning-only alpha variable and both theme definitions are
+removed. Measured reasoning pairs are **#696969 on #f5f5f5, 5.03:1**, and
+**#8c8c8c on #0f0f0f, 5.70:1**; supporting activity text also passes at
+**4.81:1** on #f0f0f0. Type size, paragraph spacing, custom accent tokens and
+default Flame Orange remain unchanged. A single existing-shell style map replaces
+repeated line/card decisions; this component's complexity baseline decreases
+from **28 to 23**, without raising any threshold.
+
+The same Lab catalog now includes `business-reasoning`, importing the actual
+production `ReasoningBlock` with typed public props. Fixed English/Chinese text
+exercises running, complete, interrupted and short states through the existing
+providers, preview document and browser configuration. Closed/open captures,
+clipped retained bodies and focus exclusion extend the current capture suite.
+No alternate fixture application, scenario registry, Runtime implementation or
+production debug route is introduced. The bounded Claude Code CLI supplied the
+six-file production/test candidate; primary review owns the final simplification,
+Lab coverage and verification.
+
+Two migrated assertions needed correction independently of this repair.
+Reinstalling the original production bytes reproduces the fade probe's zero
+border: it measured the first region rather than the actual reader's enclosing
+disclosure. The corrected probe walks that reader's ancestors and preserves the
+border, inset, transparent surface and edge-fade assertions. The original rhythm
+probe also fails because supporting reasoning intentionally has a smaller font
+than the answer. Its replacement explicitly checks that hierarchy, equal unitless
+leading, line counts, paragraph/list/item spacing and no overflow. No production
+font or spacing changes are made to satisfy either probe.
+
+Final qualification passes **32 browser tests**: eight independent catalog checks
+and 24 migrated/reading interactions. All **52** PNG attachments are inspected,
+including the four full production-scene images at their original dimensions.
+Coverage includes both themes, English/14 px and Chinese/18 px, 390 px captures,
+320 px direct and production reading, stable names, focus/scroll return, retained
+drafts, six representative WCAG scenes, three 11 px cases and existing custom
+palette checks. The full frontend project passes **430 files / 4,690 tests**;
+all **25 non-unit Web gates** pass serially. The supported `make check-native`
+passes Desktop tests, vet, build and Wails macOS build. Existing SDK/macOS linker
+warnings remain separate.
+
+Actual isolated Wails v3.1.0 qualification uses the real DesktopHost, menus and
+zoom with this same built Lab:
+
+- English/light/14 px production Agent reading preserves an intermediate wheel
+  position through close/reopen, names the keyboard reader, reaches its start
+  with Home, restores toggle focus and continues the same Composer draft as
+  `Native reasoning draft — Keep Continue`.
+- Chinese/dark/18 px direct component reading uses Actual Size followed by
+  **20 native Zoom In actions** to reach **200%**. Home, wheel reading,
+  close/reopen and native Window Zoom retain the visible reading passage and
+  focus while text reflows. Actual Size is restored before quitting.
+- English short completed content opens at its natural height and adds no named
+  scrolling group or extra reading Tab stop.
+
+The complete Agent/Workspace fixtures have fixed presentation sidebars and
+inert navigation controls. Their preliminary 200% attempts are not evidence of
+readable full-workspace zoom or sidebar collapse. This limitation motivated the
+direct story within the same Lab. Native acceptance covers fixed presentation
+inputs; live provider streaming, Runtime business execution, audible VoiceOver,
+OS IME composition and performance measurements are not newly qualified. The
+52 Runtime integration tests from the previous batch are not rerun here.
+
+The focused original WCAG sample has two passes and six failures. The four
+reasoning scene failures now pass; both reference-notes themes still fail link
+distinguishability and remain unchanged. The earlier complete 260-case WCAG
+audit and entire migrated browser suite have not been rerun. Root complexity
+still fails only on unchanged incoming `ProviderRow` (**31 → 34**); its threshold
+is preserved. The next useful path is reading a reference and returning to the
+answer, using this same Lab. Whole-product acceptance remains open.
+
+[WCAG Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html)
+and the [disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+inform stable visible control names and native Enter/Space behavior. The existing
+better-interface guidance informs the reading hierarchy, semantic color,
+alignment and keyboard return. No external component kit or dependency is added.
+
+Qualification writers are stopped and the private app identity is unregistered.
+All 12 observed output/cache roots return to their original contents and modes,
+or to absence when originally absent; the six private native identity paths are
+absent. Normal rebuilds replace four directory inodes, so their comparison
+preserves original contents and modes rather than inode identity. The primary
+checkout's unrelated `go.work.sum` bytes and status are unchanged. Delivery
+retires the private app, captures, reports, logs and temporary files before
+publication to main; reusable tools remain available. No user-data migration is
+required.
+
+### Retained reader geometry and keyboard target
 
 `rb.scroller` now retains `maxHeight` and `overflowY: auto` while its already
 mounted disclosure is closed. The existing overflow measurement gives only a

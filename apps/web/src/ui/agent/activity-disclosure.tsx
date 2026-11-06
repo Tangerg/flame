@@ -46,6 +46,7 @@ const styles = stylex.create({
     textAlign: "left",
     lineHeight: leading.body,
   },
+  triggerFit: { flex: "0 1 auto" },
   triggerLine: {
     gap: space.s2,
     paddingBlock: space.s0_5,
@@ -86,6 +87,8 @@ const styles = stylex.create({
     lineHeight: leading.snug,
     color: "var(--row-detail-ink)",
   },
+  previewLine: { paddingInlineStart: space.s2 },
+  previewCard: { paddingInlineEnd: space.s3 },
   spacer: { minWidth: 0, flex: 1 },
   trailing: {
     display: "flex",
@@ -101,8 +104,8 @@ const styles = stylex.create({
     "--row-detail-ink": { default: color.fgFaint, ":hover": color.fgMuted },
   },
   headerPublishesDim: {
-    "--row-ink": { default: "var(--color-text-reasoning)", ":hover": color.fgMuted },
-    "--row-detail-ink": { default: "var(--color-text-reasoning)", ":hover": color.fgFaint },
+    "--row-ink": { default: color.fgFaint, ":hover": color.fgMuted },
+    "--row-detail-ink": color.fgFaint,
   },
   chevron: {
     pointerEvents: "none",
@@ -135,10 +138,35 @@ const TRAY_TONE = {
   negative: styles.trayNegative,
 } as const;
 
+const SHELL_SKINS = {
+  line: {
+    frame: styles.frameLine,
+    sticky: styles.stuckLine,
+    trigger: styles.triggerLine,
+    mark: styles.markLine,
+    text: type.uiSm,
+    iconSize: "sm",
+    preview: styles.previewLine,
+    body: styles.bodyLine,
+  },
+  card: {
+    frame: styles.frameCard,
+    sticky: styles.stuckCard,
+    trigger: styles.triggerCard,
+    mark: styles.markCard,
+    text: type.uiMd,
+    iconSize: "md",
+    preview: styles.previewCard,
+    body: styles.bodyCard,
+  },
+} as const;
+
 type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "children"> &
   ActivityLeading & {
     label: ReactNode;
     detail?: ReactNode;
+    // A glimpse of the shut body; it sits beside the toggle so changing text never renames the control.
+    preview?: ReactNode;
     trailing?: ReactNode;
     actions?: ReactNode;
     feedback?: ReactNode;
@@ -146,7 +174,6 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     onToggle: () => void;
     stickyHeader?: boolean;
     progress?: { value: number; label: string };
-    toggleLabel?: string;
     tone?: ActivityTone;
     ink?: "dim";
     shell: ActivityShell;
@@ -161,6 +188,7 @@ export function AgentActivityDisclosure({
   leading,
   label,
   detail,
+  preview,
   trailing,
   actions,
   feedback,
@@ -168,7 +196,6 @@ export function AgentActivityDisclosure({
   onToggle,
   stickyHeader,
   progress,
-  toggleLabel,
   tone = "neutral",
   ink,
   shell,
@@ -179,7 +206,7 @@ export function AgentActivityDisclosure({
   contentClassName,
   ...props
 }: AgentActivityDisclosureProps) {
-  const line = shell === "line";
+  const skin = SHELL_SKINS[shell];
   const ownSummaryId = useId();
   const triggerId = summaryId ?? ownSummaryId;
   const panelId = useId();
@@ -241,10 +268,7 @@ export function AgentActivityDisclosure({
       data-slot="agent-activity-disclosure"
       data-tone={tone}
       data-shell={shell}
-      className={cn(
-        stylex.props(styles.frame, line ? styles.frameLine : styles.frameCard).className,
-        className,
-      )}
+      className={cn(stylex.props(styles.frame, skin.frame).className, className)}
     >
       <div
         ref={headerRef}
@@ -254,7 +278,7 @@ export function AgentActivityDisclosure({
             reveal.host,
             styles.header,
             ink === "dim" ? styles.headerPublishesDim : styles.headerPublishes,
-            stickyHeader && [styles.stuck, line ? styles.stuckLine : styles.stuckCard],
+            stickyHeader && [styles.stuck, skin.sticky],
           ).className,
         )}
       >
@@ -264,9 +288,9 @@ export function AgentActivityDisclosure({
           panelId={panelId}
           open={open}
           onToggle={onToggle}
-          toggleLabel={toggleLabel}
           className={
-            stylex.props(styles.trigger, line ? styles.triggerLine : styles.triggerCard).className
+            stylex.props(styles.trigger, skin.trigger, preview != null && styles.triggerFit)
+              .className
           }
         >
           <span
@@ -276,16 +300,16 @@ export function AgentActivityDisclosure({
             data-tone={tone}
             {...stylex.props(
               styles.mark,
-              line ? styles.markLine : styles.markCard,
+              skin.mark,
               framed && [styles.markFramed, TRAY_TONE[tone]],
               toneInk[tone],
             )}
           >
-            {leading ?? (icon ? <Icon name={icon} size={line ? "sm" : "md"} /> : null)}
+            {leading ?? (icon ? <Icon name={icon} size={skin.iconSize} /> : null)}
           </span>
           <span
             data-slot="agent-activity-label"
-            {...stylex.props(styles.label, vocab.truncate, line ? type.uiSm : type.uiMd)}
+            {...stylex.props(styles.label, vocab.truncate, skin.text)}
           >
             {label}
           </span>
@@ -300,16 +324,23 @@ export function AgentActivityDisclosure({
             </span>
           )}
           {detail != null ? (
-            <span {...stylex.props(styles.detail, vocab.truncate, line ? type.uiSm : type.uiMd)}>
-              {detail}
-            </span>
+            <span {...stylex.props(styles.detail, vocab.truncate, skin.text)}>{detail}</span>
           ) : (
-            <span aria-hidden {...stylex.props(styles.spacer)} />
+            preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />
           )}
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
           )}
         </TriggerShell>
+        {preview != null && (
+          <span
+            aria-hidden
+            data-slot="agent-activity-preview"
+            {...stylex.props(styles.detail, vocab.truncate, skin.text, skin.preview)}
+          >
+            {preview}
+          </span>
+        )}
         {Children.count(actions) > 0 && (
           <div data-focus-inset="" {...stylex.props(styles.actions)}>
             {actions}
@@ -320,7 +351,7 @@ export function AgentActivityDisclosure({
       {feedback}
       {disclosable && (
         <Collapsible open={open}>
-          <div ref={bodyRef} {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}>
+          <div ref={bodyRef} {...stylex.props(skin.body)}>
             <div
               id={panelId}
               role="region"
@@ -345,7 +376,6 @@ function TriggerShell({
   panelId,
   open,
   onToggle,
-  toggleLabel,
   className,
   children,
 }: {
@@ -354,7 +384,6 @@ function TriggerShell({
   panelId: string;
   open: boolean;
   onToggle: () => void;
-  toggleLabel?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -371,7 +400,6 @@ function TriggerShell({
       type="button"
       aria-expanded={open}
       aria-controls={panelId}
-      aria-label={toggleLabel}
       data-focus-inset=""
       onClick={onToggle}
       className={className}

@@ -21,7 +21,7 @@
 23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
 44 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
 42 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
-28 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
+23 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
 21 apps/web/lab/scenarios/computerConsoleFixture.tsx:fetch

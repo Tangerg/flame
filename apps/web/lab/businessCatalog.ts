@@ -11,6 +11,7 @@ import {
   fileVariants,
   messageVariants,
   navigationVariants,
+  reasoningVariants,
   statusVariants,
 } from "./businessVariants";
 import type { FixtureVariant, LabFixtureTarget, LabStory } from "./story";
@@ -79,6 +80,18 @@ export const businessStories: readonly LabStory[] = [
     variants: activityVariants,
     load: () =>
       import("./businessActivity").then((module) => ({ default: module.ActivityExample })),
+  },
+  {
+    kind: "component",
+    panel: "business",
+    id: "business-reasoning",
+    ...messages.stories.reasoning,
+    group: messages.groups.conversation,
+    source: "apps/web/src/features/chat/message/ui/cards/ReasoningBlock.tsx",
+    ...READING_PREVIEW,
+    variants: reasoningVariants,
+    load: () =>
+      import("./businessReasoning").then((module) => ({ default: module.ReasoningExample })),
   },
   {
     kind: "component",

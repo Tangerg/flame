@@ -705,6 +705,11 @@ scroll-padding safe frame leaves two body lines and their inset for reading. Oth
 the same summary scrolls in flow without clearance; header, viewport and scrolled-content
 resizes, including Composer clearance changes, re-evaluate the decision.
 
+The activity disclosure's `preview` is redundant supporting text beside its toggle,
+so arriving reasoning never renames that control. Ordinary `detail` remains part
+of the summary name. Reasoning previews and prose use the existing faint text role;
+the retained reader owns its scroll position through closing and reopening.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

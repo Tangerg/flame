@@ -1688,14 +1688,20 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
     });
 
   const atTail = await readFade();
-  const aside = await page.evaluate(() => {
-    const body = document.querySelector<HTMLElement>('[role="region"]');
-    if (!body) return null;
-    const cs = getComputedStyle(body);
+  const aside = await scroller.evaluate((body) => {
+    const frame = body.closest('[data-slot="agent-activity-disclosure"]');
+    if (!frame) throw new Error("The reasoning reader must belong to its disclosure");
+    let leftBorder = 0;
+    let hasFill = false;
+    for (let node: Element | null = body; node && node !== frame; node = node.parentElement) {
+      const cs = getComputedStyle(node);
+      leftBorder += parseFloat(cs.borderInlineStartWidth);
+      hasFill ||= cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent";
+    }
     return {
-      leftBorder: parseFloat(cs.borderLeftWidth),
-      leftInset: parseFloat(cs.paddingLeft) + parseFloat(cs.marginLeft),
-      hasFill: cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent",
+      leftBorder,
+      leftInset: body.getBoundingClientRect().left - frame.getBoundingClientRect().left,
+      hasFill,
     };
   });
   expect(aside?.leftBorder).toBeGreaterThan(0);

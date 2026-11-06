@@ -23,6 +23,7 @@ Direct entry points:
 - `/lab/?story=text-field&variant=styles&mode=inspect`
 - `/lab/?story=checkbox&variant=editable&mode=inspect&compare=on`
 - `/lab/?panel=business&story=business-agent-scenarios&variant=waiting&mode=inspect`
+- `/lab/?panel=business&story=business-reasoning&variant=running&mode=inspect`
 
 The catalog owns the valid story and variant IDs. An invalid deep link displays
 its error instead of silently opening a different example. Copy current link
@@ -93,6 +94,13 @@ Each component example owns only its local input, selection or disclosure state.
 Its variant vocabulary is checked against the production public API. Examples
 compare one dimension at a time instead of generating every props combination.
 Examples do not pretend that a recorded failure has recovered after a Retry click.
+
+The reasoning reader example mounts the production `ReasoningBlock` directly.
+Streaming, completed, interrupted and short variants supply fixed, localized
+public props through the existing providers and preview document. They isolate
+disclosure, text hierarchy and reading continuity without adding a Runtime
+transition or requiring a complete workspace. The streaming sample does not
+generate tokens or simulate provider execution.
 
 `environment.tsx` composes Flame's actual appearance plugins, locale packages,
 Theme, FontScale, Tooltip, Callout and code highlighting providers. It does not
@@ -165,6 +173,11 @@ Captures finish finite browser animations; motion behavior has its own interacti
 checks and native qualification. English/light/14 px and Chinese/dark/18 px
 cover catalog widths and 390 px component widths. Complete layouts retain their
 declared desktop dimensions.
+
+Reasoning variants capture both the closed preview and the opened reader. Closing
+must clip the retained body and exclude it from keyboard focus. The same Lab's
+interaction tests check stable toggle names, readable text, keyboard reading and
+return, both directly and within the production Agent fixture.
 
 The `interactions` project retains all migrated `*.browser.spec.ts` tests,
 including the WebKit suites. It uses the same lab's development server at
