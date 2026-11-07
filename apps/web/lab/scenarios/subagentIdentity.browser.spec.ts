@@ -1,4 +1,6 @@
 import { expect, test, type Locator } from "./test";
+const FANOUT = "Audit persistence boundaries across Runtime, Framework and delegated agents";
+
 async function expectCompleteText(text: Locator) {
   await text.scrollIntoViewIfNeeded();
   const clipped = await text.evaluate((node) => {
@@ -21,7 +23,7 @@ for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`delegated task names remain readable in the list and selected transcript ${theme} ${width}`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
       const query = new URLSearchParams({
         fixture: "workspace",
@@ -41,11 +43,13 @@ for (const theme of ["light", "dark"]) {
       }
       const mainView = width === 320 ? "subagents" : "";
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
-      const panel = page.getByRole("region", { name: "Subagents", exact: true });
+      const panel = page
+        .getByRole("region", { name: "Subagents", exact: true })
+        .and(page.locator(".agent-workspace-view"));
       for (const name of [
         "Audit Agent Framework ownership",
         "Verify package dependencies",
-        ...[1, 2, 3, 4].map((index) => `Survey the boundary in parallel · Sub-agent ${index} of 4`),
+        ...[1, 2, 3, 4].map((index) => `${FANOUT} · Sub-agent ${index} of 4`),
       ]) {
         await expectCompleteText(panel.getByText(name, { exact: true }));
       }
@@ -70,13 +74,17 @@ for (const theme of ["light", "dark"]) {
       await panel.getByRole("button", { name: "All subagents", exact: true }).click();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
       await expectCompleteText(panel.getByText(name, { exact: true }));
-      const longName = "Survey the boundary in parallel · Sub-agent 1 of 4";
+      const longName = `${FANOUT} · Sub-agent 1 of 4`;
       await panel.getByRole("button", { name: longName }).click();
       const completed = panel.getByRole("region", { name: longName, exact: true });
       await expect(completed).toBeVisible();
       await expectCompleteText(header.getByText(longName, { exact: true }));
       await expect(header.getByText("Canceled", { exact: true })).toBeVisible();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
+      await testInfo.attach(`subagent-canceled-identity-${theme}-${width}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
     });
   }
 }

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest focused audit passes **51 existing Lab interaction cases**, updates four source-traced obsolete entry checks, and reviews **7 final browser captures plus 8 actual Wails captures**. English/light inspection and Chinese/dark/custom-accent inspection at native 200% qualify directory identity, title cancellation and source-focus return. No product command or rendering contract changes. See **Lab entry and bounded-reader verification contracts (2026-11-07)**. Earlier formula qualification remains recorded below. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest audit qualifies **155 selected existing interaction cases in stages**, restores explicit Cancel entry for product confirmations, and inspects **34 final browser captures plus 16 actual Wails captures**. The frontend project passes **431 files / 4,702 tests**. Native English and Chinese 200% checks cover confirmation reading/return and Skill proposal outcomes. A narrow Skills return still needs identity-reveal work; passing focus assertions do not qualify that paint. See **Workspace decisions and recorded-result verification (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -256,6 +256,84 @@ substitute accounting is invented. The sections below qualify the inspected
 native horizontal readers through this same Lab. Continue the remaining migrated
 cases; live Runtime, VoiceOver, physical IME and whole-product visual acceptance
 remain unfinished.
+
+### Workspace decisions and recorded-result verification (2026-11-07)
+
+The next existing-scenario audit reproduces a product confirmation regression:
+the shared modal's keyboard-readable body becomes the initial focus instead of
+Cancel. `src/ui/atoms/confirm-dialog.tsx` now explicitly supplies its Cancel ref
+through the existing `initialFocus` contract. The modal body remains a keyboard
+stop; the existing destructive Session case verifies Cancel, body, Delete,
+wrapping, Escape/backdrop dismissal and return to its original row. No command
+is executed by that regression. Goal replacement uses the same product atom;
+its native replacement flow is not newly qualified.
+
+Seven existing Lab specs retain their original behavioral assertions while
+following current owners: the business Skills Panel and Subagents view rather
+than equally named workspace frames; the retained trajectory content rather
+than its Browse panels trigger; current delegated identities and tool group
+names; and the actual `shiki/core` import and Tool header. A trace establishes
+that hovering the expanded Tool card's body never hovered its action header.
+The copy check now enters the header and verifies its real reveal state;
+production action styling is unchanged.
+
+The canonical captured Glob call also omitted the Runtime's declared search
+shape. Its existing snapshot now records `search` explicitly, without inferring
+meaning from JSON members. A projection regression retains the declared shape
+and original hits. The existing search reading case again distinguishes absent
+snippets from recorded blank lines. The paged Skills result includes its full
+continuation cursor, so its fitting-reader check uses 900 px height before
+narrowing to the unchanged 360 px bounded-reader check. Internal wheel reading
+and vertical continuation at the result's edge remain asserted.
+
+The expanded selection passes **154 / 155** before that last fitting-scene
+correction; the final two-file reading selection passes **12 / 12**, closing
+the remaining case. The union qualifies all **155 selected titles**; no single
+clean 155-case invocation is claimed. Neither run skips, retries or marks flaky
+cases. All **34 selected final captures** are inspected through five contact
+sheets and relevant full-resolution details. They expose a remaining 320 px
+Skills issue: after a refused decision, the original action regains focus while
+its row name can sit behind the sticky catalog controls. The proposal review's
+action fallback can similarly require manual scrolling to read its identity.
+This is not whole-page visual acceptance. Next reproduce that identity reveal
+in the same Skills scenarios before changing its responsible focus boundary.
+
+The full frontend project passes **431 files / 4,702 tests**, including the
+new captured-shape regression. Happy DOM reports its existing disabled iframe
+loading diagnostic; the suite exits successfully. Supported `make check-native`
+passes in **22.569 s**, including Desktop test/vet/build and Wails packaging;
+existing macOS linker warnings remain. Web typechecking, lint and formatting
+pass. The full Runtime integration project, all Web check stages,
+whole Lab suite, optional measurements, VoiceOver and physical IME are not
+rerun. The unchanged ProviderRow complexity finding remains recorded above.
+
+Actual Wails **v3.1.0** retains the real DesktopHost/menu/zoom implementation;
+**45 of 46** copied native inputs are unchanged. Baseline and candidate use the
+same binary; only its private composition selects the built Lab. All **484**
+final assets match the native copy. English entry first reproduces body focus,
+then proves Cancel entry, Enter cancellation, body reading and source return.
+Chinese/dark/18 px/custom purple repeats long-identity reading and Escape return
+after native narrowing and **20 Zoom In actions from Actual Size**. The Skills
+path preserves a Composer draft through full-width reading, cancellation,
+accepted approve/reject, counts **2 → 1 → 0**, search focus, empty state and
+return to continued editing. Chinese 200% qualifies a refused approval, retained
+two proposals, original-action focus and local cancellation. Its review and
+error require manual vertical reading at that size. These are isolated in-memory
+command outcomes, not live Skill publication or Runtime lifecycle coverage.
+All **16 native captures** are inspected and all **five** processes quit normally.
+
+Existing better-accessibility/better-layout and read-only source-return research
+guide the bounded task. Claude Code CLI edits the initial six declared files;
+primary review traces later failures, preserves assertions and owns native
+qualification. The isolated app is unregistered and its server stops; all six
+private Library paths and the ordinary native temp root return to absence. Three
+pre-existing helper roots retain their identities, modes and flags while only
+five owned children are retired. All twelve output/cache roots return to their
+captured contents and modes or absence, including the older shared UI build.
+All **6,709 non-Markdown sources** are compared, with exactly the ten intended
+source/test files changed. The native sources and primary checkout are unchanged.
+No functional checks run after restoring outputs. Evidence retention precedes
+guarded retirement of the private qualification directory.
 
 ### Lab entry and bounded-reader verification contracts (2026-11-07)
 

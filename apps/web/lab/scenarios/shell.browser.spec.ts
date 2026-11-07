@@ -136,7 +136,9 @@ test("session renaming owns focus without nesting an input in a navigation butto
   await expect(row).toBeFocused();
 });
 
-test("destructive session dialog traps, dismisses, and returns focus", async ({ page }) => {
+test("destructive session dialog traps, dismisses, and returns focus", async ({
+  page,
+}, testInfo) => {
   await openShell(page, { theme: "light", state: "populated" });
   await waitForWorkIndexState(page, "populated");
 
@@ -145,12 +147,25 @@ test("destructive session dialog traps, dismisses, and returns focus", async ({ 
   await page.getByRole("menuitem", { name: "Delete" }).click();
 
   const dialog = page.getByRole("alertdialog", { name: "Delete this session?" });
+  const body = dialog.getByRole("region", { name: "Delete this session?", exact: true });
   const cancel = dialog.getByRole("button", { name: "Cancel" });
   const remove = dialog.getByRole("button", { name: "Delete" });
   await expect(dialog).toBeVisible();
   await expect(cancel).toBeFocused();
+  await testInfo.attach("session-delete-default-cancel", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
+  await page.keyboard.press("Shift+Tab");
+  await expect(body).toBeFocused();
+  await testInfo.attach("session-delete-body-reading", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await page.keyboard.press("Shift+Tab");
   await expect(remove).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(body).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(cancel).toBeFocused();
 

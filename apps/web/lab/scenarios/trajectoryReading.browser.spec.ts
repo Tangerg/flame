@@ -102,7 +102,9 @@ test("narrow Run metadata keeps its complete timestamp on one line", async ({ pa
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-runs&theme=dark&font-size=18");
   await page.locator("html[data-visual-ready]").waitFor();
-  const dock = page.locator('[data-dock-view-id="package:visual:trajectory"]');
+  const dock = page
+    .locator('[data-dock-view-id="package:visual:trajectory"]')
+    .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
   const run = dock.locator('[data-trajectory-kind="run"]').first();
   await expect(run).toBeAttached();
   const resizer = page.locator(".agent-pane-resizer");
@@ -130,7 +132,9 @@ test("collapsed Run summaries retain complete identities and their recorded rela
     "/lab/fixture.html?fixture=workspace&state=dock-runs&agent-state=delegated&theme=light&font-size=14",
   );
   await page.locator("html[data-visual-ready]").waitFor();
-  const dock = page.locator('[data-dock-view-id="package:visual:trajectory"]');
+  const dock = page
+    .locator('[data-dock-view-id="package:visual:trajectory"]')
+    .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
   const runs = dock.locator('[data-trajectory-kind="run"]');
   const identities = await runs.locator("button code").allTextContents();
   expect(identities).toContain("run_root");
@@ -165,7 +169,9 @@ test("a narrow trajectory reads literal multiline text before optional complete 
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=prose-blocks&theme=dark&font-size=18",
   );
   await page.locator("html[data-visual-ready]").waitFor();
-  const dock = page.locator('[data-dock-view-id="package:visual:trajectory"]');
+  const dock = page
+    .locator('[data-dock-view-id="package:visual:trajectory"]')
+    .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
   const record = dock.locator('[data-trajectory-record="item:item_reading_blocks"]');
   await record.getByRole("button").first().click();
   const body = record.locator("p").filter({ hasText: "## Reading notes" });

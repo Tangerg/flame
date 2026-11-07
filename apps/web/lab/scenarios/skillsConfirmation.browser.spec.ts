@@ -3,13 +3,15 @@ for (const width of [320, 1120]) {
   for (const decision of ["approve", "reject"] as const) {
     test(`Skills ${decision} returns focus after a refused confirmation ${width}`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.setViewportSize({ width, height: 720 });
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:skills&sidebar=collapsed&theme=${width === 320 ? "light" : "dark"}&font-size=18`,
       );
       await page.locator("html[data-visual-ready]").waitFor();
-      const panel = page.getByRole("region", { name: "Skills", exact: true });
+      const panel = page
+        .getByRole("region", { name: "Skills", exact: true })
+        .and(page.locator('[data-slot="panel"]'));
       await panel.getByRole("radio", { name: "Skill proposals", exact: true }).click();
       const opener = panel
         .getByRole("button", {
@@ -38,6 +40,10 @@ for (const width of [320, 1120]) {
       await expect(opener).toBeEnabled();
       await expect(opener).toBeFocused();
       await expect(panel).toContainText("2 pending proposals");
+      await testInfo.attach(`skills-${decision}-refused-${width}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
     });
   }
 }

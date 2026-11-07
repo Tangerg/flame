@@ -6,17 +6,18 @@ for (const [decision, width, theme] of [
 ] as const) {
   test(`Skills ${decision} keeps a keyboard destination when accepted proposals leave the owner list`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 720 });
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:skills&sidebar=collapsed&theme=${theme}&font-size=18&skills-commands=accept`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    const panel = page.getByRole("region", { name: "Skills", exact: true });
+    const panel = page
+      .getByRole("region", { name: "Skills", exact: true })
+      .and(page.locator('[data-slot="panel"]'));
     await panel.getByRole("radio", { name: "Skill proposals", exact: true }).click();
     const search = panel.getByRole("searchbox", { name: "Search this catalog", exact: true });
     await expect(panel).toContainText("2 pending proposals");
-
     for (const [index, proposal] of VISUAL_SKILL_PROPOSALS.data.entries()) {
       const actions = panel.getByRole("group", {
         name: `Proposal actions for ${proposal.name}`,
@@ -30,6 +31,12 @@ for (const [decision, width, theme] of [
         exact: true,
       });
       await expect(confirmation.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+      if (index === 0) {
+        await testInfo.attach(`skills-${decision}-review`, {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+      }
       const submit = confirmation.getByRole("button", { name: `Confirm ${decision}`, exact: true });
       await submit.focus();
       await page.keyboard.press("Enter");
@@ -50,5 +57,9 @@ for (const [decision, width, theme] of [
       await expect.soft(search).toBeFocused();
     }
     await expect(panel.getByText("No Skills in this catalog.", { exact: true })).toBeVisible();
+    await testInfo.attach(`skills-${decision}-empty`, {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
   });
 }

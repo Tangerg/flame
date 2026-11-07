@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Button, ModalDialog } from "@flame/ui";
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,6 +21,7 @@ export function ConfirmDialog({
   destructive,
   onConfirm,
 }: ConfirmDialogProps) {
+  const cancel = useRef<HTMLButtonElement>(null);
   return (
     <ModalDialog
       open={open}
@@ -30,9 +31,10 @@ export function ConfirmDialog({
       size="sm"
       role={destructive ? "alertdialog" : "dialog"}
       backdropSlot="confirm-dialog-backdrop"
+      initialFocus={cancel}
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button ref={cancel} variant="ghost" onClick={() => onOpenChange(false)}>
             {cancelLabel}
           </Button>
           <Button

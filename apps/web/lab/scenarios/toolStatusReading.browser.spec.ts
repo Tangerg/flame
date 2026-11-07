@@ -47,7 +47,7 @@ test("a failed process keeps its exit code when secondary tool metadata folds aw
 
 test("search results omit absent snippets while preserving recorded empty lines", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-search&theme=dark&font-size=18");
   await page.locator("html[data-visual-ready]").waitFor();
   await page.evaluate(async () => {
@@ -116,8 +116,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
   });
 
   await page
-    .getByRole("button", { name: /steps|calls/ })
-    .first()
+    .getByRole("button", { name: "1 read · 1 search · 1 run 3 steps", exact: true })
     .click();
   const finding = page
     .locator('[data-slot="recorded-result"]')
@@ -139,6 +138,10 @@ test("search results omit absent snippets while preserving recorded empty lines"
   );
   await expect(fileRows.nth(2).locator("pre")).toHaveText(" ");
   await expect(fileRows.nth(2).locator("pre")).toBeVisible();
+  await testInfo.attach("recorded-file-snippets", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await page.setViewportSize({ width: 440, height: 900 });
   expect(
     await fileRows
@@ -168,7 +171,10 @@ test("search results omit absent snippets while preserving recorded empty lines"
   await finding.getByRole("button", { name: "Close find" }).click();
   await page.getByRole("button", { name: /^Found files/ }).click();
 
-  await page.getByRole("button", { name: /^Searched the web/ }).click();
+  const webTrigger = page
+    .locator('[data-tool="web_web_search"] [data-slot="agent-activity-header"]')
+    .getByRole("button", { name: /^web_web_search/ });
+  await webTrigger.click();
   const web = page.locator('[data-slot="recorded-result"]').filter({ hasText: "Recorded blank" });
   const webRows = web.locator('[data-slot="recorded-result-viewport"] > div > div');
   await expect(webRows).toHaveCount(3);
@@ -178,12 +184,16 @@ test("search results omit absent snippets while preserving recorded empty lines"
   );
   await expect(webRows.nth(2).locator("p")).toHaveText(" ");
   await expect(webRows.nth(2).locator("p")).toBeVisible();
+  await testInfo.attach("recorded-web-snippets", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await web.getByRole("button", { name: "Find", exact: true }).click();
   await finding.getByRole("searchbox", { name: "Filter result" }).fill("keeps frames alive");
   await expect(filteredRows).toHaveCount(1);
   await expect(filteredRows.first()).toContainText("long reader");
   await finding.getByRole("button", { name: "Close find" }).click();
-  await page.getByRole("button", { name: /^Searched the web/ }).click();
+  await webTrigger.click();
 
   await page.getByRole("button", { name: /^Read / }).click();
   const source = page
@@ -193,6 +203,10 @@ test("search results omit absent snippets while preserving recorded empty lines"
   await expect(sourceRows).toHaveCount(6);
   await expect(sourceRows.nth(1).locator("pre")).toHaveText(" ");
   await expect(sourceRows.nth(1).locator("pre")).toBeVisible();
+  await testInfo.attach("recorded-source-blank-line", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await source.getByRole("button", { name: "Find", exact: true }).click();
   await finding.getByRole("searchbox", { name: "Filter result" }).fill("flushLocked");
   await expect(filteredRows).toHaveCount(1);
@@ -202,12 +216,12 @@ test("search results omit absent snippets while preserving recorded empty lines"
 
 test("recorded results scroll internally when bounded and continue through the transcript", async ({
   page,
-}) => {
-  await page.setViewportSize({ width: 1120, height: 720 });
+}, testInfo) => {
+  await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-agentic&theme=light&font-size=18");
   await page.locator("html[data-visual-ready]").waitFor();
-  await page.getByRole("button", { name: /calls/ }).first().click();
-  await page.locator('[data-tool="list_skills"]').click();
+  await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
+  await page.locator('button[data-tool="list_skills"]').click();
   const result = page.locator('[data-slot="recorded-result-viewport"]');
   const transcript = page.locator(".msg-scroll-viewport");
   await expect(result).toContainText("trace-flaky-test");
@@ -220,6 +234,10 @@ test("recorded results scroll internally when bounded and continue through the t
   ).toBeGreaterThan(0);
   expect(await result.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
   await expect(result).toBeInViewport({ ratio: 1 });
+  await testInfo.attach("recorded-result-fitting-viewport", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   const shortBounds = (await result.boundingBox())!;
   await page.mouse.move(
     shortBounds.x + shortBounds.width / 2,
@@ -259,6 +277,10 @@ test("recorded results scroll internally when bounded and continue through the t
     .poll(() => transcript.evaluate((node) => node.scrollTop))
     .toBeGreaterThan(beforeBoundary.top);
   expect(await result.evaluate((node) => node.scrollTop)).toBe(boundedRange);
+  await testInfo.attach("recorded-result-bounded-scroll-continuation", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
 });
 
 for (const theme of ["light", "dark"] as const) {

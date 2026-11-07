@@ -4,6 +4,7 @@ import {
   type RunCapabilities,
   type RunRef,
   type StreamEvent,
+  type ToolInvocation,
 } from "@flame/runtime-client";
 import { type AgentEventEnvelope } from "@/features/agent/public/events";
 import {
@@ -271,6 +272,7 @@ function settledTool(
   name: string,
   args: Record<string, unknown>,
   result: unknown,
+  resultShape?: ToolInvocation["resultShape"],
 ): Item {
   return {
     type: "toolCall",
@@ -281,7 +283,7 @@ function settledTool(
     startedAt: CREATED_AT,
     durationMillis: 120,
     finishedAt: "2026-07-31T08:00:00.120Z",
-    tool: { name, category: toolCategoryForName(name), arguments: args, result },
+    tool: { name, category: toolCategoryForName(name), resultShape, arguments: args, result },
   };
 }
 
@@ -296,6 +298,7 @@ const GLOB_CALL = settledTool(
       { path: "runtime/internal/run/segment_test.go" },
     ],
   }),
+  "search",
 );
 
 const MEMORY_CALL = settledTool(

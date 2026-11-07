@@ -5,11 +5,11 @@ for (const [theme, fontSize, width] of [
 ] as const) {
   test(`generic tool results stay primary and scrollable before and after highlighting in ${theme}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     let releaseHighlight!: () => void;
     const highlight = new Promise<void>((resolve) => (releaseHighlight = resolve));
     let requested = false;
-    await page.route("**/node_modules/.vite/deps/shiki.js*", async (route) => {
+    await page.route("**/node_modules/.vite/deps/shiki_core.js*", async (route) => {
       requested = true;
       await highlight;
       await route.continue();
@@ -20,8 +20,10 @@ for (const [theme, fontSize, width] of [
     );
     await page.locator("html[data-visual-ready]").waitFor();
     await page.evaluate(() => document.fonts.ready);
-    await page.getByRole("button", { name: /calls/ }).first().click();
-    const trigger = page.locator('[data-tool="inspect_workspace"]');
+    await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
+    const card = page.locator('[data-tool="inspect_workspace"]');
+    const header = card.locator('[data-slot="agent-activity-header"]');
+    const trigger = header.getByRole("button", { name: "inspect_workspace", exact: true });
     await trigger.click();
     const result = page.getByRole("region", { name: "Result", exact: true });
     const argumentsButton = page.getByRole("button", { name: "Arguments", exact: true });
@@ -51,6 +53,10 @@ for (const [theme, fontSize, width] of [
       const before = (await result.boundingBox())!;
       await result.focus();
       await expect(result).toBeFocused();
+      await testInfo.attach(`tool-result-plain-${theme}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
       releaseHighlight();
       await result.locator("code .line").first().waitFor();
       await assertResult();
@@ -60,6 +66,10 @@ for (const [theme, fontSize, width] of [
         height: before.height,
       });
       await expect(result).toBeFocused();
+      await testInfo.attach(`tool-result-highlighted-${theme}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
       await page.keyboard.press("Tab");
       await expect(argumentsButton).toBeFocused();
       await result.focus();
@@ -97,11 +107,11 @@ for (const [theme, fontSize, width] of [
       await expect(args.locator("component")).toHaveCount(0);
       const frame = args.locator("..");
       await expect(frame.getByRole("button", { name: "Copy code", exact: true })).toHaveCount(0);
-      const copyArguments = trigger
-        .locator("..")
-        .getByRole("button", { name: "Copy arguments", exact: true });
+      const copyArguments = header.getByRole("button", { name: "Copy arguments", exact: true });
       await expect(copyArguments).toHaveCount(1);
       await trigger.hover();
+      await expect(copyArguments).toHaveCSS("opacity", "1");
+      await expect(copyArguments).toHaveCSS("pointer-events", "auto");
       await copyArguments.click();
       expect(
         JSON.parse(

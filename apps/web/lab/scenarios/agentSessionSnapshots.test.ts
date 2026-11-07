@@ -14,6 +14,20 @@ import {
 } from "./agentSessionSnapshots";
 import WEB_PAGES from "./web-pages.json";
 describe("the visual agent fixtures", () => {
+  it("retains the recorded search shape through the Runtime projection", () => {
+    const view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-search"]),
+    );
+    expect(view.toolCalls.item_search_glob?.resultShape).toBe("search");
+    expect(JSON.parse(view.toolCalls.item_search_glob!.result!)).toMatchObject({
+      hits: [
+        { path: "runtime/internal/session/store_test.go" },
+        { path: "runtime/internal/session/atomicity_test.go" },
+        { path: "runtime/internal/run/segment_test.go" },
+      ],
+    });
+  });
+
   it.each(["running", "tool-shells"] as const)(
     "presents the captured file body in %s instead of its transport envelope",
     (state) => {
