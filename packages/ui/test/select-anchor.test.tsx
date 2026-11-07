@@ -10,7 +10,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Select } from "../dist/index.js";
 
-const anchor = vi.hoisted(() => ({ hidden: false }));
+const anchor = vi.hoisted(() => ({ hidden: false, pending: false }));
 
 vi.mock("@base-ui/react/select", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@base-ui/react/select")>();
@@ -24,10 +24,19 @@ vi.mock("@base-ui/react/select", async (importOriginal) => {
             {...props}
             render={(elementProps, state) =>
               typeof props.render === "function" ? (
-                props.render(elementProps, {
-                  ...state,
-                  anchorHidden: anchor.hidden,
-                })
+                props.render(
+                  {
+                    ...elementProps,
+                    style: {
+                      ...elementProps.style,
+                      ...(anchor.pending ? { opacity: 0 } : {}),
+                    },
+                  },
+                  {
+                    ...state,
+                    anchorHidden: anchor.hidden,
+                  },
+                )
               ) : (
                 <div {...elementProps} />
               )
@@ -42,6 +51,7 @@ vi.mock("@base-ui/react/select", async (importOriginal) => {
 afterEach(() => {
   cleanup();
   anchor.hidden = false;
+  anchor.pending = false;
 });
 
 function mount() {
@@ -117,31 +127,48 @@ describe("detached Select anchor", () => {
     expect(view.change).not.toHaveBeenCalled();
   });
 
-  it("waits for the next anchor measurement when reopening retained content", async () => {
-    const view = mount();
-    const trigger = await open();
-    anchor.hidden = true;
-    view.update();
-    await waitFor(() =>
-      expect(trigger.getAttribute("aria-expanded")).toBe("false"),
-    );
-    await waitFor(() => expect(document.activeElement).toBe(view.owner));
+  it.each([false, true])(
+    "waits for the current position with a retained hidden sample (previously clipped: %s)",
+    async (previouslyClipped) => {
+      const view = mount();
+      const trigger = screen.getByRole("combobox", { name: "Interface size" });
+      if (previouslyClipped) {
+        await open();
+        anchor.hidden = true;
+        view.update();
+        await waitFor(() =>
+          expect(trigger.getAttribute("aria-expanded")).toBe("false"),
+        );
+        await waitFor(() => expect(document.activeElement).toBe(view.owner));
+      }
+      anchor.hidden = true;
+      anchor.pending = true;
+      view.update();
 
-    fireEvent.click(trigger);
-    await waitFor(() =>
-      expect(trigger.getAttribute("aria-expanded")).toBe("true"),
-    );
-    expect(screen.queryByRole("listbox")).toBeNull();
-    anchor.hidden = false;
-    view.update();
+      fireEvent.click(trigger);
+      await waitFor(() =>
+        expect(trigger.getAttribute("aria-expanded")).toBe("true"),
+      );
+      const popup = await screen.findByRole("listbox");
+      const opacity = () => {
+        let value = 1;
+        for (let node: Element | null = popup; node; node = node.parentElement)
+          value *= Number(getComputedStyle(node).opacity || 1);
+        return value;
+      };
+      expect(opacity()).toBe(0);
+      anchor.hidden = false;
+      anchor.pending = false;
+      view.update();
 
-    const popup = await screen.findByRole("listbox");
-    await waitFor(() =>
-      expect(popup.contains(document.activeElement)).toBe(true),
-    );
-    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-    await waitFor(() => expect(document.activeElement).toBe(trigger));
-    expect(trigger.textContent).toBe("14");
-    expect(view.change).not.toHaveBeenCalled();
-  });
+      await waitFor(() => expect(opacity()).toBe(1));
+      await waitFor(() =>
+        expect(popup.contains(document.activeElement)).toBe(true),
+      );
+      fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+      await waitFor(() => expect(document.activeElement).toBe(trigger));
+      expect(trigger.textContent).toBe("14");
+      expect(view.change).not.toHaveBeenCalled();
+    },
+  );
 });

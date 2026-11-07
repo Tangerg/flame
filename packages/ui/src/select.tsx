@@ -207,13 +207,14 @@ function SelectAnchor({
   detached: RefObject<boolean>;
   actionsRef: RefObject<SelectPrimitive.Root.Actions | null>;
 }) {
+  // Base UI's zero-opacity positioning frame still carries the closed pass's clipping data.
+  const positioned = props.style?.opacity !== 0;
   useLayoutEffect(() => {
-    // Base UI retains closed items and their last geometry. Consume a hidden
-    // transition once so reopening can receive the next anchor measurement.
-    if (!open) return;
-    const wasDetached = detached.current;
+    if (!open || !positioned) return;
     detached.current = anchorHidden;
-    if (anchorHidden && !wasDetached) actionsRef.current?.close();
-  }, [open, anchorHidden, detached, actionsRef]);
-  return <div {...props} hidden={props.hidden || anchorHidden} />;
+    if (anchorHidden) actionsRef.current?.close();
+  }, [open, positioned, anchorHidden, detached, actionsRef]);
+  return (
+    <div {...props} hidden={props.hidden || (positioned && anchorHidden)} />
+  );
 }

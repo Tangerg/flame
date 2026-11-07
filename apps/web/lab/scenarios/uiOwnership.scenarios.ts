@@ -294,4 +294,148 @@ export function registerUiOwnershipContracts() {
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
   });
+
+  for (const theme of ["light", "dark"]) {
+    test(`keyboard-opened schedule Model stays open ${theme}`, async ({
+      page,
+      browserName,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 373, height: 243 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&sidebar=collapsed&theme=${theme}&locale=zh&font-size=18`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      const panel = page
+        .getByRole("region", { name: "定时任务", exact: true })
+        .and(page.locator('[data-slot="panel"]'));
+      const add = panel.getByRole("button", { name: "添加定时任务", exact: true });
+      await expect(add).toBeEnabled();
+      await add.click();
+      const editor = page.getByRole("dialog", { name: "新建定时任务", exact: true });
+      const body = editor.locator('[data-slot="dialog-body"]');
+      const title = editor.getByRole("textbox", { name: "标题", exact: true });
+      await expect(title).toBeFocused();
+      const draft = "  Padded first-open draft  ";
+      await title.fill(draft);
+      await expect(title).toHaveValue(draft);
+
+      const model = editor.getByRole("combobox", { name: "模型", exact: true });
+      for (const next of [
+        editor.getByRole("textbox", { name: "指令", exact: true }),
+        editor.getByRole("textbox", { name: "Cron 表达式", exact: true }),
+        editor.getByRole("textbox", { name: "时区", exact: true }),
+        editor.getByRole("textbox", { name: "工作区路径", exact: true }),
+        editor.getByRole("checkbox", { name: "已启用", exact: true }),
+        model,
+      ]) {
+        await page.keyboard.press("Tab");
+        await expect(next).toBeFocused();
+      }
+
+      const modelPlacement = () =>
+        model.evaluate((control) => {
+          const viewport = control.closest('[data-slot="dialog-body"]')!.getBoundingClientRect();
+          const box = control.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+          return {
+            inside:
+              box.top >= viewport.top &&
+              box.bottom <= viewport.bottom &&
+              box.left >= viewport.left &&
+              box.right <= viewport.right,
+            outside: box.top >= viewport.bottom || box.bottom <= viewport.top,
+            hit: hit !== null && control.contains(hit),
+          };
+        });
+      await testInfo.attach(`schedule-model-before-${browserName}-${theme}.png`, {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+      expect(await modelPlacement()).toMatchObject({ inside: true, hit: true });
+
+      const popup = page.getByRole("listbox");
+      await page.keyboard.press("Enter");
+      try {
+        await expect(popup).toBeVisible();
+        await expect(model).toHaveAttribute("aria-expanded", "true");
+        await expect(
+          popup.getByRole("option", { name: "Runtime 默认模型", exact: true }),
+        ).toBeFocused();
+        await expect
+          .poll(() =>
+            popup.evaluate((element) => {
+              let opacity = 1;
+              for (let node: Element | null = element; node; node = node.parentElement)
+                opacity *= Number(getComputedStyle(node).opacity);
+              return opacity;
+            }),
+          )
+          .toBe(1);
+      } finally {
+        await testInfo.attach(`schedule-model-after-${browserName}-${theme}.png`, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+        await testInfo.attach(`schedule-model-after-${browserName}-${theme}.json`, {
+          body: JSON.stringify({
+            expanded: await model.getAttribute("aria-expanded"),
+            listboxes: await popup.count(),
+            active: await page.evaluate(() => {
+              const active = document.activeElement;
+              return (
+                active &&
+                `${active.tagName} ${active.getAttribute("role") ?? ""} ${active.getAttribute("data-slot") ?? ""}`
+              );
+            }),
+            placement: await modelPlacement(),
+          }),
+          contentType: "application/json",
+        });
+      }
+
+      const sol = popup.getByRole("option", { name: "openai / GPT-5.6 Sol", exact: true });
+      await page.keyboard.press("ArrowDown");
+      await expect(sol).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(popup).toBeHidden();
+      await expect(model).toContainText("openai / GPT-5.6 Sol");
+      await expect(model).toBeFocused();
+      await expect(editor).toBeVisible();
+      await expect(title).toHaveValue(draft);
+
+      await page.keyboard.press("Enter");
+      await expect(popup).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(popup).toBeHidden();
+      await expect(model).toBeFocused();
+      await expect(editor).toBeVisible();
+
+      await page.keyboard.press("Enter");
+      await expect(popup).toBeVisible();
+      const corner = await body.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return { x: box.left + node.clientLeft + 8, y: box.top + node.clientTop + 8 };
+      });
+      const popupBox = (await popup.boundingBox())!;
+      expect(
+        corner.x >= popupBox.x &&
+          corner.x <= popupBox.x + popupBox.width &&
+          corner.y >= popupBox.y &&
+          corner.y <= popupBox.y + popupBox.height,
+      ).toBe(false);
+      await page.mouse.move(corner.x, corner.y);
+      await page.mouse.wheel(0, -10_000);
+      await expect(popup).toBeHidden();
+      await expect(body).toBeFocused();
+      await expect.poll(async () => (await modelPlacement()).outside).toBe(true);
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      expect((await modelPlacement()).outside).toBe(true);
+      await expect(title).toHaveValue(draft);
+
+      await editor.getByRole("button", { name: "取消", exact: true }).click();
+      await expect(add).toBeFocused();
+    });
+  }
 }

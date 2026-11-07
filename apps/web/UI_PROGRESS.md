@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest shared Panel follow-up passes **219 selected Lab cases**, with all **650 final browser images** reviewed. Actual Wails checks qualify Chinese/dark and German/light reading at **200% and 300%**, including return to a retained conversation draft. See **Sticky controls and readable content at native zoom (2026-11-08)**. Earlier full-baseline and focused results retain their original source scope; this shared change does not claim a new complete-suite pass. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest shared Select repair passes the complete **1,282-case Lab collection**. All **922 final browser images** are reviewed: 903 match reviewed images and 19 receive full-resolution inspection. Actual Wails EN/light and ZH/dark tasks cover native **200% and 300%**, including first-open selection at 300%, scroll retirement and retained form/conversation drafts. See **First-open Schedule model selection at native zoom (2026-11-08)**. A narrow Composer capture still needs reproduction before any production diagnosis. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -530,6 +530,96 @@ absence, and three protected helper roots retain their original empty identities
 and flags. Evidence is preserved in memory before guarded QA-root retirement.
 Normal hooks and an ordinary push to `main` deliver this batch. Continue actual
 task qualification through the same Lab.
+
+### First-open Schedule model selection at native zoom (2026-11-08)
+
+Actual Chinese/dark/18 px Wails review at **300%** exposes a first-open defect:
+Model is completely visible after natural Tab entry, but its first Enter or
+mouse click immediately closes the popup and moves focus to the editor body.
+A second opening succeeds. The same Lab flow fails in **both WebKit themes**
+while Chromium passes; retained geometry confirms that the trigger is visible
+and receives pointer hits.
+
+Base UI retains its closed anchor sample. Its initial, unpositioned opening
+frame has inline opacity zero and can still report the preceding hidden sample.
+The shared Select was treating that sample as current clipping. SelectAnchor
+now waits for the positioned frame before hiding or retiring the popup. Actual
+clipping still closes it, including after reopening, and restores the existing
+scroll-owner focus without scrolling back. This uses the public Positioner
+render props and existing effect/ref; no second geometry, timer, observer, state
+owner or plugin override is added. The UI README records that boundary.
+
+Four cases extend the existing shared UI ownership scenarios and their existing
+Chromium/WebKit wrappers. At **373×243 px**, Chinese/18 px and both themes,
+they follow six natural Tabs from a padded Title to Model, verify its complete
+placement, press Enter once, and wait for actually painted options. Selection,
+reopening, Escape return, real wheel clipping, body focus without scroll-back,
+literal draft retention and Cancel return are checked. These small browser
+viewports complement native zoom; they do not claim browser page-zoom coverage.
+
+The focused baseline has **2 passes / 2 WebKit failures** in **25.366 s**.
+The repaired selection passes **4 / 4** in **14.997 s**; the related selection
+passes **35 / 35** in **172.857 s**, without retries, skips or flaky cases.
+All **24 related images** are reviewed: 22 match reviewed captures and the two
+changed WebKit popups receive full-resolution inspection.
+
+The complete frozen-source Lab invocation passes **1,282 / 1,282** in
+**3,494.695 s**, with no retries, skips, flaky results or global errors. This
+includes all four new cases. All **922 final images** are reviewed: **903**
+hash-match previously reviewed captures, and the remaining **19** receive
+full-resolution inspection. One follow-up observation remains: the second draft
+line is incomplete in the Chinese 320 px inline-width Composer capture. That
+scenario checks choice names and retained value, not complete text visibility;
+reproduce it with settled geometry and a real host resize before diagnosing
+production clipping. This is not whole-product visual acceptance.
+
+The full shared UI check passes in **8.799 s**, including **255 tests / 14 files**,
+typecheck, lint, formatting, build and offline packed-consumer verification.
+Frontend tests pass **4,702 tests / 431 files** in **86.871 s**. All eleven selected Web
+static stages pass. The unchanged ProviderRow complexity failure remains
+**31 → 34**; its source and the thresholds are not changed. **make check-native**
+passes in **21.381 s**, including production staging, Desktop test/vet/build
+and Wails packaging; existing SDK/macOS linker warnings remain. Plugin resource
+checks pass, and the final Lab build passes in **2.547 s**.
+
+Actual Wails v3.1.0 uses the same **487 final Lab assets**, production native
+host/menu/zoom and a private identity/home. English/light/14 px qualifies first
+keyboard opening at **200% and 300%** and first mouse opening in a fresh editor
+at **300%**. Chinese/dark/18 px qualifies readable fields at **200%** and first
+keyboard opening at **300%**. Both final profiles verify selection, Escape return,
+real inner-body scrolling that retires the popup, exact padded Title and multiline
+Instructions, cancellation, return to the retained Composer and continued typing.
+All **34 native captures** are reviewed: 17 diagnostic baseline and 17 final.
+Two baseline captures taken after an unintended editor dismissal show the
+background and are excluded from form-retention acceptance. All three native
+runs exit normally.
+
+A bounded Claude Code CLI edit supplies the initial regression flow in
+**106.681 s**. Primary moves it to the existing shared scenario factory because
+worker-wide browser selection inside a describe block is rejected at collection,
+then strengthens and verifies it. A read-only analysis reaches its **180.050 s**
+timeout without a completed report; primary traces the actual positioning
+frames. The original complete run is deliberately interrupted after **366
+passes**, one interrupted case and **911 not run** when the native defect is
+found; it is not counted as a complete pass. A stale unit mock is corrected to
+represent the actual zero-opacity pending frame before the final UI check.
+
+Better-layout and better-accessibility guide readable fields, nested popup
+ownership, keyboard return and retained authoring. Optional measurements,
+VoiceOver, physical IME, RTL and live Runtime/provider execution remain unverified.
+The full Web gate and Runtime integration are not rerun; the named frontend,
+static, shared UI and native checks above are the actual scope. After functional
+verification, all **12 output/cache roots** return to their original bytes, modes
+and directory state or absence. The comparison covers **6,710 non-Markdown
+inputs**, with only the three intended Select/scenario/test sources changed,
+all **46 native inputs**, and the unchanged primary checkout. No functional
+check runs against restored older outputs. The app is unregistered and its
+owned server exits; six Library paths and ordinary temp return to absence, and
+three protected helper roots retain their original empty identities and flags.
+Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
+and an ordinary push to `main` deliver the repair. Next reproduce the observed
+Composer line through this same Lab; no parallel visual runner is added. The
+goal remains active.
 
 ### Qualification and limits
 
@@ -1969,11 +2059,14 @@ does not reproduce the prior jump; the empty
 Chinese selection heading is repaired and qualified. The far-right sorting
 control now retains complete horizontal visibility through native Window Zoom.
 The retained content-layout failures and selected Workspace navigation and
-shared control failures are now resolved within the scopes above. Four current Diff
-captures vary with their accepted read time while the other 36 are byte-identical;
-next inspect fixture-owned time determinism, then continue the remaining migrated
-interaction triage through this same Lab. Preserve production time semantics and
-distinguish obsolete assumptions from real navigation or layout defects.
+shared control failures are now resolved within the scopes above. The fixture
+calendar already gives argument-free Date reads the advancing
+recorded clock; its qualification is recorded under **Coherent fixture calendar
+and visible outcome evidence**. Temporal text is not required to be pixel-identical.
+The latest complete **1,282-case Lab collection** passes after the shared Select
+first-open repair. Next reproduce the incomplete second draft line in the
+320 px inline-width Composer capture, distinguish settling from actual clipping,
+and continue native task inspection through this same Lab.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout, including its committed `go.work.sum`, is preserved. The user

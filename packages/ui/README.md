@@ -287,8 +287,9 @@ owner without moving that viewport, and preserves any later outside focus.
 Revealing the trigger again leaves the menu closed. Geometry remains with Base
 UI; the component does not maintain a second positioning or scroll listener.
 Base UI retains closed item content and its last anchor sample. The component
-consumes a hidden transition once, allowing a reopened menu to receive its next
-measurement before dismissing again.
+waits for its positioned frame before hiding or retiring an open popup; the
+initial zero-opacity frame can still carry the closed pass's clipping result.
+Actual clipping after positioning still retires the popup, including on reopening.
 `FLOATING_PANEL` and `FLOATING_TIP` apply the theme's backdrop filter directly to
 the surface. Keeping the filter on a negative-layer pseudo-element inside a
 scrolling popup can leave its options unpainted in WKWebView at native page zoom.
