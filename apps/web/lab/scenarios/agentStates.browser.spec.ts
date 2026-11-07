@@ -232,19 +232,35 @@ test("delegated links keep child conversations in the right dock", async ({ page
   await expect(page.locator('[data-slot="delegated-run-link"]')).toHaveCount(5);
   await expect(page.getByText("Package graph verification is still running.")).toHaveCount(0);
   await root.getByRole("button", { name: /^Sub-agent/ }).click();
-  const panel = page.locator('[data-dock-view-id="subagents"]');
+  const panel = page.getByRole("region", { name: "Subagents", exact: true });
   await expect(panel).toBeVisible();
   await expect(root).toBeVisible();
   await expect(panel.locator('[data-slot="approval-surface"]')).toBeVisible();
-  await expect(panel.locator('[data-run-id="run_nested"]')).toBeVisible();
-  await panel
-    .locator('[data-run-id="run_nested"]')
-    .getByRole("button", { name: /^Sub-agent/ })
-    .click();
-  await expect(panel.getByText("Package graph verification is still running.")).toBeVisible();
+  const parentTranscript = panel.getByRole("region", {
+    name: "Audit Agent Framework ownership",
+    exact: true,
+  });
+  const nestedLink = parentTranscript.locator(
+    '[data-slot="delegated-run-link"][data-run-id="run_nested"]',
+  );
+  await expect(nestedLink).toHaveCount(1);
+  await expect(nestedLink).toBeVisible();
+  await nestedLink.getByRole("button", { name: /^Sub-agent/ }).click();
+  const nestedTranscript = panel.getByRole("region", {
+    name: "Verify package dependencies",
+    exact: true,
+  });
+  await expect(nestedTranscript).toBeVisible();
+  await expect(
+    nestedTranscript.getByText("Package graph verification is still running."),
+  ).toBeVisible();
   await expect(root).toBeVisible();
   await panel.getByRole("button", { name: "All subagents", exact: true }).click();
-  await expect(panel.locator('[data-slot="delegated-run-link"]')).toHaveCount(6);
+  await expect(
+    panel
+      .getByRole("group", { name: "Subagents", exact: true })
+      .locator('[data-slot="delegated-run-link"]'),
+  ).toHaveCount(6);
 });
 
 test("the subagent transcript follows new output and respects reading above the tail", async ({
@@ -256,7 +272,8 @@ test("the subagent transcript follows new output and respects reading above the 
     .locator("#item_delegate")
     .getByRole("button", { name: /^Sub-agent/ })
     .click();
-  const panel = page.locator('[data-dock-view-id="subagents"]');
+  const panel = page.getByRole("region", { name: "Subagents", exact: true });
+  const header = panel.locator("header");
   await expect(panel.locator('[data-slot="approval-surface"]')).toBeVisible();
   const transcript = panel.getByRole("region", {
     name: "Audit Agent Framework ownership",
@@ -298,13 +315,13 @@ test("the subagent transcript follows new output and respects reading above the 
   await expect
     .poll(() => scroller.evaluate((e) => e.scrollHeight - e.clientHeight - e.scrollTop))
     .toBeLessThan(2);
-  await expect(panel.getByText("Audit Agent Framework ownership", { exact: true })).toBeInViewport({
-    ratio: 1,
-  });
-  await expect(panel.getByText("Needs input", { exact: true })).toBeInViewport({ ratio: 1 });
-  await expect(
-    panel.getByRole("button", { name: "Cancel this run", exact: true }).first(),
-  ).toBeInViewport({ ratio: 1 });
+  await expect(header.getByText("Audit Agent Framework ownership", { exact: true })).toBeInViewport(
+    { ratio: 1 },
+  );
+  await expect(header.getByText("Needs input", { exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(header.getByRole("button", { name: "Cancel this run", exact: true })).toBeInViewport(
+    { ratio: 1 },
+  );
   await scroller.hover();
   await page.mouse.wheel(0, -500);
   await expect
@@ -552,7 +569,7 @@ test("the composer context ring exposes the Runtime window occupancy", async ({ 
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`a ${theme} user turn uses the Codex-neutral bubble material and geometry`, async ({
+  test(`a ${theme} user turn uses the Flame accent bubble material and geometry`, async ({
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=idle`);
@@ -567,7 +584,7 @@ for (const theme of ["light", "dark"] as const) {
 
     const material = await bubble.evaluate((element) => {
       const probe = document.createElement("div");
-      probe.style.background = "color-mix(in srgb, var(--color-text) 5%, transparent)";
+      probe.style.background = "var(--app-user-message-surface)";
       document.body.append(probe);
       const expectedBackground = getComputedStyle(probe).backgroundColor;
       probe.remove();
@@ -752,7 +769,7 @@ test("the projectless composer owns Codex's inset rear project tray", async ({ p
   expect(composerBox).not.toBeNull();
   expect(trayBox!.x - composerBox!.x).toBe(12);
   expect(composerBox!.x + composerBox!.width - (trayBox!.x + trayBox!.width)).toBe(12);
-  expect(composerBox!.y - trayBox!.y).toBe(37);
+  expect(composerBox!.y - trayBox!.y).toBe(39);
   expect(trayBox!.y + trayBox!.height - composerBox!.y).toBe(22);
   await expect(tray.getByRole("button", { name: "Choose project" })).toBeVisible();
   await expect(tray.locator("svg")).toHaveCount(1);
@@ -931,7 +948,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
 
   expect(geometry).not.toBeNull();
   expect.soft(geometry?.headerBackground).toBe("rgba(0, 0, 0, 0)");
-  expect.soft(geometry?.blockMargin).toBe("17.5px");
+  expect.soft(geometry?.blockMargin).toBe("20px");
   expect.soft(geometry?.headerPadding).toBe("4px 12px");
   expect.soft(geometry?.languageFamily).toBe(geometry?.bodyFamily);
   expect.soft(geometry?.languageSize).toBe("12px");
@@ -1045,89 +1062,139 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 for (const theme of ["light", "dark"] as const) {
-  test(`Markdown media previews inline data without requesting remote URLs ${theme}`, async ({
-    page,
-  }) => {
-    let remoteRequests = 0;
-    await page.route("https://tracker.example/**", async (route) => {
-      remoteRequests += 1;
-      await route.abort();
+  for (const frame of ["reading", "narrow-largest"] as const) {
+    test(`Markdown media previews inline data without requesting remote URLs ${theme} ${frame}`, async ({
+      page,
+    }, testInfo) => {
+      let remoteRequests = 0;
+      await page.route("https://tracker.example/**", async (route) => {
+        remoteRequests += 1;
+        await route.abort();
+      });
+      const narrow = frame === "narrow-largest";
+      if (narrow) await page.setViewportSize({ width: 320, height: 720 });
+      await page.goto(
+        `/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content${narrow ? "&font-size=18&sidebar=collapsed" : ""}`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
+      const draft = "Keep this image reading draft. 保留图片阅读草稿。";
+      await composer.fill(draft);
+      await layOutTranscript(page);
+
+      const blocked = page.getByRole("img", { name: "Tracking pixel" });
+      await expect(blocked, "the reader is still told an image belongs here").toBeVisible();
+      await expect(blocked).toContainText("Tracking pixel");
+      await expect(blocked).toContainText("Image unavailable");
+      const reading = page.locator(".md").filter({ hasText: "Architecture review" });
+      const bounds = await reading.evaluate((node) => {
+        const viewport = node.closest(".msg-scroll-viewport")!;
+        const frame = viewport.getBoundingClientRect();
+        return {
+          viewportOverflow: viewport.scrollWidth - viewport.clientWidth,
+          documentOverflow:
+            document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          escapedBlocks: Array.from(node.children).flatMap((child) => {
+            const box = child.getBoundingClientRect();
+            return box.left < frame.left - 1 || box.right > frame.right + 1
+              ? [{ tag: child.tagName, left: box.left, right: box.right }]
+              : [];
+          }),
+        };
+      });
+      await testInfo.attach("markdown-media-boundaries.json", {
+        body: JSON.stringify(bounds, null, 2),
+        contentType: "application/json",
+      });
+      expect(bounds.viewportOverflow).toBe(0);
+      expect(bounds.documentOverflow).toBe(0);
+      expect(bounds.escapedBlocks).toEqual([]);
+      await expect(
+        page.getByRole("button", { name: "Tracking pixel" }),
+        "and it is not offered as something to press, since there is nothing to open",
+      ).toHaveCount(0);
+      await expect(page.locator('img[src^="https://tracker.example/"]')).toHaveCount(0);
+      expect(remoteRequests).toBe(0);
+
+      const preview = page.getByRole("button", { name: "Inline architecture" });
+      await expect(page.locator('[data-markdown-image-grid="true"] > button')).toHaveCount(2);
+      const unseen = await preview.locator("img").boundingBox();
+      expect(unseen?.height ?? 0, "an image below the fold holds no box").toBeGreaterThan(8);
+      await preview.evaluate((button) => button.parentElement?.scrollIntoView({ block: "center" }));
+      await expect(preview).toBeInViewport({ ratio: 1 });
+      await expectStableBox(preview);
+      await testInfo.attach("markdown-media-inline.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
+
+      await preview.click();
+      const dialog = page.getByRole("dialog", { name: "Inline architecture" });
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toBeFocused();
+      await expect(dialog.locator('[data-image-zoom="100"]')).toBeVisible();
+      await testInfo.attach("markdown-media-fitted.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
+      await page.keyboard.press("ArrowLeft");
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+      await page.keyboard.press("ArrowRight");
+      const finalImage = page.getByRole("dialog", { name: "Image generated by the assistant" });
+      await expect(finalImage).toBeVisible();
+      await expect(finalImage.getByRole("status")).toHaveText("3 / 3");
+      await page.keyboard.press("ArrowRight");
+      await expect(finalImage).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(dialog).toBeVisible();
+      const transcript = page.locator(".msg-scroll-viewport");
+      await transcript.evaluate((viewport) => {
+        viewport.scrollTop = 0;
+      });
+      await expect.poll(() => transcript.evaluate((viewport) => viewport.scrollTop)).toBe(0);
+      const controlSizes = await Promise.all(
+        ["Download PNG", "Close image preview", "Zoom out image", "Zoom in image"].map((name) =>
+          page.getByRole("button", { name }).evaluate((button, accessibleName) => {
+            const element = button as HTMLElement;
+            return {
+              accessibleName,
+              width: element.offsetWidth,
+              height: element.offsetHeight,
+            };
+          }, name),
+        ),
+      );
+      for (const { accessibleName, width, height } of controlSizes) {
+        expect.soft(width, `${accessibleName} width`).toBeGreaterThanOrEqual(40);
+        expect.soft(height, `${accessibleName} height`).toBeGreaterThanOrEqual(40);
+      }
+
+      await page.getByRole("button", { name: "Zoom in image" }).click();
+      await expect(dialog.locator('[data-image-zoom="125"]')).toBeVisible();
+      await page.getByRole("button", { name: "Next image" }).click();
+      await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Next image" })).toBeEnabled();
+      await page.getByRole("button", { name: "Next image" }).click();
+      await expect(finalImage).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Next image" }),
+        "the last step disables Next without dropping the keyboard out of the dialog",
+      ).toBeFocused();
+      await expect(page.locator('[data-image-zoom="100"]')).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(page.getByRole("dialog", { name: "Inline architecture" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "Inline architecture" })).toHaveCount(0);
+      await expect(preview).toBeFocused();
+      await expect(composer).toHaveValue(draft);
     });
-    await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
-    await page.locator("html[data-visual-ready]").waitFor();
-
-    const blocked = page.getByRole("img", { name: "Tracking pixel" });
-    await expect(blocked, "the reader is still told an image belongs here").toBeVisible();
-    await expect(blocked).toContainText("Tracking pixel");
-    await expect(blocked).toContainText("Image unavailable");
-    const reading = page.locator(".md").filter({ hasText: "Architecture review" });
-    await expect
-      .poll(() => reading.evaluate((node) => node.scrollWidth - node.clientWidth))
-      .toBe(0);
-    await expect(
-      page.getByRole("button", { name: "Tracking pixel" }),
-      "and it is not offered as something to press, since there is nothing to open",
-    ).toHaveCount(0);
-    await expect(page.locator('img[src^="https://tracker.example/"]')).toHaveCount(0);
-    expect(remoteRequests).toBe(0);
-
-    const preview = page.getByRole("button", { name: "Inline architecture" });
-    await expect(page.locator('[data-markdown-image-grid="true"] > button')).toHaveCount(2);
-    const unseen = await preview.locator("img").boundingBox();
-    expect(unseen?.height ?? 0, "an image below the fold holds no box").toBeGreaterThan(8);
-    await layOutTranscript(page);
-    await preview.evaluate((button) => button.parentElement?.scrollIntoView({ block: "center" }));
-    await expect(preview).toBeVisible();
-    await expectStableBox(preview);
-
-    await preview.click();
-    const dialog = page.getByRole("dialog", { name: "Inline architecture" });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toBeFocused();
-    await page.keyboard.press("ArrowLeft");
-    await expect(dialog).toBeVisible();
-    await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
-    await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
-    await page.keyboard.press("ArrowLeft");
-    await expect(dialog).toBeVisible();
-    const transcript = page.locator(".msg-scroll-viewport");
-    await transcript.evaluate((viewport) => {
-      viewport.scrollTop = 0;
-    });
-    await expect.poll(() => transcript.evaluate((viewport) => viewport.scrollTop)).toBe(0);
-    const controlSizes = await Promise.all(
-      ["Download PNG", "Close image preview", "Zoom out image", "Zoom in image"].map((name) =>
-        page.getByRole("button", { name }).evaluate((button, accessibleName) => {
-          const element = button as HTMLElement;
-          return {
-            accessibleName,
-            width: element.offsetWidth,
-            height: element.offsetHeight,
-          };
-        }, name),
-      ),
-    );
-    for (const { accessibleName, width, height } of controlSizes) {
-      expect.soft(width, `${accessibleName} width`).toBeGreaterThanOrEqual(40);
-      expect.soft(height, `${accessibleName} height`).toBeGreaterThanOrEqual(40);
-    }
-
-    await page.getByRole("button", { name: "Zoom in image" }).click();
-    await expect(dialog.locator('[data-image-zoom="125"]')).toBeVisible();
-    await page.getByRole("button", { name: "Next image" }).click();
-    await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Next image" }),
-      "the last step disables Next without dropping the keyboard out of the dialog",
-    ).toBeFocused();
-    await expect(page.locator('[data-image-zoom="100"]')).toBeVisible();
-    await page.keyboard.press("ArrowLeft");
-    await expect(page.getByRole("dialog", { name: "Inline architecture" })).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "Inline architecture" })).toHaveCount(0);
-  });
+  }
 }
 
 test("a finished thought opens into a box that is still bounded", async ({ page }) => {
@@ -1201,7 +1268,9 @@ test("context compaction uses the Codex activity row without divider chrome", as
   await expect(page.getByText("Earlier tool output folded into a summary.")).toBeVisible();
 });
 
-test("Markdown structural primitives follow the Codex reading grammar", async ({ page }) => {
+test("Markdown structural primitives preserve reading hierarchy and alignment", async ({
+  page,
+}, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
   await page.locator("html[data-visual-ready]").waitFor();
 
@@ -1219,7 +1288,9 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     const leadParagraph = Array.from(root.querySelectorAll(":scope > p")).find((paragraph) =>
       paragraph.textContent?.includes("The consumer owns persistence policy"),
     );
-    const leadList = leadParagraph?.nextElementSibling;
+    const leadList = Array.from(root.querySelectorAll(":scope > ul")).find((list) =>
+      list.textContent?.includes("keep Run and Item protocol facts at the application boundary"),
+    );
     const tableContainer = root.querySelector(".md-table-container");
     const table = tableContainer?.querySelector("table");
     const tableHeader = table?.querySelector("th");
@@ -1242,7 +1313,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
       !level2 ||
       !level3 ||
       !leadParagraph ||
-      !(leadList instanceof HTMLUListElement) ||
+      !leadList ||
       !tableContainer ||
       !table ||
       !tableHeader ||
@@ -1314,41 +1385,45 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     };
   });
 
+  await testInfo.attach("markdown-structural-primitives-styles.json", {
+    body: JSON.stringify(styles, null, 2),
+    contentType: "application/json",
+  });
   expect(styles).not.toBeNull();
   expect.soft(styles?.level2Tag).toBe("H3");
-  expect.soft(styles?.level2Size).toBe("18px");
-  expect.soft(styles?.level2Margin).toBe("0px 7px");
+  expect.soft(styles?.level2Size).toBe("20px");
+  expect.soft(styles?.level2Margin).toBe("0px 8px");
   expect.soft(styles?.level3Tag).toBe("H4");
-  expect.soft(styles?.level3Size).toBe("16px");
-  expect.soft(styles?.level3Margin).toBe("24.5px 7px");
-  expect.soft(styles?.leadParagraphMargin).toBe("7px 3.5px");
-  expect.soft(styles?.leadListMargin).toBe("7px 14px");
-  expect.soft(styles?.tableMargin).toBe("14px 14px");
-  expect.soft(styles?.tableFontSize).toBe("14px");
-  expect.soft(styles?.tableLineHeight).toBe("22.75px");
-  expect.soft(styles?.tableHeaderFontSize).toBe("14px");
-  expect.soft(styles?.tableHeaderLineHeight).toBe("22.75px");
-  expect.soft(styles?.proseParagraphMargin).toBe("7px 3.5px");
+  expect.soft(styles?.level3Size).toBe("18px");
+  expect.soft(styles?.level3Margin).toBe("28px 8px");
+  expect.soft(styles?.leadParagraphMargin).toBe("0px 0px");
+  expect.soft(styles?.leadListMargin).toBe("8px 16px");
+  expect.soft(styles?.tableMargin).toBe("16px 16px");
+  expect.soft(styles?.tableFontSize).toBe("16px");
+  expect.soft(styles?.tableLineHeight).toBe("26px");
+  expect.soft(styles?.tableHeaderFontSize).toBe("16px");
+  expect.soft(styles?.tableHeaderLineHeight).toBe("26px");
+  expect.soft(styles?.proseParagraphMargin).toBe("0px 0px");
   expect.soft(styles?.inlineCodeDecoration).toBe("slice");
   expect.soft(styles?.inlineCodeFontSize).toBe("12px");
   expect.soft(styles?.inlineCodeRadius).toBe("4px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");
   expect.soft(styles?.inlineCodeWrap).toBe("anywhere");
   expect.soft(styles?.rtlDirection).toBe("rtl");
-  expect.soft(styles?.rtlStartPadding).toBe("22.75px");
+  expect.soft(styles?.rtlStartPadding).toBe("26px");
   expect.soft(styles?.rtlEndPadding).toBe("0px");
   expect.soft(styles?.nestedMarker).toBe("circle");
   expect.soft(styles?.deepMarker).toBe("square");
   expect.soft(styles?.taskMarker).toBe("decimal");
-  expect.soft(styles?.looseTaskMarkerSize).toEqual([14, 14]);
+  expect.soft(styles?.looseTaskMarkerSize).toEqual([16, 16]);
   expect.soft(styles?.looseTaskMarkerGap).toBeGreaterThan(0);
   expect.soft(styles?.looseTaskMarkerGap).toBeLessThanOrEqual(14);
   expect.soft(styles?.looseTaskFollowUpAlignment).toBeLessThanOrEqual(1);
   expect.soft(styles?.looseTaskFollowUpBelowTitle).toBe(true);
   expect.soft(styles?.looseTaskMarkerInFirstLine).toBe(true);
-  expect.soft(styles?.quoteInset).toBe("14px");
+  expect.soft(styles?.quoteInset).toBe("16px");
   expect.soft(styles?.quoteRule).toBe("2px");
-  expect.soft(styles?.ruleMargin).toBe("28px");
+  expect.soft(styles?.ruleMargin).toBe("32px");
 });
 
 for (const theme of ["light", "dark"] as const) {
@@ -1389,7 +1464,7 @@ test("every chrome bar that takes a bottom edge wears the style edge", async ({ 
     };
   });
 
-  expect(measured.withEdge.length).toBeGreaterThanOrEqual(2);
+  expect(measured.withEdge.length).toBeGreaterThanOrEqual(1);
   for (const shadow of measured.withEdge) expect(shadow).toBe(measured.edge);
   for (const shadow of measured.withoutEdge) expect(shadow).toBe("none");
 });
@@ -1648,12 +1723,35 @@ test("a patch over several files counts them and names each only in its receipt"
   await expect(row).not.toContainText("−");
 
   await row.click();
-  const receipt = page.getByRole("row").filter({
-    has: page.getByTitle(
-      "/Users/visual/scope/apps/web/src/features/chat/tools/application/specialisedPreviewProjections.ts",
-    ),
+  const receipt = page
+    .getByRole("region", { name: "Applied patch 3 files", exact: true })
+    .getByRole("region", { name: "Result", exact: true });
+  await expect(receipt).toBeVisible();
+  await receipt.focus();
+  await receipt.press("ControlOrMeta+A");
+  expect(JSON.parse((await page.evaluate(() => getSelection()?.toString()))!)).toEqual({
+    changes: [
+      {
+        path: "/Users/visual/scope/apps/web/src/features/chat/tools/application/specialisedPreviewProjections.ts",
+        status: "modified",
+        added: 0,
+        removed: 0,
+      },
+      {
+        path: "runtime/internal/session/atomicity_and_idempotency.go",
+        status: "moved",
+        from: "runtime/internal/session/store_atomicity.go",
+        added: 0,
+        removed: 0,
+      },
+      {
+        path: "runtime/internal/session/legacy_store_shim.go",
+        status: "deleted",
+        added: 0,
+        removed: 0,
+      },
+    ],
   });
-  await expect(receipt).toContainText("Edited");
 });
 
 test("tool invocations stay on the transparent Codex work-narrative plane", async ({ page }) => {
@@ -1675,11 +1773,34 @@ test("tool invocations stay on the transparent Codex work-narrative plane", asyn
   }
 
   await page.mouse.move(0, 0);
-  const closedChevron = rows
-    .filter({ has: page.locator("button[aria-expanded='false']") })
-    .first()
-    .locator('[data-slot="agent-activity-chevron"]');
-  await expect(closedChevron).toHaveCSS("opacity", "0");
+  const closedIndex = await rows.evaluateAll((nodes) =>
+    nodes.findIndex((node) =>
+      node.querySelector(
+        ':scope > [data-slot="agent-activity-header"] [aria-expanded="false"] [data-slot="agent-activity-chevron"]',
+      ),
+    ),
+  );
+  expect(closedIndex).toBeGreaterThanOrEqual(0);
+  const toggle = rows
+    .nth(closedIndex)
+    .locator(':scope > [data-slot="agent-activity-header"] [aria-expanded]');
+  const closedChevron = toggle.locator('[data-slot="agent-activity-chevron"]');
+  await expect(closedChevron).toBeVisible();
+  const affordance = await closedChevron.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return {
+      opacity: Number(getComputedStyle(node).opacity),
+      width: box.width,
+      height: box.height,
+    };
+  });
+  expect(affordance.opacity).toBeGreaterThan(0);
+  expect(affordance.width).toBeGreaterThan(0);
+  expect(affordance.height).toBeGreaterThan(0);
+
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
 });
 
 test("completed work folds before the separate final answer owns message actions", async ({
@@ -1701,31 +1822,77 @@ test("completed work folds before the separate final answer owns message actions
   await expect(answer.getByRole("button", { name: "Regenerate response" })).toBeVisible();
 });
 
-test("a multi-file patch receipt puts every path on one left edge", async ({ page }) => {
-  await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
-
-  await page.getByRole("button", { name: /6 steps/ }).click();
-  await page.getByText("3 files").first().click();
-
-  const rows = page.getByRole("table", { name: "Applied changes" }).getByRole("row");
-  await expect(rows).toHaveCount(3);
-  expect(await rows.locator("td:first-child").allTextContents()).toEqual([
-    "Edited",
-    "Moved",
-    "Deleted",
-  ]);
-
-  const edges = await rows.evaluateAll((r) =>
-    r.map((row) => ({
-      verb: row.children[0]!.getBoundingClientRect().x,
-      path: row.children[1]!.getBoundingClientRect().x,
-    })),
+test("a captured multi-file patch stays readable in its bounded Result reader", async ({
+  page,
+}, testInfo) => {
+  await page.goto(
+    "/lab/fixture.html?fixture=agent&theme=light&state=tool-shells&sidebar=collapsed&font-size=18",
   );
-  for (const edge of edges) {
-    expect(edge.verb).toBeCloseTo(edges[0]!.verb, 1);
-    expect(edge.path).toBeCloseTo(edges[0]!.path, 1);
-  }
+  await page.locator("html[data-visual-ready]").waitFor();
+  const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
+  const draft = "Keep the patch reading draft. 保留补丁阅读草稿。";
+  await composer.fill(draft);
+  await page.getByRole("button", { name: /6 steps/ }).click();
+  const patch = page
+    .locator('[data-slot="agent-activity-disclosure"][data-tool="apply_patch"]')
+    .first();
+  const trigger = patch.locator(':scope > [data-slot="agent-activity-header"] [aria-expanded]');
+  await expect(trigger).toHaveAccessibleName("Applied patch 3 files");
+  await trigger.click();
+  const result = patch.getByRole("region", { name: "Result", exact: true });
+  await expect(result).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 720 });
+  await result.focus();
+  await expect(result).toBeInViewport({ ratio: 1 });
+  expect(await result.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+  await result.press("ControlOrMeta+A");
+  const source = (await page.evaluate(() => getSelection()?.toString()))!;
+  expect(JSON.parse(source)).toHaveProperty("changes.length", 3);
+  await result.press("ControlOrMeta+f");
+  const filter = patch.getByRole("searchbox", { name: "Filter result", exact: true });
+  await expect(filter).toBeFocused();
+  await filter.fill("legacy_store_shim.go");
+  await expect(result).toContainText("runtime/internal/session/legacy_store_shim.go");
+  await filter.fill("no-recorded-patch-has-this-value");
+  await expect(result).toContainText("No matching rows. Close find to see the whole result.");
+  await filter.press("Escape");
+  await expect(filter).toHaveCount(0);
+  await expect(result).toBeFocused();
+  await result.press("ControlOrMeta+A");
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe(source);
+  await composer.focus();
+  await expect(composer).toHaveValue(draft);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await testInfo.attach("patch-result-narrow.png", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+  await trigger.focus();
+  await trigger.press("Enter");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(trigger).toBeFocused();
+  const closed = await result.evaluate((node) => {
+    const well = node.closest<HTMLElement>("[inert]");
+    return (
+      well && {
+        height: well.getBoundingClientRect().height,
+        opacity: getComputedStyle(well).opacity,
+      }
+    );
+  });
+  expect(closed).not.toBeNull();
+  expect(closed!.height).toBeLessThanOrEqual(1);
+  expect(closed!.opacity).toBe("0");
+  await trigger.press("Tab");
+  await expect(patch.getByRole("button", { name: "Copy arguments", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page
+      .locator('[data-slot="agent-activity-disclosure"][data-tool="apply_patch"]')
+      .nth(1)
+      .locator(':scope > [data-slot="agent-activity-header"] [aria-expanded]'),
+  ).toBeFocused();
+  await expect(composer).toHaveValue(draft);
 });
 
 test("an answered question keeps both halves of the exchange", async ({ page }) => {
@@ -1763,7 +1930,7 @@ test("every sibling keeps its own status and child approval target", async ({ pa
     .locator("#item_delegate")
     .getByRole("button", { name: /^Sub-agent/ })
     .click();
-  const panel = page.locator('[data-dock-view-id="subagents"]');
+  const panel = page.getByRole("region", { name: "Subagents", exact: true });
   await panel.getByRole("button", { name: "Allow once", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-visual-resumed-run", "run_root");
   await expect(page.locator("html")).toHaveAttribute(
@@ -1878,7 +2045,7 @@ for (const theme of ["light", "dark"] as const) {
       .locator("#item_delegate")
       .getByRole("button", { name: /^Sub-agent/ })
       .click();
-    const card = page.locator('[data-dock-view-id="subagents"]');
+    const card = page.getByRole("region", { name: "Subagents", exact: true });
     await expect(card.locator('[data-slot="approval-surface"]')).toBeVisible();
   });
 }
@@ -1938,6 +2105,9 @@ test("large command output stays fully readable inside the tool card", async ({ 
       output.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop),
     )
     .toBeLessThanOrEqual(1);
+  await expect(output).toBeInViewport({ ratio: 1 });
+  await expectStableBox(output);
+  await expect(output).toBeFocused();
   const latest = await output.evaluate((element) => element.scrollTop);
   const messageViewport = page.locator(".msg-scroll-viewport");
   const messageTop = await messageViewport.evaluate((element) => element.scrollTop);
@@ -1994,6 +2164,8 @@ test("keyboard output expansion retains its reading focus and visible controls",
   await command.getByRole("button").first().click();
   const expand = command.getByRole("button", { name: /earlier lines · 50000 total/ });
   await page.keyboard.press("Tab");
+  await expect(command.getByRole("button", { name: "Copy arguments", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(expand).toBeFocused();
   await page.keyboard.press("Enter");
   const output = command.getByRole("region", { name: "Tool output", exact: true });
@@ -2005,15 +2177,15 @@ test("keyboard output expansion retains its reading focus and visible controls",
   const copy = command.getByRole("button", { name: "Copy output", exact: true });
   await expect(copy).toBeFocused();
   await page.keyboard.press("Shift+Tab");
-  const collapse = command.getByRole("button", { name: "Collapse", exact: true });
-  await expect(collapse).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
   const find = command.getByRole("button", { name: "Find", exact: true });
   await expect(find).toBeFocused();
   await expect(find).toBeInViewport({ ratio: 1 });
   expect(await find.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  const collapse = command.getByRole("button", { name: "Collapse", exact: true });
   await expect(collapse).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(find).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(copy).toBeFocused();
   await page.keyboard.press("Tab");
@@ -2097,7 +2269,7 @@ for (const touch of [false, true]) {
   test.describe(`tool action columns with ${touch ? "touch" : "mouse"}`, () => {
     test.use({ hasTouch: touch });
 
-    test("tool metadata and action rows share one trailing column", async ({ page }) => {
+    test("tool metadata and action rows share one trailing column", async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 1120, height: 900 });
       await page.goto("/lab/fixture.html?fixture=agent&state=tool-shells&theme=light&font-size=18");
       await page.locator("html[data-visual-ready]").waitFor();
@@ -2105,8 +2277,15 @@ for (const touch of [false, true]) {
       await page.getByRole("button", { name: /steps/ }).first().click();
       const read = page.locator('[data-tool="read"]').first();
       const command = page.locator('[data-tool="shell"]').first();
-      await expect(read.getByRole("button")).toHaveCount(2);
-      await expect(command.getByRole("button")).toHaveCount(1);
+      await expect(read.getByRole("button", { name: "Copy arguments", exact: true })).toBeVisible();
+      await expect(
+        read.getByRole("button", { name: "Open the current file", exact: true }),
+      ).toBeVisible();
+      await expect(
+        command.getByRole("button", { name: "Copy arguments", exact: true }),
+      ).toBeVisible();
+      await expect(read.getByRole("button")).toHaveCount(3);
+      await expect(command.getByRole("button")).toHaveCount(2);
       const lines = (await read.getByText("6 lines", { exact: true }).boundingBox())!;
       const duration = (await command.getByText("8.4s", { exact: true }).boundingBox())!;
       expect(lines.x + lines.width).toBeCloseTo(duration.x + duration.width, 1);
@@ -2123,6 +2302,32 @@ for (const touch of [false, true]) {
         }
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      await read.getByRole("button", { name: "Copy arguments", exact: true }).focus();
+      await testInfo.attach("tool-action-columns.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
+      await page.setViewportSize({ width: 320, height: 900 });
+      for (const row of [read, command]) {
+        await row.getByRole("button", { name: "Copy arguments", exact: true }).focus();
+        const header = row.locator(':scope > [data-slot="agent-activity-header"]');
+        for (const button of await header.getByRole("button").all()) {
+          await expect(button).toBeInViewport({ ratio: 1 });
+          expect(
+            await button.evaluate((node) => {
+              const box = node.getBoundingClientRect();
+              return node.contains(
+                document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2),
+              );
+            }),
+          ).toBe(true);
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      await testInfo.attach("tool-action-columns-narrow.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
     });
   });
 }

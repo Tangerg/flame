@@ -20,7 +20,7 @@ test("dragging a navigation button does not select the surrounding workspace", a
     "/lab/fixture.html?fixture=workspace&state=dock-subagents&agent-state=delegated&theme=light&font-size=18&locale=en",
   );
   await page.locator("html[data-visual-ready]").waitFor();
-  const dock = page.locator('[data-dock-view-id="subagents"]');
+  const dock = page.getByRole("region", { name: "Subagents", exact: true });
   const entry = dock
     .locator('[data-slot="delegated-run-link"]')
     .first()
@@ -120,15 +120,22 @@ test("a recorded subagent error can be selected and dismissed in Dock whitespace
     "/lab/fixture.html?fixture=workspace&state=dock-subagents&agent-state=delegated&theme=dark&font-size=18",
   );
   await page.locator("html[data-visual-ready]").waitFor();
-  const dock = page.locator('[data-dock-view-id="subagents"]');
+  const dock = page.getByRole("region", { name: "Subagents", exact: true });
   const detail = "The fixture generator exited 1.";
   await dock
+    .getByRole("group", { name: "Subagents", exact: true })
     .locator('[data-slot="delegated-run-link"]')
     .filter({ hasText: detail })
     .getByRole("button")
-    .first()
     .click();
-  const body = dock.getByText(detail, { exact: true });
+  const identity = dock.locator('[data-slot="subagent-header"] [data-slot="subagent-identity"]');
+  await expect(identity).toBeVisible();
+  const transcript = dock.getByRole("region", {
+    name: (await identity.textContent())!,
+    exact: true,
+  });
+  await expect(transcript).toBeVisible();
+  const body = transcript.getByText(detail, { exact: true });
   await body.scrollIntoViewIfNeeded();
   const bounds = (await body.boundingBox())!;
   await page.mouse.move(bounds.x + 1, bounds.y + bounds.height / 2);
@@ -137,9 +144,7 @@ test("a recorded subagent error can be selected and dismissed in Dock whitespace
   await page.mouse.up();
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(detail);
 
-  await dock.getByRole("region", { name: "Subagents", exact: true }).click({
-    position: { x: 12, y: 400 },
-  });
+  await dock.click({ position: { x: 12, y: 400 } });
 
   await expect.poll(() => page.evaluate(() => window.getSelection()?.isCollapsed)).toBe(true);
 });

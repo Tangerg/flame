@@ -15,6 +15,7 @@ import {
   ToolActionFailureLine,
   ToolFailureLine,
   ToolStatusMarks,
+  ToolRowActions,
   useToolRowActions,
 } from "@/features/chat/tools/ui/ToolRowParts";
 interface Props {
@@ -62,7 +63,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
             <ToolStatusMarks model={model} />
           </>
         }
-        actions={actions}
+        actions={actions.length > 0 ? <ToolRowActions>{actions}</ToolRowActions> : undefined}
         feedback={<ToolActionFailureLine feedback={feedback} summaryId={summaryId} />}
         open={expanded}
         onToggle={onToggleExpand}

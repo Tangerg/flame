@@ -5,7 +5,7 @@ import { knownIconName } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useT } from "@/lib/i18n/index";
 import { type AsyncFeedback, useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { failureText } from "@/lib/rpcErrors";
@@ -33,7 +33,20 @@ const styles = stylex.create({
     color: color.fg,
   },
   preWrap: { whiteSpace: "pre-wrap" },
+  actions: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s0_5,
+    // Keep the copy and optional opener slots aligned across tool rows.
+    minInlineSize: `calc(2 * max(var(--control-height-xs), var(--control-target-min)) + ${space.s0_5})`,
+  },
 });
+
+export function ToolRowActions({ children }: { children: ReactNode }) {
+  return <span {...stylex.props(styles.actions)}>{children}</span>;
+}
 
 export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
   const t = useT();

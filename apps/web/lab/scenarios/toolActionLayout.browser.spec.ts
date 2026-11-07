@@ -8,32 +8,38 @@ for (const grouped of [true, false]) {
       "/lab/fixture.html?fixture=agent&state=tool-search&theme=dark&font-size=18&locale=en",
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    if (grouped) {
-      await page.getByRole("button", { name: /calls/ }).first().click();
-    } else {
-      await page.evaluate(async () => {
-        const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
-        const storePath = "/lab/scenarios/fixtureRuntime.tsx";
-        const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
-        const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
-        const { visualClient } = await import(storePath);
-        const { projectAgentSessionSnapshot } = await import(projectionPath);
-        const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-search"]);
+    await page.evaluate(async (grouped) => {
+      const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
+      const storePath = "/lab/scenarios/fixtureRuntime.tsx";
+      const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
+      const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
+      const { visualClient } = await import(storePath);
+      const { projectAgentSessionSnapshot } = await import(projectionPath);
+      const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-search"]);
+      const glob = snapshot.items.find(
+        (item) => item.type === "toolCall" && item.tool.name === "glob",
+      );
+      if (!glob || glob.type !== "toolCall") throw new Error("Expected the recorded glob call");
+      glob.tool.arguments = {};
+      if (!grouped) {
         snapshot.items = snapshot.items.filter(
           (item) => item.type !== "toolCall" || item.tool.name === "glob",
         );
-        const store = visualClient.agent.projection.store.getState();
-        const refresh = store.beginViewRefresh("ses_visual", true);
-        if (
-          !refresh ||
-          !store.commitViewRefresh(
-            "ses_visual",
-            refresh,
-            projectAgentSessionSnapshot(fixture.projectRuntimeAgentSnapshot(snapshot)),
-          )
+      }
+      const store = visualClient.agent.projection.store.getState();
+      const refresh = store.beginViewRefresh("ses_visual", true);
+      if (
+        !refresh ||
+        !store.commitViewRefresh(
+          "ses_visual",
+          refresh,
+          projectAgentSessionSnapshot(fixture.projectRuntimeAgentSnapshot(snapshot)),
         )
-          throw new Error("The canonical tool snapshot could not be installed");
-      });
+      )
+        throw new Error("The canonical tool snapshot could not be installed");
+    }, grouped);
+    if (grouped) {
+      await page.getByRole("button", { name: /calls/ }).first().click();
     }
     const tool = page.locator('[data-tool="glob"]');
     const row = grouped ? tool.locator("..") : tool.locator('[data-slot="agent-activity-header"]');

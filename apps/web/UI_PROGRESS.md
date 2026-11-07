@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current Computer qualification passes **15 tests**; all **64 final captures** are reviewed. The full Web check passes **432 files / 4,751 tests**, and plugin and supported native checks pass. Actual Wails review confirms original-image reading and return to continued drafts in English and Chinese, including native 200%. See **Representative Computer images and original-source reading (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current tool/subagent qualification passes **129 tests**, followed by one focused rerun after a test typing repair; all **17 final browser captures** are reviewed. Tool metadata now shares an aligned action rail without wasting space on rows with no actions. The full Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review covers English tool reading and Chinese subagent/image return, including native 200%. See **Tool action alignment and current interaction contracts (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,113 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Tool action alignment and current interaction contracts (2026-11-07)
+
+The broader migrated interaction audit exposes a real shared layout defect:
+copy-only tool rows and rows with a file opener leave different widths before
+their metadata. The existing right-edge assertion fails by **26 px with a mouse**
+and **46 px with coarse-pointer targets**. It is preserved through the repair.
+`ToolRowParts.tsx` now owns `ToolRowActions`, consumed by both `ToolCard` and
+`ToolGroupMember`. Its minimum width derives from the existing control height,
+pointer target and spacing tokens for copy and the optional opener. Rows without
+actions render no rail. The existing no-action checks caught **56/60 px** of
+wasted space in the initial candidate; both single and grouped paths are fixed.
+No callback, async feedback, command, Runtime or backend contract changes.
+
+Five existing Lab scenario files update source-traced obsolete expectations and
+retain behavioral assertions:
+
+- Dock checks target the named visible Subagents region and selected transcript,
+  rather than matching both the panel-menu button and retained content. Initial
+  inspection focuses the outer workspace frame; Escape restores its original
+  opener, re-entry restores the frame and Tab reaches Back to conversation.
+  Nested selection/list return and later Composer focus remain covered.
+- Narrow header checks measure the **320 px outer Dock** and its inset content.
+  They retain the complete wrapped task identity, selected Run, cancellation,
+  hit targets and list return, replacing the obsolete two-line clipping contract.
+- Reading checks follow the current Flame accent bubble token, 16 px prose,
+  paragraph/list/table rhythm and visible disclosure affordances. Wide Markdown
+  may borrow pane width; overflow is measured at the actual transcript/document
+  viewport, with direct reading blocks kept inside it.
+- Media checks retain blocked remote requests and the unavailable-image cue.
+  Two inline tiles belong to a three-image message gallery. Both themes now
+  cover default reading and **320 px / 18 px**, keyboard edges, zoom reset,
+  controls, Escape return and independent drafts. Captures reveal the whole
+  inline grid before recording its actual viewport.
+- Multi-file patch checks read the exact captured JSON in the current bounded
+  Result reader, including moved-from paths, statuses and zero counts. They no
+  longer assume an unrendered changes table. Narrow wrapping, complete source
+  selection, Find/no-match/Escape, reader focus and draft retention are covered.
+  Closing retains an inert, clipped body; Tab skips it to the next tool.
+- Tool checks include Copy arguments in the current keyboard order and verify
+  the actual copy/opener controls before geometry. Full output retains its own
+  Page Up, Jump to latest and Find scope. The second Page Up waits for a fully
+  visible, stable focused reader after Jump to latest, without a blind retry.
+
+The final six-file invocation passes **129 tests** with no skips, retries, flaky
+or unexpected results, including the unchanged tool-group resize and full-motion
+closing/reversal checks. All **16 attachments** are reviewed through two contact
+sheets and full-resolution details. Full Web typechecking then catches direct
+property access on unknown parsed JSON in the new patch check. Its equivalent
+property matcher is type-safe; the complete Web check passes, followed by the
+single affected browser test and its additional reviewed capture. The same
+**484 built Lab assets** remain byte-identical to the private native-qualified
+copy after this test-only change.
+
+The initial broad invocation remains partial evidence: **251 passed, 12 failed
+and 976 did not run** at its configured failure limit. Its 600 captures are not
+claimed as visually approved. Each repaired failure above was individually
+traced; the full migrated interaction suite remains unqualified. A first focused
+rerun selected no tests because its grep anchored the project-prefixed full
+title; the corrected unique title filter runs and passes the intended test.
+No tests or projects are disabled to manufacture a pass.
+
+Actual Wails v3.1.0 uses the unchanged DesktopHost, menu and native zoom with an
+isolated app identity/data home and this same built Lab. English/light/18 px
+inspection verifies aligned metadata, 50,000-line output Page Up, Jump to latest,
+Find/Escape, literal patch source, native Window Zoom and continued draft input.
+At native **200%**, the source is explicitly revealed and paged to its end before
+returning to the preserved draft. Chinese/dark/18 px/custom purple verifies Dock
+arrival, Escape/re-entry, keyboard resizing to 320 px, nested task/list return,
+responsive 200% reading and continued input. The long stress title is qualified
+in the browser; native review uses the original captured task label.
+
+Chinese image inspection reveals both complete inline tiles, navigates all three
+gallery records and clamped edges, then checks native 200% fit/controls and image
+switching. Escape restores the original inline opener; the exact draft survives
+and accepts a typed continuation. Twenty real Zoom In menu actions after Actual
+Size qualify each 200% task. The 25 native captures retain two initial partial
+views as diagnostic evidence; later revealed reader/grid captures supply their
+acceptance. All three native processes quit normally through the application
+menu. Chinese paste does not qualify physical IME composition.
+
+The full **Web check passes 432 files / 4,751 tests** in one clean invocation,
+including Runtime integration, all owner guards and the production build.
+Supported **make check-native passes** Desktop test/vet/build and Wails packaging.
+Existing macOS linker warnings remain. Root complexity still reports only
+unchanged `ProviderRow` growth from 31 to 34; its threshold is not changed.
+Plugin sources are unchanged, so the earlier full plugin qualification is
+preserved rather than newly claimed. Read-only ZCode dialog focus restoration,
+the earlier reading research and better-layout / better-accessibility guidance
+inform the task model; no reference code is copied. A bounded Claude Code CLI
+handles part of the detail work; primary review completes its partial second
+pass, reviews the diff and owns all verification.
+
+The HTTP server exits and the private app is unregistered. Its six Library paths
+and ordinary native temp root return to absence. Three pre-existing empty WebKit
+helper roots retain identity and mode; only three new empty Networking children
+are removed. All twelve output/cache roots return to their captured contents and
+modes or absence, including the older UI build. Evidence is retained in memory
+before retiring the qualification directory. No functional checks run against
+restored outputs. The primary checkout and all 24 native source inputs remain
+unchanged.
+
+Whole-product visual acceptance, the remaining migrated interactions, VoiceOver,
+physical IME and optional performance measurements remain unfinished. The
+Computer fixture capacity inconsistency is source-traced but not repaired here;
+do not fabricate a count or duplicate backend byte reservation policy. Continue
+triage and qualification in this same Lab, without another visual runner.
 
 ### Representative Computer images and original-source reading (2026-11-07)
 

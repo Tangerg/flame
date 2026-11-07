@@ -14,15 +14,21 @@ for (const [fontSize, theme] of [
       `/lab/fixture.html?fixture=workspace&state=dock-subagents&theme=${theme}&font-size=${fontSize}&locale=en`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    const panel = page.locator('[data-dock-view-id="subagents"]');
+    const panel = page.getByRole("region", { name: "Subagents", exact: true });
     await expect(panel.getByText("6 subagents · 1 running", { exact: true })).toBeVisible();
     await panel
       .getByRole("button", { name: "Audit Agent Framework ownership Needs input" })
       .click();
+    const dock = page.getByRole("complementary", { name: "Subagents", exact: true });
     const resizer = page.locator(".agent-pane-resizer");
     await resizer.focus();
     await resizer.press("Home");
-    expect((await panel.boundingBox())!.width).toBeCloseTo(320, 0);
+    await expect(resizer).toHaveAttribute("aria-valuenow", "320");
+    const frame = (await dock.boundingBox())!;
+    expect(frame.width).toBeCloseTo(320, 0);
+    const content = (await panel.boundingBox())!;
+    expect(content.x).toBeGreaterThanOrEqual(frame.x);
+    expect(content.x + content.width).toBeLessThanOrEqual(frame.x + frame.width);
 
     await page.evaluate(async (label) => {
       const path = "/lab/scenarios/fixtureRuntime.tsx";
@@ -47,13 +53,13 @@ for (const [fontSize, theme] of [
     await expect(panel.getByRole("region", { name: label, exact: true })).toBeAttached();
     await expect(header.getByText("Needs input", { exact: true })).toBeInViewport({ ratio: 1 });
     await expect(panel.getByText("6 subagents · 1 running", { exact: true })).toHaveCount(0);
-    expect(await identity.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    // The header wraps the complete task label instead of clipping it.
     expect(
       await identity.evaluate(
-        (node) => node.clientHeight / parseFloat(getComputedStyle(node).lineHeight),
+        (node) => node.scrollHeight <= node.clientHeight && node.scrollWidth <= node.clientWidth,
       ),
-    ).toBeLessThanOrEqual(2.05);
-    await expect(identity).toHaveAttribute("title", label);
+    ).toBe(true);
+    await expect(identity).toBeInViewport({ ratio: 1 });
     for (const button of await header.getByRole("button").all()) {
       await expect(button).toBeInViewport({ ratio: 1 });
       expect(
@@ -69,7 +75,10 @@ for (const [fontSize, theme] of [
       ).toBe(true);
     }
     expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
-    await page.screenshot({ path: testInfo.outputPath("narrow-selected-task.png") });
+    await testInfo.attach("narrow-selected-task.png", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
     const back = header.getByRole("button", { name: "All subagents", exact: true });
     await back.focus();
     await back.press("Enter");

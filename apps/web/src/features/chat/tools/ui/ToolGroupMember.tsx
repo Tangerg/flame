@@ -20,6 +20,7 @@ import {
   ToolActionFailureLine,
   ToolFailureLine,
   ToolStatusMarks,
+  ToolRowActions,
   useToolRowActions,
 } from "@/features/chat/tools/ui/ToolRowParts";
 interface Props {
@@ -56,7 +57,6 @@ const gm = stylex.create({
     alignSelf: "center",
     marginInlineStart: "calc(var(--spacing) * -1)",
   },
-  actions: { display: "flex", flexShrink: 0, alignItems: "center" },
   rowExpanded: { color: color.fg },
   meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 });
@@ -121,7 +121,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
             {summary}
           </div>
         )}
-        {actions.length > 0 && <span {...stylex.props(gm.actions)}>{actions}</span>}
+        {actions.length > 0 && <ToolRowActions>{actions}</ToolRowActions>}
       </div>
       <ToolActionFailureLine feedback={feedback} summaryId={summaryId} />
       <ToolFailureLine model={model} />

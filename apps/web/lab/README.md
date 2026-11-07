@@ -206,6 +206,13 @@ compatibility route. Stop a manually running lab before starting verification.
 IDs fail. Use file arguments or `--grep` to select interaction coverage. The normal
 Web check runs colocated unit tests; it does not launch browser verification.
 
+When a migrated check fails, trace the current component contract before changing
+its expectation. Scope retained Dock content to its named visible region, measure
+overflow at the actual reading viewport and verify literal captured results rather
+than assuming a particular presentation. Keep keyboard entry, return focus and
+draft continuity assertions. Add regression coverage to the existing scenario;
+do not introduce another fixture application or verification configuration.
+
 Appearance interaction checks follow current theme, font and language values
 through keyboard selection and focus return. Work-index and Brand audits use
 their production rows and installed component resources. WCAG failures attach
