@@ -223,7 +223,7 @@ test("bounded output, inspector code and Dock evidence release vertical scrollin
 
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-agentic&theme=light");
   await page.locator("html[data-visual-ready]").waitFor();
-  await page.getByRole("button", { name: /calls/ }).first().click();
+  await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
   await page.locator('[data-tool="inspect_workspace"]').click();
   const result = page.getByRole("region", { name: "Result", exact: true });
   await expect(result.locator("code .line").first()).toBeVisible();

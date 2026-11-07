@@ -115,18 +115,24 @@ test("an overflowing Session title reveals its remaining text and full identity"
 
 test("session renaming owns focus without nesting an input in a navigation button", async ({
   page,
-}) => {
+}, testInfo) => {
   await openShell(page, { theme: "light", state: "populated" });
   await waitForWorkIndexState(page, "populated");
   const row = page.getByRole("button", { name: /^Refine Runtime protocol/ });
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
-  const editor = page.getByRole("textbox", { name: "Session title" });
+  const actionName = "flame.trajectory · Name this investigation";
+  await page.getByRole("menuitem", { name: actionName, exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: actionName, exact: true });
+  const editor = dialog.getByRole("textbox", { name: "Session title", exact: true });
   await expect(editor).toBeFocused();
   expect(await editor.evaluate((node) => node.closest("button"))).toBeNull();
   await editor.fill("新的标题");
+  await testInfo.attach("session-title-context-menu", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await editor.press("Escape");
-  await expect(editor).toHaveCount(0);
+  await expect(dialog).toHaveCount(0);
   await expect(row).toBeFocused();
 });
 

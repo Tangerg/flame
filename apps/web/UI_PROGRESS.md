@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch repairs native formula keyboard reading through the existing shared arrow policy, passes **43 selected Lab interaction cases**, and reviews **69 browser captures** plus **33 actual Wails captures, including baseline and diagnostic attempts**. Final English/light and Chinese/dark/custom-accent inspection at native 200% reaches both formula edges and returns to retained drafts. Shared UI and native gates pass; the Web check's stages pass across the recorded phases. See **Native formula keyboard reading (2026-11-07)** for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest focused audit passes **51 existing Lab interaction cases**, updates four source-traced obsolete entry checks, and reviews **7 final browser captures plus 8 actual Wails captures**. English/light inspection and Chinese/dark/custom-accent inspection at native 200% qualify directory identity, title cancellation and source-focus return. No product command or rendering contract changes. See **Lab entry and bounded-reader verification contracts (2026-11-07)**. Earlier formula qualification remains recorded below. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -256,6 +256,66 @@ substitute accounting is invented. The sections below qualify the inspected
 native horizontal readers through this same Lab. Continue the remaining migrated
 cases; live Runtime, VoiceOver, physical IME and whole-product visual acceptance
 remain unfinished.
+
+### Lab entry and bounded-reader verification contracts (2026-11-07)
+
+A fresh six-file audit passes **47 cases** and exposes **three obsolete checks**.
+The tool group now says `6 steps`; the new-session dialog includes its selected
+Runtime endpoint in its accessible name; and Session title editing belongs to the
+installed investigation action rather than the removed host inline editor.
+Current production sources and actual Wails behavior establish these contracts.
+
+Four existing Lab files are repaired in place. `searchReading` retains every
+vertical wheel-continuation assertion for output, inspector code and Dock
+evidence. `sessionEntryDialogs` checks the full endpoint-labelled dialog, its
+initial focus, unavailable creation, recorded browse result and cancellation
+return. `sessionTitle` follows the real More actions contribution, cancels a
+draft, reopens the canonical title and closes explicitly. The assertion that
+Enter closes the editor belongs to the retired inline editor: Enter now submits
+the installed command and leaves its result in the modal. Existing command tests
+retain submission and reconciliation coverage. The affected `shell` context-menu
+case retains its Chinese draft, separate navigation/input semantics and Escape
+return. No fixture, scenario, visual runner or product transition is added.
+
+The combined selection passes **51 / 51**, without skips, retries or flaky
+results. Adding five captures to the three existing dialog cases is followed by
+another **3 / 3** pass. All **7 final browser attachments** are reviewed at full
+resolution: two existing appearance-choice captures and five dialog states. Web
+typechecking, lint and formatting pass; the three related unit files pass **16
+tests**. Supported `make check-native` passes in **17.063 s**; existing macOS
+linker warnings remain. This test-only change does not repeat the full
+Web/Runtime unit suite, shared UI check, optional
+performance project or root complexity check. The previously recorded
+ProviderRow complexity finding remains outside this scope.
+
+The same **484 built Lab assets** are byte-identical to the private native copy.
+Actual Wails **v3.1.0** uses the unchanged DesktopHost, native menu and zoom;
+**45 of 46** copied native inputs are unchanged and only the private application
+composition selects the Lab assets, URL and app title. English/light/18 px
+qualifies endpoint reading, browse/cancel, keyboard More actions, captured
+Session/revision, draft cancellation, context-menu re-entry, the original title
+and explicit Close returning to the same row. Chinese/dark/18 px/custom purple
+repeats those task boundaries after native narrowing and **20 Zoom In actions
+from Actual Size**, then returns to Actual Size with the original source focused.
+All **8 native captures** are reviewed; both private processes quit normally.
+Chinese text is pasted, so physical IME is not newly qualified. No live Session
+creation or title update is submitted.
+
+Existing better-accessibility/better-layout and read-only dialog/source-return
+research guide the same task boundaries. A bounded Claude Code CLI edits the
+four declared files; primary review adds captures and owns all verification.
+Whole-product acceptance and remaining migrated interactions are unfinished;
+continue qualifying them here, with no second visual pipeline.
+
+The isolated app is unregistered and its owned server exits. Six private Library
+paths and the ordinary native temp root return to absence; three pre-existing
+helper roots retain their identities, modes and flags while only two new empty
+Networking children are removed. All twelve output/cache roots return to their
+captured contents and modes or absence, including the older shared UI build.
+All **6,709 non-Markdown sources** are compared, with only the four intended Lab
+specs changed; all native sources and the primary checkout remain unchanged.
+No functional checks run against restored outputs. Evidence is retained in
+memory before the isolated qualification directory is retired.
 
 ### Native formula keyboard reading (2026-11-07)
 

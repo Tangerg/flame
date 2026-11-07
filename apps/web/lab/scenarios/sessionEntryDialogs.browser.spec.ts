@@ -1,20 +1,30 @@
 import { expect, test } from "./test";
 test("Add project opens the production directory dialog and cancellation returns focus", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=shell&state=populated&theme=light");
   await page.locator("html[data-visual-ready]").waitFor();
   const trigger = page.getByRole("button", { name: "Add project", exact: true });
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "New session", exact: true });
+  const endpoint = "https://visual.flame.test";
+  const dialog = page.getByRole("dialog", { name: `New session ${endpoint}`, exact: true });
+  await expect(dialog.getByRole("region", { name: endpoint, exact: true })).toHaveText(endpoint);
   const field = dialog.getByRole("textbox", {
     name: "Runtime workspace directory",
     exact: true,
   });
   await expect(field).toBeFocused();
   await expect(dialog.getByRole("button", { name: "Create session", exact: true })).toBeDisabled();
+  await testInfo.attach("directory-dialog", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await dialog.getByRole("button", { name: "Browse this computer", exact: true }).click();
   await expect(field).toHaveValue("/Users/visual/selected-project");
+  await testInfo.attach("directory-dialog-browsed", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(trigger).toBeFocused();
