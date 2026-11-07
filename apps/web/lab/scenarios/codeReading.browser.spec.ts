@@ -6,11 +6,11 @@ for (const [theme, width, fontSize, accent] of [
 ] as const) {
   test(`long transcript code keeps a bounded, stable reading region and shares Dock wrap in ${theme}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     let requested = false;
     let release!: () => void;
     const highlight = new Promise<void>((resolve) => (release = resolve));
-    await page.route("**/node_modules/.vite/deps/shiki.js*", async (route) => {
+    await page.route("**/node_modules/.vite/deps/shiki_core.js*", async (route) => {
       requested = true;
       await highlight;
       await route.continue();
@@ -49,6 +49,11 @@ for (const [theme, width, fontSize, accent] of [
       }));
       expect(after).toEqual({ width: before.width, height: before.height });
       await expect(source).toHaveText(CODE_READING_SOURCE);
+      await expect(source).toBeInViewport({ ratio: 1 });
+      await testInfo.attach("code-reader.png", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
 
       const transcript = page.locator(".msg-scroll-viewport");
       const outerTop = await transcript.evaluate((node) => node.scrollTop);

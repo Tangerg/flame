@@ -54,6 +54,7 @@ import {
 import {
   WORKSPACE_LIST_FILES_KEY,
   type WorkspaceFileEntry,
+  type WorkspaceListFilesQuery,
 } from "@/features/workspace/application/workspaceQueries";
 import {
   projectRuntimeAgentSnapshot,
@@ -138,34 +139,44 @@ function visualAgentRuntimeGateway(
   };
 }
 
+const VISUAL_WORKSPACE_FILES: readonly WorkspaceFileEntry[] = [
+  { path: "runtime/session/store.go", name: "store.go", type: "file", sizeBytes: 12_288 },
+  {
+    path: "runtime/session/store_test.go",
+    name: "store_test.go",
+    type: "file",
+    sizeBytes: 8_192,
+  },
+  {
+    path: "runtime/contract/openrpc.json",
+    name: "openrpc.json",
+    type: "file",
+    sizeBytes: 40_960,
+  },
+  {
+    path: "apps/web/src/main.tsx",
+    name: "main.tsx",
+    type: "file",
+    sizeBytes: 1_024,
+  },
+  { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+];
+
+// Literal path-fragment selection over captured presentation data; Runtime owns real search ranking.
 const fileListProvider = definePlugin({
   name: "flame.visual.file-list",
   setup(ctx) {
     ctx.contributions.add(DATA_PROVIDER, {
       key: WORKSPACE_LIST_FILES_KEY,
-      fetcher: async () =>
-        [
-          { path: "runtime/session/store.go", name: "store.go", type: "file", sizeBytes: 12_288 },
-          {
-            path: "runtime/session/store_test.go",
-            name: "store_test.go",
-            type: "file",
-            sizeBytes: 8_192,
-          },
-          {
-            path: "runtime/contract/openrpc.json",
-            name: "openrpc.json",
-            type: "file",
-            sizeBytes: 40_960,
-          },
-          {
-            path: "apps/web/src/main.tsx",
-            name: "main.tsx",
-            type: "file",
-            sizeBytes: 1_024,
-          },
-          { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
-        ] satisfies WorkspaceFileEntry[],
+      fetcher: async (params) => {
+        const { nameQuery, limit } = (params ?? {}) as WorkspaceListFilesQuery;
+        const fragment = nameQuery?.toLowerCase();
+        const selected =
+          fragment === undefined
+            ? VISUAL_WORKSPACE_FILES
+            : VISUAL_WORKSPACE_FILES.filter((file) => file.path.toLowerCase().includes(fragment));
+        return selected.slice(0, limit);
+      },
     });
   },
 });

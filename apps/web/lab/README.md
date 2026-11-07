@@ -213,6 +213,13 @@ than assuming a particular presentation. Keep keyboard entry, return focus and
 draft continuity assertions. Add regression coverage to the existing scenario;
 do not introduce another fixture application or verification configuration.
 
+Focus checks capture the containing Search proxy or Composer surface when that
+surface owns the keyboard cue. They compare its focused and blurred paint as well
+as pixels, with carets hidden and screenshot animations disabled. Disclosure
+alignment checks follow each toggle's own labelled region and summary text edge;
+they do not infer the reading axis from an inner node's margin. Both checks cover
+English/light/14 px and Chinese/dark/18 px.
+
 Appearance interaction checks follow current theme, font and language values
 through keyboard selection and focus return. Work-index and Brand audits use
 their production rows and installed component resources. WCAG failures attach
@@ -319,6 +326,16 @@ seeds landscape, portrait and small original records; expand a record and activa
 its thumbnail to inspect the shared image reader. Canvas-authored synthetic PNGs
 replace the old 1-by-1 carrier without capturing a desktop or fetching assets.
 These variants use the same `state` links projected by the catalog.
+
+Computer capacity remains unqualified: the fixture's zero usage does not account
+for its recorded operations. The backend owns byte accounting, including command
+metadata, pending result reservations and lifecycle commands; the visual records
+do not retain all those facts. Do not derive substitute totals from image sizes
+or displayed history, or treat these variants as capacity coverage.
+
+Agent file suggestions select literal, case-insensitive path fragments from the
+same five captured files and honor the requested limit. This keeps attachment
+inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
 Code wrapping uses the shared `data-wrap` preference. Schedule dialogs and
 alertdialogs remain portaled and named, with background controls outside modal

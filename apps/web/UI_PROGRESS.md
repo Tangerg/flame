@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current tool/subagent qualification passes **129 tests**, followed by one focused rerun after a test typing repair; all **17 final browser captures** are reviewed. Tool metadata now shares an aligned action rail without wasting space on rows with no actions. The full Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review covers English tool reading and Chinese subagent/image return, including native 200%. See **Tool action alignment and current interaction contracts (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current focus/reading qualification passes **26 distinct cases in stages**; all **10 final browser captures** are reviewed. Checks follow the actual focus surface, disclosure reading axis and captured suggestion inputs. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review covers English settings return and Chinese attachments/code reading, including native 200%. See **Focus surfaces, reading axes and faithful Lab inputs (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,107 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Focus surfaces, reading axes and faithful Lab inputs (2026-11-07)
+
+The next broader interaction audit remains partial: **644 passed, 12 failed and
+429 did not run** at the configured failure limit, with no retries or flaky
+results. Every reported failure is traced to the current implementation before
+changing an expectation. The repairs remain in the existing Lab and its single
+configuration; production UI, native sources and Runtime contracts are unchanged.
+
+- Focus checks previously cropped the inner input and missed the Search proxy
+  outline or enclosing Composer perimeter. They now capture the actual paint
+  owner, require both delegated surfaces to be reached, compare computed paint
+  as well as pixels and restore the exact original focus before continuing Tab.
+  Hidden carets and disabled screenshot animations prevent a moving loading icon
+  from manufacturing focus evidence. Both language/theme/font profiles pass;
+  all **8 final focused/blurred captures** are reviewed.
+- Disclosure checks follow each direct toggle's own controlled, labelled region
+  and compare its edge with its summary label. They reject missing or zero-width
+  bodies and repeated opening cycles. All **44 bodies across 8 cases** have
+  **0 px drift** in English/light/14 px and Chinese/dark/18 px. The old test
+  subtracted margin from an inner region while the wrapper owned the inset.
+- The persistent disclosure chevron remains visible and rotates. Hover checks
+  follow the current summary ink, pointer leave, keyboard focus and actual region
+  opening. Sparse model catalogs retain their maximum height while taking their
+  natural height: the captured body is **82 px**, bounded by **280 px**, with all
+  options reachable and Escape restoring the opener and independent draft.
+- Agent file suggestions previously ignored their query and offered unrelated
+  captured files. The same five records now honor literal, case-insensitive path
+  fragments and the requested limit. `@store` offers the two captured Go files;
+  Tab accepts the selected path and a large paste uses the same shared chip
+  contract. This does not implement or qualify Runtime search ranking.
+- Code checks hold the current lazy Shiki core import, preserving plain fallback,
+  exact source, stable bounds and focus, independent scrolling and shared Dock
+  wrapping. Both final reader captures are reviewed; they reveal the complete
+  bounded viewport, not all 48 source lines simultaneously.
+- Shared field checks use the current accessible Model name. Their wider rerun
+  also catches an obsolete expectation that multiline labels should misalign
+  inputs. The check now proves that the label text wraps while the shared subgrid
+  keeps both 32 px controls on the same baseline.
+
+The focused qualification passes **26 distinct cases in stages**, including all
+12 repaired audit failures, the broader field checks and both suggestion-overlay
+checks. The final focus-paint enhancement passes another focused invocation.
+There are no skipped, retried or flaky cases in these passing phases. The failed
+intermediate multiline-label expectation is retained as diagnostic evidence;
+no single clean 26-case invocation or complete migrated-suite pass is claimed.
+
+The first complete Web check reaches **4,750 passing tests and one failure**:
+Computer's delayed-original test accesses an editor before its independent
+initial read has rendered. Its unreleased result gate then blocks teardown. The
+test now awaits the editor before holding a result and releases that hold in a
+`finally` block, preserving later focus and the independent draft assertions.
+The focused Computer file passes all **56 tests**.
+
+The subsequent complete **Web check passes 432 files / 4,751 tests** in one clean
+invocation, including all owner guards and the production bundle. Supported
+**make check-native passes** Desktop test/vet/build and the Wails macOS build.
+Existing macOS linker warnings remain. Root complexity still reports only the
+unchanged `ProviderRow` growth from 31 to 34; its threshold is not changed.
+
+Actual Wails v3.1.0 uses the unchanged DesktopHost, menu, window chrome and native
+page zoom with a private identity/data home and the same **484 built Lab assets**.
+English/light/14 px covers keyboard Composer focus, the short Model popup,
+Escape return, the formal Settings shortcut, search/no-match/Escape, keyboard
+close, retained draft and continued typing at native **200%**, plus native Window
+Zoom. The fixture's static state-sidebar buttons do not perform navigation; the
+real Settings command supplies the tested entry and return.
+
+Chinese/dark/18 px/custom purple covers the two Go suggestions, Tab acceptance,
+aligned reference/paste chips and a real **2,200-character** paste. Keyboard entry
+opens its reader; native 200% retains the complete controls and Escape restores
+the exact attachment opener. A corrected continuation explicitly places the caret
+after the existing draft and retains both attachments. The independent code task
+checks highlighted content, its own Page Down through line 48, keyboard wrapping,
+the following paragraph and continued draft input at 200%. The code viewport and
+toolbar are explicitly revealed after zoom before acceptance. The **29 native
+captures** retain diagnostic arrivals and an initial misplaced-caret continuation;
+the corrected final states supply acceptance. Chinese paste does not qualify
+physical IME composition. Live Runtime execution, VoiceOver and whole-product
+acceptance are not established by these isolated tasks.
+
+All three native processes quit normally. The owned HTTP server is stopped and
+the private app is unregistered. Its six Library paths and ordinary native temp
+root return to absence; three new empty Networking children are removed. macOS
+marks the three empty WebKit helper roots `sunlnk` and rejects their removal with
+`EPERM`; those system-protected empty roots remain. All twelve output/cache roots
+return to captured contents and modes or absence, including the older UI build.
+No functional checks run against restored outputs. The primary checkout and all
+24 native source inputs remain unchanged. Evidence is retained in memory before
+retiring the qualification directory.
+
+Read-only HeroUI Search-field focus ownership and better-layout /
+better-accessibility guidance inform the checks. A bounded Claude Code CLI
+supplies proposals and part of the detail edits; its partial pass ends at its
+turn limit, and primary review completes and verifies the final changes.
+
+Computer capacity remains an explicit gap. Its fixture reports zero usage
+despite recorded operations, but lacks the complete original metadata and
+reservations needed by backend accounting. No substitute count or byte model is
+invented. Capacity coverage, remaining migrated interactions and whole-product
+visual acceptance remain unfinished; continue qualification in this same Lab.
 
 ### Tool action alignment and current interaction contracts (2026-11-07)
 

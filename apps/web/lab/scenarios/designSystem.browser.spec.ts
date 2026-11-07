@@ -35,7 +35,7 @@ for (const theme of ["light", "dark"]) {
       page.getByRole("textbox", { name: "Note", exact: true }),
       page.getByRole("searchbox", { name: "Search", exact: true }).locator(".."),
       page.getByRole("combobox", { name: "Memory status", exact: true }),
-      page.getByRole("button", { name: "gpt-5 · high", exact: true }),
+      page.getByRole("button", { name: "gpt-5 · high, Model", exact: true }),
     ];
     await expect(controls[0]!).toHaveCSS("min-height", "32px");
     await expect(controls[2]!).toHaveCSS("min-height", "32px");
@@ -159,7 +159,7 @@ test("reduced motion keeps selection accurate without a sliding transform", asyn
   ).toBe(true);
 });
 
-test("multiline labels keep neighboring fields at their control size", async ({ page }) => {
+test("multiline labels keep neighboring fields aligned at their control size", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 1000 });
   await open(page, "fixture=atoms&theme=light");
   const form = page.locator('[data-atom="form-alignment"]');
@@ -170,8 +170,20 @@ test("multiline labels keep neighboring fields at their control size", async ({ 
   const long = form.getByRole("textbox", { name: "Long form value", exact: true });
   const shortBox = (await short.boundingBox())!;
   const longBox = (await long.boundingBox())!;
+  const labelTextHeight = (label: Locator) =>
+    label.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect().height;
+    });
+  const shortLabel = form.getByText("Short label", { exact: true });
+  const longLabel = form.getByText(
+    "A longer translated field label that wraps onto several lines",
+    { exact: true },
+  );
+  expect(await labelTextHeight(longLabel)).toBeGreaterThan(await labelTextHeight(shortLabel));
   expect(longBox.x).toBeGreaterThan(shortBox.x);
-  expect(longBox.y).toBeGreaterThan(shortBox.y);
+  expect(longBox.y).toBeCloseTo(shortBox.y, 1);
   expect(shortBox.height).toBe(32);
   expect(longBox.height).toBe(32);
 });
@@ -180,7 +192,7 @@ test("fields share their text inset and reset native appearance", async ({ page 
   await open(page, "fixture=atoms&theme=light");
   const input = page.getByRole("textbox", { name: "Empty", exact: true });
   const area = page.getByRole("textbox", { name: "Note", exact: true });
-  const picker = page.getByRole("button", { name: "gpt-5 · high", exact: true });
+  const picker = page.getByRole("button", { name: "gpt-5 · high, Model", exact: true });
   for (const field of [input, area, picker]) {
     await expect(field).toHaveCSS("padding-inline-start", "10px");
     await expect(field).toHaveCSS("appearance", "none");

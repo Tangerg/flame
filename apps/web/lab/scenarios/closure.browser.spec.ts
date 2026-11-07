@@ -792,41 +792,82 @@ test("keyboard-only traversal reaches recovery, HITL, and settings actions", asy
 });
 
 for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const) {
-  test(`a disclosed body honors its own reading-edge inset — ${state}`, async ({ page }) => {
-    await openFixture(page, { fixture: "agent", state });
-    for (let i = 0; i < 8; i++) {
+  for (const environment of [
+    { locale: "en", theme: "light", fontSize: 14 },
+    { locale: "zh", theme: "dark", fontSize: 18 },
+  ] as const) {
+    const where = `${state} ${environment.locale}/${environment.theme}/${environment.fontSize}px`;
+    test(`a disclosed body starts at its own summary label — ${where}`, async ({ page }) => {
+      await openFixture(page, { fixture: "agent", state, ...environment });
       const shut = page.locator(
-        "[data-slot='agent-activity-disclosure'] button[aria-expanded='false']",
+        "[data-slot='agent-activity-disclosure'] > [data-slot='agent-activity-header'] > [aria-expanded='false'][aria-controls]",
       );
-      if ((await shut.count()) === 0) break;
-      await shut
-        .first()
-        .click({ timeout: 2000 })
-        .catch(() => {});
-    }
-
-    const drift = await page.evaluate(() => {
-      const out: string[] = [];
-      for (const d of document.querySelectorAll<HTMLElement>(
-        "[data-slot='agent-activity-disclosure']",
-      )) {
-        if (d.dataset.shell !== "line") continue;
-        const trigger = d.querySelector("button[aria-expanded]");
-        if (trigger?.getAttribute("aria-expanded") !== "true") continue;
-        const label = d.querySelector<HTMLElement>("[data-slot='agent-activity-label']");
-        const body = d.querySelector<HTMLElement>("[role='region']");
-        if (!label || !body) continue;
-        const declaredMargin = Number.parseFloat(getComputedStyle(body).marginLeft) || 0;
-        const delta = Math.round(
-          body.getBoundingClientRect().left - d.getBoundingClientRect().left - declaredMargin,
-        );
-        if (Math.abs(delta) > 1) out.push(`${label.textContent?.trim().slice(0, 24)}: ${delta}px`);
+      const opened = new Set<string>();
+      while ((await shut.count()) > 0) {
+        const toggle = shut.first();
+        const id = await toggle.getAttribute("id");
+        if (!id) throw new Error("Disclosure toggle has no id to label its body");
+        expect(opened.has(id), "opening a disclosure must not close an earlier one").toBe(false);
+        opened.add(id);
+        await toggle.click();
+        await expect(page.locator(`[id="${id}"]`)).toHaveAttribute("aria-expanded", "true");
       }
-      return out;
-    });
 
-    expect(drift).toEqual([]);
-  });
+      const geometry = await page.evaluate(() =>
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            "[data-slot='agent-activity-disclosure'][data-shell='line']",
+          ),
+        ].flatMap((disclosure) => {
+          const toggle = disclosure.querySelector<HTMLElement>(
+            ":scope > [data-slot='agent-activity-header'] > [aria-expanded='true'][aria-controls]",
+          );
+          if (!toggle) return [];
+          const label = toggle.querySelector<HTMLElement>(
+            ":scope > [data-slot='agent-activity-label']",
+          );
+          const region = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+          const labelBox = label?.getBoundingClientRect();
+          const regionBox = region?.getBoundingClientRect();
+          return [
+            {
+              name: label?.textContent?.trim().slice(0, 32) ?? toggle.id,
+              labelled:
+                region?.getAttribute("role") === "region" &&
+                disclosure.contains(region) &&
+                region.getAttribute("aria-labelledby") === toggle.id,
+              labelLeft: labelBox?.left ?? null,
+              labelWidth: labelBox?.width ?? null,
+              regionLeft: regionBox?.left ?? null,
+              regionWidth: regionBox?.width ?? null,
+              delta: labelBox && regionBox ? regionBox.left - labelBox.left : null,
+            },
+          ];
+        }),
+      );
+      await test.info().attach(`reading-edge ${where}`, {
+        body: JSON.stringify(geometry, null, 2),
+        contentType: "application/json",
+      });
+
+      const drift = geometry
+        .filter(
+          (body) =>
+            !body.labelled ||
+            body.delta === null ||
+            !(body.regionWidth! > 0) ||
+            !(body.labelWidth! > 0) ||
+            Math.abs(body.delta) > 1,
+        )
+        .map(
+          (body) =>
+            `${body.name}: label=${body.labelLeft} region=${body.regionLeft} width=${body.regionWidth} delta=${body.delta} labelled=${body.labelled}`,
+        );
+
+      expect(geometry.length).toBeGreaterThan(0);
+      expect(drift).toEqual([]);
+    });
+  }
 
   test(`a mark stays inside its gutter — ${state}`, async ({ page }) => {
     await openFixture(page, { fixture: "agent", state });
@@ -1123,21 +1164,44 @@ test("a hover affordance does not stay lit after the pointer leaves", async ({ p
   const header = page
     .locator("[data-slot='agent-activity-disclosure'] button[aria-expanded]")
     .first();
+  const label = header.locator("[data-slot='agent-activity-label']");
+  const chevron = header.locator("[data-slot='agent-activity-chevron']");
+  const ink = () => label.evaluate((node) => getComputedStyle(node).color);
+  const hovered = () => header.evaluate((node) => node.matches(":hover"));
+  const disclosureCue = () =>
+    chevron.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { opacity: style.opacity, visibility: style.visibility, rotate: style.rotate };
+    });
+
   await header.click();
   await header.click();
   await expect(header).toHaveAttribute("aria-expanded", "false");
   await page.mouse.move(4, 4);
+  await expect.poll(hovered).toBe(false);
+  const restingInk = await ink();
+  await expect(chevron).toBeVisible();
+  expect(await disclosureCue()).toEqual({ opacity: "1", visibility: "visible", rotate: "-90deg" });
 
-  const chevron = header.locator("[data-slot='agent-activity-chevron']");
-  await expect.poll(() => chevron.evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
+  await header.hover();
+  await expect.poll(ink, "hovering lights the summary ink").not.toBe(restingInk);
+  await page.mouse.move(4, 4);
+  await expect.poll(hovered).toBe(false);
+  await expect.poll(ink, "leaving returns the summary to its resting ink").toBe(restingInk);
+  await expect(chevron).toBeVisible();
 
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  const focused = () => header.evaluate((node) => node === document.activeElement);
-  for (let step = 0; step < 60 && !(await focused()); step += 1) {
-    await page.keyboard.press("Tab");
-  }
-  expect(await focused()).toBe(true);
-  await expect.poll(() => chevron.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+  await tabTo(page, header, 60);
+  await assertVisibleKeyboardFocus(header);
+  expect(await disclosureCue()).toEqual({ opacity: "1", visibility: "visible", rotate: "-90deg" });
+
+  await page.keyboard.press("Enter");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const panel = await header.getAttribute("aria-controls");
+  if (!panel) throw new Error("Disclosure toggle has no controlled region");
+  await expect(page.locator(`[id=${JSON.stringify(panel)}]`)).toBeVisible();
+  await expect(header).toBeFocused();
+  await expect.poll(async () => (await disclosureCue()).rotate).toBe("none");
 });
 
 test("IME composition keeps Enter inside the composer until text is committed", async ({
@@ -1443,19 +1507,81 @@ test("a menu owns both its own bounds, not its call sites", async ({ page }) => 
   expect(box.bottom).toBeLessThanOrEqual(300);
 });
 
-test("the catalogue holds its measure whatever its group contains", async ({ page }) => {
+test("a short catalogue takes its natural height inside its bound", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
+  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  const draft = "Keep this draft while choosing a model.";
+  await input.fill(draft);
 
-  await page
-    .getByRole("button", { name: /Switch model$/ })
-    .first()
-    .click();
-  const body = page.locator('[data-slot="catalog-body"]');
+  const trigger = page.getByRole("button", { name: /Switch model$/ }).first();
+  await trigger.click();
+  const popup = page.getByRole("dialog", { name: "Switch model" });
+  const body = popup.locator('[data-slot="catalog-body"]');
   await expect(body).toBeVisible();
+  await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+  await expect(page.getByPlaceholder("Search models…")).toBeFocused();
 
-  const rows = await body.locator('[role="option"]').count();
+  const options = body.getByRole("option");
+  const rows = await options.count();
+  expect(rows).toBeGreaterThan(0);
   expect(rows).toBeLessThan(4);
-  expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("280px");
+
+  const measure = await body.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const popupNode = node.closest('[role="dialog"]')!;
+    const popupBox = popupNode.getBoundingClientRect();
+    const list = node.querySelector<HTMLElement>('[role="listbox"]')!;
+    return {
+      height: box.height,
+      contentHeight: node.scrollHeight,
+      clientHeight: node.clientHeight,
+      maxHeight: getComputedStyle(node).maxHeight,
+      available: Number.parseFloat(
+        getComputedStyle(popupNode.parentElement!).getPropertyValue("--available-height"),
+      ),
+      listOverflow: list.scrollHeight - list.clientHeight,
+      inPopup: box.top >= popupBox.top - 1 && box.bottom <= popupBox.bottom + 1,
+      popup: {
+        top: popupBox.top,
+        bottom: popupBox.bottom,
+        left: popupBox.left,
+        right: popupBox.right,
+      },
+      viewport: { width: innerWidth, height: innerHeight },
+    };
+  });
+  await test.info().attach("short-catalogue-geometry", {
+    body: JSON.stringify(measure, null, 2),
+    contentType: "application/json",
+  });
+
+  expect(measure.maxHeight, "the body keeps its height bound").not.toBe("none");
+  expect(measure.available).toBeGreaterThan(0);
+  expect(measure.height).toBeLessThan(Math.min(280, measure.available));
+  expect(measure.contentHeight, "a sparse body is sized by its rows").toBeLessThanOrEqual(
+    measure.clientHeight + 1,
+  );
+  expect(measure.listOverflow, "a sparse list needs no inner scrolling").toBeLessThanOrEqual(1);
+  expect(measure.inPopup).toBe(true);
+  expect(measure.popup.top).toBeGreaterThanOrEqual(0);
+  expect(measure.popup.left).toBeGreaterThanOrEqual(0);
+  expect(measure.popup.bottom).toBeLessThanOrEqual(measure.viewport.height);
+  expect(measure.popup.right).toBeLessThanOrEqual(measure.viewport.width);
+
+  for (const option of await options.all()) {
+    await expect(option).toBeInViewport({ ratio: 1 });
+    const reachable = await option.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit !== null && node.contains(hit);
+    });
+    expect(reachable, "each option paints at its own position").toBe(true);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(popup).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(input).toHaveValue(draft);
 });
 
 test("the project tray stays inside the composer's edges", async ({ page }) => {
@@ -1675,17 +1801,29 @@ test("the composer's attachment chips are one component, not two", async ({ page
 
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
-  await expect(page.locator("#composer-suggestion-listbox")).toBeVisible();
-  await page.keyboard.press("Tab");
-  await expect(
-    page.locator('[data-slot="chip"][data-kind="reference"] svg[data-icon-name="file-code"]'),
-  ).toBeVisible();
+  const listbox = page.locator("#composer-suggestion-listbox");
+  await expect(listbox).toBeVisible();
+  const offered = listbox.getByRole("option");
+  await expect(offered).toHaveCount(2);
+  await expect(offered.nth(0)).toContainText("runtime/session/store.go");
+  await expect(offered.nth(1)).toContainText("runtime/session/store_test.go");
+  await expect(listbox).not.toContainText("openrpc.json");
+  for (const option of await offered.all()) {
+    await expect(option.locator("svg")).toHaveAttribute("data-icon-name", "file-code");
+  }
+  await expect(offered.nth(0)).toHaveAttribute("aria-selected", "true");
 
-  await page.evaluate(() => {
-    const ta = document.querySelector("textarea")!;
+  await page.keyboard.press("Tab");
+  await expect(listbox).toBeHidden();
+  await expect(input).toHaveValue("@runtime/session/store.go ");
+  const reference = page.locator('[data-slot="chip"][data-kind="reference"]');
+  await expect(reference).toHaveCount(1);
+  await expect(reference.locator('svg[data-icon-name="file-code"]')).toBeVisible();
+
+  await input.evaluate((element) => {
     const data = new DataTransfer();
     data.setData("text/plain", "x".repeat(2000));
-    ta.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+    element.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
   });
 
   const chips = await page.evaluate(() => {

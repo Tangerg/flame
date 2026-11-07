@@ -1456,14 +1456,17 @@ it("retains evidence and refresh focus while rereading the same original record"
 it("keeps later editor focus when an asynchronous original read arrives", async () => {
   const setup = rig();
   setup.server.records.set("delayed-operation", recordedTool("delayed-operation"));
-  const held = setup.server.holdResult();
   setup.mount();
-  fireEvent.click(await screen.findByRole("button", { name: "delayed-operation" }));
-  await held.arrived;
-  const editor = screen.getByRole("textbox", { name: "Tool arguments (JSON)" });
-  editor.focus();
-  fireEvent.change(editor, { target: { value: '{"code":"continued elsewhere"}' } });
-  await act(async () => held.release());
+  const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+  const held = setup.server.holdResult();
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: "delayed-operation" }));
+    await held.arrived;
+    editor.focus();
+    fireEvent.change(editor, { target: { value: '{"code":"continued elsewhere"}' } });
+  } finally {
+    await act(async () => held.release());
+  }
   await screen.findByText("Recorded delayed-operation.");
   expect(document.activeElement).toBe(editor);
   expect((editor as HTMLTextAreaElement).value).toBe('{"code":"continued elsewhere"}');
