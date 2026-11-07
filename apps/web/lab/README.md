@@ -247,6 +247,12 @@ their production rows and installed component resources. WCAG failures attach
 the rule results and complete rendered button text/HTML to the same report,
 preserving evidence when the audit's summarized markup is truncated.
 
+Composer choice captures wait for the same short draft to fit after narrowing,
+inside its surface and clear of its footer. The existing TextArea owns width
+measurement; its ResizeObserver can leave one pending frame before sizing runs.
+The same report retains geometry from the width change and the settled draft,
+then rechecks complete text after model selection changes the toolbar.
+
 Math loading checks hold the actual KaTeX stylesheet request in the existing
 Markdown scenario at desktop and 320 px widths. The lazy renderer must keep its
 pending surface until that stylesheet applies, then expose the styled formulas.

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest shared Select repair passes the complete **1,282-case Lab collection**. All **922 final browser images** are reviewed: 903 match reviewed images and 19 receive full-resolution inspection. Actual Wails EN/light and ZH/dark tasks cover native **200% and 300%**, including first-open selection at 300%, scroll retirement and retained form/conversation drafts. See **First-open Schedule model selection at native zoom (2026-11-08)**. A narrow Composer capture still needs reproduction before any production diagnosis. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest complete **1,282-case Lab baseline** qualifies the shared Select repair on **0adc484e0**. The subsequent Composer capture follow-up passes **29 selected Lab cases** with all **36 final browser images** matching reviewed captures. Measured width-change frames explain the incomplete second-line capture; the verifier now waits for complete text, without changing the production input. EN/light and ZH/dark native **200% and 300%** tasks pass within the documented scope. See **Complete Composer captures after width changes (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -567,11 +567,10 @@ The complete frozen-source Lab invocation passes **1,282 / 1,282** in
 **3,494.695 s**, with no retries, skips, flaky results or global errors. This
 includes all four new cases. All **922 final images** are reviewed: **903**
 hash-match previously reviewed captures, and the remaining **19** receive
-full-resolution inspection. One follow-up observation remains: the second draft
-line is incomplete in the Chinese 320 px inline-width Composer capture. That
-scenario checks choice names and retained value, not complete text visibility;
-reproduce it with settled geometry and a real host resize before diagnosing
-production clipping. This is not whole-product visual acceptance.
+full-resolution inspection. Review finds an incomplete second draft line in the
+Chinese 320 px inline-width Composer capture. The follow-up below measures its
+pending frame and strengthens capture readiness; no production input defect is
+established. This is not whole-product visual acceptance.
 
 The full shared UI check passes in **8.799 s**, including **255 tests / 14 files**,
 typecheck, lint, formatting, build and offline packed-consumer verification.
@@ -617,9 +616,82 @@ check runs against restored older outputs. The app is unregistered and its
 owned server exits; six Library paths and ordinary temp return to absence, and
 three protected helper roots retain their original empty identities and flags.
 Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
-and an ordinary push to `main` deliver the repair. Next reproduce the observed
-Composer line through this same Lab; no parallel visual runner is added. The
-goal remains active.
+and an ordinary push to `main` deliver the repair. The following section traces
+the Composer capture through this same Lab; no parallel visual runner is added.
+The goal remains active.
+
+### Complete Composer captures after width changes (2026-11-08)
+
+The preceding full Lab review finds an incomplete second draft line in the
+Chinese 320 px Composer capture. Repeating the original two cases passes
+**2 / 2** in **9.829 s**, and both new narrow images show the complete draft.
+The original assertions cover current choice names and retained value, without
+waiting for the TextArea to finish measuring its new width.
+
+The shared TextArea already owns width changes through ResizeObserver and a
+requestAnimationFrame measurement. Same-task geometry at 320 px records an
+English input **33 px** high with **44 px** of content, and a Chinese input
+**41 px** high with **54 px** of content. Both settle to their full content
+height, with zero text scrolling, inside the Composer and clear of its footer.
+This establishes a capture-readiness gap; no persistent production input
+clipping is demonstrated. The production component and its sizing owner stay
+unchanged.
+
+The two existing environment cases in toolbarLabels.browser.spec.ts now retain
+the same textarea and literal draft, record the synchronous width-change
+geometry, and poll complete containment before the narrow screenshot. The same
+contract is checked again after Qwen selection removes the reasoning control.
+Pending, settled and final geometry remain JSON attachments in the same Lab
+report, including failures. The check does not require a pending overflow to
+exist, assign scroll positions, add fixed sleeps or create another sizing loop.
+Existing keyboard, accessible-name and choice assertions remain intact.
+
+A bounded Claude Code CLI edit supplies the initial change in **82.309 s**;
+primary reviews it and makes geometry available on successful as well as failed
+checks. The measured cases pass **2 / 2** in **11.233 s**. The complete selected
+Toolbar-label and WebKit files pass **29 / 29** in **83.750 s**, without retries,
+skips or flaky cases. All **36 final browser images** hash-match reviewed
+captures. All eleven selected Web static stages pass. The unchanged ProviderRow
+complexity failure remains **31 → 34**; no source or threshold is changed there.
+
+Actual Wails v3.1.0 uses the same **487 Lab assets**, production native host,
+menu and zoom, and a private identity/home. EN/light/14 px and ZH/dark/18 px
+retain the original draft through a native window resize, **200% and 300%**,
+sidebar changes, Model opening/Escape, High reasoning, Safe approval and Qwen
+selection. The selected model receives return focus and its unavailable reasoning
+control retires. Complete wrapped text and continued editing are inspected;
+English explicitly selects the text end, pastes a suffix and edits it with a
+real Backspace. Restoring Actual Size retains the complete continued values.
+Both native runs exit normally.
+
+All **13 native images** are reviewed. Two are diagnostic: an immediate Chinese
+sidebar image has unpainted draft text before the settled observation shows it
+fully, and the first English continuation uses an unverified caret-end assumption
+and inserts at the middle. Explicit native selection restores that test draft
+and qualifies the final continuation. These two images are excluded from final
+acceptance. The Chinese continuation includes a host-IME marked character; it
+does not qualify physical IME completion. VoiceOver, physical IME, RTL, live
+sending and Runtime/provider execution remain unverified.
+
+The current UI output is rebuilt before admission; the private native build
+passes in **2.187 s**. All production non-Markdown inputs remain unchanged, and
+the final built Lab assets equal those used by native review. Full Web, shared
+UI/unit, Runtime, production native gates and the complete Lab collection are
+not rerun for this verification-only change; their earlier results retain
+their original source scope. Better-layout and better-accessibility guide
+complete text visibility, focus return and preserved authoring.
+
+After functional checks, all **12 output/cache roots** return to their original
+bytes, modes and directory state or absence. The comparison covers **6,710
+non-Markdown inputs**, with only the intended Lab spec changed, all **46 native
+inputs**, and the unchanged primary checkout. No functional check runs against
+restored older outputs. The app is unregistered and its owned server exits;
+six Library paths and ordinary temp return to absence, and three protected
+helper roots retain their original empty identities and flags. Evidence is
+preserved in memory before guarded QA-root retirement. Normal hooks and an
+ordinary push to `main` deliver the guard. Continue actual task inspection through
+the same Lab; long-string Schedule editor reading at native zoom remains a
+useful unqualified path. Whole-product visual acceptance remains unfinished.
 
 ### Qualification and limits
 
@@ -2064,9 +2136,10 @@ calendar already gives argument-free Date reads the advancing
 recorded clock; its qualification is recorded under **Coherent fixture calendar
 and visible outcome evidence**. Temporal text is not required to be pixel-identical.
 The latest complete **1,282-case Lab collection** passes after the shared Select
-first-open repair. Next reproduce the incomplete second draft line in the
-320 px inline-width Composer capture, distinguish settling from actual clipping,
-and continue native task inspection through this same Lab.
+first-open repair. The Composer follow-up measures the incomplete line as a
+pending sizing frame and qualifies complete captures through the existing Lab.
+Continue native task inspection, including long-string Schedule editor reading
+at zoom, through this same owner.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout, including its committed `go.work.sum`, is preserved. The user

@@ -28,7 +28,59 @@ for (const environment of [
     await page.goto(previewURL(catalog.story(selection.storyId), selection, "composer-choices"));
     await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
     const draft = page.getByRole("textbox");
-    await draft.fill("Keep this draft while choosing model options.");
+    const draftValue = "Keep this draft while choosing model options.";
+    await draft.fill(draftValue);
+    const draftNode = await draft.elementHandle();
+    const measureDraft = (composerWidth: string | null = null) =>
+      draft.evaluate((node: HTMLTextAreaElement, composerWidth) => {
+        const composer = node.closest<HTMLElement>('[data-slot="composer-root"]')!;
+        const footer = composer.querySelector(':scope > [data-slot="composer-footer"]')!;
+        if (composerWidth !== null) composer.style.width = composerWidth;
+        const rect = (element: Element) => {
+          const { top, right, bottom, left, width, height } = element.getBoundingClientRect();
+          return { top, right, bottom, left, width, height };
+        };
+        return {
+          value: node.value,
+          client: { width: node.clientWidth, height: node.clientHeight },
+          scroll: {
+            width: node.scrollWidth,
+            height: node.scrollHeight,
+            top: node.scrollTop,
+            left: node.scrollLeft,
+          },
+          height: { inline: node.style.height, computed: getComputedStyle(node).height },
+          input: rect(node),
+          composer: rect(composer),
+          footer: rect(footer),
+        };
+      }, composerWidth);
+    const expectCompleteDraft = async (evidenceName: string) => {
+      try {
+        await expect(draft).toHaveValue(draftValue);
+        expect(await draft.evaluate((node, original) => node === original, draftNode)).toBe(true);
+        await expect
+          .poll(async () => {
+            const { client, scroll, input, composer, footer } = await measureDraft();
+            return {
+              fits: scroll.height - client.height <= 1 && scroll.width - client.width <= 1,
+              atStart: scroll.top === 0 && scroll.left === 0,
+              contained:
+                input.top >= composer.top - 1 &&
+                input.bottom <= composer.bottom + 1 &&
+                input.left >= composer.left - 1 &&
+                input.right <= composer.right + 1,
+              clearOfFooter: input.bottom <= footer.top + 1,
+            };
+          })
+          .toEqual({ fits: true, atStart: true, contained: true, clearOfFooter: true });
+      } finally {
+        await testInfo.attach(evidenceName, {
+          body: JSON.stringify(await measureDraft(), null, 2),
+          contentType: "application/json",
+        });
+      }
+    };
     const model = page.getByRole("button", { name: new RegExp(`${modelAction}$`) });
     const effort = page.getByRole("button", { name: new RegExp(`${effortAction}$`) });
     const approval = page.getByRole("button", { name: new RegExp(`${approvalAction}$`) });
@@ -76,8 +128,10 @@ for (const environment of [
     );
     await expect(approval).toBeFocused();
 
-    await page.locator('[data-slot="composer-root"]').evaluate((element) => {
-      element.style.width = "320px";
+    // Measured in the same task as the width change, before ResizeObserver can deliver.
+    await testInfo.attach("composer-narrow-draft-before-autosize", {
+      body: JSON.stringify(await measureDraft("320px"), null, 2),
+      contentType: "application/json",
     });
     await expect(effort.locator('[data-slot="composer-chip-label"]')).toBeHidden();
     await expect(approval.locator('[data-slot="composer-chip-label"]')).toBeHidden();
@@ -85,6 +139,7 @@ for (const environment of [
     await expect(approval).toHaveAccessibleName(
       `${messages["approvals.mode.safe"]}, ${approvalAction}`,
     );
+    await expectCompleteDraft("composer-narrow-draft");
     await testInfo.attach("composer-narrow-choices", {
       body: await page.screenshot({ animations: "disabled" }),
       contentType: "image/png",
@@ -99,7 +154,7 @@ for (const environment of [
     await expect(model).toHaveAccessibleName(`Qwen MT Plus, ${modelAction}`);
     await expect(effort).toHaveCount(0);
     await expect(model).toBeFocused();
-    await expect(draft).toHaveValue("Keep this draft while choosing model options.");
+    await expectCompleteDraft("composer-final-draft");
   });
 }
 
