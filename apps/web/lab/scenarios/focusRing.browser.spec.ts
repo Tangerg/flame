@@ -115,7 +115,10 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
             for (const rule of list) {
               if (rule instanceof CSSGroupingRule) walk(rule.cssRules);
               if (!(rule instanceof CSSStyleRule)) continue;
-              if (!/outline/.test(rule.style.cssText)) continue;
+              const declaresOutline = Array.from(rule.style).some(
+                (property) => property === "outline" || property.startsWith("outline-"),
+              );
+              if (!declaresOutline) continue;
               let hit = false;
               try {
                 hit = active.matches(rule.selectorText);

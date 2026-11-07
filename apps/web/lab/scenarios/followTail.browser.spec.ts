@@ -62,7 +62,10 @@ test("a growing transcript follows the tail, but only from the bottom", async ({
   await page.mouse.wheel(0, room + 1000);
   await page.waitForTimeout(600);
   expect((await read(page)).fromBottom, "the wheel has to reach the bottom").toBeLessThanOrEqual(2);
-  await expect(page.getByRole("button", { name: JUMP })).toHaveAttribute("tabindex", "-1");
+  const jump = page.getByRole("button", { name: JUMP, includeHidden: true });
+  await expect(jump).toHaveAttribute("aria-hidden", "true");
+  await expect(jump).toHaveAttribute("tabindex", "-1");
+  await expect(page.getByRole("button", { name: JUMP })).toHaveCount(0);
 
   expect(await grow(page), "the append has to find the content element").toBe(true);
   await page.waitForTimeout(700);
@@ -91,9 +94,11 @@ test("a growing transcript follows the tail, but only from the bottom", async ({
     "the new material has to be below the reader, not around them",
   ).toBe(GROWTH_PX);
 
-  const jump = page.getByRole("button", { name: JUMP });
+  await expect(jump).toHaveAttribute("aria-hidden", "false");
   await expect(jump).toHaveAttribute("tabindex", "0");
-  await jump.click();
+  const shown = page.getByRole("button", { name: JUMP });
+  await expect(shown).toBeVisible();
+  await shown.click();
   await expect
     .poll(async () => (await read(page)).fromBottom, { timeout: 5_000 })
     .toBeLessThanOrEqual(2);

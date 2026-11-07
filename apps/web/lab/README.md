@@ -220,6 +220,21 @@ alignment checks follow each toggle's own labelled region and summary text edge;
 they do not infer the reading axis from an inner node's margin. Both checks cover
 English/light/14 px and Chinese/dark/18 px.
 
+Facts checks follow the shared equal-column contract, including common column
+edges, source reading order and complete values inside each pair. They attach
+geometry and reveal the long attribute path before capturing it. Browser
+intersection rectangles use the same one-pixel tolerance as the other geometry
+checks, so subpixel rounding does not require an exact intersection ratio of one.
+Focus-rule checks inspect declared `outline` properties; a transition mentioning
+`outline-color` does not paint a perimeter.
+
+Transcript tail checks distinguish the retained, accessibility-hidden jump
+control at the bottom from its visible, keyboard-reachable state while reading
+earlier content. Import feedback checks exercise invalid server identity and
+missing transport separately, preserving protocol validation order, drafts,
+accessible errors, repeated attempts and focus return across both themes and
+three viewport sizes.
+
 Appearance interaction checks follow current theme, font and language values
 through keyboard selection and focus return. Work-index and Brand audits use
 their production rows and installed component resources. WCAG failures attach

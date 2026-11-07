@@ -1,35 +1,71 @@
-import { expect, test, type Locator } from "./test";
-async function expectReadableFacts(facts: Locator, record: Locator) {
-  const bounds = (await facts.boundingBox())!;
+import type { TestInfo } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./test";
+type FactsGeometry = Awaited<ReturnType<typeof measureFacts>>;
+
+function expectWithinPixel(actual: number, expected: number, message: string) {
+  expect(Math.abs(actual - expected), message).toBeLessThanOrEqual(1);
+}
+
+async function measureFacts(facts: Locator, record: Locator) {
   const recordBounds = (await record.boundingBox())!;
-  expect(bounds.x).toBeGreaterThanOrEqual(recordBounds.x);
-  expect(bounds.x + bounds.width).toBeLessThanOrEqual(recordBounds.x + recordBounds.width + 1);
-  const cells = await facts.locator(":scope > div").evaluateAll((nodes) =>
+  const bounds = (await facts.boundingBox())!;
+  const pairs = await facts.locator(":scope > div").evaluateAll((nodes) =>
     nodes.map((node) => {
       const box = node.getBoundingClientRect();
+      const value = node.querySelector(":scope > dd")!.getBoundingClientRect();
       return {
+        label: node.querySelector(":scope > dt")?.textContent ?? "",
         x: box.x,
         y: box.y,
         right: box.right,
+        width: box.width,
+        valueX: value.x,
+        valueRight: value.right,
         overflow: node.scrollWidth - node.clientWidth,
       };
     }),
   );
-  for (const [index, cell] of cells.entries()) {
-    expect(cell.x).toBeGreaterThanOrEqual(bounds.x);
-    expect(cell.right).toBeLessThanOrEqual(bounds.x + bounds.width + 1);
-    expect(cell.overflow).toBeLessThanOrEqual(1);
-    const previous = cells[index - 1];
+  return { record: recordBounds, facts: bounds, pairs };
+}
+
+function expectReadableFacts({ record, facts, pairs }: FactsGeometry) {
+  expect(facts.x).toBeGreaterThanOrEqual(record.x);
+  expect(facts.x + facts.width).toBeLessThanOrEqual(record.x + record.width + 1);
+  expect(pairs.length).toBeGreaterThan(0);
+  const first = pairs[0]!;
+  const columns = pairs.filter((pair) => Math.abs(pair.y - first.y) < 1);
+  for (const [index, pair] of pairs.entries()) {
+    expect(pair.x).toBeGreaterThanOrEqual(facts.x);
+    expect(pair.right).toBeLessThanOrEqual(facts.x + facts.width + 1);
+    expect(pair.overflow).toBeLessThanOrEqual(1);
+    const column = columns[index % columns.length]!;
+    expectWithinPixel(pair.width, first.width, `${pair.label} shares the column width`);
+    expectWithinPixel(pair.x, column.x, `${pair.label} starts on its column edge`);
+    expectWithinPixel(pair.right, column.right, `${pair.label} ends on its column edge`);
+    expectWithinPixel(pair.valueX, pair.x, `${pair.label} value starts with its pair`);
+    expectWithinPixel(pair.valueRight, pair.right, `${pair.label} value fills its pair`);
+    const previous = pairs[index - 1];
     if (!previous) continue;
-    if (Math.abs(cell.y - previous.y) < 1) expect(cell.x).toBeGreaterThan(previous.right);
-    else expect(cell.y).toBeGreaterThan(previous.y);
+    if (Math.abs(pair.y - previous.y) < 1) expect(pair.x).toBeGreaterThan(previous.right);
+    else expect(pair.y).toBeGreaterThan(previous.y);
   }
 }
 
+async function attachFacts(page: Page, testInfo: TestInfo, geometry: unknown) {
+  await testInfo.attach("facts-geometry.json", {
+    body: JSON.stringify(geometry, null, 2),
+    contentType: "application/json",
+  });
+  await testInfo.attach("facts-page.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
+}
+
 for (const width of [1120, 1472]) {
-  test(`short accounting facts share rows and retain their reading order ${width}`, async ({
+  test(`accounting facts share equal columns in their reading order ${width}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=dock-usage&theme=light&font-size=18",
@@ -50,19 +86,15 @@ for (const width of [1120, 1472]) {
       "Known reasoning tokens",
     ]);
     await expect(facts.locator("dd").first()).toHaveText("3.04");
-    const cost = (await facts.getByText("Known cost (USD)", { exact: true }).boundingBox())!;
-    const coverage = (await facts.getByText("Usage / attempts", { exact: true }).boundingBox())!;
-    expect(coverage.y).toBe(cost.y);
-    if (width === 1472) {
-      const priced = (await facts.getByText("Priced / attempts", { exact: true }).boundingBox())!;
-      expect(priced.y).toBe(cost.y);
-    }
-    await expectReadableFacts(facts, record);
+    await facts.locator(":scope > div").first().scrollIntoViewIfNeeded();
+    const geometry = await measureFacts(facts, record);
+    await attachFacts(page, testInfo, geometry);
+    expectReadableFacts(geometry);
   });
 
-  test(`long evidence identities and attribute paths retain the available width ${width}`, async ({
+  test(`long evidence identities and attribute paths wrap inside equal columns ${width}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=dock-diagnostics&theme=light&font-size=18",
@@ -105,17 +137,60 @@ for (const width of [1120, 1472]) {
     await expect(traceValue).toHaveText(trace);
     await expect(pathValue).toHaveText(path);
     await expect(attributes.locator("dt")).toHaveText([attribute, "model.provider"]);
-    const attributesBox = (await attributes.boundingBox())!;
-    const pathBox = (await pathValue.boundingBox())!;
-    expect(pathBox.width).toBeGreaterThan(attributesBox.width * 0.9);
-    await expectReadableFacts(identityFacts, record);
-    await expectReadableFacts(attributes, record);
+    await identityFacts.locator(":scope > div").first().scrollIntoViewIfNeeded();
+    const geometry = {
+      identity: await measureFacts(identityFacts, record),
+      attributes: await measureFacts(attributes, record),
+    };
+    await attachFacts(page, testInfo, geometry);
+    expectReadableFacts(geometry.identity);
+    expectReadableFacts(geometry.attributes);
+    await attributes.locator(":scope > div").first().scrollIntoViewIfNeeded();
+    await expect(pathValue).toBeInViewport();
+    await testInfo.attach("attribute-path.png", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    const reading = await pathValue.evaluate(
+      (node) =>
+        new Promise<{
+          width: number;
+          height: number;
+          visibleWidth: number;
+          visibleHeight: number;
+          ratio: number;
+        }>((resolve) => {
+          const observer = new IntersectionObserver(([entry]) => {
+            observer.disconnect();
+            resolve({
+              width: entry!.boundingClientRect.width,
+              height: entry!.boundingClientRect.height,
+              visibleWidth: entry!.intersectionRect.width,
+              visibleHeight: entry!.intersectionRect.height,
+              ratio: entry!.intersectionRatio,
+            });
+          });
+          observer.observe(node);
+        }),
+    );
+    await testInfo.attach("attribute-reading.json", {
+      body: JSON.stringify(reading, null, 2),
+      contentType: "application/json",
+    });
+    expect(
+      reading.width - reading.visibleWidth,
+      "the path fits its reading width",
+    ).toBeLessThanOrEqual(1);
+    expect(
+      reading.height - reading.visibleHeight,
+      "the complete path is revealed",
+    ).toBeLessThanOrEqual(1);
   });
 }
 
-test("trajectory identities share space without crowding a complete timestamp", async ({
+test("trajectory identities and a complete timestamp share equal columns", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&theme=light&font-size=18",
@@ -124,11 +199,13 @@ test("trajectory identities share space without crowding a complete timestamp", 
   const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
   await record.getByRole("button", { expanded: false }).click();
   const facts = record.locator("dl");
-  const recordId = (await facts.getByText("Record ID", { exact: true }).boundingBox())!;
-  const runId = (await facts.getByText("Run ID", { exact: true }).boundingBox())!;
-  expect(runId.y).toBe(recordId.y);
+  await expect(facts.getByText("Record ID", { exact: true })).toBeVisible();
+  await expect(facts.getByText("Run ID", { exact: true })).toBeVisible();
   await expect(facts.locator("dd").filter({ hasText: "2026-07-31T08:01:00.000Z" })).toHaveText(
     "2026-07-31T08:01:00.000Z",
   );
-  await expectReadableFacts(facts, record);
+  await facts.locator(":scope > div").first().scrollIntoViewIfNeeded();
+  const geometry = await measureFacts(facts, record);
+  await attachFacts(page, testInfo, geometry);
+  expectReadableFacts(geometry);
 });

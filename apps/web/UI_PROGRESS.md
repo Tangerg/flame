@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current focus/reading qualification passes **26 distinct cases in stages**; all **10 final browser captures** are reviewed. Checks follow the actual focus surface, disclosure reading axis and captured suggestion inputs. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review covers English settings return and Chinese attachments/code reading, including native 200%. See **Focus surfaces, reading axes and faithful Lab inputs (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest focused qualification passes **22 cases**, followed by all **5 Facts cases** after adding complete-path capture checks. All **19 final browser captures** and **22 actual Wails captures** are reviewed. Checks follow current equal-column layout, actual outline declarations, hidden jump controls and protocol-ordered import failures. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. See **Equal fact columns and visible interaction boundaries (2026-11-07)** for scope and limits. The broader interaction audit remains partial, and whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,105 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Equal fact columns and visible interaction boundaries (2026-11-07)
+
+The continuation selects 422 previously unqualified cases across 78 existing
+scenario files. Its audit stops at the configured failure limit: **62 passed,
+12 failed and 348 did not run**, with no retries or flaky results. Ten assertion
+failures are traced to obsolete expectations in four existing Lab files. Two
+initial fixture-load timeouts also report failed development connections or a
+dynamic import; their root cause remains unresolved. The unchanged cases both
+pass with tracing, across 48 and 38 document navigations, with no failed network
+requests in those runs. Passing reruns do not establish a fix for the initial
+load failures.
+
+- Facts already use the shared responsive equal-column grid introduced in
+  `ec7339268`; the old checks still expected content-width packing and a long
+  attribute value spanning almost the entire list. Current checks retain exact
+  labels, values, source order, record containment and overflow assertions while
+  measuring equal pair widths, common column edges and full value widths.
+  They attach geometry and reveal the complete wrapped attribute path before
+  capturing it. A diagnostic exact-intersection-ratio assertion fails on a
+  **0.03125 CSS px** rounded edge; the final rectangle checks retain the existing
+  **1 CSS px** geometry tolerance. Production layout is unchanged.
+- Focus-rule inspection now checks declared `outline` properties. A transition
+  mentioning `outline-color` had incorrectly counted as painted focus on six
+  Settings controls. Selector matching, global focus ownership, computed paint,
+  keyboard traversal and clipping checks remain intact.
+- Transcript checks distinguish the mounted jump button's `aria-hidden=true`,
+  `tabindex=-1` state at the bottom from its visible, accessible state while
+  reading earlier content. Actual growth, parked reading position, explicit
+  jump and resumed following remain required.
+- MCP import checks separately exercise the original long, invalid server name
+  and a valid name with missing transport. This preserves protocol validation
+  order rather than changing production validation to reach a later error.
+  Both failures run twice at 1120 × 720, 560 × 360 and 320 × 640 in both themes:
+  **12 cases** retain exact drafts, accessible errors, submit focus, revealed
+  feedback, horizontal containment and Escape return to the opener.
+
+The four focused files pass **22 cases in one clean invocation**. After adding
+the complete-path capture and intersection checks, the final Facts invocation
+passes all **5 cases**. These passing phases have no skipped, retried or flaky
+cases. All **19 final browser images** are reviewed: 12 import captures and 7
+final Facts captures. The original audit and failed exact-ratio attempt remain
+diagnostic evidence. This does not qualify the complete migrated suite; some
+cases marked not-run in the audit subsequently pass in these focused runs.
+
+The first full Web check passes **431 files / 4,699 tests**, but the Runtime HTTP
+suite cannot start without its selected Node companion archive, leaving 52
+tests skipped. The standard `tooling/node-companion.mjs` preparation verifies
+the selected Node v24.22.1 Darwin ARM64 archive and executable. The subsequent
+complete **Web check passes 432 files / 4,751 tests** in one clean invocation,
+including owner guards and the production bundle. Supported
+**make check-native passes** Desktop test/vet/build and the Wails macOS build.
+Existing linker warnings remain. Root complexity still reports only the
+untouched `ProviderRow` increase from 31 to 34; its threshold is unchanged.
+Future checks need the standard Node preparation again after output cleanup.
+
+Actual Wails v3.1.0 uses the unchanged DesktopHost, native menu, window chrome
+and page zoom with a private identity/data home and the same **484 built Lab
+assets**. All **22 native captures** are reviewed, including arrival and separate
+reading positions:
+
+- English/light/18 px covers aligned usage facts, keyboard disclosure reading,
+  native **200%**, the full-width Material reader, focus and Escape return,
+  retained draft and continued input. The formal Settings shortcut reaches the
+  Theme control, its visible focus and popup; Escape returns through Settings
+  to the retained conversation. Native Window Zoom retains the draft.
+- German/dark/18 px covers both import failures, repeated attempts, editable
+  retained JSON, submit focus and Escape return. Native **200%** and the actual
+  Window Move & Resize Left command produce a narrower window of about
+  **1121 points** while keeping feedback and completion controls reachable.
+  No valid configuration is submitted or server created.
+- Chinese/dark/18 px/custom purple covers aligned usage facts, native **200%**,
+  keyboard reading through the full-width Material panel and return to the
+  retained Chinese draft, followed by continued input with an explicitly placed
+  caret. Reading positions together expose all eight facts; they do not show
+  all content simultaneously. Chinese paste does not qualify physical IME
+  composition.
+
+All three native processes exit normally. The owned server is stopped and the
+private app is unregistered. Six private Library paths and the ordinary native
+temp root return to absence. The three pre-existing, empty WebKit helper roots
+retain their identities, ownership, modes and `sunlnk` flags; only their three
+new empty Networking children are removed. All twelve output/cache roots return
+to original contents and modes or absence, including the older UI build. No
+functional checks run against restored outputs. An evidence-session restart
+during cleanup is followed by independent comparisons with the original output
+backups. Reports and captures are recovered from the qualification directory;
+raw loading trace archives are not retained. The primary checkout and all 24
+native source inputs remain unchanged. Recovered evidence is frozen before
+retiring the qualification directory.
+
+The current shared Facts contract and better-layout / better-accessibility
+guidance inform these checks. Two bounded, read-only Claude Code CLI tasks
+supply source analysis and a patch proposal; primary review applies and verifies
+the final changes. Production UI, Runtime contracts and native sources are
+unchanged. Computer capacity still lacks complete captured metadata and
+reservations for its recorded operations; no substitute accounting is invented.
+Remaining migrated interactions, live Runtime tasks, VoiceOver and whole-product
+visual acceptance remain unfinished. Continue in this same Lab.
 
 ### Focus surfaces, reading axes and faithful Lab inputs (2026-11-07)
 
