@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. The latest form follow-up completes failed-submit focus and field visibility in short viewports: all four strengthened form cases and seven Foundation unit checks pass. All **24 final browser images** and **15 native captures** receive review, including five preliminary native diagnostics. EN and ZH qualify invalid/valid submission focus at **200%** and repeated validation at **300%**. See **Failed-submit focus and complete field reveal (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. The latest form follow-up completes failed-submit focus and field visibility in short viewports: all four strengthened form cases and seven Foundation unit checks pass. All **24 final browser images** and **15 native captures** receive review, including five preliminary native diagnostics. EN and ZH qualify invalid/valid submission focus at **200%** and repeated validation at **300%**. See **Failed-submit focus and complete field reveal (2026-11-08)**. Native shortcut follow-up reproduces unconfirmed Chinese input after a single injected key; confirming it retains Name focus and permits normal Cmd+Q exit. See **Native shortcut qualification and unconfirmed input (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -374,8 +374,8 @@ with selected task originals inspected: ten final captures and five preliminary
 English diagnostics. The preliminary and both final native runs exit normally.
 The final English Cmd+Q attempt leaves its verified private process alive; the
 observed Quit menu closes it normally, as it does for Chinese. No force stop or
-shortcut-reliability claim is made. Reproduce that shortcut delivery against the
-current host/menu owner before proposing a native change.
+shortcut-reliability claim is made. The follow-up below investigates shortcut
+delivery against the current host/menu owner without adding a quit handler.
 
 Better-accessibility's invalid-field focus rule and better-layout's readable
 context guide the repair. Read-only HeroUI form documentation identifies the
@@ -392,6 +392,57 @@ ordinary temp return to absence, and three protected helper roots retain their
 original empty identities and flags. Evidence is preserved in memory before
 guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
 the batch; continue actual-task qualification through the same Lab.
+
+### Native shortcut qualification and unconfirmed input (2026-11-08)
+
+The previous English Cmd+Q observation is investigated in the same independent
+Lab form, using EN/light/14 px at native **100%**. Wails v3.1.0 retains the
+production host, menu and zoom implementation with a private identity/home and
+closed Runtime endpoint. All **487 Lab assets** match the independent build.
+UI, Lab and private native builds pass in **1.628 s**, **2.745 s** and **1.541 s**.
+
+Source review identifies one existing native quit path. Flame installs Wails'
+default application menu and replaces only its three zoom callbacks. Wails'
+Quit role declares `CmdOrCtrl+q` and the Cocoa `terminate:` action; its public
+Quit method also reaches Cocoa termination. The host has no custom quit binding
+or quit veto, and the Lab has no Cmd+Q handler. A bounded read-only Claude Code
+CLI task completes in **98.240 s**; primary independently checks the actual
+Flame and pinned Wails sources rather than treating that report as acceptance.
+
+Five wrapped native runs narrow the observed difference:
+
+- Pasting a padded draft and appending an injected `x` leaves Name focused.
+  Default-duration and **250 ms** Cmd+Q attempts leave each original process
+  alive. Moving to Review then permits normal exit in both runs.
+- A fresh Review-first run exits on its first **250 ms** Cmd+Q. This rules out
+  requiring an earlier quit attempt in that observed path.
+- A fresh paste-only run keeps Name focused and exits normally on **250 ms**
+  Cmd+Q. Input focus alone therefore does not reproduce the failure.
+- In the final run, `x` has a visible marked underline. Right leaves that marked
+  text and the process alive after Cmd+Q. Return changes the actual AX value
+  from the trailing `x` to **新**, without moving Name focus or saving the form.
+  The next **250 ms** Cmd+Q exits normally.
+
+These observations identify unconfirmed Chinese input in the injected-key path;
+they do not justify a native zoom or quit repair. No product code, binding,
+catalog entry, browser case or verification runner is added. All five wrapped
+runs return **exit 0**, and all **seven native captures** receive review. One
+earlier AX read automatically reopens the already-exited private app without its
+qualification environment. That episode and its following shortcut are excluded;
+subsequent termination checks use the original process and exit receipt before
+any further AX access.
+
+This is scoped native evidence, not physical IME or general shortcut-reliability
+qualification. Native 300%, other locale/theme combinations, full Web/Runtime/
+native gates, browser/unit suites, VoiceOver and optional measurements are not
+rerun for this documentation-only follow-up. The prior form results retain their
+original scope. All **12 output/cache roots** return to their captured bytes,
+modes and directory state or absence. All **6,710 non-Markdown inputs**, all
+**46 native inputs** and the primary checkout remain unchanged; no functional
+check runs after output restoration. The private app is unregistered, its server
+exits, six Library paths return to absence and three protected helper roots keep
+their original empty state and identities. Evidence is preserved in memory before
+guarded QA-root retirement. Continue actual-task qualification through this Lab.
 
 ### Qualification and limits
 
