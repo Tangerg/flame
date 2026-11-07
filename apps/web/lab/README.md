@@ -267,6 +267,12 @@ settle before recording the parent position. Its position must stay unchanged
 over eight animation frames; the later inner gesture still requires exact equality
 and scrolling at the result boundary must continue through the transcript.
 
+Form catalog checks follow invalid submit, correction and successful local save
+at component and phone widths. Feedback must stay within the Name field and
+precede Review when stacked; adjacent Review controls must remain beside the
+input. The exact localized accessible name and field description are checked
+alongside the retained literal draft.
+
 The shared UI ownership scenarios also qualify keyboard reading at both edges
 in Chromium and WebKit: wide formulas, inline tables and expanded tables.
 They hold and repeat horizontal arrows, release the key even on failure, and

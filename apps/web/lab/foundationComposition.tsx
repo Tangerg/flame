@@ -108,6 +108,7 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
             <TextField
               value={name}
               invalid={invalid}
+              aria-label={copy.name}
               aria-describedby={invalid ? feedback : undefined}
               onChange={(event) => {
                 setName(event.target.value);
@@ -115,6 +116,11 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
                 observe("nameChange.length", event.target.value.length);
               }}
             />
+            {invalid && (
+              <span id={feedback} role="alert">
+                {copy.invalid}
+              </span>
+            )}
           </FormField>
           <FormGroup label={copy.review}>
             <Checkbox
@@ -128,11 +134,6 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
             />
           </FormGroup>
         </FormRow>
-        {invalid && (
-          <p id={feedback} role="alert">
-            {copy.invalid}
-          </p>
-        )}
         <FormField label={copy.description}>
           <TextArea
             rows={3}

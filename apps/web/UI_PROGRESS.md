@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete. The same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up; this is not one clean full-suite invocation. The sole baseline failure was premature scroll-position sampling and is repaired without weakening the inner-scroll assertion. All **885 baseline images** receive overview review through **222 contact sheets**, with additional focused and native inspection. That review identifies misplaced Name feedback in the Lab form composition at narrow widths; this remains the next repair. See **Complete Lab baseline and stationary scroll sampling (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. Review of **885 baseline images** identifies misplaced Name feedback in the Lab form. That composition is now repaired: all four strengthened form cases pass, with **16 final browser images** and **10 native captures** reviewed. EN and ZH verify adjacent controls at **200%** and stacked feedback at **300%**. See **Field feedback grouping and adjacent-control alignment (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -226,8 +226,8 @@ hash matches avoiding duplicate inspection. Full-resolution inspection confirms
 one remaining form defect in both English/light and Chinese/dark/18 px at
 **390 px**: Name feedback follows the Review checkbox. `FormExample` places
 the error after the complete row; shared `FormRow` does not reorder it. The
-next bounded repair must group feedback with its field while retaining the
-input's Name accessible name, description and validation lifecycle. Passing
+field grouping repair below retains the input's Name accessible name,
+description and validation lifecycle. Passing
 catalog checks do not establish complete visual acceptance.
 
 Actual Wails v3.1.0 inspection uses the same **487 Lab assets**, production
@@ -256,8 +256,69 @@ older outputs. The app is unregistered, its owned server stops, six Library
 paths and ordinary temp return to absence, and three protected helper roots
 retain their original empty identities and flags. Evidence is preserved in
 memory before guarded QA-root retirement. Normal hooks and an ordinary push to
-`main` deliver the repair. Continue with the observed form grouping defect in
-this same Lab; do not add another visual runner.
+`main` deliver the repair. The form defect is repaired below through this same
+Lab; no second visual runner is introduced.
+
+### Field feedback grouping and adjacent-control alignment (2026-11-08)
+
+Baseline screenshot review identifies Name validation below Review at **390 px**.
+The local `FormExample` places that feedback after its complete `FormRow`.
+Four existing catalog cases receive behavioral and geometry assertions in
+`preview.lab.spec.ts`: EN/light/14 px and ZH/dark/18 px, at **720 and 390 px**,
+each retaining editable and initially invalid variants. All **4 / 4** fail before
+the repair: two-column messages cross the Name column and stacked messages
+follow Review. A bounded Claude Code CLI task supplies the first regression edit
+in **82.697 s**; primary reviews, strengthens and verifies it.
+
+An initial wrapper groups the error correctly but breaks the shared row's direct
+field contract. Its native screenshot exposes Review below the input. The shared
+`globals.css` applies a two-row subgrid to direct `form-field` children; that
+wrapper bypasses it. Added adjacent-control assertions fail in both wide cases.
+The final composition keeps `FormField` directly inside `FormRow` and places the
+feedback span inside the existing field body. The input explicitly uses the same
+localized Name copy for its accessible name, preventing feedback inside the
+wrapping label from changing that name. `aria-describedby`, invalid state, alert,
+edit clearing, literal input, submit and privacy observations retain their
+existing owners. No shared API, CSS rule, state owner, story or runner changes.
+
+The final catalog selection passes **4 / 4** in **7.473 s**, without retries,
+skips or flaky results. Assertions check the complete field-specific error,
+column width, stacked reading order, adjacent checkbox geometry, exact accessible
+name and description, correction, successful save and the exact padded draft.
+All **16 final browser images** receive review through all four contact sheets.
+The existing Foundation unit file passes **7 / 7** in **1.445 s**. Final typecheck
+passes in **3.090 s**, and all ten selected static stages pass, including lint,
+formatting, layer/design-system/token/style/class/shorthand/chrome/locale guards.
+The initial CLI formatting discrepancy is corrected before these final checks.
+Full Web/Runtime/native gates and the complete Lab collection are not rerun for
+this local composition repair; previous broad results retain their original scope.
+
+Actual Wails v3.1.0 uses the same **487 final Lab assets**, production native
+host/menu/zoom and a private identity/home. The private native build passes in
+**1.774 s**. EN/light/14 px and ZH/dark/18 px verify wide invalid feedback, minimum
+window width and **200%** zoom, Tab/Space Review activation, keyboard save,
+vertical reading of the saved notice, and exact padded drafts. Forty native
+Zoom In actions after Actual Size reach **300%** and stack the fields; clearing
+Name keeps its error before Review, and pasting the original draft followed by
+a real `x` preserves continued input. Both final runs and the earlier diagnostic
+run exit normally. All **10 native captures** are reviewed: nine task captures
+and the discarded wrapper diagnostic. The first EN `typeText` attempt reorders
+characters; exact-value qualification uses paste, then a real key. This does not
+qualify physical IME, VoiceOver, RTL, live Runtime/provider work or measurements.
+
+Better-layout and better-accessibility guide field proximity, reading order and
+stable names. Read-only HeroUI `form/basic.tsx` reinforces keeping FieldError with
+its field; Flame preserves its own shared field/body and subgrid contracts.
+After functional checks, all **12 output/cache roots** return to original bytes,
+modes and directory state or absence. The comparison covers **6,710 non-Markdown
+inputs**, with only the intended composition and catalog spec changed, all
+**46 native inputs**, and the unchanged primary checkout. No functional check
+runs against restored older outputs. The app is unregistered and its owned
+server exits; six Library paths and ordinary temp return to absence, and three
+protected helper roots retain their original empty identities and flags.
+Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
+and an ordinary push to `main` deliver the repair. Continue inspecting actual
+tasks through this Lab; passing these cases is not whole-product acceptance.
 
 ### Qualification and limits
 

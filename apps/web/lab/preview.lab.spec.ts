@@ -69,6 +69,69 @@ for (const story of catalog.stories) {
             body: initialImage,
             contentType: "image/png",
           });
+          const copy = foundationMessages[chinese ? "zh-CN" : "en"];
+          if (entry.storyId === "form") {
+            const name = page.getByRole("textbox", { name: copy.name, exact: true });
+            const error = page.getByRole("alert");
+            const review = page.getByRole("group", { name: copy.review, exact: true });
+            const save = page.getByRole("button", { name: copy.save, exact: true });
+            if (entry.variantId === "editable") {
+              await expect(name).not.toHaveAttribute("aria-invalid", "true");
+              await expect(error).toBeHidden();
+              await save.click();
+            }
+            await expect(name).toHaveAttribute("aria-invalid", "true");
+            await expect(name).toHaveAccessibleDescription(copy.invalid);
+            await expect(error).toBeVisible();
+            await expect(error).toHaveText(copy.invalid);
+            await testInfo.attach(entry.id + "-invalid-" + entry.width + "px", {
+              body: await page.screenshot({ fullPage: true, animations: "disabled" }),
+              contentType: "image/png",
+            });
+            const bounds = async (locator: typeof name) => (await locator.boundingBox())!;
+            const field = await bounds(name);
+            const message = await bounds(error);
+            const group = await bounds(review);
+            expect(message.y, "The error follows the Name input").toBeGreaterThanOrEqual(
+              field.y + field.height - 1,
+            );
+            expect(Math.abs(message.x - field.x), "The error aligns with Name").toBeLessThanOrEqual(
+              1,
+            );
+            expect(
+              message.x + message.width,
+              "The error stays within the Name width",
+            ).toBeLessThanOrEqual(field.x + field.width + 1);
+            if (group.y >= field.y + field.height - 1) {
+              expect(
+                message.y + message.height,
+                "A stacked error precedes Review",
+              ).toBeLessThanOrEqual(group.y + 1);
+            } else {
+              const checkbox = await bounds(
+                page.getByRole("checkbox", { name: copy.accept, exact: true }),
+              );
+              expect(checkbox.y, "Review stays beside the Name input").toBeGreaterThanOrEqual(
+                field.y - 1,
+              );
+              expect(
+                checkbox.y + checkbox.height,
+                "Review stays within the Name input row",
+              ).toBeLessThanOrEqual(field.y + field.height + 1);
+              expect(
+                message.x + message.width,
+                "The error stays out of the Review column",
+              ).toBeLessThanOrEqual(group.x + 1);
+            }
+            const draft = chinese ? "  草稿 一  " : "  Draft one  ";
+            await name.fill(draft);
+            await expect(name).not.toHaveAttribute("aria-invalid", "true");
+            await expect(name).toHaveAccessibleDescription("");
+            await expect(error).toBeHidden();
+            await save.click();
+            await expect(name).toHaveValue(draft);
+            await expect(page.getByRole("status")).toHaveText(copy.saved);
+          }
           if (entry.storyId === "business-composition") {
             const payload = page.getByText("Consumer payload", { exact: true });
             await payload.scrollIntoViewIfNeeded();
@@ -108,7 +171,6 @@ for (const story of catalog.stories) {
             await reader.focus();
             await expect(toggle).toBeFocused();
           }
-          const copy = foundationMessages[chinese ? "zh-CN" : "en"];
           if (entry.storyId === "popover" || entry.storyId === "modal-dialog") {
             await page
               .getByRole("button", {
