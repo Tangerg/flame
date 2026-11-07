@@ -414,6 +414,10 @@ frame available while viewport changes preserve local drafts. The query only
 sets the initial workspace layout; the existing workspace sidebar actions may then
 collapse, expand and resize it without replacing the current Composer. Recorded
 state-sidebar rows remain inert rather than simulating a Runtime transition.
+The existing WebKit checks measure short Composer drafts across 1120, 560 and
+390 px frames: complete text must fit, the input must remain inside its Composer,
+and sidebar changes must retain the input, draft and editing position. These
+viewport checks complement native page-zoom acceptance.
 
 ## Optional measurements
 

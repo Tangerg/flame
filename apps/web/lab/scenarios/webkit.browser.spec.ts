@@ -196,6 +196,123 @@ test("WebKit workspace keeps review geometry and separator semantics", async ({ 
   await expectNoPageOverflow(page);
 });
 
+const SHORT_DRAFT_PROFILES = [
+  {
+    locale: "en",
+    theme: "light",
+    composer: en["composer.input.label"]!,
+    draft: "Keep every word of this short draft visible while the narrow composer wraps it.",
+    suffix: " Then continue it.",
+  },
+  {
+    locale: "zh",
+    theme: "dark",
+    composer: "消息输入框",
+    draft: "窄窗口下输入框应完整显示这段简短草稿，自动换行时不能裁切文字。",
+    suffix: "继续补充一句。",
+  },
+] as const;
+
+for (const profile of SHORT_DRAFT_PROFILES) {
+  test(`WebKit keeps a short Composer draft fully visible across viewport and sidebar changes in ${profile.locale} ${profile.theme}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1120, height: 900 });
+    const query = new URLSearchParams({
+      fixture: "agent",
+      state: "idle",
+      sidebar: "collapsed",
+      motion: "off",
+      locale: profile.locale,
+      theme: profile.theme,
+      "font-size": "18",
+    });
+    await page.goto(`/lab/fixture.html?${query}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    await page.evaluate(() => document.fonts.ready);
+
+    const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+    const capture = async (name: string) =>
+      testInfo.attach(name, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+
+    await composer.click();
+    await page.keyboard.type(profile.draft);
+    await expect(composer).toHaveValue(profile.draft);
+    const composerNode = await composer.elementHandle();
+
+    const expectCompleteDraft = async (value: string) => {
+      await expect(composer).toHaveValue(value);
+      expect(await composer.evaluate((node, original) => node === original, composerNode)).toBe(
+        true,
+      );
+      await expect
+        .poll(() =>
+          composer.evaluate((node) => {
+            const box = node.getBoundingClientRect();
+            const frame = node.closest("[data-slot=composer-root]")!.getBoundingClientRect();
+            return {
+              fits:
+                node.scrollHeight - node.clientHeight <= 1 &&
+                node.scrollWidth - node.clientWidth <= 1,
+              atStart: node.scrollTop === 0 && node.scrollLeft === 0,
+              contained:
+                box.top >= frame.top - 1 &&
+                box.bottom <= frame.bottom + 1 &&
+                box.left >= frame.left - 1 &&
+                box.right <= frame.right + 1,
+            };
+          }),
+        )
+        .toEqual({ fits: true, atStart: true, contained: true });
+      await expect(composer).toBeInViewport({ ratio: 1 });
+      await expectNoPageOverflow(page);
+    };
+
+    await expectCompleteDraft(profile.draft);
+    await capture("initial-short-draft");
+
+    await page.setViewportSize({ width: 560, height: 900 });
+    await expectCompleteDraft(profile.draft);
+    await capture("wrapped-short-draft-560px");
+
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expectCompleteDraft(profile.draft);
+
+    const expand = page.getByRole("button", {
+      name: "Expand the agent fixture sidebar",
+      exact: true,
+    });
+    await expand.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("button", { name: "Collapse the agent fixture sidebar", exact: true }),
+    ).toBeFocused();
+    await expect(composer).toHaveValue(profile.draft);
+    await page.keyboard.press("Enter");
+    await expect(expand).toBeFocused();
+    await expectCompleteDraft(profile.draft);
+
+    await composer.focus();
+    await expect(composer).toBeFocused();
+    expect(
+      await composer.evaluate((node: HTMLTextAreaElement) => [
+        node.selectionStart,
+        node.selectionEnd,
+      ]),
+    ).toEqual([profile.draft.length, profile.draft.length]);
+    await page.keyboard.type(profile.suffix);
+    await expectCompleteDraft(profile.draft + profile.suffix);
+    await capture("continued-short-draft-390px");
+
+    await page.setViewportSize({ width: 1120, height: 900 });
+    await expectCompleteDraft(profile.draft + profile.suffix);
+    await capture("restored-short-draft-1120px");
+  });
+}
+
 test("WebKit settings menu dismisses and returns focus", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openFixture(page, {

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair connects the Agent scene's inert sidebar controls to the existing workspace layout owner, preserving committed width and Composer drafts. The same catalog retains **44 stories**. The selected **34 browser checks pass**; after waiting for painted Tooltips, the **eight attachment checks pass again**. All **64 selected final browser images and 11 native captures** are reviewed, including one diagnostic separator-focus attempt. Focused units, Web typecheck/static checks and the supported native gate pass. See **Interactive Agent layout and painted capture readiness (2026-11-07)**. Native continuation sometimes exposes only the input's text tail despite retaining its complete value; that paint behavior remains unqualified. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The same catalog retains **44 stories**. The latest follow-up checks complete short Composer drafts through wrapping, sidebar changes and continued editing. The selected **25 browser checks pass**; both new WebKit cases pass again with stricter horizontal-fit and full-visibility assertions. All **53 selected final browser images and 12 native captures** are reviewed, including one diagnostic Chinese typing attempt. Typecheck, lint and formatting pass. Native EN and ZH at **200%** do not reproduce the earlier tail-only capture, so this follow-up preserves production input behavior and adds verification coverage. See **Interactive Agent layout and painted capture readiness (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -147,6 +147,55 @@ to absence, and three protected helper roots retain their original empty state
 and identities. Evidence is preserved in memory before guarded QA-root retirement.
 Delivery uses normal hooks and an ordinary push to `main`. Continue through this
 same Lab; this is a bounded interaction repair, not whole-product acceptance.
+
+The subsequent short-draft follow-up starts from that remaining native input
+observation. Current Wails EN/light/18 px and ZH/dark/18 px/custom purple at
+**200%** show complete continued drafts through wrapping and sidebar changes.
+English also compares normal typing with the earlier AX-caret/paste path.
+Chinese Window Zoom changes the capture from **2240×1898** to **3024×1898** and
+back; the complete two-line draft remains visible, and a real `x` key appends at
+its original end afterward. The earlier tail-only capture is not reproduced.
+No production input, autosize, selection or scroll change is justified here.
+
+Two cases extend the existing `webkit.browser.spec.ts`, using the same Agent
+scene and the sole Lab configuration. At **1120, 560 and 390 px**, short drafts
+must fit both scroll dimensions, remain completely visible and inside their
+Composer, retain the same input and exact value, and preserve the editing
+position through sidebar activation and continued typing. They do not exceed
+the existing six-line cap. A bounded Claude Code CLI task supplies the initial
+test edit in **134.167 s**. Primary replaces its coordinate-based caret assumption
+with retained-selection assertions and tightens full-content visibility.
+
+The combined WebKit/Chromium selection passes **25 / 25** in **72.092 s**,
+without skips, retries or flaky results. Both new cases pass again with the
+stronger width-fit and viewport-intersection assertions in **12.829 s**. All
+**53 selected final browser images** are reviewed through 14 contact sheets and
+both narrow continued-input originals; the eight final short-draft images are
+byte-identical to the reviewed combined-run images. Typecheck and lint pass.
+An initial callback typing error is corrected with `HTMLTextAreaElement` before
+the final static checks. The initial independent Lab build uses the deliberately
+preserved older UI output and fails on a missing current export; rebuilding the
+existing UI package and Lab resolves that prerequisite without source changes.
+
+All **12 native captures** are reviewed: 11 task captures and one diagnostic
+attempt where native `typeText` inserts no Chinese characters. The qualified
+Chinese path uses paste; it does not qualify physical IME. Both native runs exit
+normally, and all **487 final Lab assets** match the private native copy.
+Better-layout and better-accessibility guide the visibility checks. Read-only
+ZCode `prompt-input-textarea.tsx` and HeroUI's controlled/rows TextArea demos
+provide content-sizing and retained-value comparisons. Flame keeps its existing
+shared TextArea and Composer owners. Full Web/Runtime/native gates, VoiceOver,
+RTL, live sending and optional measurements are not rerun for this test-only
+addition. The earlier native gate result above retains its original scope.
+
+The follow-up restores all **12 output/cache roots** after functional checks,
+compares **6,710 non-Markdown inputs** with only the intended WebKit spec changed,
+and preserves all **46 native inputs** and the primary checkout. Six Library
+paths and ordinary temp return to absence; the three original protected helper
+roots remain empty with their captured identities and flags. The app is
+unregistered and the owned server exits. Evidence is preserved in memory before
+guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
+the coverage; continue visual qualification through this same Lab.
 
 ### Qualification and limits
 
