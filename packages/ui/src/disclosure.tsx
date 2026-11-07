@@ -213,6 +213,7 @@ export function Disclosure({
     >
       <div
         ref={headerRef}
+        data-focus-unit=""
         {...stylex.props(
           styles.header,
           stickyHeader && styles.stickyHeader,

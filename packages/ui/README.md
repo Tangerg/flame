@@ -251,7 +251,10 @@ moves the actions. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. The growing
 trigger carries the actions to the trailing edge while both fit on one row; once
 the actions wrap as a unit, they start at the leading edge beneath the trigger.
-DOM and keyboard order are unchanged. Its optional
+DOM and keyboard order are unchanged. The header is one reading unit, so a
+focused action is revealed together with the summary it acts on whenever the
+complete header fits. Expanded content stays outside that unit, and an oversized
+header keeps the smaller-unit and control fallback. Its optional
 `stickyHeader` keeps that same complete summary beneath the enclosing Panel's
 controls in a bounded scroll viewport. It returns to normal flow when fewer than
 two body lines and their leading inset would remain below the header.

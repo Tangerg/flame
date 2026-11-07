@@ -11,6 +11,7 @@ import {
   ContentVisibility,
   CodeBlock,
   Checkbox,
+  Disclosure,
   FormActions,
   FormGroup,
   Panel,
@@ -938,6 +939,74 @@ it("does not choose a fitting declared unit outside the panel body", () => {
   act(() => cancel.focus());
   expect(revealed).toEqual([form]);
 });
+
+function disclosureScene(variant: "plain" | "row") {
+  const view = render(
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+      <Panel label="Skills" controls={<button>Refresh</button>}>
+        <Disclosure
+          variant={variant}
+          title="Literal proposal name"
+          defaultOpen
+          actions={<button>Approve</button>}
+        >
+          <input aria-label="Review note" />
+        </Disclosure>
+      </Panel>
+    </div>,
+  );
+  const header = screen
+    .getByText("Literal proposal name")
+    .closest("button")!.parentElement!;
+  const approve = screen.getByRole("button", { name: "Approve" });
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  rectangles.set(
+    view.container.querySelector('[data-slot="panel-controls"]')!,
+    new DOMRect(0, 200, 800, 50),
+  );
+  return { header, approve, note };
+}
+
+it.each(["plain", "row"] as const)(
+  "reveals the complete %s disclosure summary with its focused action",
+  (variant) => {
+    const { header, approve } = disclosureScene(variant);
+    rectangles.set(header, new DOMRect(0, 230, 300, 64));
+    rectangles.set(approve, new DOMRect(200, 260, 100, 32));
+    act(() => approve.focus());
+    expect(revealed).toEqual([header]);
+    expect(document.activeElement).toBe(approve);
+  },
+);
+
+it.each(["plain", "row"] as const)(
+  "keeps the focused action fallback for an oversized %s disclosure header",
+  (variant) => {
+    const { header, approve } = disclosureScene(variant);
+    rectangles.set(header, new DOMRect(0, 100, 300, 360));
+    rectangles.set(approve, new DOMRect(200, 300, 100, 32));
+    act(() => approve.focus());
+    expect(revealed).toEqual([]);
+    act(() => approve.blur());
+    rectangles.set(approve, new DOMRect(200, 230, 100, 32));
+    act(() => approve.focus());
+    expect(revealed).toEqual([approve]);
+    expect(document.activeElement).toBe(approve);
+  },
+);
+
+it.each(["plain", "row"] as const)(
+  "does not read expanded %s disclosure content through its header",
+  (variant) => {
+    const { header, note } = disclosureScene(variant);
+    rectangles.set(header, new DOMRect(0, 180, 300, 40));
+    rectangles.set(note, new DOMRect(0, 230, 200, 32));
+    act(() => note.focus());
+    expect(revealed).toEqual([note]);
+    expect(document.activeElement).toBe(note);
+  },
+);
 
 it("reveals a tile's text and action without its oversized visual", () => {
   const download = vi.fn();

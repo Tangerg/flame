@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest audit qualifies **155 selected existing interaction cases in stages**, restores explicit Cancel entry for product confirmations, and inspects **34 final browser captures plus 16 actual Wails captures**. The frontend project passes **431 files / 4,702 tests**. Native English and Chinese 200% checks cover confirmation reading/return and Skill proposal outcomes. A narrow Skills return still needs identity-reveal work; passing focus assertions do not qualify that paint. See **Workspace decisions and recorded-result verification (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair keeps fitting Disclosure summaries beside their focused actions, closing the observed narrow Skills return defect. It qualifies **78 selected existing interaction cases and four independent catalog checks in stages**, with an initial module-loading failure retained in the evidence. All **44 selected final browser captures and 13 candidate Wails captures** are inspected. Shared UI passes **253 tests** and its offline consumer check; the frontend project passes **431 files / 4,702 tests**. Native English 320 px Dock and Chinese 200% checks cover identity, cancellation, reading and continued authoring. See **Disclosure identity on proposal return (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -295,8 +295,8 @@ sheets and relevant full-resolution details. They expose a remaining 320 px
 Skills issue: after a refused decision, the original action regains focus while
 its row name can sit behind the sticky catalog controls. The proposal review's
 action fallback can similarly require manual scrolling to read its identity.
-This is not whole-page visual acceptance. Next reproduce that identity reveal
-in the same Skills scenarios before changing its responsible focus boundary.
+This is not whole-page visual acceptance. The following Disclosure section
+records the subsequent reproduction and repair of the fitting-row defect.
 
 The full frontend project passes **431 files / 4,702 tests**, including the
 new captured-shape regression. Happy DOM reports its existing disabled iframe
@@ -334,6 +334,84 @@ All **6,709 non-Markdown sources** are compared, with exactly the ten intended
 source/test files changed. The native sources and primary checkout are unchanged.
 No functional checks run after restoring outputs. Evidence retention precedes
 guarded retirement of the private qualification directory.
+
+### Disclosure identity on proposal return (2026-11-07)
+
+The existing Skills refusal cases reproduce the missing identity at 320 px,
+light theme and 18 px UI type. The action is focused and visible, but the literal
+proposal name sits at y=466.328–487.328 behind controls ending at y=486.859.
+Both narrow decisions fail the added text-rectangle containment assertion;
+both 1120 px decisions pass. This is an identity-reading defect; it does not
+establish that the focused control itself violates the focus-obscuration rule.
+
+Panel already owns focus reveal through its outermost fitting reading unit.
+`packages/ui/src/disclosure.tsx` now declares the existing summary/action header
+as that unit. Expanded content remains its sibling. The change adds one
+attribute, without another wrapper, scroll implementation or business state.
+A fitting header reveals its identity and actions together; oversized headers
+retain the smaller-unit/control fallback, and body controls remain independent.
+The shared UI README documents that contract.
+
+Six plain/row Panel regressions exercise complete-header reveal, oversized
+fallback and independent body focus. Against the unchanged compiled baseline,
+the two complete-header cases fail while 57 tests pass. The repaired full shared
+UI check passes **14 files / 253 tests**, typecheck, lint, format and its independent
+offline packed-consumer test. The four existing Skills refusal cases retain
+their errors, Cancel entry, original opener focus and two pending proposals.
+They now measure every literal-name text rectangle against sticky controls and
+all clipping ancestors, then reopen with Enter and cancel with Escape without
+Playwright scrolling the target first. The same 320 px text now occupies
+y=502.328–523.328 after both refusal and cancellation.
+
+The focused Skills selection passes **6 / 6**. A broader selection passes
+**77 / 78**: the existing Disclosure route sweep cannot fetch its dynamically
+imported `fixtureRuntime.tsx` and times out waiting for readiness. Its console
+failure remains recorded. A diagnostic invocation leaves that test and its
+168-second budget unchanged, retains a trace and passes all **37 routes**.
+The same invocation passes the **four** independent Disclosure catalog checks,
+capturing all three named variants in both themes at 480 and 390 px. Thus the
+78 interaction titles and four catalog checks are qualified in stages; no clean
+single 82-case invocation is claimed. No retries, skips, relaxed console guard
+or timeout increase is used. The initial fetch failure's cause is unresolved;
+if it recurs, inspect its failed request and server response before changing
+readiness or assertions. The full Lab suite remains unqualified.
+
+All **44 selected final captures**—32 from the broader selection and 12 from
+independent previews—are inspected through contact sheets and relevant original
+images. Twelve earlier focused candidate captures are also reviewed. The full
+frontend project passes **431 files / 4,702 tests**; its existing Happy DOM iframe
+loading diagnostic remains non-failing. Web typecheck, lint and formatting pass.
+Supported `make check-native` passes in **23.662 s**, including current staging,
+Desktop test/vet/build and Wails packaging; existing linker warnings remain.
+
+Actual Wails **v3.1.0** uses the same private binary before and after the change;
+**45 of 46** copied native inputs remain unchanged and all **484** final Lab
+assets match the served copy. The baseline native window does not reproduce the
+exact 320 px clipping; that red evidence comes from the browser fixture. The
+candidate English/light/18 px workspace is actually dragged to a **320 px Dock**.
+Approve/refusal, keyboard reopen/Escape, Reject/refusal, expanded-body reading
+and return to continued Composer editing preserve the complete fitting header.
+Chinese/dark/18 px/custom purple repeats approval/refusal and cancellation after
+native narrowing and **20 Zoom In actions from Actual Size**, reads expanded
+facts manually and resumes the original Chinese draft. An over-height review
+still uses the visible-action fallback and requires manual vertical reading.
+Thirteen candidate captures and two baseline captures are inspected. All three
+app processes quit normally. These isolated fixture outcomes do not qualify
+live Skill publication, Runtime integration, VoiceOver or physical IME.
+
+The existing better-accessibility/better-layout guidance and read-only ZCode
+reading/focus research inform the boundary. Claude Code CLI authors the bounded
+test and implementation changes; primary review simplifies the geometry helper
+and owns qualification. The app is unregistered and its exact owned server stops.
+Six private Library paths and the ordinary native temp root return to absence;
+three pre-existing helper roots retain identity, modes and flags while only
+three new children are removed. Twelve output/cache roots return to their
+captured contents/modes or absence, including the older UI build. The **6,709**
+non-Markdown inputs differ only in the three intended source/test files; native
+sources and the primary checkout remain unchanged. No functional checks run
+after output restoration. The whole Web check, Runtime integration, complete Lab
+suite and optional measurements are not rerun. Continue qualification through
+this same Lab without adding another fixture or verification owner.
 
 ### Lab entry and bounded-reader verification contracts (2026-11-07)
 
