@@ -19,6 +19,7 @@ import { Tooltip } from "@flame/ui/tooltip";
 const chipStyles = stylex.create({
   chip: {
     display: "inline-flex",
+    maxWidth: "100%",
     height: "var(--control-height-sm)",
     borderRadius: radius.button,
     "corner-shape": "round",
@@ -41,6 +42,7 @@ const chipStyles = stylex.create({
     display: "grid",
     height: space.s5,
     width: space.s5,
+    flexShrink: 0,
     placeItems: "center",
     borderWidth: 0,
     backgroundColor: { default: "transparent", ":hover": surface.hover },

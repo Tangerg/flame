@@ -82,14 +82,18 @@ export function ComposerAttachments({
         <div data-slot="composer-attachments" {...stylex.props(composerStyles.tray)}>
           <AnimatePresence initial={false}>
             {images.map((image) => (
-              <motion.div key={image.id} {...chipPresence}>
+              <motion.div
+                key={image.id}
+                {...chipPresence}
+                {...stylex.props(composerStyles.attachment)}
+              >
                 {image.status === "ready" ? (
                   <ImageThumb image={image} onRemove={() => removeImage(image.id)} />
                 ) : (
                   <Chip
                     icon="file-text"
                     kind="attached"
-                    title={image.name}
+                    title={imageStatus(image)}
                     onClose={() => removeImage(image.id)}
                     closeLabel={t("composer.removeImage")}
                   >
@@ -99,7 +103,11 @@ export function ComposerAttachments({
               </motion.div>
             ))}
             {mentions.map((mention) => (
-              <motion.div key={`${mention.start}:${mention.path}`} {...chipPresence}>
+              <motion.div
+                key={`${mention.start}:${mention.path}`}
+                {...chipPresence}
+                {...stylex.props(composerStyles.attachment)}
+              >
                 <Chip
                   icon={fileIconName(mention.path)}
                   title={mention.path}
@@ -110,7 +118,11 @@ export function ComposerAttachments({
               </motion.div>
             ))}
             {pastes.map((paste) => (
-              <motion.div key={paste.id} {...chipPresence}>
+              <motion.div
+                key={paste.id}
+                {...chipPresence}
+                {...stylex.props(composerStyles.attachment)}
+              >
                 <PasteChip
                   paste={paste}
                   composerInput={composerInput}

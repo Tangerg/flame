@@ -110,6 +110,12 @@ return links. The same catalog capture and interaction suites check supporting
 text, link cues and keyboard return without a workspace sidebar or another
 navigation implementation.
 
+The attachment example mounts the production `ComposerAttachments` in its normal
+Composer surface with a local draft. Fixed pending, failed and file-reference
+props make narrow rendering and removal inspectable without racing a file read.
+They never advance or retry an image read. The existing Composer image-intake
+scenario checks delayed real FileReader completion, removal and draft retention.
+
 `environment.tsx` composes Flame's actual appearance plugins, locale packages,
 Theme, FontScale, Tooltip, Callout and code highlighting providers. It does not
 define another palette or translated production dictionary. All lab examples and migrated fixtures consume the shared stylesheet and provider contracts.

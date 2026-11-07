@@ -26,6 +26,7 @@ export const composerStyles = stylex.create({
     paddingTop: space.s1,
     paddingBottom: space.s1,
   },
+  attachment: { minWidth: 0 },
   thumb: {
     position: "relative",
     height: space.s14,

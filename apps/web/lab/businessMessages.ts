@@ -33,6 +33,13 @@ export const businessMessages = {
         en: "Choose a local sample model through a real popover and inspect width and disabled behavior.",
       },
     },
+    attachments: {
+      title: { "zh-CN": "输入区附件", en: "Composer attachments" },
+      summary: {
+        "zh-CN": "在窄输入区检查读取中、失败的图片与文件引用；移除后回到同一输入框。",
+        en: "Inspect reading and failed images and file references in a narrow composer; removal returns to the same input.",
+      },
+    },
     references: {
       title: { "zh-CN": "引用阅读", en: "Reference reading" },
       summary: {
@@ -126,6 +133,8 @@ export const businessMessages = {
     warning: { "zh-CN": "警告", en: "Warning" },
     success: { "zh-CN": "成功", en: "Success" },
     unicode: { "zh-CN": "多语言路径", en: "Unicode path" },
+    pending: { "zh-CN": "读取中", en: "Reading" },
+    reference: { "zh-CN": "文件引用", en: "File reference" },
   },
   samples: {
     status: {
@@ -215,6 +224,10 @@ export const businessMessages = {
     longModel: {
       "zh-CN": "用于长名称和窄宽度检查的本地示例模型",
       en: "Local sample model with a long name for narrow-width inspection",
+    },
+    attachmentDraft: {
+      "zh-CN": "检查附件后继续编辑这份草稿。",
+      en: "Keep this draft while reviewing attachments.",
     },
     catalog: { "zh-CN": "浏览面板", en: "Browse panels" },
     search: { "zh-CN": "搜索面板…", en: "Search panels…" },

@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import type { AgentActivityDisclosure, AgentRow } from "@/ui/agent/index";
 import type { ReasoningBlock } from "@/features/chat/message/ui/cards/ReasoningBlock";
+import type { ComposerImageAttachment } from "@/features/composer/public/attachments";
 import type { DotTone } from "@/lib/tone";
 import type { SystemMessage } from "@/ui/atoms/system-message";
 import type { LabVariant } from "./story";
@@ -142,6 +143,14 @@ export const composerVariants = [
   },
   { id: "long", title: messages.variants.long, disabled: false, compact: false, longLabel: true },
 ] as const;
+
+type AttachmentVariantId = Exclude<ComposerImageAttachment["status"], "ready"> | "reference";
+
+export const attachmentVariants = [
+  { id: "pending", title: messages.variants.pending },
+  { id: "failed", title: messages.variants.failure },
+  { id: "reference", title: messages.variants.reference },
+] as const satisfies readonly (LabVariant & { id: AttachmentVariantId })[];
 
 export const catalogVariants = [
   { id: "default", title: messages.variants.default, empty: false },

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair keeps fitting Disclosure summaries beside their focused actions, closing the observed narrow Skills return defect. It qualifies **78 selected existing interaction cases and four independent catalog checks in stages**, with an initial module-loading failure retained in the evidence. All **44 selected final browser captures and 13 candidate Wails captures** are inspected. Shared UI passes **253 tests** and its offline consumer check; the frontend project passes **431 files / 4,702 tests**. Native English 320 px Dock and Chinese 200% checks cover identity, cancellation, reading and continued authoring. See **Disclosure identity on proposal return (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair keeps long Composer attachments and their removal controls inside narrow inputs, and exposes the complete reading/failure message through the existing keyboard-reachable Tooltip. The same catalog now has **44 stories**. A combined **45-check** selection passes; after tightening capture readiness, its **12 attachment/catalog checks** pass again. All **40 selected final browser images and 14 final Wails captures** are reviewed. The frontend project passes **431 files / 4,702 tests** and the supported native gate passes. See **Bounded attachments and complete recovery hints (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -132,6 +132,12 @@ Reference reading adds a further direct component story to this same catalog,
 bringing it to **43 stories**. Its focused qualification and the latest complete
 WCAG audit are recorded under **Footnote return cues and independent Lab reading
 (2026-11-07)**. Earlier catalog-wide capture totals remain historical.
+
+Composer attachment inspection adds one direct component story, bringing the
+same catalog to **44 stories**. Pending, failed and file-reference props reuse
+the actual attachment renderer. Its focused qualification is recorded under
+**Bounded attachments and complete recovery hints (2026-11-07)**. Earlier
+catalog-wide capture totals retain their original scope.
 
 The root complexity check also fails on
 `plugins/providers/component/providerRow.tsx:ProviderRow` growing from 31 to 34.
@@ -16338,6 +16344,105 @@ Delivery: qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4`
 is pushed to remote `main`. Fresh `ls-remote` matched that commit, all **30**
 accepted product/resource inputs matched, and the owned checkout was clean with
 zero unpushed commits. This in-place receipt adds no product change.
+
+### Bounded attachments and complete recovery hints (2026-11-07)
+
+A long pending image at **320 px / 18 px UI type** exceeds its 270 px attachment
+tray by **14 px** in both themes. The removal control extends about **8.6 px**
+past the visible edge. The real geometry baseline passes four cases and fails
+the two narrow cases. The shared Chip now respects its containing width and
+reserves the close control's width; attachment motion wrappers may shrink. Text
+continues to truncate inside the available space. No new overflow mask, event
+handler, focus decision or attachment lifecycle is added.
+
+Native inspection also finds that the failed label's visible recovery sentence
+is truncated while its Tooltip exposes only the filename. Both new recovery
+checks fail before the change. `ComposerAttachments.tsx` now uses its existing
+translated `imageStatus` for that Tooltip as well as the label and live region.
+Keyboard focus reveals the full state, filename and removal/reselection hint.
+The existing image state and translated copy remain the owners.
+
+`businessAttachments.tsx` adds one component story to the existing Lab catalog,
+with pending, failed and file-reference variants at **320 × 360**. It composes the
+actual `ComposerAttachments`, Composer surface and input ref with a local draft.
+Fixed public props permit inspection without racing a read; they never advance
+or retry FileReader or Runtime state. The existing image-intake scenario owns
+real delayed FileReader completion and cancellation. No second preview document,
+scenario registry, provider, fixture app or Playwright configuration is created.
+The current-source audit still finds **97 specs**, all under `lab/`, and only
+`playwright.lab.config.ts`.
+
+Better-layout's shrinking-content/action-boundary guidance and
+better-accessibility's keyboard, focus and zoom guidance inform this repair.
+Read-only ZCode `ContextAttachmentPill.tsx` and `ai-elements/attachments.tsx`,
+plus the existing HeroUI form/modal references, support bounded identity and
+retained actions. Flame keeps its own shared Chip, Tooltip, input and semantic
+tokens. Two bounded Claude Code CLI tasks supply the focused test and initial
+implementation; primary reviews and simplifies the diff and completes native
+acceptance. No design system, palette or native Go source changes.
+
+Verification is scoped and staged:
+
+- The combined selection passes **45 checks** in **122.137 s**: **four** catalog
+  checks and **41** interactions, including **eight** image-intake/recovery cases,
+  five existing Brand cases and 28 existing MCP/plugin cases. The latter remain
+  neighboring regression checks, not newly qualified product work. No tests are
+  retried, skipped or classified as flaky.
+- Screenshot review finds four focused captures taken before the Tooltip opens.
+  Capture now follows both the complete-message and visible-Tooltip assertions.
+  The final **12 attachment/catalog checks pass** in **31.377 s**. The selected
+  final set has **40 images**: 28 from this capture run plus 12 unchanged MCP
+  images from the combined run. All are reviewed through contact sheets and
+  original narrow focused/recovery images; 36 are byte-identical to the reviewed
+  combined-run images. The earlier selector-authoring error and pre-Tooltip
+  captures remain diagnostic evidence, not product failures or final captures.
+- The frontend project passes **431 files / 4,702 tests** in **110.589 s**.
+  Typecheck and ten selected Web checks pass: lint, formatting, layers, design
+  boundaries, tokens, live styles, authored classes, shorthand, interactive chrome
+  and localization. **`make check-native` passes in 22.511 s**, including Desktop
+  test/vet/build and the supported Wails build. Existing SDK/macOS linker warnings
+  remain. This is not a complete Web `check` or whole-Lab invocation.
+- Actual Wails v3.1.0 uses **487 final Lab assets** with byte parity to the current
+  Lab build and the unchanged native host behind a private app identity. English
+  light/18 px checks all three variants in a **320 × 360 CSS px component frame
+  at 100% camera scale**. The same process checks Chinese dark/18 px failure
+  feedback. Complete hints/path, visible removal, exact draft retention, input
+  focus return and continued typing are observed. A component frame is not a
+  320-point native window.
+- A second final Wails flow uses Chinese/dark/18 px/custom purple in the actual
+  Agent Composer. The system file picker selects an owned tiny PNG; real
+  FileReader produces the ready thumbnail. Actual Size plus 20 native Zoom In
+  increments reaches **200%**, and Window Move & Resize Left reaches **1121
+  native points**. Keyboard image-preview opening, Escape return to its opener,
+  removal and continued editing preserve the exact Chinese draft. The tiny PNG
+  qualifies activation/return, not full-size media reading. The Agent fixture's
+  sidebar is URL-defined with a no-op toggle; collapse is not qualified here.
+
+All **18 native captures** are reviewed: **14 final qualification captures** and
+four diagnostic captures. One initial native/server generation is interrupted;
+its exit receipt is missing and is not reported as a normal exit. The resumed
+diagnostic process and both final processes exit normally. Native pending/failed
+states are fixed component props; the delayed-read race is browser coverage.
+The whole interaction suite, live Runtime/provider sending, VoiceOver, physical
+IME and RTL are not qualified by this batch.
+
+After functional checks, all **12 captured checkout output roots** return to their
+original byte/mode/directory state, including the older 117-file shared UI output.
+The cleanup compares **6,709 original non-Markdown sources**, the one added
+example, all **46 native source inputs** and the unchanged primary checkout.
+No functional tests run against the restored older outputs. The private app is
+unregistered and its server is stopped; six Library paths and ordinary temp
+return to absence, while the three pre-existing empty helper roots keep their
+identities, ownership, modes and protected flags. The remaining private QA root
+is retired after evidence preservation and before publication. Only normal
+staged hooks and an ordinary push to `main` are used for delivery.
+
+The tool restart during the interruption invalidates older in-memory evidence
+capsules; their retired filesystem roots are not recreated. This batch's guarded
+disk evidence survives and is preserved separately before retirement. Continue
+through this same Lab with an observed, bounded defect. Revisit the fixed Agent
+sidebar contract before treating its controls as interactive navigation; this
+batch does not change that fixture contract or claim whole-product acceptance.
 
 ### Attachment removal and continued authoring (2026-11-03)
 

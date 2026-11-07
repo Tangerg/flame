@@ -6,6 +6,7 @@ import { VISUAL_SETTINGS_PANES, VISUAL_WORKSPACE_STATES } from "./scenarios/work
 import { businessMessages as messages } from "./businessMessages";
 import {
   activityVariants,
+  attachmentVariants,
   catalogVariants,
   composerVariants,
   dataVariants,
@@ -123,6 +124,19 @@ export const businessStories: readonly LabStory[] = [
     variants: composerVariants,
     load: () =>
       import("./businessComposer").then((module) => ({ default: module.ComposerChipExample })),
+  },
+  {
+    kind: "component",
+    panel: "business",
+    id: "business-attachments",
+    ...messages.stories.attachments,
+    group: messages.groups.conversation,
+    source: "apps/web/src/features/composer/ui/ComposerAttachments.tsx",
+    width: 320,
+    height: 360,
+    variants: attachmentVariants,
+    load: () =>
+      import("./businessAttachments").then((module) => ({ default: module.AttachmentsExample })),
   },
   {
     kind: "component",
