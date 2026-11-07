@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. Review of **885 baseline images** identifies misplaced Name feedback in the Lab form. That composition is now repaired: all four strengthened form cases pass, with **16 final browser images** and **10 native captures** reviewed. EN and ZH verify adjacent controls at **200%** and stacked feedback at **300%**. See **Field feedback grouping and adjacent-control alignment (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. The latest form follow-up completes failed-submit focus and field visibility in short viewports: all four strengthened form cases and seven Foundation unit checks pass. All **24 final browser images** and **15 native captures** receive review, including five preliminary native diagnostics. EN and ZH qualify invalid/valid submission focus at **200%** and repeated validation at **300%**. See **Failed-submit focus and complete field reveal (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -319,6 +319,79 @@ protected helper roots retain their original empty identities and flags.
 Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
 and an ordinary push to `main` deliver the repair. Continue inspecting actual
 tasks through this Lab; passing these cases is not whole-product acceptance.
+
+### Failed-submit focus and complete field reveal (2026-11-08)
+
+The existing form shows validation but leaves focus on Save. At **390×240 px**,
+scrolling to that action puts Name above the viewport. Four existing catalog
+cases are extended, retaining EN/light/14 px, ZH/dark/18 px, **720 and 390 px**
+widths and both editable/initially invalid variants. All **4 / 4** fail the new
+focus assertion before the repair in **27.106 s**. The existing Foundation file
+also fails its form case while the other six pass. A bounded Claude Code CLI
+task supplies the initial test edits in **86.741 s**; primary reviews, strengthens
+and verifies them, and implements the repair.
+
+`FormExample` now retains its Name input ref. An invalid submit synchronously
+focuses that input with automatic scrolling suppressed, then reveals the complete
+native associated label vertically at the viewport center and inline only as
+needed. That wrapping label already owns the visible name, input and feedback.
+This preserves the shared field/subgrid contract without inspecting a private DOM
+structure, adding CSS offsets, delayed focus, effects or another submission state.
+Initially invalid admission does not move focus, and valid Save retains its own
+focus. Repeated whitespace-only submissions follow the same command path while
+retaining literal input and refusing another successful-save observation.
+
+Review tightens the initial repair twice. Bare input focus leaves its label
+**25.719 px** and **32.313 px** above the viewport in the two wide cases; both new
+label assertions fail before complete-field reveal. Nearest vertical alignment
+then keeps the label inside the Web viewport, but native **300%** review exposes
+it beneath the window's sharing control. Centering the complete associated field
+keeps its identity and error clear in the actual native window. These candidate
+results and captures remain diagnostic evidence rather than final acceptance.
+
+The final catalog selection passes **4 / 4** in **8.922 s**, without retries,
+skips or flaky results. It checks admission focus, Name outside the phone viewport
+before invalid Save, focused input plus fully visible label/input/error afterward,
+the existing field/adjacent-control geometry, exact accessible description,
+correction, successful Save focus and a later whitespace-only invalid submission.
+All **24 final browser images** are reviewed: 16 hash-match reviewed images and
+the eight changed viewport captures receive full-resolution inspection. The
+existing Foundation file passes **7 / 7** in **1.937 s**. Final typecheck passes
+in **2.033 s**, and all ten selected static stages pass, including lint, formatting,
+layer/design-system/token/style/class/shorthand/chrome/locale checks. No new
+catalog cases, story, browser spec file, configuration or visual runner is added.
+
+Actual Wails v3.1.0 uses the same **487 final Lab assets**, production native
+host/menu/zoom and a private identity/home. The private native build passes in
+**2.083 s**. EN/light/14 px and ZH/dark/18 px retain document focus on admission,
+then Tab/Enter invalid Save returns focus to Name at **200%**. Padded literal
+drafts, Tab/Space Review activation, valid Save focus and scrolling to the saved
+notice are verified. At **300%**, Tab reaches Save with the field above the
+viewport; submitting three spaces returns the complete invalid field to reading
+position. Restoring each exact padded draft and pressing a real `x` continues
+editing. All **15 native captures** receive review through four contact sheets,
+with selected task originals inspected: ten final captures and five preliminary
+English diagnostics. The preliminary and both final native runs exit normally.
+The final English Cmd+Q attempt leaves its verified private process alive; the
+observed Quit menu closes it normally, as it does for Chinese. No force stop or
+shortcut-reliability claim is made. Reproduce that shortcut delivery against the
+current host/menu owner before proposing a native change.
+
+Better-accessibility's invalid-field focus rule and better-layout's readable
+context guide the repair. Read-only HeroUI form documentation identifies the
+same invalid-field focus behavior; Flame keeps its own local form boundary.
+Full Web/Runtime/native gates, VoiceOver, physical IME, RTL, live Runtime/provider
+interaction and optional measurements are not run for this local Lab behavior.
+After functional checks, all **12 output/cache roots** return to original bytes,
+modes and directory state or absence, including the preserved older UI output.
+The comparison covers **6,710 non-Markdown inputs**, with only the intended
+composition and two existing test files changed, all **46 native inputs**, and
+the unchanged primary checkout. No functional check runs after restoration.
+The private app is unregistered and its server exits; six Library paths and
+ordinary temp return to absence, and three protected helper roots retain their
+original empty identities and flags. Evidence is preserved in memory before
+guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
+the batch; continue actual-task qualification through the same Lab.
 
 ### Qualification and limits
 

@@ -72,23 +72,67 @@ for (const story of catalog.stories) {
           const copy = foundationMessages[chinese ? "zh-CN" : "en"];
           if (entry.storyId === "form") {
             const name = page.getByRole("textbox", { name: copy.name, exact: true });
+            const nameLabel = page.getByText(copy.name, { exact: true });
             const error = page.getByRole("alert");
             const review = page.getByRole("group", { name: copy.review, exact: true });
             const save = page.getByRole("button", { name: copy.save, exact: true });
+            const status = page.getByRole("status");
+            const bounds = async (locator: typeof name) => (await locator.boundingBox())!;
+            const shortHeight = 240;
+            const overflowViewport = async (locator: typeof name) => {
+              const box = await bounds(locator);
+              return Math.max(
+                -box.x,
+                -box.y,
+                box.x + box.width - entry.width,
+                box.y + box.height - shortHeight,
+              );
+            };
+            const submitInvalid = async (attempt: string) => {
+              await save.scrollIntoViewIfNeeded();
+              if (viewport === "phone") {
+                await expect(
+                  name,
+                  attempt + ": Name starts above the viewport",
+                ).not.toBeInViewport();
+              }
+              await save.click();
+              await expect(name, attempt + ": invalid Save focuses Name").toBeFocused();
+              await expect(name).toHaveAttribute("aria-invalid", "true");
+              await expect(name).toHaveAccessibleDescription(copy.invalid);
+              await expect(error).toBeVisible();
+              await expect(error).toHaveText(copy.invalid);
+              await expect(status).toBeHidden();
+              await expect
+                .poll(() => overflowViewport(name), attempt + ": Name is inside the viewport")
+                .toBeLessThanOrEqual(1);
+              await expect
+                .poll(
+                  () => overflowViewport(nameLabel),
+                  attempt + ": the Name label is inside the viewport",
+                )
+                .toBeLessThanOrEqual(1);
+              await expect
+                .poll(() => overflowViewport(error), attempt + ": the error is inside the viewport")
+                .toBeLessThanOrEqual(1);
+            };
+            await page.setViewportSize({ width: entry.width, height: shortHeight });
+            await expect(name).not.toBeFocused();
             if (entry.variantId === "editable") {
               await expect(name).not.toHaveAttribute("aria-invalid", "true");
               await expect(error).toBeHidden();
-              await save.click();
+            } else {
+              await expect(name).toHaveAttribute("aria-invalid", "true");
             }
-            await expect(name).toHaveAttribute("aria-invalid", "true");
-            await expect(name).toHaveAccessibleDescription(copy.invalid);
-            await expect(error).toBeVisible();
-            await expect(error).toHaveText(copy.invalid);
+            await submitInvalid("first Save");
             await testInfo.attach(entry.id + "-invalid-" + entry.width + "px", {
               body: await page.screenshot({ fullPage: true, animations: "disabled" }),
               contentType: "image/png",
             });
-            const bounds = async (locator: typeof name) => (await locator.boundingBox())!;
+            await testInfo.attach(entry.id + "-invalid-viewport-" + entry.width + "px", {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
             const field = await bounds(name);
             const message = await bounds(error);
             const group = await bounds(review);
@@ -130,7 +174,13 @@ for (const story of catalog.stories) {
             await expect(error).toBeHidden();
             await save.click();
             await expect(name).toHaveValue(draft);
-            await expect(page.getByRole("status")).toHaveText(copy.saved);
+            await expect(status).toHaveText(copy.saved);
+            await expect(save, "A successful Save keeps focus").toBeFocused();
+
+            await name.fill("   ");
+            await submitInvalid("whitespace Save");
+            await expect(name).toHaveValue("   ");
+            await page.setViewportSize({ width: entry.width, height: entry.height });
           }
           if (entry.storyId === "business-composition") {
             const payload = page.getByText("Consumer payload", { exact: true });

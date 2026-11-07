@@ -81,22 +81,34 @@ it("clears validation after editing and keeps comparison fields on the same draf
 it("reports validation instead of a successful form submission and preserves literal draft input", () => {
   const observe = vi.fn();
   renderExample(<FormExample variant={views.editable.id} locale="en" observe={observe} />);
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  const name = screen.getByRole("textbox", { name: "Name" }) as HTMLInputElement;
+  const save = screen.getByRole("button", { name: "Save draft" });
+  save.focus();
+  fireEvent.click(save);
   expect(screen.getByRole("alert").textContent).toBe("Enter a nonempty name.");
   expect(observe).toHaveBeenLastCalledWith("validation", "name");
   expect(screen.queryByRole("status")).toBeNull();
+  expect(document.activeElement).toBe(name);
 
-  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
-    target: { value: "  Local draft  " },
-  });
+  fireEvent.change(name, { target: { value: "  Local draft  " } });
   expect(screen.queryByRole("alert")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  save.focus();
+  fireEvent.click(save);
   expect(observe).toHaveBeenLastCalledWith("submit.length", "  Local draft  ".length);
-  expect((screen.getByRole("textbox", { name: "Name" }) as HTMLInputElement).value).toBe(
-    "  Local draft  ",
-  );
+  expect(name.value).toBe("  Local draft  ");
   expect(JSON.stringify(observe.mock.calls)).not.toContain("Local draft");
   expect(screen.getByRole("status").textContent).toBe("The local draft was saved.");
+  expect(document.activeElement).toBe(save);
+
+  fireEvent.change(name, { target: { value: "   " } });
+  save.focus();
+  fireEvent.click(save);
+  expect(document.activeElement).toBe(name);
+  expect(name.value).toBe("   ");
+  expect(screen.getByRole("alert").textContent).toBe("Enter a nonempty name.");
+  expect(observe).toHaveBeenLastCalledWith("validation", "name");
+  expect(observe.mock.calls.filter(([event]) => event === "submit.length")).toHaveLength(1);
+  expect(screen.queryByRole("status")).toBeNull();
 });
 
 it("saves through the real dialog and returns focus to its captured opener", async () => {

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import {
   Badge,
@@ -85,6 +85,7 @@ export function PanelExample({ variant, locale, observe }: LabExampleProps) {
 
 export function FormExample({ variant, locale, observe }: LabExampleProps) {
   const copy = foundationMessages[locale];
+  const nameInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState(copy.draft);
   const [reviewed, setReviewed] = useState(false);
@@ -99,6 +100,10 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
         event.preventDefault();
         setSubmitted(true);
         setSaved(nameValid);
+        if (!nameValid) {
+          nameInput.current?.focus({ preventScroll: true });
+          nameInput.current?.labels?.[0]?.scrollIntoView({ block: "center", inline: "nearest" });
+        }
         observe(nameValid ? "submit.length" : "validation", nameValid ? name.length : "name");
       }}
     >
@@ -106,6 +111,7 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
         <FormRow>
           <FormField label={copy.name}>
             <TextField
+              ref={nameInput}
               value={name}
               invalid={invalid}
               aria-label={copy.name}

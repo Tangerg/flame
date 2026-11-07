@@ -272,6 +272,10 @@ at component and phone widths. Feedback must stay within the Name field and
 precede Review when stacked; adjacent Review controls must remain beside the
 input. The exact localized accessible name and field description are checked
 alongside the retained literal draft.
+At a **240 px** viewport height, invalid Save focuses Name and reveals its label,
+input and error together, including a later whitespace-only submission. Valid
+Save retains its button focus; an initially invalid example does not take focus
+on admission. Native qualification also checks the field clear of window controls.
 
 The shared UI ownership scenarios also qualify keyboard reading at both edges
 in Chromium and WebKit: wide formulas, inline tables and expanded tables.
