@@ -92,7 +92,7 @@ export {
   Tile,
 } from "./records";
 export { Disclosure } from "./disclosure";
-export { ScrollRegion } from "./scroll-region";
+export { ScrollRegion, scrollWithHorizontalArrow } from "./scroll-region";
 export {
   type ComparisonRow,
   type DiffTableLabels,

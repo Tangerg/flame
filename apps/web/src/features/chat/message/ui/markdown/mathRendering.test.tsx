@@ -8,7 +8,9 @@ prepareTestClient(() => {
 });
 
 import { fireEvent, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ScrollRegion } from "@flame/ui";
+import { MarkdownMath } from "@/features/chat/message/ui/markdown/MarkdownMath";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 // The app pins one KaTeX (0.19.0) for both the stylesheet and every renderer
 // through `rehype-katex`/`micromark-extension-math`. These cases keep that pinned
@@ -135,6 +137,68 @@ describe("markdown math rendering", () => {
       <MarkdownRenderer text={"$\\frac{a}{$"} reveal="instant" />,
     );
     expect(container.querySelector(".katex-error")).toBeTruthy();
+  });
+});
+
+describe("overflowing math reading", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(800);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  function horizontalOffset(region: HTMLElement) {
+    let offset = 0;
+    Object.defineProperty(region, "scrollLeft", {
+      configurable: true,
+      get: () => offset,
+      set: (value: number) => {
+        offset = Math.max(0, Math.min(600, value));
+      },
+    });
+  }
+
+  it("pans the focused formula without moving a sibling, its key owner or focus", () => {
+    const ownerKeyDown = vi.fn();
+    const { container } = testClient.render(
+      <ScrollRegion label="Formula collection" onKeyDown={ownerKeyDown}>
+        <MarkdownMath style={{ overflowX: "auto" }}>Wide formula</MarkdownMath>
+        <MarkdownMath style={{ overflowX: "auto" }}>Sibling formula</MarkdownMath>
+      </ScrollRegion>,
+    );
+    const formulas = container.querySelectorAll<HTMLElement>(
+      '[role="region"][aria-label="Mathematical expression"]',
+    );
+    expect(formulas).toHaveLength(2);
+    const formula = formulas[0]!;
+    const sibling = formulas[1]!;
+    expect(formula.tabIndex).toBe(0);
+    horizontalOffset(formula);
+    horizontalOffset(sibling);
+    formula.focus();
+
+    expect(fireEvent.keyDown(formula, { key: "ArrowRight" })).toBe(false);
+    expect(formula.scrollLeft).toBeGreaterThan(0);
+    expect(sibling.scrollLeft).toBe(0);
+    expect(document.activeElement).toBe(formula);
+    expect(fireEvent.keyDown(formula, { key: "ArrowLeft" })).toBe(false);
+    expect(formula.scrollLeft).toBe(0);
+    expect(ownerKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("keeps the reading position when the caller prevents the key", () => {
+    const caller = vi.fn((event: { preventDefault(): void }) => event.preventDefault());
+    const { container } = testClient.render(
+      <MarkdownMath style={{ overflowX: "auto" }} onKeyDown={caller}>
+        Wide formula
+      </MarkdownMath>,
+    );
+    const formula = container.querySelector<HTMLElement>('[role="region"]')!;
+    horizontalOffset(formula);
+    expect(fireEvent.keyDown(formula, { key: "ArrowRight" })).toBe(false);
+    expect(caller).toHaveBeenCalledOnce();
+    expect(formula.scrollLeft).toBe(0);
   });
 });
 

@@ -508,6 +508,9 @@ it moves its own horizontal position by 10% of its visible width, including at
 either boundary. Child controls, composing or modified keys and vertical reading
 retain their existing behavior. Caller key handlers run first and can prevent this
 default. The DOM scroll position remains the only owner of the reading position.
+Consumers that retain their own scroll element use `scrollWithHorizontalArrow`
+after their local key handler to apply this same policy. Their markup, overflow,
+focusability and accessible name remain with the consumer.
 A fitting focused descendant is revealed within this reader's inner horizontal
 clip after keyboard or programmatic entry, and remains visible when the reader
 or control resizes. This moves only the reader's horizontal DOM position;

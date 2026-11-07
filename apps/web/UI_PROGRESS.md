@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch passes **23 selected interaction cases**, including six new keyboard reading cases across Chromium and WebKit, and reviews **20 browser captures** plus **15 actual Wails captures, including diagnostic attempts**. Expanded table keyboard reading now reaches both edges in native 200% inspection; formula horizontal reading remains unqualified there. Production sources are unchanged, so the previous complete Web and supported native gates retain their scope. See **Keyboard reading at both edges (2026-11-07)** and the preceding resource/layout qualification for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch repairs native formula keyboard reading through the existing shared arrow policy, passes **43 selected Lab interaction cases**, and reviews **69 browser captures** plus **33 actual Wails captures, including baseline and diagnostic attempts**. Final English/light and Chinese/dark/custom-accent inspection at native 200% reaches both formula edges and returns to retained drafts. Shared UI and native gates pass; the Web check's stages pass across the recorded phases. See **Native formula keyboard reading (2026-11-07)** for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -252,9 +252,96 @@ read-only Claude Code CLI tasks supply analysis and patch proposals; primary
 review applies and verifies the final changes. Runtime/command semantics,
 production native sources, approved Orange and custom themes are preserved.
 Computer capacity still lacks complete captured metadata and reservations; no
-substitute accounting is invented. Next, investigate actual native horizontal
-reading in this same Lab and continue the remaining migrated cases. Live Runtime,
-VoiceOver, physical IME and whole-product visual acceptance remain unfinished.
+substitute accounting is invented. The sections below qualify the inspected
+native horizontal readers through this same Lab. Continue the remaining migrated
+cases; live Runtime, VoiceOver, physical IME and whole-product visual acceptance
+remain unfinished.
+
+### Native formula keyboard reading (2026-11-07)
+
+The same Lab reproduces the preceding native gap before implementation: at
+18 px UI type and native 200%, **80 Right presses of 100 ms** leave the wide
+objective at its first term. The fixture renders a named, focusable overflow
+span, but its default native key path does not pan it. This baseline and the
+repair use the same private Wails binary and production host/menu/zoom code.
+
+`packages/ui/src/scroll-region.tsx` now exports its existing horizontal arrow
+policy as `scrollWithHorizontalArrow`. `MarkdownMath.tsx` uses that policy on
+its existing span while it is an overflow reader. Role and key handling enter
+and retire together; fitting math retains its previous semantics. Caller
+handlers run first and can cancel the key. The policy consumes only a reader's
+own unmodified horizontal arrow, preserving child controls, composition,
+vertical reading and DOM-owned scroll position. No KaTeX layout, source, trust,
+theme, Runtime or native production code changes.
+
+Two colocated integration regressions cover focused formula movement, an
+unchanged sibling, focus, the enclosing shared reader and caller cancellation.
+Restoring the exact incoming `MarkdownMath` makes the movement case fail at the
+unconsumed Right event; the other case passes and 18 unrelated cases are not
+selected. Final frontend verification passes all **431 files / 4,701 tests**,
+including both regressions and the component lifecycle contracts. The separate
+Runtime project passes **52 tests**. All **25 non-unit Web stages** pass serially
+across the recorded phases; no single clean full `check` invocation is claimed.
+Initial lint findings are repaired by pairing conditional reader semantics with
+its handler and using the actual shared reader as the test's enclosing key owner.
+The first Runtime attempt cannot start without its prepared Node archive; the
+repository's checksum-verifying companion tool prepares the fixed selection,
+after which all 52 cases pass. Its failed-start temporary root is also retired.
+
+The complete shared UI check passes **247 tests** and the independently packed,
+offline consumer. Its initial missing-cache failure is resolved by caching the
+31 locked external tarballs, without changing dependency selections or the
+offline check. Final `make check-native` passes in **21.60 s**, including shared
+and portable resource staging, Desktop test/vet/build and supported Wails
+compilation. The root complexity check still fails only on untouched
+`ProviderRow` growing from 31 to 34; its source and threshold remain unchanged.
+
+The same Lab passes **43 existing cases** across Chromium and WebKit: formula
+edges and notation, inline/expanded table reading, shared ownership, report
+focus/manual reading and sandbox boundaries. All **69 image attachments** are
+reviewed through six contact sheets, with full-size checks of formula ends and
+table paint. No browser configuration, fixture, scenario registry or visual
+verification entry is added.
+
+Final actual Wails v3.1.0 inspection loads the same **484 final Lab assets**.
+All 46 original native inputs and 45 unchanged copies retain their hashes;
+the private composition and executable also retain their baseline hashes.
+Of the **33 reviewed native captures**, 20 cover the final valid profiles:
+
+- English/light/18 px/200%: ten Right presses reveal the objective's final tag
+  and ten Left presses return to its first term. The matrix similarly exposes
+  its closing bracket and returns to its first column. Page Down reaches the
+  tall expression and later ordinary prose. Keyboard return preserves the draft
+  and a positioned native paste continues it.
+- Chinese/dark/18 px/custom `#9c6cff`/motion off: native Window > Move & Resize >
+  Left narrows the same window while retaining its draft. At 200%, twenty Right
+  and twenty Left presses traverse the objective; ten per direction traverse
+  the matrix. Readers retain the localized accessible name and visible purple
+  focus cue.
+  Page Down reads the tall expression and following prose; Tab returns to the
+  retained Chinese draft and accepts further pasted text. Actual Size restores
+  the fitting matrix and retires its overflow-reader role without losing input.
+
+The remaining captures include the old baseline, early candidate and a rejected
+`locale=zh-CN` diagnostic. The registered fixture ID is `zh`; only its successful
+restart qualifies Chinese behavior. All five native processes exit normally.
+The owned server is stopped and the private app is unregistered. All twelve
+fresh output/cache baselines are restored, including the older UI output; no
+functional checks run afterward. Six Library paths and the ordinary temp root
+return to absence. Three pre-existing WebKit helper roots retain their identities,
+ownership, modes and flags; only their five new children are removed. All 6,709
+non-Markdown source inputs are compared: only the four intended source/test files
+differ. The primary checkout remains unchanged. Final handoff freezes evidence
+outside the repository before retiring its private qualification directory.
+
+Better-accessibility focus/keyboard guidance, better-layout reading boundaries
+and React event ownership inform the repair. A bounded Claude Code CLI task
+implements the initial extraction and regressions; primary review repairs the
+integration details and performs verification and native acceptance. Browser
+320 px coverage does not establish unsupported native widths. VoiceOver audio,
+physical IME and live provider-backed Runtime tasks are not run. Continue the
+remaining migrated cases through this same Lab; whole-product visual acceptance
+remains unfinished.
 
 ### Keyboard reading at both edges (2026-11-07)
 
@@ -317,10 +404,11 @@ compared: only the two intended Lab test files differ. The primary checkout and
 46 native inputs remain unchanged. Qualification evidence is retained outside
 the repository before retiring its private directory.
 
-Browser WebKit success does not resolve the native formula
-input path. Next inspect that distinction through this same Lab, and continue
-the remaining migrated cases. Intermittent Chromium paint, live Runtime, VoiceOver
-and whole-product visual acceptance retain their previously recorded limits.
+Browser WebKit success alone does not resolve the native formula input path.
+The repair and final qualification are recorded under **Native formula keyboard
+reading (2026-11-07)**. The captures above retain their original diagnostic scope.
+Intermittent Chromium paint, live Runtime, VoiceOver and whole-product visual
+acceptance retain their previously recorded limits.
 
 ### Equal fact columns and visible interaction boundaries (2026-11-07)
 

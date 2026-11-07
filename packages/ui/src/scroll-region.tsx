@@ -57,6 +57,28 @@ function horizontalPlacement(region: HTMLElement, target: Element) {
   return { frame, displacement };
 }
 
+// Some native hosts do not pan a focused scroller with arrows, so the reader owns the transition.
+export function scrollWithHorizontalArrow(event: KeyboardEvent<HTMLElement>) {
+  if (
+    event.defaultPrevented ||
+    event.target !== event.currentTarget ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    event.nativeEvent.isComposing ||
+    (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
+  )
+    return;
+  const region = event.currentTarget;
+  if (region.clientWidth <= 0 || region.scrollWidth <= region.clientWidth)
+    return;
+  event.preventDefault();
+  event.stopPropagation();
+  region.scrollLeft +=
+    region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+}
+
 export function ScrollRegion({
   as: Tag = "div",
   label,
@@ -198,24 +220,7 @@ export function ScrollRegion({
       className: cn(styled.className, className),
       onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
         callerKeyDown?.(event);
-        if (
-          event.defaultPrevented ||
-          event.target !== event.currentTarget ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey ||
-          event.nativeEvent.isComposing ||
-          (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
-        )
-          return;
-        const region = event.currentTarget;
-        if (region.clientWidth <= 0 || region.scrollWidth <= region.clientWidth)
-          return;
-        event.preventDefault();
-        event.stopPropagation();
-        region.scrollLeft +=
-          region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+        scrollWithHorizontalArrow(event);
       },
     },
     children,
