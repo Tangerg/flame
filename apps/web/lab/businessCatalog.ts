@@ -1,4 +1,5 @@
 import { COMPOSITION_SAMPLES } from "./scenarios/compositionFixtureStates";
+import { COMPUTER_FIXTURE_VARIANTS } from "./scenarios/computerFixtureStates";
 import { VISUAL_AGENT_STATES } from "./scenarios/agentFixtureStates";
 import { VISUAL_WORK_INDEX_STATES } from "./scenarios/shellFixtureStates";
 import { VISUAL_SETTINGS_PANES, VISUAL_WORKSPACE_STATES } from "./scenarios/workspaceFixtureStates";
@@ -43,6 +44,10 @@ function compositionVariant(sample: (typeof COMPOSITION_SAMPLES)[number]): Fixtu
     },
     target: { fixture: "composition", state: sample.id },
   };
+}
+
+function computerVariant(sample: (typeof COMPUTER_FIXTURE_VARIANTS)[number]): FixtureVariant {
+  return { ...sample, target: { fixture: "computer", state: sample.id } };
 }
 
 export const businessStories: readonly LabStory[] = [
@@ -225,11 +230,8 @@ export const businessStories: readonly LabStory[] = [
     source: "apps/web/lab/scenarios/computerConsoleFixture.tsx",
     ...PRODUCT_PREVIEW,
     variants: [
-      {
-        id: "default",
-        title: { en: "Default", "zh-CN": "默认" },
-        target: { fixture: "computer", state: "default" },
-      },
+      computerVariant(COMPUTER_FIXTURE_VARIANTS[0]),
+      ...COMPUTER_FIXTURE_VARIANTS.slice(1).map(computerVariant),
     ],
   },
   {

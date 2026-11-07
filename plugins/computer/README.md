@@ -87,6 +87,12 @@ reader, wrapping follows the shared page preference, and Copy receives the exact
 original string. Long content scrolls beneath its actions. A fitting reader and
 caption enter the Panel viewport together, while raw content stays unexecuted.
 
+Recorded images use the shared `EvidenceImage` thumbnail and media Lightbox.
+Pointer or keyboard activation opens the exact captured source for fitting, zoom
+and panning. Closing returns to the same image and original record without
+executing an operation or replacing the manual editor draft. Image controls use
+the component's existing locale dictionaries.
+
 If a recorded image cannot be decoded, its captured identity and readable preview
 failure replace the broken image. Original bytes remain in the recorded outcome;
 this display failure does not change the operation's recorded status or affect

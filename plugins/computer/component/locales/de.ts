@@ -140,6 +140,11 @@ export const de = {
   "result.image": "Erfasstes Bild {{number}}",
   "result.imageUnavailable":
     "Dieses aufgezeichnete Bild konnte nicht angezeigt werden.",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bild schließen",
+  "image.zoomIn": "Vergrößern",
+  "image.zoomOut": "Verkleinern",
+  "image.description": "Bildbeschreibung",
   "result.audio": "Erfasstes Audio {{number}}",
   "result.captured": "Gespeichertes Bild; kein Live-Desktop.",
   "result.resource": "Gespeicherte Ressource",

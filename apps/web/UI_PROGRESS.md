@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest expanded invocation passes **142 related interaction tests**; **154 protocol-fixture catalog captures** and **12 corrected Computer captures** are reviewed. The full Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review confirms the coherent fixture calendar, refresh and exact return to continued drafts in English and Chinese, including native 200%. See **Coherent fixture calendar and visible outcome evidence (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The current Computer qualification passes **15 tests**; all **64 final captures** are reviewed. The full Web check passes **432 files / 4,751 tests**, and plugin and supported native checks pass. Actual Wails review confirms original-image reading and return to continued drafts in English and Chinese, including native 200%. See **Representative Computer images and original-source reading (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -145,6 +145,100 @@ accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
 
+### Representative Computer images and original-source reading (2026-11-07)
+
+The Computer result rendered a recorded image as a static `img`, without the
+expansion action already provided to other evidence consumers. The Lab's old
+1-by-1 carrier could prove image presence but could not expose unreadable
+thumbnails, cropping or aspect errors. Two English/Chinese baseline checks fail
+on the missing action before the repair.
+
+`plugins/computer/component/result.tsx` now delegates to the existing public
+`EvidenceImage`, Lightbox and ImageViewport owners. Pointer or keyboard activation
+opens the exact captured source; fit, zoom and panning use the shared reader.
+Closing returns focus to the original thumbnail, leaves its operation expanded
+and preserves the manual editor draft. The existing captured-source error
+boundary still replaces an undecodable image without changing the operation's
+recorded result or the next image. Five reader labels are supplied in all eight
+existing locale dictionaries. Normal component generation changes only the
+Computer ESM resource; no shared viewer, dependency, backend, command or Runtime
+contract is added or changed.
+
+The same `business-computer` story now exposes six named variants: control,
+recorded images, unreadable image, embedded resources, unreadable audio and
+resource links. A single typed variant list supplies the catalog and fixture;
+the Computer factory owns normalization of the requested state. The old hidden
+`media` query probes migrate to these catalog `state` links. Canvas-authored
+synthetic PNGs provide landscape **1440 × 900**, portrait **900 × 1440** and small
+**240 × 160** original records, with readable text and corner/source markers.
+They are generated only when the fixture is created, without acquiring a desktop
+or fetching media. The catalog still has **43 stories**; there is no second
+fixture application, scenario registry or browser configuration.
+
+The final same-Lab invocation passes **15 tests**, with no skips, retries or
+unexpected results: two catalog checks and thirteen Computer interactions.
+English/light and Chinese/dark at **18 px** cover **320/1280 px** reading, all
+three natural image sizes, unchanged source and aspect, fit, keyboard zoom/pan,
+Escape focus return, retained draft/record, decode failure and embedded-resource
+identity. All **64 final image attachments** are reviewed through all six contact
+sheets, with full-size detail checks. Captures require the entire inline image
+and caption in the viewport and return expanded images to the reading origin.
+Earlier partial inline and blank middle-pan captures are rejected. The first
+candidate's four failures came from looking up the now-hidden inline image after
+opening the modal; saving the source before opening repairs the check without
+weakening source-identity or visibility assertions.
+
+Actual Wails v3.1.0 inspection retains the real DesktopHost, native menu and zoom
+in the private app/data identity and serves the same built Lab. English/light/
+Orange/18 px reads the landscape source; Chinese/dark/custom Purple/18 px reads
+the portrait source. All **17 screenshot/AX records** are reviewed. Keyboard
+activation, shared-reader zoom to **200%**, direction-key panning and Escape
+return pass; English also confirms pointer drag. Native **Window > Zoom** changes
+the English window size and refits the source at 100%. Edge-drag attempts did
+not qualify resizing and are not counted. Twenty native Zoom In increments from
+Actual Size reach page **200%** in each locale; the image fits again, close stays
+reachable and the exact original draft remains editable after return. The final
+Chinese run uses the current Lab build after the fixture ownership cleanup.
+One English test-data suffix was initially outside its JSON string and was
+corrected; the Chinese draft continues in place as valid JSON. Chinese input uses
+clipboard paste and does not qualify native IME. Both runs restore native zoom,
+close the isolated lease and exit normally.
+
+The full **Web check passes 432 files / 4,751 tests**, including Runtime
+integration, package guards and the production build. The full plugin check
+passes **47 script tests** and **633 source tests**; its existing two Linux-only
+files account for **17 skipped tests** on macOS. The first plugin attempt lacked
+the pinned Node archive; the repository staging script verifies the official
+archive before the complete successful rerun. Supported **make check-native
+passes** Desktop test/vet/build and Wails packaging. Existing macOS linker
+warnings remain. The root complexity check reports only unchanged ProviderRow
+31-to-34 growth; no threshold changes. A bounded Claude Code CLI implements the
+production detail; primary review owns scope, fixture states, regression checks,
+capture corrections and actual native qualification.
+
+Read-only ZCode image-preview/dialog and ChatGPT's actual image-lightbox sources
+support exact source identity, bounded inspection, isolated media failure and
+return to context. The existing shared Flame reader and better-layout /
+better-accessibility guidance supply the implementation and verification model.
+No reference source is copied or modified.
+
+The owned HTTP server has exited and the private app is unregistered. Six private
+Library paths and the ordinary native temp root return to absence. Three
+pre-existing helper roots retain their identities and modes; only two new empty
+Networking children are removed. All twelve output/cache roots return to their
+original contents and modes or absence, including the older UI build. Evidence
+is retained in memory before qualification files are retired. No functional
+checks run against restored outputs. The primary checkout, including go.work.sum,
+remains unchanged.
+
+The whole migrated interaction suite and whole-product visual acceptance remain
+unfinished. This batch qualifies synthetic image geometry and original-source
+reading, rather than photographs, live engine execution/acquisition, audio
+playback, VoiceOver, native IME or optional performance measurements. The next
+observed fixture gap is a zero capacity summary alongside seeded/history records;
+trace its accounting owner before changing the fixture and do not duplicate the
+backend's byte-reservation policy in presentation code.
+
 ### Coherent fixture calendar and visible outcome evidence (2026-11-07)
 
 The Lab's `Date.now()` used the recorded calendar while argument-free
@@ -209,8 +303,9 @@ remains unchanged.
 The whole migrated interaction suite and whole-product visual acceptance remain
 unfinished. This batch does not qualify live Runtime business execution,
 VoiceOver, native IME or optional performance measurements. The next coverage
-gap is representative recorded media in the existing Computer fixture; its
-minimal image currently proves transport and presentation presence only.
+gap was representative recorded media in the existing Computer fixture. The
+subsequent **Representative Computer images and original-source reading** section
+records that repair; the results above retain their original scope.
 
 ### Workspace navigation and shared control regression (2026-11-07)
 

@@ -5,6 +5,7 @@ import {
   Callout,
   CodeBlock,
   Disclosure,
+  EvidenceImage,
   Facts,
   ImageNotice,
   Metadata,
@@ -86,22 +87,29 @@ function mediaURL(mime: unknown, data: unknown, kind: "image" | "audio") {
 function CapturedImage({
   src,
   label,
-  unavailable,
+  t,
 }: {
   src: string;
   label: string;
-  unavailable: string;
+  t: Translate;
 }) {
   const [failedSource, setFailedSource] = useState<string>();
   if (failedSource === src)
-    return <ImageNotice label={label} detail={unavailable} />;
+    return <ImageNotice label={label} detail={t("result.imageUnavailable")} />;
   return (
-    <img
-      src={src}
-      alt={label}
-      onError={() => setFailedSource(src)}
-      style={{ display: "block", maxWidth: "100%", height: "auto" }}
-    />
+    <span onErrorCapture={() => setFailedSource(src)}>
+      <EvidenceImage
+        src={src}
+        alt={label}
+        labels={{
+          view: t("image.view"),
+          close: t("image.close"),
+          zoomIn: t("image.zoomIn"),
+          zoomOut: t("image.zoomOut"),
+          description: t("image.description"),
+        }}
+      />
+    </span>
   );
 }
 
@@ -128,7 +136,7 @@ function Content({
           <CapturedImage
             src={src}
             label={t("result.image", { number: String(index + 1) })}
-            unavailable={t("result.imageUnavailable")}
+            t={t}
           />
           <figcaption>
             <Metadata>{t("result.captured")}</Metadata>

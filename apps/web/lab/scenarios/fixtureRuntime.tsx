@@ -303,7 +303,7 @@ async function fixtureNode(): Promise<ReactNode> {
     }
     if (fixture === "computer") {
       const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
-      const computer = await createComputerConsoleFixture(requestedLocale);
+      const computer = await createComputerConsoleFixture(requestedLocale, requestedState);
       currentRuntimeClient = computer.client;
       await loadPluginsForTest(
         definePlugin({

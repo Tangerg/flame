@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { COMPUTER_IMAGE_SAMPLES } from "./computerFixtureImages";
 
 for (const theme of ["light", "dark"] as const) {
   for (const width of [360, 1280]) {
@@ -116,3 +117,251 @@ test("published console stops an outstanding permission without replaying its ac
     page.getByText("Allow control of the isolated example editor?", { exact: true }),
   ).toHaveCount(0);
 });
+
+for (const profile of [
+  {
+    locale: "en",
+    theme: "light",
+    panel: "Computer use",
+    open: "Authorize and open control",
+    editor: "Tool arguments (JSON)",
+    image: "Captured image 1",
+    view: "View image",
+    zoom: "Zoom in",
+  },
+  {
+    locale: "zh",
+    theme: "dark",
+    panel: "电脑控制",
+    open: "授权并打开控制",
+    editor: "工具参数（JSON）",
+    image: "捕获图像 1",
+    view: "查看图片",
+    zoom: "放大",
+  },
+] as const) {
+  for (const width of [320, 1280]) {
+    test(`recorded computer images support reading and return in ${profile.locale} at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 960 });
+      await page.goto(
+        `/lab/fixture.html?fixture=computer&state=images&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      const panel = page.getByRole("region", { name: profile.panel, exact: true });
+      await panel.getByRole("button", { name: profile.open, exact: true }).click();
+      const editor = panel.getByRole("textbox", { name: profile.editor, exact: true });
+      const draft = '{"code":"keep the original image draft 保留"}';
+      await editor.fill(draft);
+      for (const sample of COMPUTER_IMAGE_SAMPLES) {
+        const record = panel.getByRole("button", { name: sample.id, exact: true });
+        await record.click();
+        const image = panel.getByRole("img", { name: profile.image, exact: true });
+        await image.evaluate((node: HTMLImageElement) => node.decode());
+        const source = (await image.getAttribute("src"))!;
+        expect(
+          await image.evaluate((node: HTMLImageElement) => ({
+            width: node.naturalWidth,
+            height: node.naturalHeight,
+          })),
+        ).toEqual({ width: sample.width, height: sample.height });
+        await panel
+          .getByRole("figure")
+          .filter({ has: page.getByRole("img", { name: profile.image, exact: true }) })
+          .scrollIntoViewIfNeeded();
+        await expect(image).toBeInViewport({ ratio: 1 });
+        await expect(
+          panel.getByText(
+            profile.locale === "zh"
+              ? "已记录图像，并非实时桌面。"
+              : "Recorded image; this is not a live desktop.",
+            { exact: true },
+          ),
+        ).toBeInViewport({ ratio: 1 });
+        await test.info().attach(`${sample.id}-inline`, {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+        const trigger = panel.getByRole("button", {
+          name: `${profile.view}: ${profile.image}`,
+          exact: true,
+        });
+        await expect(trigger).toHaveCount(1);
+        const inline = await image.boundingBox();
+        expect(inline).not.toBeNull();
+        expect(inline!.width / inline!.height).toBeCloseTo(sample.width / sample.height, 2);
+        expect(inline!.width).toBeLessThanOrEqual(sample.width);
+        expect(inline!.height).toBeLessThanOrEqual(sample.height);
+        await trigger.focus();
+        await page.keyboard.press("Enter");
+        const dialog = page.getByRole("dialog", { name: profile.image, exact: true });
+        await expect(dialog).toBeVisible();
+        const expanded = dialog.getByRole("img", { name: profile.image, exact: true });
+        await expanded.evaluate((node: HTMLImageElement) => node.decode());
+        await expect(expanded).toHaveAttribute("src", source);
+        const viewport = dialog.locator("[data-image-zoom]");
+        await expect(viewport).toHaveAttribute("data-image-zoom", "100");
+        await expect
+          .poll(() =>
+            expanded.evaluate((node) => {
+              const image = node.getBoundingClientRect();
+              const viewport = node.closest("[data-image-zoom]")!.getBoundingClientRect();
+              return (
+                image.width > 0 &&
+                image.height > 0 &&
+                image.left >= viewport.left - 1 &&
+                image.right <= viewport.right + 1 &&
+                image.top >= viewport.top - 1 &&
+                image.bottom <= viewport.bottom + 1
+              );
+            }),
+          )
+          .toBe(true);
+        await test.info().attach(`${sample.id}-fitted`, {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+        for (const _step of [125, 150, 200])
+          await dialog.getByRole("button", { name: profile.zoom, exact: true }).click();
+        await expect(viewport).toHaveAttribute("data-image-zoom", "200");
+        const before = await viewport.evaluate((node) => ({
+          top: node.scrollTop,
+          height: node.scrollHeight,
+          visible: node.clientHeight,
+        }));
+        if (before.height > before.visible + 1) {
+          await viewport.focus();
+          await page.keyboard.press("ArrowDown");
+          await expect
+            .poll(() => viewport.evaluate((node) => node.scrollTop))
+            .toBeGreaterThan(before.top);
+        }
+        await viewport.focus();
+        for (const key of [
+          "Shift+ArrowUp",
+          "Shift+ArrowUp",
+          "Shift+ArrowLeft",
+          "Shift+ArrowLeft",
+        ]) {
+          await page.keyboard.press(key);
+        }
+        await expect
+          .poll(() => viewport.evaluate((node) => ({ left: node.scrollLeft, top: node.scrollTop })))
+          .toEqual({ left: 0, top: 0 });
+        await test.info().attach(`${sample.id}-expanded`, {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+        await page.keyboard.press("Escape");
+        await expect(dialog).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+        await expect(record).toHaveAttribute("aria-expanded", "true");
+        await expect(editor).toHaveValue(draft);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        ).toBeLessThanOrEqual(1);
+      }
+    });
+  }
+
+  test(`recorded computer decode failure preserves the next image in ${profile.locale}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 960 });
+    await page.goto(
+      `/lab/fixture.html?fixture=computer&state=unreadable&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const panel = page.getByRole("region", { name: profile.panel, exact: true });
+    const unreadable = panel.getByRole("button", {
+      name: "recorded-unreadable-image",
+      exact: true,
+    });
+    await unreadable.click();
+    const notice = panel.getByRole("img", { name: profile.image, exact: true });
+    await expect(notice).toContainText(
+      profile.locale === "zh"
+        ? "无法显示此记录的图像。"
+        : "This recorded image could not be displayed.",
+    );
+    await expect(
+      panel.getByRole("button", { name: `${profile.view}: ${profile.image}`, exact: true }),
+    ).toHaveCount(0);
+    await expect(unreadable).toHaveAttribute("aria-expanded", "true");
+    await notice.scrollIntoViewIfNeeded();
+    await test.info().attach("recorded-image-unavailable", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+    const valid = panel.getByRole("button", { name: "recorded-valid-image", exact: true });
+    await valid.click();
+    const trigger = panel.getByRole("button", {
+      name: `${profile.view}: ${profile.image}`,
+      exact: true,
+    });
+    await trigger.focus();
+    await page.keyboard.press("Space");
+    const dialog = page.getByRole("dialog", { name: profile.image, exact: true });
+    await expect(dialog).toBeVisible();
+    await dialog
+      .getByRole("img", { name: profile.image, exact: true })
+      .evaluate((node: HTMLImageElement) => node.decode());
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(valid).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test(`recorded computer resource keeps its source beside image focus in ${profile.locale}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 960 });
+    await page.goto(
+      `/lab/fixture.html?fixture=computer&state=resources&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const panel = page.getByRole("region", { name: profile.panel, exact: true });
+    await panel.getByRole("button", { name: "recorded-resources", exact: true }).click();
+    const uri = panel.getByText(
+      "memory://captures/2026-10-29/review/desktop-window-with-source-context-and-retained-original-identity.png",
+      { exact: true },
+    );
+    const trigger = panel.getByRole("button", {
+      name: `${profile.view}: ${profile.image}`,
+      exact: true,
+    });
+    await trigger.focus();
+    await expect(uri).toBeInViewport({ ratio: 1 });
+    await expect(trigger).toBeInViewport({ ratio: 1 });
+    await expect
+      .poll(() =>
+        uri.evaluate((node) => {
+          const controls = node
+            .closest('[data-slot="panel"]')!
+            .querySelector('[data-slot="panel-controls"]')!;
+          return node.getBoundingClientRect().top - controls.getBoundingClientRect().bottom;
+        }),
+      )
+      .toBeGreaterThanOrEqual(0);
+    await test.info().attach("recorded-resource-identity", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: profile.image, exact: true });
+    await expect(dialog).toBeVisible();
+    await dialog
+      .getByRole("button", {
+        name: profile.locale === "zh" ? "关闭图片" : "Close image",
+        exact: true,
+      })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(uri).toBeInViewport({ ratio: 1 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+  });
+}

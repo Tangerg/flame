@@ -306,6 +306,12 @@ pages. The `genui-report` state loads the built GenUI ESM and declared Tool sele
 through the real installed captured-result lifecycle. Sandbox tests verify local
 program execution cannot access the parent or make external requests. The
 Computer fixture retains its isolated recorded surfaces and in-memory transport.
+Its existing story exposes control, recorded images, unreadable image/audio,
+embedded resources and resource links as typed named variants. The images variant
+seeds landscape, portrait and small original records; expand a record and activate
+its thumbnail to inspect the shared image reader. Canvas-authored synthetic PNGs
+replace the old 1-by-1 carrier without capturing a desktop or fetching assets.
+These variants use the same `state` links projected by the catalog.
 
 Code wrapping uses the shared `data-wrap` preference. Schedule dialogs and
 alertdialogs remain portaled and named, with background controls outside modal

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { CompositionFixtureState } from "./scenarios/compositionFixtureStates";
+import type { ComputerFixtureState } from "./scenarios/computerFixtureStates";
 import type { VisualAgentState } from "./scenarios/agentFixtureStates";
 import type { VisualWorkIndexState } from "./scenarios/shellFixtureStates";
 import type { VisualSettingsPane, VisualWorkspaceState } from "./scenarios/workspaceFixtureStates";
@@ -25,7 +26,7 @@ export interface LabVariant {
 export type LabFixtureTarget =
   | { readonly fixture: "foundation"; readonly state: "default" }
   | { readonly fixture: "atoms"; readonly state: "default" | "input-contracts" }
-  | { readonly fixture: "computer"; readonly state: "default" }
+  | { readonly fixture: "computer"; readonly state: ComputerFixtureState }
   | { readonly fixture: "composition"; readonly state: CompositionFixtureState }
   | { readonly fixture: "agent"; readonly state: VisualAgentState }
   | { readonly fixture: "shell"; readonly state: VisualWorkIndexState }

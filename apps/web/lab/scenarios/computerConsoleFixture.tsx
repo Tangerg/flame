@@ -13,14 +13,13 @@ import type {
   Surface,
 } from "../../../../plugins/computer/component/types";
 import { LIMITS } from "../../../../plugins/computer/contracts/limits";
+import { COMPUTER_FIXTURE_VARIANTS } from "./computerFixtureStates";
+import { COMPUTER_IMAGE_SAMPLES, createComputerFixtureImage } from "./computerFixtureImages";
 
 const modules = import.meta.glob("../../../../plugins/computer/package/**/components/component.js");
 const installationId = "55667788-1234-4234-9234-123456789abc";
 const digest = "c".repeat(64);
 const host = { hostname: "isolated-desktop.example", platform: "linux", arch: "x64" };
-const capturedImage =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
-
 const capturedAudio =
   "UklGRkQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
@@ -32,7 +31,8 @@ function frame(value: unknown) {
   return `event: message\ndata: ${JSON.stringify(value)}\n\n`;
 }
 
-export async function createComputerConsoleFixture(locale: string) {
+export async function createComputerConsoleFixture(locale: string, requestedState: string | null) {
+  const state = COMPUTER_FIXTURE_VARIANTS.find(({ id }) => id === requestedState)?.id ?? "default";
   const load = Object.values(modules);
   if (load.length !== 1) throw new Error("computer fixture requires one built component");
   const published = (await load[0]!()) as { Computer: PluginComponent };
@@ -54,8 +54,26 @@ export async function createComputerConsoleFixture(locale: string) {
     },
   };
   const records = new Map<string, OperationRecord>();
-  const media = new URLSearchParams(location.search).get("media");
-  if (media === "unreadable") {
+  const capturedImage = createComputerFixtureImage(COMPUTER_IMAGE_SAMPLES[0]);
+  if (state === "images") {
+    for (const sample of COMPUTER_IMAGE_SAMPLES) {
+      records.set(sample.id, {
+        id: sample.id,
+        kind: "tool",
+        method: "computer_js",
+        admittedAt: "2026-10-29T00:00:00.000Z",
+        dispatched: true,
+        settled: true,
+        inputJSON: '{"code":"recorded capture"}',
+        invocationJSON: '{"origin":"model"}',
+        outcomeJSON: JSON.stringify({
+          content: [
+            { type: "image", mimeType: "image/png", data: createComputerFixtureImage(sample) },
+          ],
+        }),
+      });
+    }
+  } else if (state === "unreadable") {
     for (const [id, data] of [
       ["recorded-unreadable-image", "aW52YWxpZCBQTkc="],
       ["recorded-valid-image", capturedImage],
@@ -74,7 +92,7 @@ export async function createComputerConsoleFixture(locale: string) {
         }),
       });
     }
-  } else if (media === "links") {
+  } else if (state === "links") {
     records.set("recorded-resource-links", {
       id: "recorded-resource-links",
       kind: "tool",
@@ -101,7 +119,7 @@ export async function createComputerConsoleFixture(locale: string) {
         ],
       }),
     });
-  } else if (media === "unreadable-audio") {
+  } else if (state === "unreadable-audio") {
     records.set("recorded-unreadable-audio", {
       id: "recorded-unreadable-audio",
       kind: "tool",
@@ -125,7 +143,7 @@ export async function createComputerConsoleFixture(locale: string) {
         ],
       }),
     });
-  } else if (media === "resources") {
+  } else if (state === "resources") {
     records.set("recorded-resources", {
       id: "recorded-resources",
       kind: "tool",
