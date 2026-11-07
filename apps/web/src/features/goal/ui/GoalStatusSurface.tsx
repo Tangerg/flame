@@ -61,9 +61,9 @@ const gs = stylex.create({
   },
   identity: { minWidth: 0, flex: "1 1 13rem" },
   summary: {
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     justifyContent: "flex-start",
-    gap: space.s2,
+    gap: `0 ${space.s2}`,
     minHeight: "max(calc(var(--spacing) * 6), var(--control-target-min))",
     textDecorationLine: "underline",
     textDecorationColor: {
@@ -195,11 +195,11 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
 
   const summary = (
     <>
-      <span {...stylex.props(vocab.hold, vocab.ink, vocab.strong, typeStep.uiSm)}>
-        {t(GOAL_STATUS_I18N[goal.status].label)}
-      </span>
-      <span {...stylex.props(vocab.fill, vocab.truncate, vocab.muted, typeStep.uiSm)}>
+      <span {...stylex.props(vocab.min, vocab.truncate, vocab.ink, typeStep.uiSm)}>
         {goal.objective}
+      </span>
+      <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
+        {t(GOAL_STATUS_I18N[goal.status].label)}
       </span>
     </>
   );

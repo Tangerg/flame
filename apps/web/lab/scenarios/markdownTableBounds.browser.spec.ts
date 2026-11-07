@@ -258,7 +258,7 @@ test("an overflowing canonical table remains keyboard readable as the answer res
 
 test("a wide authored table remains keyboard readable in the desktop Dock reading column", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=narrative&theme=light&font-size=18",
@@ -275,13 +275,28 @@ test("a wide authored table remains keyboard readable in the desktop Dock readin
 
   const original = page.locator("[data-markdown-table]").filter({ hasText: "Strategy" });
   const originalScroller = original.locator(".md-table-scroller");
-  expect(
-    await originalScroller.evaluate((node) => node.scrollWidth - node.clientWidth),
-  ).toBeLessThanOrEqual(1);
-  await expect(originalScroller).not.toHaveAttribute("tabindex");
-  await original.focus();
-  await page.keyboard.press("Tab");
-  await expect(original.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
+  await original.scrollIntoViewIfNeeded();
+  await testInfo.attach("canonical-table-after-resize.json", {
+    body: JSON.stringify(
+      await originalScroller.evaluate((node) => ({
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+        table: node.querySelector("table")!.getBoundingClientRect().toJSON(),
+        frame: node.getBoundingClientRect().toJSON(),
+      })),
+    ),
+    contentType: "application/json",
+  });
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await testInfo.attach("canonical-table-after-resize.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
+  await readTableWithKeyboard(page, original);
 
   await page.evaluate(async () => {
     if (!location.pathname.startsWith("/lab/")) throw new Error("An isolated fixture is required");
@@ -330,5 +345,9 @@ test("a wide authored table remains keyboard readable in the desktop Dock readin
   });
   const wide = page.locator("[data-markdown-table]").filter({ hasText: "Observation_01" });
   await readTableWithKeyboard(page, wide);
+  await testInfo.attach("authored-table-keyboard.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });

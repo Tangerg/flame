@@ -16,7 +16,9 @@ for (const theme of ["light", "dark"]) {
       await page.locator("html[data-visual-ready]").waitFor();
       if (width === 320)
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
-      const panel = page.getByRole("region", { name: "Agent memory", exact: true });
+      const panel = page
+        .getByRole("region", { name: "Agent memory", exact: true })
+        .and(page.locator('[data-slot="panel"]'));
       const record = panel.locator('[data-memory-id="mem_00000000000000000000000000000001"]');
       const edit = record.getByRole("button", { name: "Edit", exact: true });
       await expect(edit).toBeEnabled();

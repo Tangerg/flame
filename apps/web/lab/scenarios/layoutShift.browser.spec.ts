@@ -116,12 +116,13 @@ test("a jump after the app says it is ready is caught", async ({ page }) => {
   await page.waitForSelector("html[data-visual-ready]");
   await page.waitForTimeout(200);
 
-  await page.evaluate(() => {
-    const spacer = document.createElement("div");
-    spacer.style.height = "80px";
-    document.body.prepend(spacer);
+  const workspace = page.getByRole("main", { name: "Agent workspace", exact: true });
+  const before = (await workspace.boundingBox())!;
+  await workspace.evaluate((node) => {
+    node.style.marginBlockStart = "80px";
   });
   await page.waitForTimeout(200);
 
+  expect((await workspace.boundingBox())!.y - before.y).toBe(80);
   expect((await shiftsAfterReady(page)).length).toBeGreaterThan(0);
 });

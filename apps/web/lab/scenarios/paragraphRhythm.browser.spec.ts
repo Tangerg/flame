@@ -1,9 +1,10 @@
 import { expect, test } from "./test";
+import { uiTypeLadder } from "../../src/features/theme/kit/typeLadder";
 for (const [theme, fontSize, width] of [
   ["light", 14, 1472],
   ["dark", 18, 800],
 ] as const) {
-  test(`Chinese paragraphs preserve semantic separation at ${fontSize}px in ${theme}`, async ({
+  test(`Chinese paragraphs preserve semantic separation with ${fontSize}px UI type in ${theme}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -33,13 +34,14 @@ for (const [theme, fontSize, width] of [
       return rows;
     });
     expect(paragraphs).toHaveLength(3);
+    const proseSize = uiTypeLadder(fontSize).prose;
     for (const paragraph of paragraphs) {
       expect(paragraph.direction).toBe("auto");
-      expect(paragraph.fontSize).toBe(fontSize);
+      expect(paragraph.fontSize).toBe(proseSize);
     }
     expect(paragraphs[1]!.text).toContain("runtime.Commit");
     for (let index = 1; index < paragraphs.length; index++) {
-      expect(paragraphs[index]!.top - paragraphs[index - 1]!.bottom).toBe(fontSize);
+      expect(paragraphs[index]!.top - paragraphs[index - 1]!.bottom).toBe(proseSize);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest focused qualification passes **22 cases**, followed by all **5 Facts cases** after adding complete-path capture checks. All **19 final browser captures** and **22 actual Wails captures** are reviewed. Checks follow current equal-column layout, actual outline declarations, hidden jump controls and protocol-ordered import failures. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. See **Equal fact columns and visible interaction boundaries (2026-11-07)** for scope and limits. The broader interaction audit remains partial, and whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch qualifies **46 distinct interaction cases across focused phases**, including final Schedule checks after correcting its admitted sample, and reviews **22 final browser captures** plus **40 actual Wails captures, including diagnostic attempts**. Formula styles now arrive with the lazy Markdown reader, and narrow Goal summaries give the objective priority. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. Native horizontal reading and intermittent Chromium table paint still need investigation. See **Ready math resources and readable Goal summaries (2026-11-07)** for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,117 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Ready math resources and readable Goal summaries (2026-11-07)
+
+The next audit selects 346 previously unqualified cases in 57 existing scenario
+files. It reaches the configured failure limit with **105 passed, 12 failed and
+229 not run**, without retries or flaky outcomes. The failures and follow-up resource checks
+expose two production defects and outdated fixture/check assumptions:
+
+- Markdown mounted KaTeX output before a post-mount effect requested its CSS.
+  Holding the actual stylesheet request reproduces visibly unstyled, duplicated
+  formulas in both resource-gate profiles. `MarkdownRenderer` now imports its
+  stylesheet as a module dependency; the two superseded loader files are deleted.
+  The renderer remains lazy. The production build keeps a distinct math CSS
+  chunk outside startup links, and its compiled preload edge waits for stylesheet
+  loading before importing the renderer. The two new gated cases fail before
+  the change and pass after it, alongside the existing cold-reader checks.
+- The fixture previously waited for fonts before lazy content requested its
+  faces. It now waits for mounted surfaces without pending readers, a rendered
+  layout, the resulting font readiness and another frame. The existing eight
+  second deadline rejects unresolved arrival instead of marking it ready. The
+  layout canary moves the actual fixed workspace by 80 px and verifies that
+  displacement; valid zero-shift checks remain intact.
+- A nonshrinking, emphasized Goal status left only **77.625 CSS px** for the
+  objective at 320 px, German locale and 18 px UI type. `GoalStatusSurface` now
+  puts the objective first in DOM and visual order, with supporting muted status
+  allowed to wrap. The objective receives **220 CSS px** in the same profile in
+  both themes. Exact source, row/control containment, editor value, cancellation
+  and focus-return assertions remain; unit accessible-name expectations follow
+  the intentional source-order change. No Goal command or authority changes.
+- Memory and Schedule checks select the production Panel rather than matching
+  both it and its full-width host. Paragraph checks use the production prose
+  ladder: 14/18 px UI type has 16/21 px prose. The Dock table check exercises its
+  real keyboard scroll contract when the natural 431.46875 px table exceeds the
+  416 px port, retaining the separate resize-to-fit regression.
+- Schedule instructions are admitted once, before the fixture transport copies
+  them, instead of mutating an exported seed afterward. The sample retains the
+  existing workspace search meaning, authored newlines and complete long path.
+  Line-spacing measurements account for the first line's soft wrap. The initial
+  full Web run exposes the lost search term; correcting that sample and its
+  wrap calculation restores the unchanged search contract.
+
+The 46 distinct cases pass across focused phases, rather than one clean
+46-case invocation: the main focused run passes 45 with the table setup failure;
+the corrected Table/Schedule run passes 10. After the final Schedule sample
+correction, all **13** selected Schedule content/draft and workspace-layout cases
+pass together. Three bounded repetitions of the final table capture pass; they
+are one case repeated, not three additional cases. A scoped unit run passes
+**3 files / 63 tests**. Initial staging TypeScript errors are corrected before
+qualification. The final complete **Web check passes 432 files / 4,751 tests**,
+including bundle/lazy-loading guards, and **make check-native passes** Desktop
+test/vet/build and the supported Wails build. Existing linker warnings remain.
+Root complexity still fails only on the untouched `ProviderRow` increase from
+31 to 34; neither its source nor threshold changes.
+
+All **22 final browser captures** are reviewed. Two earlier table images contain
+missing visible body text despite correct DOM geometry, computed paint and hit
+testing with no covering overlay. They remain diagnostic evidence. A frame
+barrier precedes the final capture, and all three final repeated captures show
+the expected text. This does not prove the initial paint failure's root cause or
+establish a production fix. Schedule captures reveal the complete instruction
+body; at 320 px, the preceding card title is partly above the sticky controls.
+They do not show the entire card simultaneously.
+
+Actual Wails v3.1.0 uses the unchanged native host and **484 built Lab assets**,
+with a private identity and data home. All **40 native captures** are reviewed,
+including unsuccessful horizontal-scroll attempts and one rejected `zh-CN`
+parameter; the registered Chinese locale is `zh`. Four valid native flows cover:
+
+- English/light/18 px: styled inline, short, wide and tall formulas, native
+  **200%**, keyboard entry into formula regions, ordinary prose before/after,
+  retained draft and continued input. The equation's final tag and matrix's
+  closing bracket are not reliably revealed by the native horizontal attempts.
+  Those captures do not qualify complete horizontal reading.
+- German/light/18 px: native **200%** and Window Move & Resize Left, about
+  **1121 native points**, preserve the objective, wrapped status and actions.
+  Keyboard entry reads the exact full objective; a temporary unsaved edit is
+  cancelled with Escape, returning focus to its summary. The retained Composer
+  accepts further input. The browser's 320 px profile is separate coverage.
+- Chinese/dark/18 px/custom purple: Schedule instructions retain authored lines
+  and the complete path. Native **200%** collapses the Dock into its full-width
+  Material reader; Page Down reveals the remaining path while controls remain
+  available. Escape returns to Conversation focus and the original Chinese
+  draft, which accepts more pasted text. Paste does not qualify physical IME.
+- The same Chinese appearance: keyboard End widens the Dock from 660 to 1000,
+  and actual inline/expanded table views show the four recorded rows without
+  reproducing the Chromium missing-text capture. Native **200%**, Page Down,
+  preview closing and focus return to the original Expand table control retain
+  the draft. Horizontal attempts still do not reliably reveal the final preview
+  column; this remains unqualified along with formula horizontal reading.
+
+All four valid native processes and the invalid-parameter diagnostic process
+exit normally. The server is stopped and the private app is unregistered. Six
+Library paths and the ordinary temp root return to absence. Three pre-existing
+empty WebKit helper roots retain identities, ownership, modes and `sunlnk` flags;
+only their five new children are removed. Fresh on-disk baselines verify all
+**twelve output/cache roots** return to original contents/modes or absence,
+including the older UI build; no functional checks run after that restoration.
+The primary checkout, all 46 native source inputs and unrelated tracked sources
+remain unchanged. Qualification evidence is frozen outside the repository before
+retiring its private directory.
+
+KaTeX's [browser integration contract](https://katex.org/docs/browser.html),
+[font readiness after layout](https://www.w3.org/TR/css-font-loading/#dom-fontfaceset-ready)
+and better-layout / better-accessibility guidance inform the fixes. Two bounded,
+read-only Claude Code CLI tasks supply analysis and patch proposals; primary
+review applies and verifies the final changes. Runtime/command semantics,
+production native sources, approved Orange and custom themes are preserved.
+Computer capacity still lacks complete captured metadata and reservations; no
+substitute accounting is invented. Next, investigate actual native horizontal
+reading in this same Lab and continue the remaining migrated cases. Live Runtime,
+VoiceOver, physical IME and whole-product visual acceptance remain unfinished.
 
 ### Equal fact columns and visible interaction boundaries (2026-11-07)
 

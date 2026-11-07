@@ -65,3 +65,50 @@ for (const [width, fontSize, theme] of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }
+
+for (const [width, fontSize, theme] of [
+  [1120, 14, "light"],
+  [320, 18, "dark"],
+] as const) {
+  test(`a cold Markdown reader keeps formulas pending until their stylesheet applies ${width}`, async ({
+    page,
+  }, testInfo) => {
+    let release!: () => void;
+    let requested!: () => void;
+    const stylesheetReady = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const stylesheetRequested = new Promise<void>((resolve) => {
+      requested = resolve;
+    });
+    await page.route(/\/katex\.min\.css(?:\?.*)?$/, async (route) => {
+      requested();
+      await stylesheetReady;
+      await route.continue();
+    });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(
+      `/lab/fixture.html?fixture=agent&state=math-content&theme=${theme}&font-size=${fontSize}&locale=en&sidebar=collapsed`,
+      { waitUntil: "commit" },
+    );
+    await stylesheetRequested;
+    try {
+      await testInfo.attach("math-styles-pending.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+      await expect.soft(page.locator("[data-surface-pending]").first()).toBeVisible();
+      await expect.soft(page.locator(".katex")).toHaveCount(0);
+    } finally {
+      release();
+      await page.locator("html[data-visual-ready]").waitFor();
+    }
+    const markdown = page.locator(".md").filter({ hasText: "A readable derivation" });
+    await expect(markdown.locator(".katex-display")).toHaveCount(4);
+    await expect(markdown.locator(".katex").first()).toHaveCSS("font-family", /KaTeX/);
+    await testInfo.attach("math-styles-applied.png", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+  });
+}

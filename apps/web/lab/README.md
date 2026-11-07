@@ -241,12 +241,30 @@ their production rows and installed component resources. WCAG failures attach
 the rule results and complete rendered button text/HTML to the same report,
 preserving evidence when the audit's summarized markup is truncated.
 
+Math loading checks hold the actual KaTeX stylesheet request in the existing
+Markdown scenario at desktop and 320 px widths. The lazy renderer must keep its
+pending surface until that stylesheet applies, then expose the styled formulas.
+The stylesheet belongs to the renderer module dependency rather than an
+unawaited post-mount effect. Production still loads the renderer and its distinct
+CSS chunk lazily; the static Lab build shares CSS across documents, so native
+Lab review does not independently qualify production cold loading.
+
+Paragraph checks follow the production type ladder's prose size rather than
+assuming it equals UI type. Memory and Schedule checks select the production
+Panel when a full-width host has the same accessible region name. Table checks
+follow actual overflow and preserve keyboard reading at both ends; a natural
+table can need scrolling after a Dock resize. Captures retain geometry alongside
+paint, and valid resize-to-fit coverage remains in the same scenario file.
+
 Goal and Plan reading checks use the existing Agent and Workspace catalog
 variants. The Workspace's unavailable captured Goal author permits reading;
 the registered Agent author permits editing. Checks preserve that distinction,
 cancelled edits, keyboard entry/return and each document's independent Composer
-draft through narrow resizing. Captures wait for the whole reading surface to
-be in view and fully opaque.
+draft through narrow resizing. Goal identity leads its supporting status in
+both source and visual order; narrow summaries may wrap that status without
+squeezing the objective into a few characters. Checks retain the full objective,
+row containment, editor value and Escape focus return. Captures wait for the whole
+reading surface to be in view and fully opaque.
 
 Installed-report checks also exercise Chinese selection through an empty search
 in both themes at narrow and desktop widths. They capture the actual heading's
@@ -273,9 +291,13 @@ the actual page viewport. A screenshot of a long panel clipped by its enclosing
 ScrollArea is not evidence that the outcome is visible.
 
 The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
-attachment record exact inputs and reproducible preview URLs. The verifier waits
-for the production fixture's ready signal and never qualifies an errored document
-as ready. There are no pixel goldens to approve automatically: inspect screenshots
+attachment record exact inputs and reproducible preview URLs. Fixture readiness
+requires a mounted surface with no unresolved lazy readers, then layout and the
+fonts requested by that layout, followed by a rendered frame. An unresolved
+surface fails at the existing arrival deadline instead of becoming ready. The
+layout-shift canary moves the actual fixed application surface and verifies both
+its displacement and the observer result. The verifier never qualifies an errored
+document as ready. There are no pixel goldens to approve automatically: inspect screenshots
 for alignment, hierarchy, clipping and states. A passing automated check establishes
 the listed rendering contracts, not complete visual acceptance or live Runtime
 behavior. Native focus, gestures and zoom still need actual Wails qualification.
@@ -320,6 +342,12 @@ same captured report. A file-specific Diff entry requests that path; the Files
 action explicitly reads the workspace overview before list tasks. Split-column
 checks retain source identities and before/after order across paired and unpaired
 changes instead of assuming one displayed row per source row.
+
+The Schedule fixture admits its authored multiline instructions and long path
+before the transport copies the snapshot. Search still matches its workspace
+content, refresh returns those same admitted bytes, and reading checks distinguish
+soft wrapping from authored blank lines. Tests never mutate an exported seed to
+change a transport that has already captured it.
 
 The `dock-schedules-models` variant joins the same Workspace catalog and captures
 its long model list before constructing the Runtime transport. The real Schedule

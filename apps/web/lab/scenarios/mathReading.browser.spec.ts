@@ -34,7 +34,6 @@ test("wide formulas stay in their reading region with keyboard access to both en
   await expect(formulas).toHaveCount(4);
   await expect(markdown.locator(".katex-error")).toHaveCount(0);
   await expect(formulas.first().locator(".katex")).toHaveCSS("font-family", /KaTeX/);
-  await page.evaluate(() => document.fonts.ready);
 
   const short = formulas.nth(0);
   const objective = formulas.nth(1);

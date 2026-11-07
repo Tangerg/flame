@@ -52,13 +52,24 @@ export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
   Capacity: 512,
 };
 
+export const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
+  "Inspect workspace dependencies.",
+  "Run accepted checks.",
+  "",
+  "Report:",
+  "- State concrete risks.",
+  "- Preserve exact output.",
+  "",
+  `/Users/visual/${"retained-evidence-".repeat(8)}request.json`,
+] as const;
+
 export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs["flame.schedules/list.v1"] = {
   Rows: [
     {
       ID: "sch_nightly",
       Revision: 1,
       Title: "Nightly dependency audit",
-      Instructions: "Review workspace dependencies and summarize risks.",
+      Instructions: VISUAL_SCHEDULE_INSTRUCTION_LINES.join("\n"),
       Cron: "0 2 * * *",
       TimeZone: "UTC",
       CWD: "/Users/visual/scope",

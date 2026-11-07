@@ -1,14 +1,5 @@
 import { expect, test } from "./test";
-const instructionLines = [
-  "Inspect dependencies.",
-  "Run accepted checks.",
-  "",
-  "Report:",
-  "- State concrete risks.",
-  "- Preserve exact output.",
-  "",
-  `/Users/visual/${"retained-evidence-".repeat(8)}request.json`,
-];
+import { VISUAL_SCHEDULE_INSTRUCTION_LINES as instructionLines } from "./componentSnapshots";
 
 const instructions = instructionLines.join("\n");
 
@@ -16,7 +7,7 @@ for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`schedule instructions retain authored lines and complete content ${theme} ${width}`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.setViewportSize({ width, height: 720 });
       const query = new URLSearchParams({
         fixture: "workspace",
@@ -30,13 +21,10 @@ for (const theme of ["light", "dark"]) {
       if (width === 320)
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
 
-      const panel = page.getByRole("region", { name: "Schedules", exact: true });
+      const panel = page
+        .getByRole("region", { name: "Schedules", exact: true })
+        .and(page.locator('[data-slot="panel"]'));
       await panel.getByRole("heading", { name: "Nightly dependency audit", exact: true }).waitFor();
-      await page.evaluate(async (value) => {
-        const modulePath = "/lab/scenarios/componentSnapshots.ts";
-        const { VISUAL_SCHEDULES_PAGE } = await import(modulePath);
-        VISUAL_SCHEDULES_PAGE.Rows[0].Instructions = value;
-      }, instructions);
       await panel.getByRole("button", { name: "Refresh", exact: true }).click();
 
       const card = panel.getByRole("article").filter({
@@ -89,12 +77,17 @@ for (const theme of ["light", "dark"]) {
           expect(line.right).toBeLessThanOrEqual(reading.right + 1);
         }
       }
-      const ordinaryAdvance = reading.lines[1]![0]!.top - reading.lines[0]![0]!.top;
+      const ordinaryAdvance = reading.lines[1]![0]!.top - reading.lines[0]!.at(-1)!.top;
       const paragraphAdvance = reading.lines[2]![0]!.top - reading.lines[1]!.at(-1)!.top;
       expect(paragraphAdvance).toBeGreaterThan(ordinaryAdvance);
       expect(await card.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
       expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+      await body.scrollIntoViewIfNeeded();
+      await testInfo.attach("schedule-instructions.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
     });
   }
 }

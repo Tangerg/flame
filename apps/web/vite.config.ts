@@ -115,10 +115,10 @@ export default defineConfig({
                 )
                   return "shiki";
                 // KaTeX JS is statically reachable through rehype-katex, while its
-                // stylesheet is deliberately imported only after a message contains
-                // math. Giving both the same manual chunk name makes Rolldown attach
-                // the dynamic CSS to the eager JS group and emit it in index.html.
-                // Keep the style on its loader's lazy edge with a distinct identity.
+                // stylesheet is a dependency of the lazy Markdown renderer. Giving
+                // both the same manual chunk name makes Rolldown attach the lazy CSS
+                // to the eager JS group and emit it in index.html. Keep the style on
+                // the renderer's lazy edge with a distinct identity.
                 if (id.includes("node_modules/katex/dist/katex.min.css")) return "katex-style";
                 // Math rendering JS.
                 if (id.includes("node_modules/katex/")) return "katex";

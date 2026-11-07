@@ -2,6 +2,7 @@ import { memo, useDeferredValue, useEffect, useId, useMemo, useRef } from "react
 import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import rehypeRaw from "rehype-raw";
 import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
 import remend from "remend";
@@ -9,7 +10,6 @@ import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitS
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
 import { isInlineImage } from "@/foundation/imageExport";
 import { handleMarkdownCopy } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
-import { ensureKatexCss } from "@/features/chat/message/ui/markdown/katexCss";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 import { rehypeFileRefs } from "@/features/chat/message/ui/markdown/rehypeFileRefs";
 import { rehypeFootnoteLabels } from "@/features/chat/message/ui/markdown/rehypeFootnoteLabels";
@@ -77,10 +77,6 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
 
   const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
   const lastIdx = blocks.length - 1;
-
-  useEffect(() => {
-    ensureKatexCss();
-  }, []);
 
   useEffect(() => {
     const root = rootRef.current;

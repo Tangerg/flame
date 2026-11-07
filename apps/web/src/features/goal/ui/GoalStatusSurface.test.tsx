@@ -146,7 +146,7 @@ describe("Goal status surface", () => {
         ],
       ),
     );
-    const opener = screen.getByRole("button", { name: /^Paused goal/ });
+    const opener = screen.getByRole("button", { name: /Paused goal$/ });
     act(() => opener.focus());
     fireEvent.click(opener);
 
@@ -168,7 +168,7 @@ describe("Goal status surface", () => {
     fireEvent.keyDown(reader, { key: "Escape" });
     await vi.waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Goal" })).toBeNull();
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Paused goal/ }));
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: /Paused goal$/ }));
     });
     expectNoGoalMutation();
   });
@@ -178,7 +178,7 @@ describe("Goal status surface", () => {
     const original = model.goal.author!;
     testClient.render(<GoalStatusSurface />);
     act(() => workflows.publish([], []));
-    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ship alpha Pursuing goal" }));
     expect(screen.getByRole("dialog", { name: "Goal" })).toBeTruthy();
     expectNoGoalMutation();
 
@@ -188,7 +188,7 @@ describe("Goal status surface", () => {
 
     act(() => workflows.publish([], []));
     expect(screen.queryByRole("button", { name: "Pause goal" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ship alpha Pursuing goal" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(model.updateGoal).not.toHaveBeenCalled();
   });
@@ -196,7 +196,7 @@ describe("Goal status surface", () => {
   it("retires the reader when another Goal replaces it in the same Session", () => {
     const { rerender } = testClient.render(<GoalStatusSurface />);
     act(() => testClient.installedPlugins.access.workflows.publish([], []));
-    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ship alpha Pursuing goal" }));
     expect(screen.getByRole("region", { name: "Goal" }).textContent).toBe("Ship alpha");
 
     model.goal = {
@@ -208,7 +208,7 @@ describe("Goal status surface", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: "Pursuing goal Read the replacement goal" }),
+      screen.getByRole("button", { name: "Read the replacement goal Pursuing goal" }),
     );
     expect(screen.getByRole("region", { name: "Goal" }).textContent).toBe(
       "Read the replacement goal",
@@ -236,7 +236,7 @@ describe("Goal status surface", () => {
   it("opens the same objective editor from the Goal summary", () => {
     testClient.render(<GoalStatusSurface />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ship alpha Pursuing goal" }));
 
     expect(screen.getByRole("dialog", { name: "Edit goal" })).toBeTruthy();
   });
@@ -358,7 +358,7 @@ describe("Goal status surface", () => {
   it("keeps an offline objective save in the editor without invoking the command", async () => {
     model.runtimeAvailable = false;
     const { rerender } = testClient.render(<GoalStatusSurface />);
-    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ship alpha Pursuing goal" }));
     const objective = screen.getByRole("textbox", { name: "Goal" });
     fireEvent.change(objective, { target: { value: "Ship beta" } });
 
@@ -589,7 +589,7 @@ describe("Goal status surface", () => {
     act(() => vi.advanceTimersByTime(2_000));
 
     expect(screen.getByText("Time since goal creation: 20s")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ship alpha Pursuing goal" })).toBeTruthy();
     expect(model.stopGoal).not.toHaveBeenCalled();
     expect(model.resumeGoal).not.toHaveBeenCalled();
     expect(model.updateGoal).not.toHaveBeenCalled();
@@ -659,7 +659,7 @@ describe("Goal status surface", () => {
     testClient.render(<GoalStatusSurface />);
 
     expect(screen.queryByText(/^Time since goal creation:/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ship alpha Pursuing goal" })).toBeTruthy();
   });
 
   it("clamps a future creation timestamp to zero until the clock reaches it", () => {

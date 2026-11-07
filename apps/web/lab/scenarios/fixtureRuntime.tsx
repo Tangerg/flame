@@ -480,11 +480,13 @@ disposeOnHmr(() => {
 const FIXTURE_FACES = ['1rem "JetBrains Mono"'];
 
 function shellArrived(deadlineMs: number): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const expiry = performance.now() + deadlineMs;
     const check = () => {
       const pending = rootElement.querySelector("[data-surface-pending]");
-      if (!pending || performance.now() > expiry) resolve();
+      if (container!.firstElementChild && !pending) resolve();
+      else if (performance.now() > expiry)
+        reject(new Error("Fixture surfaces did not arrive before the readiness deadline"));
       else requestAnimationFrame(check);
     };
     check();
@@ -493,15 +495,18 @@ function shellArrived(deadlineMs: number): Promise<void> {
 
 const ARRIVAL_DEADLINE_MS = 8000;
 
+function renderedFrame(): Promise<void> {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+}
+
+// Arrived surfaces request their own faces, such as KaTeX's, only once laid out.
 void Promise.all(FIXTURE_FACES.map((face) => document.fonts.load(face)))
-  .then(() => document.fonts.ready)
   .then(() => shellArrived(ARRIVAL_DEADLINE_MS))
-  .then(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  )
+  .then(renderedFrame)
+  .then(() => document.fonts.ready)
+  .then(renderedFrame)
   .then(() => {
     rootElement.dataset.visualReady = "";
   });

@@ -49,13 +49,39 @@ for (const theme of ["light", "dark"]) {
 
   test(`a narrow goal keeps the objective ahead of its supporting status in ${theme}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await open(page, `fixture=agent&state=running&locale=de&theme=${theme}`);
     const row = page.locator('[data-slot="goal-status-row"]');
     const summary = row.locator('[data-goal="summary"]');
-    const objective = summary.locator(":scope > span").last();
+    const full = (await summary.getAttribute("title"))!;
+    const objective = summary.getByText(full, { exact: true });
+    const status = summary.getByText("Ziel wird verfolgt", { exact: true });
     await expect(objective).toBeVisible();
-    expect((await objective.boundingBox())!.width).toBeGreaterThanOrEqual(100);
+    await expect(status).toBeVisible();
+    const objectiveBox = (await objective.boundingBox())!;
+    const summaryBox = (await summary.boundingBox())!;
+    await testInfo.attach("goal-summary-geometry.json", {
+      body: JSON.stringify({
+        objective: objectiveBox,
+        status: await status.boundingBox(),
+        summary: summaryBox,
+        row: await row.boundingBox(),
+      }),
+      contentType: "application/json",
+    });
+    await testInfo.attach("goal-summary-narrow.png", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    expect(await summary.evaluate((node, value) => node.textContent!.startsWith(value), full)).toBe(
+      true,
+    );
+    expect(objectiveBox.width).toBeGreaterThanOrEqual(100);
+    expect(Math.abs(objectiveBox.x - summaryBox.x)).toBeLessThanOrEqual(1);
+    expect(await status.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    expect(await row.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(
+      1,
+    );
     const escaped = await row.getByRole("button").evaluateAll((nodes) =>
       nodes
         .filter((node) => {
@@ -66,11 +92,11 @@ for (const theme of ["light", "dark"]) {
         .map((node) => node.getAttribute("aria-label") ?? node.textContent),
     );
     expect(escaped).toEqual([]);
-    const full = await summary.getAttribute("title");
     await summary.click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("textbox")).toHaveValue(full!);
+    await expect(dialog.getByRole("textbox")).toHaveValue(full);
     await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
     await expect(summary).toBeFocused();
   });
 
