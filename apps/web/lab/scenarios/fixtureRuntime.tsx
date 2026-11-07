@@ -22,6 +22,7 @@ import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { selectLocale } from "@/features/i18n/application/localeSelection";
 import { uiTypeLadderCssVariables } from "@/features/theme/kit/typeLadder";
 import { UI_DENSITY_MODES } from "@/features/theme/kit/appearance";
+import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
 import {
   VISUAL_AGENT_STATES,
@@ -414,7 +415,11 @@ async function fixtureNode(): Promise<ReactNode> {
     snapshot,
     VISUAL_CAPABILITIES,
   );
-  return <VisualAgentStateFixture state={state} view={view} sidebarOpen={sidebarOpen} />;
+  visualClient.workspace.layout.setState({
+    sidebarCollapsed: !sidebarOpen,
+    sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
+  });
+  return <VisualAgentStateFixture state={state} view={view} />;
 }
 
 const { i18nPlugin } = await import("@/features/i18n/index");

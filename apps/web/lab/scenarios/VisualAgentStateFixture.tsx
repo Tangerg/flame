@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from "react";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { selectCurrentRootAttention } from "@/features/agent/application/view/runTree";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { useChatSend } from "@/features/agent/public/input";
 import { ChatPanel } from "@/features/shell/workbench/panel/ChatPanel";
+import { useSidebarDrawer, useSidebarWidth } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentRow } from "@/ui/agent/index";
@@ -91,23 +91,23 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
 export function VisualAgentStateFixture({
   state,
   view,
-  sidebarOpen,
 }: {
   state: VisualAgentState;
   view: AgentSessionView;
-  sidebarOpen: boolean;
 }) {
   const attention = selectCurrentRootAttention(view);
   const send = useChatSend();
+  const drawer = useSidebarDrawer();
+  const { width, setWidth } = useSidebarWidth();
 
   return (
     <AgentAppShell
       sidebarLabel="Agent fixture states"
       sidebarResizeLabel="Resize the agent fixture sidebar"
-      sidebarOpen={sidebarOpen}
-      sidebarWidth={SIDEBAR_DEFAULT_WIDTH_PX}
-      onResize={() => undefined}
-      onSidebarToggle={() => undefined}
+      sidebarOpen={!drawer.collapsed}
+      sidebarWidth={width}
+      onResize={setWidth}
+      onSidebarToggle={drawer.toggle}
       sidebarExpandLabel="Expand the agent fixture sidebar"
       sidebarCollapseLabel="Collapse the agent fixture sidebar"
       sidebar={<StateSidebar state={state} />}

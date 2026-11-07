@@ -410,9 +410,10 @@ accent colors and recorded long results. Motion defaults to `off`; only `off` an
 checks belong under `lab/`.
 
 Agent reading scenes also honor `sidebar=collapsed`, leaving their full reading
-frame available while viewport changes preserve local drafts. Recorded
-state-sidebar navigation and resize handlers remain inert; the query selects the
-initial fixture frame rather than simulating a Runtime transition.
+frame available while viewport changes preserve local drafts. The query only
+sets the initial workspace layout; the existing workspace sidebar actions may then
+collapse, expand and resize it without replacing the current Composer. Recorded
+state-sidebar rows remain inert rather than simulating a Runtime transition.
 
 ## Optional measurements
 

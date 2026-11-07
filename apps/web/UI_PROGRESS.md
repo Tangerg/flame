@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair keeps long Composer attachments and their removal controls inside narrow inputs, and exposes the complete reading/failure message through the existing keyboard-reachable Tooltip. The same catalog now has **44 stories**. A combined **45-check** selection passes; after tightening capture readiness, its **12 attachment/catalog checks** pass again. All **40 selected final browser images and 14 final Wails captures** are reviewed. The frontend project passes **431 files / 4,702 tests** and the supported native gate passes. See **Bounded attachments and complete recovery hints (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest repair connects the Agent scene's inert sidebar controls to the existing workspace layout owner, preserving committed width and Composer drafts. The same catalog retains **44 stories**. The selected **34 browser checks pass**; after waiting for painted Tooltips, the **eight attachment checks pass again**. All **64 selected final browser images and 11 native captures** are reviewed, including one diagnostic separator-focus attempt. Focused units, Web typecheck/static checks and the supported native gate pass. See **Interactive Agent layout and painted capture readiness (2026-11-07)**. Native continuation sometimes exposes only the input's text tail despite retaining its complete value; that paint behavior remains unqualified. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -79,6 +79,74 @@ The recovered-Run scene also exposed a production selector defect:
 causing React's update-depth failure. The existing `useShallow` contract now
 stabilizes it while preserving dismissal and later command errors. The regression
 test failed before the fix; the focused related suite passed 130 tests afterward.
+
+### Interactive Agent layout and painted capture readiness (2026-11-07)
+
+The preceding native inspection exposes an actual Lab contract gap: the Agent
+scene's visible sidebar toggle and resize handle invoke empty callbacks. Two
+new regressions in `genuiReading.browser.spec.ts` both fail before the repair:
+English stays expanded and Chinese stays collapsed after keyboard activation.
+
+`VisualAgentStateFixture.tsx` now consumes the existing workspace sidebar hooks,
+as production and the other workspace fixtures do. `fixtureRuntime.tsx` seeds
+that owner's initial collapsed state and default width once when admitting the
+Agent scene. URL parameters do not compete with subsequent layout changes.
+The same Composer stays mounted through collapse, expansion and width changes.
+Recorded state-sidebar rows remain inert; this does not simulate Runtime
+navigation. No production layout state, component style, registry, story,
+browser configuration or verification runner is added.
+
+Better-layout and better-accessibility guide shrinking layouts, keyboard focus
+and retained authoring. Read-only ZCode `v4/workbenchLayout.ts` and
+`v4/paneLayoutStore.ts` reinforce layout projection and stable pane identity;
+Flame reuses its own owner. Two bounded Claude Code CLI tasks provide the
+regression and binding edits in **104.901 s** and **40.575 s**. Primary reviews
+the diff and performs capture review and native acceptance.
+
+- The focused candidate passes **2 / 2**. The broader selection passes
+  **34 / 34** in **83.591 s**, covering Agent/report reading, Shell and Composer
+  attachments, without retries, skips or flaky results. The added cases check
+  Enter/Space focus, a committed **520 px** width, **390 px** layouts, exact
+  retained drafts and the same input element through continued typing.
+- Review finds one dark/narrow Tooltip capture at opacity zero despite its
+  existing visibility assertion. Two existing capture points now also await
+  the Tooltip's own opacity of one. All **8 / 8** attachment checks pass again
+  in **27.420 s**. The selected final set has **64 images**: 63 match the reviewed
+  broader run, and the corrected narrow Tooltip is reviewed at full resolution.
+- Focused units pass **3 files / 56 tests**. Web typecheck and ten selected static
+  checks pass; typecheck, lint and formatting pass again after the two capture
+  assertions. **`make check-native` passes in 15.768 s**, including Desktop
+  test/vet/build and Wails packaging. Existing SDK/macOS linker warnings remain.
+  The full Web gate, Runtime integration and complete Lab suite are not rerun.
+- Actual Wails v3.1.0 uses the same **487 Lab assets**, the production native
+  host/menu/zoom implementation and a private identity/home. English/light/14 px
+  and Chinese/dark/18 px tasks verify pointer collapse, keyboard expansion,
+  naturally tabbed separator focus, End committing **520 px**, and retained width
+  after reopening. Chinese admission resets the initial width to **275 px**.
+  Native Window Move & Resize Left reaches **1121 points**. Chinese Actual Size
+  plus 20 Zoom In actions verifies collapse/expansion and the original retained
+  draft at **200%**; restoring Actual Size exposes the complete continued draft
+  and the stored **520 px** width.
+
+All **11 native captures** are reviewed. One is diagnostic: AX clicking the
+separator did not focus it, so End left its width at 275 px; natural Tab entry
+then commits 520 px. Continued input sometimes shows only its text tail while
+AX retains the exact complete value. English caret-to-start and Chinese Actual
+Size reveal those unchanged values. This batch does not repair or qualify that
+native input viewport behavior at 200%; reproduce it with ordinary typing and
+trace the input/reflow owner before changing it. Both native runs exit normally.
+VoiceOver, physical IME, live sending and optional measurements remain untested.
+
+After functional verification, all **12 output/cache roots** return to their
+original bytes, modes and directory state or absence, including the older UI
+output. The comparison covers **6,710 non-Markdown inputs**, with only four
+intended Lab sources changed, all **46 native inputs**, and the unchanged primary
+checkout. No functional check runs against restored outputs. The app is
+unregistered, its owned server stops, six Library paths and ordinary temp return
+to absence, and three protected helper roots retain their original empty state
+and identities. Evidence is preserved in memory before guarded QA-root retirement.
+Delivery uses normal hooks and an ordinary push to `main`. Continue through this
+same Lab; this is a bounded interaction repair, not whole-product acceptance.
 
 ### Qualification and limits
 
@@ -1279,7 +1347,9 @@ root but ignored by the Agent branch. Passing that value into its existing shell
 provides the full reading frame for native zoom tasks. Its baseline fails before
 the projection repair; the new Lab flow confirms the initial control and retained
 Composer draft across 520-to-1120 px viewport changes. Recorded sidebar navigation
-and resizing remain inert, as documented in the Lab README. There is no new route,
+and resizing remain inert at that checkpoint. The later **Interactive Agent layout
+and painted capture readiness (2026-11-07)** repair connects layout controls to
+their existing owner; recorded rows still do not navigate. There is no new route,
 scenario registry, browser configuration or fixture state owner.
 
 The empty Chinese table has a separate module-owned defect at `ccf1707bc`:
@@ -16440,9 +16510,10 @@ staged hooks and an ordinary push to `main` are used for delivery.
 The tool restart during the interruption invalidates older in-memory evidence
 capsules; their retired filesystem roots are not recreated. This batch's guarded
 disk evidence survives and is preserved separately before retirement. Continue
-through this same Lab with an observed, bounded defect. Revisit the fixed Agent
-sidebar contract before treating its controls as interactive navigation; this
-batch does not change that fixture contract or claim whole-product acceptance.
+through this same Lab with an observed, bounded defect. The later **Interactive
+Agent layout and painted capture readiness (2026-11-07)** repair connects the
+sidebar layout controls to their existing owner. Recorded rows still do not
+navigate; neither batch claims whole-product acceptance.
 
 ### Attachment removal and continued authoring (2026-11-03)
 

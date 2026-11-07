@@ -360,3 +360,134 @@ for (const theme of ["light", "dark"] as const) {
     await respectHorizontalReading(page, theme);
   });
 }
+
+type SidebarState = "expanded" | "collapsed";
+
+const SIDEBAR_PROFILES = [
+  {
+    locale: "en",
+    theme: "light",
+    fontSize: 14,
+    sidebar: "expanded",
+    composer: "Message composer",
+    draft: "Keep this draft while the sidebar moves.",
+    suffix: " Then continue typing.",
+  },
+  {
+    locale: "zh",
+    theme: "dark",
+    fontSize: 18,
+    sidebar: "collapsed",
+    composer: "消息输入框",
+    draft: "侧栏移动时保留这条草稿。",
+    suffix: "继续输入。",
+  },
+] as const;
+
+for (const profile of SIDEBAR_PROFILES) {
+  test(`the Agent sidebar toggles and keeps its committed width in ${profile.locale} ${profile.theme}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1120, height: 900 });
+    const query = new URLSearchParams({
+      fixture: "agent",
+      state: "idle",
+      motion: "off",
+      locale: profile.locale,
+      theme: profile.theme,
+      "font-size": String(profile.fontSize),
+    });
+    if (profile.sidebar === "collapsed") query.set("sidebar", "collapsed");
+    await page.goto(`/lab/fixture.html?${query}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+
+    const shell = page.locator(".agent-shell");
+    const toggleFor = (state: SidebarState) =>
+      page.getByRole("button", {
+        name:
+          state === "expanded"
+            ? "Collapse the agent fixture sidebar"
+            : "Expand the agent fixture sidebar",
+        exact: true,
+      });
+    const expectSidebar = async (state: SidebarState) => {
+      await expect(shell).toHaveAttribute("data-sidebar", state);
+      await expect(toggleFor(state)).toBeVisible();
+      await expect(toggleFor(state)).toHaveAttribute("aria-expanded", String(state === "expanded"));
+      await expect(toggleFor(state === "expanded" ? "collapsed" : "expanded")).toHaveCount(0);
+    };
+    const expectVisibleFocus = async (state: SidebarState) => {
+      await expect(toggleFor(state)).toBeFocused();
+      expect(await toggleFor(state).evaluate((node) => node.matches(":focus-visible"))).toBe(true);
+    };
+    const sidebarWidth = () =>
+      shell.evaluate((node) => getComputedStyle(node).getPropertyValue("--sidebar-width").trim());
+    const capture = async (name: string) =>
+      testInfo.attach(name, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+
+    const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+    await composer.fill(profile.draft);
+    const composerNode = await composer.elementHandle();
+
+    const toggled = profile.sidebar === "expanded" ? "collapsed" : "expanded";
+    await expectSidebar(profile.sidebar);
+    await capture("initial-agent-sidebar");
+    await toggleFor(profile.sidebar).focus();
+    await page.keyboard.press("Enter");
+    await expectSidebar(toggled);
+    await expectVisibleFocus(toggled);
+    await page.keyboard.press("Space");
+    await expectSidebar(profile.sidebar);
+    await expectVisibleFocus(profile.sidebar);
+    if (profile.sidebar === "collapsed") {
+      await page.keyboard.press("Enter");
+      await expectSidebar("expanded");
+    }
+
+    const separator = page.getByRole("separator", {
+      name: "Resize the agent fixture sidebar",
+      exact: true,
+    });
+    await separator.focus();
+    await page.keyboard.press("End");
+    await expect(separator).toHaveAttribute("aria-valuenow", "520");
+    await expect.poll(sidebarWidth).toBe("520px");
+
+    await toggleFor("expanded").click();
+    await expectSidebar("collapsed");
+    await expect(composer).toHaveValue(profile.draft);
+
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expectSidebar("collapsed");
+    await expect(composer).toHaveValue(profile.draft);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    await capture("narrow-collapsed-agent-sidebar");
+
+    await toggleFor("collapsed").focus();
+    await page.keyboard.press("Enter");
+    await expectSidebar("expanded");
+    await expect(composer).toHaveValue(profile.draft);
+    await capture("narrow-expanded-agent-sidebar");
+
+    await expect(toggleFor("expanded")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expectSidebar("collapsed");
+    await page.setViewportSize({ width: 1120, height: 900 });
+    await toggleFor("collapsed").click();
+    await expectSidebar("expanded");
+    await expect(separator).toHaveAttribute("aria-valuenow", "520");
+    await expect.poll(sidebarWidth).toBe("520px");
+
+    expect(await composer.evaluate((node, original) => node === original, composerNode)).toBe(true);
+    await composer.focus();
+    await page.keyboard.press("End");
+    await page.keyboard.type(profile.suffix);
+    await expect(composer).toHaveValue(profile.draft + profile.suffix);
+    await capture("retained-expanded-agent-sidebar");
+  });
+}

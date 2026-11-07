@@ -179,6 +179,7 @@ for (const width of [320, 1120]) {
       const tooltip = page.getByRole("tooltip");
       await expect(tooltip).toHaveText(await status.innerText());
       await expect(tooltip).toBeVisible();
+      await expect(tooltip).toHaveCSS("opacity", "1");
       await testInfo.attach(`pending-long-image-${width}-${theme}-focused.png`, {
         body: await page.screenshot({ animations: "disabled" }),
         contentType: "image/png",
@@ -221,6 +222,7 @@ for (const theme of ["light", "dark"]) {
     const tooltip = page.getByRole("tooltip");
     await expect(tooltip).toHaveText(message);
     await expect(tooltip).toBeVisible();
+    await expect(tooltip).toHaveCSS("opacity", "1");
     await testInfo.attach(`failed-image-recovery-${theme}.png`, {
       body: await page.screenshot({ animations: "disabled" }),
       contentType: "image/png",
