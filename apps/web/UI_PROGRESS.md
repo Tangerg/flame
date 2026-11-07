@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch qualifies **46 distinct interaction cases across focused phases**, including final Schedule checks after correcting its admitted sample, and reviews **22 final browser captures** plus **40 actual Wails captures, including diagnostic attempts**. Formula styles now arrive with the lazy Markdown reader, and narrow Goal summaries give the objective priority. The complete Web check passes **432 files / 4,751 tests**, and supported native checks pass. Native horizontal reading and intermittent Chromium table paint still need investigation. See **Ready math resources and readable Goal summaries (2026-11-07)** for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The latest batch passes **23 selected interaction cases**, including six new keyboard reading cases across Chromium and WebKit, and reviews **20 browser captures** plus **15 actual Wails captures, including diagnostic attempts**. Expanded table keyboard reading now reaches both edges in native 200% inspection; formula horizontal reading remains unqualified there. Production sources are unchanged, so the previous complete Web and supported native gates retain their scope. See **Keyboard reading at both edges (2026-11-07)** and the preceding resource/layout qualification for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -255,6 +255,72 @@ Computer capacity still lacks complete captured metadata and reservations; no
 substitute accounting is invented. Next, investigate actual native horizontal
 reading in this same Lab and continue the remaining migrated cases. Live Runtime,
 VoiceOver, physical IME and whole-product visual acceptance remain unfinished.
+
+### Keyboard reading at both edges (2026-11-07)
+
+The existing shared UI ownership registration now checks wide formulas, inline
+tables and expanded tables in both Chromium and WebKit. These are six new cases
+in the same Lab and configuration. Keyboard input must reveal the final tag,
+matrix bracket or table column, then return to the first term or column. Checks
+retain reader focus and enclosing vertical position; closing the table preview
+returns to its actual trigger. The formula geometry case is renamed to describe
+its layout coverage, rather than implying that its explicit scroll assignment
+proves keyboard access to both ends.
+
+Short, separately released keys initially produce a misleading WebKit timeout:
+83 presses move the formula to 624 of 846 CSS px in the five-second window.
+Holding and repeating the key permits its native scrolling animation to advance.
+The final checks always release the key, wait for elastic scrolling to return to
+its real boundary, and then inspect both content geometry and DOM position.
+They do not assign the position or relax the content-edge assertion. Screenshots
+and geometry survive a failed attempt as well as a pass. A bounded, read-only
+Claude Code CLI review identifies the missing end-to-end contracts; primary
+review applies and verifies the final amendment.
+
+The final combined Lab run passes **23 cases**, with no retries or flaky results.
+All **20 image attachments** are reviewed, including full-size checks of desktop
+table paint. The new WebKit formula reaches 846 and returns to zero; the matrix
+reaches 396 and returns to zero. Current Web typecheck, lint and formatting pass. The root
+complexity check still fails only on the untouched `ProviderRow` increase from
+31 to 34; its source and threshold remain unchanged. This verification-only
+change preserves all production inputs. The previous complete Web check
+(432 files / 4,751 tests) and supported native gate are reused within that scope,
+rather than reported as new runs. The current isolated Wails build passes.
+
+Actual Wails v3.1.0 loads the same **484 built Lab assets** with the production
+host, menu and zoom implementation. All 46 original native inputs are unchanged;
+45 copied inputs are identical and the private application composition has the
+same qualified hash as the preceding batch. The **15 native captures** cover two
+processes, both at 18 px UI type and native 200%, including diagnostic attempts:
+
+- English/light formulas: Tab reaches the objective and matrix with visible
+  focus. A positioned editor-caret diagnostic confirms a Left key changes the
+  insertion point. Holding Right for 3.5 or five seconds and a horizontal wheel
+  attempt still do not reliably reveal the matrix bracket or equation tag.
+  Formula horizontal reading remains unqualified in Wails. Returning to the
+  Composer preserves the explicitly edited test draft and permits continued input.
+- Chinese/dark table: the inline table fits with its final Checks column visible;
+  that view does not qualify native inline overflow. The expanded reader initially
+  clips that column. Ten Right presses reveal it, Page Down reads later rows while
+  retaining the header and close control, and ten Left presses reveal the first
+  column at the same vertical location. Escape returns to Expand table. Keyboard
+  return preserves the Chinese draft and accepts further pasted text; this is
+  not physical IME qualification.
+
+Both native processes exit normally. The owned server is stopped and the private
+app is unregistered. Fresh baselines restore all twelve output/cache roots,
+including the older UI output; no functional checks run after restoration. Six
+Library paths and the ordinary temp root return to absence. Three pre-existing
+empty WebKit helper roots retain identities, ownership, modes and `sunlnk` flags;
+only their two new children are removed. All 6,709 non-Markdown source inputs are
+compared: only the two intended Lab test files differ. The primary checkout and
+46 native inputs remain unchanged. Qualification evidence is retained outside
+the repository before retiring its private directory.
+
+Browser WebKit success does not resolve the native formula
+input path. Next inspect that distinction through this same Lab, and continue
+the remaining migrated cases. Intermittent Chromium paint, live Runtime, VoiceOver
+and whole-product visual acceptance retain their previously recorded limits.
 
 ### Equal fact columns and visible interaction boundaries (2026-11-07)
 

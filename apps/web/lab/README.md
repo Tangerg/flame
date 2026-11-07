@@ -256,6 +256,16 @@ follow actual overflow and preserve keyboard reading at both ends; a natural
 table can need scrolling after a Dock resize. Captures retain geometry alongside
 paint, and valid resize-to-fit coverage remains in the same scenario file.
 
+The shared UI ownership scenarios also qualify keyboard reading at both edges
+in Chromium and WebKit: wide formulas, inline tables and expanded tables.
+They hold and repeat horizontal arrows, release the key even on failure, and
+wait for elastic scrolling to settle before checking the content edge and DOM
+position. They never assign the reading position. Focus and the enclosing
+vertical position remain with their readers, and Escape returns from the table
+preview to its trigger. Each direction retains a screenshot and geometry,
+including failed attempts. The separate formula layout check uses explicit
+positions to inspect notation and resizing; it does not qualify keyboard access.
+
 Goal and Plan reading checks use the existing Agent and Workspace catalog
 variants. The Workspace's unavailable captured Goal author permits reading;
 the registered Agent author permits editing. Checks preserve that distinction,

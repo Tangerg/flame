@@ -1,5 +1,133 @@
-import { expect, test } from "./test";
+import { expect, test, type Locator, type Page } from "./test";
+
+async function readAcross(page: Page, reader: Locator, first: Locator, last: Locator) {
+  await reader.scrollIntoViewIfNeeded();
+  await reader.focus();
+  await expect(reader).toBeFocused();
+  const clip = (await reader.elementHandle())!;
+  const hidden = (target: Locator) =>
+    target.evaluate((node, region) => {
+      const left = region.getBoundingClientRect().left + region.clientLeft;
+      const bounds = node.getBoundingClientRect();
+      return { left: left - bounds.left, right: bounds.right - (left + region.clientWidth) };
+    }, clip);
+  const transcript = page.locator(".msg-scroll-viewport");
+  const outerTop = await transcript.evaluate((node) => node.scrollTop);
+  expect((await hidden(last)).right).toBeGreaterThan(1);
+  for (const [key, target, side] of [
+    ["ArrowRight", last, "right"],
+    ["ArrowLeft", first, "left"],
+  ] as const) {
+    let keyDowns = 0;
+    const start = await reader.evaluate((node) => node.scrollLeft);
+    try {
+      try {
+        await expect(async () => {
+          keyDowns++;
+          // Releasing between repeats interrupts native scrolling animations.
+          await page.keyboard.down(key);
+          expect((await hidden(target))[side]).toBeLessThanOrEqual(0.5);
+        }).toPass({ intervals: [50], timeout: 5_000 });
+      } finally {
+        await page.keyboard.up(key);
+      }
+      await expect
+        .poll(() =>
+          reader.evaluate(
+            (node, end) =>
+              Math.abs(node.scrollLeft - (end ? node.scrollWidth - node.clientWidth : 0)),
+            key === "ArrowRight",
+          ),
+        )
+        .toBeLessThanOrEqual(0.5);
+      expect((await hidden(target))[side]).toBeLessThanOrEqual(0.5);
+    } finally {
+      await test.info().attach(`${key}-reading.json`, {
+        body: JSON.stringify({
+          key,
+          keyDowns,
+          start,
+          first: await hidden(first),
+          last: await hidden(last),
+          reader: await reader.evaluate((node) => ({
+            focused: node === document.activeElement,
+            scrollLeft: node.scrollLeft,
+            clientWidth: node.clientWidth,
+            scrollWidth: node.scrollWidth,
+          })),
+        }),
+        contentType: "application/json",
+      });
+      await test.info().attach(`${key}-reading.png`, {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+    }
+    await expect(reader).toBeFocused();
+  }
+  expect(await reader.evaluate((node) => Math.abs(node.scrollLeft))).toBeLessThanOrEqual(0.5);
+  expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
+}
+
 export function registerUiOwnershipContracts() {
+  test("wide formulas reach their final term and return with horizontal arrows", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto("/lab/fixture.html?fixture=agent&state=math-content&theme=dark&font-size=18");
+    await page.locator("html[data-visual-ready]").waitFor();
+    const formulas = page.getByRole("region", { name: "Mathematical expression", exact: true });
+    await expect(formulas).toHaveCount(2);
+    const objective = formulas.first();
+    await readAcross(
+      page,
+      objective,
+      objective.locator(".katex-html .katex-base").first(),
+      objective.locator(".katex-html .katex-tag"),
+    );
+    const matrix = formulas.nth(1);
+    await readAcross(
+      page,
+      matrix,
+      matrix.locator(".katex-html .katex-base").first(),
+      matrix.locator(".katex-html .katex-base").last(),
+    );
+  });
+
+  test("an inline table reaches its last column and returns with horizontal arrows", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 1200 });
+    await page.goto("/lab/fixture.html?fixture=agent&state=narrative&theme=dark&font-size=18");
+    await page.locator("html[data-visual-ready]").waitFor();
+    const reader = page
+      .locator("[data-markdown-table]")
+      .filter({ hasText: "Strategy" })
+      .getByRole("region", { name: "Table content", exact: true });
+    const columns = reader.getByRole("row").first().getByRole("columnheader");
+    await readAcross(page, reader, columns.first(), columns.last());
+  });
+
+  test("an expanded table reaches its last column and returns with horizontal arrows", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto(
+      "/lab/fixture.html?fixture=agent&state=table-reading&theme=dark&font-size=18&sidebar=collapsed",
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const expand = page.getByRole("button", { name: "Expand table", exact: true });
+    await expand.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Table preview", exact: true });
+    const reader = dialog.getByRole("region", { name: "Table content", exact: true });
+    await expect(reader).toBeFocused();
+    const columns = reader.getByRole("row").first().getByRole("columnheader");
+    await readAcross(page, reader, columns.first(), columns.last());
+    await page.keyboard.press("Escape");
+    await expect(expand).toBeFocused();
+  });
+
   test("autosize follows content, width, font and reset after a hidden mount", async ({ page }) => {
     await page.goto("/lab/fixture.html?fixture=atoms&state=input-contracts&theme=light");
     await page.getByRole("button", { name: "Show notes" }).click();

@@ -23,7 +23,7 @@ async function formulaGeometry(formula: Locator) {
   });
 }
 
-test("wide formulas stay in their reading region with keyboard access to both ends", async ({
+test("wide formulas stay bounded and preserve notation as their reading width changes", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 900 });
