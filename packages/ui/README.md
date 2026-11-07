@@ -121,6 +121,11 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
+The controls scroll with the content when fewer than two body lines and their
+leading gap would remain in the clipped reading frame. They become sticky again
+when that reading space is available. Panel and Disclosure share this fit rule.
+Focus clearance, nested disclosures and Diff reading anchors use that same
+Panel-owned sticky boundary rather than treating flowing controls as an overlay.
 
 The panel owns its stable DOM ref; forwarded refs project that same element without
 retiring it while new children receive focus during a commit.
@@ -149,8 +154,8 @@ retained content and unmount also retire the reading witness.
 The same owner records positions after its own reveal, so a queued programmatic
 scroll event during native window animation cannot retire that reflow witness.
 
-When controls temporarily cover the entire host viewport, that witness waits for
-reflow to restore a reading frame. An explicit wheel gesture still retires it.
+When the clipped host has no reading frame, that witness waits for reflow to
+restore one. An explicit wheel gesture still retires it.
 Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal, including reflow during the press.
 The body retains the pressed target until pointerup or cancellation,

@@ -637,28 +637,33 @@ it("keeps the reading witness through its own queued scroll during native reflow
   expect(document.activeElement).toBe(field);
 });
 it.each([
+  { controlsHeight: 75, wheel: false, reveal: true },
   { controlsHeight: 100, wheel: false, reveal: true },
   { controlsHeight: 150, wheel: false, reveal: true },
   { controlsHeight: 150, wheel: true, reveal: false },
 ])(
-  "retains viewport space recovery with controls=$controlsHeight and wheel=$wheel",
+  "reveals past oversized controls and retains reflow follow with controls=$controlsHeight and wheel=$wheel",
   ({ controlsHeight, wheel, reveal }) => {
     const { unit, field, viewport } = scene("unit", true);
     const controls = field
       .closest('[data-slot="panel"]')!
       .querySelector('[data-slot="panel-controls"]')!;
+    const body = field.closest<HTMLElement>('[data-slot="panel-body"]')!;
+    body.style.lineHeight = "20px";
+    body.parentElement!.style.rowGap = "10px";
     rectangles.set(viewport, new DOMRect(0, 200, 800, 100));
     rectangles.set(controls, new DOMRect(0, 200, 800, controlsHeight));
     rectangles.set(unit, new DOMRect(0, 210, 300, 200));
     rectangles.set(field, new DOMRect(0, 220, 200, 100));
     act(() => field.focus());
-    expect(revealed).toEqual([]);
+    expect(revealed).toEqual([field]);
+    rectangles.set(field, new DOMRect(0, 200, 200, 100));
     viewport.scrollTop = 80;
     if (wheel) fireEvent.wheel(viewport, { deltaY: 80 });
     fireEvent.scroll(viewport);
     rectangles.set(controls, new DOMRect(0, 200, 800, 50));
     resize(controls);
-    expect(revealed).toEqual(reveal ? [field] : []);
+    expect(revealed).toEqual(reveal ? [field, field] : [field]);
     expect(document.activeElement).toBe(field);
   },
 );

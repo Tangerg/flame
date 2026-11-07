@@ -13,7 +13,7 @@ import {
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
 import { useContentVisible } from "./content-visibility";
-import { readingUnitFor } from "./reading-unit";
+import { fitsStickyReadingFrame, readingUnitFor } from "./reading-unit";
 import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
@@ -67,7 +67,7 @@ const styles = stylex.create({
     minWidth: 0,
   },
   controls: {
-    position: "sticky",
+    position: { default: "sticky", ":is([data-controls-static])": "static" },
     insetBlockStart: 0,
     zIndex: "var(--layer-card)",
     display: "grid",
@@ -304,10 +304,26 @@ export function Panel({
   } | null>(null);
   const visible = useContentVisible();
   const hasControls = Boolean(controls);
+  const stickyControlsBounds = useCallback(() => {
+    const panel = panelRef.current;
+    const controls = controlsRef.current;
+    const body = bodyRef.current;
+    if (!panel || !controls || !body) return null;
+    const bounds = controls.getBoundingClientRect();
+    const viewport = panelViewport(panel);
+    return fitsStickyReadingFrame({
+      headerHeight: bounds.height,
+      frameHeight: viewport.bottom - viewport.top,
+      bodyLineHeight: Number.parseFloat(getComputedStyle(body).lineHeight) || 0,
+      bodyInset:
+        Number.parseFloat(getComputedStyle(body.parentElement!).rowGap) || 0,
+    })
+      ? bounds
+      : null;
+  }, []);
   const bodyFocusFrame = useCallback(
     (target: Element | null) => {
       const panel = panelRef.current;
-      const controls = controlsRef.current;
       const body = bodyRef.current;
       if (!visible || !panel || !target || !body?.contains(target)) return null;
       const viewport = panelViewport(panel);
@@ -318,10 +334,8 @@ export function Panel({
           ),
         ) || 0;
       const focusTop =
-        Math.max(
-          viewport.top,
-          controls?.getBoundingClientRect().bottom ?? viewport.top,
-        ) + stickyHeaderHeight;
+        Math.max(viewport.top, stickyControlsBounds()?.bottom ?? viewport.top) +
+        stickyHeaderHeight;
       const focusUnit = readingUnitFor(target, body, (unit) => {
         const scrollMargin =
           Number.parseFloat(getComputedStyle(unit).scrollMarginBlockStart) || 0;
@@ -338,7 +352,7 @@ export function Panel({
         unit: focusUnit,
       };
     },
-    [visible],
+    [visible, stickyControlsBounds],
   );
   const keepBodyFocusVisible = useCallback(
     (target: Element | null) => {
@@ -367,29 +381,35 @@ export function Panel({
   const panelLayout = useMemo(
     () => ({
       controlsRef: hasControls ? controlsRef : null,
+      stickyControlsBounds,
       keepBodyFocusVisible,
     }),
-    [hasControls, keepBodyFocusVisible],
+    [hasControls, keepBodyFocusVisible, stickyControlsBounds],
   );
+  const measureControls = useCallback(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const bounds = stickyControlsBounds();
+    panel.style.setProperty(
+      "--panel-controls-height",
+      `${bounds?.height ?? 0}px`,
+    );
+    controlsRef.current?.toggleAttribute("data-controls-static", !bounds);
+  }, [stickyControlsBounds]);
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
     const controls = controlsRef.current;
-    const measure = () => {
-      panel.style.setProperty(
-        "--panel-controls-height",
-        `${controls?.getBoundingClientRect().height ?? 0}px`,
-      );
-    };
-    measure();
+    measureControls();
     if (!controls) return;
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(measureControls);
     observer.observe(controls, { box: "border-box" });
     return () => {
       observer.disconnect();
       panel.style.setProperty("--panel-controls-height", "0px");
+      controls.removeAttribute("data-controls-static");
     };
-  }, [hasControls]);
+  }, [hasControls, measureControls]);
   useLayoutEffect(() => {
     const panel = panelRef.current;
     const body = bodyRef.current;
@@ -400,6 +420,7 @@ export function Panel({
         "--reading-frame-height",
         `${Math.max(0, viewport.bottom - viewport.top)}px`,
       );
+      measureControls();
     };
     measure();
     const document = panel.ownerDocument;
@@ -484,7 +505,13 @@ export function Panel({
       retire();
       clearPress();
     };
-  }, [visible, hasControls, bodyFocusFrame, keepBodyFocusVisible]);
+  }, [
+    visible,
+    hasControls,
+    bodyFocusFrame,
+    keepBodyFocusVisible,
+    measureControls,
+  ]);
   return (
     <section
       {...props}

@@ -221,6 +221,174 @@ for (const theme of ["light", "dark"]) {
     });
   });
 
+  for (const locale of ["de", "zh"] as const) {
+    const labels =
+      locale === "de"
+        ? {
+            composer: "Nachrichteneditor",
+            showFiles: "Geänderte Dateien anzeigen",
+            filter: "Dateien filtern",
+            openMain: "In voller Breite öffnen",
+            layout: "Diff-Layout",
+            reader: "Scrollbarer Diff für src/generated/module-199.ts",
+            back: "Zurück zu geänderten Dateien",
+          }
+        : {
+            composer: "消息输入框",
+            showFiles: "显示已更改文件",
+            filter: "筛选文件",
+            openMain: "在主区打开",
+            layout: "Diff 布局",
+            reader: "src/generated/module-199.ts 的可滚动 diff",
+            back: "返回已更改文件",
+          };
+    test(`a zoomed full-width Diff reader paints its final source line below its controls in ${theme} ${locale}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 1472, height: 900 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=18&locale=${locale}&review-files=200`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      const draft = "Entwurf beim Diff-Lesen behalten. Keep this diff reading draft.";
+      const composer = page.getByRole("textbox", { name: labels.composer, exact: true });
+      await composer.fill(draft);
+      const view = page.locator('[data-dock-view-id="package:visual:diff"]');
+      await view.getByRole("button", { name: labels.showFiles, exact: true }).click();
+      const filter = view.getByRole("searchbox", { name: labels.filter, exact: true });
+      await filter.fill("module-19");
+      await expect(view.locator("[data-diff-file]")).toHaveCount(10);
+      const readAt = (await view
+        .locator('[data-slot="panel-controls"] time')
+        .getAttribute("datetime"))!;
+      await view.locator('[data-diff-file][title="src/generated/module-199.ts"]').press("Enter");
+      await expect(view.getByRole("heading", { name: "module-199.ts", exact: true })).toBeFocused();
+
+      await page.getByRole("button", { name: labels.openMain, exact: true }).click();
+      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      const body = page.locator('[data-slot="workspace-view-body"]:visible');
+      const controls = body.locator('[data-slot="panel-controls"]');
+      const heading = body.getByRole("heading", { name: "module-199.ts", exact: true });
+      const reader = body.getByRole("region", {
+        name: labels.reader,
+        exact: true,
+      });
+      await expect(heading).toBeVisible();
+
+      await page.setViewportSize({ width: 373, height: 243 });
+      await heading.focus();
+      await page.keyboard.press("Tab");
+      await expect(body.getByRole("combobox", { name: labels.layout, exact: true })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(reader).toBeFocused();
+
+      // Wide source scrolls horizontally, so only the visible part of the line must be hit-testable.
+      const finalLine = () =>
+        reader
+          .locator("tbody code")
+          .last()
+          .evaluate((code) => {
+            const box = (rect: DOMRect) => ({
+              top: rect.top,
+              bottom: rect.bottom,
+              left: rect.left,
+              right: rect.right,
+            });
+            const viewport = code.closest('[data-slot="workspace-view-body"]')!;
+            const body = viewport.getBoundingClientRect();
+            const well = code.closest('[role="region"]')!.getBoundingClientRect();
+            const line = code.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(code);
+            const glyphs = range.getBoundingClientRect();
+            const left = Math.max(glyphs.left, well.left, body.left, 0);
+            const right = Math.min(glyphs.right, well.right, body.right, innerWidth);
+            const hits = [line.top + 2, (line.top + line.bottom) / 2, line.bottom - 2].map((y) => {
+              const hit = document.elementFromPoint((left + right) / 2, y);
+              return {
+                y,
+                code: !!hit && code.contains(hit),
+                slot: hit?.closest("[data-slot]")?.getAttribute("data-slot") ?? null,
+              };
+            });
+            const controls = viewport.querySelector('[data-slot="panel-controls"]');
+            return {
+              window: { width: innerWidth, height: innerHeight },
+              body: box(body),
+              scroll: {
+                top: viewport.scrollTop,
+                range: viewport.scrollHeight - viewport.clientHeight,
+              },
+              controls: controls && box(controls.getBoundingClientRect()),
+              text: code.textContent,
+              line: box(line),
+              visible: { left, right },
+              hits,
+            };
+          });
+      for (const [step, height] of [243, 720, 243].entries()) {
+        await page.setViewportSize({ width: 373, height });
+        await page.keyboard.press("End");
+        let geometry: Awaited<ReturnType<typeof finalLine>>;
+        try {
+          await expect
+            .poll(() =>
+              body.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
+            )
+            .toBeLessThanOrEqual(1);
+        } finally {
+          const screenshot = await page.screenshot({
+            animations: "disabled",
+            caret: "hide",
+            scale: "device",
+          });
+          geometry = await finalLine();
+          await testInfo.attach(`diff-final-line-${theme}-${locale}-${step}-${height}.json`, {
+            body: JSON.stringify(geometry, null, 2),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`diff-final-line-${theme}-${locale}-${step}-${height}.png`, {
+            body: screenshot,
+            contentType: "image/png",
+          });
+        }
+        expect(geometry.text).toBe("export const value24 = compute(199, 24); // after");
+        expect(geometry.line.top).toBeGreaterThanOrEqual(Math.max(geometry.body.top, 0) - 0.5);
+        expect(geometry.line.bottom).toBeLessThanOrEqual(
+          Math.min(geometry.body.bottom, geometry.window.height) + 0.5,
+        );
+        expect(geometry.visible.right - geometry.visible.left).toBeGreaterThan(0);
+        expect(
+          geometry.hits.every((hit) => hit.code),
+          JSON.stringify(geometry.hits),
+        ).toBe(true);
+        if (height === 720) {
+          for (const control of [
+            body.getByRole("button", { name: labels.back, exact: true }),
+            body.getByRole("combobox", { name: labels.layout, exact: true }),
+            heading,
+          ]) {
+            await expect(control).toBeInViewport({ ratio: 1 });
+          }
+        }
+        await expect(reader).toBeFocused();
+      }
+
+      await expect(controls.locator("time")).toHaveAttribute("datetime", readAt);
+      await page.keyboard.press("Escape");
+      await expect(body.getByRole("searchbox", { name: labels.filter, exact: true })).toHaveValue(
+        "module-19",
+      );
+      await expect(body.locator("[data-diff-file]")).toHaveCount(10);
+      const current = body.locator('[data-diff-file][aria-current="true"]');
+      await expect(current).toHaveAttribute("title", "src/generated/module-199.ts");
+      await expect(current).toBeFocused();
+      await expect(
+        page.getByRole("textbox", { name: labels.composer, exact: true, includeHidden: true }),
+      ).toHaveValue(draft);
+    });
+  }
+
   test(`Diff preserves source columns across row kinds and horizontal scrolling in ${theme}`, async ({
     page,
   }) => {

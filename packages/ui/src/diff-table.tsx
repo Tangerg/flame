@@ -108,7 +108,7 @@ interface ReadingAnchor {
 }
 function readingViewport(
   body: HTMLElement,
-  controls: Element | null,
+  controls: DOMRect | null,
 ): ReadingViewport {
   const document = body.ownerDocument;
   const viewport: ReadingViewport = {
@@ -140,11 +140,7 @@ function readingViewport(
   const root = document.scrollingElement;
   if (!viewport.scroller && root && root.scrollHeight > root.clientHeight)
     viewport.scroller = root;
-  if (controls)
-    viewport.top = Math.max(
-      viewport.top,
-      controls.getBoundingClientRect().bottom,
-    );
+  if (controls) viewport.top = Math.max(viewport.top, controls.bottom);
   return viewport;
 }
 interface DiffRowsProps {
@@ -178,7 +174,7 @@ class DiffRows extends Component<
       return null;
     const viewport = readingViewport(
       body,
-      this.context?.controlsRef?.current ?? null,
+      this.context?.stickyControlsBounds() ?? null,
     );
     if (
       !viewport.scroller ||
@@ -223,7 +219,7 @@ class DiffRows extends Component<
     if (!cell) return;
     const viewport = readingViewport(
       body,
-      this.context?.controlsRef?.current ?? null,
+      this.context?.stickyControlsBounds() ?? null,
     );
     if (viewport.scroller !== anchor.scroller) return;
     anchor.scroller.scrollTop +=

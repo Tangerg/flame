@@ -34,7 +34,7 @@
 24 packages/runtime-client/src/transports/http.ts:drainStream
 29 packages/runtime-client/src/transports/http.ts:sendRequest
 30 packages/ui/src/button.tsx:dress
-22 packages/ui/src/disclosure.tsx:<anonymous>
+21 packages/ui/src/disclosure.tsx:<anonymous>
 26 plugins/computer/backend/browser.ts:validateBrowser
 23 plugins/computer/backend/engineOwnership.ts:readRecord
 21 plugins/computer/backend/engineProcess.ts:environment

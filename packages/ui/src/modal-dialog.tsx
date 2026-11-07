@@ -145,6 +145,7 @@ export function ModalDialog({
   const bodyLayout = useMemo(
     () => ({
       controlsRef: null,
+      stickyControlsBounds: () => null,
       keepBodyFocusVisible(target: Element | null) {
         const body = bodyRef.current;
         if (!body?.isConnected || !target || !body.contains(target)) return;

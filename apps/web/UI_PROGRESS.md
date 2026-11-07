@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up, without claiming one clean full-suite invocation. The latest form follow-up completes failed-submit focus and field visibility in short viewports: all four strengthened form cases and seven Foundation unit checks pass. All **24 final browser images** and **15 native captures** receive review, including five preliminary native diagnostics. EN and ZH qualify invalid/valid submission focus at **200%** and repeated validation at **300%**. See **Failed-submit focus and complete field reveal (2026-11-08)**. Native shortcut follow-up reproduces unconfirmed Chinese input after a single injected key; confirming it retains Name focus and permits normal Cmd+Q exit. See **Native shortcut qualification and unconfirmed input (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest shared Panel follow-up passes **219 selected Lab cases**, with all **650 final browser images** reviewed. Actual Wails checks qualify Chinese/dark and German/light reading at **200% and 300%**, including return to a retained conversation draft. See **Sticky controls and readable content at native zoom (2026-11-08)**. Earlier full-baseline and focused results retain their original source scope; this shared change does not claim a new complete-suite pass. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -443,6 +443,93 @@ check runs after output restoration. The private app is unregistered, its server
 exits, six Library paths return to absence and three protected helper roots keep
 their original empty state and identities. Evidence is preserved in memory before
 guarded QA-root retirement. Continue actual-task qualification through this Lab.
+
+### Sticky controls and readable content at native zoom (2026-11-08)
+
+Actual German **300%** reading exposes Panel controls covering the complete Diff
+body. Keeping controls sticky whenever their height is smaller than the viewport
+repairs German, but Chinese still leaves only **14.781 px** below its
+**182.219 px** controls in a **197 px** clipped frame. The final code line remains
+covered. Both Chinese theme regressions fail all three code hit tests before the
+reading-space repair. These candidate captures remain diagnostic evidence.
+
+Shared `Panel` now returns its controls to normal flow whenever fewer than two
+body lines and their leading gap would remain in the clipped reading frame.
+`reading-unit.ts` shares the existing Disclosure reading-space rule; Panel uses
+actual body line height and its content gap. Space recovery restores sticky
+controls. Panel focus clearance, nested Disclosure sizing and Diff reading anchors
+consume the same Panel-owned sticky boundary, so flowing controls are not counted
+as an overlay. ModalDialog supplies its existing independent body boundary.
+The repair reuses the existing observations and stable callbacks without adding
+React state, scroll listeners, a second scroll viewport or a plugin override.
+Deliberate wheel retirement and pointer activation retain their existing meaning.
+Disclosure complexity decreases **22 → 21** and its baseline is tightened.
+
+Four regressions extend the existing Lab content-layout file: both themes in
+German and Chinese at **18 px**. They open a real 200-file overview, filter ten
+files, enter the final file and move the same reader through **373×243 →
+373×720 → 373×243 px**. End reaches the actual host bottom. A rendered screenshot
+precedes geometry sampling; the complete last line must be vertically visible,
+have visible text width and pass three actual code hit tests. Wide source retains
+horizontal scrolling. The tall frame keeps Back, filename and layout visible.
+Focus, accepted read time, filter, current row and Composer draft survive the
+complete return path. A bounded Claude Code CLI task supplies the initial German
+test edits in **173.293 s**; primary strengthens rendered-state sampling, adds
+Chinese coverage and implements the shared repair. No story, spec file,
+configuration, scenario registry or visual runner is added.
+
+Final qualification passes **219 / 219** in **322.779 s**, without skips, retries
+or flaky results: 160 catalog checks and 59 Lab/affected interaction cases,
+including existing native-engine WebKit coverage. All **650 image attachments**
+receive review: 644 match previously reviewed bytes; four new Chinese originals
+cover the six changed captures, including identical first/final short frames.
+The earlier **1,274-case** baseline retains its original source scope. This
+selection is not a new complete-suite or whole-product acceptance claim.
+
+Final shared UI checks pass in **8.749 s**, including **254 unit tests** and the
+independent offline packed consumer. Web frontend passes **431 files / 4,702
+tests** in **94.811 s**. All eleven selected Web static stages pass. Complexity
+still reports the pre-existing, unchanged
+`plugins/providers/component/providerRow.tsx:ProviderRow` score **34** against
+its recorded **31**; no threshold is raised. `make check-native` passes in
+**23.918 s**, including the production Wails build and Desktop test/vet/build;
+the existing macOS object-version linker warnings remain. Plugin resource checks
+pass in **1.854 s**. The final Lab build passes in **2.961 s**, and all **487**
+asset hashes match the bytes used by the final native profiles.
+
+Actual Wails v3.1.0 uses the production host, menus and zoom implementation with
+a private identity/home and closed Runtime endpoint. Chinese/dark and
+German/light at **18 px** qualify natural keyboard navigation through the filtered
+last file, full-width reading, End and horizontal arrows at **200% and 300%**.
+At 300%, controls scroll away and the final context, removed and added lines are
+readable. Chinese wheel scrolling reads earlier lines without losing the reader;
+the layout popup consumes Escape and restores its trigger. Returning to **200%**
+restores sticky context and retained reader focus. Escape returns to the focused
+last row with the original ten-file filter. Clear restores search focus; closing
+the main view returns to the conversation with the exact padded draft, and
+pasted continuation still edits that draft. German additionally qualifies the
+**320 px** Dock, wrapping comparison and reader controls. Its wrapped Refresh
+starts at the leading edge as specified by the existing Toolbar contract.
+
+All **29 native captures** are reviewed: 13 final and 16 baseline/candidate
+diagnostics. Six wrapped native runs exit normally; an initial unsupported
+`zh-CN` fixture URL is excluded as setup error, and the first Chinese candidate
+is explicitly excluded from final acceptance. Better-layout and
+better-accessibility guide reading space and reachable controls, with the existing
+Disclosure rule providing the local precedent. Physical IME, VoiceOver, RTL,
+optional measurements, live Runtime/provider work and the full Runtime suite are
+not run for this shared presentation change.
+
+After functional verification, all **12 output/cache roots** return to their
+captured bytes, modes and directory state or absence. The comparison covers
+**6,710 non-Markdown inputs**, with only nine intended source/test/baseline files
+changed, all **46 native inputs**, and the unchanged primary checkout. No
+functional check runs against restored older outputs. The private app is
+unregistered and its server exits; six Library paths and ordinary temp return to
+absence, and three protected helper roots retain their original empty identities
+and flags. Evidence is preserved in memory before guarded QA-root retirement.
+Normal hooks and an ordinary push to `main` deliver this batch. Continue actual
+task qualification through the same Lab.
 
 ### Qualification and limits
 

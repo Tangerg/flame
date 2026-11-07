@@ -12,6 +12,7 @@ import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { layout, space, surface, type } from "./tokens.stylex";
 import { PanelLayoutContext } from "./panel-layout";
+import { fitsStickyReadingFrame } from "./reading-unit";
 
 const styles = stylex.create({
   root: {
@@ -162,12 +163,16 @@ export function Disclosure({
         : 0;
       const available =
         scrollViewport.clientHeight -
-        (controls?.getBoundingClientRect().height ?? 0);
+        (panelLayout.stickyControlsBounds()?.height ?? 0);
       const fits =
         content !== null &&
-        height > 0 &&
         lineHeight > 0 &&
-        height + bodyInset + 2 * lineHeight <= available;
+        fitsStickyReadingFrame({
+          headerHeight: height,
+          frameHeight: available,
+          bodyLineHeight: lineHeight,
+          bodyInset,
+        });
       const nextHeight = fits ? `${height}px` : "";
       const changed =
         (content?.style.getPropertyValue("--disclosure-header-height") ??

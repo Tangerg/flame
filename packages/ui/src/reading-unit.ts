@@ -17,3 +17,21 @@ export function readingUnitFor(
     units.push(label);
   return units.find(fits) ?? target;
 }
+
+export function fitsStickyReadingFrame({
+  headerHeight,
+  frameHeight,
+  bodyLineHeight,
+  bodyInset,
+}: {
+  headerHeight: number;
+  frameHeight: number;
+  bodyLineHeight: number;
+  bodyInset: number;
+}): boolean {
+  return (
+    headerHeight > 0 &&
+    headerHeight < frameHeight &&
+    headerHeight + bodyInset + 2 * bodyLineHeight <= frameHeight
+  );
+}
