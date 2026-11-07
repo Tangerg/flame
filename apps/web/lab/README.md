@@ -262,6 +262,11 @@ follow actual overflow and preserve keyboard reading at both ends; a natural
 table can need scrolling after a Dock resize. Captures retain geometry alongside
 paint, and valid resize-to-fit coverage remains in the same scenario file.
 
+Recorded-result scroll checks wait for the preceding outer wheel and resize to
+settle before recording the parent position. Its position must stay unchanged
+over eight animation frames; the later inner gesture still requires exact equality
+and scrolling at the result boundary must continue through the transcript.
+
 The shared UI ownership scenarios also qualify keyboard reading at both edges
 in Chromium and WebKit: wide formulas, inline tables and expanded tables.
 They hold and repeat horizontal arrows, release the key even on failure, and
@@ -318,7 +323,7 @@ for alignment, hierarchy, clipping and states. A passing automated check establi
 the listed rendering contracts, not complete visual acceptance or live Runtime
 behavior. Native focus, gestures and zoom still need actual Wails qualification.
 
-The current qualification results and unresolved migrated-suite failures are
+The current qualification results, coverage limits and remaining visual findings are
 recorded in [`UI_PROGRESS.md`](../UI_PROGRESS.md#component-lab-and-ui-visual-verification-2026-11-06).
 
 ```sh

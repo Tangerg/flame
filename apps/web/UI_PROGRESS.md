@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; qualification remains partial. The same catalog retains **44 stories**. The latest follow-up checks complete short Composer drafts through wrapping, sidebar changes and continued editing. The selected **25 browser checks pass**; both new WebKit cases pass again with stricter horizontal-fit and full-visibility assertions. All **53 selected final browser images and 12 native captures** are reviewed, including one diagnostic Chinese typing attempt. Typecheck, lint and formatting pass. Native EN and ZH at **200%** do not reproduce the earlier tail-only capture, so this follow-up preserves production input behavior and adds verification coverage. See **Interactive Agent layout and painted capture readiness (2026-11-07)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete. The same catalog retains **44 stories**. The current **1,274 non-performance cases** have passing results across the baseline and focused follow-up; this is not one clean full-suite invocation. The sole baseline failure was premature scroll-position sampling and is repaired without weakening the inner-scroll assertion. All **885 baseline images** receive overview review through **222 contact sheets**, with additional focused and native inspection. That review identifies misplaced Name feedback in the Lab form composition at narrow widths; this remains the next repair. See **Complete Lab baseline and stationary scroll sampling (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -196,6 +196,68 @@ roots remain empty with their captured identities and flags. The app is
 unregistered and the owned server exits. Evidence is preserved in memory before
 guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
 the coverage; continue visual qualification through this same Lab.
+
+### Complete Lab baseline and stationary scroll sampling (2026-11-08)
+
+The complete current non-performance collection runs through the existing Lab
+configuration. The interaction baseline reports **1,100 passed / 1 failed** in
+**3,889.146 s**; catalog and gallery checks pass **173 / 173** in **239.339 s**.
+There are no retries, skips or flaky results. The combined collection contains
+**1,274 unique cases**. Later focused results qualify the repaired failure;
+they do not turn the original invocation into a clean pass.
+
+The failing recorded-result case samples its parent immediately after an outer
+wheel and viewport resize. An 18-frame probe with no new wheel records the
+parent moving **229 → 222** while the inner result remains at zero. This is
+evidence of an unsettled baseline, not demonstrated production scroll leakage.
+`toolStatusReading.browser.spec.ts` now waits until the parent stays unchanged
+over eight animation frames before starting the inner gesture. Exact parent
+equality during that gesture and transcript continuation at the result boundary
+remain required. No production layout, event, reading-follow or Runtime owner
+changes. The final spec passes **5 / 5** in **16.837 s**; three predetermined
+repetitions of the affected case pass **3 / 3** in **14.440 s**, without retries,
+skips or flaky results. The repetitions are one unique case.
+
+All **273 interaction images** and **612 catalog images** receive overview review
+through all **222 contact sheets**. This includes the original failed case's
+diagnostic image and does not claim full-resolution reading of every image.
+All five final focused images and six repeat images are also reviewed, with
+hash matches avoiding duplicate inspection. Full-resolution inspection confirms
+one remaining form defect in both English/light and Chinese/dark/18 px at
+**390 px**: Name feedback follows the Review checkbox. `FormExample` places
+the error after the complete row; shared `FormRow` does not reorder it. The
+next bounded repair must group feedback with its field while retaining the
+input's Name accessible name, description and validation lifecycle. Passing
+catalog checks do not establish complete visual acceptance.
+
+Actual Wails v3.1.0 inspection uses the same **487 Lab assets**, production
+native host/menu/zoom, and a private identity/home. EN/light/14 px and
+ZH/dark/18 px verify fitting results, native **200%** zoom, inner scrolling,
+transcript continuation, keyboard Find, Escape back to the Result reader, and
+the exact retained Composer draft followed by a real `x` key. All **21 native
+captures** are reviewed, including early wheel-placement diagnostics. Both
+intended runs exit normally. An AX query after the English quit accidentally
+relaunches the private app without its fixture environment; that diagnostic
+window is closed and is not a product failure. VoiceOver, physical IME, RTL,
+live Runtime/provider interaction and optional measurements remain unverified.
+
+Typecheck, lint and formatting pass; the private native build passes in
+**2.138 s**. Full Web/unit, Runtime and native gates are not rerun for this
+test-only timing repair. A read-only Claude Code CLI analysis reaches its
+**180.046 s** timeout without a completed report; primary completes the
+diagnosis and verification. Better-layout and better-accessibility guide
+scroll ownership, readable results and retained authoring.
+
+After functional checks, all **12 output/cache roots** return to original bytes,
+modes and directory state or absence. The comparison covers **6,710 non-Markdown
+inputs**, with only the intended scroll spec changed, all **46 native inputs**,
+and the unchanged primary checkout. No functional check runs against restored
+older outputs. The app is unregistered, its owned server stops, six Library
+paths and ordinary temp return to absence, and three protected helper roots
+retain their original empty identities and flags. Evidence is preserved in
+memory before guarded QA-root retirement. Normal hooks and an ordinary push to
+`main` deliver the repair. Continue with the observed form grouping defect in
+this same Lab; do not add another visual runner.
 
 ### Qualification and limits
 

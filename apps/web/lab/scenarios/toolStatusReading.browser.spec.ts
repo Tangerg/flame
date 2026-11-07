@@ -259,7 +259,24 @@ test("recorded results scroll internally when bounded and continue through the t
     boundedBounds.x + boundedBounds.width / 2,
     boundedBounds.y + boundedBounds.height / 2,
   );
-  const beforeInnerScroll = await transcript.evaluate((node) => node.scrollTop);
+  let beforeInnerScroll = 0;
+  await expect
+    .poll(
+      async () => {
+        const positions = await transcript.evaluate(async (node) => {
+          const frames = [node.scrollTop];
+          for (let frame = 0; frame < 8; frame += 1) {
+            await new Promise(requestAnimationFrame);
+            frames.push(node.scrollTop);
+          }
+          return frames;
+        });
+        beforeInnerScroll = positions[positions.length - 1]!;
+        return positions.every((top) => top === beforeInnerScroll);
+      },
+      { message: "the preceding outer wheel and resize must settle before the inner gesture" },
+    )
+    .toBe(true);
   await page.mouse.wheel(0, 5);
   await expect.poll(() => result.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   expect(await transcript.evaluate((node) => node.scrollTop)).toBe(beforeInnerScroll);
