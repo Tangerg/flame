@@ -48,11 +48,14 @@ import "@/styles/globals.css";
 import { loadPluginsForTest } from "@/test/kernel";
 import { VISUAL_NOW } from "./agentFixtureFacts";
 import { fixtureMotionScale } from "./motion";
+import { installFixtureClock } from "./fixtureClock";
 type FixtureTheme = "light" | "dark";
 
 const VISUAL_CLOCK_STARTED_AT = performance.now();
 
-Date.now = () => VISUAL_NOW + Math.floor(performance.now() - VISUAL_CLOCK_STARTED_AT);
+const restoreFixtureClock = installFixtureClock(
+  () => VISUAL_NOW + Math.floor(performance.now() - VISUAL_CLOCK_STARTED_AT),
+);
 
 let currentRuntimeClient: FlameClient | undefined;
 export const visualClient = createVisualClient(() => {
@@ -466,6 +469,7 @@ root.render(<FixturePresentation>{node}</FixturePresentation>);
 const dispose = () => {
   root.unmount();
   void visualClient.dispose();
+  restoreFixtureClock();
 };
 window.addEventListener("beforeunload", dispose);
 disposeOnHmr(() => {

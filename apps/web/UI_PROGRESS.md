@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **96** tracked browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest **127 related Workspace/shared-control cases pass across stages**, and all **40 current Workspace captures** are reviewed. Full UI and Web checks pass, including **431 Web files / 4,743 tests**. Full plugin and supported native checks also pass. Actual Wails review qualifies panel navigation, Schedule model selection, tooltip/tab pointer access, the working-tree action name and exact return to continued drafts, including native 200%. See **Workspace navigation and shared control regression (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. The latest expanded invocation passes **142 related interaction tests**; **154 protocol-fixture catalog captures** and **12 corrected Computer captures** are reviewed. The full Web check passes **432 files / 4,751 tests**, and supported native checks pass. Actual Wails review confirms the coherent fixture calendar, refresh and exact return to continued drafts in English and Chinese, including native 200%. See **Coherent fixture calendar and visible outcome evidence (2026-11-07)** for scope and limits. The entire migrated interaction suite and whole-product visual acceptance remain unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -144,6 +144,73 @@ Continue using this same lab to distinguish obsolete expectations from actual
 accessibility, focus and layout failures. Repair real shared contracts before
 updating their checks; retain assertions for current behavior. Do not create a
 second fixture app, browser configuration or scenario registry.
+
+### Coherent fixture calendar and visible outcome evidence (2026-11-07)
+
+The Lab's `Date.now()` used the recorded calendar while argument-free
+`new Date()` and `Date()` still read the system calendar. The production Diff
+correctly records client acceptance with `new Date().toISOString()`; the defect
+belongs to the fixture. Two new same-Lab checks fail in both themes before the
+repair and pass afterward, preserving refreshed acceptance times and the exact
+Composer draft. No production timestamp or Runtime contract changes.
+
+`fixtureClock.ts` gives these three Date reads the existing advancing
+`VISUAL_NOW` plus elapsed-performance clock. Explicit dates, parsing, UTC,
+native instances and formatting remain native. Timers, performance and animation
+frames are unchanged. The root retires its clock synchronously after unmounting
+and initiating client disposal, so asynchronous plugin joins do not leave an old
+clock installed during HMR. Eight unit checks pass. This coherent calendar does
+not freeze interaction timing or make temporal text pixel-identical.
+
+The expanded same-Lab interaction invocation passes **142 tests**. Capture checks
+for all eight existing protocol-fixture stories pass **16 tests**, covering both
+English/light/14 px and Chinese/dark/18 px; all **154 images** are reviewed through
+13 contact sheets. Component-only preview documents do not install this clock.
+There is still one catalog, fixture entry and browser configuration.
+
+Review of the expanded invocation's 51 images rejects four Computer outcome
+captures: element screenshots include blank content clipped outside the enclosing
+ScrollArea. The checks now reveal the original operation text and recorded image
+figure, require complete viewport visibility for the text, image and caption,
+and capture the actual viewport. All **5 Computer tests** and **12 replacement
+captures** pass and are reviewed. A first candidate's four failures expose a
+relative-locator error in the new check; correcting its scope resolves them.
+No console layout override or weaker visibility assertion is added. Its existing
+1-by-1 image carrier does not qualify representative desktop-image quality.
+
+Actual Wails v3.1.0 uses the current built Lab with the real DesktopHost, menu
+and zoom in the private app/data identity. English/light/14 px and
+Chinese/dark/custom Purple/18 px confirm calendar-derived read times and refresh,
+then 20 native Zoom In increments reach 200% from Actual Size. Full-width Diff
+remains readable, Refresh and layout keyboard focus remain reachable, and closing
+the reader retains each mixed-language draft for continued editing. All seven
+separate screenshot/AX records are reviewed. The initial English capture
+qualifies the clock only; mixed-draft evidence follows corrected clipboard paste.
+Synthetic Chinese typing is not IME qualification. Both runs exit normally and
+native zoom is restored.
+
+The full **Web check passes 432 files / 4,751 tests**, including Runtime
+integration and the subsequent package guards and production build. Supported
+**make check-native passes** Desktop test/vet/build and Wails packaging. Existing
+macOS linker warnings remain. The root complexity check reports only unchanged
+ProviderRow 31-to-34 growth; its threshold is not raised. The bounded Claude Code
+CLI supplies the initial clock implementation; primary review corrects its
+disposal timing and completes the regressions and verification.
+
+The owned server has exited and the private app is unregistered. Six private
+Library paths and the ordinary native temp root return to absence. Three
+pre-existing helper roots retain their identities and modes; only two new empty
+Networking children are removed. All twelve output/cache roots return to their
+original contents and modes or absence, including the older UI build. Evidence
+is retained in memory before retiring qualification files. No functional checks
+run against restored outputs. The primary checkout, including go.work.sum,
+remains unchanged.
+
+The whole migrated interaction suite and whole-product visual acceptance remain
+unfinished. This batch does not qualify live Runtime business execution,
+VoiceOver, native IME or optional performance measurements. The next coverage
+gap is representative recorded media in the existing Computer fixture; its
+minimal image currently proves transport and presentation presence only.
 
 ### Workspace navigation and shared control regression (2026-11-07)
 

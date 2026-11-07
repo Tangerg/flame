@@ -135,9 +135,16 @@ The parent binds each message to the exact active iframe, origin and instance ID
 before accepting it. There is no inbound command channel. Listener, pointer,
 animation-frame, observer and preview lifetimes retire with their owner.
 
-The lab has no virtual animation clock. Normal/reduced motion uses the production
-motion preference and the platform's reduced-motion setting. Recorded business
-fixtures retain their existing clock contract.
+Recorded business fixtures use one advancing calendar: `Date.now()`, `new Date()`
+and `Date()` start from `VISUAL_NOW` and advance with elapsed `performance.now()`.
+Explicit date arguments, parsing and native Date instances retain their normal
+behavior. The fixture restores its captured Date constructor when its root
+retires, including HMR. Acceptance times can still differ with interaction timing;
+this contract does not make temporal text pixel-identical across captures.
+
+The lab has no virtual animation clock. Timers, `performance.now()` and animation
+frames remain native. Normal/reduced motion uses the production motion preference
+and the platform's reduced-motion setting.
 
 ## Extend
 
@@ -230,6 +237,11 @@ physical trigger while the remaining control list changes, then verifies its
 expanded state and any controlled panel. The same report records every opened
 control and captures both ends of the transcript. Session and Composer menus
 are outside this expansion path.
+
+Computer outcome checks reveal the original operation text, then the recorded
+image figure and caption, asserting complete viewport visibility before capturing
+the actual page viewport. A screenshot of a long panel clipped by its enclosing
+ScrollArea is not evidence that the outcome is visible.
 
 The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
 attachment record exact inputs and reproducible preview URLs. The verifier waits

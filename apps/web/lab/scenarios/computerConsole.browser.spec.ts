@@ -66,15 +66,22 @@ for (const theme of ["light", "dark"] as const) {
       const record = history.getByRole("button", { name: /^[a-f0-9-]{36}$/ });
       await expect(record).toHaveCount(1);
       await record.click();
-      await expect(
-        panel.getByText("The original isolated fixture operation completed.", { exact: true }),
-      ).toBeVisible();
-      await expect(panel.getByRole("img", { name: "Captured image 2" })).toBeVisible();
+      const original = panel.getByText("The original isolated fixture operation completed.", {
+        exact: true,
+      });
+      await original.scrollIntoViewIfNeeded();
+      await expect(original).toBeInViewport({ ratio: 1 });
+      const image = panel.getByRole("img", { name: "Captured image 2" });
+      await panel
+        .getByRole("figure")
+        .filter({ has: page.getByRole("img", { name: "Captured image 2" }) })
+        .scrollIntoViewIfNeeded();
+      await expect(image).toBeInViewport({ ratio: 1 });
       await expect(
         panel.getByText("Recorded image; this is not a live desktop.", { exact: true }),
-      ).toBeVisible();
+      ).toBeInViewport({ ratio: 1 });
       const outcome = test.info().outputPath(`computer-${theme}-${width}-outcome.png`);
-      await panel.screenshot({ path: outcome });
+      await page.screenshot({ path: outcome });
       await test.info().attach("published-computer-original-outcome", { path: outcome });
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
