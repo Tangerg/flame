@@ -559,6 +559,15 @@ fixed row height. Each consumer retains its own query, matching and navigation.
 height updates for input, controlled values, form reset, width and font changes;
 CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
 
+`TextArea` also retains its native caret reading position through reflow. A
+temporary, inaccessible text mirror measures the active selection endpoint;
+only the textarea's vertical scroll position changes. Values, selection and
+focus remain native. Wheel reading or a moved scrollbar retires following until
+new focus, input or selection movement. Same-control window reactivation does
+not restart it. Pointer presses and composition defer the reveal, and later
+focus or unmount fences pending work. This reading observation is independent
+of the optional autosize height owner.
+
 The shared stylesheet also applies the application's `data-motion="off"` projection
 and the system reduced-motion preference. Both disable motion with zero duration;
 they do not manufacture transitions on otherwise static components.

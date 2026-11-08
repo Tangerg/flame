@@ -11,17 +11,14 @@ import {
   type Translate,
 } from "@flame/component-sdk";
 import { FileBraces } from "@flame/icons/react";
-import {
-  Button,
-  FormField,
-  Icon,
-  ModalDialog,
-  RecordBody,
-  TextArea,
-} from "@flame/ui";
+import { Button, Icon, ModalDialog, RecordBody, TextArea } from "@flame/ui";
 import { McpImportError, type McpImportIssue } from "./import";
 import { IMPORT, type MCPSettings } from "./settings";
 import { CommandFeedback } from "./feedback";
+const editorStyle = {
+  maxHeight: "100%",
+  minHeight: "calc(1lh + var(--spacing) * 4 + var(--control-edge-width) * 2)",
+} as const;
 const EXAMPLE = JSON.stringify(
   {
     mcpServers: {
@@ -125,25 +122,25 @@ export function JsonImport({
           </>
         }
       >
-        <FormField label={t("mcp.import.config")}>
-          <TextArea
-            ref={field}
-            font="mono"
-            invalid={error?.invalid}
-            pending={busy}
-            value={state.importText}
-            onChange={(event) => {
-              setError(undefined);
-              settings.setImportText(context, event.target.value);
-            }}
-            rows={10}
-            spellCheck={false}
-            autoCapitalize="none"
-            autoCorrect="off"
-            aria-describedby={error?.invalid ? errorId : undefined}
-            placeholder={EXAMPLE}
-          />
-        </FormField>
+        <TextArea
+          aria-label={t("mcp.import.config")}
+          ref={field}
+          font="mono"
+          style={editorStyle}
+          invalid={error?.invalid}
+          pending={busy}
+          value={state.importText}
+          onChange={(event) => {
+            setError(undefined);
+            settings.setImportText(context, event.target.value);
+          }}
+          rows={10}
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+          aria-describedby={error?.invalid ? errorId : undefined}
+          placeholder={EXAMPLE}
+        />
         {state.importProgress && !completed && (
           <RecordBody>
             {t("mcp.import.partial", {

@@ -1,3 +1,5 @@
+import { en as mcpEn } from "../../../../plugins/mcp/component/locales/en";
+import { zh as mcpZh } from "../../../../plugins/mcp/component/locales/zh";
 import { expect, test, type Locator, type Page } from "./test";
 import { LONG_MODEL_NAME } from "./runtimeSnapshots";
 
@@ -700,6 +702,214 @@ export function registerUiOwnershipContracts() {
       } finally {
         if (await editor.count()) await measure("final-editor");
         await testInfo.attach("schedule-geometry", {
+          body: JSON.stringify(geometry, null, 2),
+          contentType: "application/json",
+        });
+      }
+    });
+  }
+  for (const { locale, theme, strings } of [
+    { locale: "en", theme: "light", strings: mcpEn },
+    { locale: "zh", theme: "dark", strings: mcpZh },
+  ]) {
+    test(`JSON import keeps its focused selection and caret through resizing ${locale} ${theme}`, async ({
+      page,
+      browserName,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 1120, height: 728 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&font-size=18&locale=${locale}`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      const trigger = page.getByRole("button", { name: strings["mcp.import"]!, exact: true });
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: strings["mcp.import"]!, exact: true });
+      const field = dialog.getByRole("textbox", {
+        name: strings["mcp.import.config"]!,
+        exact: true,
+      });
+      const submit = dialog.getByRole("button", {
+        name: strings["mcp.import.confirm"]!,
+        exact: true,
+      });
+      await expect(field).toBeFocused();
+      const original = (await field.elementHandle())!;
+      const draft = "invalid JSON\n".repeat(12) + "cursor-end";
+      await field.fill(draft);
+      for (let step = 0; step < 3; step++) await page.keyboard.press("Shift+ArrowLeft");
+      const editing = () =>
+        field.evaluate(
+          (node: HTMLTextAreaElement, original) => ({
+            same: node === original,
+            focused: node === document.activeElement,
+            value: node.value,
+            selection: [node.selectionStart, node.selectionEnd, node.selectionDirection],
+          }),
+          original,
+        );
+      const selected = {
+        same: true,
+        focused: true,
+        value: draft,
+        selection: [draft.length - 3, draft.length, "backward"],
+      };
+      expect(await editing()).toEqual(selected);
+      // Native scrolling can leave unpainted line leading outside the final ASCII line's em box.
+      const placement = () =>
+        field.evaluate((node: HTMLTextAreaElement, original) => {
+          const bodyNode = node.closest('[data-slot="dialog-body"]')!;
+          const body = bodyNode.getBoundingClientRect();
+          const popup = node.closest('[role="dialog"]')!;
+          const popupStyle = getComputedStyle(popup);
+          const bodyStyle = getComputedStyle(bodyNode);
+          const box = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          const lineHeight = parseFloat(style.lineHeight);
+          const fontSize = parseFloat(style.fontSize);
+          const halfLeading = Math.max(0, (lineHeight - fontSize) / 2);
+          const lastLineBottom = node.scrollHeight - parseFloat(style.paddingBottom);
+          const activeOffset =
+            node.selectionDirection === "backward" ? node.selectionStart : node.selectionEnd;
+          // The suffix uses short, unwrapped ASCII lines; the earlier prefix may wrap.
+          const followingLines = node.value.slice(activeOffset).split("\n").length - 1;
+          const activeLineBottom = lastLineBottom - followingLines * lineHeight;
+          const activeLineEm = {
+            top: activeLineBottom - lineHeight + halfLeading,
+            bottom: activeLineBottom - halfLeading,
+          };
+          return {
+            verdict: {
+              same: node === original,
+              focused: node === document.activeElement,
+              contained:
+                box.top >= body.top - 0.5 &&
+                box.bottom <= body.bottom + 0.5 &&
+                box.left >= body.left - 0.5 &&
+                box.right <= body.right + 0.5,
+              caretEmVisible:
+                activeLineEm.top >= node.scrollTop - 0.5 &&
+                activeLineEm.bottom <= node.scrollTop + node.clientHeight + 0.5,
+            },
+            viewport: { width: innerWidth, height: innerHeight },
+            body: body.toJSON(),
+            popup: {
+              bounds: popup.getBoundingClientRect().toJSON(),
+              maxHeight: popupStyle.maxHeight,
+              scrollPaddingStart: bodyStyle.scrollPaddingBlockStart,
+              scrollPaddingEnd: bodyStyle.scrollPaddingBlockEnd,
+            },
+            field: box.toJSON(),
+            fieldStyle: {
+              maximum: style.maxHeight,
+              minimum: style.minHeight,
+              declaredMaximum: node.style.maxHeight,
+            },
+            scroll: {
+              top: node.scrollTop,
+              clientHeight: node.clientHeight,
+              scrollHeight: node.scrollHeight,
+              lineHeight,
+              fontSize,
+              activeOffset,
+              followingLines,
+              activeLineEm,
+              lastLineBottom,
+            },
+          };
+        }, original);
+      const geometry: unknown[] = [];
+      const retainThroughFrames = async (expected: typeof selected, phase: string) => {
+        for (const frame of [
+          { width: 1120, height: 728 },
+          { width: 560, height: 364 },
+          { width: 373, height: 243 },
+        ]) {
+          await page.setViewportSize(frame);
+          let latest: Awaited<ReturnType<typeof placement>> | undefined;
+          try {
+            await expect
+              .poll(async () => {
+                latest = await placement();
+                return latest.verdict;
+              })
+              .toEqual({ same: true, focused: true, contained: true, caretEmVisible: true });
+            expect(await editing()).toEqual(expected);
+          } finally {
+            geometry.push({ phase, frame, ...latest });
+            await testInfo.attach(
+              `json-import-${phase}-${frame.width}-${browserName}-${locale}-${theme}.png`,
+              {
+                body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+                contentType: "image/png",
+              },
+            );
+          }
+        }
+      };
+      try {
+        await retainThroughFrames(selected, "end");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type("x");
+        const typed = `${draft}x`;
+        const continued = await editing();
+        expect(continued.value.endsWith("\ncursor-endx")).toBe(true);
+        expect(continued).toMatchObject({ same: true, focused: true, value: typed });
+        expect(continued.selection.slice(0, 2)).toEqual([typed.length, typed.length]);
+
+        await page.setViewportSize({ width: 1120, height: 728 });
+        const wrapped = `${"Wrapped prefix 前文 ".repeat(24)}\n${typed}`;
+        await field.fill(wrapped);
+        for (let step = 0; step < 7; step++) await page.keyboard.press("ArrowUp");
+        for (let step = 0; step < 3; step++) await page.keyboard.press("Shift+ArrowLeft");
+        const middle = await editing();
+        expect(middle).toMatchObject({ same: true, focused: true, value: wrapped });
+        expect(middle.selection[2]).toBe("backward");
+        expect(middle.selection[0]).toBeGreaterThan(wrapped.indexOf("\n"));
+        expect(middle.selection[1]).toBeLessThan(wrapped.length - 20);
+        await retainThroughFrames(middle, "middle");
+
+        await field.hover();
+        await page.mouse.wheel(0, -2000);
+        await expect.poll(() => field.evaluate((node) => node.scrollTop)).toBe(0);
+        await page.setViewportSize({ width: 560, height: 364 });
+        await page.evaluate(
+          () =>
+            new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        );
+        expect(await field.evaluate((node) => node.scrollTop)).toBe(0);
+        expect(await editing()).toEqual(middle);
+        geometry.push({ phase: "manual-reading", ...(await placement()) });
+        await testInfo.attach(`json-import-manual-${browserName}-${locale}-${theme}.png`, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type("y");
+        const insertion = middle.selection[1] as number;
+        const edited = `${wrapped.slice(0, insertion)}y${wrapped.slice(insertion)}`;
+        await expect(field).toHaveValue(edited);
+        await expect.poll(async () => (await placement()).verdict.caretEmVisible).toBe(true);
+
+        await submit.click();
+        const failure = strings["mcp.import.invalidJson"]!;
+        const alert = dialog.getByRole("alert");
+        await expect(alert).toHaveText(failure);
+        await expect(alert).toBeInViewport({ ratio: 1 });
+        await expect(field).toHaveValue(edited);
+        await expect(field).toHaveAttribute("aria-invalid", "true");
+        await expect(field).toHaveAccessibleDescription(failure);
+        expect(await field.evaluate((node, original) => node === original, original)).toBe(true);
+        await testInfo.attach(`json-import-invalid-${browserName}-${locale}-${theme}.png`, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+        await page.keyboard.press("Escape");
+        await expect(dialog).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+      } finally {
+        await testInfo.attach(`json-import-geometry-${browserName}-${locale}-${theme}.json`, {
           body: JSON.stringify(geometry, null, 2),
           contentType: "application/json",
         });

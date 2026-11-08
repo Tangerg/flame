@@ -24,6 +24,7 @@ import { isImeKey } from "./keyboard";
 import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
 import { Input } from "@base-ui/react/input";
+import { followTextAreaCaret } from "./textarea-reading";
 import type { ComponentProps, ComponentPropsWithRef } from "react";
 
 type FieldEdge = "boxed" | "bare" | "inline";
@@ -190,6 +191,10 @@ export function TextArea({
   const element = useRef<HTMLTextAreaElement>(null);
   const resizeRef = useRef<() => void>(() => {});
   const fontSize = useFontSize();
+  useLayoutEffect(() => {
+    const area = element.current;
+    if (area) return followTextAreaCaret(area);
+  }, []);
   // Safari 17.4 shares this sizing owner with hosts that support field-sizing.
   useLayoutEffect(() => {
     const area = element.current;

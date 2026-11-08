@@ -43,6 +43,10 @@ npm run build --workspace @flame/ui
 
 The icons build is necessary only when its source changed or its output is
 missing. The lab does not alias private component source around package exports.
+Installed component fixtures also load their published ESM. After changing a
+portable component, regenerate its installed resource through the normal
+publisher build before qualification; editing its source alone does not update
+what the fixture loads.
 
 To build the same lab as a static preview:
 
@@ -456,6 +460,15 @@ frames complement the native 200% and 300% review; they do not simulate page zoo
 or qualify Save, Runtime dispatch or provider execution. Oversized text editors
 also need a native caret-visibility check; fitting-field containment alone does
 not qualify their editing position.
+
+The MCP JSON import task retains the same focused textarea, exact draft and
+backward selection through those frames in English/light and Chinese/dark.
+It checks both the final line and a middle line after a wrapping mixed-language
+prefix, using the known short suffix for independent line geometry. Wheel
+reading remains at the prefix through another resize; later input resumes
+editing. Local invalid-JSON feedback and Escape retain the draft and return to
+the opener. The task loads the real installed component and shared `TextArea`;
+there is no fixture editor or parallel visual entry.
 
 ## Optional measurements
 

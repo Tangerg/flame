@@ -38,7 +38,12 @@ The editor's inline JSON fields, Arguments and Environment for stdio and Headers
 for HTTP, keep a three-row minimum and grow or shrink with their wrapped content
 in normal page flow through the shared `TextArea autosize` owner, rather than
 scrolling inside a fixed three-row box. The JSON import dialog keeps its own
-bounded editor.
+bounded editor: ten rows at large window sizes, capped by its grid area in a
+short or zoomed window. It is a direct child of the shared dialog body; the
+dialog title supplies the visible task and the textarea retains its accessible
+configuration name. A one-line padded minimum keeps editing possible when the
+body is shorter. The textarea keeps native internal scrolling and vertical
+resizing, and the same element, value and selection survive window resizes.
 
 After a successful JSON import, the unavailable submit action stays focusable
 through the shared Button contract. It retains its current keyboard focus without
