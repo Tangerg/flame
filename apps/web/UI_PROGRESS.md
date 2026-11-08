@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current navigation repair passes **27 Lab interactions**, with all **31 images** accounted for and **28 native captures** viewed. Actual Wails **200% and 300%** acceptance covers paging, inspection, variants, return, search and compact catalog navigation. The preceding comparison-caption repair passes **24 capture cases and 19 interactions** and retains ordinary Switch alignment. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current reading-focus repair passes **27 Lab interactions**, with all **31 final images** accounted for and **13 native captures** viewed. Actual Wails **200% and 300%** acceptance covers reading-region and card focus, preview activation, return and window resizing. The preceding navigation repair retains its **28 native captures**, and the comparison-caption repair passes **24 capture cases and 19 interactions**. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained; the final isolated run passes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -289,9 +289,77 @@ hooks only format owned files and lint source. The private evidence directory is
 retired after commit and push to `main`. VoiceOver, physical IME, RTL, live
 providers and whole-product route acceptance remain unverified by this batch.
 
-Next inspect the gallery action focus perimeter: the final native keyboard image
-shows its outline touching the reading viewport's top clipping edge. Check the
-existing reading-frame clearance and shared focus contract before changing layout.
+### Reading-region and gallery action focus (2026-11-08)
+
+Native keyboard review shows the first gallery action's outline clipped at the
+reading viewport's top edge. Browser reproduction also exposes the main region's
+outset outline at the viewport's right and bottom edges. `ComponentLab.tsx` now
+selects the existing shared inset focus contract. `labStyles.ts` reserves a
+transparent **2 px** frame and clips preview documents before that perimeter,
+following the production Workspace and shared ScrollArea treatment. The shared
+focus painter remains the owner; independent preview documents retain their
+ordinary focus treatment.
+
+A bounded Claude Code CLI task prepares two candidate files in **162.079 s**.
+Primary review extends the existing eight navigation cases rather than adding a
+suite or scenario matrix. All eight initially reproduce clipping, including
+**2 px** cuts. An initial **27 / 27** geometry pass still shows content covering
+the main outline in actual captures. The final regression therefore also checks
+clearance between the region and its visible children: the same case fails with
+**0 px** clearance and passes with **2 px** on every side. A pointer hit-test
+experiment disagrees with raster paint and is discarded. Geometry and manual
+capture review provide complementary evidence.
+
+The same verification exposes an older responsive-test race: its expected iframe
+width is captured at **480 px**, then remains fixed while the same iframe settles
+to **358 px**. The poll now reads the current sizing attribute and rendered width
+together. It preserves rounded width agreement, draft and instance continuity,
+and checks horizontal containment.
+
+The final isolated run passes all **27 / 27** in **184.572 s**, with no retries,
+skips, flaky results or global errors. English/light and Chinese/dark at **18 px**
+cover **1120 × 360**, **640 × 364**, **373 × 243** and **320 × 243** frames.
+The visible main edges and all eight complete first-action outlines have zero
+measured clipping. Keyboard continuation opens the real tooltip; Escape dismisses
+it and retains action focus. All **31 final images** are accounted for:
+**24 new unique originals** are viewed and seven match reviewed bytes.
+
+The preceding concurrent run has **25 passes and two failures**. Its traces show
+**108** and **65** `ERR_INSUFFICIENT_RESOURCES` module requests while returning to
+the gallery in Chinese **640 px** and **373 px** cases. Native qualification is
+also running at that time. After the native app and its private server close,
+the unchanged suite passes alone. This controlled change does not establish
+concurrency as the cause. The failed traces remain evidence; timeouts, retry
+settings and console/error guards are unchanged. The earlier three transient
+module-fetch failures remain unexplained.
+
+Web typecheck, lint, formatting, unused-code, dead-style and design-system checks
+pass. The final `make check-native` passes in **11.667 s**. All **6,715 non-Markdown
+inputs** retain their qualified bytes; the three authored source changes stay
+inside the Lab. This focused repair does not rerun the complete Lab or Web unit
+gates; their `f08d723c` baseline remains recorded above.
+
+The private Wails v3.1.0 host loads all **490 current Lab assets**, verified byte
+for byte. All **46 production native inputs** remain unchanged. English/light at
+**18 px / 200%** covers skip entry, main and first-card focus, wheel reading,
+inspection, preview Space activation and pointer return. Chinese/dark at
+**18 px / 300%** covers the compact layout, main and card focus, inspection,
+preview Space activation, native Window Fill and keyboard return. Preview
+activation records real observations and retains its own focus. All **13 native
+originals** are viewed; both native runs exit normally.
+
+The private app is unregistered and its server stopped. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline, and the primary checkout stays
+unchanged. Functional verification ends before restoration; delivery hooks only
+format owned files and lint source. Delivery rechecks qualified source before
+pushing to `main`, then retires the private evidence directory. VoiceOver,
+physical IME, RTL, live providers and whole-product route acceptance remain
+unverified by this batch.
+
+Next inspect production file/source preview and return through the existing
+Workspace Lab scenario. This host-frame repair qualifies the Lab's reading
+boundary; product readers still need their own complete task acceptance.
 
 ### Presentation and preview continuity
 

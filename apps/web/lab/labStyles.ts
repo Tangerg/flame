@@ -125,7 +125,17 @@ export const labStyles = stylex.create({
   },
   storyTitle: { minWidth: 0, overflowWrap: "anywhere" },
   storySelected: { color: color.accentText, backgroundColor: surface.selected },
-  main: { display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, overflow: "hidden" },
+  main: {
+    display: "flex",
+    flexDirection: "column",
+    minWidth: 0,
+    minHeight: 0,
+    // Clip preview documents before the inset focus perimeter.
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "transparent",
+    overflow: "hidden",
+  },
   mainHeading: {
     display: "flex",
     alignItems: "center",

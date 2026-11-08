@@ -276,6 +276,7 @@ export function ComponentLab({
         id="lab-main"
         ref={main}
         tabIndex={-1}
+        data-focus-inset=""
         aria-labelledby="lab-view-title"
         {...stylex.props(styles.main)}
       >

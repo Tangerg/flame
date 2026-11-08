@@ -80,6 +80,131 @@ async function galleryReading(page: Page) {
     });
 }
 
+const SIDES = ["left", "top", "right", "bottom"] as const;
+
+async function focusPerimeter(target: ReturnType<Page["locator"]>) {
+  return target.evaluate((element, sides) => {
+    const style = getComputedStyle(element);
+    const width = Number.parseFloat(style.outlineWidth) || 0;
+    const offset = Number.parseFloat(style.outlineOffset) || 0;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("focus color sampling is unavailable");
+    context.fillStyle = "transparent";
+    context.fillStyle = style.outlineColor;
+    context.fillRect(0, 0, 1, 1);
+    const alpha = context.getImageData(0, 0, 1, 1).data[3]!;
+    const reach = offset + width;
+    const box = element.getBoundingClientRect();
+    const ring = {
+      left: box.left - reach,
+      top: box.top - reach,
+      right: box.right + reach,
+      bottom: box.bottom + reach,
+    };
+    const visual = window.visualViewport;
+    const viewportLeft = visual?.offsetLeft ?? 0;
+    const viewportTop = visual?.offsetTop ?? 0;
+    const boundaries = [
+      {
+        name: "viewport",
+        left: viewportLeft,
+        top: viewportTop,
+        right: Math.min(
+          document.documentElement.clientWidth,
+          viewportLeft + (visual?.width ?? window.innerWidth),
+        ),
+        bottom: Math.min(
+          document.documentElement.clientHeight,
+          viewportTop + (visual?.height ?? window.innerHeight),
+        ),
+      },
+    ];
+    for (
+      let owner = element.parentElement;
+      owner && owner !== document.body && owner !== document.documentElement;
+      owner = owner.parentElement
+    ) {
+      const clip = getComputedStyle(owner);
+      if (
+        clip.overflowX === "visible" &&
+        clip.overflowY === "visible" &&
+        !/paint|content|strict/.test(clip.contain)
+      )
+        continue;
+      const bounds = owner.getBoundingClientRect();
+      const left = bounds.left + owner.clientLeft;
+      const top = bounds.top + owner.clientTop;
+      boundaries.push({
+        name: `${owner.tagName.toLowerCase()} ${clip.overflowX}/${clip.overflowY}`,
+        left,
+        top,
+        right: left + owner.clientWidth,
+        bottom: top + owner.clientHeight,
+      });
+    }
+    const cuts: { boundary: string; side: string; cut: number }[] = [];
+    const observed = sides.filter((side) =>
+      boundaries.every((bounds) =>
+        side === "left" || side === "top"
+          ? box[side] >= bounds[side] - 0.25
+          : box[side] <= bounds[side] + 0.25,
+      ),
+    );
+    for (const bounds of boundaries)
+      for (const side of observed) {
+        const cut =
+          side === "left" || side === "top" ? bounds[side] - ring[side] : ring[side] - bounds[side];
+        if (cut > 0) cuts.push({ boundary: bounds.name, side, cut });
+      }
+    const content = Array.from(element.children)
+      .map((child) => child.getBoundingClientRect())
+      .filter((bounds) => bounds.width > 0 && bounds.height > 0);
+    const contentInsets = {
+      left: Math.min(...content.map((bounds) => bounds.left - box.left)),
+      top: Math.min(...content.map((bounds) => bounds.top - box.top)),
+      right: Math.min(...content.map((bounds) => box.right - bounds.right)),
+      bottom: Math.min(...content.map((bounds) => box.bottom - bounds.bottom)),
+    };
+    return {
+      focused: element.ownerDocument.activeElement === element,
+      outline: { style: style.outlineStyle, width, offset, alpha },
+      reach,
+      box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+      observed,
+      contentInsets,
+      perimeterReserved:
+        content.length > 0 &&
+        Object.values(contentInsets).every((distance) => distance >= Math.max(0, -offset) - 0.25),
+      fullyVisible: boundaries.every(
+        (bounds) =>
+          ring.left >= bounds.left - 0.25 &&
+          ring.top >= bounds.top - 0.25 &&
+          ring.right <= bounds.right + 0.25 &&
+          ring.bottom <= bounds.bottom + 0.25,
+      ),
+      cut: Math.max(0, ...cuts.map(({ cut }) => cut)),
+      cuts,
+    };
+  }, SIDES);
+}
+
+function expectContainedFocus(
+  ring: Awaited<ReturnType<typeof focusPerimeter>>,
+  label: string,
+  complete: boolean,
+) {
+  expect.soft(ring.focused, `${label} holds focus`).toBe(true);
+  expect.soft(ring.outline.style, `${label} paints an outline`).not.toMatch(/^(none|hidden)$/);
+  expect.soft(ring.outline.width, `${label} outline has width`).toBeGreaterThan(0);
+  expect.soft(ring.outline.alpha, `${label} outline is opaque`).toBeGreaterThan(0);
+  if (complete) expect.soft(ring.fullyVisible, `${label} perimeter is in view`).toBe(true);
+  else expect.soft(ring.observed.length, `${label} perimeter is in view`).toBeGreaterThan(0);
+  expect.soft(ring.cut, `${label} outline is not clipped`).toBeLessThanOrEqual(0.25);
+}
+
 async function expectFailureSurface(page: Page, theme: "light" | "dark") {
   const paint = await page.evaluate(() => {
     const surface = document.elementFromPoint(2, 2);
@@ -198,8 +323,17 @@ test("shows gallery components at native scale and keeps their draft through res
   await expect(field).toHaveValue("Retain gallery draft");
   await expect(frameElement).toHaveAttribute("src", source!);
   await expect
-    .poll(async () => Math.round((await frameElement.boundingBox())!.width))
-    .toBe(Number(await frameElement.getAttribute("width")));
+    .poll(() =>
+      frameElement.evaluate((frame) => {
+        const bounds = frame.getBoundingClientRect();
+        return (
+          Math.round(bounds.width) === Number(frame.getAttribute("width")) &&
+          bounds.left >= 0 &&
+          bounds.right <= document.documentElement.clientWidth
+        );
+      }),
+    )
+    .toBe(true);
   expect(await field.evaluate((element) => getComputedStyle(element).fontSize)).toBe("14px");
   await page.getByRole("combobox", { name: "Component catalog", exact: true }).click();
   await page.getByRole("option", { name: "TextField", exact: true }).click();
@@ -308,10 +442,19 @@ for (const locale of ["en", "zh-CN"] as const) {
         page.getByRole("navigation", { name: t("pagination"), exact: true }),
       ).toContainText("2 /");
       const paged = await galleryReading(page);
-      await capture("new-gallery-page", { reading: paged, mainFocused: await mainFocused() });
+      const pagedFocus = await focusPerimeter(main);
+      await capture("new-gallery-page", {
+        reading: paged,
+        mainFocused: await mainFocused(),
+        focus: pagedFocus,
+      });
       expect.soft(paged.top, "a new page starts at its first result").toBeLessThanOrEqual(1);
       expect.soft(paged.firstHeadingVisible, "the first new result is readable").toBe(true);
       expect.soft(await mainFocused(), "paging hands focus to the preview context").toBe(true);
+      expectContainedFocus(pagedFocus, "the paged reading region", false);
+      expect
+        .soft(pagedFocus.perimeterReserved, "the reading region reserves its focus perimeter")
+        .toBe(true);
 
       const opener = page.getByRole("button", { name: `${t("select")} · ${title}`, exact: true });
       await opener.scrollIntoViewIfNeeded();
@@ -402,11 +545,32 @@ for (const locale of ["en", "zh-CN"] as const) {
       await gallery.press("Space");
       await expectRecoveredCatalog(page, t("foundation"), theme);
       const changedContext = await galleryReading(page);
-      await capture("changed-gallery-context", changedContext);
       expect
         .soft(changedContext.top, "filter changes while inspecting retire the old return position")
         .toBeLessThanOrEqual(1);
       await expect(gallery).toBeFocused();
+
+      const firstTitle = localize(catalog.search("foundation", "", locale)[0]!.title, locale);
+      const firstAction = page
+        .getByRole("article")
+        .first()
+        .getByRole("button", { name: `${t("select")} · ${firstTitle}`, exact: true });
+      await gallery.press("Tab");
+      await expect(firstAction).toBeFocused();
+      const tooltip = page.getByRole("tooltip");
+      await expect(tooltip).toBeVisible();
+      await firstAction.press("Escape");
+      await expect(tooltip).toBeHidden();
+      await expect(firstAction).toBeFocused();
+      await expect(main).toHaveAccessibleName(t("foundation"));
+      await expect(search).toHaveValue("");
+      const actionFocus = await focusPerimeter(firstAction);
+      await capture("changed-gallery-context", {
+        reading: changedContext,
+        actionReading: await galleryReading(page),
+        focus: actionFocus,
+      });
+      expectContainedFocus(actionFocus, "the first gallery action", true);
     });
   }
 }

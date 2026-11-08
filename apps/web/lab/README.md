@@ -73,6 +73,11 @@ the view control restores that position and keeps the control's focus. Paging an
 retired card actions hand focus to the current, named main region; persistent
 search, catalog and variant controls retain their own focus.
 
+The clipped reading region uses the shared inset focus rule and reserves a
+transparent frame before its preview content. Keyboard focus stays visible at
+the viewport and gallery scroll edges. Independent preview documents retain
+their own focus treatment.
+
 Focused previews support component, phone, tablet and desktop widths. Theme
 comparison mounts two independent documents with the same scenario. Changing
 the scenario, theme, language, font size or motion reloads that document; changing its
@@ -265,6 +270,16 @@ intersection rectangles use the same one-pixel tolerance as the other geometry
 checks, so subpixel rounding does not require an exact intersection ratio of one.
 Focus-rule checks inspect declared `outline` properties; a transition mentioning
 `outline-color` does not paint a perimeter.
+
+Lab navigation checks measure the painted outline against the viewport and
+clipping ancestors, including scrollports. They check the visible edges of an
+oversized reading region and the complete first card action after keyboard
+continuation and Escape dismissal. Child clearance must also reserve the inset
+perimeter; an unclipped outline can still be covered by preview content. These
+measurements accompany screenshot review rather than establish pixel acceptance.
+Responsive preview checks read the iframe width and its current sizing attribute
+together, preserving draft and horizontal-containment assertions while the
+ResizeObserver settles.
 
 Transcript tail checks distinguish the retained, accessibility-hidden jump
 control at the bottom from its visible, keyboard-reachable state while reading
