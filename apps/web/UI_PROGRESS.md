@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Workspace fixture-sidebar repair passes **117 / 117 related cases** with no retries, skips, flaky results or global errors; all **66 final browser images** are reviewed or match reviewed bytes. English/light/14 px and Chinese/dark/18 px qualify complete state names, focused-row visibility through actual native 200% zoom and window changes, and continued drafts. All **17 native captures** are inspected: 14 use the final fixture and three record earlier diagnostic controls. Production code is unchanged in this follow-up. The preceding Dock repair, delivered as `fbddb74a0`, retains its complete shared UI check (**276 tests** plus the offline packed consumer), complete Web check (**433 files / 4,770 tests**), native gate, **288 Lab cases**, **727 images** and **21 native captures** within their recorded scopes. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later Lab changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current shared selection repair removes a first-frame **27 px** backplate displacement under system reduced motion. The complete UI check passes **276 tests** plus the offline packed consumer; the complete Web check passes **433 files / 4,770 tests**, and the native gate passes. The related Lab selection passes **319 / 319 cases** with no retries, skips, flaky results or global errors. All **739 final browser images** are reviewed or match reviewed bytes. All **38 native captures** are inspected: 21 record the original task and 17 use the repaired build. Final English/light/14 px and Chinese/dark/18 px cover actual native 200% zoom, proposal decisions, reading, window changes and continued drafts. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,93 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Shared selection stability during Skills decisions (2026-11-09)
+
+The original Chinese native task exposes a transient blank backplate below the
+unchanged Skills proposal selection after window reflow, an accepted decision
+and wheel reading. Matching that preceding operation history in the existing Lab
+reproduces one displaced first frame in WebKit with system reduced motion:
+the radio stays at **58 px**, while its backplate moves to **85 px**, with a
+**27 px** translation. The other 51 sampled frames settle correctly. Direct-open
+controls pass, but do not reproduce this history; a settled screenshot alone
+would miss the defect.
+
+`packages/ui/src/item-highlight.tsx:101` now omits `layoutId` under its existing
+`useReducedMotion` result. A zero-duration transition still participated in shared
+layout projection; the static backplate needs no projection. Its paint, radius,
+public props and ordinary interruptible movement remain with their existing
+owners. No component state, event handler, wrapper or preference is added.
+[Motion's layout documentation](https://motion.dev/docs/react-layout-animations)
+provides the projection reference. Better UI guides the reduced-motion boundary;
+Better Layout and Typography guide reading and alignment. React review retains
+the existing render path and adds no speculative optimization.
+
+Four cases in the existing `designSystem.browser.spec.ts` follow Chromium and
+WebKit with both system motion preferences. They collapse the real fixture
+sidebar, progressively reduce the viewport, open the folded material, reject the
+first captured proposal, restore the window frame and review the remaining one.
+The check samples every frame around entry and wheel reading, including the
+first frame, and compares all four backplate edges with its selected radio.
+Viewport reflow complements actual native zoom; it does not simulate page zoom.
+The original history control fails **1 / 4** cases. The focused candidate passes
+**4 / 4**; the final broader run records **209 frames**, all with zero edge offset
+and no transform. Existing normal-motion sliding and reversal checks pass.
+
+Claude Code CLI prepares the one-line component candidate in **23.010 s**, with
+seven protected references unchanged. Primary review verifies the exact diff and
+owns the Lab regression and native acceptance. An initial browser-fixture scope
+error fails before test execution and is corrected using the existing WebKit
+worker extension. No product assertion or deadline is weakened.
+
+Verification:
+
+- The complete UI gate passes **276 tests** and the offline packed consumer in
+  **10.137 s**. The complete Web gate passes **433 files / 4,770 tests** in
+  **263.320 s**, including its Runtime integration. The first attempt lacks the
+  pinned Node archive and leaves 52 integration tests unexecuted; normal artifact
+  preparation resolves that environment failure before the complete rerun.
+- `make check-native` passes in **70.578 s**. The private Wails v3.1.0 build passes
+  in **20.212 s**. The original 46 native source files and 45 unchanged private
+  copies remain verified; the private application wrapper retains its pinned
+  bytes. Browser and final native tasks use the same **491 canonical Lab assets**.
+- The existing-config selection passes **319 / 319** in **591.412 s**, without
+  retries, skips, flaky results or global errors. It includes the complete
+  component captures, Design System, Workspace, Skills confirmation/acceptance,
+  Panel focus/presentation, Workspace chrome and Settings navigation. All **739
+  final images** are accounted for: 52 are inspected now, representing 48 unique
+  images, and 687 match previously inspected bytes. The complete Lab and backend
+  gates are not rerun; their earlier results retain their original scopes.
+- Actual final English/light/14 px/full-motion and Chinese/dark/18 px/motion-off
+  tasks cover native 100%/200%, material entry, cancellation to the original
+  action, target disclosure, wheel reading, mixed decisions through **2 → 1 → 0**,
+  visible search focus, material Close and exact continued unsent drafts. Chinese
+  Window > Zoom and restoration retain reading and selection; capture widths
+  change **2878 → 3024 → 2878 device pixels**. Complete Chinese target path, scope
+  and 64-character revision remain readable through ordinary scrolling.
+
+All **38 native images** and **91 AX records** are retained for inspection; 21
+images precede the repair and 17 qualify it. All four native processes exit 0.
+The original stray native backplate is absent in the final observed path. Native
+system media preference is not measured; browser cases explicitly control it.
+Decisions use the Lab's existing `skills-commands=accept` in-memory transport,
+not live provider publication. VoiceOver, physical OS IME and 10% Animations-panel
+playback are not verified. The original English wheel-to-pointer return anomaly
+remains outside this repair.
+
+| Severity       | Location                                 | Before                                                                                                | After                                                                                                                   | Why                                                                                                    |
+| -------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| HIGH, resolved | `packages/ui/src/item-highlight.tsx:101` | Reduced-motion selection retains shared projection and can paint 27 px below its label for one frame. | Static selected/hover paint has no shared projection under system reduced motion; ordinary sliding and reversal remain. | Honor reduced motion and keep the visible selection attached to the control during reflow and reading. |
+
+Approve for the inspected selection and proposal paths only. Whole-product visual
+acceptance remains open. No story, visual entry or browser configuration is added;
+all 97 specs remain under the Lab. The 6,715 non-Markdown inputs differ only in
+the shared component and its existing Lab spec; the two documentation paths
+record the contract and evidence. Twelve output/cache roots are restored after
+functional checks, six private Library paths return to absence, and the three
+pre-existing helper roots retain their identities and flags. The primary checkout
+is unchanged. Normal hooks, publication and fenced private-root retirement finish
+this delivery; no functional check runs after output restoration.
 
 ### Persistent Skills catalog reading in the Lab (2026-11-09)
 

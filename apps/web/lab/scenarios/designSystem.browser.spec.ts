@@ -160,6 +160,128 @@ test("reduced motion keeps selection accurate without a sliding transform", asyn
   ).toBe(true);
 });
 
+for (const [engine, engineTest] of [
+  ["chromium", test],
+  ["webkit", test.extend({ browserName: "webkit" })],
+] as const) {
+  engineTest.describe(`Skills selection reading in ${engine}`, () => {
+    for (const preference of ["reduce", "no-preference"] as const) {
+      engineTest(
+        `the unchanged segment stays behind its label through proposal reflow and wheel reading ${preference}`,
+        async ({ page }, testInfo) => {
+          await page.emulateMedia({ reducedMotion: preference });
+          await page.setViewportSize({ width: 1440, height: 900 });
+          await page.goto(
+            "/lab/fixture.html?fixture=workspace&state=dock-skills&locale=zh&theme=dark&font-size=18&motion=off&skills-commands=accept",
+          );
+          await expectLabReady(page);
+          await page
+            .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
+            .click();
+          const panel = page
+            .getByRole("region", { name: "技能", exact: true })
+            .and(page.locator('[data-slot="panel"]'));
+          await panel.getByRole("radio", { name: "技能提议", exact: true }).click();
+          for (let step = 1; step <= 20; step += 1) {
+            const scale = 1 + step / 20;
+            await page.setViewportSize({
+              width: Math.round(1440 / scale),
+              height: Math.round(900 / scale),
+            });
+            await page.evaluate(async () => {
+              await new Promise(requestAnimationFrame);
+              await new Promise(requestAnimationFrame);
+            });
+          }
+          await page.getByRole("button", { name: /窗口太窄/ }).click();
+          await panel
+            .getByRole("group", { name: "risk-first-review 的提议操作", exact: true })
+            .getByRole("button", { name: "拒绝", exact: true })
+            .click();
+          const review = panel.getByRole("region", { name: "确认提议决定", exact: true });
+          const firstCancel = review.getByRole("button", { name: "取消", exact: true });
+          await expect(firstCancel).toBeFocused();
+          const firstCancelBounds = (await firstCancel.boundingBox())!;
+          await page.mouse.move(
+            firstCancelBounds.x + firstCancelBounds.width / 2,
+            firstCancelBounds.y + firstCancelBounds.height / 2,
+          );
+          await page.mouse.wheel(0, -600);
+          for (const size of [
+            { width: 756, height: 475 },
+            { width: 720, height: 450 },
+          ]) {
+            await page.setViewportSize(size);
+            await page.evaluate(async () => {
+              for (let frame = 0; frame < 8; frame += 1) {
+                await new Promise(requestAnimationFrame);
+              }
+            });
+          }
+          await page.keyboard.press("Shift+Tab");
+          await page.keyboard.press("Enter");
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Enter");
+          await expect(
+            panel.getByRole("searchbox", { name: "搜索此目录", exact: true }),
+          ).toBeFocused();
+          await expect(panel).toContainText("1 项待处理提议");
+          for (let step = 0; step < 4; step += 1) await page.keyboard.press("Tab");
+          await expect(
+            panel
+              .getByRole("group", { name: "release-notes 的提议操作", exact: true })
+              .getByRole("button", { name: "批准", exact: true }),
+          ).toBeFocused();
+          const indicator = panel
+            .getByRole("radio", { name: "技能提议", exact: true })
+            .locator('[data-slot="item-highlight"]');
+          const reading = indicator.evaluate(async (element) => {
+            const radio = element.closest('[role="radio"]')!;
+            const frames = [];
+            const start = performance.now();
+            while (performance.now() - start < 840) {
+              frames.push({
+                radio: radio.getBoundingClientRect().toJSON(),
+                indicator: element.getBoundingClientRect().toJSON(),
+                transform: getComputedStyle(element).transform,
+              });
+              await new Promise(requestAnimationFrame);
+            }
+            return frames;
+          });
+          await page.keyboard.press("Enter");
+          const cancel = review.getByRole("button", { name: "取消", exact: true });
+          await expect(cancel).toBeFocused();
+          const cancelBounds = (await cancel.boundingBox())!;
+          await page.mouse.move(
+            cancelBounds.x + cancelBounds.width / 2,
+            cancelBounds.y + cancelBounds.height / 2,
+          );
+          await page.mouse.wheel(0, -600);
+          const frames = await reading;
+          await testInfo.attach("segment-reading-frames", {
+            body: JSON.stringify(frames),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`segment-reading-${engine}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          for (const frame of frames) {
+            for (const edge of ["left", "top", "right", "bottom"] as const) {
+              expect(
+                Math.abs(frame.indicator[edge] - frame.radio[edge]),
+                JSON.stringify(frame),
+              ).toBeLessThan(1);
+            }
+          }
+        },
+      );
+    }
+  });
+}
+
 test("multiline labels keep neighboring fields aligned at their control size", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 1000 });
   await open(page, "fixture=atoms&theme=light");

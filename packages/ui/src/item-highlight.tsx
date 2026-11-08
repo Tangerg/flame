@@ -98,7 +98,7 @@ export function ItemHighlight({
       aria-hidden
       data-slot="item-highlight"
       initial={false}
-      layoutId={layoutId}
+      layoutId={reduced ? undefined : layoutId}
       transition={reduced ? reducedSelectionTransition : selectionTransition}
       {...stylex.props(
         highlight.fill,
