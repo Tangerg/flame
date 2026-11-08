@@ -512,12 +512,36 @@ export function registerUiOwnershipContracts() {
         await title.fill(taskTitle);
         await instructions.fill(taskInstructions);
         await cron.fill("0 9 * * 1");
+        await cron.press("Shift+ArrowLeft");
+        await cron.press("Shift+ArrowLeft");
+        const selection = () =>
+          cron.evaluate((node: HTMLInputElement) => [
+            node.selectionStart,
+            node.selectionEnd,
+            node.selectionDirection,
+          ]);
+        expect(await selection()).toEqual([7, 9, "backward"]);
         await expect(save).toBeEnabled();
         for (const frame of [
           { width: 560, height: 364 },
           { width: 373, height: 243 },
         ]) {
           await page.setViewportSize(frame);
+          await expect
+            .poll(() =>
+              cron.evaluate((node) => {
+                const body = node.closest('[data-slot="dialog-body"]')!;
+                const frame = body.getBoundingClientRect();
+                const field = node.getBoundingClientRect();
+                return {
+                  focused: node === document.activeElement,
+                  contained: field.top >= frame.top - 0.5 && field.bottom <= frame.bottom + 0.5,
+                };
+              }),
+            )
+            .toEqual({ focused: true, contained: true });
+          await expect(cron).toHaveValue("0 9 * * 1");
+          expect(await selection()).toEqual([7, 9, "backward"]);
           const measured = await measure(`frame-${frame.width}`);
           expect(measured.overflow).toBe(0);
           expect(measured.bodyOverflow).toBe(0);
@@ -546,6 +570,56 @@ export function registerUiOwnershipContracts() {
             contentType: "image/png",
           });
         }
+        const body = editor.locator('[data-slot="dialog-body"]');
+        const scrollProbe = await page.evaluateHandle(() => {
+          const native = Element.prototype.scrollIntoView;
+          const calls: { target: string | null; stack: string | undefined }[] = [];
+          function observed(this: Element, ...args: Parameters<Element["scrollIntoView"]>) {
+            if (calls.length < 20)
+              calls.push({ target: this.getAttribute("aria-label"), stack: new Error().stack });
+            return native.apply(this, args);
+          }
+          Element.prototype.scrollIntoView = observed;
+          return {
+            calls,
+            restore() {
+              Element.prototype.scrollIntoView = native;
+            },
+          };
+        });
+        try {
+          const pointer = await body.evaluate((node) => {
+            const bounds = node.getBoundingClientRect();
+            return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
+          });
+          await page.mouse.move(pointer.x, pointer.y);
+          await page.mouse.wheel(0, -10_000);
+          await expect(title).toBeInViewport({ ratio: 1 });
+          await expect(cron).not.toBeInViewport();
+          await measure("manual-reading-before-resize");
+          for (const width of [390, 373]) {
+            await page.setViewportSize({ width, height: 243 });
+            await page.evaluate(
+              () =>
+                new Promise((resolve) =>
+                  requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+            );
+            await measure(`manual-reading-resize-${width}`);
+          }
+          const calls = await scrollProbe.evaluate((probe) => probe.calls);
+          geometry.push({ state: "manual-reading-scroll-calls", calls });
+          expect(calls).toEqual([]);
+        } finally {
+          await scrollProbe.evaluate((probe) => probe.restore());
+          await scrollProbe.dispose();
+        }
+        expect(await selection()).toEqual([7, 9, "backward"]);
+        await measure("manual-reading-after-resize");
+        await testInfo.attach("schedule-manual-reading", {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
         await expect(cron).toBeFocused();
         for (let step = 0; step < 4; step++) await page.keyboard.press("Tab");
         await expect(model).toBeFocused();

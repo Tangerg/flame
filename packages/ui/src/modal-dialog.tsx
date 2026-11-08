@@ -5,6 +5,7 @@ import {
   use,
   useCallback,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   type ComponentProps,
@@ -132,52 +133,6 @@ export function ModalDialog({
     [open, owner.fallbackFocus],
   );
   const titleId = useId();
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const attachBody = useCallback(
-    (body: HTMLDivElement | null) => {
-      bodyRef.current = body;
-      if (callerBodyRef) callerBodyRef.current = body;
-    },
-    [callerBodyRef],
-  );
-  // The portal's React parent may be a page Panel whose viewport does not
-  // contain this body, so the dialog answers for its own scroll frame.
-  const bodyLayout = useMemo(
-    () => ({
-      controlsRef: null,
-      stickyControlsBounds: () => null,
-      keepBodyFocusVisible(target: Element | null) {
-        const body = bodyRef.current;
-        if (!body?.isConnected || !target || !body.contains(target)) return;
-        const bounds = body.getBoundingClientRect();
-        const style = getComputedStyle(body);
-        const top = Math.max(
-          bounds.top + (Number.parseFloat(style.scrollPaddingBlockStart) || 0),
-          0,
-        );
-        const bottom = Math.min(
-          bounds.bottom - (Number.parseFloat(style.scrollPaddingBlockEnd) || 0),
-          body.ownerDocument.documentElement.clientHeight,
-        );
-        const height = bottom - top;
-        if (!(height > 0)) return;
-        const unit = readingUnitFor(target, body, (candidate) => {
-          const size = candidate.getBoundingClientRect().height;
-          return size > 0 && size <= height + 0.5;
-        });
-        const shown = unit.getBoundingClientRect();
-        // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
-        const visible =
-          shown.top >= top - 0.5 &&
-          (shown.height > height
-            ? shown.top < bottom
-            : shown.bottom <= bottom + 0.5);
-        if (!visible)
-          unit.scrollIntoView({ block: "nearest", inline: "nearest" });
-      },
-    }),
-    [],
-  );
   return (
     <Dialog.Root
       open={open}
@@ -249,27 +204,14 @@ export function ModalDialog({
               )}
             </header>
             {(description || children) && (
-              // A body-filling field leaves later content reachable only by native page scrolling.
-              <div
-                ref={attachBody}
-                role="region"
-                aria-labelledby={titleId}
-                tabIndex={0}
-                data-slot="dialog-body"
-                data-focus-inset=""
-                {...stylex.props(styles.body, bodyStyles)}
+              <DialogBody
+                titleId={titleId}
+                description={description}
+                bodyRef={callerBodyRef}
+                bodyStyles={bodyStyles}
               >
-                {description && (
-                  <Dialog.Description
-                    {...stylex.props(styles.description, type.uiMd)}
-                  >
-                    {description}
-                  </Dialog.Description>
-                )}
-                <PanelLayoutContext value={bodyLayout}>
-                  {children}
-                </PanelLayoutContext>
-              </div>
+                {children}
+              </DialogBody>
             )}
             {(footer || auxiliaryAction) && (
               <footer {...stylex.props(styles.footer)}>
@@ -283,6 +225,221 @@ export function ModalDialog({
         </ContentVisibilityContext>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+type BodyFrame = {
+  top: number;
+  bottom: number;
+  width: number;
+  contentHeight: number;
+  unit: Element;
+};
+
+function bodyFrame(body: HTMLElement, target: Element): BodyFrame | null {
+  if (!body.isConnected || !body.contains(target)) return null;
+  const bounds = body.getBoundingClientRect();
+  const style = getComputedStyle(body);
+  const top = Math.max(
+    bounds.top + (Number.parseFloat(style.scrollPaddingBlockStart) || 0),
+    0,
+  );
+  const bottom = Math.min(
+    bounds.bottom - (Number.parseFloat(style.scrollPaddingBlockEnd) || 0),
+    body.ownerDocument.documentElement.clientHeight,
+  );
+  const height = bottom - top;
+  if (!(height > 0)) return null;
+  const unit = readingUnitFor(target, body, (candidate) => {
+    const size = candidate.getBoundingClientRect().height;
+    return size > 0 && size <= height + 0.5;
+  });
+  return {
+    top,
+    bottom,
+    width: bounds.width,
+    contentHeight: body.scrollHeight,
+    unit,
+  };
+}
+
+function withinBodyFrame(shown: DOMRect, frame: BodyFrame) {
+  // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
+  return (
+    shown.top >= frame.top - 0.5 &&
+    (shown.height > frame.bottom - frame.top
+      ? shown.top < frame.bottom
+      : shown.bottom <= frame.bottom + 0.5)
+  );
+}
+
+// The portal's React parent may be a page Panel whose viewport does not
+// contain this body, so the dialog answers for its own scroll frame.
+function DialogBody({
+  titleId,
+  description,
+  bodyRef: callerBodyRef,
+  bodyStyles,
+  children,
+}: {
+  titleId: string;
+  description?: ReactNode;
+  bodyRef?: RefObject<HTMLDivElement | null>;
+  bodyStyles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+  children?: ReactNode;
+}) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const pressedTarget = useRef<Element | null>(null);
+  const scrollPosition = useRef(0);
+  const attachBody = useCallback(
+    (body: HTMLDivElement | null) => {
+      bodyRef.current = body;
+      if (callerBodyRef) callerBodyRef.current = body;
+    },
+    [callerBodyRef],
+  );
+  const keepFocusVisible = useCallback((target: Element) => {
+    const body = bodyRef.current;
+    const frame = body && bodyFrame(body, target);
+    if (!body || !frame) return null;
+    const pressed = pressedTarget.current;
+    const pointerFocus =
+      pressed &&
+      (target.contains(pressed) ||
+        pressed.closest("label, [data-focus-proxy]")?.contains(target));
+    const shown = frame.unit.getBoundingClientRect();
+    // Moving a pressed control before pointerup can swallow its activation.
+    if (!pointerFocus && !withinBodyFrame(shown, frame)) {
+      frame.unit.scrollIntoView({
+        block: shown.height > frame.bottom - frame.top ? "start" : "nearest",
+        inline: "nearest",
+      });
+      // Its queued scroll event must not read as the reader leaving.
+      scrollPosition.current = body.scrollTop;
+    }
+    return frame;
+  }, []);
+  const bodyLayout = useMemo(
+    () => ({
+      controlsRef: null,
+      stickyControlsBounds: () => null,
+      keepBodyFocusVisible(target: Element | null) {
+        if (target) keepFocusVisible(target);
+      },
+    }),
+    [keepFocusVisible],
+  );
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const document = body.ownerDocument;
+    // The focused descendant stays revealed until the reader leaves it.
+    let focused: Element | null = null;
+    let following = false;
+    let frame: BodyFrame | null = null;
+    scrollPosition.current = body.scrollTop;
+    const follow = () => {
+      if (!focused || !following) return;
+      if (focused !== document.activeElement || !body.contains(focused)) {
+        track(null);
+        return;
+      }
+      frame = keepFocusVisible(focused);
+    };
+    const observer = new ResizeObserver(follow);
+    const track = (target: Element | null) => {
+      if (focused) observer.unobserve(focused);
+      focused = target;
+      following = target !== null;
+      frame = null;
+      // The target's initial observation reveals it after native focus scrolling.
+      if (target) observer.observe(target, { box: "border-box" });
+    };
+    observer.observe(body, { box: "border-box" });
+    const initial = document.activeElement;
+    if (initial && initial !== body && body.contains(initial)) track(initial);
+    const onFocusIn = (event: FocusEvent) => {
+      // Window reactivation refocuses the same control without a new entry.
+      if (event.target === focused) return;
+      track(
+        event.target instanceof Element && event.target !== body
+          ? event.target
+          : null,
+      );
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (event.target === document.activeElement) return;
+      const next = event.relatedTarget;
+      if (!(next instanceof Node && body.contains(next)))
+        pressedTarget.current = null;
+      track(null);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      pressedTarget.current =
+        event.target instanceof Element ? event.target : null;
+    };
+    const release = () => {
+      pressedTarget.current = null;
+    };
+    const onWheel = () => {
+      following = false;
+    };
+    const onScroll = () => {
+      const moved = body.scrollTop !== scrollPosition.current;
+      scrollPosition.current = body.scrollTop;
+      if (!moved || !focused || !following || !frame) return;
+      const current = bodyFrame(body, focused);
+      if (!current) return;
+      // Reflow and native scroll anchoring can notify before ResizeObserver delivery.
+      if (
+        current.top !== frame.top ||
+        current.bottom !== frame.bottom ||
+        current.width !== frame.width ||
+        current.contentHeight !== frame.contentHeight
+      )
+        follow();
+      else if (!withinBodyFrame(current.unit.getBoundingClientRect(), current))
+        following = false;
+    };
+    body.addEventListener("focusin", onFocusIn);
+    body.addEventListener("focusout", onFocusOut);
+    body.addEventListener("pointerdown", onPointerDown, true);
+    body.addEventListener("wheel", onWheel, { passive: true });
+    body.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("pointerup", release, true);
+    document.addEventListener("pointercancel", release, true);
+    document.defaultView?.addEventListener("resize", follow);
+    return () => {
+      observer.disconnect();
+      body.removeEventListener("focusin", onFocusIn);
+      body.removeEventListener("focusout", onFocusOut);
+      body.removeEventListener("pointerdown", onPointerDown, true);
+      body.removeEventListener("wheel", onWheel);
+      body.removeEventListener("scroll", onScroll);
+      document.removeEventListener("pointerup", release, true);
+      document.removeEventListener("pointercancel", release, true);
+      document.defaultView?.removeEventListener("resize", follow);
+      release();
+    };
+  }, [keepFocusVisible]);
+  return (
+    // A body-filling field leaves later content reachable only by native page scrolling.
+    <div
+      ref={attachBody}
+      role="region"
+      aria-labelledby={titleId}
+      tabIndex={0}
+      data-slot="dialog-body"
+      data-focus-inset=""
+      {...stylex.props(styles.body, bodyStyles)}
+    >
+      {description && (
+        <Dialog.Description {...stylex.props(styles.description, type.uiMd)}>
+          {description}
+        </Dialog.Description>
+      )}
+      <PanelLayoutContext value={bodyLayout}>{children}</PanelLayoutContext>
+    </div>
   );
 }
 

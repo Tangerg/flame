@@ -444,11 +444,18 @@ The existing cross-browser UI-ownership scenarios also follow German Schedule
 authoring through 560 × 364 and 373 × 243 frames at 18 px in both themes.
 They retain the same task and conversation drafts while checking complete footer
 text, wrapped model choices, first activation, nested Escape, model refresh and
-keyboard cancellation. Geometry is attached on success and failure. A selected
+keyboard cancellation. A focused Cron field must remain inside the body after
+each resize with its exact value and backward selection. After manual wheel
+reading, a scoped probe verifies that the component makes no further
+`scrollIntoView` calls during resize; WebKit can still reveal the focused field
+through its native scrolling. The probe forwards every native call and restores
+the method in `finally`. Geometry is attached on success and failure. A selected
 model can be taller than the smallest body; its first line must remain readable,
 and its complete name remains in the scrollable body and menu. These effective
 frames complement the native 200% and 300% review; they do not simulate page zoom
-or qualify Save, Runtime dispatch or provider execution.
+or qualify Save, Runtime dispatch or provider execution. Oversized text editors
+also need a native caret-visibility check; fitting-field containment alone does
+not qualify their editing position.
 
 ## Optional measurements
 

@@ -623,3 +623,209 @@ describe("ModalDialog body results", () => {
     ]).toEqual([2, 7, "backward"]);
   });
 });
+
+describe("ModalDialog body focus through reflow", () => {
+  const nativeScroll = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "scrollIntoView",
+  );
+  type Observer = {
+    callback: () => void;
+    targets: Set<Element>;
+  };
+  let observers: Set<Observer>;
+  let revealed: Element[];
+
+  beforeEach(() => {
+    observers = new Set();
+    revealed = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        targets = new Set<Element>();
+        callback: () => void;
+        constructor(callback: () => void) {
+          this.callback = callback;
+          observers.add(this);
+        }
+        observe(target: Element) {
+          this.targets.add(target);
+        }
+        unobserve(target: Element) {
+          this.targets.delete(target);
+        }
+        disconnect() {
+          this.targets.clear();
+          observers.delete(this);
+        }
+      },
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value(this: HTMLElement) {
+        revealed.push(this);
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (nativeScroll)
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "scrollIntoView",
+        nativeScroll,
+      );
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  });
+
+  function resize(target: Element) {
+    act(() => {
+      for (const observer of observers)
+        if (observer.targets.has(target)) observer.callback();
+    });
+  }
+
+  async function focusTitle() {
+    const view = render(<ModelEditor result={null} />);
+    const dialog = await screen.findByRole("dialog");
+    await vi.waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+    const title = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Title",
+    });
+    const body = dialog.querySelector<HTMLElement>(
+      '[data-slot="dialog-body"]',
+    )!;
+    rectangles.set(body, new DOMRect(0, 100, 600, 300));
+    rectangles.set(title, new DOMRect(0, 120, 600, 32));
+    act(() => title.focus());
+    fireEvent.change(title, { target: { value: "Nightly review" } });
+    title.setSelectionRange(2, 7, "backward");
+    resize(title);
+    expect(revealed).toEqual([]);
+    return { view, body, title };
+  }
+
+  function shrink(body: HTMLElement, title: HTMLElement) {
+    rectangles.set(body, new DOMRect(0, 100, 600, 60));
+    rectangles.set(title, new DOMRect(0, 180, 600, 32));
+  }
+
+  it("keeps a focused field, its draft and selection inside the body through resizes", async () => {
+    const { body, title } = await focusTitle();
+
+    shrink(body, title);
+    resize(body);
+    expect(revealed).toEqual([title]);
+
+    rectangles.set(title, new DOMRect(0, 120, 600, 32));
+    fireEvent.scroll(body);
+    rectangles.set(title, new DOMRect(0, 240, 600, 32));
+    fireEvent(window, new Event("resize"));
+    expect(revealed).toEqual([title, title]);
+
+    expect(document.activeElement).toBe(title);
+    expect(title.value).toBe("Nightly review");
+    expect([
+      title.selectionStart,
+      title.selectionEnd,
+      title.selectionDirection,
+    ]).toEqual([2, 7, "backward"]);
+  });
+
+  it("stops following once the reader scrolls the field away", async () => {
+    const { body, title } = await focusTitle();
+    resize(title);
+
+    body.scrollTop = 80;
+    rectangles.set(title, new DOMRect(0, 40, 600, 32));
+    fireEvent.scroll(body);
+    shrink(body, title);
+    resize(body);
+
+    expect(revealed).toEqual([]);
+    expect(document.activeElement).toBe(title);
+  });
+
+  it("keeps following through a queued reveal scroll before layout settles", async () => {
+    const { body, title } = await focusTitle();
+    vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(
+      function (this: HTMLElement) {
+        revealed.push(this);
+        body.scrollTop = 80;
+      },
+    );
+    shrink(body, title);
+    resize(body);
+    fireEvent.scroll(body);
+    fireEvent(window, new Event("resize"));
+
+    expect(revealed).toEqual([title, title]);
+    expect(document.activeElement).toBe(title);
+  });
+
+  it("does not mistake fractional frame reflow for a scrollbar departure", async () => {
+    const { body, title } = await focusTitle();
+    rectangles.set(body, new DOMRect(0, 100, 600.25, 300));
+    rectangles.set(title, new DOMRect(0, 40, 600, 32));
+    body.scrollTop = 80;
+    fireEvent.scroll(body);
+
+    expect(revealed).toEqual([title]);
+    expect(document.activeElement).toBe(title);
+  });
+
+  it("stops following on wheel, body reading and later outside focus", async () => {
+    const { body, title } = await focusTitle();
+
+    fireEvent.wheel(body, { deltaY: -80 });
+    shrink(body, title);
+    resize(body);
+    expect(revealed).toEqual([]);
+
+    act(() => body.focus());
+    act(() => title.focus());
+    resize(title);
+    expect(revealed).toEqual([title]);
+
+    revealed.length = 0;
+    act(() => body.focus());
+    resize(body);
+    expect(revealed).toEqual([]);
+
+    act(() => title.focus());
+    act(() => screen.getByRole("button", { name: "Save" }).focus());
+    resize(body);
+    expect(revealed).toEqual([]);
+  });
+
+  it("leaves a pressed field in place until the press ends", async () => {
+    const { body, title } = await focusTitle();
+    act(() => body.focus());
+
+    fireEvent.pointerDown(title);
+    act(() => title.focus());
+    shrink(body, title);
+    resize(title);
+    expect(revealed).toEqual([]);
+
+    fireEvent.pointerUp(title);
+    resize(body);
+    expect(revealed).toEqual([title]);
+  });
+
+  it("releases its observer and listeners when the dialog unmounts", async () => {
+    const { view, body, title } = await focusTitle();
+    view.unmount();
+
+    for (const observer of observers) {
+      expect(observer.targets.has(body)).toBe(false);
+      expect(observer.targets.has(title)).toBe(false);
+    }
+    shrink(body, title);
+    fireEvent(window, new Event("resize"));
+    expect(revealed).toEqual([]);
+  });
+});

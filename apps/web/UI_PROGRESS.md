@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest complete **1,282-case Lab baseline** qualifies the shared Select repair on **0adc484e0**. Subsequent Composer capture checks pass **29 selected cases**. The German Schedule authoring follow-up passes **43 selected cases**, with **44 final browser images** reviewed or matched to reviewed bytes. Actual Wails **200% and 300%** tasks qualify the documented EN, ZH and German paths. No production input changes in these two follow-ups. See **German Schedule authoring and conversation return (2026-11-08)** for the latest evidence and the Chromium resize-focus observation still requiring investigation. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The shared dialog resize-focus repair passes **43 selected cases** and **262 UI unit tests**. The latest **1,286-case** complete Lab run records **1,283 passes and 3 scene-admission timeouts**; those three pass separately with unchanged sources. All **946 images** are reviewed or matched to reviewed bytes. Actual Wails **200% and 300%** German tasks qualify fitting-field visibility and retained editing. The oversized Chinese MCP JSON editor retains its draft, but immediate caret visibility after zoom remains unqualified. See **Dialog focus ownership through resize (2026-11-08)** for evidence and limits. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -755,8 +755,9 @@ The frame images also expose a follow-up: Chromium retains Cron focus outside
 the smaller body before subsequent Tab navigation reveals later fields. WebKit
 images reveal Cron, and its immediate resize geometry can precede that scroll's
 settlement. These captures qualify footer layout, not focused-field visibility
-after resizing. Trace readiness and the existing focus owner before choosing a
-production change; do not infer the native zoom behavior from Chromium alone.
+after resizing. The following section reproduces the Chromium defect with a
+settled visibility assertion and repairs the dialog's actual focus-frame owner;
+the original captures alone do not establish native zoom behavior.
 
 After functional checks, all **12 output/cache roots** return to their original
 bytes, modes and directory state or absence. The primary checkout is unchanged;
@@ -764,8 +765,112 @@ no functional check runs against restored older outputs. The app is unregistered
 its server exits, six Library paths and ordinary temp return to absence, and
 three protected helper roots preserve their original empty identities and flags.
 Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
-and an ordinary main push deliver the coverage. Continue the resize-focus trace
-through the same Lab. The goal remains active.
+and an ordinary main push deliver the coverage. The following section records
+the resulting shared dialog repair through this same Lab. The goal remains active.
+
+### Dialog focus ownership through resize (2026-11-08)
+
+The preceding Cron observation is a production focus-frame defect, rather than
+capture readiness. Adding a five-second containment poll to the same German
+Schedule scenario produces **2 Chromium failures and 2 WebKit passes** before
+the repair: the exact field remains focused outside the shrunken body.
+
+`ModalDialog` already supplies the reading frame for explicit form feedback,
+but does not follow a focused descendant through reflow. Its private
+`DialogBody` now owns that frame for the actual portal body's mounted lifetime.
+One observer follows the body and current descendant; window resize uses the
+same reveal operation. The frame preserves fractional geometry and existing
+scroll padding and reading units. It reveals a fitting unit or the start of an
+oversized target without changing focus, field values or selection. Header,
+footer, Base UI dismissal and final-focus ownership remain unchanged.
+
+Wheel reading, scrolling a field away, body reading focus and later outside or
+portal focus retire following. Queued reveal and anchoring scrolls retain it;
+pointer activation is not displaced mid-press. Unmount disconnects the observer
+and listeners. Seven added unit cases cover these contracts, retained backward
+selection and fractional reflow. Better-layout and better-accessibility guide
+focused-field visibility, manual reading and preserved editing state. A bounded
+Claude Code CLI edit times out after **180.044 s** with changes present; primary
+reviews them, corrects fractional-width handling and completes verification.
+
+The existing German scenario now polls focus and full field containment at each
+effective frame and retains the exact value and backward selection. An initial
+manual-reading assertion wrongly requires WebKit to leave the focused field
+outside after a later resize: **2 Chromium cases pass and 2 WebKit cases fail**.
+A scoped, forwarding `scrollIntoView` probe records **zero component calls** in
+all four cases after wheel reading, while WebKit itself reveals the field.
+The corrected contract checks component ownership and records native geometry;
+it does not counter-scroll the browser. The method is restored in `finally`.
+All four focused cases then pass in **18.563 s**.
+
+The related UI-ownership, plugin-form and panel-focus files pass **43 / 43** in
+**106.452 s**, without retries, skips, flaky cases or global errors. All **48
+browser images** are accounted for: **38** match reviewed bytes and **10** new
+images are inspected. The full **1,286-case** Lab run finishes in **3,939.159 s**:
+**1,283 pass and 3 time out**, without retries, skips, flaky results or global
+errors. All **946 image attachments** are accounted for: **935** match reviewed
+bytes and the remaining **11** images are inspected.
+
+The Agent StyleX collision, disclosure-target and clipped-focus-ring sweeps time
+out after **152, 168 and 172 s** respectively while awaiting scene readiness.
+Their error pages report a failed dynamic fetch of `fixtureRuntime.tsx`, with
+development WebSocket errors; they do not produce completed assertion results.
+The same three cases pass separately in **167.696 s**, using the same Lab
+configuration, frozen sources, zero retries and `--trace=retain-on-failure`.
+No failed trace is retained by that passing diagnosis. The original full-run
+failures remain recorded: this is not a pristine complete-suite pass or proof
+that the loading failures predate this batch. If another complete run reproduces
+them, capture its failing network lifetime through this same runner before
+changing loading behavior. Console checks and assertions remain intact.
+
+The shared UI check passes **262 tests / 14 files**, build, typecheck, lint,
+formatting and the independent offline packed consumer in **8.823 s**. An
+earlier invocation passes its units but encounters an empty private npm cache;
+warming only lockfile-verified packages resolves `ENOTCACHED`, and the packed
+consumer also passes independently. Frontend passes **431 files / 4,702 tests**
+in **87.780 s**. Eleven selected Web static checks pass; the unchanged
+ProviderRow complexity failure remains **31 → 34**. The production
+**make check-native** gate passes in **21.065 s**. Existing SDK/macOS linker and
+disabled Happy DOM iframe diagnostics remain. Runtime suites, optional
+measurements and a single full Web check invocation are not run for this batch.
+
+The private Wails v3.1.0 build passes in **1.884 s**, using the same Lab and real
+native host, menu and zoom owners. German/light/18 px at **200% and 300%** keeps
+Cron and its selected text visible through actual Fill and Top Left window
+actions. Manual body reading can leave Cron behind without focus theft. First
+model activation, complete wrapped choices, selected return, refresh, Cancel
+return and continued conversation input pass. All **9 German captures** are
+reviewed. Oversized model controls retain their documented first-line boundary.
+
+A separate Chinese/dark/18 px task exposes a remaining boundary in the existing
+MCP JSON import editor: its ten-row textarea exceeds the body at **200% and
+300%**, and the selected final text is outside the visible body immediately
+after zoom. The exact draft and selection remain; continuing input reveals the
+caret. Manual-reading retirement followed by another zoom still reproduces it,
+but does not establish a clean pre-repair source baseline. Do not classify it
+as proven pre-existing or qualify immediate caret visibility. Local invalid-JSON
+refusal, visible validation, reachable footer, retained content and Escape
+return pass. All **10 Chinese captures** are reviewed. An initial `zh-CN` locale
+admission error is diagnostic; the registered key `zh` supplies the actual task.
+All three native runs exit normally. Save, valid MCP import, live Runtime or
+provider execution, physical IME, VoiceOver and RTL remain unqualified.
+
+All **487 final Lab assets** equal the native capture. The comparison of **6,710
+non-Markdown inputs** finds only the three intended source changes; all **46
+native inputs**, **45 unchanged native copies** and the primary checkout retain
+their captured baselines. After functional verification, all **12 output/cache
+roots** return to their original bytes, modes and directory state or absence,
+including the older UI output. No functional check runs after restoration;
+rebuild shared UI before a later Lab verification.
+
+The native app is unregistered and its owned server has exited. Six Library
+paths and ordinary temp return to absence; three protected helper roots retain
+their original empty identities and flags. Evidence preservation precedes
+guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
+the repair. Continue the oversized editor's available-height and native
+caret-visibility trace through this same Lab, retaining the loading-reliability
+follow-up above. No second visual path, story, configuration or runner is added.
+Whole-product acceptance remains unfinished, and the goal remains active.
 
 ### Qualification and limits
 

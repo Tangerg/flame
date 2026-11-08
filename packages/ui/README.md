@@ -586,8 +586,13 @@ native page and boundary keys can read content beyond a field, with the existing
 inset focus perimeter. Explicit field entry still uses `initialFocus`.
 The body supplies the reading frame for its children: a changed
 `FormActions.feedback` whose group still owns focus reveals its fitting unit, or
-the focused control when the unit is taller, with the nearest native scroll and
-without moving focus or editing state. Header and footer stay outside that frame.
+the focused control when the unit is taller, using native scrolling without
+moving focus or editing state. The same frame follows a focused
+descendant through body, target and window resizes, aligning an oversized unit
+to its start. Following ends when the reader scrolls it away, uses the wheel,
+focuses the body itself or moves focus outside, including to portaled menus; its
+own reveal and anchoring scrolls do not end it. A pointer press leaves its target
+in place while activation finishes. Header and footer stay outside that frame.
 Readers use `bodyRef` for their initial focus and `bodyStyles` for their existing
 measure and text treatment, rather than nesting another scrolling region.
 Its portal establishes the modal stacking context; nested shared menus and
