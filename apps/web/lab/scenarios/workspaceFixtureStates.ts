@@ -40,6 +40,8 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-usage",
   "dock-feature-off",
   "dock-file",
+  "dock-file-error",
+  "dock-file-unsupported",
   "dock-empty",
   "dock-catalog",
   "dock-loading",
@@ -74,4 +76,6 @@ export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> =
   "dock-usage": "package:visual:usage",
   "dock-feature-off": "package:visual:skills",
   "dock-file": "file",
+  "dock-file-error": "file",
+  "dock-file-unsupported": "file",
 };

@@ -29,6 +29,8 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-agent-memory": "Agent memory",
   "dock-feature-off": "Features off",
   "dock-file": "File viewer",
+  "dock-file-error": "File read failure",
+  "dock-file-unsupported": "Unsupported file",
   "dock-empty": "Diff · empty",
   "dock-catalog": "Dock catalogue",
   "dock-loading": "Diff · loading",

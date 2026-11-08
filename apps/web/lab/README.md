@@ -157,6 +157,13 @@ text, so its displayed path and contents share that source instead of returning
 the generic code sample. These recorded responses do not qualify live filesystem
 reads.
 
+The Workspace variants `dock-file-error` and `dock-file-unsupported` supply fixed
+read failures and the production `unsupported_mime` classification. The latter
+records an image entry, not image bytes. Every preselected file uses the existing
+viewer owner after resetting the document's file tree memory, retaining its path
+and parent folders for return. Listed file names derive from their captured paths.
+Retry preserves the recorded failure; other files keep their normal captured reads.
+
 The runtime retains its normal stylesheet load order. A caught boot failure loads
 the shared reader styles in its failure branch; preloading them before runtime
 admission changes the normal fixture's cascade.
@@ -256,6 +263,13 @@ through Preview, a narrow viewport, Go to line and keyboard reading, then Escape
 back to the original reference. It also checks the package source's identity,
 return focus, transcript position at an unchanged viewport and continued Composer
 draft. Captures accompany visible-row and scroll observations in that same case.
+
+File failure checks distinguish first entry into the tree from returning to a
+previously focused row. They retain reading focus after Retry, reference return and
+unsent drafts in both languages. Narrow ordinary material uses its existing full-width opener
+and Close action; reference inspection retains its own return action. Captures
+await the admitted business outcome after the normal query retry, rather than
+treating document readiness as a completed file read.
 
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current file-inspection repair passes all **8 file-reference interactions**, with **3 final browser images** accounted for. Native review covers **20 workflow captures before the fixture-data repair** and **6 package-source captures afterward**; a separate rejected locale setup is excluded from acceptance. The preceding reading-focus repair passes **27 Lab interactions**, with all **31 final images** accounted for and **13 native captures** viewed. Actual Wails **200% and 300%** acceptance covers reading, focus, preview activation, return and window resizing. The preceding navigation repair retains its **28 native captures**, and the comparison-caption repair passes **24 capture cases and 19 interactions**. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained; the final isolated run passes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current file-reading batch passes **98 / 98 Workspace cases**, including both new failure variants, with all **55 final browser images** reviewed or matched to reviewed bytes. Actual Wails **200% and 300%** acceptance adds **25 viewed native captures** covering repeated failure, unsupported files, keyboard reading, return focus, window resizing and continued drafts. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -422,9 +422,91 @@ before pushing to `main` and retiring the private evidence directory. VoiceOver,
 physical IME, RTL, live filesystem/provider behavior and whole-product routes
 remain unverified by this batch.
 
-Next inspect failed or unsupported file-reading recovery in the existing
-Workspace Lab scenes, including return focus and draft continuity. Establish
-the current behavior before choosing any further repair.
+### File reading failures and independent Workspace states (2026-11-08)
+
+The existing Workspace catalog now exposes `dock-file-error` and
+`dock-file-unsupported` as named variants. Both project from
+`VISUAL_WORKSPACE_STATES`; the catalog, fixture and capture selection share that
+owner. There are still **44 stories**, **97 spec files** and one Playwright
+configuration. The failure variant rejects only the captured README read. The
+unsupported variant supplies a typed image entry and the production
+`RpcError` / `unsupported_mime` outcome, without image bytes. Other files keep
+their existing captured responses. Repeated Retry retains the recorded failure
+rather than pretending that a filesystem read recovered.
+
+Returning from a preselected viewer exposes a Lab initialization defect: direct
+`fileViewer` seeding bypasses the owner that records its path and parent folders.
+All preselected viewers now enter through the existing `setFileViewer` action
+after the independent document resets tree memory. Two strengthened legacy
+header cases fail before that repair in **19.735 s**. Manual image review also
+finds the tree naming `DockResizer.tsx` as `resizer.ts`; its listed name now derives
+from the captured path, and the existing browse consumer follows that name.
+Header identity, returned selection and full path are asserted together.
+
+Four new cases extend `fileHeader.browser.spec.ts`, using the existing test and
+admission owners. They follow English/light/14 px and Chinese/dark/18 px tasks
+through a **720 × 450** frame, two keyboard Retries, named reader focus,
+Escape return to `README.md:15:2`, image-file tree return and continued unsent
+drafts. Initial tree entry retains the product's first-row cursor contract;
+return after keyboard browsing retains the selected row. Ordinary narrow
+material uses the existing full-width opener and Close action, which restores
+the named Conversation focus. Inline reference inspection keeps its own Back
+and Escape return. Checks scope the visible view body and its header so hidden
+retained Activity content cannot duplicate the file identity.
+
+The complete affected selection passes **98 / 98** in **272.809 s**: the full
+Workspace suite, file headers, file references and the selected Workspace
+catalog captures. There are no retries, skips, flaky results or global errors.
+All **55 final images** are reviewed or match reviewed bytes: **44 catalog
+captures** cover all 22 Workspace variants in both profiles, and **11 interaction
+images** retain the new outcomes and healthy reference journey. Header actions
+fit their header and viewport, remain hit-test reachable and cause no document
+overflow. The healthy package round trip still retains transcript position
+at **1609 → 1609 px** at an unchanged viewport. Captures await the real business
+outcome after the normal query retry, not only document admission.
+
+Actual Wails v3.1.0 uses all **490 final canonical Lab assets**, verified byte for
+byte. English/light/18 px at **200%** and Chinese/dark/18 px at **300%** qualify
+both workflows. The Chinese runs use native Top Left and Fill window actions,
+keyboard and wheel reading. In the smaller window, keyboard entry reveals the
+offscreen Retry; both attempts retain the README reader's focus. Escape returns
+to the original reference. Unsupported-image reading retains its path, returns
+to the selected and focused image row, then closes back to Conversation. All
+four unsent drafts continue with their original text intact. English also checks
+the healthy DockResizer header/path and its selected, focused tree return. All
+**25 native originals** are viewed; all four processes exit normally. Chinese
+entry uses native paste, not qualified physical IME composition.
+
+Better Accessibility and Layout guide focus, containment and task continuity;
+read-only ZCode `PreviewPane` remains the file-reading comparison. A bounded
+Claude Code CLI candidate times out with exit 124 after **360.059 s**, without
+editing its four allowed copies or the protected originals. Primary implements
+and reviews the change. Early test attempts correct assumptions about initial
+tree focus, retained hidden content and ordinary versus reference inspection;
+one duplicate local declaration is fixed before the final typecheck and run.
+No production UI, Runtime, command, navigation or provider defect is established
+or changed by this batch.
+
+The product FileWorkspace baseline passes **107 / 107** before the Lab edits.
+Final catalog and selection units pass **37 / 37**. Web typecheck, lint,
+formatting, unused-code, dead-style and design-system checks pass.
+`make check-native` passes again in **11.115 s**. All **6,715 non-Markdown inputs**
+retain their qualified bytes, with exactly six authored changes inside the Lab
+and no added inputs. All **46 production native inputs** remain unchanged.
+The complete Lab and Web gates retain the earlier `f08d723c` baseline; earlier
+resource-loading failures remain unexplained.
+
+The private server is stopped and its app unregistered. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline and the primary checkout stays
+unchanged. Functional verification ends before restoration. Ordinary hooks format
+owned files and lint source; qualified inputs and restored outputs are rechecked
+before pushing to `main` and retiring the private evidence directory. VoiceOver,
+physical IME, RTL, live filesystem/provider behavior and whole-product route
+coverage remain unqualified. The goal remains active.
+
+Continue by observing complete file and Diff reading tasks in this same Lab.
+Establish an actual failure or coverage gap before selecting the next repair.
 
 ### Presentation and preview continuity
 

@@ -65,6 +65,23 @@ for (const story of catalog.stories) {
             const sample = COMPOSITION_SAMPLES.find((sample) => sample.id === entry.variantId)!;
             await expect(page.locator("#root section")).toHaveCount(sample.frames);
           }
+          if (entry.storyId === "business-workspace-scenarios") {
+            if (entry.variantId === "dock-file-error") {
+              await expect(
+                page
+                  .getByRole("region", { name: "README.md", exact: true })
+                  .getByRole("button", { name: chinese ? "重试" : "Retry", exact: true }),
+              ).toBeVisible();
+            } else if (entry.variantId === "dock-file-unsupported") {
+              await expect(
+                page
+                  .getByRole("region", { name: "review-image.png", exact: true })
+                  .getByText(chinese ? "这里暂时无法预览图片" : "No image preview here yet", {
+                    exact: true,
+                  }),
+              ).toBeVisible();
+            }
+          }
           const overflow = await page.evaluate(() => ({
             viewport: document.documentElement.clientWidth,
             content: document.documentElement.scrollWidth,

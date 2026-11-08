@@ -265,6 +265,22 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
     return;
   }
+  if (state === "dock-file-error") {
+    const reader = page.getByRole("region", { name: "README.md", exact: true });
+    await expect(reader.getByText(en["file.error.title"]!, { exact: true })).toBeVisible();
+    await expect(
+      reader.getByRole("button", { name: en["common.retry"]!, exact: true }),
+    ).toBeVisible();
+    return;
+  }
+  if (state === "dock-file-unsupported") {
+    const reader = page.getByRole("region", { name: "review-image.png", exact: true });
+    await expect(reader.getByText(en["file.unsupported.image"]!, { exact: true })).toBeVisible();
+    await expect(
+      reader.getByRole("button", { name: en["common.retry"]!, exact: true }),
+    ).toHaveCount(0);
+    return;
+  }
   if (state === "dock-catalog") {
     await expect(page.getByText(en["dock.catalog.title"]!, { exact: true })).toBeVisible();
     await expect(
@@ -408,8 +424,9 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
 test("files browse and preview share one dock tab", async ({ page }) => {
   await openWorkspace(page, { state: "dock-files" });
   const dock = page.locator(".agent-context-dock");
+  const fileName = ACTIVE_FILE_PATH.split("/").at(-1)!;
   await dock.getByRole("treeitem", { name: "apps", exact: true }).click();
-  await dock.getByRole("treeitem", { name: "resizer.ts", exact: true }).click();
+  await dock.getByRole("treeitem", { name: fileName, exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
   await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
   const back = dock.getByRole("button", { name: "Back to files" });
@@ -425,7 +442,7 @@ test("files browse and preview share one dock tab", async ({ page }) => {
     "aria-expanded",
     "true",
   );
-  const file = dock.getByRole("treeitem", { name: "resizer.ts", exact: true });
+  const file = dock.getByRole("treeitem", { name: fileName, exact: true });
   await expect(file).toBeFocused();
   const rowFocus = await file.evaluate((node) => {
     const style = getComputedStyle(node);

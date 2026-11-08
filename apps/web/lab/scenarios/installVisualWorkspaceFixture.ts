@@ -22,6 +22,7 @@ import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
+import { splitFilePath } from "@/lib/path";
 import shortcutsSettings from "@/features/command/shortcuts/index";
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import { workbenchSettings } from "@/features/shell/workbench/index";
@@ -52,7 +53,7 @@ import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type AnyPlugin } from "dougong";
-import { type FlameClient } from "@flame/runtime-client";
+import { RpcError, type FlameClient } from "@flame/runtime-client";
 import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
@@ -153,6 +154,13 @@ const WEB_PACKAGE_SOURCE: WorkspaceFileContent = {
   endLine: webPackageContent.split("\n").length,
 };
 
+const UNSUPPORTED_IMAGE: WorkspaceFileEntry = {
+  path: "review-image.png",
+  name: "review-image.png",
+  type: "file",
+  sizeBytes: 8_192,
+};
+
 const READING_GUIDE_SOURCE: WorkspaceFileContent = {
   content: LONG_RESPONSE_MARKDOWN,
   startLine: 1,
@@ -184,6 +192,7 @@ function pending<T>(signal?: AbortSignal): Promise<T> {
 function workspaceDataPlugin(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   runtimeClient: () => FlameClient,
+  state: VisualWorkspaceState,
 ): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
@@ -410,7 +419,14 @@ function workspaceDataPlugin(
         key: WORKSPACE_LIST_FILES_KEY,
         fetcher: async (params) =>
           (params as { path?: string } | undefined)?.path === "apps"
-            ? [{ path: ACTIVE_DIFF_FILE, name: "resizer.ts", type: "file", sizeBytes: 2048 }]
+            ? [
+                {
+                  path: ACTIVE_DIFF_FILE,
+                  name: splitFilePath(ACTIVE_DIFF_FILE).name,
+                  type: "file",
+                  sizeBytes: 2048,
+                },
+              ]
             : ([
                 { path: "apps", name: "apps", type: "dir" },
                 { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
@@ -433,6 +449,7 @@ function workspaceDataPlugin(
                   type: "file",
                   sizeBytes: new TextEncoder().encode(CALLOUT_MARKDOWN).byteLength,
                 },
+                ...(state === "dock-file-unsupported" ? [UNSUPPORTED_IMAGE] : []),
               ] satisfies WorkspaceFileEntry[]),
       });
 
@@ -440,6 +457,16 @@ function workspaceDataPlugin(
         key: WORKSPACE_READ_FILE_KEY,
         fetcher: async (params) => {
           const path = (params as WorkspaceReadFileQuery).path;
+          if (state === "dock-file-error" && path === "README.md") {
+            throw new Error("visual fixture could not read README.md");
+          }
+          if (state === "dock-file-unsupported" && path === UNSUPPORTED_IMAGE.path) {
+            throw new RpcError({
+              code: -32602,
+              message: "visual fixture cannot preview this image",
+              data: { type: "unsupported_mime" },
+            });
+          }
           if (path === "apps/web/package.json") return WEB_PACKAGE_SOURCE;
           if (path === "README.md") return README_SOURCE;
           if (path === "reading-guide.md") return READING_GUIDE_SOURCE;
@@ -584,6 +611,14 @@ export async function installVisualWorkspaceFixture(
     state === "dock-catalog"
       ? WORKSPACE_DOCK_CATALOG
       : (DOCK_VIEW_BY_STATE[state] ?? "package:visual:diff");
+  const fileViewer =
+    state === "dock-files" || state === "dock-catalog"
+      ? null
+      : state === "dock-file-error"
+        ? { path: "README.md", line: 0 }
+        : state === "dock-file-unsupported"
+          ? { path: UNSUPPORTED_IMAGE.path, line: 0 }
+          : { path: ACTIVE_DIFF_FILE, line: 6 };
   visual.workspace.dock.store.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
@@ -598,12 +633,12 @@ export async function installVisualWorkspaceFixture(
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
     fileFocus: WorkspaceFileFocus.empty().moveTo(ACTIVE_DIFF_FILE),
-    fileViewer:
-      state === "dock-files" || state === "dock-catalog"
-        ? null
-        : { path: ACTIVE_DIFF_FILE, line: 6 },
+    fileViewer: null,
+    memory: { expandedDirs: [], lastFilePath: null },
     expandedToolIds: new Set(),
   });
+  // The viewer owner also records the path and parent folders used when returning to the tree.
+  visual.workspace.dock.store.getState().setFileViewer(fileViewer);
   visual.navigation.go({
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
@@ -636,7 +671,7 @@ export async function installVisualWorkspaceFixture(
     pluginManagementPane,
     visualNotifier,
     visualShortcuts,
-    workspaceDataPlugin(readDiff, runtimeClient),
+    workspaceDataPlugin(readDiff, runtimeClient, state),
     visualFileRenderers(runtimeClient),
   ]);
 
