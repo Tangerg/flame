@@ -128,6 +128,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       reading: null as Element | null,
       observedReader: null as Element | null,
       observedControls: null as Element | null,
+      observedBody: null as Element | null,
       blur: null as { target: string | null; related: string | null; focused: boolean } | null,
     };
     const rect = (element: Element | null) => element?.getBoundingClientRect().toJSON() ?? null;
@@ -155,9 +156,12 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       if (!state.reading?.isConnected || !reader?.contains(state.reading)) state.reading = null;
       const reading = state.reading;
       const controls = reader?.querySelector('[data-slot="panel-controls"]') ?? null;
+      // Content can reflow inside an unchanged viewport.
+      const body = reader?.querySelector('[data-slot="panel-body"]') ?? null;
       for (const [before, next] of [
         [state.observedReader, reader],
         [state.observedControls, controls],
+        [state.observedBody, body],
       ]) {
         if (before === next) continue;
         if (before) observer.unobserve(before);
@@ -165,6 +169,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       }
       state.observedReader = reader;
       state.observedControls = controls;
+      state.observedBody = body;
       const dock = reader?.closest(".agent-context-dock") ?? null;
       const row = dock?.closest(".agent-dock-row") ?? null;
       const snapshot = {

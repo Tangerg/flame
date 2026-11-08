@@ -48,8 +48,41 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   const draft = "Unsent layout-observation draft — 保留原始输入。";
   await composer.fill(draft);
   const search = page.getByRole("searchbox", { name: "Search this catalog", exact: true });
-  await search.fill("runtime");
   const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
+  const reportedHeight = async () => {
+    const value = await output.textContent();
+    return value ? (JSON.parse(value) as { viewport: { total: number } }).viewport.total : null;
+  };
+  await search.focus();
+  const initialHeight = await viewport.evaluate((node) => node.scrollHeight);
+  await expect.poll(reportedHeight).toBe(initialHeight);
+  await search.fill("runtime");
+  await expect(
+    page.getByRole("heading", { name: "40 of 80 available Skills", exact: true }),
+  ).toBeVisible();
+  const filteredFrames = await output.evaluate(async (node) => {
+    const frames = [];
+    await new Promise(requestAnimationFrame);
+    for (let frame = 0; frame < 8; frame += 1) {
+      await new Promise(requestAnimationFrame);
+      const observed = JSON.parse(node.textContent!) as { viewport: { total: number } };
+      const reader = document.querySelector<HTMLElement>('[data-slot="workspace-view-body"]')!;
+      frames.push({ reported: observed.viewport.total, measured: reader.scrollHeight });
+    }
+    return frames;
+  });
+  await test.info().attach("workspace-layout-filtered-frames", {
+    body: JSON.stringify({ initialHeight, filteredFrames }),
+    contentType: "application/json",
+  });
+  for (const frame of filteredFrames) {
+    expect(frame.measured).toBeLessThan(initialHeight);
+    expect(frame.reported).toBe(frame.measured);
+  }
+  await search.fill("");
+  await expect.poll(reportedHeight).toBe(initialHeight);
+  await search.fill("runtime");
+  await expect.poll(reportedHeight).toBe(filteredFrames[0]!.measured);
   const reader = await viewport.elementHandle();
   const reading = viewport.getByRole("button").filter({
     has: page.getByText("runtime-review-035", { exact: true }),
@@ -76,6 +109,7 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   await expect(observe).not.toBeChecked();
   await expect(output).toHaveText("");
   await expect(readingOutput).toHaveText("");
+  await search.fill("");
   await page.setViewportSize({ width: 1400, height: 900 });
   const retired = await output.evaluate(async (node) => {
     const frames = [];

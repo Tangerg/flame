@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Dock reflow repair passes the complete shared UI check (**276 tests** plus its offline packed consumer), the complete Web check (**433 files / 4,770 tests**) and `make check-native`. Both native profiles retain the selected Skills reading row through **200%**, automatic Dock folding, full-width material, document return and actual window enlargement/restoration; all **21 current native captures** are inspected with layout observation off. The final existing-config Lab selection passes **288 / 288 cases**, with no retries, skips, flaky results or global errors; all **727 final images** are reviewed or matched to reviewed bytes. The most recent complete Lab baseline, delivered as `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later product changes. Earlier milestones retain their scoped evidence below. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Lab observation repair passes **111 / 111 related cases** with no retries, skips, flaky results or global errors; all **60 final browser images** match reviewed bytes. English/light/14 px and Chinese/dark/18 px qualify fresh content-height observations, disabling and continued drafts. All **11 native captures** are inspected: six use the final fixture and five record its baseline. Production code is unchanged in this follow-up. The preceding Dock repair, delivered as `fbddb74a0`, retains its complete shared UI check (**276 tests** plus the offline packed consumer), complete Web check (**433 files / 4,770 tests**), native gate, **288 Lab cases**, **727 images** and **21 native captures** within their recorded scopes. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later Lab changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -238,6 +238,53 @@ The first broad Lab run passes 287 of 288 cases. Its compact Memory first-line a
 The final existing-config Lab selection passes **288 / 288** in **537.557 s**: the complete preview catalog and affected Workspace, Skills, Panel and window-chrome specs. It has no retries, skips, flaky results or global errors. All **727 final image attachments** are reviewed or matched to reviewed bytes. Final canonical assets match the inspected native bundle byte for byte; the later Memory assertion has no product asset delta. This remains scoped acceptance rather than a repeat of the complete 1,296-case Lab baseline.
 
 The final source comparison covers **6,715 non-Markdown inputs**: ten existing files change, with no additions or removals. Native checks compare **46 inputs** and **45 unchanged private copies**; the only private wrapper remains outside the repository. All twelve captured output/cache roots are restored before publication, with no later functional builds or tests. Both native processes and the private server are stopped, the app is unregistered, six private Library paths return to absence and three existing helper roots retain their identities, modes and flags. The primary checkout and its `go.work.sum` remain unchanged. Reference worktrees and user data are untouched. This batch adds no story, route, visual configuration or parallel verification entry. Live providers, VoiceOver and physical IME input remain outside this qualification.
+
+The current Lab observation follow-up finds a diagnostic defect while revisiting
+the original English wheel/pointer return. After a settled search receives
+`runtime`, the visible catalog has 40 matches but the layout readout keeps the
+80-row scroll extent, **5355** instead of **2777**. A later wheel updates it.
+The existing reader and controls keep their rectangles when only flow content
+shrinks. Their shared ResizeObserver now also tracks the current Panel body,
+using the same replacement, unobserve, frame scheduling and cleanup owner.
+No input listener, editable value, new snapshot or product scroll policy is added.
+
+The regression is added before the fix: all eight rendered frames show the
+same stale **5355 / 2777** mismatch. After the fix, each frame reports the actual
+**2777** height. The same existing case also checks growth, another shrink,
+draft/material retention and content changes after disabling observation.
+The focused case passes in **10.995 s**. A bounded one-file Claude CLI candidate
+completes in **26.802 s**, with six protected references unchanged. Primary
+review applies its geometry change and keeps the regression and final acceptance.
+
+The final existing-config Workspace, window-chrome and Skills acceptance selection
+passes **111 / 111** in **289.737 s**, without retries, skips, flaky results or
+global errors. All **60 image attachments** match reviewed bytes. Web typecheck,
+lint and formatting pass. The first Lab build reads restored old UI output and
+fails on a missing current export; it is excluded. Normal icons/UI rebuilds and
+the subsequent Lab build pass. The private Wails build passes in **21.880 s**.
+Complete Lab, Web, shared UI and native gates are not repeated for these two
+Lab-only source changes; their preceding results keep their recorded scopes.
+
+Both final native profiles use the same **491 canonical Lab assets**, compared
+byte for byte after the final browser build. With search focus settled before
+input, English observes **5355 → 2777 → 5355** and Chinese **6237 → 3228 → 6237**
+without wheel or resize. Disabling clears both outputs and later content changes
+leave them empty; exact drafts continue. English also follows wheel → document
+→ Escape: both immediate and later observations keep **900 px** and the focused
+`runtime-review-035`, fully readable. This does not explain the original anomaly.
+All **11 JPEG captures** are inspected at **2878 × 1798**: five baseline and six
+final. All three native runs exit normally. Input uses native paste, not an OS IME.
+
+The source comparison covers **6,715 non-Markdown inputs**, with only the two
+existing Lab files changed and no additions or removals. All **46 native inputs**
+and **45 unchanged private copies** retain their expected bytes. The twelve
+captured output/cache roots return to baseline before publication, with no later
+functional checks. The server is stopped, the app unregistered and six private
+Library paths absent; three existing helper roots retain identities, modes and
+flags. The primary checkout and its `go.work.sum` remain unchanged. Live provider
+execution, VoiceOver, physical IME and whole-product visual acceptance remain
+outside this qualification. Continue inspecting long Workspace fixture-state
+names at 18 px from the current native view before choosing another change.
 
 ### Document admission and failure reporting (2026-11-08)
 
