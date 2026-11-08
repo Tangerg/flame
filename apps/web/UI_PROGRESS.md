@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current reading-focus repair passes **27 Lab interactions**, with all **31 final images** accounted for and **13 native captures** viewed. Actual Wails **200% and 300%** acceptance covers reading-region and card focus, preview activation, return and window resizing. The preceding navigation repair retains its **28 native captures**, and the comparison-caption repair passes **24 capture cases and 19 interactions**. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained; the final isolated run passes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current file-inspection repair passes all **8 file-reference interactions**, with **3 final browser images** accounted for. Native review covers **20 workflow captures before the fixture-data repair** and **6 package-source captures afterward**; a separate rejected locale setup is excluded from acceptance. The preceding reading-focus repair passes **27 Lab interactions**, with all **31 final images** accounted for and **13 native captures** viewed. Actual Wails **200% and 300%** acceptance covers reading, focus, preview activation, return and window resizing. The preceding navigation repair retains its **28 native captures**, and the comparison-caption repair passes **24 capture cases and 19 interactions**. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained; the final isolated run passes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -357,9 +357,74 @@ pushing to `main`, then retires the private evidence directory. VoiceOver,
 physical IME, RTL, live providers and whole-product route acceptance remain
 unverified by this batch.
 
-Next inspect production file/source preview and return through the existing
-Workspace Lab scenario. This host-frame repair qualifies the Lab's reading
-boundary; product readers still need their own complete task acceptance.
+### File inspection, source fidelity and return (2026-11-08)
+
+The existing Workspace scene now qualifies the complete task: retain an unsent
+draft, open `README.md:15:2`, switch Preview and Source, narrow the viewport, jump
+to line 17, read with the keyboard, return to the original reference, inspect
+`apps/web/package.json`, return again and continue the same draft. No production
+navigation defect is reproduced. Better Accessibility and Layout guide focus,
+reading and containment checks; read-only ZCode `PreviewPane` inspection informs
+the file-identity review without copying its fallback policy.
+
+Native inspection exposes a Lab data defect: the package path and JSON identity
+display generic eight-line TypeScript. `installVisualWorkspaceFixture.ts` owns
+that response. It now imports the actual Web manifest as raw text for that named
+path. Production readers, Runtime, commands and providers remain unchanged; the
+manifest owns its bytes rather than a copied sample or a new filesystem gateway.
+
+A bounded Claude Code CLI candidate takes **222.104 s** and extends only the
+existing inline-reference case. Primary review scopes retained Dock content to
+its actual body, measures visible source rows and adds a package-identity
+assertion and capture. The regression fails before the data repair in **15.517 s**
+at that exact assertion, after the README journey has passed. Afterward all
+**8 / 8** file-reference cases pass in **24.528 s**, without retries, skips, flaky
+results or global errors. Existing selection, Enter and Space checks remain.
+No case, story, visual runner or configuration is added.
+
+At **720 × 450 / 18 px**, the README reader reaches **342 px** scroll within a
+**324 px** viewport over **666 px** of content. Visible rows are **12–24**, the
+last row is fully in view and reader focus is retained. Both Escape returns
+focus the original reference and preserve the draft. The package round trip at
+the unchanged viewport retains transcript scroll at **1609 px**. The draft then
+accepts ` before the next release`. All **3 final browser images** are accounted
+for: two new originals are viewed and one matches reviewed bytes.
+
+The private Wails v3.1.0 host exercises English/light **18 px / 100–200%** and
+Chinese/dark **18 px / 100–300%**, including native Top Left and Fill window
+changes, pointer scrolling, keyboard reading, Go to line, return and continued
+drafts. All **20 workflow originals before the data repair** are viewed. After
+the repair, all **490 final Lab assets** match the canonical build byte for byte;
+six new native originals verify real JSON at its top and tail and Escape return
+in both languages. The current manifest displays **142 rows**, including its
+trailing blank row; the test does not freeze that count. All **46 production
+native inputs** remain unchanged.
+
+One setup attempt uses outer-Lab locale `zh-CN` on a raw fixture, whose canonical
+locale is `zh`; its explicit failure is viewed and excluded from acceptance.
+The corrected link works. Chinese draft entry uses native paste after the input
+tool fails to insert Unicode; physical IME composition is not qualified.
+All five native processes exit normally, including that rejected setup.
+
+`make check-native` passes in **69.455 s**. Web typecheck, lint, formatting,
+unused-code, dead-style and design-system checks pass. All **6,715 non-Markdown
+inputs** retain their qualified bytes, with two authored changes inside the Lab.
+The complete Lab and Web unit gates are not rerun for this localized change;
+their `f08d723c` baseline remains above. Earlier resource-loading failures remain
+unexplained and do not recur in this focused run.
+
+The private app is unregistered and its server stopped. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline, and the primary checkout stays
+unchanged. Functional verification ends before restoration. Delivery hooks format
+owned files and lint source; qualified source and restored outputs are rechecked
+before pushing to `main` and retiring the private evidence directory. VoiceOver,
+physical IME, RTL, live filesystem/provider behavior and whole-product routes
+remain unverified by this batch.
+
+Next inspect failed or unsupported file-reading recovery in the existing
+Workspace Lab scenes, including return focus and draft continuity. Establish
+the current behavior before choosing any further repair.
 
 ### Presentation and preview continuity
 

@@ -145,12 +145,16 @@ for (const [width, fontSize, theme] of [
 
 test("inline references retain keyboard navigation to the recorded file and line", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 1472, height: 1000 });
   await page.goto(
-    "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=prose-blocks&theme=light",
+    "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=prose-blocks&locale=en&theme=light&font-size=18&motion=off",
   );
   await expectLabReady(page);
+  await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+  const draft = "Compare the README verification steps with the package scripts";
+  const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
+  await composer.fill(draft);
   const reading = page.locator(".md").filter({ hasText: "Source references" });
   const reference = reading.getByRole("button", { name: "README.md:15:2", exact: true });
   await reference.focus();
@@ -162,13 +166,85 @@ test("inline references retain keyboard navigation to the recorded file and line
     getSelection()!.addRange(range);
   });
   await reference.press("Enter");
-  const view = page.locator('[data-dock-view-id="file"]');
-  await expect(view.getByRole("radio", { name: "Source", exact: true })).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
+  const view = page
+    .locator('[data-dock-view-id="file"]')
+    .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
+  const sourceMode = view.getByRole("radio", { name: "Source", exact: true });
+  const previewMode = view.getByRole("radio", { name: "Preview", exact: true });
+  await expect(sourceMode).toHaveAttribute("aria-checked", "true");
   const source = view.locator('[data-quote-source="file"][data-quote-path="README.md"]');
   await expect(source.locator('[data-quote-line="15"]')).toBeVisible();
+  await previewMode.click();
+  await expect(previewMode).toHaveAttribute("aria-checked", "true");
+  await expect(source).toHaveCount(0);
+  await sourceMode.click();
+  await expect(sourceMode).toHaveAttribute("aria-checked", "true");
+  await expect(source.locator('[data-quote-line="15"]')).toBeVisible();
+
+  await page.setViewportSize({ width: 720, height: 450 });
+  await expect(
+    page.getByRole("button", { name: "Back to conversation", exact: true }),
+  ).toBeVisible();
+  await expect(
+    view.locator('[data-slot="workspace-view-header"]').getByTitle("README.md", { exact: true }),
+  ).toBeVisible();
+
+  const goToLine = view.getByRole("button", { name: "Go to line", exact: true });
+  await goToLine.click();
+  const lineField = page.getByRole("textbox", { name: "Go to line", exact: true });
+  await lineField.fill("17");
+  await lineField.press("Enter");
+  await expect(lineField).toBeHidden();
+  await expect(goToLine).toBeFocused();
+  await expect(sourceMode).toHaveAttribute("aria-checked", "true");
+  await expect(source.locator('[data-quote-line="17"]')).toBeVisible();
+
+  const reader = view.getByRole("region", { name: "README.md", exact: true });
+  await page.keyboard.press("Tab");
+  await expect(view.getByRole("button", { name: "Copy path", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(reader).toBeFocused();
+  await reader.press("PageDown");
+  await expect(source.locator('[data-quote-line="24"]')).toBeInViewport({ ratio: 1 });
+  // A short file may already sit at its native edge, so only the edge is required.
+  await expect
+    .poll(() => reader.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
+    .toBeLessThanOrEqual(1);
+  await expect(source.locator('[data-quote-line="17"]')).toBeVisible();
+  const sourceChecked = await sourceMode.getAttribute("aria-checked");
+  const readmeReading = await reader.evaluate((node) => {
+    const viewport = node.getBoundingClientRect();
+    const top = viewport.top + node.clientTop;
+    const bottom = top + node.clientHeight;
+    const lines = [...node.querySelectorAll("[data-quote-line]")]
+      .filter((row) => {
+        const box = row.getBoundingClientRect();
+        return box.bottom > top && box.top < bottom;
+      })
+      .map((row) => Number(row.getAttribute("data-quote-line")));
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      scrollTop: node.scrollTop,
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+      firstVisibleLine: lines[0],
+      lastVisibleLine: lines.at(-1),
+      focused: node.ownerDocument.activeElement === node,
+    };
+  });
+  await testInfo.attach("readme-source-reading.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
+
+  await reader.press("Escape");
+  await expect(reference).toBeFocused();
+  await expect(reference).toBeInViewport();
+  await expect(composer).toHaveValue(draft);
+  const readmeReturnedTo = await reference.evaluate(
+    (node) => document.activeElement === node && node.getAttribute("aria-label"),
+  );
+
   const next = reading.getByRole("button", {
     name: "apps/web/package.json",
     exact: true,
@@ -180,10 +256,58 @@ test("inline references retain keyboard navigation to the recorded file and line
     getSelection()!.removeAllRanges();
     getSelection()!.addRange(range);
   });
+  const transcript = page.locator(".msg-scroll-viewport");
+  const transcriptScrollTop = await transcript.evaluate((node) => node.scrollTop);
   await next.press("Space");
-  await expect(
-    view.locator('[data-quote-source="file"][data-quote-path="apps/web/package.json"]'),
-  ).toBeVisible();
+  const packageSource = view.locator(
+    '[data-quote-source="file"][data-quote-path="apps/web/package.json"]',
+  );
+  await expect(packageSource).toBeVisible();
+  const packageReader = view.getByRole("region", { name: "apps/web/package.json", exact: true });
+  await packageReader.focus();
+  await expect(packageReader).toBeFocused();
+  await testInfo.attach("package-source-reading.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
+  await expect(packageSource).toContainText('"name": "@flame/web"');
+  await packageReader.press("Escape");
+  await expect(next).toBeFocused();
+  await expect(next).toBeInViewport();
+  await expect.poll(() => transcript.evaluate((node) => node.scrollTop)).toBe(transcriptScrollTop);
+  await expect(composer).toHaveValue(draft);
+  const packageReturnedTo = await next.evaluate(
+    (node) => document.activeElement === node && node.getAttribute("aria-label"),
+  );
+  const transcriptScrollTopAfter = await transcript.evaluate((node) => node.scrollTop);
+
+  const suffix = " before the next release";
+  await composer.focus();
+  await composer.evaluate((node: HTMLTextAreaElement) =>
+    node.setSelectionRange(node.value.length, node.value.length),
+  );
+  await page.keyboard.type(suffix);
+  await expect(composer).toHaveValue(`${draft}${suffix}`);
+  await testInfo.attach("returned-conversation-draft.png", {
+    body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+    contentType: "image/png",
+  });
+  await testInfo.attach("file-inspection-return.json", {
+    body: JSON.stringify(
+      {
+        readme: { sourceChecked, reading: readmeReading, returnedTo: readmeReturnedTo },
+        package: {
+          returnedTo: packageReturnedTo,
+          transcriptScrollTopBefore: transcriptScrollTop,
+          transcriptScrollTopAfter,
+        },
+        draft: await composer.inputValue(),
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
 });
 
 for (const [fontSize, codeFontSize, theme] of [

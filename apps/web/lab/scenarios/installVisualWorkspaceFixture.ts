@@ -1,4 +1,5 @@
 import { type VisualClient } from "./client";
+import webPackageContent from "../../package.json?raw";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
@@ -143,6 +144,13 @@ const README_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: README_CONTENT.split("\n").length,
   endLine: README_CONTENT.split("\n").length,
+};
+
+const WEB_PACKAGE_SOURCE: WorkspaceFileContent = {
+  content: webPackageContent,
+  startLine: 1,
+  totalLines: webPackageContent.split("\n").length,
+  endLine: webPackageContent.split("\n").length,
 };
 
 const READING_GUIDE_SOURCE: WorkspaceFileContent = {
@@ -432,6 +440,7 @@ function workspaceDataPlugin(
         key: WORKSPACE_READ_FILE_KEY,
         fetcher: async (params) => {
           const path = (params as WorkspaceReadFileQuery).path;
+          if (path === "apps/web/package.json") return WEB_PACKAGE_SOURCE;
           if (path === "README.md") return README_SOURCE;
           if (path === "reading-guide.md") return READING_GUIDE_SOURCE;
           if (path === "reading-blocks.md") return READING_BLOCKS_SOURCE;

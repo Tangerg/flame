@@ -151,6 +151,12 @@ Session, Run, Goal or installed-component state machine. Fixture variants derive
 from the fixture-owned `VISUAL_*` arrays, and their existing in-memory transport rejects
 unmodelled Runtime operations. Clipboard, download and other browser interactions
 retain their existing explicit behavior.
+
+The recorded `apps/web/package.json` read imports the current Web manifest as raw
+text, so its displayed path and contents share that source instead of returning
+the generic code sample. These recorded responses do not qualify live filesystem
+reads.
+
 The runtime retains its normal stylesheet load order. A caught boot failure loads
 the shared reader styles in its failure branch; preloading them before runtime
 admission changes the normal fixture's cascade.
@@ -244,6 +250,12 @@ overflow at the actual reading viewport and verify literal captured results rath
 than assuming a particular presentation. Keep keyboard entry, return focus and
 draft continuity assertions. Add regression coverage to the existing scenario;
 do not introduce another fixture application or verification configuration.
+
+The existing inline-reference case follows the Workspace task from README source
+through Preview, a narrow viewport, Go to line and keyboard reading, then Escape
+back to the original reference. It also checks the package source's identity,
+return focus, transcript position at an unchanged viewport and continued Composer
+draft. Captures accompany visible-row and scroll observations in that same case.
 
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
