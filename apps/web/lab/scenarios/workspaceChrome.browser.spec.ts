@@ -21,6 +21,39 @@ async function expectCentreHit(control: Locator) {
   ).toBe(true);
 }
 
+async function stateRowFrames(row: Locator) {
+  return row.evaluate(async (node) => {
+    let viewport = node.parentElement;
+    while (viewport && !/(auto|scroll)/.test(getComputedStyle(viewport).overflowY)) {
+      viewport = viewport.parentElement;
+    }
+    if (!viewport) throw new Error("the state row has no scrollport");
+    const frames = [];
+    await new Promise(requestAnimationFrame);
+    for (let frame = 0; frame < 8; frame += 1) {
+      await new Promise(requestAnimationFrame);
+      const bounds = viewport.getBoundingClientRect();
+      const top = bounds.top + viewport.clientTop;
+      const left = bounds.left + viewport.clientLeft;
+      frames.push({
+        row: node.getBoundingClientRect().toJSON(),
+        viewport: {
+          top,
+          bottom: top + viewport.clientHeight,
+          left,
+          right: left + viewport.clientWidth,
+        },
+        window: { width: innerWidth, height: innerHeight },
+        focused: document.activeElement === node,
+        offsetTop: (node as HTMLElement).offsetTop,
+        scrollTop: viewport.scrollTop,
+        scrollHeight: viewport.scrollHeight,
+      });
+    }
+    return frames;
+  });
+}
+
 test("Workspace layout observation is opt-in and preserves the material and draft", async ({
   page,
 }) => {
@@ -124,6 +157,162 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   await expect(composer).toHaveValue(draft);
   expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
 });
+
+for (const profile of [
+  { locale: "en", theme: "light", fontSize: 14, composer: "Message composer" },
+  { locale: "zh", theme: "dark", fontSize: 18, composer: "消息输入框" },
+]) {
+  test(`Workspace state reading retains its focused row through native-sized reflow ${profile.locale}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const query = new URLSearchParams({
+      fixture: "workspace",
+      state: "dock-skills-catalog",
+      locale: profile.locale,
+      theme: profile.theme,
+      "font-size": String(profile.fontSize),
+      motion: "off",
+    });
+    await page.goto(`/lab/fixture.html?${query}`);
+    await expectLabReady(page);
+    const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+    const draft = "Keep the current reading draft.";
+    await composer.fill(draft);
+    await page.getByRole("button", { name: "Schedules", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    const row = page.getByRole("button", { name: "Schedules · model choices", exact: true });
+    await expect(row).toBeFocused();
+    const samples: unknown[] = [];
+    const expectReading = async (target: Locator, focused: boolean) => {
+      const frames = await stateRowFrames(target);
+      samples.push(frames);
+      for (const frame of frames) {
+        expect(frame.focused).toBe(focused);
+        expect(frame.row.top).toBeGreaterThanOrEqual(Math.max(0, frame.viewport.top) - 1);
+        expect(frame.row.bottom).toBeLessThanOrEqual(
+          Math.min(frame.window.height, frame.viewport.bottom) + 1,
+        );
+        expect(frame.row.left).toBeGreaterThanOrEqual(Math.max(0, frame.viewport.left) - 1);
+        expect(frame.row.right).toBeLessThanOrEqual(
+          Math.min(frame.window.width, frame.viewport.right) + 1,
+        );
+      }
+    };
+    try {
+      await page.setViewportSize({ width: 720, height: 450 });
+      await expectReading(row, true);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expectReading(row, true);
+      await composer.focus();
+      await page.setViewportSize({ width: 720, height: 450 });
+      const selected = page.getByRole("button", { name: "Skills · catalog", exact: true });
+      await expectReading(selected, false);
+      await expect(composer).toBeFocused();
+      await expect(composer).toHaveValue(draft);
+      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      await composer.focus();
+      await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+      await page.keyboard.insertText(" Continue.");
+      await expect(composer).toHaveValue(draft + " Continue.");
+    } finally {
+      await testInfo.attach("workspace-state-reading-frames", {
+        body: JSON.stringify(samples),
+        contentType: "application/json",
+      });
+      await testInfo.attach(`workspace-state-reflow-${profile.locale}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+    }
+  });
+}
+
+for (const theme of ["light", "dark"]) {
+  for (const width of [320, 1440]) {
+    test(`Workspace state labels remain readable by keyboard and pointer ${theme} ${width}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 1440, height: 568 });
+      const query = new URLSearchParams({
+        fixture: "workspace",
+        state: "dock-skills-catalog",
+        locale: theme === "dark" ? "zh" : "en",
+        theme,
+        "font-size": "18",
+        motion: "off",
+      });
+      await page.goto(`/lab/fixture.html?${query}`);
+      await expectLabReady(page);
+      const composer = page.getByRole("textbox", {
+        name: theme === "dark" ? "消息输入框" : "Message composer",
+        exact: true,
+      });
+      const draft = "Keep this fixture draft.";
+      await composer.fill(draft);
+      await page.setViewportSize({ width, height: 568 });
+      const label = "Schedules · model choices";
+      const previous = page.getByRole("button", { name: "Schedules", exact: true });
+      const row = page.getByRole("button", { name: label, exact: true });
+      const tooltip = page.getByRole("tooltip").filter({ hasText: label });
+      await previous.focus();
+      await page.keyboard.press("Tab");
+      await expect(row).toBeFocused();
+      const labelGeometry = await row.locator(".truncate-fade").evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return {
+          width: node.clientWidth,
+          total: node.scrollWidth,
+          box: node.getBoundingClientRect().toJSON(),
+          text: range.getBoundingClientRect().toJSON(),
+          mask: getComputedStyle(node).maskImage,
+        };
+      });
+      await testInfo.attach("workspace-state-label-measurements", {
+        body: JSON.stringify(labelGeometry),
+        contentType: "application/json",
+      });
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toHaveText(label);
+      const geometry = await tooltip.evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return {
+          box: node.getBoundingClientRect().toJSON(),
+          lines: Array.from(range.getClientRects(), (box) => box.toJSON()),
+          width: innerWidth,
+          height: innerHeight,
+        };
+      });
+      expect(geometry.lines.length).toBeGreaterThan(0);
+      for (const line of geometry.lines) {
+        expect(line.left).toBeGreaterThanOrEqual(Math.max(0, geometry.box.left) - 1);
+        expect(line.right).toBeLessThanOrEqual(Math.min(geometry.width, geometry.box.right) + 1);
+        expect(line.top).toBeGreaterThanOrEqual(Math.max(0, geometry.box.top) - 1);
+        expect(line.bottom).toBeLessThanOrEqual(Math.min(geometry.height, geometry.box.bottom) + 1);
+      }
+      await testInfo.attach(`workspace-state-label-${theme}-${width}`, {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+      await page.keyboard.press("Escape");
+      await expect(tooltip).toBeHidden();
+      await expect(row).toBeFocused();
+      await previous.focus();
+      await row.hover();
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toHaveText(label);
+      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      await expect(tooltip).toBeHidden();
+      await expect(composer).toHaveValue(draft);
+      await composer.focus();
+      await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+      await page.keyboard.insertText(" Continue.");
+      await expect(composer).toHaveValue(draft + " Continue.");
+    });
+  }
+}
 
 for (const theme of ["light", "dark"]) {
   for (const width of [320, 1120]) {

@@ -171,6 +171,13 @@ transport is constructed. The original two-document `dock-skills` scene remains
 available. This is fixed provider data rendered by the installed Skills component,
 not live filesystem discovery or another Skills implementation.
 
+The Workspace fixture-state sidebar uses the production `AgentRow` overflow
+label and Tooltip for complete names by keyboard and pointer. Its existing
+resize observer keeps the focused row inside the actual scrollport, falling
+back to the selected row when focus is elsewhere without moving focus. The
+observation switch remains outside that scroller; redundant explanatory footer
+copy is removed. These captured state rows remain readouts, not navigation.
+
 The runtime retains its normal stylesheet load order. A caught boot failure loads
 the shared reader styles in its failure branch; preloading them before runtime
 admission changes the normal fixture's cascade.

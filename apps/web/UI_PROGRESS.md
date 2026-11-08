@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Lab observation repair passes **111 / 111 related cases** with no retries, skips, flaky results or global errors; all **60 final browser images** match reviewed bytes. English/light/14 px and Chinese/dark/18 px qualify fresh content-height observations, disabling and continued drafts. All **11 native captures** are inspected: six use the final fixture and five record its baseline. Production code is unchanged in this follow-up. The preceding Dock repair, delivered as `fbddb74a0`, retains its complete shared UI check (**276 tests** plus the offline packed consumer), complete Web check (**433 files / 4,770 tests**), native gate, **288 Lab cases**, **727 images** and **21 native captures** within their recorded scopes. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later Lab changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Workspace fixture-sidebar repair passes **117 / 117 related cases** with no retries, skips, flaky results or global errors; all **66 final browser images** are reviewed or match reviewed bytes. English/light/14 px and Chinese/dark/18 px qualify complete state names, focused-row visibility through actual native 200% zoom and window changes, and continued drafts. All **17 native captures** are inspected: 14 use the final fixture and three record earlier diagnostic controls. Production code is unchanged in this follow-up. The preceding Dock repair, delivered as `fbddb74a0`, retains its complete shared UI check (**276 tests** plus the offline packed consumer), complete Web check (**433 files / 4,770 tests**), native gate, **288 Lab cases**, **727 images** and **21 native captures** within their recorded scopes. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later Lab changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -285,6 +285,92 @@ flags. The primary checkout and its `go.work.sum` remain unchanged. Live provide
 execution, VoiceOver, physical IME and whole-product visual acceptance remain
 outside this qualification. Continue inspecting long Workspace fixture-state
 names at 18 px from the current native view before choosing another change.
+
+### Workspace fixture-state reading (2026-11-09)
+
+Native inspection finds that `Schedules · model choices` fades its final letters
+at 18 px without offering a complete-name Tooltip. The label fits its 215 px
+box, but the default 16 px fade still covers its end. The Workspace fixture now
+enables the production `AgentRow` overflow-label and Tooltip behavior. Shared
+components, type sizes, semantic tokens and production navigation are unchanged.
+
+Actual 200% native zoom then exposes a separate defect: the model row retains
+focus while the sidebar scrolls to the selected Skills row. Its old reveal also
+compares an outer-pane `offsetTop` with an inner scroll position. In the Chinese
+short frame, redundant explanatory footer copy leaves only 22 px for a 30 px
+row. The existing resize callback now follows the focused row, falls back to
+selection when focus is elsewhere, and compares both rectangles in the inner
+scrollport. Removing that footer restores reading room; Observe layout remains
+reachable outside the scroller. The callback never moves focus. Captured state
+buttons remain readouts rather than a second navigation implementation.
+
+Better Layout and Typography guide complete names, shared reading edges and
+visible focus through reflow. A bounded one-file Claude Code CLI candidate
+completes in **17.532 s**, with seven protected references unchanged. Primary
+review applies its existing overflow prop, adds regression coverage, then owns
+the native reproduction and the focused-row/footer repair.
+
+An initial regression incorrectly assumes scroll overflow; its failure is a
+test-assumption error. Measuring the actual faded text and checking the missing
+Tooltip exposes the real baseline failure in **14.745 s**. Four static cases
+then pass, and an intermediate selection passes **115 / 115**; neither qualifies
+the subsequently observed native reflow. Two new resize cases reproduce that
+clipping before repair in **12.357 s**, with all eight observed frames retaining
+the offscreen focused row. These earlier runs are excluded from final acceptance.
+
+Six cases in the existing Workspace chrome spec check complete-name keyboard
+and pointer reading at 320/1440 px, Escape focus, native-sized
+**1440 × 900 → 720 × 450 → 1440 × 900** reflow, selected-row fallback without
+stealing Composer focus, and exact continued drafts. Every reflow samples eight
+rendered frames without assigning scroll positions or refocusing the row.
+The focused selection passes **6 / 6** in **19.954 s**. The final Workspace,
+window-chrome and Skills acceptance selection passes **117 / 117** in
+**293.530 s**, without retries, skips, flaky results or global errors. All
+**66 final browser images** are accounted for: five are reviewed now and 61
+match reviewed bytes, including the reviewed focused captures. Web typecheck,
+lint and formatting pass in **2.421 s**, **0.863 s** and **7.022 s**.
+
+Both final Wails v3.1.0 profiles inspect the same **491 canonical Lab assets**,
+compared byte for byte with the final browser build. English/light/14 px/full
+motion and Chinese/dark/18 px/motion off use ordinary Tab entry, complete-name
+reading and Escape, then twenty actual Zoom In menu actions after Actual Size.
+The focused row remains fully visible before any refocus or manual scroll.
+Window > Zoom and restoration retain it at 200%; captures change
+**2878 × 1798 → 3024 × 1898 → 2878 × 1798 device pixels**. Sidebar collapse
+preserves the exact unsent draft, and both profiles append text and return to
+Actual Size before Quit. Observation stays off throughout final acceptance.
+All **14 final native captures** and three earlier diagnostic captures are
+inspected. The initial extra pasted attachment is excluded from draft
+acceptance; subsequent clean inputs are confirmed before use. All four native
+runs exit normally. Native paste does not qualify a physical IME.
+
+The private native build passes in **20.210 s** after normal icons/UI rebuilds.
+All **46 native inputs**, **45 unchanged private copies** and the private host
+wrapper retain their expected bytes. Complete Lab, Web, shared UI and native
+gates are not repeated for these two Lab-only source changes; the preceding
+qualified product-code results retain their original scopes.
+
+| Finding                                                        | Repair                                                                     | Result                                                            |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| MEDIUM: faded state identity has no complete reading path      | Reuse the existing overflow label and Tooltip                              | Complete names by keyboard and pointer in the inspected widths    |
+| HIGH: native zoom hides the focused state row                  | Follow focus in the actual scrollport; use selection only outside the list | Eight-frame browser checks and both native zoom/window paths pass |
+| MEDIUM: explanatory footer consumes the short-frame row height | Remove redundant copy while retaining the observation switch               | The row and switch remain visible in the inspected native frame   |
+
+Only two existing Lab source files and the two maintained Lab documents change.
+There is no new story, fixture route, browser configuration or verification
+entry. The source comparison covers **6,715 non-Markdown inputs**, with no
+additions or removals. The server stops, the app is unregistered, six private
+Library paths return to absence and three helper roots retain identities, modes
+and flags. All **12 output/cache roots** return to baseline before publication;
+no functional checks run afterward. The primary checkout and its `go.work.sum`
+remain unchanged. Normal hooks and read-only integrity checks precede delivery
+to `main`; owned evidence is retained before guarded retirement.
+
+**Approve** the inspected fixture-state reading and draft-return paths. The
+original English Skills wheel/pointer return anomaly retains its unexplained
+cause. Other native frame sizes, RTL, VoiceOver, live providers, physical IME
+input and whole-product visual acceptance remain unqualified. The goal remains
+active; future work still requires an observed defect and its responsible owner.
 
 ### Document admission and failure reporting (2026-11-08)
 

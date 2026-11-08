@@ -56,13 +56,17 @@ function WorkspaceStateSidebar({
     const list = listRef.current;
     if (!list) return;
     const land = () => {
-      const active = list.querySelector<HTMLElement>("[data-active]");
-      if (!active) return;
-      const top = active.offsetTop;
-      const bottom = top + active.offsetHeight;
-      if (top < list.scrollTop) list.scrollTop = top;
-      else if (bottom > list.scrollTop + list.clientHeight) {
-        list.scrollTop = bottom - list.clientHeight;
+      const target =
+        list.querySelector<HTMLElement>(":focus") ??
+        list.querySelector<HTMLElement>("[data-active]");
+      if (!target) return;
+      const bounds = target.getBoundingClientRect();
+      const frame = list.getBoundingClientRect();
+      const top = frame.top + list.clientTop;
+      const bottom = top + list.clientHeight;
+      if (bounds.top < top) list.scrollTop += bounds.top - top;
+      else if (bounds.bottom > bottom) {
+        list.scrollTop += bounds.bottom - bottom;
       }
       list.scrollTop = Math.floor(list.scrollTop);
     };
@@ -87,6 +91,7 @@ function WorkspaceStateSidebar({
                   : "panel-r"
             }
             active={candidate === state}
+            revealOverflow
           >
             {STATE_LABELS[candidate]}
           </AgentRow>
@@ -99,9 +104,6 @@ function WorkspaceStateSidebar({
           onCheckedChange={onObserveLayoutChange}
           label="Observe layout"
         />
-      </div>
-      <div {...stylex.props(fx.listFoot, typeStep.uiXs)}>
-        Production views · deterministic providers
       </div>
     </div>
   );
