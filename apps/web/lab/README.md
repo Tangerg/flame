@@ -164,6 +164,13 @@ viewer owner after resetting the document's file tree memory, retaining its path
 and parent folders for return. Listed file names derive from their captured paths.
 Retry preserves the recorded failure; other files keep their normal captured reads.
 
+The existing Workspace catalog also owns `dock-skills-catalog`: 80 recorded
+documents alternate project and user scopes, with 40 matching `runtime`.
+Discovery and document reads project the same array captured when that fixture's
+transport is constructed. The original two-document `dock-skills` scene remains
+available. This is fixed provider data rendered by the installed Skills component,
+not live filesystem discovery or another Skills implementation.
+
 The runtime retains its normal stylesheet load order. A caught boot failure loads
 the shared reader styles in its failure branch; preloading them before runtime
 admission changes the normal fixture's cascade.
@@ -282,6 +289,17 @@ through constrained reading, wheel input, resizing and material return. Visibili
 requires the complete first or last line's em box inside every clipping ancestor
 and above the footer. A positive text fragment or retained value alone cannot
 admit a capture. Earlier wheel reading remains independent of the retained caret.
+
+Long Skills catalog checks use the existing Workspace scenario in Chromium and
+WebKit, with English/light/14 px and Chinese/dark/18 px profiles. They follow
+wheel reading, search reset to the first match, middle-row document entry, scoped
+instruction selection, complete source values, keyboard return, retained query
+and scroll position, refresh and continued conversation drafts. Row and source
+alignment measurements accompany captures; selection checks read the exact DOM
+Range because WebKit's rendered selection can add a paragraph newline. The
+Chinese task uses a 640 × 400 full-width material view. These frames qualify
+reflow; native page zoom remains a separate Wails check. Catalog captures await
+the accepted 80-document result as well as document readiness.
 
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and

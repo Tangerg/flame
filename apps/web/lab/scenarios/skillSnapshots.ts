@@ -6,6 +6,7 @@ import {
   type SkillProposal,
 } from "@flame/runtime-client/wire";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
+import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 export const VISUAL_SKILL_DOCUMENTS: SkillDetail[] = [
   {
     name: "risk-first-review",
@@ -36,14 +37,35 @@ export const VISUAL_SKILL_DOCUMENTS: SkillDetail[] = [
   },
 ];
 
-export const VISUAL_SKILL_DISCOVERY: SkillDiscovery = {
-  skills: VISUAL_SKILL_DOCUMENTS.map(({ name, description, scope }) => ({
-    name,
-    description,
-    scope,
-  })),
-  diagnostics: [],
-};
+export const VISUAL_LONG_SKILL_DOCUMENTS: SkillDetail[] = Array.from(
+  { length: 80 },
+  (_, offset) => {
+    const index = offset + 1;
+    const project = index % 2 === 1;
+    const name = `${project ? "runtime" : "workspace"}-review-${String(index).padStart(3, "0")}`;
+    return {
+      name,
+      description: project
+        ? `Review Runtime ownership boundary ${index}.`
+        : `Review workspace projection ${index}.`,
+      scope: project ? "project" : "user",
+      path: project
+        ? `${VISUAL_WORKSPACE_PATH}/.flame/skills/${name}/SKILL.md`
+        : `/Users/visual/.flame/skills/${name}/SKILL.md`,
+      revision: index.toString(16).padStart(64, "0"),
+      instructions: VISUAL_SKILL_DOCUMENTS[1]!.instructions,
+    };
+  },
+);
+
+export function visualSkillDiscovery(documents: readonly SkillDetail[]): SkillDiscovery {
+  return {
+    skills: documents.map(({ name, description, scope }) => ({ name, description, scope })),
+    diagnostics: [],
+  };
+}
+
+export const VISUAL_SKILL_DISCOVERY: SkillDiscovery = visualSkillDiscovery(VISUAL_SKILL_DOCUMENTS);
 
 export const VISUAL_SKILL_LIBRARY: Page<ManagedSkill> = {
   data: [

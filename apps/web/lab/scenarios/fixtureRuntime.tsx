@@ -8,6 +8,7 @@ import {
   createVisualRuntimeTransport,
 } from "./createVisualRuntimeTransport";
 import { LONG_MODEL_FACTS, SCROLLING_MODEL_FACTS } from "./runtimeSnapshots";
+import { VISUAL_LONG_SKILL_DOCUMENTS } from "./skillSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -194,6 +195,8 @@ async function installVisualRuntimeClient(
         : query.has("long-models")
           ? LONG_MODEL_FACTS
           : undefined,
+    skillDocuments:
+      workspaceState === "dock-skills-catalog" ? VISUAL_LONG_SKILL_DOCUMENTS : undefined,
     mcpServers: query.has("mcp-transport")
       ? [
           {

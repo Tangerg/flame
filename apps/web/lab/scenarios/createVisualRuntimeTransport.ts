@@ -12,6 +12,7 @@ import {
   type ListModelsRequest,
   type ServerCapabilities,
   type SetApprovalModeRequest,
+  type SkillDetail,
   type SkillDetailRequest,
   type SkillProposalRef,
   PROBLEM_CODES,
@@ -30,10 +31,10 @@ import { visualTrajectory } from "./trajectorySnapshot";
 import { VISUAL_HOOKS } from "./hookSnapshot";
 import { type RuntimeAgentSessionSnapshot } from "./agentSessionSnapshots";
 import {
-  VISUAL_SKILL_DISCOVERY,
   VISUAL_SKILL_DOCUMENTS,
   VISUAL_SKILL_LIBRARY,
   VISUAL_SKILL_PROPOSALS,
+  visualSkillDiscovery,
 } from "./skillSnapshots";
 
 export const VISUAL_REMOVE_SCHEDULE_EVENT = "flame:visual-remove-schedule";
@@ -45,6 +46,7 @@ function resultFor(
   approval: ApprovalModeResult,
   models: VisualModelFacts,
   mcpServers: MCPServer[],
+  skillDocuments: SkillDetail[],
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   signal?: AbortSignal,
 ): unknown {
@@ -58,10 +60,10 @@ function resultFor(
     case "usage.summary":
       return VISUAL_USAGE;
     case "skills.discovered.list":
-      return VISUAL_SKILL_DISCOVERY;
+      return visualSkillDiscovery(skillDocuments);
     case "skills.discovered.get": {
       const { name } = request.params as SkillDetailRequest;
-      const document = VISUAL_SKILL_DOCUMENTS.find((item) => item.name === name);
+      const document = skillDocuments.find((item) => item.name === name);
       if (!document) throw new Error(`Visual Skills has no document named "${name}"`);
       return document;
     }
@@ -130,9 +132,13 @@ export function createVisualRuntimeTransport(
     acceptSkillProposals?: boolean;
     modelFacts?: VisualModelFacts;
     mcpServers?: MCPServer[];
+    skillDocuments?: readonly SkillDetail[];
   } = {},
 ): Transport & { removeSchedule(id: string): void } {
   const transport = createMemoryTransport();
+  const skillDocuments = structuredClone([
+    ...(configuration.skillDocuments ?? VISUAL_SKILL_DOCUMENTS),
+  ]);
   const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
   const models = structuredClone(configuration.modelFacts ?? VISUAL_MODEL_FACTS);
   const mcpServers = structuredClone(configuration.mcpServers ?? []);
@@ -232,6 +238,7 @@ export function createVisualRuntimeTransport(
           approval,
           models,
           mcpServers,
+          skillDocuments,
           readDiff,
           signal,
         );

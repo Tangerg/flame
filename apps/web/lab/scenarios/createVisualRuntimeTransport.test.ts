@@ -16,7 +16,11 @@ import {
 import { REVIEW_DIFF, BRANCH_REVIEW_DIFF } from "./diffSnapshot";
 import { commitVisualInterruptResponses } from "./interruptResponses";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
-import { VISUAL_SKILL_PROPOSALS } from "./skillSnapshots";
+import {
+  VISUAL_LONG_SKILL_DOCUMENTS,
+  VISUAL_SKILL_DOCUMENTS,
+  VISUAL_SKILL_PROPOSALS,
+} from "./skillSnapshots";
 describe("visual Runtime transport", () => {
   it("publishes a controlled remote schedule removal through its original subscription", async () => {
     const transport = createVisualRuntimeTransport(
@@ -101,6 +105,78 @@ describe("visual Runtime transport", () => {
       ).toMatchObject({ item: { approvalDecision: "deny", status: "incomplete" } });
     } finally {
       await client.close();
+    }
+  });
+
+  it("serves a configured long Skills catalog from one capture without changing the default instance", async () => {
+    const selected = [...VISUAL_LONG_SKILL_DOCUMENTS];
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+        { skillDocuments: selected },
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    const defaultClient = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    try {
+      selected.splice(0, selected.length, VISUAL_SKILL_DOCUMENTS[0]!);
+      const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
+      const discovered = await workspace.skills.listDiscovered();
+      expect(discovered.skills).toHaveLength(80);
+      expect(
+        discovered.skills.filter((skill) => skill.name.startsWith("runtime-review-")),
+      ).toHaveLength(40);
+      expect(discovered.skills[34]).toEqual({
+        name: "runtime-review-035",
+        description: VISUAL_LONG_SKILL_DOCUMENTS[34]!.description,
+        scope: "project",
+      });
+      expect(await workspace.skills.getDiscovered("runtime-review-001")).toEqual({
+        name: "runtime-review-001",
+        description: VISUAL_LONG_SKILL_DOCUMENTS[0]!.description,
+        scope: "project",
+        path: `${VISUAL_WORKSPACE_PATH}/.flame/skills/runtime-review-001/SKILL.md`,
+        revision: `${"0".repeat(63)}1`,
+        instructions: VISUAL_SKILL_DOCUMENTS[1]!.instructions,
+      });
+      expect(await workspace.skills.getDiscovered("runtime-review-035")).toEqual(
+        VISUAL_LONG_SKILL_DOCUMENTS[34],
+      );
+      expect(await workspace.skills.getDiscovered("workspace-review-080")).toEqual({
+        name: "workspace-review-080",
+        description: VISUAL_LONG_SKILL_DOCUMENTS[79]!.description,
+        scope: "user",
+        path: "/Users/visual/.flame/skills/workspace-review-080/SKILL.md",
+        revision: `${"0".repeat(62)}50`,
+        instructions: VISUAL_SKILL_DOCUMENTS[1]!.instructions,
+      });
+      await expect(workspace.skills.getDiscovered("risk-first-review")).rejects.toThrow(
+        'no document named "risk-first-review"',
+      );
+      const defaultWorkspace = await defaultClient.workspaces.open({
+        path: VISUAL_WORKSPACE_PATH,
+      });
+      expect((await defaultWorkspace.skills.listDiscovered()).skills).toEqual(
+        VISUAL_SKILL_DOCUMENTS.map(({ name, description, scope }) => ({
+          name,
+          description,
+          scope,
+        })),
+      );
+      for (const document of VISUAL_SKILL_DOCUMENTS) {
+        expect(await defaultWorkspace.skills.getDiscovered(document.name)).toEqual(document);
+      }
+    } finally {
+      await Promise.all([client.close(), defaultClient.close()]);
     }
   });
 

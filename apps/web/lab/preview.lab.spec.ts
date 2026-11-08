@@ -10,6 +10,7 @@ import {
   foundationViews,
 } from "./foundationVariants";
 import { expectLabReady } from "./readiness";
+import { VISUAL_LONG_SKILL_DOCUMENTS } from "./scenarios/skillSnapshots";
 
 const NARROW_WIDTH = 320;
 
@@ -79,6 +80,20 @@ for (const story of catalog.stories) {
                   .getByText(chinese ? "这里暂时无法预览图片" : "No image preview here yet", {
                     exact: true,
                   }),
+              ).toBeVisible();
+            } else if (entry.variantId === "dock-skills-catalog") {
+              const panel = page
+                .locator('[data-slot="workspace-view-body"]:visible')
+                .getByRole("region", { name: chinese ? "技能" : "Skills", exact: true });
+              const count = VISUAL_LONG_SKILL_DOCUMENTS.length;
+              await expect(
+                panel.getByRole("heading", {
+                  name: chinese ? `${count} 个可用技能` : `${count} available Skills`,
+                  exact: true,
+                }),
+              ).toBeVisible();
+              await expect(
+                panel.getByText(VISUAL_LONG_SKILL_DOCUMENTS[0]!.name, { exact: true }),
               ).toBeVisible();
             }
           }

@@ -23,6 +23,7 @@ import {
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 import { expectLabReady } from "../readiness";
+import { VISUAL_LONG_SKILL_DOCUMENTS } from "./skillSnapshots";
 // The Browse panels trigger also carries the active view id; only the retained view hosts its body.
 function dockView(page: Page, id: string) {
   return page
@@ -198,9 +199,13 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toContainText("unknown");
     return;
   }
-  if (state === "dock-skills") {
+  if (state === "dock-skills" || state === "dock-skills-catalog") {
+    const count = state === "dock-skills" ? 2 : VISUAL_LONG_SKILL_DOCUMENTS.length;
     await expect(
-      pluginView(page, "skills").getByRole("heading", { name: "2 available Skills", exact: true }),
+      pluginView(page, "skills").getByRole("heading", {
+        name: `${count} available Skills`,
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(pluginView(page, "skills").getByRole("alert")).toHaveCount(0);
     return;
@@ -457,6 +462,306 @@ test("files browse and preview share one dock tab", async ({ page }) => {
   expect(rowFocus.width).toBeGreaterThan(0);
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
+
+for (const [browserName, skillsTest] of [
+  ["chromium", test],
+  ["webkit", test.extend({ browserName: "webkit" })],
+] as const) {
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      panel: "Skills",
+      available: "Available Skills",
+      search: "Search this catalog",
+      clear: "Clear search",
+      total: "80 available Skills",
+      matching: "40 of 80 available Skills",
+      instructions: "Instructions for runtime-review-035",
+      source: "Source and revision",
+      project: "Project",
+      back: "Back to available Skills",
+      refresh: "Refresh",
+      documentRefresh: "Refresh document",
+      composer: "Message composer",
+      conversation: "Conversation",
+      openFull:
+        "Open material full width — the window is too narrow to show it beside the conversation",
+      close: "Close",
+      draft: "Keep this Skills catalog draft.",
+      suffix: " Continue after checking the catalog.",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      panel: "技能",
+      available: "可用技能",
+      search: "搜索此目录",
+      clear: "清除搜索",
+      total: "80 个可用技能",
+      matching: "80 个可用技能中的 40 个",
+      instructions: "runtime-review-035 的指令",
+      source: "来源与修订",
+      project: "项目",
+      back: "返回可用技能",
+      refresh: "刷新",
+      documentRefresh: "刷新文档",
+      composer: "消息输入框",
+      conversation: "对话",
+      openFull: "全宽打开材料——窗口太窄，无法与对话并排显示",
+      close: "关闭",
+      draft: "核对技能目录后继续。",
+      suffix: " 已核对，继续。",
+    },
+  ] as const) {
+    skillsTest(
+      `Skills long catalog preserves search, reading and draft return in ${profile.locale} ${browserName}`,
+      async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: 1472, height: 1000 });
+        const query = new URLSearchParams({
+          fixture: "workspace",
+          state: "dock-skills-catalog",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: "off",
+        });
+        await page.goto(`/lab/fixture.html?${query}`);
+        await expectLabReady(page);
+        await page
+          .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+          .click();
+        const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+        await composer.fill(profile.draft);
+        if (profile.locale === "zh") {
+          await page.setViewportSize({ width: 640, height: 400 });
+          await page.getByRole("button", { name: profile.openFull, exact: true }).click();
+        }
+        const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
+        const panel = viewport
+          .getByRole("region", { name: profile.panel, exact: true })
+          .and(page.locator('[data-slot="panel"]'));
+        const catalog = panel.getByRole("region", { name: profile.available, exact: true });
+        const search = panel.getByRole("searchbox", { name: profile.search, exact: true });
+        const row = (name: string) =>
+          catalog.getByRole("button").filter({
+            has: page.getByText(name, { exact: true }),
+          });
+        const first = row(VISUAL_LONG_SKILL_DOCUMENTS[0]!.name);
+        const selected = VISUAL_LONG_SKILL_DOCUMENTS.find(
+          (item) => item.name === "runtime-review-035",
+        )!;
+        const opener = row(selected.name);
+        const scrollTop = () => viewport.evaluate((node) => node.scrollTop);
+        const evidence: unknown[] = [];
+        const capture = async (name: string) => {
+          evidence.push({
+            name,
+            geometry: await viewport.evaluate((node) => ({
+              viewport: node.getBoundingClientRect().toJSON(),
+              scrollTop: node.scrollTop,
+              documentOverflow: document.documentElement.scrollWidth - innerWidth,
+              focused: document.activeElement?.outerHTML.slice(0, 500),
+            })),
+          });
+          await testInfo.attach(`skills-catalog-${profile.locale}-${name}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        };
+        const reachable = (control: Locator) =>
+          control.evaluate((node) => {
+            const box = node.getBoundingClientRect();
+            return node.contains(
+              document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2),
+            );
+          });
+        try {
+          await expect(
+            panel.getByRole("heading", { name: profile.total, exact: true }),
+          ).toBeVisible();
+          await expect(catalog.getByRole("button")).toHaveCount(VISUAL_LONG_SKILL_DOCUMENTS.length);
+          evidence.push({
+            name: "entry-geometry",
+            first: await first.boundingBox(),
+            controls: await panel.locator('[data-slot="panel-controls"]').boundingBox(),
+          });
+          await capture("catalog-entry");
+          await expect(first).toBeInViewport();
+          await first.hover();
+          await page.mouse.wheel(0, 1200);
+          await expect.poll(scrollTop).toBeGreaterThan(300);
+          await expect(first).not.toBeInViewport();
+
+          await search.fill("runtime");
+          await expect(search).toBeFocused();
+          await expect(
+            panel.getByRole("heading", { name: profile.matching, exact: true }),
+          ).toBeVisible();
+          await expect(catalog.getByRole("button")).toHaveCount(40);
+          await expect.poll(scrollTop).toBe(0);
+          await expect(first).toBeInViewport({ ratio: 1 });
+          await capture("first-match");
+
+          await opener.scrollIntoViewIfNeeded();
+          if (profile.locale === "zh") await opener.focus();
+          await expect(opener).toBeInViewport({ ratio: 1 });
+          const readingTop = await scrollTop();
+          expect(readingTop).toBeGreaterThan(300);
+          const title = (await opener.getByText(selected.name, { exact: true }).boundingBox())!;
+          const description = (await opener
+            .getByText(selected.description!, { exact: true })
+            .boundingBox())!;
+          const scope = (await opener.getByText(profile.project, { exact: true }).boundingBox())!;
+          evidence.push({ name: "row-alignment", title, description, scope, readingTop });
+          expect(Math.abs(title.x - description.x)).toBeLessThanOrEqual(1);
+          expect(description.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
+          expect(
+            Math.min(title.x + title.width, scope.x + scope.width) > Math.max(title.x, scope.x) &&
+              Math.min(title.y + title.height, scope.y + scope.height) > Math.max(title.y, scope.y),
+          ).toBe(false);
+          if (profile.locale === "en") await opener.click();
+          else await opener.press("Enter");
+          const heading = panel.getByRole("heading", { name: selected.name, exact: true });
+          const instructions = panel.getByRole("region", {
+            name: profile.instructions,
+            exact: true,
+          });
+          await expect(heading).toBeFocused();
+          await expect.poll(() => instructions.textContent()).toBe(selected.instructions);
+          await heading.press("ControlOrMeta+A");
+          const selectedInstructions = () =>
+            instructions.evaluate((element) => {
+              const selection = getSelection();
+              const range = selection?.rangeCount === 1 ? selection.getRangeAt(0) : null;
+              return {
+                text: range?.toString(),
+                startsAtInstructions: range?.startContainer === element && range.startOffset === 0,
+                endsAtInstructions:
+                  range?.endContainer === element && range.endOffset === element.childNodes.length,
+              };
+            });
+          await expect.poll(selectedInstructions).toEqual({
+            text: selected.instructions,
+            startsAtInstructions: true,
+            endsAtInstructions: true,
+          });
+          evidence.push({
+            name: "instruction-selection",
+            selection: await selectedInstructions(),
+            rendered: await page.evaluate(() => getSelection()?.toString()),
+          });
+          await capture("instructions");
+
+          const source = panel.getByRole("button", { name: profile.source, exact: true });
+          await source.click();
+          const path = panel.getByText(selected.path, { exact: true });
+          await path.scrollIntoViewIfNeeded();
+          await expect(path).toBeInViewport();
+          await expect(panel.getByText(selected.revision, { exact: true })).toBeVisible();
+          const facts = await panel.locator("dl").evaluate((node) => ({
+            box: node.getBoundingClientRect().toJSON(),
+            overflow: node.scrollWidth - node.clientWidth,
+            pairs: Array.from(node.children, (pair) => ({
+              box: pair.getBoundingClientRect().toJSON(),
+              label: pair.querySelector("dt")!.getBoundingClientRect().toJSON(),
+              value: pair.querySelector("dd")!.getBoundingClientRect().toJSON(),
+              text: pair.querySelector("dd")!.textContent,
+            })),
+          }));
+          evidence.push({ name: "source-alignment", facts });
+          expect(facts.overflow).toBeLessThanOrEqual(1);
+          expect(facts.pairs.map((pair) => pair.text)).toEqual([selected.path, selected.revision]);
+          for (const pair of facts.pairs) {
+            expect(pair.value.x).toBeGreaterThanOrEqual(facts.box.x - 1);
+            expect(pair.value.right).toBeLessThanOrEqual(facts.box.right + 1);
+            expect(pair.label.x).toBeGreaterThanOrEqual(pair.box.x - 1);
+            expect(pair.value.right).toBeLessThanOrEqual(pair.box.right + 1);
+            expect(Math.abs(pair.label.x - pair.value.x)).toBeLessThanOrEqual(1);
+          }
+          await capture("source");
+          const back = panel.getByRole("button", { name: profile.back, exact: true });
+          for (const control of [
+            back,
+            panel.getByRole("button", { name: profile.documentRefresh, exact: true }),
+          ]) {
+            await control.scrollIntoViewIfNeeded();
+            expect(await reachable(control)).toBe(true);
+          }
+          if (profile.locale === "en") await page.keyboard.press("Escape");
+          else {
+            await back.focus();
+            await back.press("Enter");
+          }
+          await expect(search).toHaveValue("runtime");
+          await expect(opener).toBeFocused();
+          await expect
+            .poll(async () => Math.abs((await scrollTop()) - readingTop))
+            .toBeLessThanOrEqual(1);
+          await capture("returned-catalog");
+
+          const refresh = panel.getByRole("button", { name: profile.refresh, exact: true });
+          await refresh.focus();
+          const refreshTop = await scrollTop();
+          await refresh.press("Enter");
+          await expect(refresh).toBeEnabled();
+          await expect(search).toHaveValue("runtime");
+          await expect
+            .poll(async () => Math.abs((await scrollTop()) - refreshTop))
+            .toBeLessThanOrEqual(1);
+          await search.focus();
+          if (profile.locale === "en") await search.press("Escape");
+          else {
+            const clear = panel.getByRole("button", { name: profile.clear, exact: true });
+            await clear.focus();
+            await clear.press("Enter");
+          }
+          await expect(search).toHaveValue("");
+          await expect(
+            panel.getByRole("heading", { name: profile.total, exact: true }),
+          ).toBeVisible();
+          await expect.poll(scrollTop).toBe(0);
+          await expect(first).toBeInViewport({ ratio: 1 });
+          expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(
+            0,
+          );
+
+          if (profile.locale === "en") {
+            await page.setViewportSize({ width: 640, height: 400 });
+            await page.getByRole("button", { name: profile.openFull, exact: true }).click();
+          }
+          const close = page.getByRole("button", { name: profile.close, exact: true });
+          await close.focus();
+          await close.press("Enter");
+          await expect(
+            page.getByRole("region", { name: profile.conversation, exact: true }),
+          ).toBeFocused();
+          await expect(composer).toHaveValue(profile.draft);
+          await composer.focus();
+          await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+          await page.keyboard.insertText(profile.suffix);
+          await expect(composer).toHaveValue(profile.draft + profile.suffix);
+          evidence.push({
+            name: "continued-draft",
+            value: await composer.inputValue(),
+            focused: await composer.evaluate((node) => node === document.activeElement),
+          });
+          await testInfo.attach(`skills-catalog-${profile.locale}-continued-draft`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        } finally {
+          await testInfo.attach("skills-catalog-reading.json", {
+            body: JSON.stringify({ locale: profile.locale, browserName, evidence }),
+            contentType: "application/json",
+          });
+        }
+      },
+    );
+  }
+}
 
 test("portable Skills captures discovery, review and personal targets in one dock tab", async ({
   page,
