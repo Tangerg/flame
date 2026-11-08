@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest complete **1,282-case Lab baseline** qualifies the shared Select repair on **0adc484e0**. The subsequent Composer capture follow-up passes **29 selected Lab cases** with all **36 final browser images** matching reviewed captures. Measured width-change frames explain the incomplete second-line capture; the verifier now waits for complete text, without changing the production input. EN/light and ZH/dark native **200% and 300%** tasks pass within the documented scope. See **Complete Composer captures after width changes (2026-11-08)**. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and no former `visual/` tree. Migration is complete; the same catalog retains **44 stories**. The latest complete **1,282-case Lab baseline** qualifies the shared Select repair on **0adc484e0**. Subsequent Composer capture checks pass **29 selected cases**. The German Schedule authoring follow-up passes **43 selected cases**, with **44 final browser images** reviewed or matched to reviewed bytes. Actual Wails **200% and 300%** tasks qualify the documented EN, ZH and German paths. No production input changes in these two follow-ups. See **German Schedule authoring and conversation return (2026-11-08)** for the latest evidence and the Chromium resize-focus observation still requiring investigation. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -689,9 +689,83 @@ restored older outputs. The app is unregistered and its owned server exits;
 six Library paths and ordinary temp return to absence, and three protected
 helper roots retain their original empty identities and flags. Evidence is
 preserved in memory before guarded QA-root retirement. Normal hooks and an
-ordinary push to `main` deliver the guard. Continue actual task inspection through
-the same Lab; long-string Schedule editor reading at native zoom remains a
-useful unqualified path. Whole-product visual acceptance remains unfinished.
+ordinary push to `main` deliver the guard. The following section continues the
+long-string Schedule editor task through this same Lab. Whole-product visual
+acceptance remains unfinished.
+
+### German Schedule authoring and conversation return (2026-11-08)
+
+The next actual task follows German authoring at 18 px through a native window
+resize, 200% and 300% zoom, long model choices, refresh, cancellation and continued
+conversation input. Better-layout and better-accessibility guide text visibility,
+scroll ownership and keyboard return. The existing shared components already
+provide reachable fields and persistent Cancel/Save in the inspected Wails
+flows; no production repair is demonstrated by those tasks.
+
+The light native profile uses the existing long-model capture; the dark profile
+uses dock-schedules-models and its 22 choices. Both start with a literal
+conversation draft before opening the material full width. The editor retains
+the authored title, two-paragraph instructions, Cron expression and selected
+model. First Enter opens the menu, long text wraps completely in its focused
+option, End reaches the last item in the longer list, and mouse reopening and
+native wheel scrolling stay within that menu. Escape returns to Model. Natural
+Tab reveals the model-refresh action above the fixed footer; refreshing retains
+focus and the exact form. Keyboard cancellation returns to Add. Closing the
+material reveals the original conversation draft, which is continued using
+explicit native cursor placement, a pasted suffix and a real Backspace.
+
+At 300%, the selected long model can itself exceed the dialog body's available
+height. Its first line remains readable and the body and popup retain the full
+name; this is not a claim that the entire oversized control fits at once. Both
+native runs exit normally. All **18 native images** are inspected; two unchanged
+coordinate-scroll attempts are diagnostic and excluded from scroll acceptance.
+Element-targeted native body scrolling supplies that evidence instead.
+
+The existing uiOwnership.scenarios.ts now registers the same German task for
+both themes through its existing Chromium and WebKit wrappers. It uses the same
+document at **560 × 364** and **373 × 243** effective frames, rather than claiming
+browser page zoom. Checks cover complete footer text and containment, first
+model activation, the full wrapped option, the selected value's first letter,
+nested Escape, refresh focus, exact drafts, Cancel return and continued Composer
+input. Bounded geometry remains attached on success and failure, alongside the
+same Lab's screenshots. No spec file, story, registry, configuration or visual
+runner is added.
+
+The bounded Claude Code CLI edit times out after **180.057 s** without a diff;
+primary implements and reviews the coverage. An initial test collection rejects
+describe-scoped browserName configuration and runs no cases. Moving registration
+into the existing cross-browser scenario owner resolves that setup error. The
+focused four cases pass in **17.418 s**. Final related UI-ownership, plugin-form
+and panel-focus files pass **43 / 43** in **105.356 s**, without retries, skips,
+flaky cases or global errors. All **44 final browser images** are accounted for:
+**24** match reviewed bytes and **20** new images are inspected at full resolution.
+Web typecheck, lint and formatting pass. The unchanged ProviderRow complexity
+failure remains **31 → 34**; no threshold is weakened.
+
+The private Wails v3.1.0 build passes in **2.287 s** after rebuilding current UI
+output. All **487 final Lab assets** equal the native capture. The comparison of
+**6,710 non-Markdown inputs** finds only the intended shared scenario change;
+production source and all **46 native inputs** remain unchanged. The full Lab,
+full Web/unit suites, Runtime suites and production make check-native gate are
+not rerun for this verification-only change. Their earlier results retain their
+original source scope. Save, live Runtime/provider execution, VoiceOver, physical
+IME and RTL remain outside this task's qualification.
+
+The frame images also expose a follow-up: Chromium retains Cron focus outside
+the smaller body before subsequent Tab navigation reveals later fields. WebKit
+images reveal Cron, and its immediate resize geometry can precede that scroll's
+settlement. These captures qualify footer layout, not focused-field visibility
+after resizing. Trace readiness and the existing focus owner before choosing a
+production change; do not infer the native zoom behavior from Chromium alone.
+
+After functional checks, all **12 output/cache roots** return to their original
+bytes, modes and directory state or absence. The primary checkout is unchanged;
+no functional check runs against restored older outputs. The app is unregistered,
+its server exits, six Library paths and ordinary temp return to absence, and
+three protected helper roots preserve their original empty identities and flags.
+Evidence is preserved in memory before guarded QA-root retirement. Normal hooks
+and an ordinary main push deliver the coverage. Continue the resize-focus trace
+through the same Lab. The goal remains active.
 
 ### Qualification and limits
 

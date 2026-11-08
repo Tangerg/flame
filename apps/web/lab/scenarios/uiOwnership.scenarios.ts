@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { LONG_MODEL_NAME } from "./runtimeSnapshots";
 
 async function readAcross(page: Page, reader: Locator, first: Locator, last: Locator) {
   await reader.scrollIntoViewIfNeeded();
@@ -436,6 +437,199 @@ export function registerUiOwnershipContracts() {
 
       await editor.getByRole("button", { name: "取消", exact: true }).click();
       await expect(add).toBeFocused();
+    });
+  }
+  for (const theme of ["light", "dark"]) {
+    test(`long choices retain the task and conversation at narrow frames ${theme}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 1120, height: 728 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=dock-schedules&locale=de&font-size=18&theme=${theme}&long-models=1`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      const composer = page.getByRole("textbox", { name: "Nachrichteneditor", exact: true });
+      const conversationDraft = "Keep this draft while reviewing the schedule editor.";
+      await composer.fill(conversationDraft);
+      await page.getByRole("button", { name: "In voller Breite öffnen", exact: true }).click();
+      const add = page.getByRole("button", { name: "Zeitplan hinzufügen", exact: true });
+      await add.click();
+      const editor = page.getByRole("dialog", { name: "Neuer Zeitplan", exact: true });
+      const title = editor.getByRole("textbox", { name: "Titel", exact: true });
+      const instructions = editor.getByRole("textbox", { name: "Anweisungen", exact: true });
+      const cron = editor.getByRole("textbox", { name: "Cron-Ausdruck", exact: true });
+      const model = editor.getByRole("combobox", { name: "Modell", exact: true });
+      const refresh = editor.getByRole("button", {
+        name: "Modellauswahl aktualisieren",
+        exact: true,
+      });
+      const cancel = editor.getByRole("button", { name: "Abbrechen", exact: true });
+      const save = editor.getByRole("button", { name: "Zeitplan speichern", exact: true });
+      const taskTitle = "Wöchentliche Wartungsdurchsicht im Arbeitsbereich";
+      const taskInstructions =
+        "Prüfe die Ausrichtung und bewahre diesen Entwurf.\n\nFasse Risiken und nächste Schritte zusammen.";
+      const geometry: unknown[] = [];
+      const measure = async (state: string) => {
+        const result = await editor.evaluate((node) => {
+          const rect = (element: Element) => element.getBoundingClientRect().toJSON();
+          const body = node.querySelector('[data-slot="dialog-body"]')!;
+          const footer = node.querySelector("footer")!;
+          const focusedText = document
+            .createTreeWalker(document.activeElement!, NodeFilter.SHOW_TEXT)
+            .nextNode();
+          const firstLetter = document.createRange();
+          if (focusedText) {
+            firstLetter.setStart(focusedText, 0);
+            firstLetter.setEnd(focusedText, 1);
+          }
+          return {
+            dialog: rect(node),
+            body: rect(body),
+            footer: rect(footer),
+            viewport: { width: innerWidth, height: innerHeight },
+            overflow: node.scrollWidth - node.clientWidth,
+            bodyOverflow: body.scrollWidth - body.clientWidth,
+            actions: [...footer.querySelectorAll("button")].map((button) => {
+              const range = document.createRange();
+              range.selectNodeContents(button);
+              return {
+                name: button.textContent,
+                box: rect(button),
+                text: range.getBoundingClientRect().toJSON(),
+              };
+            }),
+            focused: rect(document.activeElement!),
+            firstLetter: focusedText ? firstLetter.getBoundingClientRect().toJSON() : null,
+          };
+        });
+        geometry.push({ state, ...result });
+        return result;
+      };
+      try {
+        await expect(title).toBeFocused();
+        await title.fill(taskTitle);
+        await instructions.fill(taskInstructions);
+        await cron.fill("0 9 * * 1");
+        await expect(save).toBeEnabled();
+        for (const frame of [
+          { width: 560, height: 364 },
+          { width: 373, height: 243 },
+        ]) {
+          await page.setViewportSize(frame);
+          const measured = await measure(`frame-${frame.width}`);
+          expect(measured.overflow).toBe(0);
+          expect(measured.bodyOverflow).toBe(0);
+          expect(measured.dialog.left).toBeGreaterThanOrEqual(0);
+          expect(measured.dialog.top).toBeGreaterThanOrEqual(0);
+          expect(measured.dialog.right).toBeLessThanOrEqual(frame.width);
+          expect(measured.dialog.bottom).toBeLessThanOrEqual(frame.height);
+          expect(measured.body.bottom).toBeLessThanOrEqual(measured.footer.top + 0.5);
+          expect(measured.actions.map((action) => action.name)).toEqual([
+            "Abbrechen",
+            "Zeitplan speichern",
+          ]);
+          expect(measured.actions[0]!.box.bottom).toBe(measured.actions[1]!.box.bottom);
+          for (const action of measured.actions) {
+            expect(action.box.left).toBeGreaterThanOrEqual(measured.dialog.left);
+            expect(action.box.right).toBeLessThanOrEqual(measured.dialog.right);
+            expect(action.box.top).toBeGreaterThanOrEqual(measured.footer.top);
+            expect(action.box.bottom).toBeLessThanOrEqual(frame.height);
+            expect(action.text.left).toBeGreaterThanOrEqual(action.box.left);
+            expect(action.text.right).toBeLessThanOrEqual(action.box.right);
+            expect(action.text.top).toBeGreaterThanOrEqual(action.box.top);
+            expect(action.text.bottom).toBeLessThanOrEqual(action.box.bottom);
+          }
+          await testInfo.attach(`schedule-frame-${frame.width}`, {
+            body: await page.screenshot(),
+            contentType: "image/png",
+          });
+        }
+        await expect(cron).toBeFocused();
+        for (let step = 0; step < 4; step++) await page.keyboard.press("Tab");
+        await expect(model).toBeFocused();
+        const focused = await measure("model-focus");
+        expect(focused.focused.top).toBeGreaterThanOrEqual(focused.body.top - 0.5);
+        expect(focused.focused.bottom).toBeLessThanOrEqual(focused.footer.top + 0.5);
+        await page.keyboard.press("Enter");
+        const popup = page.getByRole("listbox");
+        await expect(popup).toHaveCSS("opacity", "1");
+        await expect(
+          popup.getByRole("option", { name: "Runtime-Standardmodell", exact: true }),
+        ).toBeFocused();
+        await page.keyboard.press("ArrowDown");
+        const option = popup.getByRole("option", {
+          name: `openai / ${LONG_MODEL_NAME}`,
+          exact: true,
+        });
+        await expect(option).toBeFocused();
+        const optionBounds = await option.boundingBox();
+        const popupBounds = await popup.boundingBox();
+        geometry.push({ state: "long-option", optionBounds, popupBounds });
+        expect(optionBounds).not.toBeNull();
+        expect(popupBounds).not.toBeNull();
+        expect(optionBounds!.y).toBeGreaterThanOrEqual(popupBounds!.y - 0.5);
+        expect(optionBounds!.y + optionBounds!.height).toBeLessThanOrEqual(
+          popupBounds!.y + popupBounds!.height + 0.5,
+        );
+        await testInfo.attach("schedule-long-option", {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+        await page.keyboard.press("Enter");
+        await expect(model).toHaveText(`openai / ${LONG_MODEL_NAME}`);
+        await model.click();
+        await expect(option).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(model).toBeFocused();
+        const selected = await measure("long-selection-return");
+        expect(selected.overflow).toBe(0);
+        expect(selected.bodyOverflow).toBe(0);
+        expect(selected.firstLetter).not.toBeNull();
+        expect(selected.firstLetter!.top).toBeGreaterThanOrEqual(selected.body.top - 0.5);
+        expect(selected.firstLetter!.bottom).toBeLessThanOrEqual(selected.body.bottom + 0.5);
+        await page.keyboard.press("Tab");
+        await expect(
+          editor.getByRole("combobox", { name: "Denkintensität", exact: true }),
+        ).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(refresh).toBeFocused();
+        const refreshed = await measure("refresh-focus");
+        expect(refreshed.focused.top).toBeGreaterThanOrEqual(refreshed.body.top - 0.5);
+        expect(refreshed.focused.bottom).toBeLessThanOrEqual(refreshed.body.bottom + 0.5);
+        await page.keyboard.press("Enter");
+        await expect(refresh).toBeEnabled();
+        await expect(refresh).toBeFocused();
+        await expect(title).toHaveValue(taskTitle);
+        await expect(instructions).toHaveValue(taskInstructions);
+        await expect(cron).toHaveValue("0 9 * * 1");
+        await expect(model).toHaveText(`openai / ${LONG_MODEL_NAME}`);
+        await testInfo.attach("schedule-refreshed-draft", {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+        await page.keyboard.press("Tab");
+        await expect(cancel).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(editor).toHaveCount(0);
+        await expect(add).toBeFocused();
+        await page.getByRole("button", { name: "Schließen", exact: true }).click();
+        await expect(composer).toHaveValue(conversationDraft);
+        await composer.press("End");
+        await page.keyboard.type(" Then continue it.");
+        await expect(composer).toHaveValue(`${conversationDraft} Then continue it.`);
+        await testInfo.attach("schedule-conversation-return", {
+          body: await page.screenshot(),
+          contentType: "image/png",
+        });
+      } finally {
+        if (await editor.count()) await measure("final-editor");
+        await testInfo.attach("schedule-geometry", {
+          body: JSON.stringify(geometry, null, 2),
+          contentType: "application/json",
+        });
+      }
     });
   }
 }

@@ -440,6 +440,16 @@ The existing WebKit checks measure short Composer drafts across 1120, 560 and
 and sidebar changes must retain the input, draft and editing position. These
 viewport checks complement native page-zoom acceptance.
 
+The existing cross-browser UI-ownership scenarios also follow German Schedule
+authoring through 560 × 364 and 373 × 243 frames at 18 px in both themes.
+They retain the same task and conversation drafts while checking complete footer
+text, wrapped model choices, first activation, nested Escape, model refresh and
+keyboard cancellation. Geometry is attached on success and failure. A selected
+model can be taller than the smallest body; its first line must remain readable,
+and its complete name remains in the scrollable body and menu. These effective
+frames complement the native 200% and 300% review; they do not simulate page zoom
+or qualify Save, Runtime dispatch or provider execution.
+
 ## Optional measurements
 
 The same Playwright configuration owns the `performance` project:
