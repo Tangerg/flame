@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { uiTypeLadder } from "../../src/features/theme/kit/typeLadder";
+import { expectLabReady } from "../readiness";
 for (const [theme, fontSize, width] of [
   ["light", 14, 1472],
   ["dark", 18, 800],
@@ -11,7 +12,7 @@ for (const [theme, fontSize, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=long-content&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
     const section = page.getByRole("heading", { name: "中文长回答", exact: true });
     await section.scrollIntoViewIfNeeded();
@@ -52,7 +53,7 @@ test("expanded reasoning preserves Markdown rhythm at its supporting text size",
 }) => {
   await page.setViewportSize({ width: 1120, height: 1100 });
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(async () => {
     if (!location.pathname.startsWith("/lab/")) throw new Error("An isolated fixture is required");

@@ -1,9 +1,10 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 test("overlapping real disclosures restore their shared viewport styles", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells&motion=full");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
   const rows = page.locator(
     "[data-slot='agent-activity-disclosure']:is([data-tool='shell'], [data-tool='apply_patch'])",

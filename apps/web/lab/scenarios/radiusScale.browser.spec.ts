@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function open(page: Page, theme: string, fixture: string) {
   await page.goto(`/lab/fixture.html?${fixture}&theme=${theme}&font-size=14`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -13,7 +14,7 @@ async function chooseCorners(page: Page, theme: string, choice: string, reload =
   await expect(tab).toHaveAttribute("aria-checked", "true");
   if (reload) {
     await page.reload();
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await expect(tab).toHaveAttribute("aria-checked", "true");
   }
 }

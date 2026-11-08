@@ -1,5 +1,6 @@
 import type { TestInfo } from "@playwright/test";
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 type FactsGeometry = Awaited<ReturnType<typeof measureFacts>>;
 
 function expectWithinPixel(actual: number, expected: number, message: string) {
@@ -70,7 +71,7 @@ for (const width of [1120, 1472]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=dock-usage&theme=light&font-size=18",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("region", { name: "Usage", exact: true });
     const record = panel.getByRole("article").first();
     await record.getByRole("button", { name: "Token and coverage details", exact: true }).click();
@@ -99,7 +100,7 @@ for (const width of [1120, 1472]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=dock-diagnostics&theme=light&font-size=18",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const trace = `trace_${"0123456789abcdef".repeat(7)}`;
     const path = `/Users/visual/workspace/${"retained-evidence/".repeat(12)}original-request.json`;
     const attribute = "request.context.association.workspace.resolvedReference";
@@ -195,7 +196,7 @@ test("trajectory identities and a complete timestamp share equal columns", async
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&theme=light&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
   await record.getByRole("button", { expanded: false }).click();
   const facts = record.locator("dl");

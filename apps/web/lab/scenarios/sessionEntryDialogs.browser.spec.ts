@@ -1,9 +1,10 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("Add project opens the production directory dialog and cancellation returns focus", async ({
   page,
 }, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=shell&state=populated&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const trigger = page.getByRole("button", { name: "Add project", exact: true });
   await trigger.click();
   const endpoint = "https://visual.flame.test";
@@ -34,7 +35,7 @@ test("the investigation action captures its Session through the production row m
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=shell&state=populated&theme=dark");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const row = page.getByRole("button", { name: /^Refine Runtime protocol/ });
   await row.click({ button: "right" });
   await page

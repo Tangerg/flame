@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const pane of ["providers", "mcp-servers"] as const) {
   for (const width of [1120, 320]) {
     test(`${pane} feedback keeps its declared icon viewport while text wraps at ${width}`, async ({
@@ -9,7 +10,7 @@ for (const pane of ["providers", "mcp-servers"] as const) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=${pane}&theme=${theme}&font-size=18&locale=de`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       const panel = page.getByRole("tabpanel");
       if (pane === "providers") {

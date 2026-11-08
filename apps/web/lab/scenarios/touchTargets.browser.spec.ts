@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
+import { expectLabReady } from "../readiness";
 test.use({ hasTouch: true, isMobile: true });
 
 const ROUTES = [
@@ -18,7 +19,7 @@ test("no two neighbouring controls share a tap under a coarse pointer", async ({
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(220);
 
     const coarse = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);

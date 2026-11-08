@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 const samples = {
   regexp: "^(?<name>[a-z]+)\\d+$",
@@ -40,7 +41,7 @@ test("highlights each supported grammar in both themes and disposes its engine",
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=empty", { waitUntil: "domcontentloaded" });
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const result = await page.evaluate(async (samples) => {
     const modulePath = "/src/lib/highlight/shiki.ts";
     const { getHighlighter, disposeHighlighter, resolveLang } = await import(modulePath);

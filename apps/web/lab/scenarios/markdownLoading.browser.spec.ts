@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [width, fontSize, theme] of [
   [1472, 14, "light"],
   [320, 18, "dark"],
@@ -49,7 +50,7 @@ for (const [width, fontSize, theme] of [
       expect(userBubble.height).toBeLessThan(fontSize * 6);
     } finally {
       release();
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
     }
     await expect(pending).toHaveCount(0);
     await expect(
@@ -101,7 +102,7 @@ for (const [width, fontSize, theme] of [
       await expect.soft(page.locator(".katex")).toHaveCount(0);
     } finally {
       release();
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
     }
     const markdown = page.locator(".md").filter({ hasText: "A readable derivation" });
     await expect(markdown.locator(".katex-display")).toHaveCount(4);

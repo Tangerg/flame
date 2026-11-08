@@ -1,10 +1,11 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("a folded user message reveals keyboard focus above the composer and folds cleanly again", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1120, height: 1000 });
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(async () => {
     if (!location.pathname.startsWith("/lab/")) throw new Error("An isolated fixture is required");
     const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
@@ -83,7 +84,7 @@ for (const [width, height, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=long-content&theme=${theme}&font-size=14`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const open = page.getByRole("button", { name: "Enlarge diagram", exact: true });
     await open.focus();
     await page.keyboard.press("Enter");

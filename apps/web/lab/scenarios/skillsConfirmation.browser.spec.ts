@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 
 // Focus and in-viewport checks cannot see sticky controls painted over the name.
 async function expectProposalNameReadable(panel: Locator, attachment: string) {
@@ -54,7 +55,7 @@ for (const width of [320, 1120]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:skills&sidebar=collapsed&theme=${width === 320 ? "light" : "dark"}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page
         .getByRole("region", { name: "Skills", exact: true })
         .and(page.locator('[data-slot="panel"]'));

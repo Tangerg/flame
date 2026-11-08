@@ -1,9 +1,10 @@
 import { en as mcpEn } from "../../../../plugins/mcp/component/locales/en";
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function open(page: Page, query: string, width = 320, height = 720) {
   await page.setViewportSize({ width, height });
   await page.goto(`/lab/fixture.html?${query}&font-size=18`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
 }
 

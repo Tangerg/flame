@@ -5,6 +5,7 @@ import {
   type VisualShellTheme,
   type VisualWorkIndexState,
 } from "./shellFixtureStates";
+import { expectLabReady } from "../readiness";
 const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
 
 interface ShellRoute {
@@ -25,7 +26,7 @@ async function openShell(page: Page, route: ShellRoute): Promise<void> {
   if (route.motion) query.set("motion", route.motion);
   if (route.overlay) query.set("overlay", route.overlay);
   await page.goto(`${VISUAL_URL}?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 }
 
 async function waitForWorkIndexState(page: Page, state: VisualWorkIndexState): Promise<void> {

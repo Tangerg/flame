@@ -1,12 +1,13 @@
 import { expect, test, type Page } from "./test";
 import { de } from "../../../../plugins/providers/component/locales/de";
 import { LONG_MODEL_NAME as LONG_NAME, LONG_MODEL_ID as LONG_ID } from "./runtimeSnapshots";
+import { expectLabReady } from "../readiness";
 async function openRoles(page: Page, width: number, theme: string) {
   await page.setViewportSize({ width, height: 900 });
   await page.goto(
     `/lab/fixture.html?fixture=workspace&state=settings&pane=providers&theme=${theme}&font-size=18&locale=de&long-models=1`,
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const panel = page.getByRole("tabpanel");
   await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
   await panel

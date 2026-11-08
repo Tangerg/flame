@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 const FANOUT = "Audit persistence boundaries across Runtime, Framework and delegated agents";
 
 async function expectCompleteText(text: Locator) {
@@ -34,7 +35,7 @@ for (const theme of ["light", "dark"]) {
         "font-size": "18",
       });
       await page.goto(`/lab/fixture.html?${query}`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       if (width === 320) {
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
         await expect(

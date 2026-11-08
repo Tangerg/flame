@@ -3,6 +3,7 @@ import { en } from "@/lib/i18n/locales/en";
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
+import { expectLabReady } from "../readiness";
 
 for (const environment of [
   { locale: "en", theme: "light", fontSize: 14, messages: en },
@@ -26,7 +27,7 @@ for (const environment of [
     });
     const selection = readSelection(query.toString(), catalog);
     await page.goto(previewURL(catalog.story(selection.storyId), selection, "composer-choices"));
-    await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+    await expectLabReady(page, { timeout: 5_000 });
     const draft = page.getByRole("textbox");
     const draftValue = "Keep this draft while choosing model options.";
     await draft.fill(draftValue);
@@ -163,7 +164,7 @@ test("the composer preserves the model and lets secondary labels yield without m
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const composer = page.locator('[data-slot="composer-root"]');
   const model = page.getByRole("button", { name: /Switch model$/ });
   const approval = page.getByRole("button", { name: /Approval mode$/ });
@@ -185,7 +186,7 @@ test("the composer preserves the model and lets secondary labels yield without m
 
 test("high-risk approval remains explicit in a narrow composer", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const approval = page.getByRole("button", { name: /Approval mode$/ });
   await approval.click();
   await page.getByRole("menuitem", { name: /^Auto\b/ }).click();
@@ -202,7 +203,7 @@ test("navigation density does not rescale reading or input geometry", async ({ p
   const measures = [];
   for (const density of ["compact", "spacious"]) {
     await page.goto(`/lab/fixture.html?fixture=agent&state=idle&theme=light&density=${density}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     measures.push(
       await page.evaluate(() => {
         const root = getComputedStyle(document.documentElement);

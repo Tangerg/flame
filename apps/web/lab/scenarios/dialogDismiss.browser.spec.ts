@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=agent&state=long-content",
   "fixture=agent&state=narrative",
@@ -17,13 +18,13 @@ test("one Escape closes what a control opened, and focus comes back", async ({ p
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.waitForTimeout(300);
     const total = await page.locator("[aria-haspopup]:not([data-fixture-chrome] *)").count();
 
     for (let index = 0; index < Math.min(total, 12); index += 1) {
       await page.goto(`/lab/fixture.html?${route}&theme=light`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.waitForTimeout(250);
 
       const trigger = page.locator("[aria-haspopup]:not([data-fixture-chrome] *)").nth(index);

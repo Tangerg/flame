@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [theme, fontSize, width] of [
   ["light", 14, 1472],
   ["dark", 18, 1120],
@@ -10,7 +11,7 @@ for (const [theme, fontSize, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-agent-memory&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("region", { name: "Agent memory", exact: true });
     const search = panel.getByRole("searchbox", { name: "Search this page", exact: true });
     const filters = panel.getByRole("button", { name: /^Filters\b/ });

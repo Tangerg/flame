@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { VISUAL_SETTINGS_PANES } from "./workspaceFixtureStates";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   test(`provider roles pair their labels and controls and separate removal from saving ${theme}`, async ({
     page,
@@ -9,7 +10,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=providers&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page.getByRole("tabpanel");
       for (const name of ["Utility model", "Embedding model"]) {
         const label = (await panel.getByText(name, { exact: true }).boundingBox())!;
@@ -35,7 +36,7 @@ test("font size selectors reach the full supported scale and restore inherited s
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=settings&pane=appearance&theme=light&font-size=14",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const root = page.locator("html");
   const codeSize = () =>
     root.evaluate((node) => getComputedStyle(node).getPropertyValue("--fs-code").trim());
@@ -71,7 +72,7 @@ test("MCP adding keeps its opener and returns focus after cancellation", async (
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=light",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const panel = page.getByRole("tabpanel");
   const trigger = panel.getByRole("button", { name: "Add server", exact: true }).first();
   await trigger.click();
@@ -90,7 +91,7 @@ for (const transport of ["stdio", "streamableHttp"] as const) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=dark&mcp-transport=${transport}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("tabpanel");
     await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
 
@@ -121,7 +122,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=settings&pane=approvals&theme=light&font-size=18",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("tabpanel");
     await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
     const server = "project-" + "workspace-".repeat(12) + "tools";
@@ -185,7 +186,7 @@ for (const theme of ["light", "dark"]) {
         await page.goto(
           `/lab/fixture.html?fixture=workspace&state=settings&pane=${pane}&theme=${theme}&font-size=18`,
         );
-        await page.locator("html[data-visual-ready]").waitFor();
+        await expectLabReady(page);
         const panel = page.getByRole("tabpanel");
         await expect(panel.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
@@ -231,7 +232,7 @@ test("plugin management aligns its sections and exposes complete release details
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=workspace&state=settings&pane=plugins&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const panel = page.getByRole("tabpanel");
   await expect(panel.getByRole("heading", { name: "flame.memory", exact: true })).toBeVisible();
   const install = panel.getByRole("button", { name: "Install", exact: true });
@@ -261,7 +262,7 @@ for (const [locale, title] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=settings&pane=plugins&theme=light&locale=${locale}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("tabpanel");
     await expect(panel.getByRole("heading", { name: title, level: 1, exact: true })).toBeVisible();
     await expect(panel.getByRole("heading", { name: "flame.memory", exact: true })).toBeVisible();
@@ -273,7 +274,7 @@ test("MCP fields retain visible labels after entering values", async ({ page }) 
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=light",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Add server", exact: true }).click();
   const panel = page.getByRole("tabpanel");
   const transport = panel.getByRole("group", { name: "Transport", exact: true });
@@ -308,7 +309,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=light&font-size=18&mcp-transport=stdio",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("button", { name: "Tools for workspace-tools", exact: true }).click();
     for (const name of ["Enable read_workspace_files", "Auto-approve read_workspace_files"]) {
       const control = page.getByRole("switch", { name, exact: true });
@@ -329,7 +330,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=settings&pane=hooks&theme=light&font-size=18",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const command = "./scripts/review-permissions --workspace /Users/visual/a-long-workspace-name";
     await page.evaluate(async (command) => {
       const moduleUrl = "/lab/scenarios/hookSnapshot.ts";
@@ -374,7 +375,7 @@ test("MCP changed HTTP origins require one explicit credential disposition", asy
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=light&mcp-transport=streamableHttp",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Edit workspace-tools", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Server URL", exact: true })

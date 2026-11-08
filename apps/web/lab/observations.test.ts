@@ -290,4 +290,63 @@ describe("read-only preview observation bridge", () => {
     replacement.ready();
     expect(document.documentElement.hasAttribute("data-lab-ready")).toBe(false);
   });
+
+  it("marks a standalone document failed before readiness without posting", () => {
+    const send = vi.spyOn(window, "postMessage");
+    const observations = installPreviewObservations(window, document, { instanceId: "standalone" });
+    cleanups.push(observations.dispose);
+    observations.observe(
+      OBSERVATION_NAMES.reactError,
+      "x".repeat(OBSERVATION_LIMITS.detailLength + 1),
+    );
+    observations.ready();
+    expect(document.documentElement.dataset.labError).toBe(
+      `${"x".repeat(OBSERVATION_LIMITS.detailLength - 1)}…`,
+    );
+    expect(document.documentElement.hasAttribute("data-lab-ready")).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps the first failure reason terminal while reporting later errors", () => {
+    const { observations, send } = install();
+    observations.ready();
+    expect(document.documentElement.hasAttribute("data-lab-error")).toBe(false);
+    window.dispatchEvent(new ErrorEvent("error", { message: "first failure" }));
+    expect(document.documentElement.dataset.labError).toBe("first failure");
+    expect(document.documentElement.hasAttribute("data-lab-ready")).toBe(false);
+
+    const rejection = new Event("unhandledrejection");
+    Object.defineProperty(rejection, "reason", { value: new Error("second failure") });
+    window.dispatchEvent(rejection);
+    observations.observe("selection.changed", "agent");
+    observations.ready();
+    expect(document.documentElement.dataset.labError).toBe("first failure");
+    expect(document.documentElement.hasAttribute("data-lab-ready")).toBe(false);
+    expect(send.mock.calls.map(([entry]) => [entry.kind, entry.detail])).toEqual([
+      ["ready", ""],
+      ["error", "first failure"],
+      ["error", "second failure"],
+      ["event", "agent"],
+    ]);
+  });
+
+  it("clears the failure projection on retirement and admits a healthy replacement", () => {
+    const first = install();
+    first.observations.observe(OBSERVATION_NAMES.reactError, "retired failure");
+    expect(document.documentElement.dataset.labError).toBe("retired failure");
+    window.dispatchEvent(new Event("pagehide"));
+    expect(document.documentElement.hasAttribute("data-lab-error")).toBe(false);
+    window.dispatchEvent(new ErrorEvent("error", { message: "after retirement" }));
+    expect(document.documentElement.hasAttribute("data-lab-error")).toBe(false);
+
+    const replacement = install();
+    replacement.observations.ready();
+    expect(document.documentElement.dataset.labReady).toBe("true");
+    expect(document.documentElement.hasAttribute("data-lab-error")).toBe(false);
+    expect(first.send).toHaveBeenCalledOnce();
+    replacement.observations.observe(OBSERVATION_NAMES.reactError, "replacement failure");
+    replacement.observations.dispose();
+    expect(document.documentElement.hasAttribute("data-lab-error")).toBe(false);
+    expect(document.documentElement.hasAttribute("data-lab-ready")).toBe(false);
+  });
 });

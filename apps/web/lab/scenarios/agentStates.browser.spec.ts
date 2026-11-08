@@ -3,6 +3,7 @@ import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapsh
 import { VISUAL_CONTEXT_TOKENS, VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW } from "./agentFixtureFacts";
 import { contextUsageReadout } from "@/features/chat/context-usage/contextUsageReadout";
 import { fmtTokens } from "@/lib/format";
+import { expectLabReady } from "../readiness";
 const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   empty: "idle",
   "runtime-down": "idle",
@@ -56,7 +57,7 @@ test("every declared state carries an expected attention", () => {
 for (const state of VISUAL_AGENT_STATES) {
   test(`canonical agent projection renders ${state}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=light&state=${state}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const fixture = page.getByTestId("agent-state");
     await expect(fixture).toHaveAttribute("data-state", state);
@@ -66,7 +67,7 @@ for (const state of VISUAL_AGENT_STATES) {
 
 test("HITL approval settles through the exact Run and Item identity", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=waiting");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await page.getByRole("button", { name: /Allow once/ }).click();
 
@@ -77,7 +78,7 @@ test("HITL approval settles through the exact Run and Item identity", async ({ p
 
 test("a pending approval is a plane against whatever it sits on", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=waiting");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const surface = page.locator('[data-slot="approval-surface"]');
   const separation = await surface.evaluate((el) => {
@@ -118,7 +119,7 @@ test("a pending approval is a plane against whatever it sits on", async ({ page 
 
 test("HITL rejection preserves the same exact interrupt identity", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=waiting");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await page.getByRole("button", { name: /Deny/ }).click();
 
@@ -129,7 +130,7 @@ test("HITL rejection preserves the same exact interrupt identity", async ({ page
 
 test("question settlement uses the exact interrupt identity", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=question");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const request = page.locator('[data-slot="question-request-surface"]');
   await expect(request).toBeVisible();
@@ -179,7 +180,7 @@ test("question skip sends real ordered empty answers and restores the composer",
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=question");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toBeVisible();
@@ -197,7 +198,7 @@ test("question choices keep their descriptions inline without a comparison sidec
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=question");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await expect(page.getByRole("radio", { name: /Race detector/ })).toContainText(
     "Exercise concurrency and cancellation paths.",
@@ -209,7 +210,7 @@ test("question choices keep their descriptions inline without a comparison sidec
 
 test("delegated cancellation targets the selected child Run", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await page.getByRole("button", { name: "Cancel this run" }).first().click();
 
@@ -218,7 +219,7 @@ test("delegated cancellation targets the selected child Run", async ({ page }) =
 
 test("delegated narrative stays under its exact spawning Item anchor", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const spawningItem = page.locator("#item_delegate");
   await expect(spawningItem).toHaveCount(1);
@@ -227,7 +228,7 @@ test("delegated narrative stays under its exact spawning Item anchor", async ({ 
 
 test("delegated links keep child conversations in the right dock", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated&resume-ready=1");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const root = page.locator("#item_delegate");
   await expect(page.locator('[data-slot="delegated-run-link"]')).toHaveCount(5);
   await expect(page.getByText("Package graph verification is still running.")).toHaveCount(0);
@@ -267,7 +268,7 @@ test("the subagent transcript follows new output and respects reading above the 
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated&resume-ready=1");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page
     .locator("#item_delegate")
     .getByRole("button", { name: /^Sub-agent/ })
@@ -337,7 +338,7 @@ test("running composer exposes both steer and stop actions without unnamed contr
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=steer");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await expect(page.getByRole("button", { name: "Steer the running turn" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
@@ -357,7 +358,7 @@ test("running composer exposes both steer and stop actions without unnamed contr
 
 test("a running Goal exposes Pause while the active turn exposes Stop", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await expect(page.getByRole("button", { name: "Clear goal", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pause goal", exact: true })).toBeVisible();
@@ -368,7 +369,7 @@ test("a running Goal exposes Pause while the active turn exposes Stop", async ({
 for (const theme of ["light", "dark"] as const) {
   test(`Goal is a compact composer mode without duplicate fields ${theme}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=idle`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const input = page.getByRole("textbox", { name: "Message composer" });
     await input.fill("/goal");
@@ -392,7 +393,7 @@ for (const theme of ["light", "dark"] as const) {
 for (const theme of ["light", "dark"] as const) {
   test(`the standing Goal opens the compact objective editor ${theme}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=running`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     await page.getByRole("button", { name: "Edit goal", exact: true }).click();
 
@@ -423,7 +424,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("the compact Plan pill opens the production checklist for reading", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
@@ -443,7 +444,7 @@ for (const [theme, input] of [
 ] as const) {
   test(`the Plan checklist stays open across a live update with ${input}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=running`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const pill = page.getByRole("button", { name: "Step 2 / 3" });
     if (input === "keyboard") {
@@ -515,7 +516,7 @@ test("the active plan stays with the composer instead of claiming the transcript
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   const goal = page.locator('[data-slot="goal-status-row"]');
@@ -532,7 +533,7 @@ test("the standing goal stays in the composer stack instead of claiming the tran
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const goal = page.locator('[data-slot="composer-top-tray-surface"]');
   const composer = page.locator('[data-slot="composer-root"]');
@@ -549,7 +550,7 @@ test("the standing goal stays in the composer stack instead of claiming the tran
 
 test("the composer context ring exposes the Runtime window occupancy", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const readout = contextUsageReadout(VISUAL_CONTEXT_TOKENS, VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW);
   expect(readout).not.toBeNull();
@@ -573,7 +574,7 @@ for (const theme of ["light", "dark"] as const) {
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=idle`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const bubble = page.locator("[data-user-message-bubble]");
     await expect(bubble).toHaveCount(1);
@@ -613,7 +614,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("composer keeps one production edge and 6/8 footer inset", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=empty");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const composer = page.locator('[data-slot="composer-root"]');
   const footer = page.locator('[data-slot="composer-footer"]');
@@ -668,7 +669,7 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
 
 test("model capabilities drive the picker and image admission together", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=empty");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const add = page.getByRole("button", { name: "Add to message" });
   const attach = page.getByRole("menuitem", { name: /Attach image/ });
@@ -715,7 +716,7 @@ for (const theme of ["light", "dark"] as const) {
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=empty`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     await page.getByRole("button", { name: /Switch model$/ }).click();
     const surface = page.getByRole("dialog", { name: "Switch model" });
@@ -757,7 +758,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("the projectless composer owns Codex's inset rear project tray", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=empty");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const tray = page.locator('[data-slot="composer-top-tray-surface"]');
   const composer = page.locator('[data-slot="composer-root"]');
@@ -778,7 +779,7 @@ test("the projectless composer owns Codex's inset rear project tray", async ({ p
 
 test("recovery action dismisses the problem and resends the last user input", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=recovery");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await page.getByTestId("agent-state").getByRole("button", { name: "Retry" }).click();
 
@@ -793,7 +794,7 @@ test("long content remains inside the reading column without horizontal overflow
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const stream = page.locator(".msg-scroll-viewport");
   const overflow = await stream.evaluate((element) => element.scrollWidth - element.clientWidth);
@@ -844,7 +845,7 @@ test("code blocks stay readable and expose the wrap control", async ({
     origin: "http://127.0.0.1:4174",
   });
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const code = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
   await expect(code).toContainText("Execute(context.Context");
@@ -901,7 +902,7 @@ test("code blocks stay readable and expose the wrap control", async ({
 
 test("reading artifacts share a frame with aligned captions and source", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const block = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
   await block.locator("code .line").first().waitFor();
@@ -972,7 +973,7 @@ for (const theme of ["light", "dark"] as const) {
       origin: "http://127.0.0.1:4174",
     });
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const diagram = page.getByRole("img", { name: "Diagram" });
     await expect(diagram).toBeVisible();
@@ -1006,7 +1007,7 @@ for (const theme of ["light", "dark"] as const) {
 
   test(`Markdown tables open a Codex reading preview ${theme}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const table = page.locator("[data-markdown-table]").filter({ hasText: "Boundary" });
     await layOutTranscript(page);
@@ -1045,7 +1046,7 @@ for (const theme of ["light", "dark"] as const) {
       origin: "http://127.0.0.1:4174",
     });
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const table = page.locator("[data-markdown-table]").filter({ hasText: "Run lifecycle" });
     await expect(table.locator("table")).toHaveAttribute("dir", "auto");
@@ -1076,7 +1077,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(
         `/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content${narrow ? "&font-size=18&sidebar=collapsed" : ""}`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
       const draft = "Keep this image reading draft. 保留图片阅读草稿。";
       await composer.fill(draft);
@@ -1199,7 +1200,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("a finished thought opens into a box that is still bounded", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await layOutTranscript(page);
 
   const process = page.getByRole("button", { name: /read · 1 search · 1 write/ }).first();
@@ -1240,7 +1241,7 @@ test("a finished thought opens into a box that is still bounded", async ({ page 
 
 test("context compaction uses the Codex activity row without divider chrome", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const compaction = page.getByRole("button", { name: "Context automatically compacted" });
   await compaction.scrollIntoViewIfNeeded();
@@ -1272,7 +1273,7 @@ test("Markdown structural primitives preserve reading hierarchy and alignment", 
   page,
 }, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const markdown = page.locator(".md").filter({ hasText: "Structural primitives" });
   const styles = await markdown.evaluate((root) => {
@@ -1429,7 +1430,7 @@ test("Markdown structural primitives preserve reading hierarchy and alignment", 
 for (const theme of ["light", "dark"] as const) {
   test(`wrapped inline code keeps the Codex cloned well in ${theme}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const paragraph = page
       .locator(".md > p")
@@ -1444,7 +1445,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("every chrome bar that takes a bottom edge wears the style edge", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=workspace&theme=light&state=dock-light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const measured = await page.evaluate(() => {
     const probe = document.createElement("div");
@@ -1478,7 +1479,7 @@ for (const { state, inputSurface } of [
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=light&state=${state}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const measured = await page.evaluate(async (inputSurface) => {
       const scroller = document.querySelector(".msg-scroll-viewport");
@@ -1513,7 +1514,7 @@ for (const { state, action } of [{ state: "waiting", action: "Allow once" }] as 
   test(`compact ${state} opens with its blocking action above the composer`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 577 });
     await page.goto(`/lab/fixture.html?fixture=agent&theme=light&state=${state}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const composer = page.locator('[data-slot="composer-root"]');
     const button = page.getByRole("button", { name: action, exact: true });
@@ -1537,7 +1538,7 @@ for (const { state, action } of [{ state: "waiting", action: "Allow once" }] as 
 test("compact question replaces the composer with its blocking request", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 577 });
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=question");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const request = page.locator('[data-slot="question-request-surface"]');
   const skip = page.getByRole("button", { name: "Skip", exact: true });
@@ -1563,7 +1564,7 @@ test("async transcript materialization follows only while the reader stays at th
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(3);
   await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
 
@@ -1616,7 +1617,7 @@ test("async transcript materialization follows only while the reader stays at th
 
 test("a tool with a standing surface is not narrated as well", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
@@ -1641,7 +1642,7 @@ test("a tool with a standing surface is not narrated as well", async ({ page }) 
 
 test("an opened but empty answer folds nothing behind it", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=answer-opening");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const thinking = page
     .locator("[data-slot='agent-activity-disclosure']")
@@ -1657,7 +1658,7 @@ test("an opened but empty answer folds nothing behind it", async ({ page }) => {
 
 test("expanded reasoning keeps a quiet identity mark and an aside rule", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=waves");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const reasoning = page
     .locator("[data-slot='agent-activity-disclosure']")
@@ -1686,7 +1687,7 @@ test("expanded reasoning keeps a quiet identity mark and an aside rule", async (
 
 test("a path row gives up its directory before its filename", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
 
   const row = page.locator(".msg-scroll-viewport button").filter({ hasText: "store.go" }).first();
@@ -1713,7 +1714,7 @@ test("a patch over several files counts them and names each only in its receipt"
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
 
   const row = page.locator(".msg-scroll-viewport button").filter({ hasText: "3 files" }).first();
@@ -1756,7 +1757,7 @@ test("a patch over several files counts them and names each only in its receipt"
 
 test("tool invocations stay on the transparent Codex work-narrative plane", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
 
   const rows = page.locator(
@@ -1807,7 +1808,7 @@ test("completed work folds before the separate final answer owns message actions
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const assistantTurns = page.getByRole("heading", { name: "Assistant" });
   await expect(assistantTurns).toHaveCount(2);
@@ -1828,7 +1829,7 @@ test("a captured multi-file patch stays readable in its bounded Result reader", 
   await page.goto(
     "/lab/fixture.html?fixture=agent&theme=light&state=tool-shells&sidebar=collapsed&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
   const draft = "Keep the patch reading draft. 保留补丁阅读草稿。";
   await composer.fill(draft);
@@ -1897,7 +1898,7 @@ test("a captured multi-file patch stays readable in its bounded Result reader", 
 
 test("an answered question keeps both halves of the exchange", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const settled = page
     .locator('[data-slot="agent-activity-disclosure"]')
@@ -1914,7 +1915,7 @@ test("an answered question keeps both halves of the exchange", async ({ page }) 
 
 test("a question the run was canceled out from under says so in one line", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=canceled");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   await expect(page.getByText("Closed without an answer")).toBeVisible();
   await expect(page.getByText("Should the review cover the CLI too?")).toHaveCount(0);
@@ -1923,7 +1924,7 @@ test("a question the run was canceled out from under says so in one line", async
 
 test("every sibling keeps its own status and child approval target", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated&resume-ready=1");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const siblings = page.locator('#item_fanout [data-slot="delegated-run-link"]');
   await expect(siblings).toHaveCount(4);
   await page
@@ -1950,7 +1951,7 @@ const GOAL_CONTROLS: ReadonlyArray<{ state: string; label: string; actions: stri
 for (const goal of GOAL_CONTROLS) {
   test(`a goal offers only what its status allows — ${goal.state}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=light&state=${goal.state}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const row = page.locator('[data-slot="goal-status-row"]');
     await expect(row).toContainText(goal.label);
@@ -1964,7 +1965,7 @@ for (const goal of GOAL_CONTROLS) {
 
 test("the transcript publishes one heading outline, from the session down", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const outline = await page.evaluate(() =>
     [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
@@ -1994,7 +1995,7 @@ test("the transcript publishes one heading outline, from the session down", asyn
 
 test("an expanded wave keeps its summary while its rows scroll past", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
 
   const header = page
@@ -2020,7 +2021,7 @@ test("an expanded wave keeps its summary while its rows scroll past", async ({ p
 
 test("the Goal surface presents status and objective without usage counters", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=running");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const row = page.locator('[data-slot="goal-status-row"]');
   await expect(row).toContainText("Pursuing goal");
@@ -2038,7 +2039,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(
       `/lab/fixture.html?fixture=agent&theme=${theme}&state=delegated&resume-ready=1`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await layOutTranscript(page);
 
     await page
@@ -2052,7 +2053,7 @@ for (const theme of ["light", "dark"] as const) {
 
 test("a short command output expands to its captured line count", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
@@ -2070,7 +2071,7 @@ test("a short command output expands to its captured line count", async ({ page 
 
 test("large command output stays fully readable inside the tool card", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=tool-shells&long-output=1");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
@@ -2158,7 +2159,7 @@ test("keyboard output expansion retains its reading focus and visible controls",
   await page.goto(
     "/lab/fixture.html?fixture=agent&theme=light&state=tool-shells&long-output=1&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
@@ -2203,7 +2204,7 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=answer-opening&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   const row = page
     .locator('[data-slot="agent-activity-disclosure"]')
@@ -2272,7 +2273,7 @@ for (const touch of [false, true]) {
     test("tool metadata and action rows share one trailing column", async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 1120, height: 900 });
       await page.goto("/lab/fixture.html?fixture=agent&state=tool-shells&theme=light&font-size=18");
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       await page.getByRole("button", { name: /steps/ }).first().click();
       const read = page.locator('[data-tool="read"]').first();

@@ -205,6 +205,7 @@ class PreviewObservations {
     if (this.#state === "disposed") return;
     this.#state = "disposed";
     delete this.document.documentElement.dataset.labReady;
+    delete this.document.documentElement.dataset.labError;
     this.document.removeEventListener("click", this.#onInteraction, true);
     this.document.removeEventListener("change", this.#onInteraction, true);
     this.view.removeEventListener("error", this.#onError);
@@ -228,9 +229,11 @@ class PreviewObservations {
 
   #send(kind: ObservationMessage["kind"], name: string, detail: string): void {
     if (this.#state === "disposed") return;
-    if (kind === "error") {
+    // Only the transition into failure projects a reason, so the marker keeps the first cause.
+    if (kind === "error" && this.#state !== "failed") {
       this.#state = "failed";
       delete this.document.documentElement.dataset.labReady;
+      this.document.documentElement.dataset.labError = detail;
     }
     if (this.parent === this.view) return;
     const normalizedName = observationName(name);

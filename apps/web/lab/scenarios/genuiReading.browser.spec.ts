@@ -1,10 +1,11 @@
 import { expect, test } from "./test";
 import { keepFinalSortRevealed, respectHorizontalReading } from "./genuiFocus";
+import { expectLabReady } from "../readiness";
 
 test("the Agent reading scene honors the shared collapsed-sidebar parameter", async ({ page }) => {
   await page.setViewportSize({ width: 520, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&sidebar=collapsed");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const expand = page.getByRole("button", {
     name: "Expand the agent fixture sidebar",
     exact: true,
@@ -35,7 +36,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(
         `/lab/fixture.html?fixture=agent&state=genui-report&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       expect(await page.evaluate(() => Number.isInteger(Date.now()))).toBe(true);
       await page.evaluate(() => document.fonts.ready);
       await page.locator('[data-tool="genui_ui_present"]').click();
@@ -274,7 +275,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(
         `/lab/fixture.html?fixture=agent&state=genui-report&locale=zh&theme=${theme}&font-size=18&sidebar=collapsed`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       const composer = page.getByRole("textbox", { name: "消息输入框", exact: true });
       await composer.fill("保留这条草稿，直到筛选结束。");
@@ -399,7 +400,7 @@ for (const profile of SIDEBAR_PROFILES) {
     });
     if (profile.sidebar === "collapsed") query.set("sidebar", "collapsed");
     await page.goto(`/lab/fixture.html?${query}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const shell = page.locator(".agent-shell");
     const toggleFor = (state: SidebarState) =>

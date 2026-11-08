@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   test(`Hosted panels keep one visible identity and complete context at both densities in ${theme}`, async ({
     page,
@@ -7,7 +8,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page
       .locator('[data-dock-view-id="package:visual:diff"]')
       .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
@@ -52,7 +53,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:diff&sidebar=collapsed&theme=${theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const full = page.getByRole("region", { name: "Workspace diff", exact: true });
     const pageTitle = full.getByRole("heading", { name: "Workspace diff", exact: true });
     expect((await pageTitle.boundingBox())!.height).toBeLessThanOrEqual(1);

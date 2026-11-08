@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function openGallery(page: Page, theme: string, fontSize: number, width: number) {
   await page.setViewportSize({ width, height: 720 });
   const query = new URLSearchParams({
@@ -9,7 +10,7 @@ async function openGallery(page: Page, theme: string, fontSize: number, width: n
     theme,
   });
   await page.goto(`/lab/fixture.html?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   if (width === 320)
     await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
   return page.getByRole("region", { name: "Flame icon gallery", exact: true });

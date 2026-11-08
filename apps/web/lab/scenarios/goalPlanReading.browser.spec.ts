@@ -3,6 +3,7 @@ import { en } from "@/lib/i18n/locales/en";
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
+import { expectLabReady } from "../readiness";
 
 async function expectPainted(surface: Locator) {
   await expect(surface).toBeVisible();
@@ -40,7 +41,7 @@ for (const environment of [
       });
       const selection = readSelection(query.toString(), catalog);
       await page.goto(previewURL(catalog.story(selection.storyId), selection, "goal-plan-reading"));
-      await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+      await expectLabReady(page, { timeout: 5_000 });
       await page.evaluate(() => document.fonts.ready);
     };
 

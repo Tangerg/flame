@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 interface Conflict {
   property: string;
   stylexValue: string;
@@ -24,7 +25,7 @@ test("no declaration is decided by StyleX out-ranking a stylesheet rule", async 
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     const found = await page.evaluate(() => {

@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import { expectLabReady } from "../readiness";
 const EXPECTED_NOISE =
   /RpcConnectionError|Failed to fetch|net::ERR_CONNECTION_REFUSED|net::ERR_FAILED|blocked by CORS policy|Reduced Motion enabled on your device/;
 
@@ -26,7 +27,7 @@ base("activating a control never leaves focus on nothing", async ({ page }) => {
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.waitForTimeout(300);
 
     const total = await page.locator('[data-slot="button"]:not([data-fixture-chrome] *)').count();

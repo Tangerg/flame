@@ -1,11 +1,12 @@
 import { contrastRatio, WCAG_AA_NON_TEXT, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 const THEMES = ["light", "dark"] as const;
 
 async function openGallery(page: Page, theme: (typeof THEMES)[number]) {
   await page.setViewportSize({ width: 1440, height: 1300 });
   await page.goto(`/lab/fixture.html?fixture=atoms&theme=${theme}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await expect(page.locator('[data-slot="atoms-gallery"]')).toBeVisible();
 }
 

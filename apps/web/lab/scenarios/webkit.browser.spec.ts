@@ -2,6 +2,7 @@ import { ACTIVE_DIFF_FILE, REVIEW_DIFF } from "./diffSnapshot";
 import { expect, test, type Page } from "./test";
 import { DOCK_MIN_WIDTH_PX } from "@/lib/shellGeometry";
 import { en } from "@/lib/i18n/locales/en";
+import { expectLabReady } from "../readiness";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
 test.use({ browserName: "webkit" });
@@ -25,7 +26,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.motion === "full") await page.emulateMedia({ reducedMotion: "no-preference" });
 
   await page.goto(`/lab/fixture.html?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 }
 
 async function expectNoPageOverflow(page: Page): Promise<void> {
@@ -228,7 +229,7 @@ for (const profile of SHORT_DRAFT_PROFILES) {
       "font-size": "18",
     });
     await page.goto(`/lab/fixture.html?${query}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
 
     const composer = page.getByRole("textbox", { name: profile.composer, exact: true });

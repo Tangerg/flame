@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { COMPUTER_IMAGE_SAMPLES } from "./computerFixtureImages";
+import { expectLabReady } from "../readiness";
 
 for (const theme of ["light", "dark"] as const) {
   for (const width of [360, 1280]) {
@@ -12,7 +13,7 @@ for (const theme of ["light", "dark"] as const) {
         if (!request.url().startsWith("http://127.0.0.1:")) remoteRequests.push(request.url());
       });
       await page.goto(`/lab/fixture.html?fixture=computer&theme=${theme}&font-size=18`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page.getByRole("region", { name: "Computer use", exact: true });
       await expect(panel.getByText("isolated-desktop.example", { exact: true })).toBeVisible();
       await expect(
@@ -98,7 +99,7 @@ test("published console stops an outstanding permission without replaying its ac
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=computer&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Authorize and open control" }).click();
   await page
     .getByRole("textbox", { name: "Tool arguments (JSON)" })
@@ -148,7 +149,7 @@ for (const profile of [
       await page.goto(
         `/lab/fixture.html?fixture=computer&state=images&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page.getByRole("region", { name: profile.panel, exact: true });
       await panel.getByRole("button", { name: profile.open, exact: true }).click();
       const editor = panel.getByRole("textbox", { name: profile.editor, exact: true });
@@ -272,7 +273,7 @@ for (const profile of [
     await page.goto(
       `/lab/fixture.html?fixture=computer&state=unreadable&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("region", { name: profile.panel, exact: true });
     const unreadable = panel.getByRole("button", {
       name: "recorded-unreadable-image",
@@ -320,7 +321,7 @@ for (const profile of [
     await page.goto(
       `/lab/fixture.html?fixture=computer&state=resources&locale=${profile.locale}&theme=${profile.theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("region", { name: profile.panel, exact: true });
     await panel.getByRole("button", { name: "recorded-resources", exact: true }).click();
     const uri = panel.getByText(

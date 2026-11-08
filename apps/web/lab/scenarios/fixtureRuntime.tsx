@@ -11,6 +11,7 @@ import { LONG_MODEL_FACTS, SCROLLING_MODEL_FACTS } from "./runtimeSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
+import { FIXTURE_DEFAULT_LOCALE, fixtureColors, fixtureTheme } from "../selection";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import "@flame/ui/styles.css";
@@ -50,8 +51,6 @@ import { loadPluginsForTest } from "@/test/kernel";
 import { VISUAL_NOW } from "./agentFixtureFacts";
 import { fixtureMotionScale } from "./motion";
 import { installFixtureClock } from "./fixtureClock";
-type FixtureTheme = "light" | "dark";
-
 const VISUAL_CLOCK_STARTED_AT = performance.now();
 
 const restoreFixtureClock = installFixtureClock(
@@ -63,10 +62,6 @@ export const visualClient = createVisualClient(() => {
   if (!currentRuntimeClient) throw new Error("Visual Runtime client is not configured");
   return currentRuntimeClient;
 });
-
-function fixtureTheme(value: string | null): FixtureTheme {
-  return value === "dark" ? "dark" : "light";
-}
 
 const query = new URLSearchParams(window.location.search);
 
@@ -141,28 +136,13 @@ const requestedDensity = query.get("density");
 
 const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
 
-const requestedAccent = query.get("accent");
-
-const accent =
-  requestedAccent !== null && /^#[\da-f]{6}$/i.test(requestedAccent) ? requestedAccent : undefined;
-
-const requestedContrast = Number(query.get("contrast"));
-
-const contrast =
-  Number.isFinite(requestedContrast) && query.get("contrast") !== null
-    ? Math.min(100, Math.max(0, requestedContrast))
-    : undefined;
+const colors = fixtureColors(query);
 
 const requestedFullView = query.get("full-view") ?? undefined;
 
 const requestedReviewFiles = Number(query.get("review-files")) || undefined;
 
-const requestedLocale = query.get("locale") ?? "en";
-
-const hex = (name: string) => {
-  const value = query.get(name);
-  return value !== null && /^#[\da-f]{6}$/i.test(value) ? value : undefined;
-};
+const requestedLocale = query.get("locale") ?? FIXTURE_DEFAULT_LOCALE;
 
 const requestedUiFont = query.get("ui-font") ?? undefined;
 
@@ -174,15 +154,6 @@ const requestedRadius = Number(query.get("radius"));
 
 const radiusScale =
   Number.isFinite(requestedRadius) && query.get("radius") !== null ? requestedRadius : undefined;
-
-const customBase = hex("custom-bg");
-
-const customInk = hex("custom-fg");
-
-const customTheme =
-  customBase !== undefined && customInk !== undefined
-    ? { bg: customBase, fg: customInk }
-    : undefined;
 
 rootElement.classList.remove("theme-light", "theme-dark");
 
@@ -442,9 +413,7 @@ visualClient.theme.store.setState({
     ? { fontSize: Number(requestedFontSize) }
     : {}),
   ...(density ? { density } : {}),
-  ...(contrast !== undefined ? { contrast } : {}),
-  ...(accent !== undefined ? { accent } : {}),
-  ...(customTheme ? { theme: "custom" as const, customTheme } : {}),
+  ...colors,
   ...(requestedUiFont ? { uiFont: requestedUiFont } : {}),
   ...(radiusScale !== undefined ? { radiusScale } : {}),
   ...(fontSmoothing !== undefined ? { fontSmoothing } : {}),

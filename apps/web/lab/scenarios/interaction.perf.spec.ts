@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { type CDPSession } from "@playwright/test";
 import { expect, test, type Page } from "./test";
 import { VISUAL_REVIEW_VIEWPORT } from "./workspaceFixtureStates";
+import { expectLabReady } from "../readiness";
 const SAMPLES = Number(process.env.FLAME_PERF_SAMPLES ?? 5);
 
 const REVIEW_FILES = 200;
@@ -164,7 +165,7 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       "review: open",
       await measureLoad(page, async () => {
         await page.goto(REVIEW_URL);
-        await page.locator("html[data-visual-ready]").waitFor();
+        await expectLabReady(page);
         await expect(diffFiles).toHaveCount(REVIEW_FILES);
       }),
     );
@@ -217,7 +218,7 @@ test("a long transcript loads and takes typing", async ({ page }) => {
       "long transcript: open",
       await measureLoad(page, async () => {
         await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=light");
-        await page.locator("html[data-visual-ready]").waitFor();
+        await expectLabReady(page);
         await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
       }),
     );

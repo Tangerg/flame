@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`plugin input failures stay with the modal editor ${theme} ${width}`, async ({ page }) => {
@@ -7,7 +8,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=plugins&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const trigger = page.getByRole("button", { name: "Configure inputs", exact: true }).first();
       await trigger.click();
       const dialog = page.getByRole("dialog", { name: /^Configure inputs: / });

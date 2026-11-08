@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { eachTabStop } from "./tabWalk";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=shell&state=populated",
   "fixture=workspace&state=dock-light",
@@ -38,7 +39,7 @@ test("the keyboard walks in reading order", async ({ page }) => {
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(400);
 
     const walk: (Box & { label: string; height: number; scroller: string })[] = [];
@@ -124,7 +125,7 @@ test("the keyboard walks in reading order", async ({ page }) => {
 test("focus survives closing the panel that holds it", async ({ page }) => {
   test.setTimeout(ROUTE_BUDGET_MS);
   await page.goto(`/lab/fixture.html?fixture=workspace&state=dock-light&theme=light`);
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
   await page.waitForTimeout(400);
 
   await page.getByRole("button", { name: "Browse panels" }).click();
@@ -183,7 +184,7 @@ test("focus survives closing the panel that holds it", async ({ page }) => {
 
 test("a context menu opens from the keyboard and hands focus back", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=shell&state=populated&theme=light");
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
 
   const row = page.getByRole("button", { name: /^Refine Runtime protocol/ }).first();
   await row.focus();

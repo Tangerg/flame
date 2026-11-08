@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 async function expectBlockRhythm(root: Locator) {
   const reading = await root.evaluate((node) => {
     const quotes = [...node.querySelectorAll("blockquote")];
@@ -71,7 +72,7 @@ for (const [fontSize, theme, narrow] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-files&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("treeitem", { name: "reading-blocks.md", exact: true }).click();
     if (narrow) {
       const resizer = page.locator(".agent-pane-resizer");
@@ -84,7 +85,7 @@ for (const [fontSize, theme, narrow] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await expectBlockRhythm(page.locator(".md").filter({ hasText: "Quoted evidence" }));
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });

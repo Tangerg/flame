@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { IMAGE_EXPORT_FIXTURES } from "./imageExportFixtures";
+import { expectLabReady } from "../readiness";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -17,7 +18,7 @@ test.beforeEach(async ({ page }) => {
     };
   });
   await page.goto("/lab/fixture.html?fixture=agent&state=idle&locale=en");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 });
 
 async function finishReading(page: import("./test").Page) {
@@ -90,7 +91,7 @@ for (const width of [320, 1120]) {
       await page.goto(
         `/lab/fixture.html?fixture=agent&state=idle&locale=en&theme=${theme}&font-size=18&motion=off`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const composer = page.locator('[data-slot="composer-root"]');
       const input = composer.getByRole("textbox", { name: "Message composer" });
       const status = composer.getByRole("status");
@@ -209,7 +210,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/preview.html?story=business-attachments&variant=failed&locale=en&theme=${theme}&font-size=18&motion=off`,
     );
-    await page.locator('html[data-lab-ready="true"]').waitFor();
+    await expectLabReady(page);
     const input = page.getByRole("textbox", { name: "Message composer", exact: true });
     const status = page.getByRole("status");
     const message = await status.innerText();

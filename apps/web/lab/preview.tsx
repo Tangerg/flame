@@ -12,9 +12,10 @@ import "./preview.css";
 import { catalog } from "./catalog";
 import { createLabEnvironment } from "./environment";
 import { installPreviewObservations, OBSERVATION_NAMES } from "./observations";
-import { LAB_INSTANCE_QUERY, readSelection } from "./selection";
+import { LAB_INSTANCE_QUERY, readSelection, recoveryURL } from "./selection";
 import { localize } from "./story";
 import { messages } from "./messages";
+import { FAILURE_TITLE_ID, failurePresentation, failureRootProps, failureStyles } from "./failure";
 
 const query = new URLSearchParams(window.location.search);
 const observations = installPreviewObservations(window, document, {
@@ -49,12 +50,22 @@ try {
           )
         }
         fallbackRender={({ error }) => (
-          <div {...stylex.props(styles.previewError)} role="alert">
-            <h1>{localize(messages.renderError, selection.locale)}</h1>
-            <pre {...stylex.props(styles.previewErrorDetail)}>
+          <main
+            {...failureRootProps}
+            role="alert"
+            lang={selection.locale}
+            aria-labelledby={FAILURE_TITLE_ID}
+          >
+            <h1 {...stylex.props(failureStyles.heading)} id={FAILURE_TITLE_ID}>
+              {localize(messages.renderError, selection.locale)}
+            </h1>
+            <pre {...stylex.props(failureStyles.detail)}>
               {error instanceof Error ? error.message : String(error)}
             </pre>
-          </div>
+            <a {...stylex.props(failureStyles.recovery)} href={recoveryURL(selection)}>
+              {localize(messages.restart, selection.locale)}
+            </a>
+          </main>
         )}
       >
         <main
@@ -84,10 +95,22 @@ try {
 } catch (error) {
   const reason = error instanceof Error ? error.message : String(error);
   observations.observe(OBSERVATION_NAMES.reactError, reason);
+  const failure = failurePresentation(query);
   root.render(
-    <main {...stylex.props(styles.previewError)} role="alert">
-      <h1>{messages.renderError["zh-CN"]}</h1>
-      <pre {...stylex.props(styles.previewErrorDetail)}>{reason}</pre>
+    <main
+      {...failureRootProps}
+      style={failure.style}
+      role="alert"
+      lang={failure.locale}
+      aria-labelledby={FAILURE_TITLE_ID}
+    >
+      <h1 {...stylex.props(failureStyles.heading)} id={FAILURE_TITLE_ID}>
+        {messages.renderError[failure.locale]}
+      </h1>
+      <pre {...stylex.props(failureStyles.detail)}>{reason}</pre>
+      <a {...stylex.props(failureStyles.recovery)} href={failure.href}>
+        {messages.restart[failure.locale]}
+      </a>
     </main>,
   );
 }

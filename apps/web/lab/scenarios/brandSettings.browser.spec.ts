@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`brand assets load without overflow ${theme} ${width}`, async ({ page }) => {
@@ -7,7 +8,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=brand&theme=${theme}&locale=${locale}`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page.getByRole("tabpanel");
       await expect(
         panel.getByRole("heading", {
@@ -48,7 +49,7 @@ test("brand settings can be found, copied and downloaded", async ({
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=settings&pane=appearance&theme=light&locale=en",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page
     .getByRole("searchbox", { name: "Search settings…", exact: true })
     .fill("Brand identity");

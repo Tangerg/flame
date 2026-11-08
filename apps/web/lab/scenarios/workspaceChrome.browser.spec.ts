@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from "./test";
 import { en } from "@/lib/i18n/locales/en";
+import { expectLabReady } from "../readiness";
 async function expectBelowWindowControl(content: Locator, toggle: Locator) {
   await expect(content).toBeVisible();
   const control = (await toggle.boundingBox())!;
@@ -36,7 +37,7 @@ for (const theme of ["light", "dark"]) {
           theme,
         });
         await page.goto(`/lab/fixture.html?${query}`);
-        await page.locator("html[data-visual-ready]").waitFor();
+        await expectLabReady(page);
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
         const toggle = page.getByRole("button", {
           name: "Expand the workspace fixture sidebar",
@@ -127,7 +128,7 @@ test.describe("coarse pointer window controls", () => {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=full-view&full-view=subagents&agent-state=delegated&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
       await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
       const toggle = page.getByRole("button", { name: "Expand the workspace fixture sidebar" });
@@ -157,7 +158,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const header = page.locator('[data-slot="workspace-window-header"]');
       await expect(page.locator(".agent-shell")).toHaveAttribute("data-sidebar", "absent");
       await expect(page.getByRole("button", { name: /workspace fixture sidebar/ })).toHaveCount(0);

@@ -1,10 +1,11 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 test("Session title editing keeps keyboard focus and cancels without a write", async ({
   page,
 }, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=shell&state=populated&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const original = "Refine Runtime protocol";
   const more = () =>
     page.getByRole("button", { name: `More actions for ${original}`, exact: true }).first();

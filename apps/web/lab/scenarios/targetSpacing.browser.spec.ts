@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=atoms",
   "fixture=shell&state=populated",
@@ -18,7 +19,7 @@ test("an undersized control keeps 24px of clearance from its neighbours", async 
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(220);
 
     const result = await page.evaluate((SELECTOR) => {

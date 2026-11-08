@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"] as const) {
   test(`Mermaid paints its theme with local fonts in ${theme}`, async ({ page }) => {
     const fontRequests: string[] = [];
@@ -8,7 +9,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`, {
       waitUntil: "domcontentloaded",
     });
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const diagram = page.getByRole("img", { name: "Diagram" });
     await expect(diagram).toBeVisible();
     await page.evaluate(

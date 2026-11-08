@@ -2,6 +2,7 @@ import { expect, test } from "./test";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import { FOCUSABLE } from "./controls";
 import { eachTabStop } from "./tabWalk";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   ...VISUAL_AGENT_STATES.map((state) => `fixture=agent&state=${state}`),
   "fixture=shell&state=populated",
@@ -20,7 +21,7 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
     reached += await page.locator(FOCUSABLE).count();
 
@@ -91,7 +92,7 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     await eachTabStop(page, async () => {

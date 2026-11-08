@@ -1,8 +1,9 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 test("mounted Callouts follow their host's locale", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=callouts&locale=en");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const callouts = page.locator('[data-slot="callout"]');
   const titles = callouts.locator('[data-slot="callout-title"]');
   await expect(titles).toHaveText(["Note", "Warning"]);
@@ -33,7 +34,7 @@ test("callout titles keep their icons on the same line and inherit the theme col
 }) => {
   await page.setViewportSize({ width: 800, height: 1000 });
   await page.goto("/lab/fixture.html?fixture=agent&state=callouts&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const markdown = page.locator(".md").filter({ hasText: "Notes that belong to the answer" });
   const alerts = markdown.locator('[data-slot="callout"]');

@@ -4,6 +4,7 @@ import { en } from "@/lib/i18n/locales/en";
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
+import { expectLabReady } from "../readiness";
 
 for (const environment of [
   { locale: "en", theme: "light", fontSize: 14, messages: en },
@@ -26,7 +27,7 @@ for (const environment of [
     );
     await page.setViewportSize({ width: 320, height: 720 });
     await page.goto(previewURL(catalog.story(selection.storyId), selection, "isolated-reasoning"));
-    await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+    await expectLabReady(page, { timeout: 5_000 });
     const toggle = page.getByRole("button", { name: messages["reasoning.thinking"], exact: true });
     const glimpse = page.locator('[data-slot="reasoning-glimpse"]');
     await expect(glimpse).toBeVisible();
@@ -70,7 +71,7 @@ for (const environment of [
     const selection = readSelection(query.toString(), catalog);
     await page.setViewportSize({ width: 1120, height: 900 });
     await page.goto(previewURL(catalog.story(selection.storyId), selection, "reasoning-reading"));
-    await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+    await expectLabReady(page, { timeout: 5_000 });
     const draft = page.getByRole("textbox");
     await draft.fill("Keep the draft while reading reasoning.");
     const toggle = page.getByRole("button", { name: thinking, exact: true });
@@ -140,7 +141,7 @@ for (const [theme, fontSize, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=waves&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const summary = page.getByRole("button", { name: /3 steps/ });
     await summary.click();
     const wave = page

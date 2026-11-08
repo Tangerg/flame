@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
+import { expectLabReady } from "../readiness";
 const ROUTES: ReadonlyArray<{ query: string; reveal?: RegExp }> = [
   { query: "fixture=agent&state=narrative" },
   { query: "fixture=agent&state=tool-shells" },
@@ -47,7 +48,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
 
   for (const { query: route, reveal } of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(250);
 
     if (reveal) {
@@ -217,7 +218,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
 
 test("a tooltip opening does not press the button under the pointer", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-review&theme=light");
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
 
   const copy = page.getByRole("button", { name: "Copy message" }).last();
   await copy.hover();
@@ -236,7 +237,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-light&theme=${theme}&font-size=14`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const back = page.getByRole("button", { name: "Back to files", exact: true });
     await back.focus();
     const tooltip = page.getByRole("tooltip", { name: "Back to files", exact: true });
@@ -270,7 +271,7 @@ for (const theme of ["light", "dark"]) {
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const copy = page.getByRole("button", { name: "Copy message", exact: true }).last();
     await copy.hover();
     const tooltip = page

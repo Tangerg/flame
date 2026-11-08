@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [width, theme, fontSize] of [
   [1440, "light", 14],
   [320, "dark", 18],
@@ -10,7 +11,7 @@ for (const [width, theme, fontSize] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=table-reading&theme=${theme}&font-size=${fontSize}&sidebar=collapsed`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const expand = page.getByRole("button", { name: "Expand table", exact: true });
     const transcript = (await page.locator(".msg-scroll-viewport").boundingBox())!;
     const control = (await expand.boundingBox())!;
@@ -178,7 +179,7 @@ for (const [width, fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=long-content&theme=${theme}&font-size=${fontSize}&sidebar=collapsed`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
     const table = page.locator("[data-markdown-table]").filter({ hasText: "Boundary" });
     await wheelTableIntoView(page, table);
@@ -238,7 +239,7 @@ test("an overflowing canonical table remains keyboard readable as the answer res
 }) => {
   await page.setViewportSize({ width: 320, height: 1200 });
   await page.goto("/lab/fixture.html?fixture=agent&state=narrative&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const table = page.locator("[data-markdown-table]").filter({ hasText: "Strategy" });
   await readTableWithKeyboard(page, table);
@@ -263,7 +264,7 @@ test("a wide authored table remains keyboard readable in the desktop Dock readin
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=narrative&theme=light&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const resize = page.getByRole("separator", { name: "Resize right workspace", exact: true });
   await resize.focus();

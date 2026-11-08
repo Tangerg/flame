@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 const lastOption =
   "Run all release checks for the selected workspace and include accessibility diagnostics";
 
@@ -25,7 +26,7 @@ for (const [width, height, fixture, theme] of [
         ? "fixture=workspace&state=dock-light&agent-state=question-multi"
         : "fixture=agent&state=question-multi";
     await page.goto(`/lab/fixture.html?${scene}&theme=${theme}&font-size=18`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
     const request = page.locator('[data-slot="question-request-surface"]');
     const measured = await request.evaluate((node) => {
@@ -132,7 +133,7 @@ for (const touch of [false, true]) {
       await page.goto(
         "/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=question-multi&theme=dark&font-size=18",
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       const stream = page.locator(".msg-scroll-viewport");
       const request = page.locator('[data-slot="question-request-surface"]');

@@ -1,8 +1,9 @@
 import { contrastRatio, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function openOutput(page: Page, query = "") {
   await page.goto(`/lab/fixture.html?fixture=agent&state=tool-shells${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
@@ -16,7 +17,7 @@ test("message search excludes retained nested thoughts until their owners reveal
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=narrative");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const query = "the component may unmount mid-flight";
   const matches = () =>
     page.evaluate(async (query) => {
@@ -94,7 +95,7 @@ for (const [theme, accent] of [
     page,
   }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&state=long-content&theme=${theme}${accent}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const pairs = await page.evaluate(async () => {
       const rangesPath = "/src/features/chat/search/adapters/messageRanges.ts";
       const paintPath = "/src/features/chat/search/adapters/searchHighlights.ts";
@@ -222,7 +223,7 @@ test("bounded output, inspector code and Dock evidence release vertical scrollin
   await expectVerticalContinuation(page, output, page.locator(".msg-scroll-viewport"));
 
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-agentic&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
   await page.locator('[data-tool="inspect_workspace"]').click();
   const result = page.getByRole("region", { name: "Result", exact: true });
@@ -232,7 +233,7 @@ test("bounded output, inspector code and Dock evidence release vertical scrollin
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=prose-blocks&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page.locator('[data-dock-view-id="package:visual:trajectory"]');
   const record = dock.locator('[data-trajectory-record="item:item_reading_blocks"]');
   await record.getByRole("button").first().click();

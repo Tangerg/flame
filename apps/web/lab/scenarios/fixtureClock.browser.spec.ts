@@ -1,12 +1,13 @@
 import { expect, test } from "./test";
 import { VISUAL_NOW } from "./agentFixtureFacts";
+import { expectLabReady } from "../readiness";
 
 for (const theme of ["light", "dark"]) {
   test(`Diff accepts reads on the fixture's advancing calendar in ${theme}`, async ({ page }) => {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page
       .locator('[data-dock-view-id="package:visual:diff"]')
       .filter({ has: page.locator('[data-slot="workspace-view-body"]') });

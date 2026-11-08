@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [fontSize, theme, width] of [
   [14, "light", 1472],
   [18, "dark", 800],
@@ -8,7 +9,7 @@ for (const [fontSize, theme, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("treeitem", { name: "reading-blocks.md", exact: true }).click();
     const view = page.locator('[data-dock-view-id="file"]');
     const captured = view.locator('[data-slot="document-body"]');
@@ -41,7 +42,7 @@ for (const [fontSize, theme, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const reading = page.locator(".md").filter({ hasText: "Quoted evidence" });
     const protocol = reading.getByRole("link", { name: "the protocol guide", exact: true });
     await expect(protocol).toHaveAttribute("href", "https://example.test/packages/go-sdk/protocol");

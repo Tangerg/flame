@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "./test";
 import { CONTROL } from "./controls";
+import { expectLabReady } from "../readiness";
 const FIXTURES = [
   "fixture=agent&theme=light&state=long-content",
   "fixture=agent&theme=light&state=tool-shells",
@@ -56,7 +57,7 @@ async function clippedControls(page: Page, selector: string): Promise<Clipped[]>
 for (const query of FIXTURES) {
   test(`no control is cut in half at the minimum window: ${query}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?${query}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.waitForTimeout(400);
 
     const considered = await page.locator(CONTROL).count();

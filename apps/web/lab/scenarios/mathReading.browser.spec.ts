@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 async function formulaGeometry(formula: Locator) {
   return formula.evaluate((node) => {
     const viewport = node.getBoundingClientRect();
@@ -28,7 +29,7 @@ test("wide formulas stay bounded and preserve notation as their reading width ch
 }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=math-content&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const markdown = page.locator(".md").filter({ hasText: "A readable derivation" });
   const formulas = markdown.locator(".katex-display");
   await expect(formulas).toHaveCount(4);

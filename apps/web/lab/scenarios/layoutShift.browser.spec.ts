@@ -2,6 +2,7 @@ import { expect, test, type Page } from "./test";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import { VISUAL_WORK_INDEX_STATES } from "./shellFixtureStates";
 import { VISUAL_WORKSPACE_STATES } from "./workspaceFixtureStates";
+import { expectLabReady } from "../readiness";
 const OBSERVER = `
   window.__shifts = [];
   window.__readyAt = null;
@@ -63,7 +64,7 @@ async function shiftsAfterReady(page: Page): Promise<Shift[]> {
 
 async function settleAndCollect(page: Page, route: string): Promise<Shift[]> {
   await page.goto(`/lab/fixture.html?${route}&theme=light`);
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
   await page.waitForTimeout(700);
   return shiftsAfterReady(page);
 }
@@ -113,7 +114,7 @@ test("workspace states hold still once the app says it is ready", async ({ page 
 test("a jump after the app says it is ready is caught", async ({ page }) => {
   await page.addInitScript(OBSERVER);
   await page.goto("/lab/fixture.html?fixture=agent&state=narrative&theme=light");
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
   await page.waitForTimeout(200);
 
   const workspace = page.getByRole("main", { name: "Agent workspace", exact: true });

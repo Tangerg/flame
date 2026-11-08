@@ -3,6 +3,7 @@ import de from "../../../../plugins/locale-de/package/io.github.tangerg.flame/me
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { en } from "@/lib/i18n/locales/en";
 import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import { expectLabReady } from "../readiness";
 const providerTitle = providersDeclaration.components[0]!.title;
 async function openSettings(
   page: Page,
@@ -18,7 +19,7 @@ async function openSettings(
     locale,
   });
   await page.goto(`/lab/fixture.html?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const catalog = locale === "de" ? de : en;
   return {
@@ -254,7 +255,7 @@ test("opening Settings without a pane keeps its default content until a result i
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-light&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(async () => {
     const moduleUrl = "/src/features/workspace/public/deeplinks.ts";
     const { openSettingsView }: typeof import("@/features/workspace/public/deeplinks") =

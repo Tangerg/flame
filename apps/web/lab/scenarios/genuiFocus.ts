@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 
 // CSS frames around a native 200% window resize; this is browser geometry, not page zoom.
 const WIDE_FRAME = { width: 756, height: 474 };
@@ -67,7 +68,7 @@ async function openFinalSort(page: Page, theme: "light" | "dark") {
   await page.goto(
     `/lab/fixture.html?fixture=agent&state=genui-report&locale=en&theme=${theme}&font-size=18&sidebar=collapsed`,
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const draft = "Keep this draft while the report window narrows.";
   const composer = page.getByRole("textbox", { name: "Message composer", exact: true });

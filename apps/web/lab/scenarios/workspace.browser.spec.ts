@@ -22,6 +22,7 @@ import {
   type VisualWorkspaceState,
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
+import { expectLabReady } from "../readiness";
 // The Browse panels trigger also carries the active view id; only the retained view hosts its body.
 function dockView(page: Page, id: string) {
   return page
@@ -64,7 +65,7 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
   if (route.pane) query.set("pane", route.pane);
   if (route.fullView) query.set("full-view", route.fullView);
   await page.goto(`/lab/fixture.html?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
 }
 
@@ -692,7 +693,7 @@ test("font smoothing updates the browser rendering preference and survives reloa
   await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "auto");
 
   await page.reload();
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await expect(smoothing).not.toBeChecked();
   await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "auto");
 
@@ -728,7 +729,7 @@ test("accent selection gives an immediate, durable visual acknowledgement", asyn
   expect((await purple.boundingBox())?.width).toBeGreaterThanOrEqual(28);
 
   await page.reload();
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await waitForWorkspaceState(page, "settings");
   await expect(page.getByRole("button", { name: "Accent: Purple" })).toHaveAttribute(
     "aria-pressed",

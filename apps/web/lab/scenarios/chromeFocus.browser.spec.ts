@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { eachTabStop } from "./tabWalk";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=agent&state=question",
   "fixture=shell&state=populated",
@@ -31,7 +32,7 @@ for (const profile of PROFILES) {
 
     for (const route of ROUTES) {
       await page.goto(`/lab/fixture.html?${route}&${appearance}`);
-      await page.waitForSelector("html[data-visual-ready]");
+      await expectLabReady(page);
 
       await eachTabStop(page, async () => {
         const meta = await page.evaluate((selector) => {

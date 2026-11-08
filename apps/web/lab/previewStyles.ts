@@ -140,12 +140,4 @@ export const previewStyles = stylex.create({
     padding: "clamp(16px, 4vw, 28px)",
     overflowWrap: "anywhere",
   },
-  previewError: {
-    padding: 24,
-    color: color.negative,
-  },
-  previewErrorDetail: {
-    whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-  },
 });

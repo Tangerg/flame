@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { VISUAL_SCHEDULE_INSTRUCTION_LINES as instructionLines } from "./componentSnapshots";
+import { expectLabReady } from "../readiness";
 
 const instructions = instructionLines.join("\n");
 
@@ -17,7 +18,7 @@ for (const theme of ["light", "dark"]) {
       });
       if (width === 320) query.set("full-view", "package:visual:schedules");
       await page.goto(`/lab/fixture.html?${query}`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       if (width === 320)
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
 

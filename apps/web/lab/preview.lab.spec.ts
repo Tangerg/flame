@@ -4,6 +4,7 @@ import { catalog } from "./catalog";
 import { labCases } from "./cases";
 import { readSelection } from "./selection";
 import { foundationMessages } from "./foundationMessages";
+import { expectLabReady } from "./readiness";
 
 const filter = process.env.FLAME_LAB_STORY;
 if (filter) catalog.story(filter);
@@ -31,7 +32,7 @@ for (const story of catalog.stories) {
         await test.step(entry.variantId, async () => {
           await page.setViewportSize({ width: entry.width, height: entry.height });
           await page.goto(entry.url);
-          await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true", {
+          await expectLabReady(page, {
             timeout: 30_000,
           });
           await page.evaluate(async () => {

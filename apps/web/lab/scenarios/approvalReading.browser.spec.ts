@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const plan of [
   { theme: "light", font: 14, touch: false },
   { theme: "dark", font: 18, touch: false },
@@ -12,7 +13,7 @@ for (const plan of [
       await page.goto(
         `/lab/fixture.html?fixture=agent&state=waiting&theme=${plan.theme}&font-size=${plan.font}`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       const group = page.getByRole("group", { name: "Approval options", exact: true });
       const allow = group.getByRole("button", { name: "Allow once", exact: true });

@@ -1,10 +1,11 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("expanded tool groups keep every call reachable while the Dock resizes", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=tool-search&theme=light&font-size=18&locale=en",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /calls/ }).first().click();
   const glob = page.locator('[data-tool="glob"]');
   await glob.click();
@@ -41,7 +42,7 @@ test("a tool group can reverse closing before its content disappears", async ({ 
   await page.goto(
     "/lab/fixture.html?fixture=agent&state=tool-search&theme=dark&font-size=18&locale=en&motion=full",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const trigger = page.getByRole("button", { name: /calls/ }).first();
   const frame = page.locator('[data-slot="agent-activity-disclosure"]').filter({ has: trigger });
   await trigger.click();

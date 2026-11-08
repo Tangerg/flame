@@ -2,6 +2,7 @@ import { en as mcpEn } from "../../../../plugins/mcp/component/locales/en";
 import { zh as mcpZh } from "../../../../plugins/mcp/component/locales/zh";
 import { expect, test, type Locator, type Page } from "./test";
 import { LONG_MODEL_NAME } from "./runtimeSnapshots";
+import { expectLabReady } from "../readiness";
 
 async function readAcross(page: Page, reader: Locator, first: Locator, last: Locator) {
   await reader.scrollIntoViewIfNeeded();
@@ -78,7 +79,7 @@ export function registerUiOwnershipContracts() {
   }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     await page.goto("/lab/fixture.html?fixture=agent&state=math-content&theme=dark&font-size=18");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const formulas = page.getByRole("region", { name: "Mathematical expression", exact: true });
     await expect(formulas).toHaveCount(2);
     const objective = formulas.first();
@@ -102,7 +103,7 @@ export function registerUiOwnershipContracts() {
   }) => {
     await page.setViewportSize({ width: 320, height: 1200 });
     await page.goto("/lab/fixture.html?fixture=agent&state=narrative&theme=dark&font-size=18");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const reader = page
       .locator("[data-markdown-table]")
       .filter({ hasText: "Strategy" })
@@ -118,7 +119,7 @@ export function registerUiOwnershipContracts() {
     await page.goto(
       "/lab/fixture.html?fixture=agent&state=table-reading&theme=dark&font-size=18&sidebar=collapsed",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const expand = page.getByRole("button", { name: "Expand table", exact: true });
     await expand.focus();
     await page.keyboard.press("Enter");
@@ -190,7 +191,7 @@ export function registerUiOwnershipContracts() {
       Object.defineProperty(prototype, "find", { value: undefined, configurable: true });
     });
     await page.goto("/lab/fixture.html?fixture=workspace&state=dock-light&theme=light");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const trajectory = page.getByRole("tab", { name: "Session trajectory", exact: true });
     await trajectory.focus();
     await page.keyboard.press("Shift+F10");
@@ -213,7 +214,7 @@ export function registerUiOwnershipContracts() {
     page,
   }) => {
     await page.goto("/lab/fixture.html?fixture=workspace&state=dock-light&theme=light");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const ratio = page.getByTestId("persisted-dock-ratio");
     const before = await ratio.textContent();
     const row = page.locator(".agent-dock-row");
@@ -240,7 +241,7 @@ export function registerUiOwnershipContracts() {
   }) => {
     await page.setViewportSize({ width: 640, height: 360 });
     await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=light");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const trigger = page.getByRole("button", { name: "Inline architecture", exact: true });
     await trigger.scrollIntoViewIfNeeded();
     await trigger.click();
@@ -307,7 +308,7 @@ export function registerUiOwnershipContracts() {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&sidebar=collapsed&theme=${theme}&locale=zh&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const panel = page
         .getByRole("region", { name: "定时任务", exact: true })
         .and(page.locator('[data-slot="panel"]'));
@@ -449,7 +450,7 @@ export function registerUiOwnershipContracts() {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=dock-schedules&locale=de&font-size=18&theme=${theme}&long-models=1`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
       const composer = page.getByRole("textbox", { name: "Nachrichteneditor", exact: true });
@@ -720,7 +721,7 @@ export function registerUiOwnershipContracts() {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&font-size=18&locale=${locale}`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
       const trigger = page.getByRole("button", { name: strings["mcp.import"]!, exact: true });
       await trigger.click();

@@ -87,6 +87,13 @@ redacted. Callback enums, booleans and numbers remain inspectable. Clearing the
 log does not change the component. The log is an interaction aid, not a Runtime
 trace, profiler or command receipt store.
 
+Invalid links and failed independent documents retain a complete, wrapping cause
+and a normal link back to the catalog. Recovery preserves the admitted language,
+theme, font size and motion while dropping the invalid scene selection. Fatal
+readers project the existing appearance tokens locally; they do not write theme
+preferences or create another document painter. Raw fixtures retain their own
+English default and canonical custom-color parsing.
+
 ## Ownership and isolation
 
 `foundationCatalog.ts` and `businessCatalog.ts` are the composition inputs to one
@@ -132,6 +139,9 @@ Session, Run, Goal or installed-component state machine. Fixture variants derive
 from the fixture-owned `VISUAL_*` arrays, and their existing in-memory transport rejects
 unmodelled Runtime operations. Clipboard, download and other browser interactions
 retain their existing explicit behavior.
+The runtime retains its normal stylesheet load order. A caught boot failure loads
+the shared reader styles in its failure branch; preloading them before runtime
+admission changes the normal fixture's cascade.
 
 An iframe provides a separate document, module graph, portal root and focus
 lifetime. It is not a security sandbox. The lab runs trusted repository examples;
@@ -222,6 +232,17 @@ overflow at the actual reading viewport and verify literal captured results rath
 than assuming a particular presentation. Keep keyboard entry, return focus and
 draft continuity assertions. Add regression coverage to the existing scenario;
 do not introduce another fixture application or verification configuration.
+
+Use `expectLabReady` from `readiness.ts` for document admission, including frames.
+It waits for visible readiness or the observation owner's terminal failure and
+reports the failing document URL and first bounded cause. Existing caller action
+timeouts remain in force. Business alerts do not imply a failed document, and
+internal render-phase measurements keep their separate purpose. Failure-reader
+regressions check actual rendered colors and text contrast as well as language,
+wrapping, pointer and keyboard recovery; a theme class alone cannot prove paint.
+Fault-injection routes retire before catalog recovery so normal caching resumes.
+Recovery checks await the actual preview documents before ending the test, rather
+than accepting a heading while its examples are still loading.
 
 Focus checks capture the containing Search proxy or Composer surface when that
 surface owns the keyboard cue. They compare its focused and blurred paint as well

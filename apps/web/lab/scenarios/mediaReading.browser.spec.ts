@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { LONG_RESPONSE_MARKDOWN } from "./agentSessionSnapshots";
+import { expectLabReady } from "../readiness";
 test("file image references keep encoded payloads in Source and out of the reading flow", async ({
   page,
 }) => {
@@ -9,7 +10,7 @@ test("file image references keep encoded payloads in Source and out of the readi
     if (request.url().startsWith("https://tracker.example/")) remoteRequests.push(request.url());
   });
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-files&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
   const view = page.locator('[data-dock-view-id="file"]');
   const reading = view.locator('[data-slot="document-body"]');
@@ -65,7 +66,7 @@ test("media-only paragraphs own image spacing across wrapped and unavailable ima
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=long-content&theme=light&font-size=14",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await expect(gallery.locator("img")).toHaveCount(2);
     for (const image of await gallery.locator("img").all()) {
       await image.evaluate((image: HTMLImageElement) => image.decode());
@@ -106,7 +107,7 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
   await page.goto(
     "/lab/fixture.html?fixture=agent&state=idle&theme=light&font-size=18&sidebar=collapsed",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
   const sources = await page.evaluate(() => {
     const png = (width: number, height: number) => {

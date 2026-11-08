@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 for (const event of ["visibilitychange", "pagehide"] as const) {
   test(`observability flushes pending spans on ${event}`, async ({ page }) => {
@@ -8,7 +9,7 @@ for (const event of ["visibilitychange", "pagehide"] as const) {
     await page.goto("/lab/fixture.html?fixture=agent&state=long-content", {
       waitUntil: "domcontentloaded",
     });
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const exported = page.waitForRequest("**/telemetry-probe/v1/traces");
     await page.evaluate(async (event) => {
       const setupPath = "/src/lib/observability/setup.ts";

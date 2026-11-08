@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`memory forms preserve their draft and return to their opener ${theme} ${width}`, async ({
@@ -13,7 +14,7 @@ for (const theme of ["light", "dark"]) {
       });
       if (width === 320) query.set("full-view", "package:visual:memory");
       await page.goto(`/lab/fixture.html?${query}`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       if (width === 320)
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
       const panel = page

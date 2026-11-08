@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 async function expectReadingHierarchy(header: Locator) {
   const geometry = await header.evaluate((node) => {
     const back = node.querySelector("button")!.getBoundingClientRect();
@@ -26,7 +27,7 @@ for (const [fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=idle&theme=${theme}&font-size=${fontSize}&locale=en`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page
       .locator('[data-dock-view-id="file"]')
       .filter({ has: page.locator('[data-slot="workspace-view-header"]') });
@@ -90,7 +91,7 @@ test("file copy feedback follows clipboard acceptance and the current file", asy
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=idle&locale=en",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const view = page
     .locator('[data-dock-view-id="file"]')
     .filter({ has: page.locator('[data-slot="workspace-view-header"]') });

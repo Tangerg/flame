@@ -1,5 +1,6 @@
 import { de as mcpDe } from "../../../../plugins/mcp/component/locales/de";
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const FAILURES = [
   {
     cause: "invalid server name",
@@ -31,7 +32,7 @@ for (const { cause, server, key } of FAILURES) {
         await page.goto(
           `/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&font-size=18&locale=de`,
         );
-        await page.locator("html[data-visual-ready]").waitFor();
+        await expectLabReady(page);
         const trigger = page.getByRole("button", { name: "Aus JSON importieren", exact: true });
         await trigger.click();
         const dialog = page.getByRole("dialog", { name: "Aus JSON importieren", exact: true });

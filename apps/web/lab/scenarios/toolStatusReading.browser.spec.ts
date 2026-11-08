@@ -1,10 +1,11 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("a failed process keeps its exit code when secondary tool metadata folds away", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-shells&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(async () => {
     if (!location.pathname.startsWith("/lab/")) throw new Error("An isolated fixture is required");
     const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
@@ -49,7 +50,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
   page,
 }, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-search&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(async () => {
     if (!location.pathname.startsWith("/lab/")) throw new Error("An isolated fixture is required");
     const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
@@ -219,7 +220,7 @@ test("recorded results scroll internally when bounded and continue through the t
 }, testInfo) => {
   await page.setViewportSize({ width: 1120, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=tool-agentic&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
   await page.locator('button[data-tool="list_skills"]').click();
   const result = page.locator('[data-slot="recorded-result-viewport"]');
@@ -303,7 +304,7 @@ test("recorded results scroll internally when bounded and continue through the t
 for (const theme of ["light", "dark"] as const) {
   test(`ANSI colored output reads on its frame in ${theme}`, async ({ page }) => {
     await page.goto(`/lab/fixture.html?fixture=agent&state=tool-shells&theme=${theme}`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const lines = [
       ["success", 32, "--- PASS: TestCommitAtomicity (0.01s)"],
       ["negative", 31, "--- FAIL: TestRollbackOnFlushFailure (0.02s)"],

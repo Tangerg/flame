@@ -1,5 +1,6 @@
 import { CODE_READING_SOURCE } from "./agentSessionSnapshots";
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [theme, width, fontSize, accent] of [
   ["light", 1440, 14, ""],
   ["dark", 1120, 18, "&accent=%238b5cf6"],
@@ -20,7 +21,7 @@ for (const [theme, width, fontSize, accent] of [
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=code-reading&theme=${theme}&font-size=${fontSize}${accent}`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const frame = page.locator('[data-markdown-copy="code-block"]');
       const source = frame.getByRole("region", { name: "Code content", exact: true });
       await expect.poll(() => requested).toBe(true);

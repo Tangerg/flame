@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 const UNBREAKABLE = "Q7fJ2xL9pN4vR8mK3sT6wY1zB5cD0eG".repeat(7);
 
 const STATES = ["narrative", "long-content", "tool-shells", "terminal", "question", "error"];
@@ -53,7 +54,7 @@ test("rendered content keeps an unbreakable run inside its column", async ({ pag
   const found: { state: string; spill: Spill }[] = [];
   for (const state of STATES) {
     await page.goto(`/lab/fixture.html?fixture=agent&state=${state}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     for (const spill of await spills(page, "main")) found.push({ state, spill });
   }
 
@@ -71,7 +72,7 @@ test("rendered content keeps an unbreakable run inside its column", async ({ pag
 
 test("a renderer that forbids the break is caught", async ({ page }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=narrative&theme=light");
-  await page.waitForSelector("html[data-visual-ready]");
+  await expectLabReady(page);
 
   await page.evaluate(() => {
     const sheet = document.createElement("style");
@@ -91,7 +92,7 @@ test("a dock view keeps an unbreakable run inside its pane", async ({ page }) =>
   const found: { state: string; spill: Spill }[] = [];
   for (const state of DOCK_STATES) {
     await page.goto(`/lab/fixture.html?fixture=workspace&state=${state}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForSelector(".agent-context-dock");
     await page.waitForTimeout(300);
     for (const spill of await spills(page, ".agent-context-dock")) found.push({ state, spill });

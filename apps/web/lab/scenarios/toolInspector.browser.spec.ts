@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [theme, fontSize, width] of [
   ["light", 14, 1120],
   ["dark", 18, 800],
@@ -18,7 +19,7 @@ for (const [theme, fontSize, width] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=tool-agentic&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
     await page.getByRole("button", { name: "4 search · 2 run 6 steps", exact: true }).click();
     const card = page.locator('[data-tool="inspect_workspace"]');

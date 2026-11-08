@@ -1,12 +1,13 @@
 import { expect, test } from "./test";
 import AxeBuilder from "@axe-core/playwright";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   test(`plugin dialogs finish painting with full motion ${theme}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=settings&pane=plugins&theme=${theme}&motion=full`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("button", { name: "Configure inputs", exact: true }).first().click();
     const dialog = page.getByRole("dialog", { name: /^Configure inputs: / });
     await expect(dialog).toBeVisible();
@@ -34,7 +35,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const trigger = page.getByRole("button", { name: "Import from JSON", exact: true });
       await trigger.click();
       const dialog = page.getByRole("dialog", { name: "Import from JSON", exact: true });
@@ -100,7 +101,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&theme=light&font-size=18",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const add = page.getByRole("button", { name: "Add schedule", exact: true });
     await add.click();
     const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
@@ -143,7 +144,7 @@ test("long panels keep one filter zone reachable and remeasure it after wrapping
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:icon-gallery&theme=light&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const panel = page.getByRole("region", { name: "Flame icon gallery", exact: true });
   const viewport = page.locator('[data-slot="workspace-view-body"]').filter({ has: panel });
   const controls = panel.locator('[data-slot="panel-controls"]');
@@ -179,7 +180,7 @@ test("long panels keep one filter zone reachable and remeasure it after wrapping
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:trajectory&theme=light&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const trajectory = page.getByRole("region", { name: "Session trajectory", exact: true });
   const anchor = trajectory.getByRole("region", { name: "Trajectory observations", exact: true });
   await anchor.evaluate((node) => node.scrollIntoView({ block: "start" }));
@@ -193,7 +194,7 @@ test("a menu-opened memory confirmation returns focus without changing the recor
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:memory&theme=light",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const records = page.getByRole("region", { name: "Recorded memory", exact: true });
   const trigger = records.getByRole("button", { name: /^More actions for / });
   await trigger.click();
@@ -211,7 +212,7 @@ for (const width of [1120, 320]) {
   test(`objective editor keeps long input and its footer reachable ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 500 });
     await page.goto("/lab/fixture.html?fixture=agent&theme=dark&state=running&font-size=18");
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("button", { name: "Edit goal", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Edit goal", exact: true });
     const field = dialog.getByRole("textbox", { name: "Goal", exact: true });

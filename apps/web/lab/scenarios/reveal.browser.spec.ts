@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=shell&state=populated",
   "fixture=workspace&state=dock-light",
@@ -13,7 +14,7 @@ test("nothing invisible can be clicked", async ({ page }) => {
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     const found = await page.evaluate(() => {
@@ -74,7 +75,7 @@ test("a reveal and the thing it displaces never show at once", async ({ page }) 
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     for (const pair of PAIRS) {

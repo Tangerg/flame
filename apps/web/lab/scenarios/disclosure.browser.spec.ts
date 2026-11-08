@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   ...VISUAL_AGENT_STATES.map((state) => `fixture=agent&state=${state}`),
   "fixture=workspace&state=dock-trajectory",
@@ -17,7 +18,7 @@ test("a control that says it operates a region operates one that exists", async 
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     const found = await page.evaluate(() => {

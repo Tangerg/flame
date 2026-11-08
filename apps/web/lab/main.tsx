@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { labStyles as styles } from "./labStyles";
+import { FAILURE_TITLE_ID, failurePresentation, failureRootProps, failureStyles } from "./failure";
 import { createRoot } from "react-dom/client";
 import { disposeOnHmr } from "@/lib/hmr";
 import "@flame/ui/styles.css";
@@ -9,15 +9,16 @@ import "./lab.css";
 import { catalog } from "./catalog";
 import { ComponentLab } from "./ComponentLab";
 import { createLabEnvironment } from "./environment";
-import { LAB_PATH, readSelection } from "./selection";
+import { readSelection } from "./selection";
 import { messages } from "./messages";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Component lab root is missing");
 const root = createRoot(container);
+const query = new URLSearchParams(window.location.search);
 
 try {
-  const selection = readSelection(window.location.search, catalog);
+  const selection = readSelection(query.toString(), catalog);
   const environment = await createLabEnvironment(selection);
   root.render(
     <environment.Wrapper>
@@ -34,13 +35,23 @@ try {
     dispose();
   });
 } catch (error) {
+  const failure = failurePresentation(query);
   root.render(
-    <main {...stylex.props(styles.error)}>
-      <h1>{messages.invalidLink["zh-CN"]}</h1>
-      <pre {...stylex.props(styles.errorDetail)}>
+    <main
+      {...failureRootProps}
+      style={failure.style}
+      lang={failure.locale}
+      aria-labelledby={FAILURE_TITLE_ID}
+    >
+      <h1 {...stylex.props(failureStyles.heading)} id={FAILURE_TITLE_ID}>
+        {messages.invalidLink[failure.locale]}
+      </h1>
+      <pre {...stylex.props(failureStyles.detail)}>
         {error instanceof Error ? error.message : String(error)}
       </pre>
-      <a href={LAB_PATH}>{messages.restart["zh-CN"]}</a>
+      <a {...stylex.props(failureStyles.recovery)} href={failure.href}>
+        {messages.restart[failure.locale]}
+      </a>
     </main>,
   );
 }

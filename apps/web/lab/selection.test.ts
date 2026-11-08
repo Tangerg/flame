@@ -8,6 +8,9 @@ import {
   readSelection,
   selectStory,
   selectionSearch,
+  failureSelection,
+  fixtureColors,
+  recoveryURL,
   type LabSelection,
 } from "./selection";
 import type { ComponentStory, FixtureStory, LabFixtureTarget, LabStory } from "./story";
@@ -64,6 +67,73 @@ function stories() {
 }
 
 describe("component lab selection boundary", () => {
+  it("recovers only valid appearance without changing or admitting the invalid request", () => {
+    const { catalog } = stories();
+    const query = new URLSearchParams(
+      "story=missing&variant=missing&fixture=unknown&locale=en&theme=dark&motion=full&font-size=18",
+    );
+    const original = query.toString();
+    const appearance = failureSelection(query);
+    expect(appearance).toEqual({ locale: "en", theme: "dark", motion: "full", fontSize: 18 });
+    expect(query.toString()).toBe(original);
+    expect(() => readSelection(original, catalog)).toThrow(/unknown/i);
+    const recovered = new URL(recoveryURL(appearance), "http://lab.test");
+    expect([...recovered.searchParams.keys()].sort()).toEqual([
+      "font-size",
+      "locale",
+      "motion",
+      "theme",
+    ]);
+    expect(readSelection(recovered.search, catalog)).toMatchObject(appearance);
+  });
+
+  it("keeps the distinct Lab and direct fixture locale and font defaults", () => {
+    expect(failureSelection(new URLSearchParams())).toEqual({
+      locale: "zh-CN",
+      theme: "light",
+      motion: "off",
+      fontSize: 14,
+    });
+    expect(failureSelection(new URLSearchParams(), "fixture").locale).toBe("en");
+    expect(failureSelection(new URLSearchParams("locale=zh"), "fixture").locale).toBe("zh-CN");
+    expect(failureSelection(new URLSearchParams("locale=de"), "fixture").locale).toBe("en");
+    expect(failureSelection(new URLSearchParams("font-size=14.5")).fontSize).toBe(14);
+    expect(failureSelection(new URLSearchParams("font-size=14.5"), "fixture").fontSize).toBe(15);
+  });
+
+  it("uses safe recovery appearance while strict selection still rejects illegal values", () => {
+    const { catalog } = stories();
+    const query = new URLSearchParams("locale=de&theme=system&motion=on&font-size=999");
+    const appearance = failureSelection(query);
+    expect(appearance).toEqual({ locale: "zh-CN", theme: "light", motion: "off", fontSize: 14 });
+    expect(() => readSelection(query.toString(), catalog)).toThrow(/invalid/i);
+    expect(
+      readSelection(new URL(recoveryURL(appearance), "http://lab.test").search, catalog),
+    ).toMatchObject(appearance);
+  });
+
+  it("preserves fixture color admission, clamping and complete custom palettes", () => {
+    const query = new URLSearchParams({
+      accent: "#6f42c1",
+      contrast: "150",
+      "custom-bg": "#102030",
+      "custom-fg": "#eeeeee",
+    });
+    const original = query.toString();
+    expect(fixtureColors(query)).toEqual({
+      accent: "#6f42c1",
+      contrast: 100,
+      theme: "custom",
+      customTheme: { bg: "#102030", fg: "#eeeeee" },
+    });
+    expect(query.toString()).toBe(original);
+    expect(
+      fixtureColors(new URLSearchParams("accent=red&contrast=invalid&custom-bg=%23102030")),
+    ).toEqual({});
+    expect(fixtureColors(new URLSearchParams("contrast=-5"))).toEqual({ contrast: 0 });
+    expect(fixtureColors(new URLSearchParams("contrast="))).toEqual({ contrast: 0 });
+  });
+
   it("selects each panel's own first story and a valid initial variant", () => {
     const { foundation, business, catalog } = stories();
     expect(readSelection("", catalog)).toEqual({

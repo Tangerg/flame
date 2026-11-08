@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { type Query } from "@tanstack/react-query";
+import { expectLabReady } from "../readiness";
 const REFERENCE = "apps/web/src/features/chat/message/ui/markdown/markdownComponents.tsx:12:3";
 
 for (const [width, fontSize, theme] of [
@@ -13,7 +14,7 @@ for (const [width, fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const reading = page.locator(".md").filter({ hasText: "Source references" });
     const reference = reading.getByRole("button", { name: REFERENCE, exact: true });
     await reference.scrollIntoViewIfNeeded();
@@ -87,7 +88,7 @@ for (const [width, fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const reading = page.locator(".md").filter({ hasText: "Source references" });
     const fileTree = page.getByRole("treeitem", { name: "reading-guide.md", exact: true });
 
@@ -149,7 +150,7 @@ test("inline references retain keyboard navigation to the recorded file and line
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=prose-blocks&theme=light",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const reading = page.locator(".md").filter({ hasText: "Source references" });
   const reference = reading.getByRole("button", { name: "README.md:15:2", exact: true });
   await reference.focus();
@@ -194,7 +195,7 @@ for (const [fontSize, codeFontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-files&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
     const view = page.locator('[data-dock-view-id="file"]');
     await view.getByRole("radio", { name: "Source", exact: true }).click();
@@ -268,7 +269,7 @@ test("file page changes keep keyboard focus, reset reading position and copy the
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-files&locale=en");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
   const view = page.locator('[data-dock-view-id="file"]');
   await view.getByRole("radio", { name: "Source", exact: true }).click();

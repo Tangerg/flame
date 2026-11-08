@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const [width, fontSize, theme] of [
   [1472, 14, "light"],
   [320, 18, "dark"],
@@ -10,7 +11,7 @@ for (const [width, fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=table-reading&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(() => document.fonts.ready);
     if (width === 320) {
       await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();

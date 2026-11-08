@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const width of [1120, 320]) {
   for (const action of ["Edit", "Delete"] as const) {
     test(`schedule ${action.toLowerCase()} returns to search when a remote update retires its opener ${width}`, async ({
@@ -8,7 +9,7 @@ for (const width of [1120, 320]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=${width === 1120 ? "dock-schedules" : "full-view&full-view=package:visual:schedules"}&theme=${width === 1120 ? "dark" : "light"}&font-size=18`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       if (width === 320) {
         await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
       }
@@ -84,7 +85,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&theme=light",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page
       .getByRole("region", { name: "Schedules", exact: true, includeHidden: true })
       .and(page.locator('[data-slot="panel"]'));
@@ -146,7 +147,7 @@ for (const width of [1120, 320]) {
     await page.goto(
       "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&theme=light",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page
       .getByRole("region", { name: "Schedules", exact: true, includeHidden: true })
       .and(page.locator('[data-slot="panel"]'));

@@ -1,11 +1,12 @@
 import { READING_BLOCKS_MARKDOWN } from "./agentSessionSnapshots";
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("expanded record facts retain shared column edges", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&theme=light&font-size=14",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
   await record.getByRole("button").first().click();
   const facts = record.locator("dl");
@@ -40,7 +41,7 @@ test("a narrow full view keeps complete fact pairs in one readable column", asyn
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:trajectory&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
   const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
   await record.getByRole("button").first().click();
@@ -81,7 +82,7 @@ test("record hover marks its summary without tinting the expanded reading body",
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&theme=light&font-size=14",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
   const trigger = record.getByRole("button").first();
   await trigger.click();
@@ -101,7 +102,7 @@ test("record hover marks its summary without tinting the expanded reading body",
 test("narrow Run metadata keeps its complete timestamp on one line", async ({ page }) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-runs&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page
     .locator('[data-dock-view-id="package:visual:trajectory"]')
     .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
@@ -131,7 +132,7 @@ test("collapsed Run summaries retain complete identities and their recorded rela
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-runs&agent-state=delegated&theme=light&font-size=14",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page
     .locator('[data-dock-view-id="package:visual:trajectory"]')
     .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
@@ -168,7 +169,7 @@ test("a narrow trajectory reads literal multiline text before optional complete 
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=prose-blocks&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page
     .locator('[data-dock-view-id="package:visual:trajectory"]')
     .filter({ has: page.locator('[data-slot="workspace-view-body"]') });
@@ -208,7 +209,7 @@ test("a large-font Dock keeps page actions on the search row and filters togethe
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const controls = page.getByRole("group", { name: "Trajectory controls", exact: true });
   const search = (await controls
     .getByRole("searchbox", { name: "Filter this page" })

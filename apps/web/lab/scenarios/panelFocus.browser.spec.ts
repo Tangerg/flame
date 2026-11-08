@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function openMemory(
   page: Page,
   theme: string,
@@ -8,7 +9,7 @@ async function openMemory(
   await page.goto(
     `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:memory&font-size=18&theme=${theme}`,
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
   await page.evaluate(() => document.fonts.ready);
   const panel = page.getByRole("region", { name: "Agent memory", exact: true });
@@ -112,7 +113,7 @@ test("narrow Schedules field labels remain visible after autofocus and Tab", asy
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:schedules&font-size=18&theme=dark",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
   const panel = page
     .getByRole("region", { name: "Schedules", exact: true })
@@ -193,7 +194,7 @@ test("a body-owned Select portal retains its own focus and scrolling", async ({ 
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-schedules-models&sidebar=collapsed&font-size=18&theme=dark",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("button", { name: /^Open material full width/ }).click();
   const panel = page
     .getByRole("region", { name: "Schedules", exact: true })

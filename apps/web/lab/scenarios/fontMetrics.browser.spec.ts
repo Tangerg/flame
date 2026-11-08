@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
+import { expectLabReady } from "../readiness";
 const FONTS = [
   "",
   "Helvetica",
@@ -31,7 +32,7 @@ test("a control holds its own content whatever font it is given", async ({ page 
       await page.setViewportSize({ width: 1472, height: 900 });
       const query = font ? `&ui-font=${encodeURIComponent(font)}` : "";
       await page.goto(`/lab/fixture.html?${route}&theme=light${query}`);
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       await page.waitForTimeout(400);
 
       if (font) {

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current dialog, form and focus selection passes **47 cases**, with all **80 final browser images** reviewed or matched to reviewed bytes. Shared UI passes **273 tests**; the complete Web check passes **432 files / 4,754 tests**. Actual Wails **200% and 300%** English and Chinese tasks qualify the oversized MCP editor's caret, retained drafts and manual reading. See **Dialog focus and textarea reading through reflow (2026-11-08)** for evidence and limits. The preceding complete Lab run still records **1,283 passes and 3 scene-admission timeouts**; the complete suite is not rerun for this bounded repair. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The complete corrected suite passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. Its **6,715** non-Markdown source inputs remain unchanged throughout the run. Document admission now reports the first terminal cause, and localized failure readers preserve valid appearance and catalog recovery. The complete Web check passes **433 files / 4,763 tests**. Actual Wails **200% and 300%** acceptance covers the repaired readers in English, Chinese and a custom palette; all **23 native captures** are viewed. Previous oversized-editor caret and draft acceptance remains recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,144 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Document admission and failure reporting (2026-11-08)
+
+The complete Lab baseline passes **1,290 / 1,290** in **4,121.818 s** through the
+existing configuration: 80 English/light captures, 80 Chinese/dark captures and
+1,130 interactions. There are no retries, skips, flaky results or global errors.
+All **978 images** are accounted for: 26 current originals are viewed, and the
+remaining bytes match reviewed images. The source freeze compares all
+**6,712 non-Markdown inputs** with no additions, removals or changes. This does
+not establish the cause of the preceding three transient module-fetch failures.
+
+Read-only inspection identifies a diagnostic gap: `PreviewObservations` already
+owns terminal failure, but standalone admission callers only await successful
+rendering. The owner now projects its first bounded cause as `data-lab-error`,
+retains subsequent observations and clears its owned projections on retirement.
+The test-only `expectLabReady` reads that owner and reports the document URL and
+cause. It preserves visible admission and the caller's action timeout; it does
+not infer health from business alerts.
+
+A bounded Claude Code CLI task prepares four candidate files in **134.911 s**.
+Primary review preserves action-wait semantics, checks readiness again after
+settling and adds an error capture. All three added owner regressions fail on
+the original implementation; all **32 owner tests** pass after the repair.
+The existing Lab browser test fulfills only its own fixture module with valid
+JavaScript that throws a fixed error. It fails before the repair because the
+locator timeout omits the URL and cause, then passes in **4.361 s** afterward.
+The captured error image is byte-identical. Console guards and existing
+assertions remain active.
+
+All **279 admission waits across 95 files** now use that same owner through
+`expectLabReady`. Existing explicit timeouts remain intact; six previous matcher
+calls retain their existing **5 s** budget. The two internal render-phase
+observers in layout stability keep their distinct measurement purpose. Typecheck
+and lint pass after formatting the owned changes. No scenario, verification
+configuration or measurement runner is added.
+
+Seven additional recovery regressions fail on the preceding UI. English gallery
+and independent errors render Chinese; Chinese error text inherits English
+language metadata. The independent documents lack recovery, and a long fixture
+cause overflows a **390 px** frame by **2,817 px**. Actual captures also show that
+pre-admission errors lose the requested dark appearance. Gallery, component and
+raw fixture failures now share localized presentation, a wrapping literal cause
+and ordinary catalog recovery. The canonical appearance projection is scoped to
+the reader; document styles, classes, language and stored preferences are not
+advanced by this projection. Raw fixture color parsing retains one owner.
+
+The first behavioral pass succeeds, but manual capture review still finds light
+paint on dark requests. An added actual-color regression reproduces all three
+dark failures. StyleX semantic aliases must resolve beside the scoped request
+variables rather than at the document root. With that correction, all **7 / 7**
+recovery cases pass in **10.253 s**, including rendered surface colors, body/link
+contrast, complete wrapping, language and keyboard/pointer recovery. All seven
+original captures are viewed. The **68 focused unit tests**, Web typecheck and
+lint also pass. A second bounded CLI candidate times out without writing files;
+the presentation repair is implemented and reviewed by the primary agent.
+
+The complete Web gate passes in **235.409 s**: **433 files / 4,763 tests**, followed
+by every configured static and bundle check. Its first attempt lacks the prepared
+Node archive required by 52 offline Runtime tests; the existing companion staging
+command downloads and verifies that pinned artifact. A later unused-export finding
+is fixed by keeping the Lab locale default private. No check is disabled or
+assertion weakened. Independent review reconstructs all **277 replacements in 94
+otherwise unchanged files**, proving that their only changes are the reviewed
+admission migration and formatting. The existing Lab spec owns the other two
+replacements and the new recovery coverage.
+
+`make check-native` passes in **15.381 s**, and the final Lab build passes in
+**2.352 s**. The private Wails v3.1.0 host uses all **488 current Lab assets**,
+verified byte for byte, and the production native menu/zoom implementation.
+All 46 production native source files remain unchanged. English/light gallery
+failure, Chinese/dark independent failure and a Chinese custom dark palette with
+a purple accent are inspected at **18 px**, **200%** and **300%**. Long causes
+wrap completely; Home/End and wheel reading expose both ends. Keyboard Enter and
+pointer recovery retain the valid language, scheme, motion and font size while
+removing the invalid scene or motion. The custom fatal reader stays local; catalog
+recovery uses its effective dark scheme and normal catalog colors.
+
+All **19 native captures** are viewed. Plain Tab does not enter links under the
+current macOS WebKit setting; native Option+Tab does, with a visible focus cue.
+Zoom retains link focus, and Home/End reveal the reading edges. Three native runs
+exit normally. The private server is stopped, the app is unregistered, six private
+Library paths return to absence, and three pre-existing helper roots retain their
+identities and flags with no generated children. VoiceOver, physical IME and live
+provider execution remain untested.
+
+The first complete modified run is stopped after one real failure: **661 passed**,
+one failure, one deliberately interrupted case and **633 not run**. Its **6,715**
+frozen inputs remain unchanged. The non-hover affordance check finds hidden table
+actions, and the same failure reproduces in a focused eight-case selection.
+Preloading error-reader CSS before the normal fixture changes its cascade. The
+bootstrap now loads fallback styles only after failed admission, preserving the
+runtime's normal stylesheet ownership. The original touch assertion then passes.
+
+That focused run also exposes a separate recovery-test lifetime defect: the
+module-failure route remains active during catalog recovery. Playwright disables
+caching while intercepting, and the trace records **397 resource-exhaustion
+errors** among **4,988 network records**. The route now retires before navigation;
+all seven recovery checks also await the actual preview documents before teardown.
+Console guards, original assertions, timeouts and retry settings remain intact.
+All **8 / 8** pass in **36.538 s**, with no skips, flaky results or global errors.
+All seven images match the reviewed bytes. Typecheck, lint and unused-code checks
+pass after the lifetime corrections. The preceding transient module-fetch failures
+remain unexplained.
+
+The complete Web gate passes again after those corrections in **242.126 s**,
+including all **4,763 tests** and configured static/build checks. The corrected
+Lab emits **490 assets**. A further native run uses their verified exact bytes to
+recheck the raw Chinese/custom error at **18 px**, **200%** and **300%**, keyboard
+recovery and all six admitted catalog previews. Its four original captures are
+viewed, bringing this batch to **23 native captures**. The fourth native run exits
+normally; the server, registration and private external paths are cleaned again.
+All 46 production native sources remain unchanged.
+
+The complete corrected Lab suite passes **1,296 / 1,296** in **4,049.327 s**:
+80 English/light captures, 80 Chinese/dark captures and **1,136 interactions**.
+There are no retries, skips, flaky results or global errors. All **985 final image
+attachments** are accounted for, including 945 inline and 40 file-backed images.
+Eight unique current Computer permission/outcome originals are viewed during the
+run; every final image matches reviewed bytes, including the seven repaired
+failure readers. Trace screencast frames are excluded from these counts. All
+**6,715 frozen non-Markdown inputs** remain unchanged, without additions or
+removals. The same existing configuration owns this complete run; no second
+visual entry or optional measurement run is introduced.
+
+All **12 output/cache roots** return to their captured baseline or original
+absence. The native external paths remain clean, the three pre-existing helper
+roots retain their identities and flags, and the primary checkout remains
+unchanged. Both Lab ports are closed; no qualification process or open file
+remains. Functional verification ends before output restoration. The ordinary
+commit hooks only format owned files and lint authored source; source hashes are
+checked again before delivery. Delivery retires the remaining private evidence
+directory after the ordinary commit and push to `main`.
+
+Next inspect the Lab's comparison labels: native gallery review shows captions
+at different heights when their examples have different control heights or media
+padding. Reproduce the geometry in the existing Lab before changing its layout,
+and retain centered alignment for direct switch/label rows. VoiceOver, physical
+IME, live providers and whole-product route coverage remain unqualified.
 
 ### Presentation and preview continuity
 

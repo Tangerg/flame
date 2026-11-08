@@ -4,6 +4,7 @@ import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/me
 import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 
 for (const environment of [
   { locale: "en", theme: "light", fontSize: 14, messages: en },
@@ -27,7 +28,7 @@ for (const environment of [
     );
     await page.setViewportSize({ width: 320, height: 720 });
     await page.goto(previewURL(catalog.story(selection.storyId), selection, "reference-reading"));
-    await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+    await expectLabReady(page, { timeout: 5_000 });
     const references = page.locator("[data-footnote-ref]");
     const back = page.getByRole("link", {
       name: messages["message.markdown.backReference"]!.replace("{{reference}}", "1-2"),
@@ -90,7 +91,7 @@ for (const [width, fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=reference-notes&theme=${theme}&font-size=${fontSize}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const draft = page.getByRole("textbox");
     await draft.fill("Keep the draft while reading references.");
     const answers = page.locator(".md").filter({ has: page.locator("[data-footnotes]") });

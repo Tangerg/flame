@@ -283,6 +283,4 @@ export const labStyles = stylex.create({
     zIndex: 10,
   },
   noNotice: { padding: 0, boxShadow: "none" },
-  error: { padding: 32, backgroundColor: surface.canvas, color: color.fg },
-  errorDetail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });

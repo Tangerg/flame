@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 const ROUTE = "/lab/fixture.html?fixture=agent&state=long-content&theme=light";
 
 const JUMP = "Jump to bottom";
@@ -7,7 +8,7 @@ const GROWTH_PX = 400;
 
 async function land(page: Page) {
   await page.goto(ROUTE);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.locator(".msg-scroll-viewport").waitFor();
   await page.waitForTimeout(500);
 }
@@ -107,7 +108,7 @@ test("a growing transcript follows the tail, but only from the bottom", async ({
 test("a running turn says so where the transcript cannot take it away", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 720 });
   await page.goto("/lab/fixture.html?fixture=agent&state=waves&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.locator(".msg-scroll-viewport").waitFor();
   await page.waitForTimeout(500);
 
@@ -142,7 +143,7 @@ test("a running turn says so where the transcript cannot take it away", async ({
 test("a thought that is still being written follows its own tail", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=answer-opening&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page
     .locator('[data-slot="agent-activity-disclosure"]')
     .filter({ hasText: "Thinking" })

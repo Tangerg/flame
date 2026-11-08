@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { expectLabReady } from "../readiness";
 async function open(page: Page, query: string) {
   await page.goto(`/lab/fixture.html?${query}&font-size=14`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
 }
 

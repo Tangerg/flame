@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 for (const grouped of [true, false]) {
   test(`a ${grouped ? "grouped" : "single"} tool without actions uses its complete row`, async ({
     page,
@@ -7,7 +8,7 @@ for (const grouped of [true, false]) {
     await page.goto(
       "/lab/fixture.html?fixture=agent&state=tool-search&theme=dark&font-size=18&locale=en",
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.evaluate(async (grouped) => {
       const fixturePath = "/lab/scenarios/agentSessionSnapshots.ts";
       const storePath = "/lab/scenarios/fixtureRuntime.tsx";

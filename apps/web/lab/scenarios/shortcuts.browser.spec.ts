@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "./test";
 import de from "../../../../plugins/locale-de/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { en } from "@/lib/i18n/locales/en";
+import { expectLabReady } from "../readiness";
 async function openShortcuts(page: Page, { width = 1120, theme = "light", locale = "en" } = {}) {
   await page.setViewportSize({ width, height: 900 });
   const query = new URLSearchParams({
@@ -12,7 +13,7 @@ async function openShortcuts(page: Page, { width = 1120, theme = "light", locale
     locale,
   });
   await page.goto(`/lab/fixture.html?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const panel = page.getByRole("tabpanel");
   await panel.getByRole("searchbox").waitFor();
   return panel;
@@ -219,7 +220,7 @@ test("single and all resets restore declared defaults and preserve persisted ove
   expect(await overrides(page)).toEqual({});
 
   await page.reload();
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   expect(await overrides(page)).toEqual({});
   await filter.fill(en["command.showShortcuts"]!);
   await expect(panel.locator("kbd").last()).toHaveText("/");

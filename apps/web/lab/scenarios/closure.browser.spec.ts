@@ -14,6 +14,7 @@ import {
   type VisualSettingsPane,
 } from "./workspaceFixtureStates";
 import { en } from "@/lib/i18n/locales/en";
+import { expectLabReady } from "../readiness";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
 const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
@@ -125,7 +126,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   }
 
   await page.goto(`${VISUAL_URL}?${query}`);
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
 
   if (route.fixture === "agent" && route.state === "long-content") {
     await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(

@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("a log has a concise identity and preserves its complete multiline reading body", async ({
   page,
 }) => {
@@ -6,7 +7,7 @@ test("a log has a concise identity and preserves its complete multiline reading 
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-diagnostics&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const headline = "Workspace preview could not be refreshed.";
   const body = `\n${headline}\n\nError: the file changed after the accepted request.\n    at refresh (/Users/visual/scope/apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:89:7)\nThe last accepted preview remains available.`;
   await page.evaluate(async (body) => {

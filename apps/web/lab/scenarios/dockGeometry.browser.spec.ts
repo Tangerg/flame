@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const NAMING_VIEWS = ["dock-skills", "dock-review", "dock-runs", "dock-trajectory"] as const;
 
 const LEGIBLE_PX = 12;
@@ -12,7 +13,7 @@ test("a dock near its floor never renders a name at zero width", async ({ page }
 
   for (const state of NAMING_VIEWS) {
     await page.goto(`/lab/fixture.html?fixture=workspace&state=${state}&theme=light`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
 
     const seen = await page.evaluate((legible) => {
       const out = { examined: 0, gone: [] as string[] };

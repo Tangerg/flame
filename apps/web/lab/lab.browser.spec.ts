@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "./scenarios/test";
 import { OBSERVATION_CHANNEL, OBSERVATION_VERSION } from "./observations";
+import { expectLabReady } from "./readiness";
 import { LAB_INSTANCE_QUERY } from "./selection";
+import { contrastRatio, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 
 const LAB_PATH = "/lab/";
 const DESKTOP_VIEWPORT = { width: 1440, height: 1000 };
@@ -30,6 +32,55 @@ async function inspect(
 
 function preview(page: Page, title: string, theme: "light" | "dark" = "light") {
   return page.getByTitle(`Component preview · ${title} · ${theme}`, { exact: true });
+}
+
+async function expectLabFailure(page: Page, cause: string) {
+  const failure = await expectLabReady(page, { timeout: 1000 }).then(
+    () => null,
+    (error: unknown) => error,
+  );
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toContain(page.url());
+  expect((failure as Error).message).toContain(cause);
+}
+
+async function expectRecoveredCatalog(page: Page, heading: string, theme: "light" | "dark") {
+  await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveClass(new RegExp(`theme-${theme}`));
+  const documents = page.locator("iframe");
+  await expect(documents.first()).toBeVisible();
+  for (const document of await documents.all()) await expectLabReady(document.contentFrame());
+}
+
+async function expectFailureSurface(page: Page, theme: "light" | "dark") {
+  const paint = await page.evaluate(() => {
+    const surface = document.elementFromPoint(2, 2);
+    const link = document.querySelector("a[href]");
+    if (!surface || !link) throw new Error("failure surface or recovery link is missing");
+    const canvas = document.createElement("canvas");
+    canvas.width = 3;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("failure color sampling is unavailable");
+    const style = getComputedStyle(surface);
+    [style.backgroundColor, style.color, getComputedStyle(link).color].forEach((value, index) => {
+      context.fillStyle = value;
+      context.fillRect(index, 0, 1, 1);
+    });
+    const data = context.getImageData(0, 0, 3, 1).data;
+    return {
+      background: { r: data[0]!, g: data[1]!, b: data[2]! },
+      foreground: { r: data[4]!, g: data[5]!, b: data[6]! },
+      recovery: { r: data[8]!, g: data[9]!, b: data[10]! },
+      alpha: [data[3], data[7], data[11]],
+    };
+  });
+  expect(paint.alpha).toEqual([255, 255, 255]);
+  const brightness = (paint.background.r + paint.background.g + paint.background.b) / 3;
+  if (theme === "dark") expect(brightness).toBeLessThan(128);
+  else expect(brightness).toBeGreaterThan(128);
+  expect(contrastRatio(paint.foreground, paint.background)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+  expect(contrastRatio(paint.recovery, paint.background)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -146,7 +197,7 @@ test("shares font-size inputs with independently opened previews", async ({ page
   );
   expect(url.searchParams.get("font-size")).toBe("18");
   await page.goto(url.href);
-  await expect(page.locator("html")).toHaveAttribute("data-lab-ready", "true");
+  await expectLabReady(page, { timeout: 5_000 });
   expect(
     await page
       .getByRole("textbox", { name: "boxed", exact: true })
@@ -254,22 +305,71 @@ test("records real activations and clears observations without resetting the exa
   await expect(frame.getByRole("button", { name: "Add example", exact: true })).toBeVisible();
 });
 
-test("rejects invalid deep links explicitly and offers a working recovery link", async ({
-  page,
-}) => {
-  await page.goto(`${LAB_PATH}?story=checkbox&variant=not-a-variant&locale=en`);
-  await expect(
-    page.getByRole("heading", { name: /^(此预览链接无效|Invalid preview link)$/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Unknown variant: checkbox/not-a-variant", { exact: true }),
-  ).toBeVisible();
-  await expect(page.locator("iframe")).toHaveCount(0);
-  await page.getByRole("link", { name: /^(打开组件实验室|Open component lab)$/ }).click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "基础组件", exact: true }),
-  ).toBeVisible();
-});
+for (const copy of [
+  {
+    locale: "en",
+    theme: "light",
+    invalid: "Invalid preview link",
+    renderError: "Component could not render",
+    restart: "Open component lab",
+    home: "Foundations",
+  },
+  {
+    locale: "zh-CN",
+    theme: "dark",
+    invalid: "此预览链接无效",
+    renderError: "组件无法渲染",
+    restart: "打开组件实验室",
+    home: "基础组件",
+  },
+] as const) {
+  test(`rejects invalid deep links and preserves recovery language ${copy.locale}`, async ({
+    page,
+  }) => {
+    await page.goto(
+      `${LAB_PATH}?story=checkbox&variant=not-a-variant&locale=${copy.locale}&theme=${copy.theme}`,
+    );
+    await expect(
+      page.getByText("Unknown variant: checkbox/not-a-variant", { exact: true }),
+    ).toBeVisible();
+    await test.info().attach("invalid-preview-link", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    await expectFailureSurface(page, copy.theme);
+    const heading = page.getByRole("heading", { level: 1, name: copy.invalid, exact: true });
+    await expect(heading).toBeVisible();
+    expect(
+      await heading.evaluate((element) => element.closest("[lang]")?.getAttribute("lang")),
+    ).toBe(copy.locale);
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await page.getByRole("link", { name: copy.restart, exact: true }).click();
+    await expectRecoveredCatalog(page, copy.home, copy.theme);
+  });
+
+  test(`independent failed preview preserves recovery language ${copy.locale}`, async ({
+    page,
+  }) => {
+    const cause = "Unknown variant: checkbox/not-a-variant";
+    await page.goto(
+      `${LAB_PATH}preview.html?story=checkbox&variant=not-a-variant&locale=${copy.locale}&theme=${copy.theme}`,
+    );
+    await expect(page.getByText(cause, { exact: true })).toBeVisible();
+    await test.info().attach("independent-preview-failure", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    await expectFailureSurface(page, copy.theme);
+    const heading = page.getByRole("heading", { level: 1, name: copy.renderError, exact: true });
+    await expect(heading).toBeVisible();
+    expect(
+      await heading.evaluate((element) => element.closest("[lang]")?.getAttribute("lang")),
+    ).toBe(copy.locale);
+    await expectLabFailure(page, cause);
+    await page.getByRole("link", { name: copy.restart, exact: true }).press("Enter");
+    await expectRecoveredCatalog(page, copy.home, copy.theme);
+  });
+}
 
 test("mounts a complete product fixture without external or Runtime mutation requests", async ({
   page,
@@ -286,13 +386,64 @@ test("mounts a complete product fixture without external or Runtime mutation req
   });
   await inspect(page, "business-shell-scenarios", "populated", { panel: "business" });
   const frame = preview(page, "Work index scenarios").contentFrame();
-  await expect(frame.locator("html[data-visual-ready]")).toBeVisible({ timeout: 30_000 });
+  await expectLabReady(frame, { timeout: 30_000 });
   await expect(
     frame.getByRole("heading", { name: "A compact index for active work.", exact: true }),
   ).toBeVisible();
   await expect(frame.getByTestId("requested-work-index-state")).toHaveText("populated");
   expect(unexpected).toEqual([]);
 });
+
+for (const locale of ["en", "zh", null] as const) {
+  test(`reports a caught fixture boot failure with its document and cause ${locale ?? "default"}`, async ({
+    page,
+  }) => {
+    const cause = `synthetic fixture boot failure: ${"deep-component-path/".repeat(18)}fixtureRuntime.tsx`;
+    await page.setViewportSize({ width: 390, height: 480 });
+    const fixtureModule = (url: URL) => url.pathname === "/lab/scenarios/fixtureRuntime.tsx";
+    await page.route(fixtureModule, (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `throw new Error(${JSON.stringify(cause)});`,
+      }),
+    );
+    const theme = locale === "zh" ? "dark" : "light";
+    const query = new URLSearchParams({ fixture: "shell", theme, "font-size": "18" });
+    if (locale !== null) query.set("locale", locale);
+    await page.goto(`/lab/fixture.html?${query}`);
+    const alert = page.getByRole("alert");
+    await expect(alert.getByText(cause, { exact: true })).toBeVisible();
+    await test.info().attach("fixture-boot-failure", {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    await expectFailureSurface(page, theme);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      await alert.evaluate((element) => element.scrollWidth - element.clientWidth),
+    ).toBeLessThanOrEqual(1);
+    const chinese = locale === "zh";
+    const heading = alert.getByRole("heading", {
+      name: chinese ? "组件无法渲染" : "Component could not render",
+      exact: true,
+    });
+    await expect(heading).toBeVisible();
+    expect(
+      await heading.evaluate((element) => element.closest("[lang]")?.getAttribute("lang")),
+    ).toBe(chinese ? "zh-CN" : "en");
+    await expectLabFailure(page, cause);
+    await page.unroute(fixtureModule);
+    await alert
+      .getByRole("link", {
+        name: chinese ? "打开组件实验室" : "Open component lab",
+        exact: true,
+      })
+      .press("Enter");
+    await expectRecoveredCatalog(page, chinese ? "基础组件" : "Foundations", theme);
+  });
+}
 
 test("persists camera gestures across reload without remounting previews for fit or centering", async ({
   page,

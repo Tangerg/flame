@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { VISUAL_SKILL_PROPOSALS } from "./skillSnapshots";
+import { expectLabReady } from "../readiness";
 for (const [decision, width, theme] of [
   ["approve", 1120, "dark"],
   ["reject", 320, "light"],
@@ -11,7 +12,7 @@ for (const [decision, width, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:skills&sidebar=collapsed&theme=${theme}&font-size=18&skills-commands=accept`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page
       .getByRole("region", { name: "Skills", exact: true })
       .and(page.locator('[data-slot="panel"]'));

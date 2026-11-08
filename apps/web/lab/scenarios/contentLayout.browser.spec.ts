@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { REVIEW_DIFF } from "./diffSnapshot";
+import { expectLabReady } from "../readiness";
 for (const theme of ["light", "dark"]) {
   test(`command search keeps its query and last option inside a short viewport in ${theme}`, async ({
     page,
@@ -8,7 +9,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=shell&state=populated&overlay=commands&theme=${theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.locator("html").evaluate((root) => {
       root.style.setProperty("--layout-compact-gutter", "24px");
     });
@@ -41,7 +42,7 @@ for (const overlay of ["commands", "finder"]) {
     await page.goto(
       `/lab/fixture.html?fixture=shell&state=populated&overlay=${overlay}&theme=dark&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const dialog = page.getByRole("dialog");
     const query = dialog.getByRole("combobox");
     const first = dialog.getByRole("option").first();
@@ -76,7 +77,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}&accent=${theme === "light" ? "%23FB6E30" : "%238b5cf6"}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     const summary = view.locator('[data-slot="panel-controls"]');
     const worktree = page.getByRole("button", {
@@ -113,7 +114,7 @@ for (const theme of ["light", "dark"]) {
   }) => {
     await page.setViewportSize({ width: 1120, height: 900 });
     await page.goto(`/lab/fixture.html?fixture=atoms&theme=${theme}&font-size=18`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const specimen = page.locator('[data-atom="diff-stat"]');
     await specimen.scrollIntoViewIfNeeded();
     const counts = specimen.locator('[data-slot="diff-stat"]');
@@ -144,7 +145,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}${theme === "dark" ? "&accent=%238b5cf6" : ""}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     await expect(view.getByRole("heading", { name: "DockResizer.tsx", exact: true })).toBeVisible();
     await expect(view.getByRole("table")).toHaveCount(1);
@@ -173,7 +174,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=18&review-files=200`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     const filter = view.getByRole("searchbox", { name: "Filter files", exact: true });
     const viewport = view.locator('[data-slot="workspace-view-body"]');
@@ -249,7 +250,7 @@ for (const theme of ["light", "dark"]) {
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=18&locale=${locale}&review-files=200`,
       );
-      await page.locator("html[data-visual-ready]").waitFor();
+      await expectLabReady(page);
       const draft = "Entwurf beim Diff-Lesen behalten. Keep this diff reading draft.";
       const composer = page.getByRole("textbox", { name: labels.composer, exact: true });
       await composer.fill(draft);
@@ -396,7 +397,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     const lines = REVIEW_DIFF.files![0]!.rows.flatMap((row, index) =>
       row.type === "hunk" ? [] : [{ type: row.type, line: String(index), text: row.code }],
@@ -480,7 +481,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-files&theme=${theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
     const view = page.locator('[data-dock-view-id="file"]');
     await expect(view.getByRole("radio", { name: "Preview", exact: true })).toBeVisible();
@@ -524,7 +525,7 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/lab/fixture.html?fixture=agent&state=question-multi&theme=${theme}&font-size=18`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const labels = [
       "Run all release checks for the selected workspace and include concurrency diagnostics",
       "Run all release checks for the selected workspace and include accessibility diagnostics",
@@ -561,7 +562,7 @@ test("captured Markdown tables let the file reading viewport continue scrolling"
 }) => {
   await page.setViewportSize({ width: 1120, height: 720 });
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-files&theme=dark&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
   const view = page.locator('[data-dock-view-id="file"]');
   const table = view.getByRole("region", { name: /Markdown table/ }).first();
@@ -592,7 +593,7 @@ test("Diff keeps one file identity above focused code while navigating a review"
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-review&theme=dark&font-size=18&review-files=3",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const view = page.locator('[data-dock-view-id="package:visual:diff"]');
   const viewport = view.locator('[data-slot="workspace-view-body"]');
   const controls = view.locator('[data-slot="panel-controls"]');
@@ -634,7 +635,7 @@ test("Diff keeps long directories outside the sticky file controls", async ({ pa
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=full-view&full-view=package:visual:diff&sidebar=collapsed&theme=dark&font-size=18&review-path=${encodeURIComponent(longPath)}`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const viewport = page.locator('[data-slot="workspace-view-body"]:visible').first();
     await viewport.getByRole("button", { name: "Show changed files", exact: true }).click();
     await expect(viewport.locator("[data-diff-file]")).toHaveCount(2);
@@ -664,7 +665,7 @@ for (const theme of ["light", "dark"]) {
   }) => {
     await page.setViewportSize({ width: 1472, height: 900 });
     await page.goto(`/lab/fixture.html?fixture=atoms&theme=${theme}&font-size=18`);
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const specimen = page.locator('[data-atom="well-path"]');
     const well = specimen.locator("pre").last();
     await well.scrollIntoViewIfNeeded();

@@ -3,11 +3,14 @@ import {
   UI_FONT_SIZE_DEFAULT_PX,
   UI_FONT_SIZE_MIN_PX,
   UI_FONT_SIZE_MAX_PX,
+  normalizeUiFontSize,
 } from "@flame/ui/typography";
 import type { LabLocale, LabMotion, LabStory, LabTheme } from "./story";
 
 export const LAB_PATH = "/lab/";
 export const LAB_INSTANCE_QUERY = "lab-instance";
+const LAB_DEFAULT_LOCALE: LabLocale = "zh-CN";
+export const FIXTURE_DEFAULT_LOCALE = "en";
 export const LAB_FONT_SIZES = Array.from(
   { length: UI_FONT_SIZE_MAX_PX - UI_FONT_SIZE_MIN_PX + 1 },
   (_, index) => UI_FONT_SIZE_MIN_PX + index,
@@ -32,6 +35,69 @@ export interface LabSelection {
   readonly viewport: LabViewport;
   readonly mode: LabMode;
   readonly compare: boolean;
+}
+
+export type FailureSelection = Pick<LabSelection, "theme" | "locale" | "motion" | "fontSize">;
+
+export function fixtureTheme(value: string | null): LabTheme {
+  return value === "dark" ? "dark" : "light";
+}
+
+export function fixtureColors(query: URLSearchParams) {
+  const hex = (name: string) => {
+    const value = query.get(name);
+    return value !== null && /^#[\da-f]{6}$/i.test(value) ? value : undefined;
+  };
+  const accent = hex("accent");
+  const contrastValue = query.get("contrast");
+  const contrast =
+    contrastValue !== null && Number.isFinite(Number(contrastValue))
+      ? Math.min(100, Math.max(0, Number(contrastValue)))
+      : undefined;
+  const bg = hex("custom-bg");
+  const fg = hex("custom-fg");
+  return {
+    ...(accent !== undefined ? { accent } : {}),
+    ...(contrast !== undefined ? { contrast } : {}),
+    ...(bg !== undefined && fg !== undefined
+      ? { theme: "custom" as const, customTheme: { bg, fg } }
+      : {}),
+  };
+}
+
+export function failureSelection(
+  query: URLSearchParams,
+  context: "lab" | "fixture" = "lab",
+): FailureSelection {
+  const requestedLocale = query.get("locale");
+  const locale =
+    requestedLocale === "en"
+      ? "en"
+      : requestedLocale === "zh-CN" || requestedLocale === "zh"
+        ? "zh-CN"
+        : context === "fixture"
+          ? FIXTURE_DEFAULT_LOCALE
+          : LAB_DEFAULT_LOCALE;
+  const requestedFont = query.get("font-size");
+  const fontSize =
+    context === "fixture" && requestedFont !== null && Number.isFinite(Number(requestedFont))
+      ? normalizeUiFontSize(Number(requestedFont))
+      : (LAB_FONT_SIZES.find((size) => String(size) === requestedFont) ?? UI_FONT_SIZE_DEFAULT_PX);
+  return {
+    theme: fixtureTheme(query.get("theme")),
+    locale,
+    motion: query.get("motion") === "full" ? "full" : "off",
+    fontSize,
+  };
+}
+
+export function recoveryURL(selection: FailureSelection): string {
+  return `${LAB_PATH}?${new URLSearchParams({
+    locale: selection.locale,
+    theme: selection.theme,
+    motion: selection.motion,
+    "font-size": String(selection.fontSize),
+  })}`;
 }
 
 function option<T extends string>(
@@ -62,7 +128,7 @@ export function readSelection(search: string, catalog: StoryCatalog): LabSelecti
     storyId: story.id,
     variantId,
     theme: option(query, "theme", ["light", "dark"] as const, "light"),
-    locale: option(query, "locale", ["zh-CN", "en"] as const, "zh-CN"),
+    locale: option(query, "locale", ["zh-CN", "en"] as const, LAB_DEFAULT_LOCALE),
     motion: option(query, "motion", ["off", "full"] as const, "off"),
     fontSize: Number(
       option(query, "font-size", LAB_FONT_SIZES.map(String), String(UI_FONT_SIZE_DEFAULT_PX)),

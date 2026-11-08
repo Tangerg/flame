@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const ROUTES = [
   "fixture=shell&state=populated",
   "fixture=workspace&state=settings",
@@ -16,7 +17,7 @@ test("a control that refuses a click says so, however it was refused", async ({ 
 
   for (const route of ROUTES) {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
-    await page.waitForSelector("html[data-visual-ready]");
+    await expectLabReady(page);
     await page.waitForTimeout(200);
 
     await page

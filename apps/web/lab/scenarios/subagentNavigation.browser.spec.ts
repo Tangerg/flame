@@ -1,10 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 test("subagent navigation keeps keyboard focus with its selected task and restores its list entry", async ({
   page,
 }, testInfo) => {
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=delegated&resume-ready=1");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const trigger = page.locator("#item_delegate").getByRole("button", { name: /^Sub-agent/ });
   await trigger.focus();
   await trigger.press("Enter");

@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { expectLabReady } from "../readiness";
 const label =
   "Audit application-owned cancellation, transaction boundaries and dependency graph verification across the complete Agent Framework";
 
@@ -13,7 +14,7 @@ for (const [fontSize, theme] of [
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-subagents&theme=${theme}&font-size=${fontSize}&locale=en`,
     );
-    await page.locator("html[data-visual-ready]").waitFor();
+    await expectLabReady(page);
     const panel = page.getByRole("region", { name: "Subagents", exact: true });
     await expect(panel.getByText("6 subagents · 1 running", { exact: true })).toBeVisible();
     await panel

@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "./test";
+import { expectLabReady } from "../readiness";
 test.use({ hasTouch: true });
 
 async function expectReadableTask(root: Locator) {
@@ -50,7 +51,7 @@ test("recorded tasks keep their reading size and body alignment in narrow touch 
 }) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/lab/fixture.html?fixture=workspace&state=dock-files&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
   const resizer = page.locator(".agent-pane-resizer");
   await resizer.focus();
@@ -66,7 +67,7 @@ test("recorded tasks keep their reading size and body alignment in narrow touch 
 
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=light&font-size=18");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   await expectReadableTask(page.locator(".md").filter({ hasText: "Structural primitives" }));
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(
     0,

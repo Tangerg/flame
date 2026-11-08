@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "./test";
 import { CODE_READING_SOURCE } from "./agentSessionSnapshots";
+import { expectLabReady } from "../readiness";
 async function openConversation(page: Page) {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=light&font-size=14");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   return page.locator(".msg-scroll-viewport");
 }
 
@@ -19,7 +20,7 @@ test("dragging a navigation button does not select the surrounding workspace", a
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-subagents&agent-state=delegated&theme=light&font-size=18&locale=en",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page.getByRole("region", { name: "Subagents", exact: true });
   const entry = dock
     .locator('[data-slot="delegated-run-link"]')
@@ -46,7 +47,7 @@ test("a code reader selects its literal source without selecting the surrounding
 }) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/lab/fixture.html?fixture=agent&state=code-reading&theme=light");
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const source = page.getByRole("region", { name: "Code content", exact: true });
   await source.focus();
   await page.keyboard.press("ControlOrMeta+A");
@@ -72,7 +73,7 @@ test("a Dock code reader keeps select all inside its recorded evidence", async (
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=code-reading&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const record = page.locator('[data-trajectory-record="item:item_code_reading"]');
   await record.getByRole("button").first().click();
   await record.getByRole("button", { name: "Recorded evidence", exact: true }).click();
@@ -119,7 +120,7 @@ test("a recorded subagent error can be selected and dismissed in Dock whitespace
   await page.goto(
     "/lab/fixture.html?fixture=workspace&state=dock-subagents&agent-state=delegated&theme=dark&font-size=18",
   );
-  await page.locator("html[data-visual-ready]").waitFor();
+  await expectLabReady(page);
   const dock = page.getByRole("region", { name: "Subagents", exact: true });
   const detail = "The fixture generator exited 1.";
   await dock
