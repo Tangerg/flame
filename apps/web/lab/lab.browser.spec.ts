@@ -6,6 +6,7 @@ import { contrastRatio, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 import { catalog } from "./catalog";
 import { messages } from "./messages";
 import { localize } from "./story";
+import { foundationMessages } from "./foundationMessages";
 
 const LAB_PATH = "/lab/";
 const DESKTOP_VIEWPORT = { width: 1440, height: 1000 };
@@ -634,22 +635,103 @@ test("keeps native popover and dialog focus under canvas scaling", async ({ page
   );
 });
 
-test("records real activations and clears observations without resetting the example", async ({
-  page,
-}) => {
-  await inspect(page, "empty-state", "compact");
-  const frame = preview(page, "EmptyState").contentFrame();
-  await frame.getByRole("button", { name: "Add example", exact: true }).click();
-  const events = page.getByRole("list", { name: "Observations" });
-  await expect(events.getByText("click: Add example", { exact: true })).toBeVisible();
-  await expect(events.getByText("create", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Clear events", exact: true }).click();
-  await expect(events.getByRole("listitem")).toHaveCount(0);
-  await expect(frame.getByRole("status")).toHaveText("A local example was added.");
-  await frame.getByRole("button", { name: "Reset example", exact: true }).click();
-  await expect(events.getByText("reset", { exact: true })).toBeVisible();
-  await expect(frame.getByRole("button", { name: "Add example", exact: true })).toBeVisible();
-});
+for (const [engine, observationTest] of [
+  ["chromium", test],
+  ["webkit", test.extend({ browserName: "webkit" })],
+] as const) {
+  for (const profile of [
+    { locale: "en", theme: "light", fontSize: 14, motion: "full", width: 1120, height: 720 },
+    { locale: "zh-CN", theme: "dark", fontSize: 18, motion: "off", width: 640, height: 364 },
+  ] as const) {
+    observationTest(
+      `records and clears observations without losing the current task ${engine} ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: profile.width, height: profile.height });
+        const story = catalog.story("empty-state");
+        const copy = foundationMessages[profile.locale];
+        const t = (key: keyof typeof messages) => localize(messages[key], profile.locale);
+        await page.goto(
+          `${LAB_PATH}?${new URLSearchParams({
+            story: story.id,
+            variant: "compact",
+            mode: "inspect",
+            locale: profile.locale,
+            theme: profile.theme,
+            "font-size": String(profile.fontSize),
+            motion: profile.motion,
+          })}`,
+        );
+        const frameElement = page.getByTitle(
+          `${t("frameTitle")} · ${localize(story.title, profile.locale)} · ${profile.theme}`,
+          { exact: true },
+        );
+        const frame = frameElement.contentFrame();
+        await expectLabReady(frame);
+        const source = await frameElement.getAttribute("src");
+        const events = page.getByRole("list", { name: t("observations"), exact: true });
+        const clear = page.getByRole("button", { name: t("clearEvents"), exact: true });
+        const inspector = page.getByRole("complementary", { name: t("input"), exact: true });
+        await expect(clear).toBeDisabled();
+
+        async function expectCleared(stage: string) {
+          await expect(events.getByRole("listitem")).toHaveCount(0);
+          await expect(clear).toBeDisabled();
+          await expect(frame.getByRole("status")).toHaveText(copy.exampleAdded);
+          await expect(frameElement).toHaveAttribute("src", source!);
+          const geometry = await clear.evaluate((element) => ({
+            bounds: element.getBoundingClientRect().toJSON(),
+            viewport: { width: innerWidth, height: innerHeight },
+            focused: document.activeElement === element,
+            nativeDisabled: element.matches(":disabled"),
+            ariaDisabled: element.getAttribute("aria-disabled"),
+            outline: getComputedStyle(element).outline,
+          }));
+          await testInfo.attach(`${stage}-geometry`, {
+            body: JSON.stringify(geometry),
+            contentType: "application/json",
+          });
+          await testInfo.attach(stage, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          await expect(clear).toBeFocused();
+          await expect(clear).toBeInViewport({ ratio: 1 });
+        }
+
+        await frame.getByRole("button", { name: copy.addExample, exact: true }).click();
+        await expect(events.getByText(`click: ${copy.addExample}`, { exact: true })).toBeVisible();
+        await expect(events.getByText("create", { exact: true })).toBeVisible();
+        await clear.press("Enter");
+        await expectCleared("keyboard-clear");
+        await page.keyboard.press("Space");
+        await page.keyboard.press("Enter");
+        await expect(events.getByRole("listitem")).toHaveCount(0);
+        await expect(clear).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        expect(
+          await inspector.evaluate((element) => element.contains(document.activeElement)),
+        ).toBe(true);
+        await expect(clear).not.toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(clear).toBeFocused();
+        await frame.getByRole("button", { name: copy.reset, exact: true }).click();
+        await expect(events.getByText("reset", { exact: true })).toBeVisible();
+        await expect(clear).toBeEnabled();
+        expect(await frameElement.evaluate((element) => document.activeElement === element)).toBe(
+          true,
+        );
+        await frame.getByRole("button", { name: copy.addExample, exact: true }).click();
+        await clear.click();
+        await expectCleared("pointer-clear");
+        await frame.getByRole("button", { name: copy.reset, exact: true }).click();
+        await expect(events.getByText("reset", { exact: true })).toBeVisible();
+        await expect(
+          frame.getByRole("button", { name: copy.addExample, exact: true }),
+        ).toBeVisible();
+      },
+    );
+  }
+}
 
 for (const copy of [
   {

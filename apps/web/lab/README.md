@@ -96,8 +96,9 @@ The observation panel captures real DOM activations, explicit sample callbacks,
 rendering errors and unhandled failures. It retains only the latest bounded
 in-memory log. Text drafts report their length; credential-shaped fields are
 redacted. Callback enums, booleans and numbers remain inspectable. Clearing the
-log does not change the component. The log is an interaction aid, not a Runtime
-trace, profiler or command receipt store.
+log retains the component's local state. The clear action stays focusable while
+unavailable through the shared button contract, preserving its keyboard context.
+The log is an interaction aid, not a Runtime trace, profiler or command receipt store.
 
 Invalid links and failed independent documents retain a complete, wrapping cause
 and a normal link back to the catalog. Recovery preserves the admitted language,

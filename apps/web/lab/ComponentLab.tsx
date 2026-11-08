@@ -523,6 +523,7 @@ export function ComponentLab({
                 icon={Trash}
                 aria-label={t("clearEvents")}
                 disabled={!entries.length}
+                focusableWhenDisabled
                 onClick={() => log.clear()}
               />
             </div>

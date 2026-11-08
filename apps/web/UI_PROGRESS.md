@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current shared selection repair removes a first-frame **27 px** backplate displacement under system reduced motion. The complete UI check passes **276 tests** plus the offline packed consumer; the complete Web check passes **433 files / 4,770 tests**, and the native gate passes. The related Lab selection passes **319 / 319 cases** with no retries, skips, flaky results or global errors. All **739 final browser images** are reviewed or match reviewed bytes. All **38 native captures** are inspected: 21 record the original task and 17 use the repaired build. Final English/light/14 px and Chinese/dark/18 px cover actual native 200% zoom, proposal decisions, reading, window changes and continued drafts. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The original English wheel-to-pointer return anomaly and earlier transient loading/test failures retain their unresolved causes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. Clearing observations now retains the action's focus and the current preview state through the existing shared button contract. All four focused regressions pass. The complete Lab shell interaction file passes **30 / 30**, with no retries, skips, flaky results or global errors in the final run. Its **39 images** match reviewed bytes; all **22 native captures** are inspected, including 19 using the repaired build. English/light/14 px and Chinese/dark/18 px cover keyboard and pointer clearing, actual native 200% zoom, reading and window changes. Six Web owner checks and the native gate pass. The preceding shared selection repair retains its **276 UI tests**, **4,770 Web tests**, **319 Lab cases** and native evidence in the section below; those wider gates are not rerun for this Lab-only change. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. An initial shell run encounters a browser resource-loading failure before the unchanged final run passes; its cause remains unresolved. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,82 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Observation clearing and retained keyboard context (2026-11-09)
+
+The original Wails task reproduces focus falling to the outer document after
+pointer and keyboard clearing. The Clear events button remains mounted but
+becomes natively disabled. Existing coverage checked the empty log and retained
+example state, so it did not expose the lost keyboard context.
+
+`ComponentLab.tsx:526` opts into the shared `focusableWhenDisabled` contract.
+The button retains focus and unavailable semantics; its existing owner prevents
+Enter, Space and pointer activation while unavailable. No focus effect, ref,
+handler, state, CSS or shared component implementation is added. Clearing retires
+only the observation entries. The mounted preview keeps its current instance and
+local state. Better Accessibility guides keyboard continuity and disabled
+semantics; Better Layout guides visible controls through zoom and reflow.
+
+The existing `lab.browser.spec.ts` now follows Chromium and WebKit, with
+English/light/14 px/full motion at **1120 × 720** and Chinese/dark/18 px/motion off
+at **640 × 364**. It records actual example actions, clears through Enter and
+pointer, checks retained state and iframe source, unavailable activation, Tab
+return and subsequent Reset/Add actions. Captured geometry precedes the focus
+assertion, so the original failure remains inspectable. All four baseline cases
+fail on lost focus; all four focused candidate cases pass. Final buttons remain
+**32 × 32 px**, fully within the viewport, with the existing keyboard focus ring
+and `aria-disabled="true"` semantics.
+
+Claude Code CLI prepares the single-prop candidate in **41.421 s**, confined to
+one copied file with seven protected references unchanged. Primary review checks
+the exact diff, owns the regression and inspects all eight focused candidate
+images. No story, fixture, route or browser configuration is added.
+
+Verification:
+
+- Web typecheck, lint, formatting, unused-code, design-system and unused-style
+  checks pass. `make check-native` passes in **74.151 s**. The private Wails
+  v3.1.0 host builds in **20.568 s** and loads the same **491 canonical Lab assets**
+  retained from the final build. All 46 production native sources remain unchanged.
+- The first complete shell interaction attempt passes **29 / 30**. Returning from
+  the English caught-boot-failure reader to the gallery reports
+  `ERR_INSUFFICIENT_RESOURCES` and times out waiting for independent previews.
+  The attempt overlaps the end of native verification. Its logs and error context
+  are retained; the root cause is not established. After build and browser
+  processes exit, the unchanged command passes **30 / 30** in **122.826 s**.
+  Assertions, deadlines, retries and configuration remain unchanged. All **39
+  final images** match previously inspected bytes. A passing rerun does not
+  establish the cause of that earlier resource failure.
+- Actual final English/light/14 px/full-motion and Chinese/dark/18 px/motion-off
+  tasks enter through the skip link, create an example by keyboard, walk to Clear,
+  retain its disabled focus after clearing, reject Enter/Space activation and
+  traverse backward and forward. Actual Size plus 20 native Zoom In actions
+  reaches **200%**. The inspector reflows below the canvas; ordinary Tab reveals
+  the retained clear action. Window enlargement/restoration retains the same
+  preview and example, at **2878 → 3024 → 2878 device pixels** wide. Subsequent
+  keyboard Reset/Add and pointer clearing pass at 200%; Chinese also covers
+  wheel reading and keyboard return. Both windows restore Actual Size before Quit.
+
+All **22 native images** and **180 AX records** are inspected or retained: three
+images and 19 records reproduce the original behavior; 19 images and 161 records
+qualify the repair. Each final profile retains one active preview instance. All
+three native processes exit 0. VoiceOver, physical OS IME, RTL, quantitative focus
+contrast and native system motion preference are not verified. The full Web, UI,
+backend and complete Lab suites are not rerun for this Lab-only consumer change;
+their earlier evidence retains its original scope.
+
+| Severity         | Location               | Before                                                                | After                                                                  | Why                                                          |
+| ---------------- | ---------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| MEDIUM, resolved | `ComponentLab.tsx:526` | Clearing disables the focused action and drops focus to the document. | The shared unavailable action retains focus, Tab continuity and state. | Continue inspecting the same example after clearing its log. |
+
+Approve for the inspected observation workflow only. Whole-product visual
+acceptance remains open. All 6,715 non-Markdown inputs differ only in the Lab
+consumer and its existing spec. Twelve output/cache roots are restored after
+functional checks, including 315 original files and 1,369 retired generated nodes.
+Six private Library paths return to absence, three pre-existing helper roots keep
+their identities and flags, and the primary checkout remains unchanged. Normal
+hooks, publication and fenced private-root retirement finish this delivery;
+no functional check runs after output restoration.
 
 ### Shared selection stability during Skills decisions (2026-11-09)
 
