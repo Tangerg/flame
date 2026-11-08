@@ -257,4 +257,314 @@ for (const profile of [
       contentType: "application/json",
     });
   });
+
+  test(`Long Composer draft stays readable across narrow material return in ${profile.locale}`, async ({
+    page,
+  }, testInfo) => {
+    const lines =
+      profile.locale === "en"
+        ? [
+            "Draft start.",
+            "Keep the accepted source.",
+            "Compare the current file.",
+            "Read the complete response.",
+            "Keep the review context.",
+            "Check the changed scope.",
+            "Retain the unsent message.",
+            "Return from the material.",
+            "Continue the same review.",
+            "Draft end.",
+          ]
+        : [
+            "草稿开头。",
+            "保留已接收的来源。",
+            "比较当前文件。",
+            "阅读完整回复。",
+            "保留检查上下文。",
+            "确认更改范围。",
+            "保留未发送消息。",
+            "从材料返回。",
+            "继续同一份检查。",
+            "草稿末尾。",
+          ];
+    const draft = lines.join("\n");
+    const continued = draft + profile.suffix;
+    const startKey = process.platform === "darwin" ? "Meta+ArrowUp" : "Control+Home";
+    const endKey = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
+    const evidence: Record<string, unknown>[] = [];
+    try {
+      await page.setViewportSize({ width: 1472, height: 1000 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=dock-error&locale=${profile.locale}&theme=${profile.theme}&font-size=18&motion=off`,
+      );
+      await expectLabReady(page);
+      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+      await composer.fill(draft);
+      const handle = (await composer.elementHandle())!;
+      const send = page.getByRole("button", {
+        name: profile.locale === "en" ? "Send" : "发送",
+        exact: true,
+      });
+
+      // Measures the em box of the known first or last line, clipped by every box that can hide it.
+      const measure = (step: string, line: "first" | "last") =>
+        composer
+          .evaluate(
+            (node: HTMLTextAreaElement, { line, handle }) => {
+              const style = getComputedStyle(node);
+              const fontSize = parseFloat(style.fontSize);
+              const lineHeight = parseFloat(style.lineHeight);
+              const padTop = parseFloat(style.paddingTop);
+              const padBottom = parseFloat(style.paddingBottom);
+              const padLeft = parseFloat(style.paddingLeft);
+              const padRight = parseFloat(style.paddingRight);
+              const box = node.getBoundingClientRect();
+              const clientLeft = box.left + node.clientLeft;
+              const clientTop = box.top + node.clientTop;
+              const lineTop =
+                line === "first"
+                  ? clientTop + padTop - node.scrollTop
+                  : clientTop + node.scrollHeight - padBottom - node.scrollTop - lineHeight;
+              const em = {
+                top: lineTop + (lineHeight - fontSize) / 2,
+                bottom: lineTop + (lineHeight + fontSize) / 2,
+                left: clientLeft + padLeft,
+                right: clientLeft + node.clientWidth - padRight,
+              };
+              const clips: {
+                name: string;
+                top: number;
+                bottom: number;
+                left: number;
+                right: number;
+              }[] = [
+                {
+                  name: "textarea",
+                  top: clientTop,
+                  bottom: clientTop + node.clientHeight,
+                  left: clientLeft,
+                  right: clientLeft + node.clientWidth,
+                },
+                { name: "viewport", top: 0, bottom: innerHeight, left: 0, right: innerWidth },
+              ];
+              const root = node.closest<HTMLElement>('[data-slot="composer-root"]')!;
+              const footerBox = root
+                .querySelector(':scope > [data-slot="composer-footer"]')!
+                .getBoundingClientRect();
+              clips.push({
+                name: "footer",
+                top: 0,
+                bottom: footerBox.top,
+                left: 0,
+                right: innerWidth,
+              });
+              for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+                const overflow = getComputedStyle(parent);
+                if (overflow.overflowX !== "visible" || overflow.overflowY !== "visible") {
+                  const frame = parent.getBoundingClientRect();
+                  clips.push({
+                    name: `${parent.tagName.toLowerCase()}.${parent.getAttribute("data-slot") ?? ""}`,
+                    top: overflow.overflowY === "visible" ? 0 : frame.top + parent.clientTop,
+                    bottom:
+                      overflow.overflowY === "visible"
+                        ? innerHeight
+                        : frame.top + parent.clientTop + parent.clientHeight,
+                    left: overflow.overflowX === "visible" ? 0 : frame.left + parent.clientLeft,
+                    right:
+                      overflow.overflowX === "visible"
+                        ? innerWidth
+                        : frame.left + parent.clientLeft + parent.clientWidth,
+                  });
+                }
+                if (parent === root) break;
+              }
+              const clip = (target: { top: number; bottom: number; left: number; right: number }) =>
+                clips.reduce(
+                  (area, frame) => ({
+                    top: Math.max(area.top, frame.top),
+                    bottom: Math.min(area.bottom, frame.bottom),
+                    left: Math.max(area.left, frame.left),
+                    right: Math.min(area.right, frame.right),
+                  }),
+                  target,
+                );
+              const visible = clip(em);
+              const textarea = clip({
+                top: box.top,
+                bottom: box.bottom,
+                left: box.left,
+                right: box.right,
+              });
+              const hit = (area: typeof visible) =>
+                area.bottom > area.top && area.right > area.left
+                  ? document.elementFromPoint(
+                      (area.left + area.right) / 2,
+                      (area.top + area.bottom) / 2,
+                    ) === node
+                  : false;
+              return {
+                line,
+                value: node.value,
+                sameNode: node === handle,
+                focused: document.activeElement === node,
+                selection: { start: node.selectionStart, end: node.selectionEnd },
+                style: { fontSize, lineHeight, padTop, padBottom, padLeft, padRight },
+                box: box.toJSON(),
+                client: { top: node.clientTop, width: node.clientWidth, height: node.clientHeight },
+                scroll: {
+                  height: node.scrollHeight,
+                  top: node.scrollTop,
+                  horizontalOverflow: node.scrollWidth - node.clientWidth,
+                },
+                em,
+                clips,
+                visible,
+                textarea,
+                metricsValid:
+                  Number.isFinite(lineHeight) &&
+                  Number.isFinite(fontSize) &&
+                  lineHeight > 0 &&
+                  fontSize > 0,
+                lineVisible:
+                  visible.bottom > visible.top &&
+                  visible.right > visible.left &&
+                  visible.top <= em.top + 0.5 &&
+                  visible.bottom >= em.bottom - 0.5 &&
+                  visible.left <= em.left + 0.5 &&
+                  visible.right >= em.right - 0.5 &&
+                  hit(visible),
+                textareaHit: hit(textarea),
+                documentOverflow: document.documentElement.scrollWidth - innerWidth,
+              };
+            },
+            { line, handle },
+          )
+          .then((sample) => {
+            evidence.push({ step, viewport: page.viewportSize(), ...sample });
+            return sample;
+          });
+      const expectSend = async () => {
+        await expect(send).toBeInViewport({ ratio: 1 });
+        expect((await controlGeometry(send)).reachable).toBe(true);
+      };
+      const capture = async (name: string) => {
+        await testInfo.attach(name, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+      };
+      const settled = (
+        sample: Awaited<ReturnType<typeof measure>>,
+        value: string,
+        selection: number,
+      ) => ({
+        lineVisible: sample.lineVisible,
+        metricsValid: sample.metricsValid,
+        horizontalOverflow: sample.scroll.horizontalOverflow,
+        sameNode: sample.sameNode,
+        focused: sample.focused,
+        value: sample.value === value,
+        selection: sample.selection.start === selection && sample.selection.end === selection,
+        documentOverflow: sample.documentOverflow,
+      });
+      const expected = {
+        lineVisible: true,
+        metricsValid: true,
+        horizontalOverflow: 0,
+        sameNode: true,
+        focused: true,
+        value: true,
+        selection: true,
+        documentOverflow: 0,
+      };
+
+      await composer.focus();
+      await page.keyboard.press(startKey);
+      await page.setViewportSize({ width: 373, height: 243 });
+      await expect
+        .poll(async () => settled(await measure("narrow-start", "first"), draft, 0))
+        .toEqual(expected);
+
+      await page.keyboard.press(endKey);
+      await expect
+        .poll(async () => settled(await measure("narrow-end", "last"), draft, draft.length))
+        .toEqual(expected);
+      await expectSend();
+      await capture("composer-long-draft-narrow-end.png");
+
+      const reading = await measure("narrow-wheel-target", "last");
+      expect(reading.textarea.bottom - reading.textarea.top).toBeGreaterThan(0);
+      expect(reading.textarea.right - reading.textarea.left).toBeGreaterThan(0);
+      expect(reading.textareaHit).toBe(true);
+      expect(reading.scroll.height - reading.client.height).toBeGreaterThan(0);
+      await page.mouse.move(
+        (reading.textarea.left + reading.textarea.right) / 2,
+        (reading.textarea.top + reading.textarea.bottom) / 2,
+      );
+      await page.mouse.wheel(0, -2000);
+      await expect
+        .poll(async () => settled(await measure("narrow-wheel", "first"), draft, draft.length))
+        .toEqual(expected);
+
+      await page.setViewportSize({ width: 560, height: 364 });
+      await expect
+        .poll(async () => settled(await measure("manual-reading", "first"), draft, draft.length))
+        .toEqual(expected);
+      expect((await measure("manual-reading-end", "last")).lineVisible).toBe(false);
+      await expectSend();
+      await capture("composer-long-draft-manual-reading.png");
+
+      const openFull = page.getByRole("button", { name: profile.openFull, exact: true });
+      await expect(openFull).toBeVisible();
+      await openFull.focus();
+      await openFull.press("Enter");
+      const panel = page
+        .locator('[data-slot="workspace-view-body"]:visible')
+        .getByRole("region", { name: profile.panel, exact: true });
+      await expect(panel.getByRole("alert")).toHaveText(profile.error);
+      const close = page.getByRole("button", { name: profile.close, exact: true });
+      await expect(close).toBeVisible();
+      await close.focus();
+      await close.press("Enter");
+      await expect(
+        page.getByRole("region", { name: profile.conversation, exact: true }),
+      ).toBeFocused();
+      await expect(composer).toHaveValue(draft);
+
+      await composer.focus();
+      await expect
+        .poll(async () => settled(await measure("return-end", "last"), draft, draft.length))
+        .toEqual(expected);
+      await page.keyboard.type(profile.suffix);
+      await page.keyboard.press("Backspace");
+      await page.keyboard.type([...profile.suffix].at(-1)!);
+      await expect
+        .poll(async () =>
+          settled(await measure("continued-end", "last"), continued, continued.length),
+        )
+        .toEqual(expected);
+      await expectSend();
+      await capture("composer-long-draft-continued.png");
+
+      await page.keyboard.press(startKey);
+      await page.setViewportSize({ width: 1472, height: 1000 });
+      await expect
+        .poll(async () => settled(await measure("restored-start", "first"), continued, 0))
+        .toEqual(expected);
+      await expectSend();
+      await capture("composer-long-draft-restored.png");
+    } finally {
+      await testInfo.attach("composer-long-draft.json", {
+        body: JSON.stringify({
+          locale: profile.locale,
+          theme: profile.theme,
+          fontSize: 18,
+          draft,
+          evidence,
+        }),
+        contentType: "application/json",
+      });
+    }
+  });
 }

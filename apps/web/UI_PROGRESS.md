@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Diff focus repair passes **114 / 114 affected Lab cases** and **48 / 48 Diff unit tests**. All **62 final browser images** are reviewed or match reviewed bytes. Actual Wails acceptance includes **15 viewed native captures**, with the repaired workflow checked at English **200%** and Chinese **300%** through failure, repeated Refresh, comparison changes, window resizing, conversation return and continued drafts. The preceding file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current long-draft qualification passes **21 / 21 related Lab cases**, with all **26 final browser images** reviewed or matched to reviewed bytes. English/light and Chinese/dark Wails tasks retain ten-line drafts through **200% and 300%**, wheel reading, keyboard material return and continued input. All **22 native captures** are inspected; four unconfirmed OS window-action captures are diagnostic and excluded from resize acceptance. The preceding Diff repair retains its **114 Lab cases, 48 Diff unit tests, 62 browser images and 15 native captures**. The file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -560,10 +560,10 @@ byte, with all **46 production native inputs** unchanged. English/light/18 px at
 retires and through two keyboard retries. Native comparison selection retains
 its control focus and updates the error's scope. Chinese Top Left and Fill window
 actions also qualify wheel reading of the wrapped cause in the smaller frame.
-Closing restores Conversation and both exact draft values continue. The Chinese
-continued text is visibly complete; the longer English continued draft has its
-full value in accessibility while its capture shows the tail after End/typing.
-That observation does not establish a Composer root cause. All **15 native
+Closing restores Conversation and both exact draft values continue. Reinspection
+of the archived English original confirms its complete continued draft, correcting
+the initial tail-only observation. Both continued drafts are visibly complete;
+no Composer clipping defect is established. All **15 native
 originals** are viewed: two before the repair and 13 after it. All three native
 processes exit normally. Chinese entry uses native paste, not physical IME.
 
@@ -584,10 +584,85 @@ VoiceOver, physical IME, RTL, live Git/provider execution and whole-product rout
 coverage remain unqualified. Controlled asynchronous unit outcomes are separate
 from the fixed native business-error fixture. The goal remains active.
 
-Continue observing complete existing Lab tasks before choosing another repair.
-If ordinary native typing reproduces the English Composer tail observation,
-compare caret and scroll behavior before attributing it to layout or changing its
-owner. Do not infer another defect from the retained accessibility value alone.
+### Long Composer reading and material return (2026-11-08)
+
+Original-image review corrects the preceding English tail-only observation: the
+archived native capture contains the complete continued draft. Current native
+inspection also finds no persistent Composer clipping defect. Shared TextArea
+continues to own autosize and caret visibility; Composer supplies its height
+limit. Read-only ZCode `ChatPromptEditor` and its actual `LexicalChatInput`
+consumer provide bounded-editor and retained-context comparisons. Better Layout
+and Accessibility guide reading, clipping and return without adding another
+sizing or focus owner.
+
+Two cases extend the existing `panelPresentation.browser.spec.ts` profile loop.
+The four earlier panel cases and their assertions remain unchanged. Each new
+English/light and Chinese/dark task uses an 18 px request, ten explicit short
+lines and the existing Workspace error scene. It follows keyboard start/end
+reading at **373 × 243**, wheel reading near the beginning, and resize to
+**560 × 364** while retaining the end selection. Earlier reading must remain
+visible while the retained caret stays offscreen. Opening full-width material
+and keyboard Close restore the named Conversation region and exact draft.
+Refocusing reveals the retained end; typing, Backspace and retyping continue the
+same draft before returning to its beginning at **1472 × 1000**.
+
+Read-only geometry requires the entire first or last line's em box inside the
+textarea, viewport, every relevant ancestor clip and the Composer footer edge.
+It also checks the original input node, focus, collapsed native selection, exact
+value, real scroll range, zero horizontal overflow and a visible, hit-testable
+Send action. The test never assigns scroll positions, selection offsets or
+inline dimensions. Raw geometry and selection are retained in a JSON attachment
+even on failure. Each locale supplies four captures: narrow end, manual reading
+after resize, continued end and restored beginning.
+
+A bounded Claude Code CLI candidate completes its one allowed copy in
+**75.489 s**, with protected originals and all active inputs unchanged. Primary
+review replaces a positive-fragment visibility check with complete em-box
+containment, removes an estimated line-height fallback, names Send explicitly,
+enforces the footer boundary and clips each overflow axis independently.
+The first new run fails both cases in **19.791 s** because Control+Home does not
+move the macOS selection. Platform-appropriate start/end keys fix that test
+assumption without changing the product or weakening assertions. Both cases
+then pass in **10.751 s**, and all eight originals are viewed.
+
+The complete panel-presentation, toolbar-label and existing WebKit selection
+passes **21 / 21** in **48.151 s**, without retries, skips, flaky results or global
+errors. All **26 final images** match reviewed bytes, including the eight new
+long-draft images. Web typecheck, lint, formatting and unused-code checks pass.
+All **6,715 non-Markdown inputs** retain their qualified bytes; only the existing
+Lab spec changes. No production UI, native source, Runtime behavior, story,
+configuration or visual verification entry is added or changed.
+
+Actual Wails v3.1.0 uses the same **490 canonical Lab assets**, verified byte for
+byte after browser qualification, with all **46 native inputs** unchanged.
+English/light and Chinese/dark at **18 px**, **200% and 300%** verify keyboard
+start/end, wheel reading, zoom without reclaiming earlier reading, keyboard Close
+return and exact continued multiline values. Chinese entry uses native paste;
+English also uses native typing and Backspace. A native window Zoom before
+Chinese entry changes the right-workspace width from **523 to 559 px**. Later
+Top Left, Fill and fullscreen requests have no confirmed geometry outcome and
+are excluded from resize acceptance. All **22 tool-returned native captures**
+are viewed, including four unconfirmed window-action diagnostics. One screenshot
+is unavailable while a system Window menu remains open; cancelling that menu
+restores observation without restarting the process. Both native runs exit
+normally. Browser reflow does not claim native page-zoom coverage.
+
+`make check-native` passes before these verification-only edits in **73.196 s**;
+the private native build passes in **16.317 s**. Production inputs and final Lab
+assets remain unchanged, so that gate is not rerun after the added Lab assertions.
+The complete Lab, full Web, shared-UI unit and live Runtime/provider gates are
+not rerun. Their earlier results retain their original scopes. VoiceOver,
+physical IME, RTL and a confirmed OS resize with the live long draft remain
+unqualified. Earlier resource-loading failures remain unexplained.
+
+The private server is stopped and its app unregistered. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline and the primary checkout stays
+unchanged. Functional checks end before restoration; normal hooks and source/
+output proofs precede delivery to `main` and guarded evidence retirement.
+The goal remains active. Continue with an existing populated library or
+Workspace reading task, establishing an actual failure or coverage gap before
+selecting another repair.
 
 ### Presentation and preview continuity
 

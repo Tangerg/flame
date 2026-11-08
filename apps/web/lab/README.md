@@ -277,6 +277,12 @@ success continues to the selected row or filter. Later outside focus and deliber
 blur retire that continuation. The fixed failure scene retains its business error
 and unsent draft through narrow full-width reading and conversation return.
 
+Long Composer checks retain the same input, literal draft and native selection
+through constrained reading, wheel input, resizing and material return. Visibility
+requires the complete first or last line's em box inside every clipping ancestor
+and above the footer. A positive text fragment or retained value alone cannot
+admit a capture. Earlier wheel reading remains independent of the retained caret.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action
