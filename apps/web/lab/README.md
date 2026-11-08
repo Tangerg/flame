@@ -271,6 +271,12 @@ and Close action; reference inspection retains its own return action. Captures
 await the admitted business outcome after the normal query retry, rather than
 treating document readiness as a completed file read.
 
+Diff failure checks follow the first rejected scoped read into a pending overview.
+The surviving Refresh control receives focus while its filter is unavailable;
+success continues to the selected row or filter. Later outside focus and deliberate
+blur retire that continuation. The fixed failure scene retains its business error
+and unsent draft through narrow full-width reading and conversation return.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

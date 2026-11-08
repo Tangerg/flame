@@ -983,6 +983,127 @@ it("leaves a later outside focus choice when a pending refresh drops the selecte
   expect(document.activeElement).toBe(outside);
 });
 
+async function retireFilesAfterFailedTarget(workspaceReads: Array<PromiseWithResolvers<Diff>>) {
+  const read = vi
+    .fn<(signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>>()
+    .mockRejectedValueOnce(new Error("Visual fixture could not load the workspace diff"));
+  for (const deferred of workspaceReads) read.mockImplementationOnce(() => deferred.promise);
+  const mounted = mountDiff(ACTIVE_DIFF_FILE, read);
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "Could not read uncommitted changes: Visual fixture could not load the workspace diff",
+  );
+  expect(mounted.get).toHaveBeenCalledWith(
+    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+    expect.any(AbortSignal),
+  );
+  const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
+  const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
+  const files = screen.getByRole<HTMLButtonElement>("button", { name: "Show changed files" });
+  files.focus();
+  fireEvent.click(files);
+
+  await waitFor(() => expect(mounted.get).toHaveBeenCalledTimes(2));
+  expect(mounted.get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows" },
+    expect.any(AbortSignal),
+  );
+  expect(files.isConnected).toBe(false);
+  expect(screen.queryByRole("button", { name: "Show changed files" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Refresh" })).toBe(refresh);
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.matches(":disabled")).toBe(false);
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  expect(filter.disabled).toBe(true);
+  expect(screen.getByText("Reading uncommitted changes…")).toBeTruthy();
+  expect(screen.queryByText("No changes in this comparison.")).toBeNull();
+  return { ...mounted, read, filter, refresh };
+}
+
+it("hands a retired Files action to the pending Refresh and keeps it after the workspace read fails", async () => {
+  const workspaceReads = [Promise.withResolvers<Diff>(), Promise.withResolvers<Diff>()];
+  const { get, filter, refresh } = await retireFilesAfterFailedTarget(workspaceReads);
+
+  await act(async () => workspaceReads[0]!.reject(new Error("Workspace read unavailable")));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Workspace read unavailable");
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.getAttribute("aria-disabled")).not.toBe("true");
+  expect(filter.disabled).toBe(true);
+  expect(screen.queryByRole("button", { name: "Show changed files" })).toBeNull();
+  expect(screen.queryByText("No changes in this comparison.")).toBeNull();
+
+  fireEvent.click(refresh);
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(3));
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows" },
+    expect.any(AbortSignal),
+  );
+  expect(document.activeElement).toBe(refresh);
+  await act(async () => workspaceReads[1]!.resolve(REVIEW_DIFF));
+  await screen.findByRole("heading", { name: "2 changed files" });
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+});
+
+it.each([
+  [
+    "the selected row",
+    REVIEW_DIFF,
+    () => screen.getByRole("button", { name: /^DockResizer.tsx / }),
+  ],
+  [
+    "the filter",
+    { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!] },
+    () => screen.getByRole("searchbox", { name: "Filter files" }),
+  ],
+])(
+  "continues from the handed-off Refresh to %s when the workspace read succeeds",
+  async (_destination, diff, destination) => {
+    const workspaceRead = Promise.withResolvers<Diff>();
+    await retireFilesAfterFailedTarget([workspaceRead]);
+
+    await act(async () => workspaceRead.resolve(diff));
+    await loaded();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(destination());
+  },
+);
+
+it.each(["succeeds", "fails"])(
+  "leaves a later outside focus choice when the handed-off workspace read %s",
+  async (settlement) => {
+    const workspaceRead = Promise.withResolvers<Diff>();
+    await retireFilesAfterFailedTarget([workspaceRead]);
+    const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
+    outside.focus();
+
+    if (settlement === "succeeds") {
+      await act(async () => workspaceRead.resolve(REVIEW_DIFF));
+      await screen.findByRole("heading", { name: "2 changed files" });
+    } else {
+      await act(async () => workspaceRead.reject(new Error("Workspace read unavailable")));
+      await screen.findByRole("alert");
+    }
+    expect(screen.queryByRole("alert")?.textContent ?? null).toBe(
+      settlement === "fails"
+        ? "Could not read uncommitted changes: Workspace read unavailable"
+        : null,
+    );
+    expect(document.activeElement).toBe(outside);
+  },
+);
+
+it("leaves a deliberate blur when the handed-off workspace read succeeds", async () => {
+  const workspaceRead = Promise.withResolvers<Diff>();
+  const { refresh } = await retireFilesAfterFailedTarget([workspaceRead]);
+  refresh.blur();
+  expect(document.activeElement).toBe(document.body);
+
+  await act(async () => workspaceRead.resolve(REVIEW_DIFF));
+  await loaded();
+  expect(document.activeElement).toBe(document.body);
+});
+
 it("dismisses a layout popup before consuming a file-list return", async () => {
   const { outsideEscape } = mountDiff();
   await loaded();

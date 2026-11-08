@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current file-reading batch passes **98 / 98 Workspace cases**, including both new failure variants, with all **55 final browser images** reviewed or matched to reviewed bytes. Actual Wails **200% and 300%** acceptance adds **25 viewed native captures** covering repeated failure, unsupported files, keyboard reading, return focus, window resizing and continued drafts. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Diff focus repair passes **114 / 114 affected Lab cases** and **48 / 48 Diff unit tests**. All **62 final browser images** are reviewed or match reviewed bytes. Actual Wails acceptance includes **15 viewed native captures**, with the repaired workflow checked at English **200%** and Chinese **300%** through failure, repeated Refresh, comparison changes, window resizing, conversation return and continued drafts. The preceding file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -505,8 +505,89 @@ before pushing to `main` and retiring the private evidence directory. VoiceOver,
 physical IME, RTL, live filesystem/provider behavior and whole-product route
 coverage remain unqualified. The goal remains active.
 
-Continue by observing complete file and Diff reading tasks in this same Lab.
-Establish an actual failure or coverage gap before selecting the next repair.
+### Initial Diff failure and overview focus (2026-11-08)
+
+The existing `dock-error` Workspace scene reproduces a production focus defect.
+Its first path-scoped Diff read fails before any overview is accepted. Keyboard
+activation of Show changed files retires that button and requests the workspace
+overview, whose filter remains disabled. The existing pending-focus owner waits
+for success and cannot focus that filter after failure. Actual native inspection
+confirms focus falls to the HTML document. The next Option+Tab still reaches
+Refresh; this is lost local focus rather than a keyboard trap.
+
+`WorkspaceDiff` now hands that retired origin to its existing Refresh button.
+The same pending continuation still reaches the selected file row or filter on
+success. A failed read leaves Refresh focused and available for explicit retry.
+Later outside focus or deliberate blur retires the continuation, including blur
+to the document body while its origin is still connected. The existing query,
+accepted-result, comparison, filter, scroll and return owners remain authoritative.
+No additional UI, tab stop, focus manager, event listener or Runtime transition is
+introduced. The canonical publisher regenerates the installed Diff component ESM.
+
+Better Accessibility and Layout guide the surviving action and return path;
+read-only ZCode `PreviewPane` supplies error and reading-lifetime comparisons.
+A bounded Claude Code CLI task completes three allowed candidate copies in
+**317.942 s**, without changing active or protected sources. Primary review
+corrects a disabled-filter hit-test assumption, adds the connected-origin guard
+and deliberate-blur regression, and captures the initial visible Refresh cue.
+Five new unit cases and both new browser cases fail on the original implementation.
+The candidate initially fails the added blur regression; the final guard repairs
+it. A conditional-expect lint finding is corrected with an unconditional terminal
+feedback assertion. No check or valid assertion is weakened.
+
+The baseline passes **42 Diff unit tests** in **4.926 s** and **18 existing browser
+cases** in **44.305 s**. Final Diff coverage passes **48 / 48** in **3.416 s**,
+including held pending reads, first overview failure, explicit retry, selected-row
+and filter success, later outside focus on both outcomes, and deliberate blur.
+The complete affected selection passes **114 / 114** in **286.722 s**: the full
+Workspace, content-layout and panel-presentation suites plus the selected
+Workspace catalog. There are no retries, skips, flaky results or global errors.
+All **62 final images** are accounted for: 44 catalog captures, 12 existing narrow
+Diff captures and six new failure-workflow images. Sixty match reviewed bytes;
+the two new initial-focus originals are viewed separately.
+
+The two new browser cases use the existing Lab test and admission owners at
+English/light/14 px and Chinese/dark/18 px. They verify visible Refresh focus,
+two keyboard retries, the disabled filter, the actual business error and absence
+of a fabricated empty result. A **640 × 400** full-width frame retains complete
+wrapped feedback, reachable actions and zero document/body horizontal overflow.
+Keyboard Close restores the named Conversation region and the exact unsent draft
+continues. Browser reflow and actual native zoom remain distinct qualifications.
+
+Actual Wails v3.1.0 uses all **490 final canonical Lab assets**, verified byte for
+byte, with all **46 production native inputs** unchanged. English/light/18 px at
+**200%** and Chinese/dark/18 px at **300%** retain a visible Refresh cue after Files
+retires and through two keyboard retries. Native comparison selection retains
+its control focus and updates the error's scope. Chinese Top Left and Fill window
+actions also qualify wheel reading of the wrapped cause in the smaller frame.
+Closing restores Conversation and both exact draft values continue. The Chinese
+continued text is visibly complete; the longer English continued draft has its
+full value in accessibility while its capture shows the tail after End/typing.
+That observation does not establish a Composer root cause. All **15 native
+originals** are viewed: two before the repair and 13 after it. All three native
+processes exit normally. Chinese entry uses native paste, not physical IME.
+
+Web and plugin typecheck, lint and formatting, unused-code and publisher resource
+checks pass. `make check-native` passes in **14.394 s**. All **6,715 non-Markdown
+inputs** retain their qualified bytes, with exactly four changed inputs: two
+existing Lab specs, the Diff component and its generated ESM. No input, story,
+configuration or visual verification entry is added. The complete Lab and Web
+gates retain the earlier `f08d723c` baseline; earlier resource-loading failures
+remain unexplained.
+
+The private server is stopped and its app unregistered. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline and the primary checkout stays
+unchanged. Functional checks end before restoration; ordinary hooks and read-only
+source/output proofs precede delivery to `main` and private evidence retirement.
+VoiceOver, physical IME, RTL, live Git/provider execution and whole-product route
+coverage remain unqualified. Controlled asynchronous unit outcomes are separate
+from the fixed native business-error fixture. The goal remains active.
+
+Continue observing complete existing Lab tasks before choosing another repair.
+If ordinary native typing reproduces the English Composer tail observation,
+compare caret and scroll behavior before attributing it to layout or changing its
+owner. Do not infer another defect from the retained accessibility value alone.
 
 ### Presentation and preview continuity
 

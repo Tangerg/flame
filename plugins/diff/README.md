@@ -40,6 +40,10 @@ Returning from a list-owned reader retains its filter and scroll and focuses the
 current row, including after a failed comparison. Only a return that actually
 starts a workspace read waits for that response. A failed workspace read keeps
 the scoped result and its Files command available for an explicit retry.
+Before the first accepted overview, retiring the scoped Files action hands focus
+to the existing Refresh control while the filter is unavailable. Success continues
+to the selected row or filter; later outside focus or deliberate blur retires
+that pending continuation.
 Changing or clearing the local filter reveals the beginning of its
 results while retaining search focus. Unchanged filters and refreshed reads
 preserve the current reading position. A direct file entry leaves Escape to the

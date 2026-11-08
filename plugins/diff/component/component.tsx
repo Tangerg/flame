@@ -120,6 +120,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const list = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const refreshButton = useRef<HTMLButtonElement>(null);
   const overviewScroll = useRef<ScrollPosition[]>([]);
   const lastFocus = useRef<HTMLElement>(null);
   const pendingFocus = useRef<{
@@ -249,11 +250,28 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         search.current?.focus();
       return;
     }
-    if (active !== pending.active && active !== document.body) {
+    // A connected origin distinguishes deliberate blur from its removal.
+    if (
+      active !== pending.active &&
+      (active !== document.body || pending.active?.isConnected === true)
+    ) {
       pendingFocus.current = null;
       return;
     }
-    if (pending.query && accepted?.query !== pending.query) return;
+    if (pending.query && accepted?.query !== pending.query) {
+      // The unavailable overview cannot focus its filter. Keep Refresh as
+      // the pending origin so successful reads can still continue to the list.
+      if (
+        !accepted &&
+        active === document.body &&
+        pending.active?.isConnected === false &&
+        refreshButton.current
+      ) {
+        refreshButton.current.focus();
+        pendingFocus.current = { ...pending, active: refreshButton.current };
+      }
+      return;
+    }
     pendingFocus.current = null;
     if (pending.target === "file" && showingReader) {
       for (const position of scrollPositions(panel.current))
@@ -323,6 +341,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   )}
                   {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
                   <IconButton
+                    ref={refreshButton}
                     icon={Refresh}
                     aria-label={t("refresh")}
                     size="md"
