@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current long-draft qualification passes **21 / 21 related Lab cases**, with all **26 final browser images** reviewed or matched to reviewed bytes. English/light and Chinese/dark Wails tasks retain ten-line drafts through **200% and 300%**, wheel reading, keyboard material return and continued input. All **22 native captures** are inspected; four unconfirmed OS window-action captures are diagnostic and excluded from resize acceptance. The preceding Diff repair retains its **114 Lab cases, 48 Diff unit tests, 62 browser images and 15 native captures**. The file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current long-draft qualification passes **21 / 21 related Lab cases**, with all **26 final browser images** reviewed or matched to reviewed bytes. English/light and Chinese/dark Wails tasks retain ten-line drafts through **200% and 300%**, wheel reading, keyboard material return and continued input. All **22 native captures** are inspected; four unconfirmed OS window-action captures are diagnostic and excluded from resize acceptance. A subsequent native Window Zoom task qualifies live-draft enlargement and restoration in both profiles, with **22 further inspected captures**, including three animation diagnostics. The preceding Diff repair retains its **114 Lab cases, 48 Diff unit tests, 62 browser images and 15 native captures**. The file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -652,8 +652,36 @@ the private native build passes in **16.317 s**. Production inputs and final Lab
 assets remain unchanged, so that gate is not rerun after the added Lab assertions.
 The complete Lab, full Web, shared-UI unit and live Runtime/provider gates are
 not rerun. Their earlier results retain their original scopes. VoiceOver,
-physical IME, RTL and a confirmed OS resize with the live long draft remain
+physical IME, RTL and the entire allowed native window-size range remain
 unqualified. Earlier resource-loading failures remain unexplained.
+
+A subsequent native follow-up qualifies the sampled live-draft window cycle.
+Window > Zoom changes the right-workspace width **523 → 559 → 523 px** in both
+English/light and Chinese/dark while the same ten-line input keeps its exact
+value and focus. English repeats enlargement and restoration at **300%** page
+zoom. Chinese enlarges at **200%**, then restores at **300%**. Wheel reading
+near the beginning remains visible after the actual window change; explicit
+start/end movement resumes caret following. Keyboard material Close restores
+Conversation, and both drafts continue with their original text intact. English
+uses native typing and Backspace; Chinese uses native paste and Backspace.
+Centering a restored window keeps its reading context. No input or window-owner
+defect is established, and no product source or verification entry changes.
+
+All **22 follow-up native captures** are inspected. Three immediate English
+window captures contain transient native-frame cropping and remain diagnostic;
+the settled observations supply final visual acceptance. Both processes exit
+normally. The current **490 Lab assets** match the canonical build and all
+**46 native inputs** remain unchanged. All **6,715 non-Markdown inputs** also
+remain unchanged; only this progress record is edited. This is sampled native
+window acceptance, not whole-product or full native-size-range coverage.
+
+The follow-up passes `make check-native` in **10.330 s**, then `lab:build` in
+**2.397 s**, with each terminal result observed before the next build. The
+private native build passes in **15.143 s**. An initial Lab build starts before
+the original native terminal result is observed; both attempts exit zero, but
+they are excluded from acceptance and replaced by that serial sequence. Browser
+interaction and unit suites are not rerun for this documentation-only follow-up;
+the preceding 21-case, 26-image result retains the same unchanged input bytes.
 
 The private server is stopped and its app unregistered. Six Library paths return
 to absence; three pre-existing helper roots retain their identities and flags.
