@@ -4,7 +4,14 @@ import { catalog } from "./catalog";
 import { labCases } from "./cases";
 import { readSelection } from "./selection";
 import { foundationMessages } from "./foundationMessages";
+import {
+  foundationButtonVariants,
+  foundationControlSizes,
+  foundationViews,
+} from "./foundationVariants";
 import { expectLabReady } from "./readiness";
+
+const NARROW_WIDTH = 320;
 
 const filter = process.env.FLAME_LAB_STORY;
 if (filter) catalog.story(filter);
@@ -71,6 +78,85 @@ for (const story of catalog.stories) {
             contentType: "image/png",
           });
           const copy = foundationMessages[chinese ? "zh-CN" : "en"];
+          const captions =
+            entry.variantId === foundationViews.sizes.id
+              ? entry.storyId === "button"
+                ? foundationControlSizes
+                : entry.storyId === "icon-button"
+                  ? [...foundationControlSizes, "xl"]
+                  : null
+              : entry.storyId === "button" && entry.variantId === foundationViews.styles.id
+                ? foundationButtonVariants
+                : null;
+          if (captions || entry.storyId === "switch") {
+            const main = page.getByRole("main");
+            const box = async (locator: ReturnType<typeof page.getByRole>) =>
+              (await locator.boundingBox())!;
+            const geometry: (
+              | { width: number; rows: { label: string; x: number; top: number }[][] }
+              | { width: number; label: number; control: number }
+            )[] = [];
+            let phoneImage: Buffer | undefined;
+            for (const width of [entry.width, NARROW_WIDTH]) {
+              await page.setViewportSize({ width, height: entry.height });
+              if (captions) {
+                const rows: { label: string; x: number; top: number }[][] = [];
+                for (const label of captions) {
+                  const { x, y } = await box(main.getByText(label, { exact: true }));
+                  const row = rows.at(-1);
+                  if (row && x > row.at(-1)!.x) row.push({ label, x, top: y });
+                  else rows.push([{ label, x, top: y }]);
+                }
+                geometry.push({ width, rows });
+              } else {
+                const center = async (locator: ReturnType<typeof page.getByRole>) => {
+                  const { y, height } = await box(locator);
+                  return y + height / 2;
+                };
+                geometry.push({
+                  width,
+                  label: await center(main.getByText(copy.enableNotifications, { exact: true })),
+                  control: await center(
+                    page.getByRole("switch", { name: copy.enableNotifications, exact: true }),
+                  ),
+                });
+              }
+              if (width === NARROW_WIDTH && viewport === "phone") {
+                phoneImage = await page.screenshot({ fullPage: true, animations: "disabled" });
+              }
+            }
+            await page.setViewportSize({ width: entry.width, height: entry.height });
+            await testInfo.attach(entry.id + "-alignment.json", {
+              body: JSON.stringify(geometry, null, 2),
+              contentType: "application/json",
+            });
+            if (phoneImage) {
+              await testInfo.attach(entry.id + "-" + NARROW_WIDTH + "px", {
+                body: phoneImage,
+                contentType: "image/png",
+              });
+            }
+            for (const measured of geometry) {
+              if ("rows" in measured) {
+                for (const row of measured.rows) {
+                  const tops = row.map((caption) => caption.top);
+                  expect
+                    .soft(
+                      Math.max(...tops) - Math.min(...tops),
+                      `${entry.id} at ${measured.width}px: captions ${row.map((caption) => caption.label).join(", ")} share a top`,
+                    )
+                    .toBeLessThanOrEqual(1);
+                }
+              } else {
+                expect
+                  .soft(
+                    Math.abs(measured.label - measured.control),
+                    `${entry.id} at ${measured.width}px: the Switch label and control share a center`,
+                  )
+                  .toBeLessThanOrEqual(1);
+              }
+            }
+          }
           if (entry.storyId === "form") {
             const name = page.getByRole("textbox", { name: copy.name, exact: true });
             const nameLabel = page.getByText(copy.name, { exact: true });

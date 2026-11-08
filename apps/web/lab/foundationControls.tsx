@@ -40,7 +40,7 @@ export function ButtonExample({ variant, locale, observe }: LabExampleProps) {
   const copy = foundationMessages[locale];
   if (variant === views.sizes.id) {
     return (
-      <div {...stylex.props(styles.row)}>
+      <div {...stylex.props(styles.row, styles.comparison)}>
         {foundationControlSizes.map((size) => (
           <div key={size} {...stylex.props(styles.pair)}>
             <span {...stylex.props(styles.label)}>{size}</span>
@@ -54,7 +54,7 @@ export function ButtonExample({ variant, locale, observe }: LabExampleProps) {
   }
   if (variant === views.states.id) {
     return (
-      <div {...stylex.props(styles.row)}>
+      <div {...stylex.props(styles.row, styles.comparison)}>
         {CONTROL_STATES.map((state) => (
           <div key={state.id} {...stylex.props(styles.pair)}>
             <span {...stylex.props(styles.label)}>{state.title[locale]}</span>
@@ -72,7 +72,7 @@ export function ButtonExample({ variant, locale, observe }: LabExampleProps) {
     );
   }
   return (
-    <div {...stylex.props(styles.row)}>
+    <div {...stylex.props(styles.row, styles.comparison)}>
       {foundationButtonVariants.map((appearance) => (
         <div key={appearance} {...stylex.props(styles.pair)}>
           <span {...stylex.props(styles.label)}>{appearance}</span>
@@ -100,7 +100,7 @@ export function IconButtonExample({ variant, locale, observe }: LabExampleProps)
   };
   if (variant === views.states.id) {
     return (
-      <div {...stylex.props(styles.row)}>
+      <div {...stylex.props(styles.row, styles.comparison)}>
         {CONTROL_STATES.map((state) => (
           <div key={state.id} {...stylex.props(styles.pair)}>
             <span {...stylex.props(styles.label)}>{state.title[locale]}</span>
@@ -118,7 +118,7 @@ export function IconButtonExample({ variant, locale, observe }: LabExampleProps)
     );
   }
   return (
-    <div {...stylex.props(styles.row)}>
+    <div {...stylex.props(styles.row, styles.comparison)}>
       {ICON_SIZES.map((size) => (
         <div key={size} {...stylex.props(styles.pair)}>
           <span {...stylex.props(styles.label)}>{size}</span>

@@ -4,6 +4,7 @@ import { color, space, surface } from "@flame/ui/tokens.stylex";
 export const foundationStyles = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s4, minWidth: 0 },
   row: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: space.s3, minWidth: 0 },
+  comparison: { alignItems: "flex-start" },
   pair: {
     display: "flex",
     flexDirection: "column",

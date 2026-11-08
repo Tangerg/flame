@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The complete corrected suite passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. Its **6,715** non-Markdown source inputs remain unchanged throughout the run. Document admission now reports the first terminal cause, and localized failure readers preserve valid appearance and catalog recovery. The complete Web check passes **433 files / 4,763 tests**. Actual Wails **200% and 300%** acceptance covers the repaired readers in English, Chinese and a custom palette; all **23 native captures** are viewed. Previous oversized-editor caret and draft acceptance remains recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current comparison-caption repair passes **24 capture cases and 19 Lab interactions**, with all **77 images** accounted for and **15 new native captures** viewed. Actual Wails **200% and 300%** acceptance confirms shared caption edges and preserves ordinary Switch alignment. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -168,11 +168,67 @@ commit hooks only format owned files and lint authored source; source hashes are
 checked again before delivery. Delivery retires the remaining private evidence
 directory after the ordinary commit and push to `main`.
 
-Next inspect the Lab's comparison labels: native gallery review shows captions
-at different heights when their examples have different control heights or media
-padding. Reproduce the geometry in the existing Lab before changing its layout,
-and retain centered alignment for direct switch/label rows. VoiceOver, physical
-IME, live providers and whole-product route coverage remain unqualified.
+VoiceOver, physical IME, live providers and whole-product route coverage remain
+unqualified.
+
+### Comparison captions and native control alignment (2026-11-08)
+
+Native gallery review shows Button and IconButton captions at different heights
+when control sizes or media padding differ. `foundationStyles.row` centers both
+labelled comparisons and ordinary control rows. A scoped `comparison` override
+now aligns the five labelled Button/IconButton rows at their block start. Direct
+Switch, Tooltip and Badge rows keep their centered layout; column-stacked Select
+pairs keep their sizing. Public controls, spacing and appearance tokens retain
+their existing owners.
+
+The reference is `better-layout`'s shared-edge principle. Read-only HeroUI size
+demos use centered rows for direct controls; Flame's captions introduce a separate
+comparison edge. A bounded Claude Code CLI candidate completes in **84.030 s**.
+Primary review checks all three changed files and protected inputs, then applies
+only the regression before the layout repair. An initial anchored title filter
+selects no tests; the corrected selection runs the actual existing capture cases.
+
+Before the repair, **8 / 12 cases fail** and all four Switch cases pass. Measured
+caption tops differ by up to **17.15625 px**; six original captures are viewed.
+The repaired selection passes **24 / 24** in **14.330 s**, covering Button,
+IconButton, Switch, Select, Tooltip and Badge in English/light at 14 px and
+Chinese/dark at 18 px. The existing capture owner also checks **320 px** without
+another scenario matrix or test entry. Wrapped rows derive from literal caption
+geometry; their tops now match exactly. The maximum Switch center difference
+remains **0.0078125 px**. All **70 images** are accounted for: 19 new unique
+originals are viewed, and 50 references match previously reviewed bytes.
+
+All **19 Lab interactions** pass in **58.423 s**, including camera, retained
+drafts, navigation, recovery and touch panning. Their seven images match reviewed
+bytes. Web typecheck, lint, formatting, unused-code, dead-style and design-system
+checks pass. `make check-native` passes in **16.090 s**. This localized Lab batch
+does not rerun the complete 1,296-case or Web unit gates; their `f08d723c` baseline
+remains recorded above. All **6,715 non-Markdown inputs** retain their verified
+bytes throughout the capture, interaction and native acceptance.
+
+The actual Wails v3.1.0 host uses all **490 current Lab assets**, verified byte for
+byte. All **46 production native inputs** remain unchanged. English/light gallery
+inspection at 14 px covers pointer and Space badge toggles, native window resize,
+200% and 300% zoom, inner-preview scrolling and page reading. Chinese/dark
+independent Button and IconButton size comparisons retain their shared caption
+edge at 18 px and both zoom levels. Option+Tab enters an icon; Escape closes its
+tooltip and Space changes its badge while retaining focus. The Chinese Switch
+keeps centered text, changes on by pointer and off by keyboard, and retains focus
+through zoom. All **15 native originals** are viewed; four native runs exit
+normally.
+
+The private app is unregistered and its server stopped. Six Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline, and the primary checkout stays
+unchanged. No functional checks run against restored outputs. Ordinary commit
+hooks only format owned files and lint source; delivery rechecks the verified
+source before pushing to `main`, then retires the private evidence directory.
+RTL, VoiceOver, physical IME, live providers and whole-product route acceptance
+remain unverified by this batch.
+
+Next inspect short-window navigation between gallery and inspector. Native 300%
+gallery content remains reachable through page scrolling; the compact catalog,
+variant selection and return path still need direct task-path acceptance.
 
 ### Presentation and preview continuity
 
