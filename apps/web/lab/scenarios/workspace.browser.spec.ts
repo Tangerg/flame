@@ -605,9 +605,46 @@ for (const [browserName, skillsTest] of [
           await expect(first).toBeInViewport({ ratio: 1 });
           await capture("first-match");
 
-          await opener.scrollIntoViewIfNeeded();
-          if (profile.locale === "zh") await opener.focus();
+          const controls = panel.locator('[data-slot="panel-controls"]');
+          const firstBox = (await first.boundingBox())!;
+          const targetBox = (await opener.boundingBox())!;
+          const viewportBox = (await viewport.boundingBox())!;
+          const controlsBox = (await controls.boundingBox())!;
+          const frameBottom = viewportBox.y + viewportBox.height;
+          const room = frameBottom - (controlsBox.y + controlsBox.height) - targetBox.height;
+          const wheelDelta = Math.round(targetBox.y + targetBox.height - frameBottom + room / 4);
+          evidence.push({
+            name: "wheel-geometry",
+            first: firstBox,
+            target: targetBox,
+            viewport: viewportBox,
+            controls: controlsBox,
+            room,
+            wheelDelta,
+          });
+          expect(room).toBeGreaterThan(0);
+          expect(wheelDelta).toBeGreaterThan(0);
+          await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+          await page.mouse.wheel(0, wheelDelta);
+          await expect
+            .poll(
+              async () => {
+                const positions = await viewport.evaluate(async (node) => {
+                  const frames = [node.scrollTop];
+                  for (let frame = 0; frame < 8; frame += 1) {
+                    await new Promise(requestAnimationFrame);
+                    frames.push(node.scrollTop);
+                  }
+                  return frames;
+                });
+                evidence.push({ name: "wheel-settle", positions });
+                return positions[0]! > 0 && positions.every((top) => top === positions[0]);
+              },
+              { message: "the catalog wheel must settle before entering the selected row" },
+            )
+            .toBe(true);
           await expect(opener).toBeInViewport({ ratio: 1 });
+          if (profile.locale === "zh") await opener.focus();
           const readingTop = await scrollTop();
           expect(readingTop).toBeGreaterThan(300);
           const title = (await opener.getByText(selected.name, { exact: true }).boundingBox())!;
@@ -622,6 +659,7 @@ for (const [browserName, skillsTest] of [
             Math.min(title.x + title.width, scope.x + scope.width) > Math.max(title.x, scope.x) &&
               Math.min(title.y + title.height, scope.y + scope.height) > Math.max(title.y, scope.y),
           ).toBe(false);
+          await capture("middle-catalog");
           if (profile.locale === "en") await opener.click();
           else await opener.press("Enter");
           const heading = panel.getByRole("heading", { name: selected.name, exact: true });
@@ -700,6 +738,34 @@ for (const [browserName, skillsTest] of [
           await expect
             .poll(async () => Math.abs((await scrollTop()) - readingTop))
             .toBeLessThanOrEqual(1);
+          const returnedFrames = await viewport.evaluate(
+            async (node, { row, bar }) => {
+              const frames = [];
+              for (let frame = 0; frame < 8; frame += 1) {
+                await new Promise(requestAnimationFrame);
+                frames.push({
+                  scrollTop: node.scrollTop,
+                  viewport: node.getBoundingClientRect().toJSON(),
+                  controls: bar.getBoundingClientRect().toJSON(),
+                  row: row.getBoundingClientRect().toJSON(),
+                  focused: document.activeElement === row,
+                });
+              }
+              return frames;
+            },
+            { row: await opener.elementHandle(), bar: await controls.elementHandle() },
+          );
+          evidence.push({ name: "returned-frames", readingTop, frames: returnedFrames });
+          for (const frame of returnedFrames) {
+            expect(Math.abs(frame.scrollTop - readingTop)).toBeLessThanOrEqual(1);
+            expect(frame.focused).toBe(true);
+            expect(frame.row.top).toBeGreaterThanOrEqual(
+              Math.max(frame.viewport.top, frame.controls.bottom) - 1,
+            );
+            expect(frame.row.bottom).toBeLessThanOrEqual(frame.viewport.bottom + 1);
+            expect(frame.row.left).toBeGreaterThanOrEqual(frame.viewport.left - 1);
+            expect(frame.row.right).toBeLessThanOrEqual(frame.viewport.right + 1);
+          }
           await capture("returned-catalog");
 
           const refresh = panel.getByRole("button", { name: profile.refresh, exact: true });

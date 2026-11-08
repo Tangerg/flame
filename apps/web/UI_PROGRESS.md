@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current persistent Skills catalog batch passes **94 / 94 related Lab cases** and **82 focused unit tests**; all **82 browser images** and **40 native captures** are accounted for. Its 80-document workload now lives in the existing Workspace catalog. One original native wheel-to-pointer return-position observation remains unresolved despite passing browser and later native controls. The preceding long-draft qualification passes **21 / 21 related Lab cases**, with all **26 final browser images** reviewed or matched to reviewed bytes. English/light and Chinese/dark Wails tasks retain ten-line drafts through **200% and 300%**, wheel reading, keyboard material return and continued input. All **22 native captures** are inspected; four unconfirmed OS window-action captures are diagnostic and excluded from resize acceptance. A subsequent native Window Zoom task qualifies live-draft enlargement and restoration in both profiles, with **22 further inspected captures**, including three animation diagnostics. The preceding Diff repair retains its **114 Lab cases, 48 Diff unit tests, 62 browser images and 15 native captures**. The file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The current Skills wheel and return follow-up passes **5 / 5 related Lab cases**, with all **28 browser images** and **19 native captures** accounted for. Its four existing flows now use actual wheel entry and eight rendered return frames. The original native anomaly remains unexplained; catalog position across zoom and material reopening also remains unqualified. The persistent Skills catalog baseline passes **94 / 94 related Lab cases** and **82 focused unit tests**; all **82 browser images** and **40 native captures** are accounted for. Its 80-document workload now lives in the existing Workspace catalog. One original native wheel-to-pointer return-position observation remains unresolved despite passing browser and later native controls. The preceding long-draft qualification passes **21 / 21 related Lab cases**, with all **26 final browser images** reviewed or matched to reviewed bytes. English/light and Chinese/dark Wails tasks retain ten-line drafts through **200% and 300%**, wheel reading, keyboard material return and continued input. All **22 native captures** are inspected; four unconfirmed OS window-action captures are diagnostic and excluded from resize acceptance. A subsequent native Window Zoom task qualifies live-draft enlargement and restoration in both profiles, with **22 further inspected captures**, including three animation diagnostics. The preceding Diff repair retains its **114 Lab cases, 48 Diff unit tests, 62 browser images and 15 native captures**. The file-reading batch retains its **98 cases, 55 browser images and 25 native captures**. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are accounted for. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The complete Lab and Web gates are not rerun for the current scoped batch. Earlier file-source, reading-focus, navigation, caption, failure-diagnostic and oversized-editor results retain their recorded scopes below. Two resource-loading failures in a concurrent qualification run, and the earlier three transient module-fetch failures, remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -119,6 +119,67 @@ its reviewed change only joins that chain and adjusts indentation. The final
 format check passes. Normal commit hooks and read-only integrity proofs precede
 delivery to `main` and guarded retirement of the owned evidence directory.
 The goal remains active.
+
+A subsequent native investigation does not reproduce the original anomaly.
+English/light/14 px returns correctly after a settled wheel and indexed click,
+a screenshot-coordinate click with the target near the bottom, and contiguous
+wheel/click actions without an intervening capture. Each reads the same document,
+selects its instructions, expands source and uses Escape. Chinese/dark/18 px
+also retains its wheel position through pointer entry and Escape. These controls
+do not establish the cause of the earlier failure, which remains unresolved.
+
+That investigation identifies a real coverage gap: the four browser cases reveal
+the middle row with `scrollIntoViewIfNeeded`, so they do not qualify wheel entry.
+The same cases now derive one wheel gesture from actual row, viewport and
+controls geometry, await eight stable animation frames and capture the visible
+middle catalog. The selected row must already be visible before Chinese keyboard
+focus is allowed. After return, eight rendered frames must retain focus, the
+saved offset and the complete row inside the viewport and below its controls.
+Raw frames remain attached even on failure. No new test entry or product owner
+is introduced.
+
+A bounded single-file CLI candidate completes in **102.431 s**, with 11 protected
+references unchanged and no active-source edits before acceptance. Primary review
+moves the visibility assertion ahead of focus and adds horizontal containment.
+The existing Skills selection passes **5 / 5** in **23.488 s**, without retries,
+skips or flaky results. Both engines retain all eight returned offsets exactly:
+**584 px** in English and **1267 px** in Chinese. All **28 final browser images**
+are accounted for: nine are reviewed now and 19 match reviewed bytes. Web
+typecheck and lint pass. The unchanged unit and complete Lab/Web suites are not
+rerun; their earlier results retain their original scope.
+
+The serial native gate passes in **71.136 s**, Lab build in **2.621 s** and private
+native build in **15.305 s**. The host uses all **490 current Lab assets**, verified
+byte for byte, with all **46 production native inputs** unchanged. Chinese also
+checks keyboard document/source/Back at native **200%**, then material Close to
+the named Conversation and exact continued input. Twenty actual Zoom In menu
+actions follow Actual Size; the window returns to Actual Size before Quit.
+English full-width Close at the wide frame returns to its retained Dock; its
+explicit collapse keeps that surviving control focused, and pointer entry
+continues the original draft. These are different host presentation paths.
+
+All **19 native captures** are inspected. The initial Chinese source observation
+does not expose its values until normal wheel reading; the later capture does.
+Reopening full-width material after zoom initially shows the end of the catalog.
+Clearing/re-entering the query and natural Tab navigation establish the 200%
+entry into `runtime-review-035`. That check qualifies return at an unchanged
+viewport; it does not qualify catalog position across zoom and host replacement.
+Follow that observed reopening path before claiming native reflow continuity.
+An erroneous `zh-CN` QA URL is rejected by the registered locale owner; that
+process exits and is excluded before the valid `zh` task. Both valid native runs
+exit normally. Chinese uses native paste, not a physical IME.
+
+Only the existing Workspace spec and the two maintained Lab documents change.
+No production UI, fixture data, installed resource, story or configuration changes.
+The app is unregistered, its server stops, six Library paths return to absence,
+and three protected helper roots retain their identities and flags. The original
+native anomaly and cross-zoom catalog continuity remain unqualified.
+
+All **12 output/cache roots** return to baseline. The comparison covers all
+**6,715 non-Markdown inputs**, with only the existing Workspace spec changed,
+and preserves the primary checkout. Functional checks end before restoration;
+normal hooks, final integrity checks and guarded evidence retirement complete
+delivery to `main`.
 
 ### Document admission and failure reporting (2026-11-08)
 

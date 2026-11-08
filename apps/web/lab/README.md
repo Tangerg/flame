@@ -301,6 +301,12 @@ Chinese task uses a 640 × 400 full-width material view. These frames qualify
 reflow; native page zoom remains a separate Wails check. Catalog captures await
 the accepted 80-document result as well as document readiness.
 
+Middle-row entry uses a real wheel gesture derived from the current reading
+geometry and waits for eight stable animation frames. Keyboard focus cannot
+reveal the target before its visibility assertion. After return, eight further
+frames must retain the saved offset, row focus and the complete row below the
+controls and inside the viewport. Both observations join the same case evidence.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action
