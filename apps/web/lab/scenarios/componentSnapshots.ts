@@ -52,6 +52,28 @@ export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
   Capacity: 512,
 };
 
+export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+  ...VISUAL_MEMORY_PAGE,
+  Rows: [
+    {
+      Revision: 2,
+      ID: "mem_00000000000000000000000000000003",
+      Scope: "user",
+      Day: "",
+      Project: "",
+      Embedding: [],
+      EmbeddingSpace: "",
+      Content: "Prefers concise summaries with source paths and concrete next steps.",
+      Origin: "user",
+      Status: "active",
+      Pinned: false,
+      SessionID: "",
+      CreatedAt: "2026-07-31T10:00:00Z",
+      UpdatedAt: "2026-07-31T10:00:00Z",
+    },
+  ],
+};
+
 export const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
   "Inspect workspace dependencies.",
   "Run accepted checks.",

@@ -78,7 +78,11 @@ describe("visual Runtime transport", () => {
         const response = await client.plugins.call({
           ...binding,
           method,
-          input: JSON.stringify({ Cursor: "" }),
+          input: JSON.stringify(
+            method === "flame.memory/list.v2"
+              ? { Scope: "project", CWD: VISUAL_WORKSPACE_PATH, Cursor: "" }
+              : { Cursor: "" },
+          ),
           target: { scope: "installation", reference: binding.installationId },
         });
         expect(JSON.parse(response.output!)).toEqual(page);
@@ -107,6 +111,71 @@ describe("visual Runtime transport", () => {
       await client.close();
     }
   });
+
+  it("keeps User and Project memory records bound to the requested scope", async () => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    const page = async (scope: "project" | "user") => {
+      const result = await client.plugins.call({
+        ...VISUAL_MEMORY_BINDING,
+        method: "flame.memory/list.v2",
+        input: JSON.stringify({
+          Scope: scope,
+          CWD: scope === "project" ? VISUAL_WORKSPACE_PATH : "",
+          Cursor: "",
+        }),
+        target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+      });
+      return JSON.parse(result.output!) as typeof VISUAL_MEMORY_PAGE;
+    };
+    try {
+      expect(await page("project")).toEqual(VISUAL_MEMORY_PAGE);
+      const user = await page("user");
+      expect(user.Rows.length).toBeGreaterThan(0);
+      expect(user.Rows.every((row) => row.Scope === "user" && row.Project === "")).toBe(true);
+      const projectIDs = new Set(VISUAL_MEMORY_PAGE.Rows.map((row) => row.ID));
+      expect(user.Rows.some((row) => projectIDs.has(row.ID))).toBe(false);
+      expect(await page("project")).toEqual(VISUAL_MEMORY_PAGE);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each([
+    ["{}", /Visual memory has no page for scope/],
+    ['{"Scope":"workspace"}', /Visual memory has no page for scope/],
+    ["{", /JSON/],
+  ])(
+    "refuses a Memory read with an absent, unknown or malformed scope: %s",
+    async (input, message) => {
+      const client = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+        ),
+        { capabilities: () => VISUAL_CAPABILITIES },
+      );
+      try {
+        await expect(
+          client.plugins.call({
+            ...VISUAL_MEMORY_BINDING,
+            method: "flame.memory/list.v2",
+            input,
+            target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+          }),
+        ).rejects.toThrow(message);
+      } finally {
+        await client.close();
+      }
+    },
+  );
 
   it("serves a configured long Skills catalog from one capture without changing the default instance", async () => {
     const selected = [...VISUAL_LONG_SKILL_DOCUMENTS];

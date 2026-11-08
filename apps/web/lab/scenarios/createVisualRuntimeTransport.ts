@@ -19,11 +19,13 @@ import {
 } from "@flame/runtime-client/wire";
 import {
   VISUAL_MEMORY_PAGE,
+  VISUAL_USER_MEMORY_PAGE,
   VISUAL_SCHEDULES_PAGE,
   VISUAL_USAGE,
   VISUAL_PACKAGES,
   VISUAL_PLUGIN_PROVIDERS,
 } from "./componentSnapshots";
+import { type MethodInputs as MemoryInputs } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { VISUAL_MODEL_FACTS, type VisualModelFacts } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
@@ -115,7 +117,13 @@ function resultFor(
     case "plugins.call": {
       const call = request.params as CallPluginRequest;
       if (call.method === "flame.memory/list.v2") {
-        return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
+        const input = JSON.parse(call.input ?? "") as Partial<
+          MemoryInputs["flame.memory/list.v2"]
+        > | null;
+        const scope = input?.Scope;
+        if (scope === "project") return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
+        if (scope === "user") return { output: JSON.stringify(VISUAL_USER_MEMORY_PAGE) };
+        throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
       }
       throw new Error(`Visual plugin has no response for "${call.method}"`);
     }

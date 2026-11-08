@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The latest generic Tool reading qualification passes **4 / 4** cases, including two added English/Chinese WebKit paths through long results, arguments, window reflow and draft return. All **12 final browser images** are reviewed or matched. Actual Wails tasks cover both profiles at **200%** native zoom; **22 captures** are inspected, with two setup/input attempts excluded from intended-path success, and **116 AX records** retained. Five Web owner checks pass. This batch changes only the existing Tool inspector spec and this progress file; no new product defect or repair is claimed. The observation-clearing repair, wider shared-selection gates and their native results retain their original scope below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The Memory fixture now returns distinct recorded Project and User pages for the requested scope, refusing absent or invalid scopes. Four focused unit regressions and two WebKit cases expose the original defect. Final verification passes **103 related unit tests**, the strengthened **19-test transport contract**, **8 / 8 browser cases** and five Web owner checks. All **8 final browser images** and **25 native captures** are inspected; 15 native images qualify the final build, with **209 AX records** retained across the investigation. English/light/14 px and Chinese/dark/18 px cover actual native **200%** zoom, window changes, edit cancellation, scope return and continued drafts. Production components and Runtime are unchanged. The preceding Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9615,6 +9615,102 @@ primary parallel checkout remain untouched. This documentation receipt changes
 no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
+
+### Memory Lab target identity and User reading (2026-11-09)
+
+Actual Wails exposes a misleading Lab scene: selecting User memory changes the
+header and radio selection, but the returned rows still belong to Project memory.
+The expanded record explicitly shows that conflicting scope. The original
+`createVisualRuntimeTransport.ts` ignores the Memory read input and always
+returns the Project page. Production presentation correctly renders the captured
+record; this is a fixture-data defect, not evidence of live provider corruption.
+
+The existing Memory read branch now selects the recorded page from explicit
+`Scope: "project"` or `Scope: "user"`. Missing or unknown scope refuses, as does
+malformed JSON. `componentSnapshots.ts` adds one separately identified,
+human-authored User record. Shared page metadata derives from the existing page.
+Both original Project rows and every other snapshot remain byte-for-byte
+unchanged. There is no production UI, backend, Runtime, generated-resource,
+dependency, story, route or visual-configuration change, and no mutation simulator
+or new transport abstraction. Unmodelled operations retain their existing refusal.
+
+Read-only ZCode MemorySettingsViewer and SettingsResourceHeaderActions inform
+scope and action grouping. Better Layout and Accessibility guide readable scope
+facts, ordinary keyboard entry and reachable actions during reflow. Existing
+Flame panels, Facts, RecordForm, fields and semantic tokens remain the owners.
+
+Claude Code CLI completes a bounded two-file candidate in **47.381 s**, with all
+12 protected references unchanged. Primary review verifies the actual diff,
+retains the Project data and owns public-client regressions, browser coverage,
+native acceptance and publication. The existing generic Memory read test now
+supplies its required Project scope and workspace rather than relying on the old
+implicit fallback. An initial lint failure requires a refusal message matcher;
+the final assertions check the scope error or JSON parsing failure explicitly.
+No assertion, deadline, retry or configured gate is weakened.
+
+Verification:
+
+- Against the original implementation, all **15 existing transport tests** pass
+  and all **four added regressions** fail. They expose User rows carrying Project
+  scope and successful reads for missing, unknown or malformed scope inputs.
+  Final related units pass **4 files / 103 tests** in **7.454 s**. After the lint
+  correction, the strengthened transport file passes **19 / 19** in **0.931 s**.
+- The existing Memory draft browser file adds English/light/14 px and
+  Chinese/dark/18 px WebKit tasks. The original four cases pass and both new cases
+  fail on captured scope in **32.756 s**. Final draft and filter selection passes
+  **8 / 8** in **25.857 s** (**25.518 s** in the report), with no retries, skips,
+  flaky outcomes or global errors. All **eight final images** are inspected;
+  the two original failure images and their error contexts remain retained.
+  Final detail captures reveal Facts before capture in the short frame.
+- The new tasks inspect User identity and source, edit a multiline draft with a
+  long path, resize to **320 × 600**, reach Cancel through Tab and return to the
+  same Edit action. Cancellation leaves canonical content unchanged. Left-arrow
+  scope navigation restores the original two Project records; Escape reveals the
+  conversation and exact continued drafts. Large forms qualify the current
+  field/action units, not a guarantee that their entire heading stays visible.
+- Final Web typecheck, lint, formatting, unused-code and design-system checks
+  pass. The existing browser configuration builds and checks the Lab. All **491
+  final canonical assets** match the final native and served copies. The private
+  Wails v3.1.0 host builds in **21.302 s**, with all **46 production native inputs**
+  unchanged and 45 unchanged private copies. The private application wrapper is
+  retained at its built hash.
+
+Actual final English and Chinese tasks verify the independent User record,
+keyboard entry into Edit, exact local drafts and disabled scope switching while
+editing. Actual Size plus 20 native Zoom In actions reaches **200%**. The ordinary
+narrow-window material opener reveals the retained editor. Window > Zoom and
+restoration retain Cancel focus and draft at **2878 → 3024 → 2878 device pixels**
+wide. Keyboard cancellation restores the original User Edit action. Chinese
+additionally reads the first and last draft positions and uses a real wheel to
+read User scope/source facts without losing Edit focus. Left-arrow Project return,
+Escape to conversation, Actual Size and exact draft continuation pass in both
+profiles. Save, approval, deletion and Send are not activated.
+
+All **25 native images** are inspected and **209 AX records** retained: ten
+images/77 records investigate the original scene; 15 images/132 records qualify
+the final build. The first sidebar-collapse capture is unsettled and excluded
+from layout acceptance. A resizer click/Home attempt leaves the width at 660 px;
+it is not counted as a narrow-panel check. Subsequent keyboard entry reaches the
+resizer and sets a confirmed **320 px** width. All three native processes exit 0.
+VoiceOver, physical IME, RTL, quantitative contrast, native system motion
+preference, accepted mutations and live Runtime/provider execution remain outside
+this qualification. Full Web, UI, backend, complete Lab and native-gate suites are
+not rerun for this Lab-only data change; prior results retain their original scope.
+
+| Severity         | Location        | Before                                            | After                                                                     | Why                                                                   |
+| ---------------- | --------------- | ------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| MEDIUM, resolved | Lab Memory read | User selection renders Project records and facts. | Each explicit scope selects its own recorded page; invalid scope refuses. | A visual baseline must preserve the identity of the inspected target. |
+
+Approve for the inspected Memory scope, reading and cancellation task. All
+**6,715 non-Markdown inputs** differ only in four existing Lab files, with no
+additions. Twelve output/cache roots return to baseline, restoring **21 files**
+and removing **2,632 captured nodes**. Both owned servers exit 143, the app is
+unregistered, six private Library paths return to absence and three pre-existing
+helper roots retain their identities, modes and flags. The primary checkout and
+its `go.work.sum` remain unchanged. Functional checks end before restoration;
+normal delivery hooks, publication and fenced private-root retirement finish
+this batch. Continue task qualification through this same Lab; whole-product
+visual acceptance remains open.
 
 ### Memory native editing and retained reading after main (2026-11-05)
 
