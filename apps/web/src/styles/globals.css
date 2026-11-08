@@ -640,6 +640,10 @@ html.theme-dark {
     flex-basis var(--dur-drawer) var(--ease-drawer),
     visibility 0s linear var(--dur-drawer);
 }
+/* Clipping folds the Dock; retained readers keep their measured width throughout the motion. */
+.agent-dock-row:not([data-presentation="main"]) .agent-context-dock > * {
+  min-inline-size: var(--dock-measure);
+}
 .agent-dock-row[data-resizing] .agent-context-dock {
   transition: none;
 }

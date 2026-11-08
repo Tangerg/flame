@@ -492,6 +492,10 @@ The workspace host retains mounted view layout when switching Dock tabs. Inactiv
 views are invisible, inert and excluded from the accessibility tree. The existing
 viewport keeps its native reading position without a second scroll-state cache;
 Session changes and view retirement retain their existing lifetime boundaries.
+Collapsing clips the Dock while its contents retain their measured width through
+the motion. When a parallel Dock no longer fits, retained contents use the full
+row width before material opens there, avoiding a hidden zero-width or minimum-Dock
+reflow. The saved Dock ratio remains unchanged.
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.

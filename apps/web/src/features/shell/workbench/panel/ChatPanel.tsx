@@ -385,7 +385,7 @@ export function ChatPanel({ onSend, ref }: Props) {
       <AgentDockRow
         ref={dockRowRef}
         open={dockVisible}
-        width={dockWidth}
+        width={dockAvailable ? dockWidth : measuredWidth}
         presentation={presentedMain ? "main" : "dock"}
       >
         <div

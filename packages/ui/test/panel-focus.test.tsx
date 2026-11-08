@@ -23,6 +23,7 @@ import {
 let rectangles: Map<Element, DOMRect>;
 let revealed: Element[];
 let observations: { callback: ResizeObserverCallback; nodes: Set<Element> }[];
+let frameCallbacks: Map<number, FrameRequestCallback>;
 const nativeScroll = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
   "scrollIntoView",
@@ -32,6 +33,15 @@ beforeEach(() => {
   rectangles = new Map();
   revealed = [];
   observations = [];
+  frameCallbacks = new Map();
+  let frameId = 0;
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+    frameCallbacks.set(++frameId, callback);
+    return frameId;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+    frameCallbacks.delete(id);
+  });
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -154,7 +164,7 @@ function scene(
   };
 }
 
-function resize(node: Element) {
+function notifyResize(node: Element) {
   act(() => {
     for (const observation of observations) {
       if (observation.nodes.has(node))
@@ -164,6 +174,17 @@ function resize(node: Element) {
         );
     }
   });
+}
+
+function flushLayoutFrame() {
+  const pending = [...frameCallbacks.values()];
+  frameCallbacks.clear();
+  act(() => pending.forEach((callback) => callback(0)));
+}
+
+function resize(node: Element) {
+  notifyResize(node);
+  flushLayoutFrame();
 }
 
 it.each([false, true])(
@@ -181,6 +202,7 @@ it.each([false, true])(
     act(() => outside.focus());
     rectangles.set(viewport, new DOMRect(0, 200, 400, 220));
     fireEvent(window, new Event("resize"));
+    flushLayoutFrame();
     expect(panel.style.getPropertyValue("--reading-frame-height")).toBe(
       "220px",
     );
@@ -339,6 +361,30 @@ it("retires and renews the reader budget with retained content visibility", () =
   unmount();
   expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("");
   expect(observations.every(({ nodes }) => !nodes.has(viewport))).toBe(true);
+});
+
+it("keeps the reading unit through a hidden host reflow without moving return focus", () => {
+  const { viewport, unit, field, hide, show } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  hide();
+  const outside = document.createElement("button");
+  document.body.append(outside);
+  act(() => outside.focus());
+  rectangles.set(viewport, new DOMRect(0, 100, 600, 300));
+  rectangles.set(unit, new DOMRect(0, -500, 300, 100));
+  rectangles.set(field, new DOMRect(0, -480, 200, 32));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  show();
+  expect(document.activeElement).toBe(outside);
+  flushLayoutFrame();
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(outside);
+  revealed.length = 0;
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  outside.remove();
 });
 
 it("keeps its DOM ref attached across ordinary content updates", () => {
@@ -613,6 +659,44 @@ it("keeps focus through scroll anchoring before the resized frame is observed", 
   expect(revealed).toEqual([field]);
 });
 
+it("keeps focus through scroll anchoring after controls resize is observed", () => {
+  const { unit, field, viewport } = scene("unit", true);
+  const controls = field
+    .closest('[data-slot="panel"]')!
+    .querySelector('[data-slot="panel-controls"]')!;
+  rectangles.set(unit, new DOMRect(0, 260, 300, 100));
+  rectangles.set(field, new DOMRect(0, 280, 200, 32));
+  act(() => field.focus());
+
+  rectangles.set(controls, new DOMRect(0, 200, 800, 90));
+  rectangles.set(unit, new DOMRect(0, 300, 300, 100));
+  rectangles.set(field, new DOMRect(0, 320, 200, 32));
+  notifyResize(controls);
+  viewport.scrollTop = 40;
+  rectangles.set(unit, new DOMRect(0, 260, 300, 100));
+  rectangles.set(field, new DOMRect(0, 280, 200, 32));
+  fireEvent.scroll(viewport);
+  flushLayoutFrame();
+
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(field);
+});
+
+it("lets a later wheel gesture retire a queued layout reveal", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  rectangles.set(unit, new DOMRect(0, 340, 300, 400));
+  rectangles.set(field, new DOMRect(0, 380, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 150));
+  notifyResize(viewport);
+  fireEvent.wheel(viewport, { deltaY: 80 });
+  flushLayoutFrame();
+
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(field);
+});
+
 it("keeps the reading witness through its own queued scroll during native reflow", () => {
   const { unit, field, viewport } = scene();
   rectangles.set(unit, new DOMRect(0, 220, 300, 100));
@@ -674,6 +758,7 @@ it("responds to native window reflow before an element observer notifies", () =>
   act(() => field.focus());
   rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
   fireEvent(window, new Event("resize"));
+  flushLayoutFrame();
   expect(revealed).toEqual([field]);
 });
 

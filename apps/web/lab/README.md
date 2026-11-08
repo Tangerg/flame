@@ -307,6 +307,24 @@ reveal the target before its visibility assertion. After return, eight further
 frames must retain the saved offset, row focus and the complete row below the
 controls and inside the viewport. Both observations join the same case evidence.
 
+Related cases keep the same catalog through keyboard Dock collapse/reopen and
+the narrow-window full-width opener. An unchanged viewport retains its exact
+offset. After document return, twenty gradual viewport changes take the actual
+1440 × 900 native frame to 720 × 450. The selected `runtime-review-035` must stay
+completely visible below the controls while the Dock fits and after the ordinary
+full-width opener. Reflow and the different density may expose an earlier row.
+The retained search, scrollport and Composer nodes, query, result count, focus
+destination and continued draft are checked together. Geometry and rendered
+frames remain attached on failure. These cases use the existing Workspace spec
+and catalog; native page zoom is qualified separately in Wails.
+
+The existing Workspace sidebar offers `Observe layout`, off by default. It reads
+window, Dock, viewport and focus geometry without changing the material or its
+draft. Named screen-reader outputs expose one snapshot in full and a compact
+reading projection for native accessibility tools with bounded text nodes.
+Editable values never enter these outputs. Disabling the option clears them and
+disconnects its observers and event listeners; clean qualification keeps it off.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

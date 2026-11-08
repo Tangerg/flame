@@ -674,8 +674,7 @@ html:not([data-input-modality]) [data-focus-proxy]:focus-within {
   }
 }
 
-[data-slot="panel-body"]
-  :where(:focus, [id], label:focus-within, [data-focus-unit]:focus-within) {
+[data-slot="panel-body"] :where(*) {
   scroll-margin-block-start: calc(
     var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
       var(--layout-control-gap)

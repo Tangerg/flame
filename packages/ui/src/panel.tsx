@@ -425,9 +425,15 @@ export function Panel({
     measure();
     const document = panel.ownerDocument;
     const initial = document.activeElement;
-    const initialFrame = keepBodyFocusVisible(initial);
+    // A hidden host can reflow and clamp its scrollport while focus is handed away.
+    const returning = readingFocus.current?.target ?? null;
+    const target = initial && body.contains(initial) ? initial : returning;
+    let restoring = target !== null && target !== initial;
+    const initialFrame = restoring
+      ? bodyFocusFrame(target)
+      : keepBodyFocusVisible(target);
     readingFocus.current =
-      initial && initialFrame ? { target: initial, frame: initialFrame } : null;
+      target && initialFrame ? { target, frame: initialFrame } : null;
     const scrollPositions = viewportPositions.current;
     for (
       let parent = panel.parentElement;
@@ -439,10 +445,12 @@ export function Panel({
     }
     const reveal = () => {
       measure();
+      const resume = restoring;
+      restoring = false;
       const reading = readingFocus.current;
       if (!reading) return;
       if (
-        reading.target !== document.activeElement ||
+        (!resume && reading.target !== document.activeElement) ||
         !body.contains(reading.target)
       ) {
         readingFocus.current = null;
@@ -450,6 +458,8 @@ export function Panel({
       }
       const frame = keepBodyFocusVisible(reading.target);
       if (frame) reading.frame = frame;
+      if (reading.target !== document.activeElement)
+        readingFocus.current = null;
     };
     const retire = () => {
       readingFocus.current = null;
@@ -457,12 +467,24 @@ export function Panel({
     const clearPress = () => {
       pressedTarget.current = null;
     };
+    const window = document.defaultView!;
+    let queuedReveal = 0;
+    // WebKit can deliver layout-driven scrolling after ResizeObserver.
+    const revealAfterLayout = () => {
+      if (queuedReveal) return;
+      queuedReveal = window.requestAnimationFrame(() => {
+        queuedReveal = 0;
+        reveal();
+      });
+    };
+    if (restoring && readingFocus.current) revealAfterLayout();
     const onScroll = (event: Event) => {
       const viewport = event.currentTarget as HTMLElement;
       const moved = viewport.scrollTop !== scrollPositions.get(viewport);
       scrollPositions.set(viewport, viewport.scrollTop);
       const reading = readingFocus.current;
       if (!moved || !reading) return;
+      if (queuedReveal) return;
       const frame = bodyFocusFrame(reading.target);
       if (!frame || frame.bottom <= frame.top) return;
       // Reflow and scroll anchoring can notify before ResizeObserver delivery.
@@ -476,7 +498,7 @@ export function Panel({
       if (!withinPanelFrame(reading.target.getBoundingClientRect(), frame))
         retire();
     };
-    const observer = new ResizeObserver(reveal);
+    const observer = new ResizeObserver(revealAfterLayout);
     observer.observe(panel, { box: "border-box" });
     if (controlsRef.current)
       observer.observe(controlsRef.current, { box: "border-box" });
@@ -491,18 +513,18 @@ export function Panel({
     });
     document.addEventListener("pointerup", clearPress, true);
     document.addEventListener("pointercancel", clearPress, true);
-    document.defaultView?.addEventListener("resize", reveal);
+    window.addEventListener("resize", revealAfterLayout);
     return () => {
       observer.disconnect();
+      if (queuedReveal) window.cancelAnimationFrame(queuedReveal);
       for (const viewport of scrollPositions.keys())
         viewport.removeEventListener("scroll", onScroll);
       wheelScope.removeEventListener("wheel", retire, true);
       document.removeEventListener("pointerup", clearPress, true);
       document.removeEventListener("pointercancel", clearPress, true);
-      document.defaultView?.removeEventListener("resize", reveal);
+      window.removeEventListener("resize", revealAfterLayout);
       panel.style.removeProperty("--reading-frame-height");
       scrollPositions.clear();
-      retire();
       clearPress();
     };
   }, [
@@ -547,6 +569,7 @@ export function Panel({
                 : null;
             }}
             onBlurCapture={(event) => {
+              if (!visible) return;
               const next = event.relatedTarget;
               if (!(
                 next instanceof Node && event.currentTarget.contains(next)

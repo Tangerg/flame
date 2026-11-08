@@ -28,32 +28,61 @@ async function openMemory(
 }
 
 async function expectFirstLineVisible(content: Locator) {
-  const reading = await content.evaluate((element) => {
-    const field = element as HTMLTextAreaElement;
-    const style = getComputedStyle(field);
-    const bounds = field.getBoundingClientRect();
-    const controls = field
-      .closest('[data-slot="panel"]')!
-      .querySelector('[data-slot="panel-controls"]')!
-      .getBoundingClientRect();
-    const top =
-      bounds.top +
-      parseFloat(style.borderTopWidth) +
-      parseFloat(style.paddingTop) -
-      field.scrollTop;
-    const bottom = top + parseFloat(style.lineHeight);
-    const hit = document.elementFromPoint(bounds.left + bounds.width / 2, (top + bottom) / 2);
-    return {
-      top,
-      bottom,
-      controlsBottom: controls.bottom,
-      viewportBottom: innerHeight,
-      hit: hit === field,
-    };
-  });
-  expect(reading.top).toBeGreaterThanOrEqual(reading.controlsBottom);
-  expect(reading.bottom).toBeLessThanOrEqual(reading.viewportBottom);
-  expect(reading.hit).toBe(true);
+  const measure = () =>
+    content.evaluate((element) => {
+      const field = element as HTMLTextAreaElement;
+      const style = getComputedStyle(field);
+      const bounds = field.getBoundingClientRect();
+      const controlsElement = field
+        .closest('[data-slot="panel"]')!
+        .querySelector('[data-slot="panel-controls"]')!;
+      const controls = controlsElement.getBoundingClientRect();
+      const viewport = field.closest('[data-slot="workspace-view-body"]')!;
+      const top =
+        bounds.top +
+        parseFloat(style.borderTopWidth) +
+        parseFloat(style.paddingTop) -
+        field.scrollTop;
+      const bottom = top + parseFloat(style.lineHeight);
+      const hit = document.elementFromPoint(bounds.left + bounds.width / 2, (top + bottom) / 2);
+      return {
+        top,
+        bottom,
+        controlsBottom: controls.bottom,
+        viewportBottom: innerHeight,
+        hit: hit === field,
+        controlsPosition: getComputedStyle(controlsElement).position,
+        controlsStatic: controlsElement.hasAttribute("data-controls-static"),
+        clearance: style.scrollMarginBlockStart,
+        viewportTop: viewport.scrollTop,
+        fieldTop: bounds.top,
+        fieldScrollTop: field.scrollTop,
+      };
+    });
+  const frames = [];
+  try {
+    // Panel coordinates layout and native scroll anchoring in the next frame.
+    await content.page().evaluate(() => new Promise(requestAnimationFrame));
+    for (let frame = 0; frame < 8; frame += 1) {
+      await content.page().evaluate(() => new Promise(requestAnimationFrame));
+      const reading = await measure();
+      frames.push(reading);
+      expect(reading.top).toBeGreaterThanOrEqual(reading.controlsBottom);
+      expect(reading.bottom).toBeLessThanOrEqual(reading.viewportBottom);
+      expect(reading.hit).toBe(true);
+    }
+  } catch (error) {
+    await test.info().attach("panel-first-line", {
+      body: await content.page().screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
+    throw error;
+  } finally {
+    await test.info().attach("panel-first-line-frames", {
+      body: JSON.stringify(frames, null, 2),
+      contentType: "application/json",
+    });
+  }
 }
 
 async function expectFieldContextVisible(content: Locator, owner: "panel" | "dialog") {
@@ -177,7 +206,7 @@ test.describe("compact Memory editing", () => {
   test.use({ hasTouch: true });
   test("opening a Memory editor with expanded filters keeps its first line readable", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const { panel, content } = await openMemory(page, "dark", {
       width: 360,
       height: 360,
@@ -186,6 +215,14 @@ test.describe("compact Memory editing", () => {
     await expect(panel.getByRole("button", { name: /^Filters\b/ })).toContainText("1 active");
     await expect(content).toBeFocused();
     await expectFirstLineVisible(content);
+    const draft = "Keep this first memory line.";
+    await page.keyboard.type(draft);
+    await expect(content).toHaveValue(draft);
+    await expectFirstLineVisible(content);
+    await testInfo.attach("compact-memory-first-line", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
   });
 });
 

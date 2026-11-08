@@ -150,7 +150,13 @@ The existing active field stays visible through layout and page-zoom changes
 without refocusing it or changing its value or text selection. A wheel gesture
 or a moved scrollbar that leaves the field behind retires that follow; reflow
 notifications without scroll displacement do not. Later outside focus, inactive
-retained content and unmount also retire the reading witness.
+content and unmount stop layout following. A retained hidden panel keeps that
+same reading unit through hidden reflow and restores its clearance once on the
+next visible layout frame, without taking focus from the host's return target.
+The witness then retires if focus remains elsewhere. Body scroll clearance also
+applies to this unfocused reading unit, so sticky controls cannot cover it.
+Resize and scroll-anchoring notifications coalesce into one layout-frame reveal;
+a later wheel gesture can still cancel it.
 The same owner records positions after its own reveal, so a queued programmatic
 scroll event during native window animation cannot retire that reflow witness.
 

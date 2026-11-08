@@ -21,6 +21,76 @@ async function expectCentreHit(control: Locator) {
   ).toBe(true);
 }
 
+test("Workspace layout observation is opt-in and preserves the material and draft", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1472, height: 1000 });
+  await page.goto(
+    "/lab/fixture.html?fixture=workspace&state=dock-skills-catalog&locale=en&theme=light&font-size=14&motion=off",
+  );
+  await expectLabReady(page);
+  const observe = page.getByRole("checkbox", { name: "Observe layout", exact: true });
+  const output = page.getByTestId("workspace-layout-observation");
+  const readingOutput = page.getByTestId("workspace-reading-observation");
+  await expect(observe).not.toBeChecked();
+  await expect(output).toHaveText("");
+  await expect(readingOutput).toHaveText("");
+  await observe.click();
+  await expect(observe).toBeChecked();
+  await expect
+    .poll(async () => {
+      const value = await output.textContent();
+      return value ? (JSON.parse(value) as { window: { width: number } }).window.width : null;
+    })
+    .toBe(1472);
+  await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+  const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
+  const draft = "Unsent layout-observation draft — 保留原始输入。";
+  await composer.fill(draft);
+  const search = page.getByRole("searchbox", { name: "Search this catalog", exact: true });
+  await search.fill("runtime");
+  const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
+  const reader = await viewport.elementHandle();
+  const reading = viewport.getByRole("button").filter({
+    has: page.getByText("runtime-review-035", { exact: true }),
+  });
+  await reading.focus();
+  await expect(reading).toBeFocused();
+  await expect
+    .poll(async () => {
+      const value = await output.textContent();
+      return value
+        ? ((JSON.parse(value) as { reading: { name: string } | null }).reading?.name ?? "")
+        : "";
+    })
+    .toContain("runtime-review-035");
+  await expect(output).not.toContainText(draft);
+  await expect(readingOutput).toContainText("runtime-review-035");
+  await expect(readingOutput).not.toContainText(draft);
+  await expect(composer).toHaveValue(draft);
+  await expect(search).toHaveValue("runtime");
+  expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
+
+  await page.getByRole("button", { name: "Expand the workspace fixture sidebar" }).click();
+  await observe.click();
+  await expect(observe).not.toBeChecked();
+  await expect(output).toHaveText("");
+  await expect(readingOutput).toHaveText("");
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const retired = await output.evaluate(async (node) => {
+    const frames = [];
+    for (let frame = 0; frame < 3; frame += 1) {
+      await new Promise(requestAnimationFrame);
+      frames.push(node.textContent);
+    }
+    return frames;
+  });
+  expect(retired).toEqual(["", "", ""]);
+  await expect(readingOutput).toHaveText("");
+  await expect(composer).toHaveValue(draft);
+  expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
+});
+
 for (const theme of ["light", "dark"]) {
   for (const width of [320, 1120]) {
     for (const view of ["subagents", "usage", "diagnostics"]) {

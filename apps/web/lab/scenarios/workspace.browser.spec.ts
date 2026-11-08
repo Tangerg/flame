@@ -826,6 +826,331 @@ for (const [browserName, skillsTest] of [
         }
       },
     );
+
+    skillsTest(
+      `Skills long catalog keeps its reading row across Dock collapse, gradual fold and full-width material in ${profile.locale} ${browserName}`,
+      async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        const query = new URLSearchParams({
+          fixture: "workspace",
+          state: "dock-skills-catalog",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: "off",
+        });
+        await page.goto(`/lab/fixture.html?${query}`);
+        await expectLabReady(page);
+        await page
+          .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+          .click();
+        const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+        await composer.fill(profile.draft);
+        const dockRow = page.locator(".agent-dock-row");
+        // The toggle's name is localized; its host and expanded state are not.
+        const toggle = page.locator(".agent-dock-control").getByRole("button");
+        const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
+        const panel = viewport
+          .getByRole("region", { name: profile.panel, exact: true })
+          .and(page.locator('[data-slot="panel"]'));
+        const catalog = panel.getByRole("region", { name: profile.available, exact: true });
+        const search = panel.getByRole("searchbox", { name: profile.search, exact: true });
+        const controls = panel.locator('[data-slot="panel-controls"]');
+        const row = (name: string) =>
+          catalog.getByRole("button").filter({
+            has: page.getByText(name, { exact: true }),
+          });
+        const first = row(VISUAL_LONG_SKILL_DOCUMENTS[0]!.name);
+        const selected = VISUAL_LONG_SKILL_DOCUMENTS.find(
+          (item) => item.name === "runtime-review-035",
+        )!;
+        const opener = row(selected.name);
+        const scrollTop = () => viewport.evaluate((node) => node.scrollTop);
+        await expect(
+          panel.getByRole("heading", { name: profile.total, exact: true }),
+        ).toBeVisible();
+        await expect(catalog.getByRole("button")).toHaveCount(VISUAL_LONG_SKILL_DOCUMENTS.length);
+        const scroller = await viewport.elementHandle();
+        const searchInput = await search.elementHandle();
+        const draftInput = await composer.elementHandle();
+        const evidence: unknown[] = [];
+        // Read-only geometry of the retained scrollport, sampled across frames.
+        const observe = () =>
+          page.evaluate(
+            async ({ scroller, names, target }) => {
+              const known = new Set(names);
+              const frames = [scroller.scrollTop];
+              for (let frame = 0; frame < 8; frame += 1) {
+                await new Promise(requestAnimationFrame);
+                frames.push(scroller.scrollTop);
+              }
+              const box = scroller.getBoundingClientRect();
+              const frameTop = box.top + scroller.clientTop;
+              const frameLeft = box.left + scroller.clientLeft;
+              const frame = {
+                top: frameTop,
+                bottom: frameTop + scroller.clientHeight,
+                left: frameLeft,
+                right: frameLeft + scroller.clientWidth,
+              };
+              const bar = scroller
+                .querySelector('[data-slot="panel-controls"]')
+                ?.getBoundingClientRect();
+              const readingEdge = Math.max(frame.top, bar?.bottom ?? frame.top);
+              const rows = Array.from(scroller.querySelectorAll('button, [role="button"]')).flatMap(
+                (button) => {
+                  const title = Array.from(button.querySelectorAll("*")).find(
+                    (node) => node.childElementCount === 0 && known.has(node.textContent ?? ""),
+                  );
+                  if (!title) return [];
+                  const { top, bottom, left, right } = button.getBoundingClientRect();
+                  return [{ name: title.textContent!, top, bottom, left, right }];
+                },
+              );
+              const index = rows.findIndex(
+                (candidate) =>
+                  candidate.bottom > candidate.top &&
+                  candidate.top >= readingEdge - 1 &&
+                  candidate.bottom <= frame.bottom + 1,
+              );
+              const reading = rows.find((candidate) => candidate.name === target) ?? null;
+              const shell = scroller.closest(".agent-dock-row");
+              const active = document.activeElement;
+              return {
+                frames,
+                scrollTop: scroller.scrollTop,
+                scrollHeight: scroller.scrollHeight,
+                clientWidth: scroller.clientWidth,
+                clientHeight: scroller.clientHeight,
+                frame,
+                readingEdge,
+                dock: {
+                  state: shell?.getAttribute("data-dock") ?? null,
+                  presentation: shell?.getAttribute("data-presentation") ?? null,
+                  measure: shell
+                    ? getComputedStyle(shell).getPropertyValue("--dock-measure")
+                    : null,
+                  width: scroller.closest(".agent-context-dock")?.getBoundingClientRect().width,
+                },
+                first:
+                  index < 0
+                    ? null
+                    : {
+                        name: rows[index]!.name,
+                        index,
+                        previous: rows[index - 1]?.name ?? null,
+                        next: rows[index + 1]?.name ?? null,
+                      },
+                target: reading,
+                targetFits:
+                  reading !== null &&
+                  reading.top >= readingEdge - 1 &&
+                  reading.bottom <= frame.bottom + 1 &&
+                  reading.left >= frame.left - 1 &&
+                  reading.right <= frame.right + 1,
+                rows,
+                focused: active
+                  ? {
+                      tag: active.tagName,
+                      label: active.getAttribute("aria-label"),
+                      html: active.outerHTML.slice(0, 300),
+                    }
+                  : null,
+                documentOverflow: document.documentElement.scrollWidth - innerWidth,
+              };
+            },
+            {
+              scroller,
+              names: VISUAL_LONG_SKILL_DOCUMENTS.map((item) => item.name),
+              target: selected.name,
+            },
+          );
+        type Observation = Awaited<ReturnType<typeof observe>>;
+        const settle = async (name: string, ready: (seen: Observation) => boolean = () => true) => {
+          let observation: Observation | undefined;
+          try {
+            await expect
+              .poll(
+                async () => {
+                  observation = await observe();
+                  const seen = observation;
+                  return seen.frames.every((top) => top === seen.frames[0]) && ready(seen);
+                },
+                { message: `the retained catalog scrollport must settle (${name})` },
+              )
+              .toBe(true);
+          } finally {
+            evidence.push({ name, observation });
+          }
+          return observation!;
+        };
+        const capture = async (name: string) => {
+          evidence.push({ name: `${name}-capture`, observation: await observe() });
+          await testInfo.attach(`skills-reflow-${profile.locale}-${name}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        };
+        try {
+          await search.fill("runtime");
+          await expect(
+            panel.getByRole("heading", { name: profile.matching, exact: true }),
+          ).toBeVisible();
+          await expect(catalog.getByRole("button")).toHaveCount(40);
+          await expect.poll(scrollTop).toBe(0);
+          await expect(first).toBeInViewport({ ratio: 1 });
+          await capture("first-match");
+
+          const firstBox = (await first.boundingBox())!;
+          const targetBox = (await opener.boundingBox())!;
+          const viewportBox = (await viewport.boundingBox())!;
+          const controlsBox = (await controls.boundingBox())!;
+          const frameBottom = viewportBox.y + viewportBox.height;
+          const room = frameBottom - (controlsBox.y + controlsBox.height) - targetBox.height;
+          const wheelDelta = Math.round(targetBox.y + targetBox.height - frameBottom + room / 4);
+          evidence.push({
+            name: "wheel-geometry",
+            first: firstBox,
+            target: targetBox,
+            viewport: viewportBox,
+            controls: controlsBox,
+            room,
+            wheelDelta,
+          });
+          expect(room).toBeGreaterThan(0);
+          expect(wheelDelta).toBeGreaterThan(0);
+          await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+          await page.mouse.wheel(0, wheelDelta);
+          const reading = await settle("reading", (seen) => seen.scrollTop > 0);
+          const readingTop = reading.scrollTop;
+          expect(readingTop).toBeGreaterThan(300);
+          expect(reading.targetFits, `${selected.name} must be fully readable`).toBe(true);
+          await capture("before-collapse");
+
+          await expect(toggle).toHaveAttribute("aria-expanded", "true");
+          if (profile.locale === "en") {
+            await expect(toggle).toHaveAccessibleName(en["dock.action.hide"]!);
+          }
+          const hideLabel = (await toggle.getAttribute("aria-label"))!;
+          await toggle.focus();
+          await page.keyboard.press("Enter");
+          await expect(dockRow).toHaveAttribute("data-dock", "collapsed");
+          await expect(toggle).toHaveAttribute("aria-expanded", "false");
+          await expect(toggle).not.toHaveAttribute("aria-label", hideLabel);
+          if (profile.locale === "en") {
+            await expect(toggle).toHaveAccessibleName(en["dock.action.show"]!);
+          }
+          await expect(toggle).toBeFocused();
+          await settle("collapsed", (seen) => seen.dock.state === "collapsed");
+          await capture("collapsed");
+          await expect(composer).toHaveValue(profile.draft);
+
+          await expect(toggle).toBeFocused();
+          await page.keyboard.press("Enter");
+          await expect(dockRow).toHaveAttribute("data-dock", "open");
+          await expect(toggle).toHaveAttribute("aria-expanded", "true");
+          await expect(toggle).toHaveAttribute("aria-label", hideLabel);
+          await expect(toggle).toBeFocused();
+          await expect(search).toHaveValue("runtime");
+          await expect(
+            panel.getByRole("heading", { name: profile.matching, exact: true }),
+          ).toBeVisible();
+          await expect
+            .poll(async () => Math.abs((await scrollTop()) - readingTop), {
+              message: "reopening the Dock at the same viewport must keep the reading offset",
+            })
+            .toBeLessThanOrEqual(1);
+          const reopened = await settle("reopened", (seen) => seen.dock.state === "open");
+          await capture("reopened");
+          for (const top of reopened.frames) {
+            expect(Math.abs(top - readingTop)).toBeLessThanOrEqual(1);
+          }
+          expect(reopened.targetFits, `${selected.name} must stay fully readable`).toBe(true);
+          await expect(toggle).toBeFocused();
+          await expect(composer).toHaveValue(profile.draft);
+          expect(await search.evaluate((node, before) => node === before, searchInput)).toBe(true);
+          expect(await viewport.evaluate((node, before) => node === before, scroller)).toBe(true);
+
+          await opener.click();
+          await expect(
+            panel.getByRole("region", { name: profile.instructions, exact: true }),
+          ).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(opener).toBeFocused();
+          const reflowSearchInput = await search.elementHandle();
+          const returned = await settle("pre-reflow-reading");
+          expect(returned.targetFits, "the returned reading row must be fully visible").toBe(true);
+          for (let step = 1; step <= 20; step += 1) {
+            const scale = 1 + step / 20;
+            await page.setViewportSize({
+              width: Math.floor(1440 / scale),
+              height: Math.floor(900 / scale),
+            });
+            const narrowed = await settle(`narrow-${step}`);
+            if (narrowed.dock.state === "open") {
+              await expect(opener).toBeFocused();
+              expect(narrowed.targetFits, "the focused reading row must survive each reflow").toBe(
+                true,
+              );
+            }
+          }
+          await expect(dockRow).toHaveAttribute("data-dock", "collapsed");
+          await expect(
+            page.getByRole("region", { name: profile.conversation, exact: true }),
+          ).toBeFocused();
+          await expect(
+            page.getByRole("searchbox", { name: profile.search, exact: true }),
+          ).toHaveCount(0);
+          const openFull = page.getByRole("button", { name: profile.openFull, exact: true });
+          await expect(openFull).toBeEnabled();
+          await settle("folded", (seen) => seen.dock.state === "collapsed");
+          await capture("folded");
+          await openFull.click();
+          await expect(dockRow).toHaveAttribute("data-presentation", "main");
+          await expect(search).toHaveValue("runtime");
+          await expect(
+            panel.getByRole("heading", { name: profile.matching, exact: true }),
+          ).toBeVisible();
+          await expect(catalog.getByRole("button")).toHaveCount(40);
+          expect(await search.evaluate((node, before) => node === before, reflowSearchInput)).toBe(
+            true,
+          );
+          expect(await viewport.evaluate((node, before) => node === before, scroller)).toBe(true);
+          const material = await settle("full-width", (seen) => seen.dock.presentation === "main");
+          await capture("full-width");
+          expect(material.targetFits, "the original reading target must remain readable").toBe(
+            true,
+          );
+          expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(
+            0,
+          );
+
+          const close = page.getByRole("button", { name: profile.close, exact: true });
+          await close.focus();
+          await close.press("Enter");
+          await expect(
+            page.getByRole("region", { name: profile.conversation, exact: true }),
+          ).toBeFocused();
+          await expect(composer).toHaveValue(profile.draft);
+          expect(await composer.evaluate((node, before) => node === before, draftInput)).toBe(true);
+          await composer.focus();
+          await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+          await page.keyboard.insertText(profile.suffix);
+          await expect(composer).toHaveValue(profile.draft + profile.suffix);
+          await capture("continued-draft");
+        } catch (error) {
+          await capture("failure").catch((reason: unknown) => {
+            evidence.push({ name: "failure-capture", error: String(reason) });
+          });
+          throw error;
+        } finally {
+          await testInfo.attach("skills-catalog-reflow.json", {
+            body: JSON.stringify({ locale: profile.locale, browserName, evidence }),
+            contentType: "application/json",
+          });
+        }
+      },
+    );
   }
 }
 

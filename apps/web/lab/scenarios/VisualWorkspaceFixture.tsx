@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Checkbox } from "@flame/ui";
 import { Slot } from "@/extensions/host/Slot";
 import { AppToaster } from "@/features/notifications/toaster/index";
 import { useActiveWorkspaceViewId, useWorkspaceDock } from "@/features/workspace/public/navigation";
@@ -14,6 +15,7 @@ import { type VisualWorkspaceState } from "./workspaceFixtureStates";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
+import { observationTargetName } from "../observations";
 const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-light": "Files workspace",
   "dock-review": "Diff review",
@@ -40,7 +42,15 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   settings: "Settings",
 };
 
-function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
+function WorkspaceStateSidebar({
+  state,
+  observeLayout,
+  onObserveLayoutChange,
+}: {
+  state: VisualWorkspaceState;
+  observeLayout: boolean;
+  onObserveLayoutChange: (observe: boolean) => void;
+}) {
   const listRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -83,10 +93,195 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
         ))}
       </div>
       <div {...stylex.props(fx.footGap)} />
+      <div {...stylex.props(fx.listFoot, fx.ink)}>
+        <Checkbox
+          checked={observeLayout}
+          onCheckedChange={onObserveLayoutChange}
+          label="Observe layout"
+        />
+      </div>
       <div {...stylex.props(fx.listFoot, typeStep.uiXs)}>
         Production views · deterministic providers
       </div>
     </div>
+  );
+}
+
+function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
+  const mainViewId = useActiveWorkspaceViewId();
+  const dock = useWorkspaceDock();
+  const scope = mainViewId ?? dock.activeViewId;
+  const output = useRef<HTMLOutputElement>(null);
+  const readingOutput = useRef<HTMLOutputElement>(null);
+  useLayoutEffect(() => {
+    const node = output.current;
+    const readingNode = readingOutput.current;
+    if (!node || !readingNode) return;
+    node.textContent = "";
+    readingNode.textContent = "";
+    if (!enabled) return;
+    const document = node.ownerDocument;
+    const view = document.defaultView!;
+    const state = {
+      frame: 0,
+      reader: null as HTMLElement | null,
+      reading: null as Element | null,
+      observedReader: null as Element | null,
+      observedControls: null as Element | null,
+      blur: null as { target: string | null; related: string | null; focused: boolean } | null,
+    };
+    const rect = (element: Element | null) => element?.getBoundingClientRect().toJSON() ?? null;
+    const capture = () => {
+      state.frame = 0;
+      const reader =
+        Array.from(
+          document.querySelectorAll<HTMLElement>('[data-slot="workspace-view-body"]'),
+        ).find(
+          (candidate) =>
+            !candidate.closest('[inert], [aria-hidden="true"]') &&
+            view.getComputedStyle(candidate).visibility !== "hidden",
+        ) ?? (state.reader?.isConnected ? state.reader : null);
+      state.reader = reader;
+      const active = document.activeElement;
+      if (
+        active &&
+        reader?.contains(active) &&
+        active.closest('[data-slot="panel-body"]') &&
+        (active.matches('button, a[href], input, select, textarea, [role="button"]') ||
+          active.hasAttribute("aria-label"))
+      ) {
+        state.reading = active;
+      }
+      if (!state.reading?.isConnected || !reader?.contains(state.reading)) state.reading = null;
+      const reading = state.reading;
+      const controls = reader?.querySelector('[data-slot="panel-controls"]') ?? null;
+      for (const [before, next] of [
+        [state.observedReader, reader],
+        [state.observedControls, controls],
+      ]) {
+        if (before === next) continue;
+        if (before) observer.unobserve(before);
+        if (next) observer.observe(next);
+      }
+      state.observedReader = reader;
+      state.observedControls = controls;
+      const dock = reader?.closest(".agent-context-dock") ?? null;
+      const row = dock?.closest(".agent-dock-row") ?? null;
+      const snapshot = {
+        view: scope,
+        window: {
+          width: view.innerWidth,
+          height: view.innerHeight,
+          documentWidth: document.documentElement.clientWidth,
+          dpr: view.devicePixelRatio,
+          focused: document.hasFocus(),
+        },
+        visualViewport: view.visualViewport
+          ? {
+              width: view.visualViewport.width,
+              height: view.visualViewport.height,
+              scale: view.visualViewport.scale,
+            }
+          : null,
+        dock: {
+          state: row?.getAttribute("data-dock"),
+          presentation: row?.getAttribute("data-presentation"),
+          rect: rect(dock),
+        },
+        viewport: reader
+          ? {
+              rect: rect(reader),
+              width: reader.clientWidth,
+              height: reader.clientHeight,
+              top: reader.scrollTop,
+              total: reader.scrollHeight,
+              fontSize: view.getComputedStyle(reader).fontSize,
+            }
+          : null,
+        controls: rect(controls),
+        focus: active ? { tag: active.localName, label: active.getAttribute("aria-label") } : null,
+        blur: state.blur,
+        reading: reading ? { name: observationTargetName(reading), rect: rect(reading) } : null,
+      };
+      node.textContent = JSON.stringify(snapshot);
+      // Native accessibility snapshots bound each text node independently.
+      readingNode.textContent = JSON.stringify({
+        focused: snapshot.window.focused,
+        focus: snapshot.focus,
+        blur: snapshot.blur,
+        window: [snapshot.window.width, snapshot.window.height],
+        dock: snapshot.dock.state,
+        viewport: snapshot.viewport
+          ? [
+              snapshot.viewport.width,
+              snapshot.viewport.height,
+              snapshot.viewport.top,
+              snapshot.viewport.total,
+            ]
+          : null,
+        reading: snapshot.reading
+          ? {
+              name: snapshot.reading.name,
+              top: snapshot.reading.rect.top,
+              bottom: snapshot.reading.rect.bottom,
+            }
+          : null,
+      });
+    };
+    const schedule = () => {
+      if (!state.frame) state.frame = view.requestAnimationFrame(capture);
+    };
+    const onBlur = (event: FocusEvent) => {
+      state.blur = {
+        target: event.target instanceof Element ? event.target.localName : null,
+        related: event.relatedTarget instanceof Element ? event.relatedTarget.localName : null,
+        focused: document.hasFocus(),
+      };
+      schedule();
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(document.documentElement);
+    document.addEventListener("focusin", schedule);
+    document.addEventListener("focusout", onBlur);
+    document.addEventListener("click", schedule, true);
+    document.addEventListener("scroll", schedule, { capture: true, passive: true });
+    view.addEventListener("resize", schedule);
+    view.addEventListener("blur", schedule);
+    view.addEventListener("focus", schedule);
+    view.visualViewport?.addEventListener("resize", schedule);
+    schedule();
+    return () => {
+      observer.disconnect();
+      if (state.frame) view.cancelAnimationFrame(state.frame);
+      document.removeEventListener("focusin", schedule);
+      document.removeEventListener("focusout", onBlur);
+      document.removeEventListener("click", schedule, true);
+      document.removeEventListener("scroll", schedule, true);
+      view.removeEventListener("resize", schedule);
+      view.removeEventListener("blur", schedule);
+      view.removeEventListener("focus", schedule);
+      view.visualViewport?.removeEventListener("resize", schedule);
+      node.textContent = "";
+      readingNode.textContent = "";
+    };
+  }, [enabled, scope]);
+  return (
+    <>
+      <output
+        ref={output}
+        className="sr-only"
+        aria-label="Workspace layout observation"
+        aria-live="off"
+        data-testid="workspace-layout-observation"
+      />
+      <output
+        ref={readingOutput}
+        className="sr-only"
+        aria-label="Workspace reading observation"
+        aria-live="off"
+        data-testid="workspace-reading-observation"
+      />
+    </>
   );
 }
 
@@ -120,6 +315,7 @@ function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
 }
 
 export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState }) {
+  const [observeLayout, setObserveLayout] = useState(false);
   const settingsOpen = useActiveWorkspaceViewId() === "settings";
   const sidebar = useSidebarDrawer();
   const sidebarWidth = useSidebarWidth();
@@ -134,7 +330,15 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
       onSidebarToggle={sidebar.toggle}
       sidebarExpandLabel="Expand the workspace fixture sidebar"
       sidebarCollapseLabel="Collapse the workspace fixture sidebar"
-      sidebar={settingsOpen ? undefined : <WorkspaceStateSidebar state={state} />}
+      sidebar={
+        settingsOpen ? undefined : (
+          <WorkspaceStateSidebar
+            state={state}
+            observeLayout={observeLayout}
+            onObserveLayoutChange={setObserveLayout}
+          />
+        )
+      }
       main={
         <div {...stylex.props(fx.contents)} data-testid="workspace-state" data-state={state}>
           <Slot name="app.main" />
@@ -144,6 +348,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
         <>
           <Slot name="app.overlay" />
           <WorkspaceFixtureReadout state={state} />
+          <WorkspaceLayoutReadout enabled={observeLayout} />
           <AppToaster />
         </>
       }

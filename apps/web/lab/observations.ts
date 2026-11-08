@@ -108,7 +108,7 @@ function targetElement(event: Event): Element | null {
   return element?.closest(interactiveTarget) ?? null;
 }
 
-function targetName(element: Element): string {
+export function observationTargetName(element: Element): string {
   if (sensitive(element)) return `${element.localName} [sensitive]`;
   const label = element.getAttribute("aria-label");
   if (label) return observationName(label);
@@ -216,7 +216,11 @@ class PreviewObservations {
   readonly #onInteraction = (event: Event): void => {
     const element = targetElement(event);
     if (element)
-      this.#send("event", `${event.type}: ${targetName(element)}`, controlDetail(element));
+      this.#send(
+        "event",
+        `${event.type}: ${observationTargetName(element)}`,
+        controlDetail(element),
+      );
   };
 
   readonly #onError = (event: ErrorEvent): void => {
