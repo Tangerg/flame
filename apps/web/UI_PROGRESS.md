@@ -100,6 +100,14 @@ Verification:
   change **2878 → 3024 → 2878 device pixels**. Complete Chinese target path, scope
   and 64-character revision remain readable through ordinary scrolling.
 
+Failure-path cleanup debt remains in the Runtime integration fixture:
+`runtime-http.e2e.test.ts:1184` starts artifact builders with `Promise.all`, so
+siblings can outlive its first rejection and overlap teardown. The missing-archive
+attempt leaves a 15-node plugin stage in its exact temporary root. All captured
+nodes are retired after identity, hash, process and open-file checks. Revisit this
+fixture lifecycle when setup changes or another prerequisite failure leaves files;
+the successful final gate does not exercise that cleanup failure path.
+
 All **38 native images** and **91 AX records** are retained for inspection; 21
 images precede the repair and 17 qualify it. All four native processes exit 0.
 The original stray native backplate is absent in the final observed path. Native
