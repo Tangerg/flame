@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. Clearing observations now retains the action's focus and the current preview state through the existing shared button contract. All four focused regressions pass. The complete Lab shell interaction file passes **30 / 30**, with no retries, skips, flaky results or global errors in the final run. Its **39 images** match reviewed bytes; all **22 native captures** are inspected, including 19 using the repaired build. English/light/14 px and Chinese/dark/18 px cover keyboard and pointer clearing, actual native 200% zoom, reading and window changes. Six Web owner checks and the native gate pass. The preceding shared selection repair retains its **276 UI tests**, **4,770 Web tests**, **319 Lab cases** and native evidence in the section below; those wider gates are not rerun for this Lab-only change. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. An initial shell run encounters a browser resource-loading failure before the unchanged final run passes; its cause remains unresolved. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The latest generic Tool reading qualification passes **4 / 4** cases, including two added English/Chinese WebKit paths through long results, arguments, window reflow and draft return. All **12 final browser images** are reviewed or matched. Actual Wails tasks cover both profiles at **200%** native zoom; **22 captures** are inspected, with two setup/input attempts excluded from intended-path success, and **116 AX records** retained. Five Web owner checks pass. This batch changes only the existing Tool inspector spec and this progress file; no new product defect or repair is claimed. The observation-clearing repair, wider shared-selection gates and their native results retain their original scope below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33534,6 +33534,92 @@ Approve for the inspected result-presentation transition and reading-return task
 The whole-product UI goal remains active. Continue from another observed content
 or Dock task, preserving this local boundary and the existing message-level
 fallback; do not make a result enhancement a second Tool lifecycle owner.
+
+#### Generic Tool reading and draft return (2026-11-09)
+
+The current production task has no newly observed layout or reading defect.
+Its coverage gap is concrete: the existing Tool inspector browser file checks
+two English scenes but does not follow the complete keyboard reading, reflow
+and draft-return task. Both original test bodies remain byte-for-byte unchanged.
+The same file now adds WebKit English/light/14 px/full-motion and
+Chinese/dark/18 px/motion-off cases, using the existing production dictionaries
+and registered fixture locale `zh`.
+
+The added paths author an unsent draft, expand the Tool group, enter
+`inspect_workspace` by keyboard and traverse Copy arguments, Wrap, Copy code and
+the Result reader. End reaches the captured 24-file result tail. Arguments
+remain secondary, retain literal source text and use the existing shared wrap
+preference. The same reader, focus, source and Composer nodes survive
+**1120 × 720 → 640 × 400 → 1120 × 720** changes without document horizontal
+overflow. End reads the reflowed tail again; a pixel scroll offset is not treated
+as an invariant across wrapping changes. Reverse Tab returns through the real
+controls, collapses the inspector and reaches the original Composer through the
+assistant actions. Continued drafts match their complete expected values.
+
+Read-only ZCode Tool layout and body composition inform summary/detail scope;
+Flame's existing Tool inspector and captured state own the behavior. Better
+Layout, Typography and Accessibility guide reading, reflow and keyboard review.
+No production component, Runtime boundary, dependency, fixture, story, route or
+visual configuration changes. All 97 visual specs remain inside the Lab, with
+one Playwright configuration.
+
+Claude Code CLI writes a one-file candidate in a bounded private copy, but exits
+**124 at 180.061 s** before its final response. Seven protected references remain
+unchanged. This is not recorded as CLI completion. Primary review removes a
+dynamic action-label expression and forwarding focus helper, uses the exact
+observed actions, adds the narrow capture and verifies the final diff. An initial
+primary edit removes the required JSON import attribute, so collection fails
+before any case runs; restoring the project's existing import convention fixes
+that error. The next run passes the two original cases but fails the two new
+collapse assertions. The existing Collapsible intentionally retains content
+inside an inert, transparent, zero-height well. The final tests assert that
+actual closed contract, its geometry and retained trigger focus. They do not
+change product behavior, deadlines, retries or the original checks.
+
+Verification:
+
+- The original focused baseline passes **2 / 2** in **11.598 s**. The final
+  command passes **4 / 4** in **18.976 s** (**18.615 s** in the Playwright report),
+  with no skips, retries, flaky outcomes or global errors. All **12 final images**
+  are inspected or hash-matched; both failed attempts retain their reports and
+  the collapse attempt's ten images and two error contexts.
+- Final Web typecheck, lint, formatting, unused-code and design-system checks
+  pass. The Lab build passes; all **491 canonical assets** still match the native
+  and served copies byte for byte after the test edit. The private Wails v3.1.0
+  host builds in **20.027 s**. All **46 production native sources** are unchanged,
+  with 45 unchanged private copies and only the pinned private application
+  wrapper adapted for isolated graphical qualification.
+- Actual English and Chinese native tasks cover Tool-group entry, result and
+  argument reading, shared wrapping, complete source tails, keyboard return and
+  continued drafts. Actual Size plus **20 native Zoom In actions** reaches
+  **200%**. Focused Copy remains visible through zoom; window enlargement and
+  restoration retain reading and draft context at **2878 → 3024 → 2878 device
+  pixels** wide. Chinese also covers wheel reading and End return. Both profiles
+  restore Actual Size before Quit.
+
+All **22 native captures** are inspected and **116 AX records** retained. Twenty
+images support the intended task. One initial English shortcut places the
+continuation before the draft; it is undone and corrected with the native end
+caret shortcut before successful append. One raw fixture launch uses `zh-CN`
+instead of registered `zh` and is explicitly rejected. Both attempts are
+excluded from intended-path success; no locale fallback or product fix is added.
+All three native processes exit 0. Copy controls are traversed, not activated,
+in this native task; no fresh OS clipboard claim follows. VoiceOver, physical
+IME, RTL, quantitative focus contrast, native system motion preference and live
+provider execution remain unverified. Full Web, UI, backend, complete Lab and
+native-gate suites are not rerun for this test-only change; prior results retain
+their original scope.
+
+Approve for the inspected generic Tool reading task only. Twelve output/cache
+roots are restored to their captured baselines, restoring **21 files** and
+removing **1,059 captured nodes**. Six private Library paths return to absence;
+three pre-existing helper roots retain their identities, modes and flags. The
+exact owned server exits 143, the app is unregistered, and the primary checkout
+and its `go.work.sum` remain unchanged. All **6,715 non-Markdown inputs** differ
+only in the existing Tool inspector spec, with no added source. Normal delivery
+hooks, publication and fenced private-root retirement complete this batch;
+no functional check runs after output restoration. Whole-product visual
+acceptance remains open; continue task qualification through this same Lab.
 
 ### Reading focus through geometry changes
 

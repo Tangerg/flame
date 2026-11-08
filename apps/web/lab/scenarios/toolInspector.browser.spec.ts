@@ -1,5 +1,8 @@
 import { expect, test } from "./test";
 import { expectLabReady } from "../readiness";
+import type { Locator } from "@playwright/test";
+import { en } from "../../src/lib/i18n/locales/en";
+import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 for (const [theme, fontSize, width] of [
   ["light", 14, 1120],
   ["dark", 18, 800],
@@ -134,4 +137,213 @@ for (const [theme, fontSize, width] of [
       releaseHighlight();
     }
   });
+}
+
+const webkit = test.extend({ browserName: "webkit" });
+for (const profile of [
+  {
+    locale: "en",
+    theme: "light",
+    fontSize: 14,
+    motion: "full",
+    messages: en,
+    draft: "Summarize the inspected boundary",
+    continuation: " before release.",
+  },
+  {
+    locale: "zh",
+    theme: "dark",
+    fontSize: 18,
+    motion: "off",
+    messages: zh as Record<string, string>,
+    draft: "总结已检查的边界",
+    continuation: "，然后再发布。",
+  },
+] as const) {
+  const { locale, theme, fontSize, motion, messages, draft, continuation } = profile;
+  webkit(
+    `WebKit keyboard tool reading keeps reader and draft through reflow in ${locale}/${theme}/${fontSize}`,
+    async ({ page }, testInfo) => {
+      const t = (key: string, count?: number) => messages[key]!.replace("{{count}}", String(count));
+      const name = (key: string) => ({ name: t(key), exact: true });
+      const capture = async (label: string) =>
+        testInfo.attach(`tool-reading-${label}-${locale}`, {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+      const atTail = async (reader: Locator) => {
+        await expect
+          .poll(() =>
+            reader.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
+          )
+          .toBeLessThanOrEqual(1);
+        const frame = (await reader.boundingBox())!;
+        const line = (await reader.locator("code .line").last().boundingBox())!;
+        expect(line.y).toBeGreaterThanOrEqual(frame.y - 1);
+        expect(line.y + line.height).toBeLessThanOrEqual(frame.y + frame.height + 1);
+      };
+
+      await page.setViewportSize({ width: 1120, height: 720 });
+      await page.goto(
+        `/lab/fixture.html?fixture=agent&state=tool-agentic&sidebar=collapsed&locale=${locale}&theme=${theme}&font-size=${fontSize}&motion=${motion}`,
+      );
+      await expectLabReady(page);
+      await page.evaluate(() => document.fonts.ready);
+      const composer = page.getByRole("textbox", name("composer.input.label"));
+      await composer.click();
+      await page.keyboard.type(draft);
+      await expect(composer).toHaveValue(draft);
+      const input = (await composer.elementHandle())!;
+
+      await page
+        .getByRole("button", {
+          name: `${t("tool.group.search", 4)} · ${t("tool.group.run", 2)} ${t("agent.steps_other", 6)}`,
+          exact: true,
+        })
+        .click();
+      const header = page.locator(
+        '[data-tool="inspect_workspace"] [data-slot="agent-activity-header"]',
+      );
+      const trigger = header.getByRole("button", { name: "inspect_workspace", exact: true });
+      const copyArguments = header.getByRole("button", name("toolAction.copyArguments"));
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      await expect(trigger).toBeFocused();
+      const result = page.getByRole("region", name("toolInspector.result"));
+      const resultFrame = result.locator("..");
+      const argumentsButton = page.getByRole("button", name("toolInspector.arguments"));
+      await expect(result).toBeVisible();
+      await expect(argumentsButton).toHaveAttribute("aria-expanded", "false");
+      await result.locator("code .line").first().waitFor();
+      const resultNode = (await result.elementHandle())!;
+
+      for (const stop of [
+        copyArguments,
+        resultFrame.getByRole("button", name("message.code.wrap.enable")),
+        resultFrame.getByRole("button", name("message.code.copy")),
+        result,
+      ]) {
+        await page.keyboard.press("Tab");
+        await expect(stop).toBeFocused();
+      }
+      await page.keyboard.press("End");
+      await atTail(result);
+      expect(JSON.parse(await result.innerText())).toEqual({
+        summary: { status: "reviewed", files: 24 },
+        files: Array.from({ length: 24 }, (_, index) => ({
+          path: `runtime/internal/session/state_${index + 1}.go`,
+          status: "reviewed",
+        })),
+      });
+      await capture("result-tail");
+
+      await page.keyboard.press("Tab");
+      await expect(argumentsButton).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(argumentsButton).toHaveAttribute("aria-expanded", "true");
+      const args = page.getByRole("region", name("toolInspector.arguments"));
+      const argsFrame = args.locator("..");
+      await args.locator("code .line").first().waitFor();
+      await page.keyboard.press("Tab");
+      await expect(argsFrame.getByRole("button", name("message.code.wrap.enable"))).toBeFocused();
+      await page.keyboard.press("Enter");
+      const argsWrap = argsFrame.getByRole("button", name("message.code.wrap.disable"));
+      await expect(argsWrap).toBeFocused();
+      await expect(page.getByRole("button", name("message.code.wrap.disable"))).toHaveCount(2);
+      await page.keyboard.press("Tab");
+      await expect(args).toBeFocused();
+      await page.keyboard.press("End");
+      await atTail(args);
+      const source = await args.innerText();
+      expect(JSON.parse(source)).toEqual({
+        workspace: {
+          root: `/Users/visual/Flame workspaces/${"application-boundary-".repeat(12)}review`,
+          include: ["runtime/internal/session/**", "apps/web/src/**"],
+        },
+        checks: ["ownership", "dependency-direction"],
+        notes: "Keep <component> tags and source paths as literal text.",
+      });
+      await expect(args.locator("component")).toHaveCount(0);
+      await expect
+        .poll(() => args.evaluate((node) => node.scrollWidth - node.clientWidth))
+        .toBeLessThanOrEqual(1);
+
+      const reader = (await args.elementHandle())!;
+      const retained = async () => {
+        expect(
+          await reader.evaluate((node) => node.isConnected && node === document.activeElement),
+        ).toBe(true);
+        expect(await args.evaluate((node, held) => node === held, reader)).toBe(true);
+        expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+        expect(await args.innerText()).toBe(source);
+        await expect(composer).toHaveValue(draft);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(
+          0,
+        );
+      };
+      await page.setViewportSize({ width: 640, height: 400 });
+      await retained();
+      await capture("arguments-narrow");
+      await page.setViewportSize({ width: 1120, height: 720 });
+      await retained();
+      await page.keyboard.press("End");
+      await atTail(args);
+      await capture("arguments-wrapped-tail");
+
+      await page.keyboard.press("Shift+Tab");
+      await expect(argsWrap).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(argumentsButton).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(argumentsButton).toHaveAttribute("aria-expanded", "false");
+      for (const stop of [
+        result,
+        resultFrame.getByRole("button", name("message.code.copy")),
+        resultFrame.getByRole("button", name("message.code.wrap.disable")),
+        copyArguments,
+        trigger,
+      ]) {
+        await page.keyboard.press("Shift+Tab");
+        await expect(stop).toBeFocused();
+      }
+      await page.keyboard.press("Enter");
+      await expect(trigger).toHaveAttribute("aria-expanded", "false");
+      await expect
+        .poll(() =>
+          resultNode.evaluate((node) => {
+            const closed = node.closest<HTMLElement>("[inert]");
+            return closed
+              ? {
+                  height: closed.getBoundingClientRect().height,
+                  opacity: getComputedStyle(closed).opacity,
+                }
+              : null;
+          }),
+        )
+        .toEqual({ height: 0, opacity: "0" });
+      await expect(trigger).toBeFocused();
+
+      for (const stop of [
+        copyArguments,
+        page.getByRole("button", name("msgActions.copy")).last(),
+        page.getByRole("button", name("msgActions.regenerate")),
+        composer,
+      ]) {
+        await page.keyboard.press("Tab");
+        await expect(stop).toBeFocused();
+      }
+      await expect(composer).toHaveValue(draft);
+      await page.keyboard.press("ControlOrMeta+A");
+      await page.keyboard.press("ArrowRight");
+      expect(
+        await composer.evaluate((node: HTMLTextAreaElement) => [
+          node.selectionStart,
+          node.selectionEnd,
+        ]),
+      ).toEqual([draft.length, draft.length]);
+      await page.keyboard.type(continuation);
+      await expect(composer).toHaveValue(draft + continuation);
+      await capture("continued-draft");
+    },
+  );
 }
