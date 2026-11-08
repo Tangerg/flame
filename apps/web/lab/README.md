@@ -66,6 +66,13 @@ names, groups, scene IDs, descriptions and source paths. Selecting a component
 opens its focused preview. The right panel selects a named comparison or recorded
 scenario and links to the actual component source.
 
+Paging and filtering start at the first result. Entering the inspector retains
+one gallery reading position for the current catalog, query and page; changing
+that range retires it, including while the gallery is unmounted. Returning through
+the view control restores that position and keeps the control's focus. Paging and
+retired card actions hand focus to the current, named main region; persistent
+search, catalog and variant controls retain their own focus.
+
 Focused previews support component, phone, tablet and desktop widths. Theme
 comparison mounts two independent documents with the same scenario. Changing
 the scenario, theme, language, font size or motion reloads that document; changing its

@@ -3,6 +3,9 @@ import { OBSERVATION_CHANNEL, OBSERVATION_VERSION } from "./observations";
 import { expectLabReady } from "./readiness";
 import { LAB_INSTANCE_QUERY } from "./selection";
 import { contrastRatio, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
+import { catalog } from "./catalog";
+import { messages } from "./messages";
+import { localize } from "./story";
 
 const LAB_PATH = "/lab/";
 const DESKTOP_VIEWPORT = { width: 1440, height: 1000 };
@@ -50,6 +53,31 @@ async function expectRecoveredCatalog(page: Page, heading: string, theme: "light
   const documents = page.locator("iframe");
   await expect(documents.first()).toBeVisible();
   for (const document of await documents.all()) await expectLabReady(document.contentFrame());
+}
+
+async function galleryReading(page: Page) {
+  return page
+    .getByRole("article")
+    .first()
+    .evaluate((article) => {
+      const heading = article.querySelector("h2");
+      if (!heading) throw new Error("gallery result heading is missing");
+      for (let owner = article.parentElement; owner; owner = owner.parentElement) {
+        if (!["auto", "scroll"].includes(getComputedStyle(owner).overflowY)) continue;
+        const viewport = owner.getBoundingClientRect();
+        const result = heading.getBoundingClientRect();
+        return {
+          top: owner.scrollTop,
+          height: owner.clientHeight,
+          contentHeight: owner.scrollHeight,
+          windowTop: window.scrollY,
+          firstHeadingVisible:
+            result.top >= Math.max(0, viewport.top) - 1 &&
+            result.bottom <= Math.min(window.innerHeight, viewport.bottom) + 1,
+        };
+      }
+      throw new Error("gallery reading viewport is missing");
+    });
 }
 
 async function expectFailureSurface(page: Page, theme: "light" | "dark") {
@@ -228,6 +256,160 @@ test("keeps navigation and controls within narrow English and Chinese layouts", 
     }
   }
 });
+
+for (const locale of ["en", "zh-CN"] as const) {
+  for (const viewport of [
+    { width: 1120, height: 360 },
+    { width: 640, height: 364 },
+    { width: 373, height: 243 },
+    { width: 320, height: 243 },
+  ]) {
+    test(`gallery navigation retains reading context ${locale} ${viewport.width}`, async ({
+      page,
+    }, testInfo) => {
+      const theme = locale === "en" ? "light" : "dark";
+      const t = (key: keyof typeof messages) => localize(messages[key], locale);
+      const main = page.getByRole("main");
+      const sidebar = page.getByRole("complementary", { name: t("catalog"), exact: true });
+      const search = sidebar.getByRole("searchbox", { name: t("search"), exact: true });
+      const gallery = page.getByRole("radio", { name: t("gallery"), exact: true });
+      const story = catalog.story("slider");
+      const title = localize(story.title, locale);
+      const variant = story.variants.at(-1)!;
+      const variants = page.getByRole("combobox", { name: t("variants"), exact: true });
+      const previewDocument = () =>
+        page.getByTitle(`${t("frameTitle")} · ${title} · ${theme}`, { exact: true }).contentFrame();
+      const mainFocused = () =>
+        main.evaluate((element) => element.ownerDocument.activeElement === element);
+      const capture = async (stage: string, detail: unknown) => {
+        await testInfo.attach(stage + ".json", {
+          body: JSON.stringify(detail, null, 2),
+          contentType: "application/json",
+        });
+        await testInfo.attach(stage, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+      };
+
+      await page.setViewportSize(viewport);
+      await page.goto(`${LAB_PATH}?locale=${locale}&theme=${theme}&font-size=18`);
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      await expect(main).toHaveAccessibleName(t("foundation"));
+      const next = page.getByRole("button", { name: t("next"), exact: true });
+      await next.scrollIntoViewIfNeeded();
+      expect(
+        (await galleryReading(page)).top,
+        "paging starts from a scrolled gallery",
+      ).toBeGreaterThan(0);
+      await next.press("Enter");
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      await expect(
+        page.getByRole("navigation", { name: t("pagination"), exact: true }),
+      ).toContainText("2 /");
+      const paged = await galleryReading(page);
+      await capture("new-gallery-page", { reading: paged, mainFocused: await mainFocused() });
+      expect.soft(paged.top, "a new page starts at its first result").toBeLessThanOrEqual(1);
+      expect.soft(paged.firstHeadingVisible, "the first new result is readable").toBe(true);
+      expect.soft(await mainFocused(), "paging hands focus to the preview context").toBe(true);
+
+      const opener = page.getByRole("button", { name: `${t("select")} · ${title}`, exact: true });
+      await opener.scrollIntoViewIfNeeded();
+      const saved = await galleryReading(page);
+      expect(saved.top, "the inspected result is below the gallery start").toBeGreaterThan(0);
+      await opener.press("Enter");
+      await expect(page.getByRole("heading", { level: 1, name: title, exact: true })).toBeVisible();
+      await expect(main).toHaveAccessibleName(title);
+      expect.soft(await mainFocused(), "the retired gallery action hands focus to main").toBe(true);
+      await expectLabReady(previewDocument());
+      expect.soft(await mainFocused(), "preview admission retains navigation focus").toBe(true);
+      await variants.scrollIntoViewIfNeeded();
+      await variants.press("Enter");
+      await expect(
+        page.getByRole("option", {
+          name: localize(story.variants[0]!.title, locale),
+          exact: true,
+        }),
+      ).toBeFocused();
+      await expect(
+        page.getByRole("option", { name: localize(variant.title, locale), exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("End");
+      await expect(
+        page.getByRole("option", { name: localize(variant.title, locale), exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(variants).toContainText(localize(variant.title, locale));
+      await expect(variants).toBeFocused();
+      await expectLabReady(previewDocument());
+      await expect(variants).toBeFocused();
+
+      await gallery.press("Space");
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      const returned = await galleryReading(page);
+      await capture("returned-gallery", { saved, returned, variant: variant.id });
+      expect
+        .soft(Math.abs(returned.top - saved.top), "return retains the gallery reading offset")
+        .toBeLessThanOrEqual(1);
+      await expect(gallery).toBeFocused();
+      await expect(
+        page.getByRole("navigation", { name: t("pagination"), exact: true }),
+      ).toContainText("2 /");
+      await expect(page).toHaveURL(new RegExp(`variant=${variant.id}`));
+      await expectLabReady(previewDocument());
+
+      await search.fill(story.source);
+      await expect(page.getByRole("article")).toHaveCount(1);
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      expect
+        .soft((await galleryReading(page)).top, "a new filter starts at the first result")
+        .toBeLessThanOrEqual(1);
+      await expect(search).toHaveValue(story.source);
+      await expect(search).toBeFocused();
+      await sidebar.getByRole("button", { name: t("clearSearch"), exact: true }).click();
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      expect
+        .soft((await galleryReading(page)).top, "clearing a filter starts the new context")
+        .toBeLessThanOrEqual(1);
+      await expect(search).toHaveValue("");
+      await expect(search).toBeFocused();
+
+      const fieldStory = catalog.story("text-field");
+      const fieldTitle = localize(fieldStory.title, locale);
+      const fieldOpener = page.getByRole("button", {
+        name: `${t("select")} · ${fieldTitle}`,
+        exact: true,
+      });
+      await fieldOpener.scrollIntoViewIfNeeded();
+      expect((await galleryReading(page)).top).toBeGreaterThan(0);
+      await fieldOpener.press("Enter");
+      await expectLabReady(
+        page
+          .getByTitle(`${t("frameTitle")} · ${fieldTitle} · ${theme}`, { exact: true })
+          .contentFrame(),
+      );
+      const catalogEntries = sidebar
+        .getByRole("navigation", { name: t("catalog"), exact: true, includeHidden: true })
+        .getByRole("button", { includeHidden: true });
+      await search.fill(fieldStory.source);
+      await expect(search).toHaveValue(fieldStory.source);
+      await expect(catalogEntries).toHaveCount(
+        catalog.search("foundation", fieldStory.source, locale).length,
+      );
+      await search.fill("");
+      await expect(search).toHaveValue("");
+      await expect(catalogEntries).toHaveCount(catalog.search("foundation", "", locale).length);
+      await gallery.press("Space");
+      await expectRecoveredCatalog(page, t("foundation"), theme);
+      const changedContext = await galleryReading(page);
+      await capture("changed-gallery-context", changedContext);
+      expect
+        .soft(changedContext.top, "filter changes while inspecting retire the old return position")
+        .toBeLessThanOrEqual(1);
+      await expect(gallery).toBeFocused();
+    });
+  }
+}
 
 test("compares real light and dark previews with independent local input", async ({ page }) => {
   await inspect(page, "checkbox", "editable");

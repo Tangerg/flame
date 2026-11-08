@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current comparison-caption repair passes **24 capture cases and 19 Lab interactions**, with all **77 images** accounted for and **15 new native captures** viewed. Actual Wails **200% and 300%** acceptance confirms shared caption edges and preserves ordinary Switch alignment. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The most recent complete baseline, delivered as `f08d723c`, passes **1,296 / 1,296 cases**, without retries, skips or flaky results; all **985 final images** are reviewed or matched to reviewed bytes. That baseline also passes the complete Web check: **433 files / 4,763 tests**. The current navigation repair passes **27 Lab interactions**, with all **31 images** accounted for and **28 native captures** viewed. Actual Wails **200% and 300%** acceptance covers paging, inspection, variants, return, search and compact catalog navigation. The preceding comparison-caption repair passes **24 capture cases and 19 interactions** and retains ordinary Switch alignment. Document failure diagnostics, oversized-editor caret and draft acceptance remain recorded below. The earlier three transient module-fetch failures remain unexplained. Whole-product visual acceptance remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -226,9 +226,72 @@ source before pushing to `main`, then retires the private evidence directory.
 RTL, VoiceOver, physical IME, live providers and whole-product route acceptance
 remain unverified by this batch.
 
-Next inspect short-window navigation between gallery and inspector. Native 300%
-gallery content remains reachable through page scrolling; the compact catalog,
-variant selection and return path still need direct task-path acceptance.
+### Gallery navigation and reading continuity (2026-11-08)
+
+Actual short-window Wails review reproduces three failures: paging leaves the
+gallery at its old bottom, inspecting a card retires its focused action without
+a content target, and returning resets the gallery's reading position.
+`ComponentLab.tsx` now consumes one temporary DOM-position snapshot for the
+current catalog, query and page. Range changes retire it even while the gallery
+is unmounted. The existing selection and pagination remain the state owners;
+preview documents keep their existing lifetimes.
+
+Paging and retired card actions hand focus to the existing main region, named by
+its current heading, and reveal that heading. The handoff only proceeds while
+focus remains on its opener or the document body. Search, catalog, variant and
+view controls retain their own focus; preview admission and observation updates
+do not request another handoff. The references are `better-accessibility`'s SPA
+focus guidance, the production `useInspectionFocus` guard and React's transient-ref
+and explicit-effect-dependency guidance.
+
+A bounded Claude Code CLI task times out after **240.053 s**, leaving a partial
+implementation and no test changes. Primary review applies the regression
+independently. Two pre-fix selections reproduce the original navigation defects.
+Three cases in the first selection stop at menu entry; the test now awaits the
+focused initial option before its unchanged End/Enter selection. The next
+selection exposes an incorrect test count: TextField, TextArea and SearchField
+share one source file. The expectation now derives from the canonical catalog.
+No timeout, console guard, retry setting or valid assertion is weakened.
+
+The untouched candidate passes the basic path but fails the focused filter-cycle
+boundary: search and clear while inspecting wrongly restore an old **587 px**
+position. The snapshot must retire before the unmounted-gallery early return.
+After that correction, all **27 / 27** Lab browser cases pass in **179.186 s**,
+without skips, retries, flaky results or global errors. The eight added cases use
+English/light and Chinese/dark at **18 px**, across **1120 × 360**, **640 × 364**,
+**373 × 243** and **320 × 243** frames. Every saved return offset matches exactly
+(**239–915 px**); new pages and changed filters start at zero. All **31 images**
+are accounted for: **22 new unique originals** are viewed and nine references
+match reviewed bytes, including two viewed candidate images.
+
+Web typecheck, lint, formatting, unused-code, dead-style and design-system checks
+pass. `make check-native` passes in **16.130 s**. All **6,715 non-Markdown inputs**
+retain their qualified bytes during browser and native acceptance. This focused
+Lab navigation change does not rerun the complete Lab or Web unit gates; their
+`f08d723c` baseline remains recorded above.
+
+The same private Wails v3.1.0 host loads all **490 corrected Lab assets**, verified
+byte for byte. All **46 production native inputs** remain unchanged. English/light
+at 18 px and **200%** covers real wheel reading, paging, inspection, Option+Tab,
+End/Enter variant selection, Space return, source search and clearing. Native
+return shows Slider at its previous reading position while retaining Gallery
+focus and the selected variant. Chinese/dark appearance is inspected at **200%**;
+**300%** covers compact-catalog Home/Down/Return, TextField states, source search
+and clearing while inspecting, return to the first Button, continued Option+Tab,
+Escape tooltip dismissal and native Window Fill. All **28 native originals**
+(eight before and twenty after) are viewed. Both native runs exit normally.
+
+The app is unregistered and its server stopped. Six private Library paths return
+to absence; three pre-existing helper roots retain their identities and flags.
+All **12 output/cache roots** return to baseline and the primary checkout stays
+unchanged. Functional qualification ends before restoration; ordinary delivery
+hooks only format owned files and lint source. The private evidence directory is
+retired after commit and push to `main`. VoiceOver, physical IME, RTL, live
+providers and whole-product route acceptance remain unverified by this batch.
+
+Next inspect the gallery action focus perimeter: the final native keyboard image
+shows its outline touching the reading viewport's top clipping edge. Check the
+existing reading-frame clearance and shared focus contract before changing layout.
 
 ### Presentation and preview continuity
 

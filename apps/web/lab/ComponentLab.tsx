@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { labStyles as styles } from "./labStyles";
 import { previewStyles } from "./previewStyles";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Button,
   FormField,
@@ -50,6 +50,11 @@ export function ComponentLab({
   const [notice, setNotice] = useState("");
   const [log] = useState(() => new ObservationLog());
   const entries = useSyncExternalStore(log.subscribe, log.snapshot);
+  const main = useRef<HTMLElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const galleryScroll = useRef<HTMLDivElement>(null);
+  const handoff = useRef<Element | null>(null);
+  const galleryReturn = useRef<{ context: string; top: number } | null>(null);
   const story = catalog.story(selection.storyId);
   const panel = story.panel;
   const t = (key: keyof typeof messages) => localize(messages[key], selection.locale);
@@ -63,6 +68,7 @@ export function ComponentLab({
     (currentPage + 1) * GALLERY_PAGE_SIZE,
   );
   const inspecting = selection.mode === "inspect";
+  const galleryContext = `${panel}\n${query}\n${currentPage}`;
   const width = previewWidth(story, selection.viewport);
   const opposite = selection.theme === "light" ? "dark" : "light";
   const { theme, locale, motion, fontSize } = selection;
@@ -83,15 +89,43 @@ export function ComponentLab({
       .catch((error: unknown) => setNotice(String(error)));
   }, [environment, theme, locale, motion, fontSize]);
 
-  function choose(next: LabStory, inspect = true) {
-    setSelection((previous) => ({
-      ...selectStory(previous, next),
-      mode: inspect ? "inspect" : previous.mode,
-    }));
+  useLayoutEffect(() => {
+    if (galleryReturn.current?.context !== galleryContext) galleryReturn.current = null;
+    const node = galleryScroll.current;
+    if (!node) return;
+    node.scrollTop = galleryReturn.current?.top ?? 0;
+    galleryReturn.current = null;
+  }, [inspecting, galleryContext]);
+
+  useLayoutEffect(() => {
+    const opener = handoff.current;
+    handoff.current = null;
+    if (!opener) return;
+    const focused = document.activeElement;
+    if (focused !== opener && focused !== null && focused !== document.body) return;
+    main.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: "nearest" });
+  }, [inspecting, galleryContext]);
+
+  function rememberGallery() {
+    const node = galleryScroll.current;
+    if (node) galleryReturn.current = { context: galleryContext, top: node.scrollTop };
+  }
+
+  function choose(next: LabStory, opener?: Element) {
+    rememberGallery();
+    handoff.current = opener ?? null;
+    setSelection((previous) => ({ ...selectStory(previous, next), mode: "inspect" }));
     setNotice("");
   }
 
+  function turnPage(next: number, opener: Element) {
+    handoff.current = opener;
+    setPage(next);
+  }
+
   function choosePanel(next: LabPanel) {
+    galleryReturn.current = null;
     setSelection((previous) => ({
       ...selectStory(previous, catalog.first(next)),
       mode: "gallery",
@@ -238,15 +272,24 @@ export function ComponentLab({
         </nav>
       </aside>
 
-      <main id="lab-main" tabIndex={-1} {...stylex.props(styles.main)}>
+      <main
+        id="lab-main"
+        ref={main}
+        tabIndex={-1}
+        aria-labelledby="lab-view-title"
+        {...stylex.props(styles.main)}
+      >
         <div {...stylex.props(styles.mainHeading)}>
-          <h1 {...stylex.props(styles.heading)}>
+          <h1 id="lab-view-title" ref={heading} {...stylex.props(styles.heading)}>
             {selection.mode === "gallery" ? t(panel) : localize(story.title, selection.locale)}
           </h1>
           <Segmented
             ariaLabel={t("viewMode")}
             value={selection.mode}
-            onChange={(mode) => setSelection((previous) => ({ ...previous, mode }))}
+            onChange={(mode) => {
+              if (mode === "inspect") rememberGallery();
+              setSelection((previous) => ({ ...previous, mode }));
+            }}
             options={[
               { value: "gallery", label: t("gallery") },
               { value: "inspect", label: t("inspect") },
@@ -254,7 +297,7 @@ export function ComponentLab({
           />
         </div>
         {selection.mode === "gallery" ? (
-          <div {...stylex.props(styles.galleryScroll)}>
+          <div ref={galleryScroll} {...stylex.props(styles.galleryScroll)}>
             <div {...stylex.props(styles.gallery)}>
               {visible.map((entry) => {
                 const previewSelection =
@@ -274,7 +317,7 @@ export function ComponentLab({
                       <IconButton
                         icon={ArrowUpRight}
                         aria-label={`${t("select")} · ${localize(entry.title, selection.locale)}`}
-                        onClick={() => choose(entry)}
+                        onClick={(event) => choose(entry, event.currentTarget)}
                       />
                     </div>
                     <GalleryPreview
@@ -300,7 +343,7 @@ export function ComponentLab({
                   icon={ChevronLeft}
                   aria-label={t("previous")}
                   disabled={currentPage === 0}
-                  onClick={() => setPage(currentPage - 1)}
+                  onClick={(event) => turnPage(currentPage - 1, event.currentTarget)}
                 />
                 <span>
                   {currentPage + 1} / {Math.ceil(filtered.length / GALLERY_PAGE_SIZE)}
@@ -309,7 +352,7 @@ export function ComponentLab({
                   icon={ChevronRight}
                   aria-label={t("next")}
                   disabled={(currentPage + 1) * GALLERY_PAGE_SIZE >= filtered.length}
-                  onClick={() => setPage(currentPage + 1)}
+                  onClick={(event) => turnPage(currentPage + 1, event.currentTarget)}
                 />
               </nav>
             )}
