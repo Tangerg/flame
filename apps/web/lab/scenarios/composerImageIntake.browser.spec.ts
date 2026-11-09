@@ -1,6 +1,7 @@
 import { expect, test } from "./test";
 import { IMAGE_EXPORT_FIXTURES } from "./imageExportFixtures";
 import { expectLabReady } from "../readiness";
+import { attachmentFrame } from "./composerAttachments.scenarios";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -78,6 +79,91 @@ test("keyboard removal cancels image intent before native FileReader finishes", 
   await expect(composer.getByRole("status")).toBeEmpty();
   await expect(input).toHaveValue("keep this text");
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`a short editor keeps image review and removal reachable in ${theme}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 560, height: 364 });
+    await page.goto(
+      `/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=code-reading&locale=en&theme=${theme}&font-size=18&motion=off`,
+    );
+    await expectLabReady(page);
+    const composer = page.locator('[data-slot="composer-root"]');
+    const input = composer.getByRole("textbox", { name: "Message composer", exact: true });
+    const draft = "Keep this image review draft.";
+    await input.fill(draft);
+    await page.getByLabel("Attach image", { exact: true }).setInputFiles({
+      name: "review.png",
+      mimeType: image.mime,
+      buffer: Buffer.from(image.base64, "base64"),
+    });
+    await finishReading(page);
+    const preview = composer.getByRole("button", { name: "View image", exact: true });
+    const thumb = composer
+      .locator('[data-slot="composer-attachments"] .media-edge')
+      .filter({ has: page.getByRole("button", { name: "View image", exact: true }) });
+    const samples: unknown[] = [];
+    try {
+      await expect(thumb).toHaveCount(1);
+      await preview.focus();
+      await expect(preview).toBeFocused();
+      await expect(async () => {
+        const frame = await attachmentFrame(thumb);
+        samples.push(frame);
+        for (const target of [frame.attachment, ...frame.buttons.map((button) => button.box)]) {
+          expect(target.left).toBeGreaterThanOrEqual(frame.visible.left - 0.5);
+          expect(target.right).toBeLessThanOrEqual(frame.visible.right + 0.5);
+          expect(target.top).toBeGreaterThanOrEqual(frame.visible.top - 0.5);
+          expect(target.bottom).toBeLessThanOrEqual(frame.visible.bottom + 0.5);
+        }
+      }).toPass({ timeout: 3_000 });
+      await testInfo.attach("short-image-focused.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+      await preview.press("Enter");
+      const dialog = page.getByRole("dialog", { name: "review.png", exact: true });
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(preview).toBeFocused();
+      await input.focus();
+      await expect(input).toBeFocused();
+      await expect(async () => {
+        const frame = await attachmentFrame(thumb);
+        samples.push(frame);
+        expect(frame.input.firstLine.top).toBeGreaterThanOrEqual(frame.input.visible.top - 0.5);
+        expect(frame.input.firstLine.bottom).toBeLessThanOrEqual(
+          Math.min(frame.input.visible.bottom, frame.footerTop) + 0.5,
+        );
+      }).toPass({ timeout: 3_000 });
+      await expect(input).toHaveValue(draft);
+      const remove = composer.getByRole("button", { name: "Remove image", exact: true });
+      await remove.focus();
+      await remove.press("Enter");
+      await expect(preview).toHaveCount(0);
+      await expect(input).toBeFocused();
+      await expect(input).toHaveValue(draft);
+      const frame = await attachmentFrame(input);
+      expect(frame.input.box.top).toBeGreaterThanOrEqual(frame.input.visible.top - 0.5);
+      expect(frame.input.box.bottom).toBeLessThanOrEqual(
+        Math.min(frame.input.visible.bottom, frame.footerTop) + 0.5,
+      );
+      await input.press("x");
+      await expect(input).toHaveValue(draft + "x");
+    } finally {
+      await testInfo.attach("short-image-layout.json", {
+        body: JSON.stringify(samples),
+        contentType: "application/json",
+      });
+      await testInfo.attach("short-image-final.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+    }
+  });
+}
 
 const longName =
   "quarterly-architecture-review-whiteboard-session-annotated-dependency-graph-FINAL-SUFFIX-7f3c.png";

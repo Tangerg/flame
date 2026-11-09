@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Shared TextArea reading now observes native caret-only movement as well as ranges, restoring the first/last-line clearance exposed by long Memory editing. The existing Lab selection passes **82 / 82**, including dual-language Chromium/WebKit reading, manual scroll, resize, focus, cancellation and draft return. Shared UI passes **278 tests** and its independent packed consumer; full Web passes **433 files / 4,799 tests** and subsequent gates. Actual Wails review confirms both languages at **200%**, small-window caret reading, visible Cancel, scope facts and exact continued conversation drafts. All **492 canonical assets** match their served bytes. All **289 retained browser PNG references** and **25 native captures / 301 AX records** are accounted for; 22 native images qualify final observations. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The Composer attachment tray now retains its natural row height in short windows, repairing a stable bottom-edge clip without changing draft or command owners. The related Lab selection passes **26 / 26**; complete Web passes **433 files / 4,807 tests** and every subsequent gate. Actual Wails qualifies English/dark and Chinese/light at **200%**, complete attachments, review/cancel/save/restore and exact continued drafts, plus ready-image preview, return and removal. All **492 canonical assets** match their served copy. The **74 final browser PNGs** are accounted for through 49 newly viewed originals and 25 previously reviewed byte matches; all **21 native PNGs / 198 AX records** are retained, with 19 images qualifying final observations. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -19428,7 +19428,73 @@ is pushed to remote `main`. Fresh `ls-remote` matched that commit, all **30**
 accepted product/resource inputs matched, and the owned checkout was clean with
 zero unpushed commits. This in-place receipt adds no product change.
 
-### Bounded attachments and complete recovery hints (2026-11-07)
+### Bounded attachments and complete recovery hints (2026-11-10)
+
+At **560 × 364 CSS px / 18 px UI type**, a first paste into an empty Composer
+clips the attachment's lower edge by **1.828125 px**. Its overflow rule permits
+the flex tray to shrink below one complete row. Four explicit EN/ZH,
+Chromium/WebKit regressions fail on that boundary in **27.905 s**.
+
+The production repair is one `flexShrink: 0` on `composerStyles.tray`, retaining
+natural rows inside the existing editor scroll owner. Textarea reading, toolbar
+space, draft transitions and Runtime commands retain their owners. Better Layout
+guides complete control containment. Read-only ZCode
+`ConversationComposer → ChatPromptEditor` supplies its attachment group as top
+content; this is a composition reference, not a copied layout or a live behavior
+claim. A bounded Claude Code CLI candidate completes in **33.346 s**; primary
+review applies its one-line diff and owns subsequent qualification.
+
+The existing Lab wrappers register the paste workflow in both engines. It checks
+empty and retained drafts, width changes, complete chip/button bounds, Cancel,
+Save, exact restoration, caret continuation and original input identity.
+Clipping uses fractional ancestor edges. The existing image suite checks a
+complete focused thumbnail, preview return, readable first text line and removal
+in the same short frame. A bare textarea's transparent 1.5-line minimum is not
+treated as unreadable text. Earlier selector-authoring errors and that whole-box
+expectation are test diagnostics, not product failures. No production handler,
+height budget, state owner, story, visual configuration or parallel entry is added.
+
+Final qualification:
+
+- Related Lab selection: **26 / 26**, **72.765 s**, zero skips, retries, flaky
+  outcomes or global errors. It includes empty hints, autosize, long Composer
+  return, image intake, pending names and recovery. All **74 PNGs** are accounted
+  for: **49 new originals** are viewed and **25** match previously reviewed
+  originals. The chip bottom is now 269.03125 px, inside its 274.17–274.92 px clip.
+- Complete Web `check`: **433 files / 4,807 tests** and all subsequent gates pass
+  in **333.858 s**. `make check-native` passes in **68.442 s**. Existing SDK and
+  deployment-target warnings remain. The canonical Lab build passes in
+  **2.954 s**; all **492 assets** match the served copy. The private Wails
+  **v3.1.0** host builds in **3.980 s**, retaining 45 unchanged host inputs.
+- Actual Wails: EN/dark/custom purple and ZH/light retain the 18 px request.
+  Each uses Actual Size and **20 production Zoom In actions** to reach **200%**
+  in a 1120 × 728-point window. Both qualify first-paste bounds, keyboard review,
+  canceled edits, saved text, Review focus, exact typed-prefix restoration and
+  continued editing. English wheel reading reaches line twelve. A real native
+  picker and FileReader qualify ready-image keyboard preview, Escape return,
+  removal and continued draft. English window enlargement/restoration preserves
+  that draft.
+
+All **21 native PNGs** are viewed, with **198 AX records** retained; **19 images**
+qualify final observations. Two capture an initial sequence that reached Remove
+before Preview; the accepted sequence separately verifies focus before activation.
+Both native processes exit **0**. The tiny PNG qualifies activation and return,
+not full-size media reading. Chinese committed paste does not qualify physical
+IME. VoiceOver, RTL, live sending and whole-product visual coverage remain outside
+this batch; real Runtime lifecycle runs separately in the complete Web check.
+
+The server stops with expected SIGINT exit **130**, and the private app is
+unregistered. Six Library paths return to absence; two helper children are
+removed and three existing empty roots retain their identities and flags. All
+**12 output/cache roots** return to baseline: **3,564 nodes removed / 316 files
+restored**. The comparison covers **6,715 non-Markdown inputs**: four existing
+sources change and one Lab module is added. All **46 native sources** and the
+primary checkout remain unchanged. No functional check runs after restoration.
+Ordinary hooks, a normal push to `main`, integrity checks and private evidence
+retirement complete delivery. Continue through this same Lab from a current,
+bounded observation; the continuous goal remains active.
+
+#### Width and recovery qualification retained from 2026-11-07
 
 A long pending image at **320 px / 18 px UI type** exceeds its 270 px attachment
 tray by **14 px** in both themes. The removal control extends about **8.6 px**

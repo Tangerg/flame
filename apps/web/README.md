@@ -169,6 +169,10 @@ Explicitly removing an image, referenced file or pasted text returns focus to th
 current Composer input with the remaining draft and attachments; the removal
 itself does not place the caret or select text.
 Automatic draft refreshes and paste review dialogs keep their own focus owners.
+The attachment tray retains its natural row height inside the existing bounded
+editor scroll area. A short window cannot shrink it through a text chip or image
+control; the toolbar keeps its own space and the input retains its existing
+reading and focus behavior.
 
 Root Run notifications consume settlements published after an atomic live-event
 commit, including Runs that start and finish in the same frame. Each settlement

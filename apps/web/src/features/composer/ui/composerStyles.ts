@@ -17,6 +17,7 @@ export const composerStyles = stylex.create({
 
   tray: {
     display: "flex",
+    flexShrink: 0,
     flexWrap: "wrap",
     alignItems: "center",
     gap: space.s1_5,

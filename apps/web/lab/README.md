@@ -154,6 +154,13 @@ Composer surface with a local draft. Fixed pending, failed and file-reference
 props make narrow rendering and removal inspectable without racing a file read.
 They never advance or retry an image read. The existing Composer image-intake
 scenario checks delayed real FileReader completion, removal and draft retention.
+The existing Workspace Composer also qualifies first paste into an empty input,
+review, cancel, save, restoration and continued editing in English and Chinese
+through Chromium and WebKit. At the small-window frame, attachment and action
+bounds are checked against fractional clipping edges. The image-intake scenario
+checks a complete focused thumbnail, preview return, readable input and removal
+at that same frame. These scenarios use the production draft and attachment
+owners rather than adding a second implementation to the fixed component story.
 
 `environment.tsx` composes Flame's actual appearance plugins, locale packages,
 Theme, FontScale, Tooltip, Callout and code highlighting providers. It does not
