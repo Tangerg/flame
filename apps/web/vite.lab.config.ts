@@ -46,6 +46,10 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    // The linked icon barrel is served as source, fanning out to hundreds of module requests per preview.
+    include: ["@flame/icons/react"],
+  },
   server: {
     host: "127.0.0.1",
     port: 4174,

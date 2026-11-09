@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Workspace scene names now share one English/Chinese owner across search, selection and preview rows while links retain canonical IDs. Related verification passes **44 unit tests** and all four new cross-browser tasks. A broader run passes **157 / 160**; subsequent scoped checks provide passing evidence for both failed gallery tasks and **22 independent Dock containment cases**, replacing the former combined loop. The combined evidence covers **181 distinct cases / 227 reviewed or matched browser images**, not one complete green rerun. Intermittent development-server resource failures remain unresolved. Native review retains **18 inspected captures / 168 AX records**, including actual **200%** zoom and continued drafts. Production UI and Runtime are unchanged. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The complete `f08d723c` baseline retains its original **1,296 cases / 985 images** and does not qualify later changes. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Lab development now prebundles the linked icon entry; the traced eight-task gallery workflow drops from **244,453 to 80,440 requests**, while all eight tasks pass before and after. The complete current run records **1,402 passed / 2 failed** in **4,011.990 s**, with no skips, retries or global errors. Prior-config controls reproduce both failures: Skills selection projection and an unsupported-file header shift. All **1,245 browser images** are reviewed or matched; one belongs to the failed selection case and does not qualify its behavior. Native review inspects **17 captures / 144 AX records**, with fifteen final-task images qualifying gallery reading, independent drafts and actual **200%** zoom. The **492 canonical Lab assets** remain byte-identical, and production components and Runtime are unchanged. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,133 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Linked icon loading in Lab development (2026-11-09)
+
+The preceding gallery failures are intermittent: all eight reading-context tasks
+pass in this traced baseline. Their real loading graph still exposes substantial
+request fanout. The English 320 px task requests **604 distinct linked icon files**
+for each preview admission, producing **20,536 icon requests / 30,539 total
+requests** across its complete workflow. All eight tasks together issue
+**244,453 requests**, including 164,288 linked-icon requests. These counts come
+from retained Playwright network traces, not a new benchmark or visual entry.
+
+The existing `vite.lab.config.ts` now prebundles only `@flame/icons/react`
+through `optimizeDeps.include`. Vite otherwise treats this linked package as
+source. Its [documented prebundling mechanism](https://vite.dev/guide/dep-pre-bundling.html)
+keeps the same public exports and existing shared-runtime deduplication. The
+static Lab build's **492 canonical assets** remain byte-identical. No
+production component, package export, dependency, story, route, fixture, test
+assertion, console guard, deadline or visual configuration is replaced.
+Rebuilding the linked icon package requires a Lab restart with `--force`, as
+documented in the Lab README.
+
+Rob Pike's measurement discipline guides this bounded change. A one-file Claude
+Code CLI candidate completes in **11.679 s**, with twelve protected references
+unchanged. Primary review verifies its four-line diff, applies only that config
+and owns subsequent qualification. The matching eight-task selection passes
+before and after, in **172.130 s** and **119.101 s** with tracing enabled. This
+single comparison is not a stable latency benchmark. After prebundling, the
+same English workflow issues **10,037 requests**, including **34 prebundled-icon
+requests** and no individual linked-icon requests. The complete selection issues
+**80,440 requests**, including 272 prebundled-icon requests. Its **24 image
+attachments** match inspected bytes from the unchanged presentation. There are
+no skipped, retried or flaky cases in either selection. The prior resource
+failure is not reproduced here; the measured request reduction does not prove
+that every possible resource failure is eliminated.
+
+The private Wails **v3.1.0** host builds in **22.724 s**. All **46 production
+native inputs** and 45 unchanged private copies retain their bytes. Both final
+native tasks load the same Lab development server, qualifying the changed
+prebundling path rather than only its unchanged static build. English/light/
+14 px/full motion and Chinese/dark/18 px/motion off cover six-preview gallery
+paging, Slider keyboard selection and return, literal title search, clearing
+focus, two real theme documents and independent drafts. Actual Size plus twenty
+native Zoom In actions establishes **200%** for each profile. Fit, wheel reading,
+Window Zoom/restore, menu Escape and exact continued drafts remain reachable.
+Both intended native processes exit **0**. Native system motion preference
+is not measured; the browser cases explicitly control that dimension.
+
+All **17 native PNGs** are inspected, with **144 AX records** retained. Fifteen
+images qualify the final tasks. One transient window capture is superseded by its settled
+raised capture. An End-based continuation probe replaces selected test text and
+is excluded; its preceding record proves both original drafts survived window
+changes. Explicit cursor placement followed by native paste then qualifies exact
+continued text independently. A post-Quit AX read reopens the private host without
+its test environment; that launch is excluded and closed. No owned native process
+remains. Chinese paste does not qualify a physical IME, and VoiceOver, RTL and
+live Runtime behavior remain outside this acceptance.
+
+The private app is stopped and unregistered. Its development server stops through
+its verified process group with SIGINT, retaining the expected **130** exit.
+Six private Library paths and the ordinary temporary root return to absence;
+three pre-existing empty WebKit helper roots retain their exact identities and
+`sunlnk` flags. This batch creates no additional protected helper roots.
+
+The unfiltered existing-config run completes **1,404 cases** in **4,011.990 s**:
+**1,402 pass and 2 fail**, with zero skipped, retried or flaky cases and no global
+errors. This run contains no `ERR_INSUFFICIENT_RESOURCES` report. It is evidence
+for this run, not proof that all resource failures are eliminated. All **1,245
+PNG attachments** are accounted for: 1,168 match previously inspected bytes,
+and 77 attachments representing 73 new images are inspected in nine contact
+sheets, with three additional original-size checks. One PNG belongs to the
+failed selection case; a settled image cannot qualify its first-frame behavior.
+The twelve captured test processes exit and their captured browser profile
+returns to absence without forced termination.
+
+Prior-config controls temporarily restore only the original Vite config from
+`c6ab96755`, then restore all **6,715 source hashes** to the qualified inputs.
+Their traces confirm the original linked-package loading path and no prebundled
+icon request. The first six-task control passes the three Skills samples and
+fails all three Workspace samples in **202.904 s**. A bounded additional
+five-sample Skills control passes four and fails one in **53.641 s**. The same
+five-sample selection with the final config passes three and fails two in
+**35.172 s**. Every outcome is retained; these small sequential samples do not
+establish occurrence rates or a latency comparison. Neither defect is introduced
+by this config change:
+
+- With application motion off and system `no-preference`, WebKit can project the
+  unchanged Skills selection **27 px** below its radio. The complete run records
+  one displaced frame among 53; the failing prior-config sample retains the
+  displacement for all 53 frames. Both failing final samples retain it for all
+  52 frames. `ItemHighlight` removes `layoutId` for system reduced motion only,
+  while the application's zero motion scale reaches the existing transition
+  duration getter. The pinned Motion implementation sets a projection origin
+  before starting even a zero-duration transition on the next frame. The next
+  shared-component repair must honor both motion boundaries and check ordinary
+  selection, reversal, reflow and scrolling through this same Lab.
+- `dock-file-unsupported` reports a post-ready layout shift of
+  **0.00012053571428571427**, attributed to `workspace-view-controls`, in the
+  complete run and all three prior-config samples. The current diagnostic keeps
+  rounded vertical positions only, so it does not establish a pixel displacement.
+  The default QueryClient retries once, while unsupported classification removes
+  Go to line. This is a source-backed investigation lead, not a qualified cause
+  or repair. Fixture readiness and the Lab ready projection advance synchronously;
+  switching their attribute names alone is not a demonstrated fix.
+
+The evidence-organizer kernel terminates after the reports and attachments have
+been retained. Recovery from disk verifies all **1,794 artifact references** across
+six manifests and the unchanged 6,715 source inputs. Earlier ephemeral RAM archives
+are no longer available; the current reports, receipts, images and source guards
+remain intact. No test is rerun to replace a failed outcome. The two additional
+failed selection images and the prior-config failed image are also inspected at
+their original size.
+
+Web typecheck, lint, unused-code and design-system checks pass. The full Web
+formatting check passes in **9.757 s**. After functional verification, twelve
+owned output/cache roots return to their original snapshots: **1,070 captured
+nodes** are retired and **21 files** restored. All 46 native inputs and the
+primary checkout remain unchanged. Subsequent checks are document formatting,
+normal static lint hooks and read-only integrity checks. Normal hooks,
+publication and fenced qualification-root retirement complete this delivery. Both pre-existing failures remain the next UI work;
+the complete run is not green. No new story, visual route, test configuration,
+assertion exception or production behavior is introduced by the loading change.
+
+Current-source follow-up narrows the prior camera observation: `PreviewCanvas`
+already fits after viewport or content-size changes, while `Camera.fit` clamps
+its result to the 20% minimum. A large paired Workspace may need a smaller scale
+in a short native frame. Reproduce that boundary before changing camera policy;
+the former description of a retained pose alone does not establish the cause.
 
 ### Readable Workspace scenes and independent Dock checks (2026-11-09)
 

@@ -287,6 +287,13 @@ Both servers use `vite.lab.config.ts`, the same catalog, documents, providers an
 fixture owners. There is no separate visual app, browser configuration or
 compatibility route. Stop a manually running lab before starting verification.
 
+Lab development prebundles the linked `@flame/icons/react` entry. Otherwise each
+isolated preview loads the icon barrel's hundreds of modules independently.
+This uses [Vite's dependency prebundling](https://vite.dev/guide/dep-pre-bundling.html)
+and retains the same package exports and shared runtime deduplication.
+After rebuilding the linked icon package, restart Lab with
+`npm run lab --workspace @flame/web -- --force` to refresh its optimized dependency.
+
 `FLAME_LAB_STORY` can select one catalog story for the capture projects; unknown
 IDs fail. Use file arguments or `--grep` to select interaction coverage. The normal
 Web check runs colocated unit tests; it does not launch browser verification.
