@@ -9,7 +9,7 @@ export interface Size {
 }
 
 export const CAMERA_LIMITS = {
-  minimumScale: 0.2,
+  minimumScale: 0.01,
   maximumScale: 2,
   maximumOffset: 100_000,
   fitInset: 32,

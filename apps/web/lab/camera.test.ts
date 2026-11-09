@@ -3,6 +3,9 @@ import { Camera, CAMERA_LIMITS, readCamera, saveCamera } from "./camera";
 
 afterEach(() => vi.restoreAllMocks());
 
+const pairedBoards = { width: 2592, height: 936 };
+const narrowCanvas = { width: 320, height: 240 };
+
 describe("component canvas camera", () => {
   it("pans without changing the previous camera or scale", () => {
     const camera = Camera.at(20, -40, 0.8);
@@ -65,6 +68,39 @@ describe("component canvas camera", () => {
     expect(Camera.fit(viewport, { width: 100, height: 100 }).scale).toBe(1);
   });
 
+  it("fits paired boards below 20% without clipping either edge", () => {
+    const camera = Camera.fit(narrowCanvas, pairedBoards);
+    const right = narrowCanvas.width - camera.x - pairedBoards.width * camera.scale;
+    const bottom = narrowCanvas.height - camera.y - pairedBoards.height * camera.scale;
+    expect(camera.scale).toBeLessThan(0.2);
+    expect(camera.scale).toBeGreaterThan(CAMERA_LIMITS.minimumScale);
+    expect(camera.x).toBeCloseTo(CAMERA_LIMITS.fitInset);
+    expect(right).toBeCloseTo(camera.x);
+    expect(camera.y).toBeGreaterThanOrEqual(CAMERA_LIMITS.fitInset);
+    expect(bottom).toBeCloseTo(camera.y);
+  });
+
+  it("pans and zooms around the cursor from a fitted scale below 20%", () => {
+    const fitted = Camera.fit(narrowCanvas, pairedBoards);
+    expect(fitted.pan({ x: 12, y: -8 })).toMatchObject({
+      x: fitted.x + 12,
+      y: fitted.y - 8,
+      scale: fitted.scale,
+    });
+    const anchor = { x: 200, y: 90 };
+    const world = {
+      x: (anchor.x - fitted.x) / fitted.scale,
+      y: (anchor.y - fitted.y) / fitted.scale,
+    };
+    for (const factor of [1 / CAMERA_LIMITS.zoomStep, CAMERA_LIMITS.zoomStep]) {
+      const next = fitted.zoom(factor, anchor);
+      expect(next.scale).toBeCloseTo(fitted.scale * factor);
+      expect((anchor.x - next.x) / next.scale).toBeCloseTo(world.x);
+      expect((anchor.y - next.y) / next.scale).toBeCloseTo(world.y);
+    }
+    expect(fitted.zoom(1e-6, anchor).scale).toBe(CAMERA_LIMITS.minimumScale);
+  });
+
   it("falls back to a usable camera until positive layout bounds are available", () => {
     for (const width of [0, -1, NaN, Infinity]) {
       expect(Camera.fit({ width, height: 500 }, { width: 300, height: 200 })).toEqual(Camera.at());
@@ -77,6 +113,14 @@ describe("camera persistence boundary", () => {
   it("roundtrips the admitted camera without replacing it with a fitted view", () => {
     const camera = Camera.at(123.5, -420.25, 0.75);
     expect(Camera.restore(camera.serialize())).toEqual(camera);
+  });
+
+  it("roundtrips a fitted camera below 20%", () => {
+    const fitted = Camera.fit(narrowCanvas, pairedBoards);
+    expect(fitted.scale).toBeLessThan(0.2);
+    expect(Camera.restore(fitted.serialize())).toEqual(fitted);
+    saveCamera("business", fitted);
+    expect(readCamera("business")).toEqual(fitted);
   });
 
   it.each([

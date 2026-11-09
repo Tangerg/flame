@@ -7,6 +7,7 @@ import { catalog } from "./catalog";
 import { messages } from "./messages";
 import { localize } from "./story";
 import { foundationMessages } from "./foundationMessages";
+import { CAMERA_LIMITS } from "./camera";
 
 const LAB_PATH = "/lab/";
 const DESKTOP_VIEWPORT = { width: 1440, height: 1000 };
@@ -422,6 +423,163 @@ test("keeps the iframe and its draft through camera and viewport changes", async
   await expect(events.getByText("valueChange.length", { exact: true })).toBeVisible();
   await expect(events).not.toContainText("Keep this local draft");
 });
+
+for (const engine of ["chromium", "webkit"] as const) {
+  const sceneTest = test.extend({ browserName: engine });
+  for (const profile of [
+    { locale: "en", theme: "light", fontSize: 14, composer: "Message composer" },
+    { locale: "zh-CN", theme: "dark", fontSize: 18, composer: "消息输入框" },
+  ] as const) {
+    sceneTest(
+      `fits paired Workspace below 20% ${engine}/${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const story = catalog.story("business-workspace-scenarios");
+        const t = (key: keyof typeof messages) => localize(messages[key], profile.locale);
+        const query = new URLSearchParams({
+          panel: story.panel,
+          story: story.id,
+          variant: "dock-files",
+          mode: "inspect",
+          compare: "on",
+          viewport: "desktop",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: "off",
+        });
+        await page.goto(`${LAB_PATH}?${query}`);
+        const themes = [profile.theme, profile.theme === "light" ? "dark" : "light"] as const;
+        const originals = [];
+        for (const theme of themes) {
+          const element = page.getByTitle(
+            `${t("frameTitle")} · ${localize(story.title, profile.locale)} · ${theme}`,
+            { exact: true },
+          );
+          const frame = element.contentFrame();
+          await expectLabReady(frame);
+          const field = frame.getByRole("textbox", { name: profile.composer, exact: true });
+          const draft = `${profile.locale} ${theme} camera review`;
+          await field.fill(draft);
+          originals.push({
+            element,
+            field,
+            draft,
+            source: await element.getAttribute("src"),
+            document: (await frame.locator("html").elementHandle())!,
+          });
+        }
+        const toolbar = page.getByRole("toolbar", { name: t("canvas"), exact: true });
+        const canvas = page.getByRole("region", { name: t("canvas"), exact: true });
+        const cameraShell = canvas.locator("..");
+        const percentage = toolbar.getByTitle(t("resetCamera"), { exact: true });
+        const content = page.locator("[data-lab-canvas-content]");
+        const measure = () =>
+          content.evaluate((element) => {
+            const viewport = element.parentElement!.getBoundingClientRect();
+            const bounds = element.getBoundingClientRect();
+            return {
+              viewport: {
+                x: viewport.x,
+                y: viewport.y,
+                width: viewport.width,
+                height: viewport.height,
+              },
+              x: bounds.x,
+              y: bounds.y,
+              width: bounds.width,
+              height: bounds.height,
+              gaps: [
+                bounds.left - viewport.left,
+                bounds.top - viewport.top,
+                viewport.right - bounds.right,
+                viewport.bottom - bounds.bottom,
+              ],
+            };
+          });
+        const expectFitted = async (label: string) => {
+          try {
+            await expect
+              .poll(async () =>
+                (await measure()).gaps.every((gap) => gap >= CAMERA_LIMITS.fitInset - 1),
+              )
+              .toBe(true);
+          } finally {
+            await cameraShell.scrollIntoViewIfNeeded();
+            await page.evaluate(
+              () =>
+                new Promise<void>((resolve) =>
+                  requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+                ),
+            );
+            await testInfo.attach(`${label}.json`, {
+              body: JSON.stringify(await measure()),
+              contentType: "application/json",
+            });
+            await testInfo.attach(`${label}.png`, {
+              body: await cameraShell.screenshot({
+                animations: "disabled",
+                caret: "hide",
+              }),
+              contentType: "image/png",
+            });
+          }
+        };
+        for (const viewport of [
+          { width: 561, height: 365 },
+          { width: 320, height: 640 },
+          { width: 1120, height: 360 },
+        ]) {
+          await page.setViewportSize(viewport);
+          await toolbar.getByRole("button", { name: t("fit"), exact: true }).click();
+          await expectFitted(`fit-${viewport.width}-${viewport.height}`);
+          expect(Number.parseInt((await percentage.textContent())!, 10)).toBeLessThan(20);
+        }
+
+        const pan = canvas.getByRole("button", { name: t("canvas"), exact: true });
+        const fitted = await measure();
+        await pan.press("+");
+        await expect.poll(async () => (await measure()).width).toBeGreaterThan(fitted.width);
+        await pan.press("Home");
+        await expectFitted("keyboard-fit");
+        await expect(pan).toBeFocused();
+        await pan.press("ArrowRight");
+        await expect.poll(async () => (await measure()).x).toBeLessThan(fitted.x);
+        for (const original of originals) {
+          await expect(original.field).toHaveValue(original.draft);
+          await expect(original.element).toHaveAttribute("src", original.source!);
+          expect(
+            await original.document.evaluate((element) => element === document.documentElement),
+          ).toBe(true);
+        }
+        const saved = await measure();
+        const savedPercentage = await percentage.textContent();
+        await page.reload();
+        for (const original of originals) await expectLabReady(original.element.contentFrame());
+        await expect(percentage).toHaveText(savedPercentage!);
+        try {
+          await expect
+            .poll(async () => {
+              const restored = await measure();
+              return (
+                Math.abs(restored.gaps[0]! - saved.gaps[0]!) < 1 &&
+                Math.abs(restored.gaps[1]! - saved.gaps[1]!) < 1 &&
+                Math.abs(restored.width - saved.width) < 1 &&
+                Math.abs(restored.height - saved.height) < 1
+              );
+            })
+            .toBe(true);
+        } finally {
+          await testInfo.attach("camera-persistence.json", {
+            body: JSON.stringify({ saved, restored: await measure() }),
+            contentType: "application/json",
+          });
+        }
+        await toolbar.getByRole("button", { name: t("fit"), exact: true }).press("Enter");
+        await expectFitted("restored-fit");
+      },
+    );
+  }
+}
 
 test("shows gallery components at native scale and keeps their draft through responsive reflow", async ({
   page,

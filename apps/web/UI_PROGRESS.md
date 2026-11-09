@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. File line navigation now waits for accepted text, repairing the unsupported first-read header's **18 px** horizontal shift. The final existing-Lab file/Workspace selection passes **141 / 141**, and the separate four layout-shift sweeps pass. Across four engine/language profiles, **329 frames** contain no premature line action and **292 ready frames** retain identical header/control bounds. All **185** expanded-run images are inspected or matched. Full Web (**433 files / 4,793 tests**), all **20** portable ESM resources and the supported native gate pass. Actual Wails review qualifies **25 original-size captures / 126 AX records**, English/light/14 px/full and Chinese/dark/18 px/off, real **200%** zoom, source reading, reference return and continued drafts. The **492 canonical Lab assets** remain identical. Both findings from the earlier complete Lab run have scoped repairs; that historical run is not a new full-suite pass. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Its camera now admits one **1–200%** range, allowing paired Workspace previews to fit below the former 20% floor. Camera tests pass **39 / 39**; the expanded existing-Lab selection passes **40 / 40**, and the final four-profile visible-camera checks pass with **20 captures** and at least **32 px** on every content edge. All **210 browser images** are accounted for; five mismatched full-page images are excluded from fit qualification. Full Web (**433 files / 4,796 tests**), all **20** portable ESM resources and the supported native gate pass. Actual Wails review inspects **20 original-size captures / 150 AX records**, including four baseline and sixteen final images. English/light/14 px/full and Chinese/dark/18 px/off cover real **200%** zoom, small-window **12%** fitting, keyboard pan/Home, wheel reading and independent continued drafts. The **492 final canonical Lab assets** match the served native copy. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -158,11 +158,107 @@ pre-existing failures receive subsequent scoped repairs below; this historical
 complete run remains non-green. No new story, visual route, test configuration,
 assertion exception or production behavior is introduced by the loading change.
 
-Current-source follow-up narrows the prior camera observation: `PreviewCanvas`
-already fits after viewport or content-size changes, while `Camera.fit` clamps
-its result to the 20% minimum. A large paired Workspace may need a smaller scale
-in a short native frame. Reproduce that boundary before changing camera policy;
-the former description of a retained pose alone does not establish the cause.
+The camera lead recorded during this investigation is subsequently reproduced
+and repaired below. Resize already triggers fitting; the old description of a
+retained pose alone did not establish its cause.
+
+### Complete camera fitting and visible captures (2026-11-09)
+
+Actual Wails at `b8f8cc58d`, Chinese/dark/18 px and native **200%**, confirms that
+Fit leaves the paired Workspace clipped in a small window. The inspector's
+content is **2592 × 936**: two 1280 × 900 documents, a 32 px gap and 36 px
+captions. Resize already calls Fit. The shared **20%** minimum prevents the
+required smaller scale; browser controls reproduce **72.7 px** clipping on each
+horizontal edge at **561 × 365**.
+
+`camera.ts` changes only its existing minimum to **1%**. Construction, pan,
+anchored zoom, fitting and restore retain one scale range and the existing
+finite/offset guards. The whole-percentage readout stays above zero at the
+minimum. Existing valid saved poses, storage key/version, maximum scale, inset,
+scheduling and preview lifetimes remain unchanged. The range accommodates the
+current catalog at the inspected widths; it is not an unbounded fit guarantee
+for arbitrary future content. Production components and their APIs are unchanged.
+
+Better Layout and Accessibility guide complete comparisons, reachable controls
+and native focus. The user's [Component Canvas reference](https://www.ui-skills.com/skills/ibelick/component-canvas)
+supports camera isolation, real component behavior and retained drafts. Read-only
+ZCode's mounted diagram viewer also clamps a fit scale, while its image editor
+separates natural fitting from relative editing zoom. Neither reference's range
+is copied into Flame. A bounded **37.818 s** Claude Code CLI candidate changes
+the camera and supplies three behavioral unit cases; ten protected copies stay
+unchanged. Primary removes a constant-readout assertion, corrects the candidate's
+caption height from 32 to the actual 36, and owns browser/native qualification.
+
+The existing `lab.browser.spec.ts` adds four Chromium/WebKit and EN/light/14 px /
+ZH/dark/18 px tasks. Each holds two independent Composer drafts and document
+identities across **561 × 365**, **320 × 640** and **1120 × 360**, Fit, keyboard
+zoom/pan/Home and reload. Persistence compares the local camera position, not
+the outer page's scroll position. It retains the original subpixel tolerance:
+the diagnostic shows identical local gaps and **332.3077087 × 120** content,
+while canvas and content both move **1 px** in page coordinates after reload.
+The initial four failures and focused diagnostic failure remain recorded.
+
+Full-page captures reveal another qualification limit: five first captures show
+**100%** while the admitted DOM camera is **12%**. Two animation frames alone
+do not eliminate the mismatch. Those images remain retained but are not fit
+evidence. Final captures first reveal the existing camera shell, wait for two
+natural animation frames and capture the complete visible camera plus toolbar.
+No styles, browser APIs, libraries, clocks or component DOM are patched.
+
+Verification:
+
+- Existing camera baseline: **36 / 36**. All three added owner cases fail on the
+  old minimum, including the exact **2592 × 936** input; final **39 / 39** pass
+  in **0.866 s**. The guarded prior-condition control restores the exact final
+  source. Its first private preparation uses a wrong working directory and runs
+  no product tests; that failure and restoration are retained separately.
+- All four original Lab profiles fail in **44.420 s**. The broader selection
+  passes **40 / 40** across the existing inspector and Workspace capture specs
+  in **288.030 s**, with no retries, skips, flaky results or global errors.
+  After the capture correction, the four final tasks pass in **38.007 s**.
+  All **20** final samples retain at least **32 px** on every edge and all
+  **20 visible-camera images** are inspected. Across all retained runs, **210**
+  images are accounted for: **100** match earlier reviewed bytes and **75 new
+  unique images** are reviewed, including the five excluded mismatches and four
+  expected baseline-failure images. All **442 artifact references** verify.
+- Full Web passes **433 files / 4,796 tests** and subsequent gates in
+  **360.273 s**, including all **20** portable ESM resources. The verified Node
+  preparation and five serial Runtime/Node/runner/CLI/plugin builders pass before
+  that run. The final change afterward is limited to the browser capture target
+  and its documentation; fresh typecheck, lint and full Web formatting checks
+  pass in **1.820 s**, **0.436 s** and **6.825 s** respectively. The executable
+  owner and unit-test inputs are identical to the full Web run.
+- `make check-native` passes in **51.744 s**. The **22.054 s** private Wails
+  **v3.1.0** baseline build is reused with unchanged native inputs. Both actual
+  binaries target macOS **13.0** and use SDK **27.2**. All **46** native inputs,
+  **45** unchanged private copies and **492** final served Lab assets verify.
+
+Actual Wails review inspects **20 original-size captures / 150 AX records**:
+four baseline images and sixteen final images. One background thumbnail is
+excluded. Both final locales use Actual Size followed by **20 native Zoom In
+actions** to establish **200%**. Window resizing settles from **2878 × 1798** to
+**2240 × 1456** device pixels; Fit reaches **12%** and manual zoom reaches
+**14% → 12%**. Native Option-Shift-Tab enters the background from the first
+preview, Right pans, Home restores both complete boards, and the focus cue stays
+visible. A preliminary AX activation leaves focus on main and is not counted
+as keyboard pan; the subsequent actual background-focus path qualifies it.
+Chinese native wheel reading exposes both captions and toolbar while preserving
+Fit focus. Both theme documents retain and independently continue their exact
+drafts. The Chinese relaunch also restores the preceding below-20% camera pose.
+
+All three private native processes exit successfully; the static server stops
+and the private app is unregistered. Cleanup restores six Library paths and the
+ordinary temporary path to absence, preserves the three pre-existing helper
+roots, and restores all twelve output/cache roots to their captured baseline.
+The primary checkout, its checksum file and all 46 native sources remain
+unchanged. Delivery uses normal commit hooks and a non-forced main push; the
+owned QA tree is retired after retaining the verification evidence in memory.
+
+Approve for these inspected paths. Paste input does not qualify physical OS IME;
+VoiceOver, RTL, native system media preference and live provider/filesystem
+integration are not newly qualified. Shared UI package tests and the unfiltered
+Lab suite are not rerun. The earlier complete Lab run remains historical.
+Continue whole-product coverage through the same Lab and real desktop task walks.
 
 ### First file-read controls and stable headers (2026-11-09)
 
@@ -266,8 +362,8 @@ not live provider or filesystem integration. Native OS motion preference,
 physical IME, VoiceOver, RTL and other platforms are not newly qualified. The
 shared UI package gate and unfiltered Lab suite are not rerun in this batch.
 The earlier complete run remains historical; whole-product visual coverage is
-unfinished. Reproduce the existing short-frame camera-fit lead before changing
-its minimum scale.
+unfinished. The subsequent camera-fitting repair above closes the short-frame
+camera lead recorded at this point.
 
 ### Readable Workspace scenes and independent Dock checks (2026-11-09)
 

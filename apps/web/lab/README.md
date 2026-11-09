@@ -91,6 +91,13 @@ transformed content. Window and viewport changes fit the existing document;
 the camera toolbar has its own reserved space below it. Camera operations never reset component drafts. Each panel
 stores one bounded, versioned camera value; malformed or unavailable storage
 does not prevent previewing.
+The same 1–200% scale range applies to fitting, gestures and stored cameras.
+Fit can use less than 20% to retain both complete product boards and the existing
+inset in a narrow or short canvas. Existing valid stored poses remain valid.
+The inspector's camera regression checks complete bounds, independent drafts,
+keyboard fitting and restored local camera coordinates in both browser engines.
+Each capture reveals the complete camera and its toolbar, waits for two
+animation frames, and captures those visible bounds.
 
 The observation panel captures real DOM activations, explicit sample callbacks,
 rendering errors and unhandled failures. It retains only the latest bounded
