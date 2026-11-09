@@ -51,6 +51,14 @@ lifecycle with Archive/Restore directly available; they have no disclosure for
 repeated facts. Proposal rows expand supporting facts and proposed instructions,
 and their commands stay beside the summary.
 
+Personal-library command feedback stays in its captured row while that row is
+shown. Pending state, an unknown acknowledgement, reconciliation and the settled
+notice retain that same presentation target; the original mutation owns command
+identity and recovery. A fitting row keeps its identity, action and feedback in
+the reading frame while the action retains focus. Oversized rows use normal
+scroll reading. Filtering out the target leaves one catalog-level result;
+revealing it again returns that result to the row without changing search focus.
+
 Hosted catalogs begin with catalog navigation and search. The workspace path and
 personal-library ownership guidance provide their respective scope. Once a read is
 accepted, one summary derived from it names the catalog section and its live status:

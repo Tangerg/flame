@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The Composer attachment tray now retains its natural row height in short windows, repairing a stable bottom-edge clip without changing draft or command owners. The related Lab selection passes **26 / 26**; complete Web passes **433 files / 4,807 tests** and every subsequent gate. Actual Wails qualifies English/dark and Chinese/light at **200%**, complete attachments, review/cancel/save/restore and exact continued drafts, plus ready-image preview, return and removal. All **492 canonical assets** match their served copy. The **74 final browser PNGs** are accounted for through 49 newly viewed originals and 25 previously reviewed byte matches; all **21 native PNGs / 198 AX records** are retained, with 19 images qualifying final observations. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Personal Skills library feedback now stays with its captured record, repairing a native zoom failure without changing command identity or lifecycle ownership. The related Lab selection passes **27 / 27**; complete Web passes **433 files / 4,808 tests** and every subsequent gate, and `make check-native` passes. Actual Wails qualifies English/light/14 px at **200% and 300%**, Chinese/dark/18 px at **200%**, refusal feedback, search/catalog return and exact continued drafts. All **492 final canonical assets** match their served copy. The **88 related browser PNGs** are accounted for through four newly viewed originals and 84 reviewed byte matches. All **24 native PNGs / 352 AX records** are retained: 15 images establish the baseline and nine inspect the repaired task. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -906,6 +906,76 @@ browser configuration or visual application. All **97 spec files** remain under
 the same Lab and its **44 stories**. Workspace gains one named variant.
 The original two-document `dock-skills`, personal library and proposal scenes
 retain their captured values.
+
+The personal-library follow-up uses those existing two records. Native English
+at 300% keeps Archive visible while its catalog-level refusal is outside the
+reading frame. Chinese/dark/18 px at 200% keeps Restore visible while its refusal
+is covered by the sticky controls; a later settled capture preserves the defect,
+and normal wheel reading exposes the text. Better Layout and Accessibility guide
+the repair. The read-only HeroUI field-error and form examples corroborate
+keeping feedback beside its object; their implementation is not copied.
+
+The installed Skills component captures `libraryName` as presentation metadata
+on its existing command and settled notice. It renders one feedback node inside
+the matching visible personal-library row, or once at catalog level when that
+row is filtered out. Revealing the row restores local feedback without taking
+search focus. The library row joins the existing shared Panel reading-unit
+contract; RecordHeading and shared layout remain unchanged. Original mutation
+keys, unknown acknowledgements, reconciliation, canonical lifecycle reads and
+proposal feedback retain their existing owners. A bounded four-file Claude CLI
+candidate completes in **69.674 s**; primary review applies and simplifies its
+actual diff. A preceding test candidate times out and contributes no accepted
+implementation.
+
+Four cases extend the existing Skills acceptance spec across Chromium/WebKit
+and English/light/14 px plus Chinese/dark/18 px. They retain the exact padded
+Composer draft, use real Tab/Enter for Restore and Archive, and qualify search,
+catalog navigation, material Close and continued input. At **560 × 364**, complete
+feedback, identity and action must fit together. At **373 × 243**, a fitting row
+has the same requirement; an oversized row retains the action and permits one
+wheel gesture derived from the actual feedback glyph bounds, after which its
+complete feedback must be readable without moving focus. The recorded transport
+deliberately refuses unmodelled library commands; the tests do not invent a
+successful lifecycle change. One component-state regression checks local/global
+placement through pending, unknown acknowledgement, query changes and retry with
+the same original command key and namespace, while later search focus survives.
+
+The initial regression fails all **4 / 4** cases on the detached refusal text.
+Intermediate runs also expose an invalid whole-row-fit assumption for a
+**158.125 px** row in a **68.422 / 89.109 px** reading frame, then a wheel gesture
+that overshoots the first feedback line. These failures are retained; correcting
+the assertion to the existing oversized-unit contract and deriving the wheel
+delta from glyph bounds does not change Panel behavior. The final focused run
+passes **6 / 6** in **22.677 s**; the final related selection passes **27 / 27** in
+**103.299 s**, with no retries, skips, flaky results or global errors. All
+**88 related PNGs** are accounted for: four originals are inspected now, 22 match
+images inspected in this batch and 62 match explicitly reviewed archived images.
+The component-state file passes **31 / 31**. Complete Web passes **433 files /
+4,808 tests** plus every subsequent static, resource and build gate in
+**234.217 s**; `make check-native` passes in **49.773 s**. The earlier failed
+complete Lab baseline keeps its recorded scope and is not relabelled green.
+
+Actual Wails uses all **492 repaired canonical Lab assets**, verified byte for
+byte against the served copy. The baseline assets are retained separately.
+At the minimum **1120 × 728-point** native window, English checks Restore at
+200% and Archive at 300%; Chinese/dark/18 px checks both at 200%. Each refusal
+stays beside its unchanged record, with the action focused. Real wheel reading,
+Escape search clearing, keyboard catalog switching, material Close to
+Conversation and exact padded draft continuation pass. The **15 baseline** and
+**nine final native images** are inspected; **164 actual menu actions** retain
+**328 zoom AX records**, plus **24 capture AX records**. Both final app processes
+exit normally. These are isolated Lab transport tasks, not live Skills
+publication, physical OS IME or VoiceOver qualification.
+
+The final source comparison covers **6,716 non-Markdown inputs**, with exactly
+seven existing paths changed and no additions or removals. Three maintained
+documentation files record the contract and evidence. All **46 native inputs**
+and the primary checkout remain unchanged. The private app is unregistered and
+its server stops; six Library paths return to absence and three pre-existing
+helper roots retain their identities and flags. All **12 output/cache roots**
+return to baseline before normal publication hooks, with no later functional
+tests. Guarded evidence retirement completes the delivery. No user-data migration,
+story, fixture, route or second visual configuration is required.
 
 `skillSnapshots.ts` supplies 80 alternating project/user documents, including
 40 `runtime` matches and the middle target `runtime-review-035`. List and detail
@@ -4356,6 +4426,10 @@ the Form center-alignment repair passes its four existing cases plus actual
 EN/ZH native zoom tasks. These results retain their separate scopes. The
 Composer follow-up measures the incomplete line as a
 pending sizing frame and qualifies complete captures through the existing Lab.
+The personal Skills library follow-up now qualifies local Archive/Restore
+feedback through the same Lab, its related **27-case** selection and actual
+EN/ZH Wails zoom tasks. Complete Web passes **433 files / 4,808 tests** and the
+native gate passes; unknown outcomes retain the original mutation identity.
 Continue native task inspection, including long-string Schedule editor reading
 at zoom, through this same owner.
 Prepare current shared packages before

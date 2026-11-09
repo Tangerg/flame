@@ -194,6 +194,17 @@ transport is constructed. The original two-document `dock-skills` scene remains
 available. This is fixed provider data rendered by the installed Skills component,
 not live filesystem discovery or another Skills implementation.
 
+The same Skills scene retains two personal-library records, one active and one
+archived. The existing Skills acceptance spec follows search, keyboard
+Archive/Restore, refusal feedback, narrow reading, catalog changes and exact
+continued Composer drafts in Chromium and WebKit, English and Chinese. Fitting
+record feedback must remain completely visible with the action; an oversized
+record retains its action and is read with a wheel gesture derived from the
+actual text bounds. These commands deliberately retain their unmodelled fixture
+failure and never manufacture a lifecycle change. The component-state test also
+checks one original mutation key through unknown acknowledgement, query changes
+and reconciliation. Neither coverage path adds a catalog, fixture or runner.
+
 The Workspace variant `dock-diagnostics-recorded` retains three span statuses,
 two metrics and two multiline logs, including their original IDs,
 source paths and raw JSON. It clones the typed snapshot once into the existing

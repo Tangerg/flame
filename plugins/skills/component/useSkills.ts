@@ -25,6 +25,7 @@ import {
   type OpenedDocument,
   type CatalogReturn,
   type Command,
+  type Notice,
   type Review,
 } from "./types";
 import { en } from "./locales/en";
@@ -69,7 +70,7 @@ export function useSkills(context: ComponentContext) {
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
   const [review, setReview] = useState<Review>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useState<Notice>();
   const [observationError, setObservationError] = useState<string>();
   const refresh = useCallback(async () => {
     reading.current?.abort();
@@ -266,7 +267,10 @@ export function useSkills(context: ComponentContext) {
       pending.current = undefined;
       if (!context.signal.aborted) {
         setCommand(undefined);
-        setNotice(t("notice.completed", { label: captured.label }));
+        setNotice({
+          text: t("notice.completed", { label: captured.label }),
+          libraryName: captured.libraryName,
+        });
         void refresh();
       }
     } catch (error) {
@@ -282,22 +286,28 @@ export function useSkills(context: ComponentContext) {
       } else {
         pending.current = undefined;
         setCommand(undefined);
-        setNotice(
-          isErrorType(error, "revision_conflict")
+        setNotice({
+          text: isErrorType(error, "revision_conflict")
             ? t("notice.revisionConflict")
             : failure(error),
-        );
+          libraryName: captured.libraryName,
+        });
         void refresh();
       }
     }
   }
-  function submit(make: () => MutationPromise<void>, label: string) {
+  function submit(
+    make: () => MutationPromise<void>,
+    label: string,
+    libraryName?: string,
+  ) {
     if (pending.current || context.signal.aborted) return;
     try {
       const captured = {
         promise: context.track(make),
         label,
         uncertain: false,
+        libraryName,
       };
       pending.current = captured;
       setCommand(captured);
@@ -305,7 +315,8 @@ export function useSkills(context: ComponentContext) {
       setNotice(undefined);
       void observe(captured);
     } catch (error) {
-      if (!context.signal.aborted) setNotice(failure(error));
+      if (!context.signal.aborted)
+        setNotice({ text: failure(error), libraryName });
     }
   }
   function reconcile() {

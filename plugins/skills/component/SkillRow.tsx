@@ -25,6 +25,7 @@ export function SkillRow({
   review,
   focusAfterRemoval,
   read,
+  feedback,
   children,
   t,
 }: {
@@ -32,6 +33,7 @@ export function SkillRow({
   review: boolean;
   focusAfterRemoval: RefObject<HTMLElement | null>;
   read?: { disabled: boolean; onOpen: (origin: HTMLElement) => void };
+  feedback?: ReactNode;
   children?: ReactNode;
   t: Translate;
 }) {
@@ -91,13 +93,14 @@ export function SkillRow({
     );
   if ("lifecycle" in item)
     return (
-      <ListRow ref={element}>
+      <ListRow ref={element} data-focus-unit="">
         <RecordHeading
           title={item.name}
           description={item.description}
           status={<Badge>{t(`lifecycle.${item.lifecycle}`)}</Badge>}
           actions={children}
         />
+        {feedback}
       </ListRow>
     );
   return (

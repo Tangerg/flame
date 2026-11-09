@@ -31,7 +31,9 @@ export type Command = {
   label: string;
   uncertain: boolean;
   error?: string;
+  libraryName?: string;
 };
+export type Notice = { text: string; libraryName?: string };
 export type Review = {
   proposal: SkillProposal;
   decision: "approve" | "reject";

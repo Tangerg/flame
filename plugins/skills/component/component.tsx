@@ -77,6 +77,37 @@ export function Skills({ context }: { context: ComponentContext }) {
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const instructions = useRef<HTMLElement>(null);
+  const feedbackName = command?.libraryName ?? notice?.libraryName;
+  const feedbackRow =
+    snapshot?.type === "library" &&
+    matching.some((item) => item.name === feedbackName)
+      ? feedbackName
+      : undefined;
+  const feedback = (
+    <>
+      {notice && <p role="status">{notice.text}</p>}
+      {command && (
+        <section aria-label={t("command.status.label")}>
+          <p role={command.uncertain ? "alert" : "status"}>
+            {command.uncertain
+              ? t("command.uncertain")
+              : t("command.pending", { label: command.label })}
+          </p>
+          {command.error && <RecordBody>{command.error}</RecordBody>}
+          {command.uncertain && (
+            <>
+              <Metadata>
+                {t("command.original", {
+                  key: command.promise.idempotencyKey,
+                })}
+              </Metadata>
+              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
+            </>
+          )}
+        </section>
+      )}
+    </>
+  );
   return (
     <Panel
       ref={panel}
@@ -210,27 +241,7 @@ export function Skills({ context }: { context: ComponentContext }) {
           {t("observation.error", { error: observationError })}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
-      {command && (
-        <section aria-label={t("command.status.label")}>
-          <p role={command.uncertain ? "alert" : "status"}>
-            {command.uncertain
-              ? t("command.uncertain")
-              : t("command.pending", { label: command.label })}
-          </p>
-          {command.error && <RecordBody>{command.error}</RecordBody>}
-          {command.uncertain && (
-            <>
-              <Metadata>
-                {t("command.original", {
-                  key: command.promise.idempotencyKey,
-                })}
-              </Metadata>
-              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
-            </>
-          )}
-        </section>
-      )}
+      {feedbackRow === undefined && feedback}
       {review && (
         <RecordForm
           aria-label={t("review.label")}
@@ -369,6 +380,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                       }
                     : undefined
                 }
+                feedback={item.name === feedbackRow ? feedback : undefined}
               >
                 {snapshot!.type === "library" && "lifecycle" in item && (
                   <Button
@@ -387,6 +399,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                             : "command.archive",
                           { name: item.name },
                         ),
+                        item.name,
                       )
                     }
                   >

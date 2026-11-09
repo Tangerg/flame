@@ -748,6 +748,62 @@ it("distinguishes an unreadable catalog from a successfully empty one", async ()
   expect(screen.getByRole("button", { name: "Restore" })).toBeTruthy();
 });
 
+it("keeps personal library recovery attached to its captured row through query changes", async () => {
+  const { runtime, send, sendRequest } = await mountSkills();
+  const acknowledgement = Promise.withResolvers<void>();
+  send.mockImplementation(async (request, signal, options) => {
+    if (request.method === "skills.library.restore") {
+      await acknowledgement.promise;
+      throw new RpcProtocolError("command response", []);
+    }
+    return sendRequest(request, signal, options);
+  });
+  const restore = vi.spyOn(runtime.skills, "restore");
+  fireEvent.click(screen.getByRole("radio", { name: "Personal Skill library" }));
+  await summaryStatus("2 user-managed Skills");
+  const library = screen.getByRole("region", { name: "Personal Skill library" });
+  const archivedRow = () =>
+    within(library).getByRole("heading", { name: "old-format-notes" }).closest("article")!;
+  fireEvent.click(within(archivedRow()).getByRole("button", { name: "Restore" }));
+  const original = restore.mock.results[0]!.value as MutationPromise<void>;
+  await within(archivedRow()).findByRole("region", { name: "Skill command status" });
+
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "risk-first" } });
+  expect(within(library).queryByRole("heading", { name: "old-format-notes" })).toBeNull();
+  expect(within(library).queryByRole("region", { name: "Skill command status" })).toBeNull();
+  expect(screen.getAllByRole("region", { name: "Skill command status" })).toHaveLength(1);
+  await act(async () => acknowledgement.resolve());
+  await screen.findByText(/The original command outcome is not confirmed/);
+  expect(screen.getByText(`Original command: ${original.idempotencyKey}`)).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+  expect(
+    screen.getByRole("radio", { name: "Personal Skill library" }).getAttribute("aria-checked"),
+  ).toBe("true");
+
+  fireEvent.change(search, { target: { value: "" } });
+  const row = archivedRow();
+  expect(within(row).getByText(`Original command: ${original.idempotencyKey}`)).toBeTruthy();
+  expect(screen.getAllByRole("region", { name: "Skill command status" })).toHaveLength(1);
+  send.mockImplementation(sendRequest);
+  fireEvent.click(within(row).getByRole("button", { name: "Reconcile original command" }));
+  const refused = 'Visual Runtime has no response for "skills.library.restore"';
+  await within(row).findByText(refused);
+  expect(screen.getAllByText(refused)).toHaveLength(1);
+  expect(within(row).getByText("Archived")).toBeTruthy();
+  expect(within(row).getByRole("button", { name: "Restore" })).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+  expect(restore).toHaveBeenCalledExactlyOnceWith("old-format-notes");
+  const attempts = send.mock.calls.filter(
+    ([request]) => request.method === "skills.library.restore",
+  );
+  expect(attempts).toHaveLength(2);
+  expect(attempts[1]![0].params).toEqual(attempts[0]![0].params);
+  expect(attempts[1]![2]?.idempotencyKey).toBe(original.idempotencyKey);
+  expect(attempts[1]![2]?.idempotencyNamespace).toBe(attempts[0]![2]?.idempotencyNamespace);
+});
+
 it("returns focus to search when a canonical read removes the focused navigation row", async () => {
   const { listDiscovered } = await mountSkills();
   const canonical = Promise.withResolvers<SkillDiscovery>();
