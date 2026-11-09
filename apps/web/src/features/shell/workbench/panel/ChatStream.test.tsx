@@ -275,7 +275,7 @@ describe("ChatStream notification space", () => {
     expect(draft.value).toBe("Keep this authored draft");
   });
 
-  it("keeps retained transcript geometry while hidden and remeasures it on reveal", () => {
+  it("keeps retained transcript geometry while hidden and remeasures it on reveal", async () => {
     const measured = measureStream();
     const view = mount();
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
@@ -287,6 +287,9 @@ describe("ChatStream notification space", () => {
     const overlayRect = measuredRect(overlay, 460, 600);
     observer.notify();
     readerObserver.notify();
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
     const pane = view.container.querySelector<HTMLElement>('[style*="--composer-overlay:"]')!;
     expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("554px");
     reader.scrollTop = 2275;

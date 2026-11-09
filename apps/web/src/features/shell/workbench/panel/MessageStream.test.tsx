@@ -289,7 +289,7 @@ it("preserves reading focus after geometry changes in the main transcript", asyn
   act(() => target.focus());
   shape.height = 240;
   fireEvent.scroll(viewport);
-  act(() => {
+  await act(async () => {
     for (const observer of observations)
       if (observer.nodes.has(viewport)) {
         observer.callback(
@@ -305,6 +305,7 @@ it("preserves reading focus after geometry changes in the main transcript", asyn
           {} as ResizeObserver,
         );
       }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   });
   expect(bounds().bottom).toBeLessThanOrEqual(160);
   expect(document.activeElement).toBe(target);

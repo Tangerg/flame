@@ -34781,6 +34781,93 @@ return work remains intact.
 paths across the six domains. The continuous goal remains active; this is not
 whole-application or award-tier completion.
 
+#### Focused long-table actions through reflow (2026-11-09)
+
+The existing Lab reproduces a retained Expand action moving behind the task
+header after reading the recorded table's last row and changing the reading
+budget. The initial **36 existing browser cases pass**, while actual Wails
+English/light/14 px and Chinese/dark/18 px reproduce the obstruction during
+native 200% zoom. An English repeat with different reading history stays visible;
+the failure is a sequence-dependent gap, not every table render.
+
+Passive WebKit event records identify the responsible transition: after resize
+callbacks leave Expand visible at y 72–96, `use-stick-to-bottom` writes the outer
+scroll position from 182 to 235 and moves it to y 19–43. A separate nested reader
+can also deliver scrolling before the changed frame is witnessed. The first
+event-scope candidate passes its unit case but leaves both real WebKit failures;
+it is discarded. Reusing the existing pending-follow visibility rule fixes the
+obstruction, but the console guard still detects a ResizeObserver loop. Records
+show synchronous reading-height publication changing descendant table layout
+again within the same rendering update.
+
+`ui/agent/readingFollow.ts` now applies that same pending-follow rule during
+reflow, including when focus is currently visible. Safe following remains
+available. Geometry deferral includes nested scroll deliveries, and the existing
+reading owner coalesces resize revelation into one cancellable layout frame,
+following the established shared Panel pattern. Later focus and wheel intent
+remain authoritative; hiding or unmounting cancels queued work. CSS continues to
+own the reading clearance. There is no table-specific offset, new follow state,
+forced focus, browser branch or console exception. Read-only ZCode table research
+and the better-layout, typography and accessibility guidance support retaining
+the control's reading context instead of changing its visual placement.
+
+Eight added owner cases bring geometry coverage from **43 to 51**. The original
+implementation fails the unsafe pending-follow and nested-reflow cases; reverting
+only layout-frame delivery fails the five new ordering/lifetime cases. Three
+existing main/child/retained-host consumer tests now deliver the actual layout
+frame while preserving every previous assertion. The focused integration run
+passes **6 files / 132 tests**. The first full Web attempt exposes those three
+synchronous test-driver assumptions; the corrected full check passes **433 files /
+4,807 tests** and every non-unit stage in **342.27 s**. Runtime prerequisites are
+built serially after the repository's checksum-verifying Node preparation; the
+first offline attempt correctly refuses its absent archive. Final
+`make check-native` passes in **51.96 s**. Shared UI source is unchanged, so its
+independent package check is not repeated.
+
+Two new WebKit tasks extend the existing `inlineTableReading.browser.spec.ts`;
+its two original bodies remain byte-identical. English/full motion and
+Chinese/reduced motion retain the original draft, reader and Expand nodes through
+all 21 viewport reductions, checking focus, visible focus, opacity, safe edges and
+center hit testing at every step. Preview reading reaches row 80 and the final
+column, Escape restores the original action, and keyboard return continues the
+exact draft. The harness uses discrete horizontal keys and the platform's native
+text-end command; two earlier input assumptions are corrected without changing
+product behavior. Final Lab qualification passes **49 cases** across the existing
+content, subagent and Chromium/WebKit reading-ownership suites, with no skipped,
+retried, flaky or global-error case. All **41 screenshots** are accounted for:
+39 exactly match previously inspected images and two new originals are viewed.
+The existing console/error guard remains unchanged.
+
+The unchanged pinned Wails host loads all **492 byte-identical final Lab assets**.
+Both native locales retain their focused Expand action through 20 uninterrupted
+Zoom In commands to 200%, then Top Left window reduction. Preview End and repeated
+Right reveal the final row and column; Escape returns to the visible original
+action. Tab returns to the exact original three-line Composer draft, and native
+paste appends the expected continuation. Restoring the previous window size and
+Actual Size preserves the later Composer focus and value. Chinese wheel reading
+deliberately hides the old focused action; subsequent native Zoom Out and Zoom In
+leave that reading position alone. All **19 final native captures** are inspected.
+An English restoration attempt using a stale REPL menu closure is excluded;
+explicit native-menu cancellation and a fresh local lookup restore Actual Size.
+These are fixed Lab presentation tasks, not live provider execution, physical
+menu-key routing, physical IME, VoiceOver or whole-product visual acceptance.
+
+Both private native processes quit with exit 0, both owned static services stop,
+and the private app is unregistered. Six new Library paths return to absence;
+three original helper roots retain their identities and flags while four new
+children are removed. All **12 output/cache roots** return to their captured
+contents, modes or absence. All **6,715 non-Markdown inputs** differ only in the
+seven intended existing Web/test paths, with no added source. All **46 native
+inputs**, the three older Runtime fixture roots and the primary checkout remain
+unchanged. No functional check runs after output restoration. Delivery uses normal
+hooks and non-forced publication to main; evidence is retained before fenced
+retirement of the private qualification root.
+
+Continue through this same Lab. The observed empty Composer placeholder at
+18 px wraps beneath its visible input height in code/table captures. Its native
+reproduction and sizing-owner investigation remain the next task; this focused
+reading-follow repair does not claim that separate finding is resolved.
+
 ### Sticky disclosure clearance and reading space
 
 The current flow is recorded Tool source → current file → source return → continued

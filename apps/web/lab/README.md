@@ -483,6 +483,15 @@ preview to its trigger. Each direction retains a screenshot and geometry,
 including failed attempts. The separate formula layout check uses explicit
 positions to inspect notation and resizing; it does not qualify keyboard access.
 
+The inline-table suite follows the recorded 80-row table in WebKit with English
+light/14 px/full motion and Chinese dark/18 px/reduced motion. It retains the
+Composer, its three-line draft, the table reader and its focused Expand action
+through successive CSS viewport reductions from 1440 × 900 to 720 × 450 and
+560 × 364. Every step checks focus, the reserved transcript frame and center hit
+testing. The same task opens the preview, reads its final row and column, returns
+to the original action and continues the original draft. These effective reading
+budgets exercise reflow; actual page zoom remains a separate Wails qualification.
+
 Goal and Plan reading checks use the existing Agent and Workspace catalog
 variants. The Workspace's unavailable captured Goal author permits reading;
 the registered Agent author permits editing. Checks preserve that distinction,

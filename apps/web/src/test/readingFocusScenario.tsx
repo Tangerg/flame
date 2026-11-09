@@ -39,6 +39,19 @@ export function readingFocusScenario(
       }
     },
   );
+  const frames = new Map<number, FrameRequestCallback>();
+  const frameIds = { last: 0 };
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    frames.set(++frameIds.last, callback);
+    return frameIds.last;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  const frame = () =>
+    act(() => {
+      const queued = [...frames.values()];
+      frames.clear();
+      for (const callback of queued) callback(performance.now());
+    });
   const ref = () => {
     const callback = (node: HTMLElement | null) => {
       callback.current = node;
@@ -122,7 +135,8 @@ export function readingFocusScenario(
       );
     },
   });
-  const resize = (node = viewport) =>
+  // Delivers the observed layout frame unless a test needs to act between notification and frame.
+  const resize = (node = viewport, { deliverFrame = true } = {}) => {
     act(() => {
       for (const observer of observers)
         if (observer.nodes.has(node)) {
@@ -140,6 +154,8 @@ export function readingFocusScenario(
           );
         }
     });
+    if (deliverFrame) frame();
+  };
   act(() => target.focus());
   return {
     ...view,
@@ -152,6 +168,7 @@ export function readingFocusScenario(
     shape,
     bounds,
     resize,
+    frame,
     order,
   };
 }

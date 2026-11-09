@@ -106,6 +106,7 @@ export function useReadingFocusVisibility(
     const observedScrollTopState = { value: viewport.scrollTop };
     const witnessState: { value: Element | null } = { value: null };
     const pressedTargetState: { value: Element | null } = { value: null };
+    const queuedRevealState = { value: 0 };
     const remember = () => {
       frameState.value = measure();
       observedScrollTopState.value = viewport.scrollTop;
@@ -126,14 +127,17 @@ export function useReadingFocusVisibility(
       if (event.target === viewport) {
         const moved = viewport.scrollTop !== observedScrollTopState.value;
         observedScrollTopState.value = viewport.scrollTop;
-        if (
-          !moved ||
-          next.top !== frameState.value.top ||
-          next.bottom !== frameState.value.bottom ||
-          next.width !== frameState.value.width
-        )
-          return;
+        if (!moved) return;
       }
+      // Layout-driven scrolling before the queued reveal must not re-witness a displaced target.
+      if (queuedRevealState.value) return;
+      // Defer re-witnessing until resize has observed the changed frame.
+      if (
+        next.top !== frameState.value.top ||
+        next.bottom !== frameState.value.bottom ||
+        next.width !== frameState.value.width
+      )
+        return;
       remember();
     };
     const reveal = () => {
@@ -151,7 +155,11 @@ export function useReadingFocusVisibility(
         return;
       }
       const { unit, bounds } = readingFocusContext(target, viewport);
-      if (withinSafeReading(target, viewport) && withinSafeReading(unit, viewport, bounds)) return;
+      if (withinSafeReading(target, viewport) && withinSafeReading(unit, viewport, bounds)) {
+        // Visible focus can still be carried away by the resize-follow tick this reflow queued.
+        stopFollowHidingReading(bounds, viewport, { state, stopScroll });
+        return;
+      }
       const { top, bottom } = frameState.value;
       if (bottom <= top) return;
       const alignStart = bounds.height > bottom - top || bounds.top < top;
@@ -190,8 +198,18 @@ export function useReadingFocusVisibility(
       }
       remember();
     };
+    const window = content.ownerDocument.defaultView!;
+    // Measuring during delivery resizes the reading frame's descendants in the same rendering
+    // update, and WebKit can deliver layout-driven scrolling after ResizeObserver.
+    const revealAfterLayout = () => {
+      if (queuedRevealState.value) return;
+      queuedRevealState.value = window.requestAnimationFrame(() => {
+        queuedRevealState.value = 0;
+        reveal();
+      });
+    };
     remember();
-    const resize = new ResizeObserver(reveal);
+    const resize = new ResizeObserver(revealAfterLayout);
     resize.observe(viewport);
     resize.observe(content);
     content.ownerDocument.addEventListener("focusin", onFocus);
@@ -204,6 +222,7 @@ export function useReadingFocusVisibility(
     // expand and clamp native scroll positions before this effect remeasures.
     return () => {
       resize.disconnect();
+      if (queuedRevealState.value) window.cancelAnimationFrame(queuedRevealState.value);
       content.ownerDocument.removeEventListener("focusin", onFocus);
       content.removeEventListener("pointerdown", onPointerDown, true);
       content.ownerDocument.removeEventListener("pointerup", clearPress, true);
@@ -231,11 +250,22 @@ export function stopFollowOnReadingFocus(
   const viewport = scrollRef.current;
   const target = event.target;
   if (target === event.currentTarget || !viewport?.contains(target) || !state.isAtBottom) return;
+  // Native focus can reveal its target before a queued resize-follow tick.
+  stopFollowHidingReading(readingFocusContext(target, viewport).bounds, viewport, {
+    state,
+    stopScroll,
+  });
+}
+
+function stopFollowHidingReading(
+  bounds: { top: number; bottom: number },
+  viewport: HTMLElement,
+  { state, stopScroll }: Pick<ReadingFollow, "state" | "stopScroll">,
+) {
+  if (!state.isAtBottom) return;
   const movement = state.targetScrollTop - viewport.scrollTop;
   if (movement <= 0) return;
-  const { bounds } = readingFocusContext(target, viewport);
   const { top, bottom } = safeReadingBounds(viewport);
-  // Native focus can reveal its target before a queued resize-follow tick.
   if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();
 }
 

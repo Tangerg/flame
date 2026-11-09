@@ -250,6 +250,25 @@ describe("reading focus geometry", () => {
     expect(document.activeElement).toBe(s.target);
   });
 
+  it.each([
+    { movement: 170, retired: false },
+    { movement: 235, retired: true },
+  ])(
+    "retires resize following only when its $movement px movement would hide focus",
+    ({ movement, retired }) => {
+      const s = scenario();
+      s.follow.state.isAtBottom = true;
+      s.follow.state.targetScrollTop = movement;
+      s.shape.height = 380;
+
+      s.resize();
+
+      expect(s.order).toEqual(retired ? ["follow retired"] : []);
+      expect(s.viewport.scrollTop).toBe(0);
+      expect(document.activeElement).toBe(s.target);
+    },
+  );
+
   it("keeps returned focus beyond its CSS disclosure clearance", () => {
     const s = scenario();
     act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
@@ -358,6 +377,22 @@ describe("reading focus geometry", () => {
     expect(s.viewport.scrollTop).toBe(0);
     expect(s.nested.scrollTop).toBe(120);
     expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps focused reading through reflow when a separate nested reader scrolls", () => {
+    const s = scenario();
+    const separate = document.createElement("div");
+    separate.style.overflowY = "auto";
+    s.content.append(separate);
+    s.shape.height = 240;
+    separate.scrollTop = 20;
+    fireEvent.scroll(separate, { bubbles: false });
+
+    s.resize();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+    expect(separate.scrollTop).toBe(20);
   });
 
   it.each(["below", "above"] as const)(
@@ -539,6 +574,71 @@ describe("reading focus geometry", () => {
     expect(s.order).toEqual([]);
     expect(document.activeElement).toBe(s.target);
   });
+
+  it("keeps its focused action through layout scrolling before the resize frame", () => {
+    const s = scenario();
+    s.follow.state.isAtBottom = true;
+    s.follow.state.targetScrollTop = 350;
+    s.shape.height = 240;
+    s.resize(s.viewport, { deliverFrame: false });
+
+    s.viewport.scrollTop = 250;
+    fireEvent.scroll(s.viewport);
+    s.frame();
+
+    expect(s.bounds().top).toBeGreaterThanOrEqual(20);
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(s.order).toEqual(["follow retired", "target revealed"]);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps a later focus that arrives before the queued resize frame", () => {
+    const s = scenario();
+    const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+    s.shape.height = 240;
+    s.resize(s.viewport, { deliverFrame: false });
+
+    act(() => draft.focus());
+    s.frame();
+
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("140px");
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(s.order).toEqual([]);
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe("Keep this draft");
+  });
+
+  it("keeps manual reading that starts before the queued resize frame", () => {
+    const s = scenario();
+    s.shape.height = 240;
+    s.resize(s.viewport, { deliverFrame: false });
+
+    fireEvent.wheel(s.viewport, { deltaY: 100 });
+    s.viewport.scrollTop = 250;
+    fireEvent.scroll(s.viewport);
+    s.frame();
+
+    expect(s.viewport.scrollTop).toBe(250);
+    expect(s.order).toEqual([]);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it.each(["hidden", "unmounted"] as const)(
+    "cancels a queued resize reveal once the reader is %s",
+    (ending) => {
+      const s = scenario();
+      s.shape.height = 240;
+      s.resize(s.viewport, { deliverFrame: false });
+
+      if (ending === "hidden") s.rerender(<s.Harness attached={false} />);
+      else s.unmount();
+      s.frame();
+
+      expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("300px");
+      expect(s.viewport.scrollTop).toBe(0);
+      expect(s.order).toEqual([]);
+    },
+  );
 
   it("preserves a later draft focus, value and selection", () => {
     const s = scenario();
