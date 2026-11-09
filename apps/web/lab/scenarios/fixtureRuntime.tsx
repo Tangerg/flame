@@ -9,6 +9,7 @@ import {
 } from "./createVisualRuntimeTransport";
 import { LONG_MODEL_FACTS, SCROLLING_MODEL_FACTS } from "./runtimeSnapshots";
 import { VISUAL_LONG_SKILL_DOCUMENTS } from "./skillSnapshots";
+import { VISUAL_LONG_MEMORY_PAGE, VISUAL_LONG_USER_MEMORY_PAGE } from "./componentSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -197,6 +198,10 @@ async function installVisualRuntimeClient(
           : undefined,
     skillDocuments:
       workspaceState === "dock-skills-catalog" ? VISUAL_LONG_SKILL_DOCUMENTS : undefined,
+    memoryPages:
+      workspaceState === "dock-agent-memory-recorded"
+        ? { project: VISUAL_LONG_MEMORY_PAGE, user: VISUAL_LONG_USER_MEMORY_PAGE }
+        : undefined,
     mcpServers: query.has("mcp-transport")
       ? [
           {

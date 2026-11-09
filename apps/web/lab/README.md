@@ -577,6 +577,16 @@ Missing, unknown or malformed scopes refuse rather than displaying another
 target's page. Scope, edit/cancel and conversation-return checks use the same
 Workspace fixture and installed Memory component.
 
+The `dock-agent-memory-recorded` variant supplies longer Project and User pages
+through that same captured transport input. English and Chinese paragraphs,
+authored blank lines, an unbroken path and a scrollable list exercise the actual
+Memory reader. Existing short pages remain unchanged. The named variant feeds
+the catalog, state picker and independent captures without another story list.
+Its existing Memory suite checks wrapping, local drafts, filtered-out openers,
+scope identity and conversation return in Chromium and WebKit. These are fixed
+reading inputs; unmodelled mutations still refuse and cancellation leaves the
+recorded content unchanged.
+
 The `dock-usage-reports` Workspace variant mounts the installed Saved usage
 reports component over its declared public SDK binding. A single fixed report
 array supplies both archive headers and exact report reads. Its Daily copy keeps

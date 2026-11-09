@@ -564,6 +564,10 @@ fixed row height. Each consumer retains its own query, matching and navigation.
 `TextArea autosize` measures its content across supported hosts. The component owns
 height updates for input, controlled values, form reset, width and font changes;
 CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
+Natural height and caret geometry share the same inert typography mirror. Sizing
+retains the native `rows` minimum and box model, then applies only the final
+height. Measuring never collapses the live control, so it cannot clamp an outer
+reading viewport or displace a focused action beside a capped textarea.
 
 `TextArea` also retains its native caret reading position through reflow. A
 temporary, inaccessible text mirror measures the active selection endpoint;

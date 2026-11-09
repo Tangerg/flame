@@ -24,7 +24,7 @@ import { isImeKey } from "./keyboard";
 import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
 import { Input } from "@base-ui/react/input";
-import { followTextAreaCaret } from "./textarea-reading";
+import { followTextAreaCaret, textAreaContentHeight } from "./textarea-reading";
 import type { ComponentProps, ComponentPropsWithRef } from "react";
 
 type FieldEdge = "boxed" | "bare" | "inline";
@@ -205,15 +205,16 @@ export function TextArea({
     const resize = () => {
       if (!active || area.clientWidth === 0) return;
       const style = getComputedStyle(area);
+      // Measured offscreen: collapsing the live box would move outer scrollports.
+      const content = textAreaContentHeight(area, style);
+      if (content === null) return;
       const padding =
         parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
       const border =
         parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
       const scrollTop = area.scrollTop;
-      area.style.height = "auto";
       const height =
-        area.scrollHeight +
-        (style.boxSizing === "border-box" ? border : -padding);
+        content + (style.boxSizing === "border-box" ? padding + border : 0);
       area.style.height = `${height}px`;
       area.scrollTop = scrollTop;
     };

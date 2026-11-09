@@ -11,6 +11,8 @@ import {
   VISUAL_PLUGIN_PROVIDERS,
   VISUAL_MEMORY_BINDING,
   VISUAL_MEMORY_PAGE,
+  VISUAL_LONG_MEMORY_PAGE,
+  VISUAL_LONG_USER_MEMORY_PAGE,
   VISUAL_SCHEDULES_BINDING,
   VISUAL_SCHEDULES_PAGE,
   VISUAL_USAGE,
@@ -25,6 +27,80 @@ import {
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
 describe("visual Runtime transport", () => {
+  it.each([
+    { scope: "project", page: VISUAL_LONG_MEMORY_PAGE },
+    { scope: "user", page: VISUAL_LONG_USER_MEMORY_PAGE },
+  ] as const)("admits the recorded long $scope Memory page", async ({ scope, page }) => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+        {
+          memoryPages: { project: VISUAL_LONG_MEMORY_PAGE, user: VISUAL_LONG_USER_MEMORY_PAGE },
+        },
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    try {
+      const result = await client.plugins.call({
+        ...VISUAL_MEMORY_BINDING,
+        method: "flame.memory/list.v2",
+        input: JSON.stringify({
+          Scope: scope,
+          CWD: scope === "project" ? VISUAL_WORKSPACE_PATH : "",
+          Cursor: "",
+        }),
+        target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+      });
+      const captured = JSON.parse(result.output!) as typeof page;
+      expect(captured).toEqual(page);
+      expect(captured.Rows.every((row) => row.Scope === scope)).toBe(true);
+      expect(captured.Rows.some((row) => row.Content.includes("\n\n"))).toBe(true);
+      expect(new Set(captured.Rows.map((row) => row.ID)).size).toBe(captured.Rows.length);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("keeps a recorded long Memory page read-only", async () => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+        {
+          memoryPages: { project: VISUAL_LONG_MEMORY_PAGE, user: VISUAL_LONG_USER_MEMORY_PAGE },
+        },
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    const row = VISUAL_LONG_MEMORY_PAGE.Rows.find((item) => item.Status === "active")!;
+    try {
+      await expect(
+        client.plugins.call({
+          ...VISUAL_MEMORY_BINDING,
+          method: "flame.memory/update.v2",
+          input: JSON.stringify({
+            ID: row.ID,
+            ExpectedRevision: row.Revision,
+            Content: "A local draft is not an accepted record.",
+          }),
+          target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+        }),
+      ).rejects.toThrow('Visual plugin has no response for "flame.memory/update.v2"');
+      const result = await client.plugins.call({
+        ...VISUAL_MEMORY_BINDING,
+        method: "flame.memory/list.v2",
+        input: JSON.stringify({ Scope: "project", CWD: VISUAL_WORKSPACE_PATH, Cursor: "" }),
+        target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+      });
+      expect(JSON.parse(result.output!)).toEqual(VISUAL_LONG_MEMORY_PAGE);
+    } finally {
+      await client.close();
+    }
+  });
+
   it.each([
     "{}",
     "null",

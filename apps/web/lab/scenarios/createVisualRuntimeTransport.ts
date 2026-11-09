@@ -27,7 +27,10 @@ import {
   VISUAL_PLUGIN_PROVIDERS,
 } from "./componentSnapshots";
 import { stringifyJSON } from "@frame/sdk/json";
-import { type MethodInputs as MemoryInputs } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
+import {
+  type MethodInputs as MemoryInputs,
+  type MethodOutputs as MemoryOutputs,
+} from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodInputs as UsageReportInputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_MODEL_FACTS, type VisualModelFacts } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
@@ -44,6 +47,10 @@ import {
 
 export const VISUAL_REMOVE_SCHEDULE_EVENT = "flame:visual-remove-schedule";
 
+type VisualMemoryPages = Readonly<
+  Record<MemoryInputs["flame.memory/list.v2"]["Scope"], MemoryOutputs["flame.memory/list.v2"]>
+>;
+
 function resultFor(
   request: TransportRequest,
   snapshot: RuntimeAgentSessionSnapshot,
@@ -52,6 +59,7 @@ function resultFor(
   models: VisualModelFacts,
   mcpServers: MCPServer[],
   skillDocuments: SkillDetail[],
+  memoryPages: VisualMemoryPages,
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   signal?: AbortSignal,
 ): unknown {
@@ -124,8 +132,8 @@ function resultFor(
           MemoryInputs["flame.memory/list.v2"]
         > | null;
         const scope = input?.Scope;
-        if (scope === "project") return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
-        if (scope === "user") return { output: JSON.stringify(VISUAL_USER_MEMORY_PAGE) };
+        if (scope === "project") return { output: JSON.stringify(memoryPages.project) };
+        if (scope === "user") return { output: JSON.stringify(memoryPages.user) };
         throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
       }
       // stringifyJSON keeps bigint tokens exact and an absent cost absent.
@@ -163,12 +171,16 @@ export function createVisualRuntimeTransport(
     modelFacts?: VisualModelFacts;
     mcpServers?: MCPServer[];
     skillDocuments?: readonly SkillDetail[];
+    memoryPages?: VisualMemoryPages;
   } = {},
 ): Transport & { removeSchedule(id: string): void } {
   const transport = createMemoryTransport();
   const skillDocuments = structuredClone([
     ...(configuration.skillDocuments ?? VISUAL_SKILL_DOCUMENTS),
   ]);
+  const memoryPages = structuredClone(
+    configuration.memoryPages ?? { project: VISUAL_MEMORY_PAGE, user: VISUAL_USER_MEMORY_PAGE },
+  );
   const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
   const models = structuredClone(configuration.modelFacts ?? VISUAL_MODEL_FACTS);
   const mcpServers = structuredClone(configuration.mcpServers ?? []);
@@ -269,6 +281,7 @@ export function createVisualRuntimeTransport(
           models,
           mcpServers,
           skillDocuments,
+          memoryPages,
           readDiff,
           signal,
         );

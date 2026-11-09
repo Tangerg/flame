@@ -9,7 +9,7 @@ import {
 import { CAPABILITY_JSON as MEMORY_CAPABILITY } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { CAPABILITY_JSON as SCHEDULES_CAPABILITY } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { CAPABILITY_JSON as USAGE_REPORTS_CAPABILITY } from "../../../../plugins/usagereports/component/methods.generated";
-import { VISUAL_PLUGIN_DIGEST } from "./agentFixtureFacts";
+import { VISUAL_PLUGIN_DIGEST, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { type MethodOutputs as MemoryOutputs } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as ScheduleOutputs } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as UsageReportOutputs } from "../../../../plugins/usagereports/component/methods.generated";
@@ -74,6 +74,177 @@ export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
       CreatedAt: "2026-07-31T10:00:00Z",
       UpdatedAt: "2026-07-31T10:00:00Z",
     },
+  ],
+};
+
+type VisualMemoryRow = MemoryOutputs["flame.memory/list.v2"]["Rows"][number];
+
+const projectMemoryRecord: Pick<
+  VisualMemoryRow,
+  "Scope" | "Day" | "Project" | "Embedding" | "EmbeddingSpace"
+> = {
+  Scope: "project",
+  Day: "",
+  Project: "",
+  Embedding: [],
+  EmbeddingSpace: "",
+};
+
+export const VISUAL_LONG_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+  ...VISUAL_MEMORY_PAGE,
+  Rows: [
+    {
+      ...projectMemoryRecord,
+      Revision: 1,
+      ID: "mem_00000000000000000000000000000010",
+      Content: [
+        "Review findings are reported by risk, then grouped by file.",
+        "",
+        "Each finding cites the changed line range and the exact command output that supports it; a summary never replaces the recorded evidence.",
+      ].join("\n"),
+      Origin: "auto",
+      Status: "pending",
+      Pinned: false,
+      SessionID: VISUAL_SESSION_ID,
+      CreatedAt: "2026-07-31T09:12:00Z",
+      UpdatedAt: "2026-07-31T09:12:00Z",
+    },
+    {
+      ...projectMemoryRecord,
+      Revision: 4,
+      ID: "mem_00000000000000000000000000000011",
+      Content: [
+        "工作区的格式检查统一使用仓库根目录的配置，不要在子包内另行添加格式化规则。",
+        "",
+        "",
+        "检查失败时先保留原始输出，再说明受影响的文件和行号；不要只给出“已修复”之类的结论。",
+      ].join("\n"),
+      Origin: "auto",
+      Status: "active",
+      Pinned: true,
+      SessionID: VISUAL_SESSION_ID,
+      CreatedAt: "2026-07-29T15:40:00Z",
+      UpdatedAt: "2026-07-30T08:05:00Z",
+    },
+    {
+      ...projectMemoryRecord,
+      Revision: 1,
+      ID: "mem_00000000000000000000000000000012",
+      Content: [
+        "The failing fixture output from the last compaction review is retained at:",
+        "",
+        `${VISUAL_WORKSPACE_PATH}/.flame/evidence/${"recorded-compaction-boundary-".repeat(6)}trajectory.jsonl`,
+        "",
+        "Re-read that file before proposing a fix.",
+      ].join("\n"),
+      Origin: "auto",
+      Status: "pending",
+      Pinned: false,
+      SessionID: VISUAL_SESSION_ID,
+      CreatedAt: "2026-07-31T11:48:00Z",
+      UpdatedAt: "2026-07-31T11:48:00Z",
+    },
+    {
+      ...projectMemoryRecord,
+      Revision: 3,
+      ID: "mem_00000000000000000000000000000013",
+      Content: [
+        "Release notes for this workspace are written in English and Chinese.",
+        "",
+        "Keep both versions in the same entry so reviewers can compare the wording line by line. 中英文版本放在同一条目中，便于逐行对照。",
+      ].join("\n"),
+      Origin: "user",
+      Status: "active",
+      Pinned: true,
+      SessionID: "",
+      CreatedAt: "2026-07-29T10:00:00Z",
+      UpdatedAt: "2026-07-30T17:25:00Z",
+    },
+    {
+      ...projectMemoryRecord,
+      Revision: 5,
+      ID: "mem_00000000000000000000000000000016",
+      Content:
+        "Diff review reads the worktree comparison first and the branch comparison only when the user asks for it. Renamed files are reviewed under their new path, with the previous path kept beside the heading so earlier comments still resolve. Generated resources, lockfiles and snapshots are listed but not reviewed line by line unless their change is unexpected for the task; when that happens the review states which source change should have produced them and whether it is present in the same diff.",
+      Origin: "auto",
+      Status: "active",
+      Pinned: false,
+      SessionID: VISUAL_SESSION_ID,
+      CreatedAt: "2026-07-29T16:20:00Z",
+      UpdatedAt: "2026-07-31T09:40:00Z",
+    },
+    ...VISUAL_MEMORY_PAGE.Rows,
+  ],
+};
+
+const userMemoryRecord: Pick<
+  VisualMemoryRow,
+  "Scope" | "Day" | "Project" | "Embedding" | "EmbeddingSpace" | "Origin" | "Status" | "SessionID"
+> = {
+  Scope: "user",
+  Day: "",
+  Project: "",
+  Embedding: [],
+  EmbeddingSpace: "",
+  Origin: "user",
+  Status: "active",
+  SessionID: "",
+};
+
+export const VISUAL_LONG_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+  ...VISUAL_USER_MEMORY_PAGE,
+  Rows: [
+    {
+      ...userMemoryRecord,
+      Revision: 3,
+      ID: "mem_00000000000000000000000000000020",
+      Content: [
+        "Answer in the language of the question.",
+        "",
+        "When a question mixes English and Chinese, reply in Chinese and keep code identifiers, paths and commands in their original form.",
+      ].join("\n"),
+      Pinned: true,
+      CreatedAt: "2026-07-28T09:00:00Z",
+      UpdatedAt: "2026-07-30T11:15:00Z",
+    },
+    {
+      ...userMemoryRecord,
+      Revision: 1,
+      ID: "mem_00000000000000000000000000000021",
+      Content: [
+        "回答时先给结论，再列出依据。",
+        "",
+        "涉及文件时写出完整路径；涉及命令时给出可以直接复制的形式，并说明预期输出。",
+      ].join("\n"),
+      Pinned: false,
+      CreatedAt: "2026-07-29T08:30:00Z",
+      UpdatedAt: "2026-07-29T08:30:00Z",
+    },
+    {
+      ...userMemoryRecord,
+      Revision: 4,
+      ID: "mem_00000000000000000000000000000023",
+      Content:
+        "Never report a task as finished while a check is failing or was skipped. State which checks ran, which were not run and why, and paste the relevant failing output verbatim instead of paraphrasing it. If a failure predates the change, say so and show how that was established, for example by running the same check on the unchanged revision.",
+      Pinned: true,
+      CreatedAt: "2026-07-28T17:45:00Z",
+      UpdatedAt: "2026-07-31T08:20:00Z",
+    },
+    {
+      ...userMemoryRecord,
+      Revision: 1,
+      ID: "mem_00000000000000000000000000000024",
+      Content: [
+        "提交说明使用英文，第一行不超过七十二个字符。",
+        "",
+        "",
+        "正文说明改动原因而不是复述差异；如果改动涉及界面，附上前后对比的截图路径。",
+      ].join("\n"),
+      Pinned: false,
+      CreatedAt: "2026-07-30T15:00:00Z",
+      UpdatedAt: "2026-07-30T15:00:00Z",
+    },
+    ...VISUAL_USER_MEMORY_PAGE.Rows,
   ],
 };
 
