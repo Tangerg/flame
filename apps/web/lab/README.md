@@ -550,6 +550,16 @@ Missing, unknown or malformed scopes refuse rather than displaying another
 target's page. Scope, edit/cancel and conversation-return checks use the same
 Workspace fixture and installed Memory component.
 
+The `dock-usage-reports` Workspace variant mounts the installed Saved usage
+reports component over its declared public SDK binding. A single fixed report
+array supplies both archive headers and exact report reads. Its Daily copy keeps
+an integer above JavaScript's safe range, a recorded zero subtotal and an absent
+total price distinct; its Weekly copy preserves the existing reconciled Usage
+sample. Refresh reads the same captured evidence. Missing or unknown IDs refuse,
+and capture, removal and original-command recovery are not simulated. Reading
+checks may open the production removal confirmation and cancel it; they do not
+qualify an archive mutation or live accounting.
+
 The `dock-schedules-models` variant joins the same Workspace catalog and captures
 its long model list before constructing the Runtime transport. The real Schedule
 editor reads and refreshes that capture; tests do not mutate a retired seed after

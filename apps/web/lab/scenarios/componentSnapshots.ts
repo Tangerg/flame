@@ -8,9 +8,11 @@ import {
 } from "@flame/runtime-client/wire";
 import { CAPABILITY_JSON as MEMORY_CAPABILITY } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { CAPABILITY_JSON as SCHEDULES_CAPABILITY } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
+import { CAPABILITY_JSON as USAGE_REPORTS_CAPABILITY } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_PLUGIN_DIGEST } from "./agentFixtureFacts";
 import { type MethodOutputs as MemoryOutputs } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as ScheduleOutputs } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
+import { type MethodOutputs as UsageReportOutputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
 const visualMemory: MemoryOutputs["flame.memory/list.v2"]["Rows"] = [
   {
@@ -130,6 +132,13 @@ export const VISUAL_SCHEDULES_BINDING: PluginOperationBinding = {
   contract: SCHEDULES_CAPABILITY,
 };
 
+export const VISUAL_USAGE_REPORTS_BINDING: PluginOperationBinding = {
+  installationId: "44444444-4444-4444-8444-444444444444",
+  digest: VISUAL_PLUGIN_DIGEST,
+  contribution: "usage-reports",
+  contract: USAGE_REPORTS_CAPABILITY,
+};
+
 const visualAllUsage = {
   total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
   recordedCostUsd: 4.12,
@@ -195,6 +204,52 @@ export const VISUAL_USAGE: UsageSummary = {
   sessions: 7,
   runs: 24,
 };
+
+const visualSavedDailyUsage = {
+  total: { inputTokens: 9_007_199_254_740_993n, outputTokens: 0 },
+  recordedCostUsd: 0,
+  coverage: {
+    calls: 6,
+    reportedCalls: 6,
+    pricedCalls: 5,
+    startedCalls: 0,
+    completedCalls: 6,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+};
+
+export const VISUAL_USAGE_REPORTS: readonly UsageReportOutputs["flame.usage-reports/get.v1"][] = [
+  {
+    id: "b".repeat(64),
+    period: "weekly",
+    observedAt: "2026-10-20T09:00:00Z",
+    since: "2026-10-13T09:00:00Z",
+    summary: {
+      ...VISUAL_USAGE,
+      observedAt: "2026-10-20T09:00:00Z",
+      since: "2026-10-13T09:00:00Z",
+    },
+  },
+  {
+    id: "a".repeat(64),
+    period: "daily",
+    observedAt: "2026-10-20T08:00:00Z",
+    since: "2026-10-19T08:00:00Z",
+    summary: {
+      observedAt: "2026-10-20T08:00:00Z",
+      since: "2026-10-19T08:00:00Z",
+      ...visualSavedDailyUsage,
+      byProvider: [{ key: "anthropic", ...visualSavedDailyUsage }],
+      byModel: [{ key: "anthropic/claude-opus-5", ...visualSavedDailyUsage }],
+      byDay: [{ key: "2026-10-19", ...visualSavedDailyUsage }],
+      byOrigin: [{ key: "automatic", ...visualSavedDailyUsage }],
+      byScope: [{ key: "run", ...visualSavedDailyUsage }],
+      sessions: 2,
+      runs: 6,
+    },
+  },
+];
 
 const VISUAL_TRACE_ID = "0123456789abcdef0123456789abcdef";
 
@@ -293,10 +348,11 @@ export const VISUAL_DIAGNOSTICS: TelemetrySnapshot = {
 
 export const VISUAL_PACKAGES: PluginInstallation[] = (
   [
-    [VISUAL_MEMORY_BINDING, "flame.memory", "memory"],
-    [VISUAL_SCHEDULES_BINDING, "flame.schedules", "schedules"],
-  ] satisfies readonly (readonly [PluginOperationBinding, string, string])[]
-).map(([operation, name, server]) => {
+    [VISUAL_MEMORY_BINDING, "flame.memory", "memory", "memory"],
+    [VISUAL_SCHEDULES_BINDING, "flame.schedules", "schedules", "schedules"],
+    [VISUAL_USAGE_REPORTS_BINDING, "flame.usagereports", "usagereports", "reports"],
+  ] satisfies readonly (readonly [PluginOperationBinding, string, string, string])[]
+).map(([operation, name, server, exportName]) => {
   return {
     id: operation.installationId,
     source: `/visual/packages/${name}`,
@@ -314,7 +370,7 @@ export const VISUAL_PACKAGES: PluginInstallation[] = (
         {
           id: operation.contribution,
           server,
-          export: server,
+          export: exportName,
           contract: operation.contract,
           selectionRoles: [pluginContract(operation.contract).reference],
           requires: [],

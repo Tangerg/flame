@@ -4,6 +4,8 @@ import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
+import reportsDeclaration from "../../../../plugins/usagereports/package/io.github.tangerg.flame/declaration.json";
 import {
   VISUAL_PACKAGES,
   VISUAL_PLUGIN_PROVIDERS,
@@ -12,6 +14,7 @@ import {
   VISUAL_SCHEDULES_BINDING,
   VISUAL_SCHEDULES_PAGE,
   VISUAL_USAGE,
+  VISUAL_USAGE_REPORTS_BINDING,
 } from "./componentSnapshots";
 import { REVIEW_DIFF, BRANCH_REVIEW_DIFF } from "./diffSnapshot";
 import { commitVisualInterruptResponses } from "./interruptResponses";
@@ -22,6 +25,138 @@ import {
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
 describe("visual Runtime transport", () => {
+  it.each([
+    "{}",
+    "null",
+    '{"id":false}',
+    '{"id":"unknown"}',
+    stringifyJSON({ id: ` ${"a".repeat(64)}` }),
+    "{",
+  ])("refuses an uncaptured saved report input %s", async (input) => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    try {
+      await expect(
+        client.plugins.call({
+          ...VISUAL_USAGE_REPORTS_BINDING,
+          method: "flame.usage-reports/get.v1",
+          input,
+          target: { scope: "installation", reference: VISUAL_USAGE_REPORTS_BINDING.installationId },
+        }),
+      ).rejects.toThrow(input === "{" ? SyntaxError : "Visual usage reports has no report");
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each(["capture", "delete"])(
+    "keeps saved report %s outside the reading fixture",
+    async (action) => {
+      const client = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+        ),
+        { capabilities: () => VISUAL_CAPABILITIES },
+      );
+      try {
+        await expect(
+          client.plugins.call({
+            ...VISUAL_USAGE_REPORTS_BINDING,
+            method: `flame.usage-reports/${action}.v1`,
+            input: stringifyJSON(
+              action === "capture" ? { period: "daily" } : { id: "a".repeat(64) },
+            ),
+            target: {
+              scope: "installation",
+              reference: VISUAL_USAGE_REPORTS_BINDING.installationId,
+            },
+          }),
+        ).rejects.toThrow("Visual plugin has no response");
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it("reads immutable saved reports without rounding or filling absent prices", async () => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    const binding = VISUAL_USAGE_REPORTS_BINDING;
+    try {
+      const installation = (await client.plugins.list()).data.find(
+        (entry) => entry.id === binding.installationId,
+      );
+      expect(installation?.selected.contributions[0]).toMatchObject({
+        id: reportsDeclaration.contributions[0]!.id,
+        server: reportsDeclaration.contributions[0]!.server,
+        export: reportsDeclaration.contributions[0]!.export,
+        contract: binding.contract,
+      });
+      const read = async (method: string, input: unknown) =>
+        parseJSON(
+          (
+            await client.plugins.call({
+              ...binding,
+              method,
+              input: stringifyJSON(input),
+              target: { scope: "installation", reference: binding.installationId },
+            })
+          ).output!,
+        );
+      const listed = await read("flame.usage-reports/list.v2", {});
+      expect(listed).toEqual({
+        reports: [
+          {
+            id: "b".repeat(64),
+            period: "weekly",
+            observedAt: "2026-10-20T09:00:00Z",
+            since: "2026-10-13T09:00:00Z",
+          },
+          {
+            id: "a".repeat(64),
+            period: "daily",
+            observedAt: "2026-10-20T08:00:00Z",
+            since: "2026-10-19T08:00:00Z",
+          },
+        ],
+      });
+      const daily = await read("flame.usage-reports/get.v1", { id: "a".repeat(64) });
+      expect(daily).toMatchObject({
+        id: "a".repeat(64),
+        period: "daily",
+        summary: {
+          total: { inputTokens: 9007199254740993n, outputTokens: 0 },
+          recordedCostUsd: 0,
+          coverage: { calls: 6, reportedCalls: 6, pricedCalls: 5 },
+          byDay: [{ key: "2026-10-19" }],
+        },
+      });
+      expect(daily).not.toHaveProperty("summary.total.costUsd");
+      expect(await read("flame.usage-reports/get.v1", { id: "b".repeat(64) })).toMatchObject({
+        id: "b".repeat(64),
+        period: "weekly",
+        summary: { total: VISUAL_USAGE.total, coverage: VISUAL_USAGE.coverage },
+      });
+      expect(await read("flame.usage-reports/get.v1", { id: "a".repeat(64) })).toEqual(daily);
+    } finally {
+      await client.close();
+    }
+  });
+
   it.each(["byProvider", "byModel", "byDay", "byOrigin", "byScope"] as const)(
     "reconciles recorded Usage %s with the same physical attempts",
     async (group) => {

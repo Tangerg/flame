@@ -7,6 +7,8 @@ import { en as providersEnglish } from "../../../../plugins/providers/component/
 import { en as hooksEnglish } from "../../../../plugins/hooks/component/locales/en";
 import { en as usageEnglish } from "../../../../plugins/usage/component/locales/en";
 import { zh as usageChinese } from "../../../../plugins/usage/component/locales/zh";
+import { en as reportsEnglish } from "../../../../plugins/usagereports/component/locales/en";
+import { zh as reportsChinese } from "../../../../plugins/usagereports/component/locales/zh";
 import { solidFill } from "@/features/theme/kit/scale";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
@@ -216,6 +218,12 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(pluginView(page, "usage").getByRole("status")).toHaveText(
       "Recorded usage loaded. All time.",
     );
+    return;
+  }
+  if (state === "dock-usage-reports") {
+    await expect(
+      pluginView(page, "usage-reports").getByRole("button", { name: /^View report:/ }),
+    ).toHaveCount(2);
     return;
   }
   if (state === "dock-schedules" || state === "dock-schedules-models") {
@@ -1646,6 +1654,193 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       }
     }
   });
+}
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  const reportsTest = test.extend({ browserName });
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      width: 1120,
+      height: 720,
+      labels: reportsEnglish,
+      composer: "Message composer",
+      expand: "Open full width",
+      draft: "Keep the saved report draft.",
+      suffix: " Continue after reading.",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      width: 640,
+      height: 400,
+      labels: reportsChinese,
+      composer: "消息输入框",
+      expand: "全宽打开材料——窗口太窄，无法与对话并排显示",
+      draft: "保留归档阅读前的草稿。",
+      suffix: "核对后继续。",
+    },
+  ] as const) {
+    reportsTest(
+      `Saved reports preserve exact evidence and task return in ${browserName}/${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const { labels, width, height } = profile;
+        const named = (key: string) => ({ name: labels[key]!, exact: true });
+        const capture = async (name: string) =>
+          testInfo.attach(`saved-reports-${name}-${browserName}-${profile.locale}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        await page.setViewportSize({ width, height });
+        await page.goto(
+          `/lab/fixture.html?fixture=workspace&state=dock-usage-reports&locale=${profile.locale}&theme=${profile.theme}&font-size=${profile.fontSize}&motion=off`,
+        );
+        await expectLabReady(page);
+        await expect(page.getByTestId("workspace-state")).toHaveAttribute(
+          "data-state",
+          "dock-usage-reports",
+        );
+        await page
+          .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+          .click();
+        const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+        await composer.fill(profile.draft);
+        await page.getByRole("button", { name: profile.expand, exact: true }).click();
+        const panel = page
+          .getByRole("region", named("panel.title"))
+          .and(page.locator('[data-slot="panel"]'));
+        const reportButtons = panel.getByRole("button", {
+          name: new RegExp(`^${labels["report.view.aria"]!.split("{{title}}")[0]}`),
+        });
+        await expect(reportButtons).toHaveCount(2);
+        await capture("archive");
+        const daily = reportButtons.nth(1);
+        await daily.press("Enter");
+        const title = panel.getByRole("heading", {
+          name: new RegExp(`^${labels["period.daily.label"]}`),
+        });
+        await expect(title).toBeFocused();
+        const totals = panel
+          .locator("section")
+          .filter({ has: page.getByRole("heading", named("report.totals.title")) });
+        await expect(totals.locator("dd")).toHaveText([
+          "6",
+          "9,007,199,254,740,993",
+          "0",
+          "0",
+          labels["cost.notReported"]!,
+          "6/6",
+          "5/6",
+          "0",
+        ]);
+        await totals.locator("dl").scrollIntoViewIfNeeded();
+        await capture("daily-totals");
+        await panel.getByRole("button", named("report.breakdown.title")).click();
+        await expect(panel.getByRole("heading", { name: "2026-10-19", exact: true })).toBeVisible();
+        await capture("daily-breakdown");
+        const identity = panel.getByRole("button", named("report.identity.title"));
+        await identity.click();
+        const reportId = panel.getByText("a".repeat(64), { exact: true });
+        await expect(reportId).toBeVisible();
+        await expect(panel.getByText("2026-10-20T08:00:00Z", { exact: true })).toBeVisible();
+        await expect(panel.getByText("2026-10-19T08:00:00Z", { exact: true })).toBeVisible();
+        await reportId.scrollIntoViewIfNeeded();
+        await capture("exact-identity");
+        await page.setViewportSize({ width: 320, height: 600 });
+        await totals.locator("dl").scrollIntoViewIfNeeded();
+        const geometry = await totals.locator("dl").evaluate((node) => ({
+          overflow: node.scrollWidth - node.clientWidth,
+          pairs: Array.from(node.children, (pair) => {
+            const box = pair.getBoundingClientRect();
+            const value = pair.querySelector("dd")!.getBoundingClientRect();
+            return {
+              left: box.left,
+              right: box.right,
+              valueLeft: value.left,
+              valueRight: value.right,
+              overflow: pair.scrollWidth - pair.clientWidth,
+            };
+          }),
+        }));
+        await testInfo.attach("saved-reports-facts-geometry.json", {
+          body: JSON.stringify(geometry),
+          contentType: "application/json",
+        });
+        expect(geometry.overflow).toBeLessThanOrEqual(1);
+        for (const pair of geometry.pairs) {
+          expect(pair.left).toBeGreaterThanOrEqual(0);
+          expect(pair.right).toBeLessThanOrEqual(321);
+          expect(pair.overflow).toBeLessThanOrEqual(1);
+          expect(Math.abs(pair.valueLeft - pair.left)).toBeLessThanOrEqual(1);
+          expect(Math.abs(pair.valueRight - pair.right)).toBeLessThanOrEqual(1);
+        }
+        expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+        await totals.getByText("9,007,199,254,740,993", { exact: true }).scrollIntoViewIfNeeded();
+        await capture("daily-320");
+        await totals.locator("dd").last().scrollIntoViewIfNeeded();
+        await capture("daily-coverage-320");
+        await reportId.scrollIntoViewIfNeeded();
+        expect(await reportId.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+        await capture("identity-320");
+        await page.setViewportSize({ width, height });
+        const refresh = panel.getByRole("button", named("report.refresh"));
+        await refresh.click();
+        await expect(refresh).toBeFocused();
+        await expect(totals.locator("dd")).toHaveText([
+          "6",
+          "9,007,199,254,740,993",
+          "0",
+          "0",
+          labels["cost.notReported"]!,
+          "6/6",
+          "5/6",
+          "0",
+        ]);
+        await expect(identity).toHaveAttribute("aria-expanded", "true");
+        const remove = panel.getByRole("button", named("report.remove"));
+        await remove.press("Enter");
+        const confirmation = page.getByRole("alertdialog");
+        await expect(confirmation.getByRole("button", named("removal.cancel"))).toBeFocused();
+        await capture("removal-cancel");
+        await page.keyboard.press("Escape");
+        await expect(confirmation).toBeHidden();
+        await expect(remove).toBeFocused();
+        await panel.getByRole("button", named("report.back")).press("Enter");
+        await expect(daily).toBeFocused();
+        await expect(reportButtons).toHaveCount(2);
+        const archiveRefresh = panel.getByRole("button", named("archive.refresh"));
+        await archiveRefresh.click();
+        await expect(archiveRefresh).toBeFocused();
+        await expect(reportButtons).toHaveCount(2);
+        await reportButtons.first().press("Enter");
+        await expect(totals.locator("dd")).toHaveText([
+          "24",
+          "128,400",
+          "41,900",
+          "4.12",
+          "4.12",
+          "24/24",
+          "24/24",
+          "0",
+        ]);
+        await totals.locator("dl").scrollIntoViewIfNeeded();
+        await capture("weekly-totals");
+        await panel.getByRole("button", named("report.back")).press("Enter");
+        await expect(reportButtons.first()).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(composer).toHaveValue(profile.draft);
+        await composer.focus();
+        await page.keyboard.press("ControlOrMeta+A");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type(profile.suffix);
+        await expect(composer).toHaveValue(profile.draft + profile.suffix);
+        await capture("continued-conversation");
+      },
+    );
+  }
 }
 
 for (const browserName of ["chromium", "webkit"] as const) {

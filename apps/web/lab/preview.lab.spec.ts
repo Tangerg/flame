@@ -67,7 +67,13 @@ for (const story of catalog.stories) {
             await expect(page.locator("#root section")).toHaveCount(sample.frames);
           }
           if (entry.storyId === "business-workspace-scenarios") {
-            if (entry.variantId === "dock-file-error") {
+            if (entry.variantId === "dock-usage-reports") {
+              await expect(
+                page
+                  .locator('[data-slot="workspace-view-body"]:visible')
+                  .getByRole("button", { name: chinese ? /^查看报告：/ : /^View report:/ }),
+              ).toHaveCount(2);
+            } else if (entry.variantId === "dock-file-error") {
               await expect(
                 page
                   .getByRole("region", { name: "README.md", exact: true })

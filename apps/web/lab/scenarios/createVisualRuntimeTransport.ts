@@ -22,10 +22,13 @@ import {
   VISUAL_USER_MEMORY_PAGE,
   VISUAL_SCHEDULES_PAGE,
   VISUAL_USAGE,
+  VISUAL_USAGE_REPORTS,
   VISUAL_PACKAGES,
   VISUAL_PLUGIN_PROVIDERS,
 } from "./componentSnapshots";
+import { stringifyJSON } from "@frame/sdk/json";
 import { type MethodInputs as MemoryInputs } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
+import { type MethodInputs as UsageReportInputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_MODEL_FACTS, type VisualModelFacts } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
@@ -124,6 +127,25 @@ function resultFor(
         if (scope === "project") return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
         if (scope === "user") return { output: JSON.stringify(VISUAL_USER_MEMORY_PAGE) };
         throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
+      }
+      // stringifyJSON keeps bigint tokens exact and an absent cost absent.
+      if (call.method === "flame.usage-reports/list.v2") {
+        const reports = VISUAL_USAGE_REPORTS.map(({ id, period, observedAt, since }) => ({
+          id,
+          period,
+          observedAt,
+          since,
+        }));
+        return { output: stringifyJSON({ reports }) };
+      }
+      if (call.method === "flame.usage-reports/get.v1") {
+        const input = JSON.parse(call.input ?? "") as Partial<
+          UsageReportInputs["flame.usage-reports/get.v1"]
+        > | null;
+        const id = input?.id;
+        const report = VISUAL_USAGE_REPORTS.find((candidate) => candidate.id === id);
+        if (!report) throw new Error(`Visual usage reports has no report "${String(id)}"`);
+        return { output: stringifyJSON(report) };
       }
       throw new Error(`Visual plugin has no response for "${call.method}"`);
     }

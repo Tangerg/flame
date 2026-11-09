@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The existing Usage sample now reconciles its 24 attempts across all five accounting groupings, repairing three empty dimensions without changing prior totals or provider/model buckets. Final verification passes **57 related unit tests**, **99 / 99 browser cases** and five Web owner checks. All **87 final browser images** and **21 native captures** are inspected or match reviewed bytes; **211 AX records** retain the investigation. English/light/14 px/full motion and Chinese/dark/18 px/motion off cover a **320 px Dock**, actual native **200%** zoom, window changes, localized filtering, complete fact reading, refresh, period changes and continued drafts. Production components and Runtime are unchanged. The preceding Diagnostics, Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The Workspace catalog now includes **25 variants**, adding the production Saved usage reports reader with fixed Daily and Weekly evidence. Final verification passes **103 related unit tests** and **106 Lab cases**: 99 Workspace tasks and 7 capture/facts cases. The final selection retains **177 reviewed or matched browser images**, with no skips, retries or flaky cases. Four native runs retain **40 inspected captures / 317 AX records**, including both profiles after the final catalog contract correction. English/light/14 px/full motion and Chinese/dark/18 px/motion off cover a **320 px Dock**, actual native **200%** zoom, exact large integers, zero versus absent prices, identity, refresh, cancellation, window changes and continued drafts. Production components and Runtime are unchanged. The preceding Usage, Diagnostics, Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,98 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Saved usage report reading in the Lab (2026-11-09)
+
+The saved-report production component and command lifecycle tests already exist,
+but the Workspace catalog previously could not open that reader with accepted archive data.
+This is a coverage gap, not an established production rendering defect.
+`dock-usage-reports` now joins the existing Workspace variants and mounts
+`UsageReports` through `InstalledComponent`, `visualComponentProps` and its exact
+declared SDK binding. The same installation joins the captured plugin/provider
+catalog with its declared `usagereports` server and distinct `reports` export.
+The existing Memory and Schedules catalog values remain unchanged. There is no
+extra story, route, renderer, runner or visual configuration.
+
+`componentSnapshots.ts` owns two fixed immutable report inputs. List reads derive
+their headers from that same array; exact-ID reads return the corresponding
+report through Frame's lossless JSON codec. The Daily copy retains
+**9,007,199,254,740,993** input tokens, zero output, a recorded zero subtotal,
+six reported attempts and five priced attempts, with total price absent. Its five
+groupings reconcile those same six attempts. The Weekly copy reuses the existing
+24-attempt Usage sample with its captured seven-day bounds. Prior Usage, Memory,
+Schedule and Diagnostics facts remain unchanged. Missing, malformed, unknown or
+whitespace-altered IDs refuse; unmodelled capture and removal remain refused.
+
+The existing browser scenario file now follows both report periods in Chromium
+and WebKit, in English/light/14 px and Chinese/dark/18 px. It reads all eight
+saved totals, opens daily evidence and the exact ID/UTC bounds, checks equal
+fact edges and horizontal containment at 320 px, refreshes the accepted report,
+cancels the production removal confirmation and returns focus to each original
+archive opener. Archive refresh preserves both records. Material Escape returns
+to the original unsent Composer draft, where typing continues. Narrow captures
+follow the long integer and lower coverage values separately; a tall reader is
+not required to fit all content at once. Independent Workspace captures wait for
+both accepted archive rows before taking the image.
+
+Better Layout, Accessibility and Typography guide the shared fact alignment,
+complete numeric reading, modal cancellation and context return. The established
+Lab design references support one independently openable real-component scene.
+A bounded five-file Claude Code CLI candidate completes in **115.464 s**;
+twelve protected references remain unchanged. Primary review checks the complete
+diff, applies only those five files and owns the tests, captures and acceptance.
+
+Verification:
+
+- The initial read regression exposes the missing archive method while
+  **24 existing tests pass**. A later assertion against the actual package
+  declaration exposes the server/export conflation: **1 fails / 32 pass** before
+  correction. The catalog now records both declared fields explicitly. Final
+  related verification passes **5 files / 103 tests** in **4.553 s**, including
+  declared installation metadata, exact reads, refused IDs, unmodelled mutations,
+  production saved-report behavior and Lab case selection.
+- The initial four browser tasks fail because the test assumes a named region
+  for `PanelSection`, which renders an unnamed section with a heading. The task
+  now selects that actual section through its heading. All four then pass.
+  Narrow captures retain separate upper/lower evidence. The final combined
+  selection reruns these four tasks within the complete Workspace suite.
+  The earlier omitted-target wire-validation failure is also corrected in the
+  test input. No assertions, deadlines or console guards are weakened.
+- After the catalog correction, combined verification passes **106 / 106** in
+  **342.522 s**: all **99 Workspace tasks**, both 25-variant Workspace capture
+  collections and all five shared facts checks. Its **177 browser images** are
+  directly inspected or matched by SHA-256 to inspected bytes, including two
+  newly inspected continued-conversation captures. The final selection has zero
+  skips, retries, flaky cases and global errors. Typecheck, lint, formatting,
+  unused-code and design-system checks retain explicit private receipts.
+- The private Wails **v3.1.0** host builds in **21.832 s**. Its **491 canonical
+  Lab assets** are refreshed to match the final build byte for byte after the
+  metadata correction. All **46 production native inputs** and 45 native copies
+  remain unchanged. Both profiles use
+  keyboard Tab/Home to establish **320 px** Dock width. Actual Size followed by
+  twenty native Zoom In actions establishes **200%** page zoom. Mouse, keyboard,
+  wheel reading, native Window Zoom/restore, exact numbers and identity,
+  refresh, cancellation focus, archive return and continued drafts are checked
+  in the real application. The initial runs retain **27 images / 164 AX records**.
+  Both profiles are repeated against the corrected final assets, adding
+  **13 images / 153 AX records** for report reading, cancellation, return focus
+  and continued drafts. All four native parent processes exit **0**.
+
+Cleanup restores all **12 output roots** to their captured baselines, restores
+**21 files** and removes **2,161 captured output nodes**. The private application
+and asset server are stopped and unregistered. All six private Library paths
+return to absence; three pre-existing empty WebKit helper roots retain their
+identities and flags. The primary worktree and all 6,715 non-Markdown source
+inputs are checked, with only the eight owned Lab source files changed. No
+functional checks run after output restoration. Final delivery retires the
+private proof root after retaining compressed evidence in process memory.
+
+This qualifies fixed report reading and local cancellation only. Live accounting,
+durable archive capture/removal, admission failures, original-command recovery
+and provider execution remain outside this visual fixture; the existing unit
+tests retain their own lifecycle scope. Whole-product interaction coverage still
+requires further evidence-backed batches. The next review should check another
+production reader against the same catalog before adding a named variant.
 
 ### Reconciled Usage groupings in the Lab (2026-11-09)
 

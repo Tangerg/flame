@@ -16,6 +16,7 @@ import { Diagnostics } from "../../../../plugins/diagnostics/component/component
 import { WorkspaceDiff } from "../../../../plugins/diff/component/component";
 import { type Diff, type GetDiffRequest } from "@flame/runtime-client/wire";
 import { Usage } from "../../../../plugins/usage/component/component";
+import { UsageReports } from "../../../../plugins/usagereports/component/component";
 import { Memory } from "../../../../plugins/memory/component/component";
 import { Trajectory } from "../../../../plugins/trajectory/component/component";
 import { createElement } from "react";
@@ -47,6 +48,7 @@ import {
   VISUAL_DIAGNOSTICS,
   VISUAL_MEMORY_BINDING,
   VISUAL_SCHEDULES_BINDING,
+  VISUAL_USAGE_REPORTS_BINDING,
 } from "./componentSnapshots";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { Skills } from "../../../../plugins/skills/component/component";
@@ -353,6 +355,26 @@ function workspaceDataPlugin(
         component: () =>
           createElement(InstalledComponent, { ...usageSources, scope: "client", entry: Usage }),
       });
+      const usageReportsLifetime = ctx.contributions.child("visual-usage-reports");
+      const usageReportsSources = visualComponentProps(
+        runtimeClient(),
+        usageReportsLifetime,
+        "usage-reports",
+        VISUAL_USAGE_REPORTS_BINDING,
+      );
+      usageReportsLifetime.add(WORKSPACE_VIEW, {
+        id: "package:visual:usage-reports",
+        title: "Saved usage reports",
+        icon: "chart",
+        dock: "workspace",
+        material: "usage",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...usageReportsSources,
+            scope: "client",
+            entry: UsageReports,
+          }),
+      });
       const memoryLifetime = ctx.contributions.child("visual-memory");
       const memorySources = visualComponentProps(
         runtimeClient(),
@@ -516,6 +538,7 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "package:visual:diagnostics",
   "package:visual:memory",
   "package:visual:usage",
+  "package:visual:usage-reports",
   "package:visual:schedules",
   "package:visual:skills",
 ]);
