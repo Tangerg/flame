@@ -43,7 +43,12 @@ import {
 } from "@/features/workspace/application/workspaceQueries";
 import { REVIEW_DIFF, BRANCH_REVIEW_DIFF, scaledReview, ACTIVE_DIFF_FILE } from "./diffSnapshot";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
-import { VISUAL_MEMORY_BINDING, VISUAL_SCHEDULES_BINDING } from "./componentSnapshots";
+import {
+  VISUAL_DIAGNOSTICS,
+  VISUAL_MEMORY_BINDING,
+  VISUAL_SCHEDULES_BINDING,
+} from "./componentSnapshots";
+import { useTelemetryStore } from "@/lib/observability/stores";
 import { Skills } from "../../../../plugins/skills/component/component";
 import { fileView } from "@/features/workspace/views";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
@@ -598,6 +603,15 @@ export async function installVisualWorkspaceFixture(
   { agentState, snapshot, capabilities, readDiff }: ReturnType<typeof visualWorkspaceRuntime>,
   { pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig = {},
 ): Promise<void> {
+  if (state === "dock-diagnostics-recorded") {
+    const { spans, metrics, logs } = structuredClone(VISUAL_DIAGNOSTICS);
+    useTelemetryStore.setState({
+      spans,
+      logs,
+      metrics: Object.fromEntries(metrics.map((row) => [row.id, row])),
+    });
+  }
+
   await installVisualAgentFixture(
     visual,
     runtimeClient,

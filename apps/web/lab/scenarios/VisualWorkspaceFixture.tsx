@@ -23,6 +23,7 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-runs": "Run tree",
   "dock-subagents": "Subagents",
   "dock-diagnostics": "Diagnostics",
+  "dock-diagnostics-recorded": "Diagnostics · recorded",
   "dock-files": "Files",
   "dock-skills": "Skills",
   "dock-skills-catalog": "Skills · catalog",

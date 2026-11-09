@@ -172,6 +172,15 @@ transport is constructed. The original two-document `dock-skills` scene remains
 available. This is fixed provider data rendered by the installed Skills component,
 not live filesystem discovery or another Skills implementation.
 
+The Workspace variant `dock-diagnostics-recorded` retains three span statuses,
+two metrics and two multiline logs, including their original IDs,
+source paths and raw JSON. It clones the typed snapshot once into the existing
+client telemetry buffer before mounting the normal component. Refresh reads that
+buffer and Clear empties it; neither operation reseeds the recorded data. Opening
+a new document restores the sample. The original `dock-diagnostics` remains the
+empty-buffer scene. These are local presentation inputs, not live Runtime
+telemetry or another Diagnostics implementation.
+
 The Workspace fixture-state sidebar uses the production `AgentRow` overflow
 label and Tooltip for complete names by keyboard and pointer. Its existing
 resize observer keeps the focused row inside the actual scrollport, falling

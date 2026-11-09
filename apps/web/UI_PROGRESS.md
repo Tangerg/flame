@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Migration is complete. The Memory fixture now returns distinct recorded Project and User pages for the requested scope, refusing absent or invalid scopes. Four focused unit regressions and two WebKit cases expose the original defect. Final verification passes **103 related unit tests**, the strengthened **19-test transport contract**, **8 / 8 browser cases** and five Web owner checks. All **8 final browser images** and **25 native captures** are inspected; 15 native images qualify the final build, with **209 AX records** retained across the investigation. English/light/14 px and Chinese/dark/18 px cover actual native **200%** zoom, window changes, edit cancellation, scope return and continued drafts. Production components and Runtime are unchanged. The preceding Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. Whole-product visual acceptance remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The existing Workspace catalog now retains populated Diagnostics alongside its empty scene, replacing ad hoc log injection with one typed recorded snapshot in the existing client buffer. Final verification passes **56 related unit tests**, **101 / 101 browser cases**, both Workspace capture collections and five Web owner checks. All **87 final browser images**, **48 collection images** and **27 native captures** are inspected or match reviewed bytes; **186 AX records** retain the native task evidence. English/light/14 px and Chinese/dark/18 px cover actual native **200%** zoom, window changes, original JSON selection, metrics, multiline logs, clearing, refresh and continued drafts. Production components and Runtime are unchanged. The preceding Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20,7 +20,7 @@ four browser/performance configurations and separate composition Vite
 configuration are removed. There are no compatibility routes or command aliases.
 The current-source audit also finds no browser, capture or performance specs
 outside `lab/`, no tracked paths in the former `visual/` directory, and only the
-single Lab Playwright configuration. Migration is complete; full interaction
+single Lab Playwright configuration. Entrypoint migration is complete; full interaction
 qualification and whole-product visual coverage remain separate, unfinished work.
 `vite.lab.config.ts` builds the gallery, component preview and complete fixture
 documents together. `playwright.lab.config.ts` owns captures, migrated browser
@@ -35,6 +35,82 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Persistent Diagnostics observations in the Lab (2026-11-09)
+
+The original Wails `dock-diagnostics` scene contains no observations. The earlier
+multiline-log browser check injects data through a development module import, so
+that populated state cannot be opened through the permanent Lab catalog or its
+built documents. The task needs a reproducible reader with original evidence,
+ordinary local actions and a return to the same conversation.
+
+`componentSnapshots.ts` now supplies one typed `TelemetrySnapshot` with three
+span statuses, a histogram, a counter and two multiline logs. The existing
+Workspace catalog exposes it as `dock-diagnostics-recorded`, beside the unchanged
+empty scene. `installVisualWorkspaceFixture.ts` clones it once into the existing
+client telemetry buffer before mounting the production component. Refresh reads
+that owner; Clear empties it without reseeding. A new document restores the
+sample. IDs, paths, original JSON, provider severity and metric units remain
+inspectable. There is no second Diagnostics implementation, telemetry adapter,
+catalog, route, story, store or visual configuration. The previous log check now
+opens this recorded scene and removes its dynamic store import and injection.
+
+Better Accessibility guides selection, radio navigation, menu focus and task
+return; Better Layout guides complete values and independent reading regions.
+The read-only ZCode settings action header provides a compact refresh/overflow
+reference. Existing Flame components retain their current action grouping and
+scroll owners. No new production UI defect is established by this batch.
+
+Claude Code CLI prepares four copied fixture files in **65.209 s**, with fourteen
+protected references unchanged. Primary review checks the actual diff, removes
+unnecessary comments and verifies all prior snapshots remain unchanged. The
+primary agent owns the regression, capture readiness and native acceptance.
+
+Verification:
+
+- Four new baseline browser tasks fail on the absent recorded scene, while the
+  previous log task passes. The first candidate exposes two test assumptions:
+  the narrow reloaded material must be reopened, and a fractional WebKit edge
+  makes strict intersection ratio 1 invalid. The final checks use the ordinary
+  opener and explicit pixel bounds, including clearance below sticky controls.
+  No production behavior, deadline, retry or valid assertion is weakened.
+- Focused Chromium and WebKit tasks pass **5 / 5** in **33.564 s**. Final
+  Diagnostics, Workspace and facts-layout checks pass **101 / 101** in
+  **275.269 s**, without skips, retries or flaky cases. Their **87 images**
+  include 11 newly inspected images and 76 matching reviewed bytes. Both
+  Workspace capture collections pass in **52.587 s**, covering 24 variants each;
+  46 of their **48 images** are directly inspected and two match reviewed bytes.
+- Four related unit files pass **56 tests**. Web typecheck, lint, formatting,
+  unused-code and design-system checks pass. The private Wails v3.1.0 host builds
+  in **20.091 s** and loads **491 canonical final Lab assets**. All 46 production
+  native inputs remain unchanged.
+- Actual English/light/14 px/full-motion and Chinese/dark/18 px/motion-off tasks
+  resize the Dock to **320 px**, select complete original JSON, enable wrapping,
+  read all histogram and counter values, and inspect complete multiline log
+  evidence. Actual Size plus 20 native Zoom In actions reaches **200%**. Window
+  enlargement/restoration retains focus and expansion at
+  **2878 → 3024 → 2878 device pixels** wide. Long source and log regions remain
+  independently scrollable; their full contents need not fit simultaneously.
+  Keyboard clearing returns focus to the actions trigger, all counts become zero,
+  and Refresh keeps them empty. Escape returns to the retained workspace and
+  both original drafts accept further text without sending a message.
+
+All **27 native images** are inspected: one establishes the original empty scene
+and 26 qualify the populated tasks. **186 AX records** retain the actions and
+reading states. All three native processes exit 0. These are recorded local
+presentation inputs; live Runtime/provider telemetry, VoiceOver, physical OS IME,
+RTL, quantitative contrast and native system motion preference are unverified.
+The full Web, UI, backend, native gate and complete Lab suites are not rerun for
+this Lab-only fixture change; preceding evidence retains its original scope.
+
+Approve for the inspected Diagnostics workflow only. Whole-product visual
+acceptance remains open. Seven Lab TypeScript paths are the only differences
+among 6,715 non-Markdown inputs. Six private Library paths return to absence,
+three pre-existing helper roots retain their identities and flags, and the
+primary checkout remains unchanged. Twelve output/cache roots are restored,
+including 21 rewritten files and 2,096 retired generated nodes. Normal commit
+hooks, publication and fenced private-root retirement finish this delivery;
+no functional check runs after output restoration.
 
 ### Observation clearing and retained keyboard context (2026-11-09)
 

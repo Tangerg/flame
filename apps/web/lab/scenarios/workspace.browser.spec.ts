@@ -236,10 +236,18 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
-  if (state === "dock-diagnostics") {
-    await expect(pluginView(page, "diagnostics").getByRole("status")).toHaveText(
-      "Last buffer read",
-    );
+  if (state === "dock-diagnostics" || state === "dock-diagnostics-recorded") {
+    const view = pluginView(page, "diagnostics");
+    await expect(view.getByRole("status")).toHaveText("Last buffer read");
+    const recorded = state === "dock-diagnostics-recorded";
+    for (const [signal, count] of [
+      ["Traces", recorded ? 3 : 0],
+      ["Metrics", recorded ? 2 : 0],
+      ["Logs", recorded ? 2 : 0],
+    ])
+      await expect(
+        view.getByRole("radio", { name: `${signal} · ${count}`, exact: true }),
+      ).toBeVisible();
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {

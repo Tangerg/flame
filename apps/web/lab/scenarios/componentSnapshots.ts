@@ -1,3 +1,4 @@
+import { type TelemetrySnapshot } from "@flame/component-sdk";
 import { pluginContract } from "@flame/runtime-client";
 import {
   type UsageSummary,
@@ -207,6 +208,101 @@ export const VISUAL_USAGE: UsageSummary = {
   byScope: [],
   sessions: 7,
   runs: 24,
+};
+
+const VISUAL_TRACE_ID = "0123456789abcdef0123456789abcdef";
+
+const VISUAL_SPAN_ATTRS = {
+  source: "workspace.preview",
+  path: "/Users/visual/scope/apps/web/src/features/workspace/ui/files/FileWorkspace.tsx",
+};
+
+export const VISUAL_DIAGNOSTICS: TelemetrySnapshot = {
+  spans: [
+    {
+      id: "0000000000000001",
+      traceId: VISUAL_TRACE_ID,
+      name: "workspace.preview.read",
+      kind: "internal",
+      startMs: 1_785_484_800_000,
+      durationMillis: 3,
+      status: "unset",
+      attrs: VISUAL_SPAN_ATTRS,
+    },
+    {
+      id: "0000000000000002",
+      traceId: VISUAL_TRACE_ID,
+      parentSpanId: "0000000000000001",
+      name: "workspace.preview.decode",
+      kind: "internal",
+      startMs: 1_785_484_801_000,
+      durationMillis: 21.5,
+      status: "ok",
+      attrs: VISUAL_SPAN_ATTRS,
+    },
+    {
+      id: "0000000000000003",
+      traceId: VISUAL_TRACE_ID,
+      parentSpanId: "0000000000000001",
+      name: "workspace.preview.refresh",
+      kind: "internal",
+      startMs: 1_785_484_802_000,
+      durationMillis: 42,
+      status: "error",
+      statusMessage: "The source changed after the accepted preview request.",
+      attrs: VISUAL_SPAN_ATTRS,
+    },
+  ],
+  metrics: [
+    {
+      id: "workspace.preview.latency",
+      name: "workspace.preview.latency",
+      description: "Preview decoding duration",
+      kind: "histogram",
+      unit: "ms",
+      attrs: { source: "workspace.preview" },
+      count: 12,
+      sum: 840,
+      p50: 50,
+      p95: 100,
+      avg: 70,
+    },
+    {
+      id: "workspace.preview.opens",
+      name: "workspace.preview.opens",
+      description: "Accepted preview opens",
+      kind: "counter",
+      unit: "{preview}",
+      attrs: { source: "workspace.preview" },
+      count: 24,
+      sum: 24,
+    },
+  ],
+  logs: [
+    {
+      id: "provider-notice",
+      timeMs: 1_785_484_802_000,
+      severity: "PROVIDER_NOTICE",
+      body: "\n  Provider notice: cache warmed.\n\n    detail: 3 entries\n",
+      attrs: { source: "workspace.preview" },
+    },
+    {
+      id: "reading-log",
+      timeMs: 1_785_484_803_000,
+      severity: "ERROR",
+      body: [
+        "",
+        "Workspace preview could not be refreshed.",
+        "",
+        "Error: the file changed after the accepted request.",
+        "    at refresh (/Users/visual/scope/apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:89:7)",
+        "The last accepted preview remains available.",
+      ].join("\n"),
+      traceId: VISUAL_TRACE_ID,
+      spanId: "0000000000000003",
+      attrs: { source: "workspace.preview" },
+    },
+  ],
 };
 
 export const VISUAL_PACKAGES: PluginInstallation[] = (

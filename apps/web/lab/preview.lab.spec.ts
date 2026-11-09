@@ -81,6 +81,20 @@ for (const story of catalog.stories) {
                     exact: true,
                   }),
               ).toBeVisible();
+            } else if (entry.variantId === "dock-diagnostics-recorded") {
+              const panel = page.getByRole("region", {
+                name: chinese ? "客户端诊断" : "Client diagnostics",
+                exact: true,
+              });
+              await expect(
+                panel.getByRole("radio", {
+                  name: chinese ? "追踪 · 3" : "Traces · 3",
+                  exact: true,
+                }),
+              ).toBeChecked();
+              await expect(
+                panel.getByRole("button", { name: /workspace\.preview\.read/ }),
+              ).toBeVisible();
             } else if (entry.variantId === "dock-skills-catalog") {
               const panel = page
                 .locator('[data-slot="workspace-view-body"]:visible')
