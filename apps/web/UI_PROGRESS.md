@@ -10491,8 +10491,8 @@ qualify final observations. Two images establish the original native failure.
 One Window-menu preparation sequence sends Escape to the editor and cancels its
 temporary draft; its resulting restore is excluded from draft-continuity
 acceptance. The repeated window task without that dismissal key passes. Native
-menu Escape routing still needs a focused reproduction to distinguish host
-behavior from verification input. Physical IME, VoiceOver, RTL, older Safari,
+menu Escape routing receives the focused input control below; physical menu-key
+routing remains unqualified. Physical IME, VoiceOver, RTL, older Safari,
 quantitative contrast, system motion preference and live provider mutations are
 not qualified by this isolated task.
 
@@ -10508,6 +10508,46 @@ retains its original HEAD, clean status and checksum bytes. Later work is
 formatting, normal static lint hooks and read-only integrity checks. No
 production data migration is required. Publication uses the authorized normal
 commit hooks and non-forced `HEAD:main` push. The continuous goal remains active.
+
+#### Native-menu input qualification
+
+A focused Wails **v3.1.0** review reuses the same recorded Memory fixture,
+production menu and host with a private identity/home. English/light/14 px/full
+motion isolates the earlier menu-dismissal ambiguity. The native Window menu
+remains present in AX after an app-targeted Escape reaches and cancels the
+underlying Memory edit. A printable-key control behaves similarly: app-targeted
+`z` appears in the textarea while AX still exposes the native menu. These
+observations establish an input-routing ambiguity, not a proven physical-key
+product defect. No production keyboard handler or native-menu state is added.
+
+The menu's exposed Cancel action dismisses it while preserving the exact Memory
+draft and focused textarea. A subsequent page Escape removes the transient `z`
+without closing the editor; the next Escape returns to the original Edit action.
+Returning through the context dock retains the complete conversation draft, and
+native paste appends ` Continued.` exactly. Save, approval, deletion and Send
+remain unactivated. All **7 native PNGs** are inspected and **29 AX records**
+retained. Menu-open screenshot capture is unavailable; the menu's AX state does
+not qualify its physical Escape behavior. Physical IME and VoiceOver remain
+unqualified as well.
+
+Shared UI build passes in **1.414 s**, the qualified serial Lab build in
+**2.457 s**, and the private native build in **19.927 s**. The first Lab build
+briefly overlaps UI preparation and is excluded from serial-build acceptance;
+the reported Lab build starts after both builders finish. All **492 canonical
+assets**, **6,715 non-Markdown inputs** and **46 native inputs** retain their
+accepted bytes. This delivery changes only verification documentation, so the
+preceding **82-case Lab**, **278-test UI** and **4,799-test Web** results are
+historical acceptance of the unchanged implementation, not reruns in this review.
+
+The private process exits **0**, its server exits **130** after identity-checked
+SIGINT, and the app is unregistered. Six private Library paths and the ordinary
+temporary path return to absence. One owned helper child is removed while all
+three original helper roots and flags remain. All **12** output/cache roots
+return to their original snapshots, retiring **505 captured nodes** and restoring
+**22 files**. The primary checkout remains unchanged. Subsequent checks cover
+document formatting, normal static hooks and read-only integrity. Continue
+whole-product visual qualification in this same Lab; require independently
+observed native menu input before claiming physical Escape acceptance.
 
 ### Memory Lab target identity and User reading (2026-11-09)
 

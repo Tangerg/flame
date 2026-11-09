@@ -312,6 +312,12 @@ than assuming a particular presentation. Keep keyboard entry, return focus and
 draft continuity assertions. Add regression coverage to the existing scenario;
 do not introduce another fixture application or verification configuration.
 
+Reuse these fixtures in Wails to qualify native window, zoom and menu behavior.
+When a native menu is open, confirm that the input method actually operates that
+menu before attributing a key to the page. A captured menu tree alone does not
+establish keyboard routing. Check exposed menu dismissal and page Escape
+separately, retaining the exact draft and return focus across both.
+
 The existing inline-reference case follows the Workspace task from README source
 through Preview, a narrow viewport, Go to line and keyboard reading, then Escape
 back to the original reference. It also checks the package source's identity,
