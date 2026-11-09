@@ -5,6 +5,8 @@ import { type VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
 import { en as providersEnglish } from "../../../../plugins/providers/component/locales/en";
 import { en as hooksEnglish } from "../../../../plugins/hooks/component/locales/en";
+import { en as usageEnglish } from "../../../../plugins/usage/component/locales/en";
+import { zh as usageChinese } from "../../../../plugins/usage/component/locales/zh";
 import { solidFill } from "@/features/theme/kit/scale";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
@@ -1646,36 +1648,219 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   });
 }
 
-test("the portable Usage page filters recorded buckets without changing totals", async ({
-  page,
-}) => {
-  await openWorkspace(page, { state: "dock-usage" });
-  await waitForWorkspaceState(page, "dock-usage");
-  const view = pluginView(page, "usage");
-  await expect(
-    view
-      .getByRole("region", { name: "Recorded usage by source", exact: true })
-      .getByRole("article"),
-  ).toHaveCount(2);
-  const totals = await view.locator("#totals").textContent();
-  await view.getByRole("searchbox", { name: "Filter sources" }).fill("anthropic");
-  await expect(
-    view
-      .getByRole("region", { name: "Recorded usage by source", exact: true })
-      .getByRole("article"),
-  ).toHaveCount(1);
-  await expect(view.locator("#totals")).toHaveText(totals!);
-  await view.getByRole("searchbox", { name: "Filter sources" }).fill("");
-  await view.getByRole("combobox", { name: "Group by" }).click();
-  await page.getByRole("option", { name: "Model", exact: true }).click();
-  await expect(
-    view.getByRole("region", { name: "Recorded usage by source", exact: true }),
-  ).toContainText("openai/gpt-5.6-sol");
-  await view.getByRole("combobox", { name: "Period" }).click();
-  await page.getByRole("option", { name: "Last 7 days", exact: true }).click();
-  await expect(view.getByRole("status")).toHaveText("Recorded usage loaded. Last 7 days.");
-  await expect(view.locator("#totals")).toHaveText(totals!);
-});
+for (const browserName of ["chromium", "webkit"] as const) {
+  const usageTest = test.extend({ browserName });
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      width: 1120,
+      height: 720,
+      labels: usageEnglish,
+      composer: "Message composer",
+      expand: "Open full width",
+      draft: "Keep the Usage reading draft.",
+      suffix: " Continue after checking all sources.",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      width: 640,
+      height: 400,
+      labels: usageChinese,
+      composer: "消息输入框",
+      expand: "全宽打开材料——窗口太窄，无法与对话并排显示",
+      draft: "保留用量阅读前的草稿。",
+      suffix: "核对来源后继续。",
+    },
+  ] as const) {
+    usageTest(
+      `Usage groupings preserve accounting and task return in ${browserName}/${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const { labels, width, height } = profile;
+        const named = (key: string) => ({ name: labels[key]!, exact: true });
+        const capture = async (name: string) =>
+          testInfo.attach(`usage-${name}-${browserName}-${profile.locale}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        await page.setViewportSize({ width, height });
+        await page.goto(
+          `/lab/fixture.html?fixture=workspace&state=dock-usage&locale=${profile.locale}&theme=${profile.theme}&font-size=${profile.fontSize}&motion=off`,
+        );
+        await expectLabReady(page);
+        await page
+          .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+          .click();
+        const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+        await composer.fill(profile.draft);
+        await page.getByRole("button", { name: profile.expand, exact: true }).click();
+        const panel = page
+          .getByRole("region", named("panel.title"))
+          .and(page.locator('[data-slot="panel"]'));
+        await expect(panel.getByRole("status")).toHaveText(
+          labels["status.loaded"]!.replace("{{period}}", labels["period.all"]!),
+        );
+        const totals = panel.locator("#totals");
+        const originalTotals = (await totals.textContent())!;
+        for (const value of ["4.12", "128,400", "41,900"]) expect(originalTotals).toContain(value);
+        const sources = panel.getByRole("region", named("breakdown.group"));
+        const filter = panel.getByRole("searchbox", named("filter.label"));
+        const group = panel.getByRole("combobox", named("group.label"));
+        const chooseGroup = async (index: number, key: string) => {
+          const selected = (await group.textContent())!;
+          await group.focus();
+          await page.keyboard.press("Enter");
+          await expect(page.getByRole("option", { name: selected, exact: true })).toBeFocused();
+          await page.keyboard.press("Home");
+          await expect(page.getByRole("option").first()).toBeFocused();
+          for (let step = 0; step < index; step++) {
+            await page.keyboard.press("ArrowDown");
+            await expect(page.getByRole("option").nth(step + 1)).toBeFocused();
+          }
+          await page.keyboard.press("Enter");
+          await expect(group).toBeFocused();
+          await expect(group).toHaveText(labels[`group.${key}`]!);
+          await expect(totals).toHaveText(originalTotals);
+        };
+        const details = (row: Locator) => row.getByRole("button", named("bucket.details"));
+        await expect(sources.getByRole("heading")).toHaveText(["openai", "anthropic"]);
+        await filter.fill("anthropic");
+        await expect(sources.getByRole("heading")).toHaveText(["anthropic"]);
+        await expect(totals).toHaveText(originalTotals);
+        await filter.fill("");
+        await chooseGroup(1, "byModel");
+        await expect(sources.getByRole("heading")).toHaveText([
+          "openai/gpt-5.6-sol",
+          "anthropic/claude-opus-5",
+        ]);
+        await chooseGroup(2, "byDay");
+        await expect(sources.getByRole("heading")).toHaveText(["2026-10-18", "2026-10-19"]);
+        const firstDay = sources.getByRole("article").first();
+        await details(firstDay).click();
+        await expect(firstDay.locator("dd")).toHaveText([
+          "3.04",
+          "18/18",
+          "18/18",
+          "96,300",
+          "31,200",
+          "0",
+          "0",
+          "0",
+        ]);
+        await firstDay.locator("dl").scrollIntoViewIfNeeded();
+        await capture("day-facts");
+        await chooseGroup(3, "byOrigin");
+        await expect(sources.getByRole("heading")).toHaveText([
+          labels["bucket.byOrigin.automatic"]!,
+          labels["bucket.byOrigin.human"]!,
+        ]);
+        await filter.fill(labels["bucket.byOrigin.human"]!);
+        await expect(sources.getByRole("heading")).toHaveText([labels["bucket.byOrigin.human"]!]);
+        await panel.getByRole("button", named("filter.clear")).press("Enter");
+        await expect(filter).toBeFocused();
+        await filter.fill("AUTO");
+        await expect(sources.getByRole("heading")).toHaveText([
+          labels["bucket.byOrigin.automatic"]!,
+        ]);
+        const automatic = sources.getByRole("article");
+        await details(automatic).click();
+        await expect(automatic.locator("dd")).toHaveText([
+          "1.08",
+          "6/6",
+          "6/6",
+          "32,100",
+          "10,700",
+          "0",
+          "0",
+          "0",
+        ]);
+        await automatic.locator("dl").scrollIntoViewIfNeeded();
+        await capture("origin-facts");
+        await page.setViewportSize({ width: 320, height: 600 });
+        await automatic.locator("dl").scrollIntoViewIfNeeded();
+        const geometry = await automatic.locator("dl").evaluate((node) => ({
+          overflow: node.scrollWidth - node.clientWidth,
+          pairs: Array.from(node.children, (pair) => {
+            const box = pair.getBoundingClientRect();
+            const value = pair.querySelector("dd")!.getBoundingClientRect();
+            return {
+              left: box.left,
+              right: box.right,
+              valueLeft: value.left,
+              valueRight: value.right,
+              overflow: pair.scrollWidth - pair.clientWidth,
+            };
+          }),
+        }));
+        await testInfo.attach("usage-facts-geometry.json", {
+          body: JSON.stringify(geometry),
+          contentType: "application/json",
+        });
+        expect(geometry.overflow).toBeLessThanOrEqual(1);
+        for (const pair of geometry.pairs) {
+          expect(pair.left).toBeGreaterThanOrEqual(0);
+          expect(pair.right).toBeLessThanOrEqual(321);
+          expect(pair.overflow).toBeLessThanOrEqual(1);
+          expect(Math.abs(pair.valueLeft - pair.left)).toBeLessThanOrEqual(1);
+          expect(Math.abs(pair.valueRight - pair.right)).toBeLessThanOrEqual(1);
+        }
+        expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(
+          0,
+        );
+        await capture("origin-320");
+        await page.setViewportSize({ width, height });
+        const refresh = panel.getByRole("button", named("refresh"));
+        await refresh.click();
+        await expect(refresh).toBeFocused();
+        await expect(filter).toHaveValue("AUTO");
+        await expect(group).toHaveText(labels["group.byOrigin"]!);
+        await expect(details(automatic)).toHaveAttribute("aria-expanded", "true");
+        await panel.getByRole("combobox", named("period.label")).click();
+        await page.getByRole("option", named("period.7")).click();
+        await expect(panel.getByRole("status")).toHaveText(
+          labels["status.loaded"]!.replace("{{period}}", labels["period.7"]!),
+        );
+        await expect(filter).toHaveValue("AUTO");
+        await expect(details(automatic)).toHaveAttribute("aria-expanded", "true");
+        await capture("retained-reading");
+        await chooseGroup(4, "byScope");
+        await expect(
+          sources.getByText(labels["breakdown.empty.title"]!, { exact: true }),
+        ).toBeVisible();
+        await panel.getByRole("button", named("filter.clear")).press("Enter");
+        await expect(filter).toBeFocused();
+        await expect(sources.getByRole("heading")).toHaveText([labels["bucket.byScope.run"]!]);
+        const run = sources.getByRole("article");
+        await details(run).click();
+        await expect(run.locator("dd")).toHaveText([
+          "4.12",
+          "24/24",
+          "24/24",
+          "128,400",
+          "41,900",
+          "0",
+          "0",
+          "0",
+        ]);
+        await run.locator("dl").scrollIntoViewIfNeeded();
+        await expect(totals).toHaveText(originalTotals);
+        await capture("association-facts");
+        await page.keyboard.press("Escape");
+        await expect(composer).toHaveValue(profile.draft);
+        await composer.focus();
+        await page.keyboard.press("ControlOrMeta+A");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type(profile.suffix);
+        await expect(composer).toHaveValue(profile.draft + profile.suffix);
+        await capture("continued-draft");
+      },
+    );
+  }
+}
 
 test("a package template fills a draft without creating a schedule", async ({ page }) => {
   await openWorkspace(page, { state: "dock-schedules" });

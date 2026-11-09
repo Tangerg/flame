@@ -181,6 +181,14 @@ a new document restores the sample. The original `dock-diagnostics` remains the
 empty-buffer scene. These are local presentation inputs, not live Runtime
 telemetry or another Diagnostics implementation.
 
+The existing `dock-usage` sample projects the same 24 recorded attempts into all
+five accounting groupings. Provider and model buckets retain their original
+values; two UTC days and two calling origins reuse those captured aggregates.
+All attempts belong to Runs, preserving the 24 associated Runs and seven Sessions.
+Every grouping reconciles token totals, known and total cost, and coverage. The
+same fixed report is deliberately returned for every period: this scene qualifies
+presentation and retained reading state, not Runtime date filtering or accounting.
+
 The Workspace fixture-state sidebar uses the production `AgentRow` overflow
 label and Tooltip for complete names by keyboard and pointer. Its existing
 resize observer keeps the focused row inside the actual scrollport, falling

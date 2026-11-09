@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The existing Workspace catalog now retains populated Diagnostics alongside its empty scene, replacing ad hoc log injection with one typed recorded snapshot in the existing client buffer. Final verification passes **56 related unit tests**, **101 / 101 browser cases**, both Workspace capture collections and five Web owner checks. All **87 final browser images**, **48 collection images** and **27 native captures** are inspected or match reviewed bytes; **186 AX records** retain the native task evidence. English/light/14 px and Chinese/dark/18 px cover actual native **200%** zoom, window changes, original JSON selection, metrics, multiline logs, clearing, refresh and continued drafts. Production components and Runtime are unchanged. The preceding Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
+The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The existing Usage sample now reconciles its 24 attempts across all five accounting groupings, repairing three empty dimensions without changing prior totals or provider/model buckets. Final verification passes **57 related unit tests**, **99 / 99 browser cases** and five Web owner checks. All **87 final browser images** and **21 native captures** are inspected or match reviewed bytes; **211 AX records** retain the investigation. English/light/14 px/full motion and Chinese/dark/18 px/motion off cover a **320 px Dock**, actual native **200%** zoom, window changes, localized filtering, complete fact reading, refresh, period changes and continued drafts. Production components and Runtime are unchanged. The preceding Diagnostics, Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,95 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Reconciled Usage groupings in the Lab (2026-11-09)
+
+The original `dock-usage` sample has 24 completed, reported and priced model
+attempts, but its UTC-day, calling-origin and association arrays are empty.
+Actual Wails selection of each grouping shows no matching rows beneath the
+nonempty overview. Runtime's read-only `usage_reporter.go` and its reconciliation
+test establish the contract: all five dimensions project the same physical
+attempts. This is a Lab input defect, not a newly established production UI defect.
+
+`componentSnapshots.ts` now keeps three fixed aggregates for all attempts and
+the two existing provider totals. Provider/model identities, values, observation
+time, seven associated Sessions and 24 associated Runs retain their prior meaning.
+Two UTC days reuse the 18-call and six-call aggregates. Calling origins contain
+six automatic and 18 human attempts in Runtime key order; association contains
+24 Run attempts. Dates and origins are explicit recorded sample choices. Every
+dimension reconciles token totals, known and total cost, and all coverage fields.
+No aggregation framework, Runtime transition, component, story, variant, route,
+store or visual configuration is added. All other snapshots remain unchanged.
+
+The existing transport contract now checks all five groupings and whether the
+captured Run count is possible. The existing Usage browser task expands into
+English/light/14 px and Chinese/dark/18 px flows in Chromium and WebKit. It follows
+provider filtering, model and date reading, localized and raw-key origin lookup,
+complete eight-value facts, 320 px reflow, refresh, a period change, empty filtered
+association, keyboard clearing and an exact continued conversation draft.
+Facts retain shared label/value edges without horizontal overflow. Oversized
+readers remain independently scrollable rather than requiring all content to fit.
+
+Better Layout and Accessibility guide grouping, equal fact edges, keyboard focus
+and return. The read-only ZCode `AppUsagePanel.tsx` and `usageStatsUiParts.tsx`
+support separating report scope from local presentation. Their charts, compact
+number formatting and truncation are not adopted. A bounded single-file Claude
+Code CLI candidate completes in **40.146 s**, with twelve protected references
+unchanged. Primary review verifies the real diff, compares every prior Usage
+field and the unchanged surrounding snapshots, and owns regression and acceptance.
+
+Verification:
+
+- Initial contract checks fail in the three missing dimensions, with 21 other
+  tests passing. All four original browser tasks fail at the absent UTC dates.
+  An artifact-directory setup error leaves one nominal final unit attempt on
+  the original data; its same three failures are retained. After application and
+  review, the final related selection passes **3 files / 57 tests** in **4.860 s**.
+- The first candidate browser attempt fails all four cases after rapid menu key
+  sequences retain an earlier option. The task now observes the selected option
+  after opening and each focused destination after Home/ArrowDown. This preserves
+  keyboard navigation, assertions, deadlines and zero retries. The initial lint
+  finding moves a conditional assertion into the existing public-read contract;
+  no check is disabled. Final lint, typecheck, formatting, unused-code and
+  design-system checks pass.
+- Focused tasks pass **4 / 4** in **20.713 s**, with all **24 images** directly
+  inspected. The final Workspace and facts-layout selection passes **99 / 99** in
+  **259.452 s**, without skips, retries, flaky cases or global errors. Its **87
+  images** include two newly inspected images and 85 matching reviewed bytes.
+- The private Wails v3.1.0 host builds in **20.427 s** and uses **491 canonical
+  final Lab assets**, verified byte for byte. All 46 production native inputs
+  remain unchanged. Both final profiles use ordinary Tab/Home to establish the
+  **320 px Dock**, read both days and filter origins. Chinese also checks the
+  localized `用户` label; both profiles find Automatic through raw `AUTO`.
+- Actual Size plus 20 native Zoom In actions reaches **200%**. The ordinary
+  material opener retains the filter, grouping and expanded facts after folding.
+  Wheel reading exposes all eight values, including recorded zeros. Window
+  enlargement/restoration retains the material and its focus at
+  **2878 → 3024 → 2878 device pixels** wide. Refresh retains focus and reading
+  state; Last 7 days accepts the same recorded snapshot. Keyboard clearing from
+  an unmatched association returns to the search input and exposes the complete
+  Run bucket. Escape after Actual Size restores the retained Dock and both
+  original drafts accept further text without sending a message.
+
+All **21 native images** are inspected: one reproduces the original empty
+grouping and 20 qualify the final tasks. **211 AX records** retain the investigation.
+One English QA URL mistakenly uses `motion=on`; document admission correctly
+rejects it. That process exits and is excluded before the valid `full` task.
+All four native processes exit 0. Native paste does not qualify physical OS IME.
+VoiceOver, RTL, quantitative contrast and native system motion preference remain
+unverified. Every period deliberately receives the same sample: this does not
+qualify live date filtering, provider execution or Runtime accounting. The full
+Web, UI, backend, native gate, catalog captures and complete Lab suites are not
+rerun for this Lab-only input change; earlier evidence retains its original scope.
+
+Approve for the inspected Usage workflow only. Whole-product visual acceptance
+remains open. Three Lab TypeScript paths are the only differences among 6,715
+non-Markdown inputs. Six private Library paths return to absence, three existing
+helper roots retain their identities and flags, and the primary checkout remains
+unchanged. Twelve output/cache roots are restored, including 21 rewritten files
+and 2,132 retired generated nodes. Normal hooks, main publication and fenced
+private resource retirement complete this delivery; no functional check runs
+after output restoration. Continue task-based coverage through the same Lab owner.
 
 ### Persistent Diagnostics observations in the Lab (2026-11-09)
 

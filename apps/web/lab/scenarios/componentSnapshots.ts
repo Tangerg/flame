@@ -130,8 +130,7 @@ export const VISUAL_SCHEDULES_BINDING: PluginOperationBinding = {
   contract: SCHEDULES_CAPABILITY,
 };
 
-export const VISUAL_USAGE: UsageSummary = {
-  observedAt: "2026-10-20T00:00:00Z",
+const visualAllUsage = {
   total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
   recordedCostUsd: 4.12,
   coverage: {
@@ -143,69 +142,56 @@ export const VISUAL_USAGE: UsageSummary = {
     failedCalls: 0,
     unknownCalls: 0,
   },
+};
+
+const visualOpenAIUsage = {
+  total: { inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04 },
+  recordedCostUsd: 3.04,
+  coverage: {
+    calls: 18,
+    reportedCalls: 18,
+    pricedCalls: 18,
+    startedCalls: 0,
+    completedCalls: 18,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+};
+
+const visualAnthropicUsage = {
+  total: { inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08 },
+  recordedCostUsd: 1.08,
+  coverage: {
+    calls: 6,
+    reportedCalls: 6,
+    pricedCalls: 6,
+    startedCalls: 0,
+    completedCalls: 6,
+    failedCalls: 0,
+    unknownCalls: 0,
+  },
+};
+
+export const VISUAL_USAGE: UsageSummary = {
+  observedAt: "2026-10-20T00:00:00Z",
+  ...visualAllUsage,
   byProvider: [
-    {
-      key: "openai",
-      total: { inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04 },
-      recordedCostUsd: 3.04,
-      coverage: {
-        calls: 18,
-        reportedCalls: 18,
-        pricedCalls: 18,
-        startedCalls: 0,
-        completedCalls: 18,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-    {
-      key: "anthropic",
-      total: { inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08 },
-      recordedCostUsd: 1.08,
-      coverage: {
-        calls: 6,
-        reportedCalls: 6,
-        pricedCalls: 6,
-        startedCalls: 0,
-        completedCalls: 6,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
+    { key: "openai", ...visualOpenAIUsage },
+    { key: "anthropic", ...visualAnthropicUsage },
   ],
   byModel: [
-    {
-      key: "openai/gpt-5.6-sol",
-      total: { inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04 },
-      recordedCostUsd: 3.04,
-      coverage: {
-        calls: 18,
-        reportedCalls: 18,
-        pricedCalls: 18,
-        startedCalls: 0,
-        completedCalls: 18,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-    {
-      key: "anthropic/claude-opus-5",
-      total: { inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08 },
-      recordedCostUsd: 1.08,
-      coverage: {
-        calls: 6,
-        reportedCalls: 6,
-        pricedCalls: 6,
-        startedCalls: 0,
-        completedCalls: 6,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
+    { key: "openai/gpt-5.6-sol", ...visualOpenAIUsage },
+    { key: "anthropic/claude-opus-5", ...visualAnthropicUsage },
   ],
-  byDay: [],
-  byOrigin: [],
-  byScope: [],
+  byDay: [
+    { key: "2026-10-18", ...visualOpenAIUsage },
+    { key: "2026-10-19", ...visualAnthropicUsage },
+  ],
+  byOrigin: [
+    { key: "automatic", ...visualAnthropicUsage },
+    { key: "human", ...visualOpenAIUsage },
+  ],
+  byScope: [{ key: "run", ...visualAllUsage }],
   sessions: 7,
   runs: 24,
 };

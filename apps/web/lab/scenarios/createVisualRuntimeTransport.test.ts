@@ -22,6 +22,60 @@ import {
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
 describe("visual Runtime transport", () => {
+  it.each(["byProvider", "byModel", "byDay", "byOrigin", "byScope"] as const)(
+    "reconciles recorded Usage %s with the same physical attempts",
+    async (group) => {
+      const client = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+        ),
+        { capabilities: () => VISUAL_CAPABILITIES },
+      );
+      try {
+        const report = await client.usage.summary();
+        const buckets = report[group];
+        expect(buckets.length).toBeGreaterThan(0);
+        expect(new Set(buckets.map((bucket) => bucket.key)).size).toBe(buckets.length);
+        for (const key of [
+          "inputTokens",
+          "outputTokens",
+          "cacheReadTokens",
+          "cacheWriteTokens",
+          "reasoningTokens",
+        ] as const)
+          expect(buckets.reduce((sum, bucket) => sum + (bucket.total[key] ?? 0), 0)).toBe(
+            report.total[key] ?? 0,
+          );
+        for (const key of [
+          "calls",
+          "reportedCalls",
+          "pricedCalls",
+          "startedCalls",
+          "completedCalls",
+          "failedCalls",
+          "unknownCalls",
+        ] as const)
+          expect(buckets.reduce((sum, bucket) => sum + bucket.coverage[key], 0)).toBe(
+            report.coverage[key],
+          );
+        expect(buckets.every((bucket) => bucket.total.costUsd !== undefined)).toBe(true);
+        expect(buckets.every((bucket) => bucket.recordedCostUsd !== undefined)).toBe(true);
+        expect(buckets.reduce((sum, bucket) => sum + bucket.total.costUsd!, 0)).toBeCloseTo(
+          report.total.costUsd!,
+          10,
+        );
+        expect(buckets.reduce((sum, bucket) => sum + bucket.recordedCostUsd!, 0)).toBeCloseTo(
+          report.recordedCostUsd!,
+          10,
+        );
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
   it("publishes a controlled remote schedule removal through its original subscription", async () => {
     const transport = createVisualRuntimeTransport(
       structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
@@ -88,7 +142,11 @@ describe("visual Runtime transport", () => {
         expect(JSON.parse(response.output!)).toEqual(page);
       }
       expect((await client.runtime.discover()).capabilities).toEqual(VISUAL_CAPABILITIES);
-      expect(await client.usage.summary()).toEqual(VISUAL_USAGE);
+      const usage = await client.usage.summary();
+      expect(usage).toEqual(VISUAL_USAGE);
+      expect(
+        usage.byScope.find((bucket) => bucket.key === "run")?.coverage.calls ?? 0,
+      ).toBeGreaterThanOrEqual(usage.runs);
       const workspace = await client.workspaces.open({ path: "/Users/visual/scope" });
       expect(await workspace.diff.get({ mode: "worktree", format: "rows" })).toEqual(REVIEW_DIFF);
       expect(await workspace.diff.get({ mode: "base", format: "rows" })).toEqual(
