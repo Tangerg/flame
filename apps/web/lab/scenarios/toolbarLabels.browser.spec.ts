@@ -199,6 +199,173 @@ test("high-risk approval remains explicit in a narrow composer", async ({ page }
   expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThan(2);
 });
 
+for (const browserName of ["chromium", "webkit"] as const) {
+  const capacityTest = test.extend({ browserName });
+  capacityTest.describe(`${browserName} composer action capacity`, () => {
+    for (const environment of [
+      { locale: "en", theme: "light", fontSize: 14, messages: en },
+      { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
+    ]) {
+      for (const state of ["idle", "running"]) {
+        capacityTest(
+          `composer action rows remain complete in ${environment.locale} ${state}`,
+          async ({ page }, testInfo) => {
+            const messages: Record<string, string> = environment.messages;
+            await page.setViewportSize({ width: 1120, height: 728 });
+            const query = new URLSearchParams({
+              fixture: "agent",
+              state,
+              locale: environment.locale,
+              theme: environment.theme,
+              "font-size": String(environment.fontSize),
+            });
+            await page.goto(`/lab/fixture.html?${query}`);
+            await expectLabReady(page);
+            const draft = page.getByRole("textbox", { name: messages["composer.input.label"] });
+            const draftValue = "  Keep this draft while the controls reflow.  ";
+            await draft.fill(draftValue);
+            const draftNode = await draft.elementHandle();
+            const composer = page.locator('[data-slot="composer-root"]');
+            const footer = composer.locator('[data-slot="composer-footer"]');
+            const approval = footer.getByRole("button", {
+              name: new RegExp(`${messages["approvals.mode.aria"]}$`),
+            });
+            await approval.click();
+            await page
+              .getByRole("menuitem", {
+                name: new RegExp(`^${messages["approvals.mode.auto"]}`),
+              })
+              .click();
+            await expect(approval.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+            await expect(
+              footer.getByRole("button", {
+                name: messages[
+                  state === "running" ? "composer.action.steer" : "composer.action.send"
+                ],
+                exact: true,
+              }),
+            ).toBeVisible();
+            if (state === "running") {
+              await expect(
+                footer.getByRole("button", { name: messages["composer.action.stop"], exact: true }),
+              ).toBeVisible();
+            }
+
+            const measure = () =>
+              footer.evaluate((node, running) => {
+                const frame = node.closest<HTMLElement>('[data-slot="composer-root"]')!;
+                const rect = (element: Element) => {
+                  const { top, right, bottom, left, width, height } =
+                    element.getBoundingClientRect();
+                  return { top, right, bottom, left, width, height };
+                };
+                const contains = (outer: DOMRect, inner: DOMRect) =>
+                  inner.left >= outer.left - 1 &&
+                  inner.right <= outer.right + 1 &&
+                  inner.top >= outer.top - 1 &&
+                  inner.bottom <= outer.bottom + 1;
+                const frameBox = frame.getBoundingClientRect();
+                const input = frame.querySelector<HTMLTextAreaElement>("textarea")!;
+                const inputBox = input.getBoundingClientRect();
+                const viewport = new DOMRect(0, 0, innerWidth, innerHeight);
+                const buttons = [...node.querySelectorAll("button")];
+                const actions = buttons
+                  .slice(running ? -2 : -1)
+                  .map((button) => button.getBoundingClientRect());
+                return {
+                  frame: rect(frame),
+                  footer: rect(node),
+                  overflow: frame.scrollWidth - frame.clientWidth,
+                  draftFits:
+                    contains(frameBox, inputBox) &&
+                    inputBox.bottom <= node.getBoundingClientRect().top + 1 &&
+                    input.scrollWidth - input.clientWidth <= 1 &&
+                    input.scrollHeight - input.clientHeight <= 1,
+                  actionsAtEnd:
+                    Math.abs(
+                      actions.at(-1)!.right -
+                        (frameBox.right - parseFloat(getComputedStyle(node).paddingRight)),
+                    ) <= 1,
+                  actionsTogether: actions.every(
+                    (action) => Math.abs(action.top - actions[0]!.top) <= 1,
+                  ),
+                  actions: buttons.map((button) => {
+                    const box = button.getBoundingClientRect();
+                    const x = (box.left + box.right) / 2;
+                    const y = (box.top + box.bottom) / 2;
+                    return {
+                      name: button.getAttribute("aria-label"),
+                      rect: rect(button),
+                      contained: contains(frameBox, box) && contains(viewport, box),
+                      glyphs: [...button.querySelectorAll("svg")].every((glyph) =>
+                        contains(box, glyph.getBoundingClientRect()),
+                      ),
+                      reachable: [
+                        [x, y],
+                        [box.left + 2, y],
+                        [box.right - 2, y],
+                        [x, box.top + 2],
+                        [x, box.bottom - 2],
+                      ].every(([px, py]) => {
+                        const hit = document.elementFromPoint(px!, py!);
+                        return hit !== null && button.contains(hit);
+                      }),
+                    };
+                  }),
+                };
+              }, state === "running");
+
+            for (const width of [320, 280, 1120]) {
+              await page.setViewportSize({ width, height: 728 });
+              try {
+                await expect(draft).toHaveValue(draftValue);
+                expect(await draft.evaluate((node, original) => node === original, draftNode)).toBe(
+                  true,
+                );
+                await expect
+                  .poll(async () => {
+                    const reading = await measure();
+                    return {
+                      fits: reading.overflow <= 1,
+                      draftFits: reading.draftFits,
+                      actionsAtEnd: reading.actionsAtEnd,
+                      actionsTogether: reading.actionsTogether,
+                      complete: reading.actions.every(
+                        (action) => action.contained && action.glyphs && action.reachable,
+                      ),
+                    };
+                  })
+                  .toEqual({
+                    fits: true,
+                    draftFits: true,
+                    actionsAtEnd: true,
+                    actionsTogether: true,
+                    complete: true,
+                  });
+                await approval.focus();
+                await page.keyboard.press("Enter");
+                await expect(page.getByRole("menuitem").first()).toBeFocused();
+                await page.keyboard.press("Escape");
+                await expect(approval).toBeFocused();
+                await expect(draft).toHaveValue(draftValue);
+              } finally {
+                await testInfo.attach(`composer-action-capacity-${width}`, {
+                  body: JSON.stringify(await measure(), null, 2),
+                  contentType: "application/json",
+                });
+                await testInfo.attach(`composer-action-rows-${width}`, {
+                  body: await page.screenshot({ animations: "disabled" }),
+                  contentType: "image/png",
+                });
+              }
+            }
+          },
+        );
+      }
+    }
+  });
+}
+
 test("navigation density does not rescale reading or input geometry", async ({ page }) => {
   const measures = [];
   for (const density of ["compact", "spacious"]) {

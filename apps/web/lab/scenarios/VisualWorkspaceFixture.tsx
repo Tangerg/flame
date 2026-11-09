@@ -113,6 +113,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       observedReader: null as Element | null,
       observedControls: null as Element | null,
       observedBody: null as Element | null,
+      observedComposer: null as Element | null,
       blur: null as { target: string | null; related: string | null; focused: boolean } | null,
     };
     const rect = (element: Element | null) => element?.getBoundingClientRect().toJSON() ?? null;
@@ -142,10 +143,13 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       const controls = reader?.querySelector('[data-slot="panel-controls"]') ?? null;
       // Content can reflow inside an unchanged viewport.
       const body = reader?.querySelector('[data-slot="panel-body"]') ?? null;
+      const composer = document.querySelector<HTMLElement>('[data-slot="composer-root"]');
+      const footer = composer?.querySelector<HTMLElement>('[data-slot="composer-footer"]');
       for (const [before, next] of [
         [state.observedReader, reader],
         [state.observedControls, controls],
         [state.observedBody, body],
+        [state.observedComposer, composer],
       ]) {
         if (before === next) continue;
         if (before) observer.unobserve(before);
@@ -154,6 +158,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       state.observedReader = reader;
       state.observedControls = controls;
       state.observedBody = body;
+      state.observedComposer = composer;
       const dock = reader?.closest(".agent-context-dock") ?? null;
       const row = dock?.closest(".agent-dock-row") ?? null;
       const snapshot = {
@@ -191,6 +196,22 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
         focus: active ? { tag: active.localName, label: active.getAttribute("aria-label") } : null,
         blur: state.blur,
         reading: reading ? { name: observationTargetName(reading), rect: rect(reading) } : null,
+        composer: composer
+          ? {
+              rect: rect(composer),
+              width: view.getComputedStyle(composer).width,
+              clientWidth: composer.clientWidth,
+              total: composer.scrollWidth,
+              footer: footer ? { rect: rect(footer), total: footer.scrollWidth } : null,
+              actions: Array.from(footer?.querySelectorAll("button") ?? []).map((action) => {
+                const label = action.querySelector('[data-slot="composer-chip-label"]');
+                return {
+                  rect: rect(action),
+                  label: label ? view.getComputedStyle(label).display : null,
+                };
+              }),
+            }
+          : null,
       };
       node.textContent = JSON.stringify(snapshot);
       // Native accessibility snapshots bound each text node independently.
@@ -213,6 +234,21 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
               name: snapshot.reading.name,
               top: snapshot.reading.rect.top,
               bottom: snapshot.reading.rect.bottom,
+            }
+          : null,
+        composer: snapshot.composer
+          ? {
+              width: snapshot.composer.rect?.width,
+              css: snapshot.composer.width,
+              total: snapshot.composer.total,
+              footer: snapshot.composer.footer?.total,
+              actions: snapshot.composer.actions.map((action) => [
+                action.rect?.left,
+                action.rect?.top,
+                action.rect?.right,
+                action.rect?.bottom,
+                action.label,
+              ]),
             }
           : null,
       });

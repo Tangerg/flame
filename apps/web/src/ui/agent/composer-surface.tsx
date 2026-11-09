@@ -19,7 +19,7 @@ const styles = stylex.create({
   footer: {
     display: "flex",
     flexShrink: 0,
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.s1_5,
     paddingRight: "var(--composer-footer-end)",

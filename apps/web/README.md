@@ -233,6 +233,12 @@ and derives field validity from that one message. Editing or cancelling retires
 that validation. Command feedback retains the existing asynchronous owner and
 remains available after a refused edit closes.
 
+The Composer footer wraps controls in source order when their actual sizes no
+longer fit. Its end slot forms one nonshrinking group aligned to the trailing
+edge, keeping Send or Steer/Stop together across rows. Secondary labels retain
+their existing container query and accessible current values; toolbar capacity
+is owned by normal layout rather than a measured presentation state.
+
 The empty conversation owns keeping its focused control inside its scroll
 viewport when the window, text or surrounding content reflows. Its existing
 spacing token supplies focus clearance. Native keyboard return reveals that

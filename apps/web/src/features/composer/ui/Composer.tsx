@@ -130,8 +130,11 @@ export function Composer({
       </div>
       <AgentComposerFooter>
         <Slot name="composer.toolbar.start" />
-        <div {...stylex.props(composerStyles.toolbarSpacer)} />
-        <Slot name="composer.toolbar.end" />
+        <Slot
+          name="composer.toolbar.end"
+          wrapper
+          className={stylex.props(composerStyles.toolbarActions).className}
+        />
       </AgentComposerFooter>
     </AgentComposerSurface>
   );

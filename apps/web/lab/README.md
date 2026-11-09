@@ -405,16 +405,25 @@ frames remain attached on failure. These cases use the existing Workspace spec
 and catalog; native page zoom is qualified separately in Wails.
 
 The existing Workspace sidebar offers `Observe layout`, off by default. It reads
-window, Dock, viewport and focus geometry without changing the material or its
-draft. Named screen-reader outputs expose one snapshot in full and a compact
+window, Dock, viewport, Composer and focus geometry without changing the material
+or its draft. Composer observations include control bounds and secondary-label
+visibility. Named screen-reader outputs expose one snapshot in full and a compact
 reading projection for native accessibility tools with bounded text nodes.
 Editable values never enter these outputs. Disabling the option clears them and
 disconnects its observers and event listeners; clean qualification keeps it off.
-The same ResizeObserver also tracks the current Panel body, so filtering or
-expanding its content updates the scroll extent inside an unchanged viewport.
+The same ResizeObserver tracks the current Panel body and Composer, so filtering,
+expansion and input reflow update their geometry inside an unchanged viewport.
 The existing Workspace regression compares the reported and actual heights over
 eight rendered frames, checks growth and shrinkage, and changes content after
-disabling observation to verify that the outputs stay empty.
+disabling observation to verify that the outputs stay empty. Resizing also checks
+the Composer projection while retaining the same material, query and exact draft.
+
+The existing toolbar suite checks actual 320/280 px viewports and restoration to
+1120 px in Chromium and WebKit, with English/light/14 px and Chinese/dark/18 px.
+Idle and running scenarios retain an explicit Auto policy, complete control and
+glyph bounds, pointer hit areas, an aligned end-action group, menu focus return
+and the same draft node. Native page zoom remains a separate Wails inspection of
+these same Lab documents.
 
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and

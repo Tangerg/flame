@@ -13,7 +13,13 @@ export const composerStyles = stylex.create({
     paddingLeft: "var(--composer-editor-start)",
   },
   editor: { minHeight: "1.5lh", maxHeight: "6lh" },
-  toolbarSpacer: { minWidth: space.s2, flex: 1 },
+  toolbarActions: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    marginInlineStart: "auto",
+  },
 
   tray: {
     display: "flex",

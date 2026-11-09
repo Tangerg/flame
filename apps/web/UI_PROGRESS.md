@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Schedule deletion cancellation now has permanent narrow-flow coverage through the existing Workspace scene: **25 / 25** related cases and **14 / 14** component-state tests pass. Actual Wails inspects English/light/14 px and Chinese/dark/18 px at **200% and 300%**, retained details, Cancel/Escape return and exact continued drafts, using **492 byte-identical canonical Lab assets**. All **20 final browser images** are accounted for; all **13 native images** are inspected and **177 AX records** are retained. No production change is established by this confirmation task. The native English return exposes a stable Send-button clip at 300%; it remains an explicit follow-up, so whole-product visual acceptance is unfinished. The preceding Skills repair and complete Web/native gates retain their recorded scope. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The shared Composer footer now wraps fitting control groups and keeps Send or Steer/Stop at the trailing edge. The existing Lab selection passes **48 / 48** cases; Composer passes **29 files / 293 tests**, and the current production native gate passes. Actual Wails checks the same **492 canonical Lab assets**, including complete English Send at native **300%** and Chinese running actions at **200% / 300%** in the enlarged window. A separate preexisting short-window failure still lets the Goal tray compress the Composer; original and final native captures preserve that unresolved case. Whole-product visual acceptance remains unfinished and the goal stays active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -4430,10 +4430,12 @@ The personal Skills library follow-up now qualifies local Archive/Restore
 feedback through the same Lab, its related **27-case** selection and actual
 EN/ZH Wails zoom tasks. Complete Web passes **433 files / 4,808 tests** and the
 native gate passes; unknown outcomes retain the original mutation identity.
-The long-string Schedule editor task is already qualified above. The current
-confirmation-return inspection preserves its query, details and draft, and
-reveals a stable native English 300% Send-button clip. Reproduce that Composer
-zoom path through this same Lab next.
+The long-string Schedule editor and confirmation-return tasks retain their
+qualified scopes. Their native English 300% Send clip is now repaired through
+shared footer wrapping and a trailing end-action group. The next demonstrated
+failure is vertical: in the shortest native Chinese 300% running frame, the Goal
+tray compresses the Composer. Original and final captures reproduce it; repair
+that space allocation through the same Lab before claiming complete containment.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout, including its committed `go.work.sum`, is preserved. The user
@@ -16045,10 +16047,11 @@ The returned English Composer at native 300% does expose a separate stable
 clipping defect: its Send button extends beyond the right edge. Both immediate
 and settled images retain the defect while preserving the exact draft. The
 Chinese profile and small browser viewports show a complete Send button; those
-successes do not qualify this native English case. Preserve its capture and
-reproduce the native zoom/toolbar owner next. This delivery certifies the
-confirmation and draft-continuity scope, not complete Composer containment or
-whole-product visual acceptance.
+successes do not qualify this native English case. The later **Native action
+capacity and trailing alignment** qualification below reproduces and repairs
+that horizontal defect. This confirmation delivery retains its original
+confirmation and draft-continuity scope; complete Composer and whole-product
+visual acceptance remain separate.
 
 The source comparison covers **6,716 non-Markdown inputs**, with only the existing
 Workspace spec changed; two maintained documents record the scope. No files are
@@ -20565,6 +20568,77 @@ The six private native identity paths are absent again. The primary checkout's
 unrelated `go.work.sum` bytes and Git status remain unchanged. Delivery retires the
 private app, reports, logs and temporary data before ordinary publication to main;
 reusable tools remain available. No source-data or protocol migration is required.
+
+### Native action capacity and trailing alignment (2026-11-10)
+
+Original Wails at native 300% measures a **333.67 px** Composer with **343 px**
+scroll extent. Send extends **9.61 px** past its clipped right edge and the model
+control shrinks to **16 px**. Secondary labels remain displayed despite the
+480 px query, including after native window reflow. Small browser viewports hide
+those labels and cannot establish the native result. This is an observed host
+difference, not a diagnosis of a particular upstream engine revision.
+
+Shared `composer-surface.tsx` now lets the footer wrap in source order. The
+Composer's existing end Slot supplies one nonshrinking flex group with an
+automatic leading margin. Send or Steer/Stop stays together at the trailing
+edge after wrapping; the obsolete empty `toolbarSpacer` is removed. Current
+choice names, secondary-label rules, explicit Auto policy, handlers and command
+ownership retain their contracts. Better-layout guidance on normal-flow actions,
+content-led wrapping and shared alignment guides this change. Two bounded Claude
+Code CLI candidates supply only the reviewed one-file and two-file edits; primary
+review owns qualification. No production observer, zoom state, dependency or
+alternate visual entry is added.
+
+The existing Lab toolbar file gains eight cases across Chromium/WebKit,
+English/light/14 px and Chinese/dark/18 px, and idle/running states. Actual
+**320 / 280 / 1120 px** viewports check complete control and glyph bounds, five
+pointer hit locations per control, paired trailing actions, retained exact draft
+and node, and menu Escape/focus return. All eight fail against the original
+layout. A wrapping-only candidate passes the initial checks, but stronger
+trailing-alignment assertions expose two Chinese running failures; the action
+group repairs them. The final related selection passes **48 / 48** in
+**119.867 s**, without skips, retries, flaky cases or global errors. All **42 final
+browser images** are inspected through seven sheets. Composer passes **29 files /
+293 tests** in **6.475 s**. Web typecheck, lint and unused-code checks pass;
+`make check-native` passes in **22.699 s** for the final sources.
+
+The existing opt-in Workspace observation also reads Composer and control bounds
+and secondary-label display. Its same ResizeObserver follows the current surface;
+the existing regression checks resized geometry, exact draft retention, clearing
+and retirement. Editable values are absent from both readouts. Observation remains
+off for clean acceptance and introduces no competing layout authority.
+
+The private production Wails host uses **492 byte-identical canonical Lab assets**
+and leaves all **46 native production inputs** unchanged. Final English checks
+200% and the native minimum 300% frame, current model/approval picker cancellation,
+focus return, material search/scroll/close and exact continued input with
+observation off. Final Chinese/dark/18 px checks Auto, complete paired running
+actions and keyboard Stop focus at 200%/300% in the enlarged native window,
+continued input and window restoration. Send, Steer and Stop are not activated;
+these inert fixtures do not qualify live Runtime execution.
+
+The minimum native Chinese running frame at 300% still compresses the Composer
+to a thin strip below the Goal tray. The preserved original build reproduces
+the same failure, and the final group build retains it. Enlarging the window
+restores the exact draft and controls. This is an explicit unresolved vertical
+allocation issue around `FloatingComposer`, not a passing narrow-height result.
+It is the next bounded repair through this same Lab. **24 native images and 598
+AX records** retain accepted and failed observations. An asset-generation
+rollback initially reused cached entry HTML and failed to load; native Force
+Reload admits the original bytes before its counterexample. Physical OS IME,
+VoiceOver speech, RTL, complete Lab and complete Web/Runtime suites are not newly
+qualified by this batch. Existing complete-suite receipts retain their scope.
+
+The fresh main fetch has no incoming commits at `5ef185e31`. Source comparison
+covers **6,716 non-Markdown inputs** and admits only the six owned edits; three
+maintained documents record the behavior and qualification. No files are added
+or removed. All seven private native processes exit normally, the app is
+unregistered and its server stops. Six private Library paths return to absence;
+three preexisting helper roots retain their identities and flags. All **12
+output/cache roots** return to their exact baseline contents and modes, and the
+primary checkout remains unchanged. No functional checks run after restoration.
+Final handoff retires the captured private evidence tree after verified in-memory
+retention. No Runtime, storage, protocol or user-data migration is required.
 
 ### Model catalog reading and recovery
 

@@ -80,6 +80,15 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   const composer = page.getByRole("textbox", { name: "Message composer", exact: true });
   const draft = "Unsent layout-observation draft — 保留原始输入。";
   await composer.fill(draft);
+  const composerSurface = page.locator('[data-slot="composer-root"]');
+  const observedComposer = async () => {
+    const value = await output.textContent();
+    return value
+      ? (JSON.parse(value) as { composer: { clientWidth: number; total: number } }).composer
+      : null;
+  };
+  const initialComposerWidth = await composerSurface.evaluate((node) => node.clientWidth);
+  await expect.poll(async () => (await observedComposer())?.clientWidth).toBe(initialComposerWidth);
   const search = page.getByRole("searchbox", { name: "Search this catalog", exact: true });
   const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
   const reportedHeight = async () => {
@@ -137,6 +146,12 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   await expect(search).toHaveValue("runtime");
   expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
 
+  await page.setViewportSize({ width: 1120, height: 728 });
+  const resizedComposerWidth = await composerSurface.evaluate((node) => node.clientWidth);
+  expect(resizedComposerWidth).not.toBe(initialComposerWidth);
+  await expect.poll(async () => (await observedComposer())?.clientWidth).toBe(resizedComposerWidth);
+  await expect(output).not.toContainText(draft);
+  await expect(readingOutput).not.toContainText(draft);
   await page.getByRole("button", { name: "Expand the workspace fixture sidebar" }).click();
   await observe.click();
   await expect(observe).not.toBeChecked();
