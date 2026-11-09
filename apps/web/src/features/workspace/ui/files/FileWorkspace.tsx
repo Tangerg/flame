@@ -523,7 +523,7 @@ function FilePreview({
       actions={
         <>
           {canRender && control}
-          {!unsupported && (
+          {data && !unsupported && (
             <GoToLine onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)} />
           )}
           <IconButton

@@ -513,6 +513,10 @@ File roots, expanded directories and selected file bodies retain first-result
 loading while their query is pending, including a paused request. Accepted empty
 lists and readable content keep their meaning during later pauses. Query data,
 network admission, retry and navigation retain their existing owners.
+Go to line is offered after a file read supplies text, including retained text
+during a refresh. A pending or failed first read does not establish line navigation;
+unsupported classification still removes it. Back and Copy path remain available
+through that first result.
 
 Project choices retain complete wrapping names. When projects share a display
 name, both the new-conversation tray and active-project menu show their full

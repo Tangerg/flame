@@ -317,6 +317,11 @@ unsent drafts in both languages. Narrow ordinary material uses its existing full
 and Close action; reference inspection retains its own return action. Captures
 await the admitted business outcome after the normal query retry, rather than
 treating document readiness as a completed file read.
+The same header spec samples the unsupported first read in Chromium and WebKit,
+including its pending frames. It checks that line navigation is never offered
+without text and that the admitted header, controls, Back and Copy path bounds
+remain stable across settlement. Full layout-shift rectangles are retained in the
+existing layout-shift spec; neither check changes query retry or document readiness.
 
 Diff failure checks follow the first rejected scoped read into a pending overview.
 The surviving Refresh control receives focus while its filter is unavailable;

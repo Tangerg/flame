@@ -263,6 +263,64 @@ describe("first file reads", () => {
   });
 
   it.each([
+    {
+      outcome: "readable content",
+      path: "src/main.go",
+      settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+        read.resolve({ content: "package main", startLine: 1, endLine: 1, totalLines: 1 }),
+      settled: "package main",
+      offersLines: true,
+    },
+    {
+      outcome: "an unsupported file",
+      path: "assets/logo.png",
+      settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+        read.reject(
+          new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
+        ),
+      settled: "No image preview here yet",
+      offersLines: false,
+    },
+    {
+      outcome: "a read failure",
+      path: "src/main.go",
+      settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+        read.reject(new Error("file unavailable")),
+      settled: "Couldn't open file",
+      offersLines: false,
+    },
+  ])(
+    "offers line navigation only after the first read returns $outcome",
+    async ({ path, settle, settled, offersLines }) => {
+      const read = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(read.promise);
+      openWorkspaceFile(testClient.workspace.access, path);
+      mount(
+        <>
+          <button>Another control</button>
+          <FileWorkspace />
+        </>,
+      );
+      await waitFor(() => expect(readFile).toHaveBeenCalledOnce());
+      expect(screen.getByRole("status").textContent).toBe("Loading");
+      expect(screen.queryByRole("button", { name: "Go to line" })).toBeNull();
+      const back = screen.getByRole("button", { name: "Back to files" });
+      const copyPath = screen.getByRole("button", { name: "Copy path" });
+      expect(document.activeElement).toBe(back);
+      const other = screen.getByRole("button", { name: "Another control" });
+      act(() => other.focus());
+
+      await act(async () => settle(read));
+      expect(await screen.findByText(settled)).toBeTruthy();
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      expect(Boolean(screen.queryByRole("button", { name: "Go to line" }))).toBe(offersLines);
+      expect(screen.getByRole("button", { name: "Back to files" })).toBe(back);
+      expect(screen.getByRole("button", { name: "Copy path" })).toBe(copyPath);
+      expect(document.activeElement).toBe(other);
+    },
+  );
+
+  it.each([
     { name: "empty", accepted: [] as WorkspaceFileEntry[], visibleText: "No files" },
     { name: "nonempty", accepted: [directory], visibleText: "src" },
   ])(

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Shared selected backgrounds now stay with their native controls through reflow and wheel reading, including application motion-off and ordinary motion. The final existing-Lab selection passes **395 / 395** across **14 files**, including all eight motion/engine profiles with **420 zero-offset frames**. All **867 browser images** are inspected or matched. UI, full Web (**433 files / 4,790 tests**), all **20** portable ESM resources and the supported native gate pass. Actual Wails review inspects **23 captures / 127 AX records**, covering English/light/14 px/full and Chinese/dark/18 px/off, real **200%** zoom, proposal decisions and continued drafts. The **492 canonical Lab assets** remain identical. The earlier complete Lab run remains historical; its separate unsupported-file header-shift finding is open. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. File line navigation now waits for accepted text, repairing the unsupported first-read header's **18 px** horizontal shift. The final existing-Lab file/Workspace selection passes **141 / 141**, and the separate four layout-shift sweeps pass. Across four engine/language profiles, **329 frames** contain no premature line action and **292 ready frames** retain identical header/control bounds. All **185** expanded-run images are inspected or matched. Full Web (**433 files / 4,793 tests**), all **20** portable ESM resources and the supported native gate pass. Actual Wails review qualifies **25 original-size captures / 126 AX records**, English/light/14 px/full and Chinese/dark/18 px/off, real **200%** zoom, source reading, reference return and continued drafts. The **492 canonical Lab assets** remain identical. Both findings from the earlier complete Lab run have scoped repairs; that historical run is not a new full-suite pass. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -153,8 +153,9 @@ owned output/cache roots return to their original snapshots: **1,070 captured
 nodes** are retired and **21 files** restored. All 46 native inputs and the
 primary checkout remain unchanged. Subsequent checks are document formatting,
 normal static lint hooks and read-only integrity checks. Normal hooks,
-publication and fenced qualification-root retirement complete this delivery. Both pre-existing failures remain the next UI work;
-the complete run is not green. No new story, visual route, test configuration,
+publication and fenced qualification-root retirement complete this delivery. Both
+pre-existing failures receive subsequent scoped repairs below; this historical
+complete run remains non-green. No new story, visual route, test configuration,
 assertion exception or production behavior is introduced by the loading change.
 
 Current-source follow-up narrows the prior camera observation: `PreviewCanvas`
@@ -162,6 +163,111 @@ already fits after viewport or content-size changes, while `Camera.fit` clamps
 its result to the 20% minimum. A large paired Workspace may need a smaller scale
 in a short native frame. Reproduce that boundary before changing camera policy;
 the former description of a retained pose alone does not establish the cause.
+
+### First file-read controls and stable headers (2026-11-09)
+
+The original unsupported-file finding is reproduced on `68939ae1a`. Full,
+unrounded shift rectangles show the controls changing from **107.65625 px** wide
+at **x=994.34375** to **89.65625 px** at **x=1012.34375**. Both stay at **y=56**
+with the same right edge. The earlier rounded-y diagnostic could not expose
+this **18 px horizontal** change. CLS remains **0.00012053571428571427**.
+
+`FilePreview` offered Go to line before any file result existed. The normal
+Query retry kept it available until unsupported classification removed it.
+`FileWorkspace.tsx` now requires existing query data as well as supported
+content. Accepted text, including same-file placeholder text or retained text
+during a later failed refresh, keeps its existing navigation. A pending or
+failed first read cannot offer a line action. Back and Copy path retain their
+nodes and availability. Query state remains the owner; there is no copied
+readiness state, retry change, CSS compensation or extra event handler.
+
+Better Layout and Accessibility guide stable controls, first-result semantics
+and focus continuity. React review keeps the decision in render. Read-only
+ZCode's actual mounted `PreviewPane` derives source actions from parsed/source
+capabilities; it is reference evidence, not Flame's acceptance result. A bounded
+**49.727 s** Claude Code CLI candidate supplies the production condition and two
+held-read unit cases, with ten protected inputs unchanged. Primary reviews and
+applies it, adds ordinary-error coverage and owns Lab and native acceptance.
+
+The existing `fileHeader.browser.spec.ts` samples every frame of the unsupported
+first read in Chromium and WebKit, English/light/14 px and Chinese/dark/18 px.
+It records pending/unsupported output, line-action presence and all four bounds
+of the header, controls, Back and Copy path. Sampling includes two settled
+animation frames after the normal readiness contract. The existing layout-shift
+spec retains complete rectangles and a JSON attachment before its unchanged
+assertion. No route, story, fixture transport, configuration or second runner is
+introduced; its intentional **80 px** shift canary remains effective.
+
+Verification:
+
+- On the original production condition, both initial unit regressions fail and
+  all four Lab profiles fail. Their **328 frames** include **247** premature
+  line-action frames and an **18 px** ready-bounds change in every profile.
+  Final owner tests pass **110 / 110** in **8.101 s**; Web typecheck also passes.
+  The added third case covers an ordinary first-read failure. Existing retained
+  text, unsupported refresh, navigation and focus contracts remain intact.
+- The focused Lab run passes **15 / 15** in **197.979 s**, including all four
+  layout-shift sweeps. The final expanded selection passes **141 / 141** across
+  four existing files in **747.633 s**, with no retries, skips, flaky results or
+  global errors. It covers every Workspace variant in both profiles, file
+  references and the complete file-header flows. The final four-profile sampler
+  records **329 frames**: **240 pending**, **89 unsupported**, no line action;
+  **292 ready frames** have **0 px** bounds difference. All **185** expanded
+  images are accounted for: **177** match reviewed bytes and all **8** new images
+  are inspected, with both ordinary-error states and saved-report removal also
+  viewed at original scale. Focused images and baseline failure images are
+  separately retained and reviewed or matched.
+- The full Web gate passes **433 files / 4,793 tests** and all subsequent gates,
+  including all **20** portable ESM resources, in **340.825 s**. The first run
+  leaves **52** Runtime cases unexecuted after cold setup exceeds its unchanged
+  60-second budget. Preparing the verified Runtime, pinned Node, runner, CLI and
+  plugin builders serially resolves the prerequisite. Missing Node cache and a
+  private plugin-output collision are retained as failed preparation attempts;
+  the final **31.408 s** preparation and Web run pass without deadline changes.
+- `make check-native` passes in **160.030 s**; the private Wails **v3.1.0** build
+  passes in **5.916 s**. Both binaries are arm64, target macOS **13.0** and use
+  SDK **27.2**. Nonfailing duplicate-library and test SDK-minimum warnings remain
+  separate from these passing results. All **46** native inputs and **45**
+  unchanged private copies are verified. The same **492 canonical Lab assets**
+  match the browser output, initial private copy and actual served native copy.
+
+Actual English/light/14 px/full-motion and Chinese/dark/18 px/motion-off Wails
+tasks qualify **25 original-size captures / 126 AX records**. Two additional
+background thumbnails are excluded and replaced by raised original-size
+captures. Both profiles use Actual Size followed by **20 native Zoom In actions**
+to establish **200%**. They cover unsupported files without Go to line, keyboard
+tree entry, selected image-row return, readable source, line navigation, inner
+wheel/key reading, material Close and exact continued unsent drafts. Chinese
+Window Zoom/restoration preserves reading at **2878 → 3024 → 2878** device-pixel
+widths; Escape from the source returns to the visible original `README.md:15:2`
+reference. No selected README-row return is claimed after the English layout
+changes into full-width material. An unsupported native PageDown key is excluded;
+documented Down and wheel input qualify the reader instead.
+
+Both native processes exit **0**. The exact private app is unregistered, its
+verified static server exits **130** after SIGINT, six Library paths and the
+ordinary temporary root return to absence, and three existing helper roots keep
+their identities and flags. The three older Runtime fixture roots remain
+untouched. Only four of **6,715** non-Markdown inputs change; there are no added
+source inputs. Output restoration, normal hooks, publication and fenced private
+root retirement complete this delivery, preserving the primary checkout. All
+**12** output/cache roots return to baseline: **3,796** captured nodes are
+retired and **316 files** restored. Subsequent checks are formatting, normal
+static hooks and read-only integrity checks only.
+
+The initial layout baseline's terminal outcome is retained, but its first trace
+was lost when the next Lab start retired old artifacts after a retention-helper
+failure. The diagnostic rerun retains the same CLS, full **18 px** geometry and
+trace; it does not recreate the missing trace. An initial browser-fixture
+registration mistake is also retained separately from behavioral results.
+
+Approve for these inspected paths. Native qualification uses captured Lab data,
+not live provider or filesystem integration. Native OS motion preference,
+physical IME, VoiceOver, RTL and other platforms are not newly qualified. The
+shared UI package gate and unfiltered Lab suite are not rerun in this batch.
+The earlier complete run remains historical; whole-product visual coverage is
+unfinished. Reproduce the existing short-frame camera-fit lead before changing
+its minimum scale.
 
 ### Readable Workspace scenes and independent Dock checks (2026-11-09)
 
@@ -682,8 +788,9 @@ lifecycle when a prerequisite failure again leaves files or writers.
 Approve for the inspected paths only. Native system media preference is
 unmeasured; browser cases control it explicitly. Decisions use the Lab's existing
 in-memory transport, not live provider publication. VoiceOver, physical OS IME,
-RTL and 10% Animations-panel playback are not qualified. The separate unsupported-file
-header-shift finding and whole-product visual coverage remain open.
+RTL and 10% Animations-panel playback are not qualified. The subsequent first
+file-read repair above closes the separate unsupported-file header-shift finding;
+whole-product visual coverage remains open.
 
 All visual checks still use the same Lab, catalog and single Playwright config.
 The **6,715** non-Markdown inputs differ only in the two shared components,
@@ -25036,6 +25143,10 @@ known-role projections and independent accepted data rather than mechanically
 replacing every loading flag.
 
 ### First file-result readiness
+
+The later [first file-read controls repair](#first-file-read-controls-and-stable-headers-2026-11-09)
+also gates line navigation on accepted text; it preserves the query-readiness
+and retained-content behavior recorded here.
 
 At main `2a4ee1ee9`, actual Wails reproduces one readiness error in three Files
 consumers. With a first query paused before it has data, the root list and an

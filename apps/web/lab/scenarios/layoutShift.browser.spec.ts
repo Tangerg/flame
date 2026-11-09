@@ -40,7 +40,7 @@ const OBSERVER = `
           const label = node
             ? \`<\${node.tagName?.toLowerCase() ?? "?"} \${node.getAttribute?.("data-slot") ?? node.getAttribute?.("class")?.slice(0, 40) ?? ""}>\`
             : "<detached>";
-          return \`\${label} y \${Math.round(source.previousRect?.y ?? 0)} -> \${Math.round(source.currentRect?.y ?? 0)}\`;
+          return \`\${label} \${JSON.stringify(source.previousRect)} -> \${JSON.stringify(source.currentRect)}\`;
         }),
       });
     }
@@ -87,6 +87,10 @@ async function expectSettled(page: Page, routes: string[]) {
   for (const route of routes) {
     for (const shift of await settleAndCollect(page, route)) found.push({ route, shift });
   }
+  await test.info().attach("layout-shifts.json", {
+    body: JSON.stringify(found),
+    contentType: "application/json",
+  });
   expect(found, report(found)).toEqual([]);
 }
 

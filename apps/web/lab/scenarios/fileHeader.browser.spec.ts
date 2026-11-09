@@ -166,6 +166,7 @@ for (const profile of [
     backToFiles: "Back to files",
     retry: "Retry",
     goToLine: "Go to line",
+    copy: "Copy path",
     open: "Open",
     readError: "Couldn't open file",
     unsupported: "No image preview here yet",
@@ -184,6 +185,7 @@ for (const profile of [
     backToFiles: "返回文件列表",
     retry: "重试",
     goToLine: "跳转到行",
+    copy: "复制路径",
     open: "打开",
     readError: "无法打开文件",
     unsupported: "这里暂时无法预览图片",
@@ -191,6 +193,100 @@ for (const profile of [
     suffix: "继续核对。",
   },
 ] as const) {
+  for (const [browserName, engineTest] of [
+    ["chromium", test],
+    ["webkit", test.extend({ browserName: "webkit" })],
+  ] as const) {
+    engineTest.describe(`${browserName} first file read in ${profile.locale}`, () => {
+      engineTest(
+        "offers only admitted file actions while unsupported reading settles",
+        async ({ page }, testInfo) => {
+          interface HeaderFrame {
+            ready: boolean;
+            pending: boolean;
+            unsupported: boolean;
+            lineAction: boolean;
+            bounds: number[][];
+          }
+          await page.addInitScript((labels) => {
+            const frames: HeaderFrame[] = [];
+            let frame = 0;
+            const sample = () => {
+              const reader = document.querySelector(
+                '[role="region"][aria-label="review-image.png"]',
+              );
+              const header = reader
+                ?.closest('[data-dock-view-id="file"]')
+                ?.querySelector('[data-slot="workspace-view-header"]');
+              const controls = header?.querySelector('[data-slot="workspace-view-controls"]');
+              const buttons = [...(header?.querySelectorAll("button") ?? [])];
+              const named = (...names: string[]) =>
+                buttons.find((button) => names.includes(button.getAttribute("aria-label") ?? ""));
+              const back = named(labels.backToFiles, "Back to files");
+              const copy = named(labels.copy, "Copy path");
+              if (reader && header && controls && back && copy) {
+                frames.push({
+                  ready: document.documentElement.hasAttribute("data-visual-ready"),
+                  pending: reader.querySelector('[aria-busy="true"]') !== null,
+                  unsupported: reader.textContent?.includes(labels.unsupported) ?? false,
+                  lineAction: named(labels.goToLine, "Go to line") !== undefined,
+                  bounds: [header, controls, back, copy].map((node) => {
+                    const rect = node.getBoundingClientRect();
+                    return [rect.x, rect.y, rect.width, rect.height];
+                  }),
+                });
+              }
+              frame = requestAnimationFrame(sample);
+            };
+            (
+              window as unknown as { __stopFileHeaderFrames: () => HeaderFrame[] }
+            ).__stopFileHeaderFrames = () => {
+              cancelAnimationFrame(frame);
+              return frames;
+            };
+            frame = requestAnimationFrame(sample);
+          }, profile);
+          await page.goto(
+            `/lab/fixture.html?fixture=workspace&state=dock-file-unsupported&agent-state=idle&locale=${profile.locale}&theme=${profile.theme}&font-size=${profile.fontSize}&motion=off`,
+          );
+          await expectLabReady(page);
+          await expect(page.getByText(profile.unsupported, { exact: true })).toBeVisible();
+          await page.evaluate(
+            () =>
+              new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+              ),
+          );
+          const frames = await page.evaluate(() =>
+            (
+              window as unknown as { __stopFileHeaderFrames: () => HeaderFrame[] }
+            ).__stopFileHeaderFrames(),
+          );
+          await testInfo.attach("first-file-read-frames.json", {
+            body: JSON.stringify({ browserName, locale: profile.locale, frames }),
+            contentType: "application/json",
+          });
+          await testInfo.attach("first-file-read.png", {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+          expect(frames.some((frame) => frame.pending)).toBe(true);
+          expect(frames.some((frame) => frame.unsupported)).toBe(true);
+          expect(frames.some((frame) => frame.lineAction)).toBe(false);
+          const ready = frames.filter((frame) => frame.ready);
+          expect(ready.length).toBeGreaterThan(1);
+          for (const frame of ready) {
+            frame.bounds.forEach((bounds, index) => {
+              bounds.forEach((value, axis) => {
+                expect(Math.abs(value - ready[0]!.bounds[index]![axis]!)).toBeLessThan(1);
+              });
+            });
+          }
+        },
+      );
+    });
+  }
+
   test(`file read failure retains retry and reference return in ${profile.locale}`, async ({
     page,
   }, testInfo) => {
