@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Personal Skills library feedback now stays with its captured record, repairing a native zoom failure without changing command identity or lifecycle ownership. The related Lab selection passes **27 / 27**; complete Web passes **433 files / 4,808 tests** and every subsequent gate, and `make check-native` passes. Actual Wails qualifies English/light/14 px at **200% and 300%**, Chinese/dark/18 px at **200%**, refusal feedback, search/catalog return and exact continued drafts. All **492 final canonical assets** match their served copy. The **88 related browser PNGs** are accounted for through four newly viewed originals and 84 reviewed byte matches. All **24 native PNGs / 352 AX records** are retained: 15 images establish the baseline and nine inspect the repaired task. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Schedule deletion cancellation now has permanent narrow-flow coverage through the existing Workspace scene: **25 / 25** related cases and **14 / 14** component-state tests pass. Actual Wails inspects English/light/14 px and Chinese/dark/18 px at **200% and 300%**, retained details, Cancel/Escape return and exact continued drafts, using **492 byte-identical canonical Lab assets**. All **20 final browser images** are accounted for; all **13 native images** are inspected and **177 AX records** are retained. No production change is established by this confirmation task. The native English return exposes a stable Send-button clip at 300%; it remains an explicit follow-up, so whole-product visual acceptance is unfinished. The preceding Skills repair and complete Web/native gates retain their recorded scope. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -4430,8 +4430,10 @@ The personal Skills library follow-up now qualifies local Archive/Restore
 feedback through the same Lab, its related **27-case** selection and actual
 EN/ZH Wails zoom tasks. Complete Web passes **433 files / 4,808 tests** and the
 native gate passes; unknown outcomes retain the original mutation identity.
-Continue native task inspection, including long-string Schedule editor reading
-at zoom, through this same owner.
+The long-string Schedule editor task is already qualified above. The current
+confirmation-return inspection preserves its query, details and draft, and
+reveals a stable native English 300% Send-button clip. Reproduce that Composer
+zoom path through this same Lab next.
 Prepare current shared packages before
 using restored build outputs for a new baseline.
 The primary checkout, including its committed `go.work.sum`, is preserved. The user
@@ -15993,6 +15995,69 @@ is `a834557b097498b9c6d649fe560d5bb7311e18f831b5ab871a0a44edd4a01c19`.
 Continue inspecting actual remaining tasks; whole-product acceptance stays open.
 
 ### Schedules page reading and shared alignment (2026-11-03)
+
+The current cancellation follow-up (2026-11-10) qualifies the original two
+records through the same Lab. English/light/14 px and Chinese/dark/18 px Wails
+tasks follow search, expanded Schedule details and Cron, keyboard action-menu entry,
+deletion confirmation, resizing from native 200% to 300%, Cancel, repeated
+opening/Escape, wheel reading, filter clearing and material Close. Both return
+to the captured record action and preserve the query, disclosure and exact
+padded conversation draft. Native continuation uses explicit end placement and
+a real key. Neither confirmation activates deletion, and no live scheduler,
+provider, database or Send operation is exercised.
+
+Four cases extend the existing Workspace browser spec across Chromium/WebKit
+and the same two language/theme/font profiles. They use the production locale
+dictionaries and existing captured rows. Read-only glyph/hit-test geometry
+checks complete object and consequence text; button rectangles must also fit
+their actual clipping frame. The confirmation remains contained at **560 × 364**
+and **373 × 243**. Natural Tab, Enter, End and Escape establish entry and return;
+Cron reading uses a real wheel gesture when needed. Geometry and a failure
+screenshot are retained even on failure. The original wide cancellation case
+remains intact. No story, fixture, route, configuration or parallel runner is
+added. Better Layout and Accessibility guide object identity, bounded reading
+and return focus; the read-only HeroUI alert-dialog examples supply confirmation
+structure evidence without copying their implementation.
+
+The bounded CLI test candidate times out in **180.044 s** after only two imports,
+with all nine protected references unchanged. Primary implements and reviews
+the actual coverage. The focused selection passes **5 / 5** in **22.333 s**.
+After strengthening complete button bounds, the final related selection passes
+**25 / 25** in **62.992 s**, with no retries, skips, flaky cases or global errors.
+All **20 final browser PNGs** are accounted for: one original is inspected and
+19 match reviewed images. The preceding focused images and retained related
+images are also reviewed or matched to explicitly reviewed bytes. The existing
+Schedules component-state file passes **14 / 14** in **4.136 s**, including the
+assertion that cancellation issues no delete command. Web typecheck, lint,
+unused-code and owned formatting checks pass. Complete Lab/Web/shared UI and
+production native gates are not repeated for this Lab-only change; their
+preceding receipts keep their original scope.
+
+All **492 canonical Lab assets** match the native served copy after final browser
+verification. The private Wails build passes in **19.376 s**; all **46 production
+native inputs** remain unchanged. Both native processes exit normally. All
+**13 native captures** are inspected, with **82 actual menu actions / 164 zoom
+AX records** plus **13 capture AX records**. The minimum native frame is
+**1120 × 728 points**. VoiceOver, physical OS IME, RTL and actual deletion remain
+unqualified. The confirmation task demonstrates no production layout defect.
+
+The returned English Composer at native 300% does expose a separate stable
+clipping defect: its Send button extends beyond the right edge. Both immediate
+and settled images retain the defect while preserving the exact draft. The
+Chinese profile and small browser viewports show a complete Send button; those
+successes do not qualify this native English case. Preserve its capture and
+reproduce the native zoom/toolbar owner next. This delivery certifies the
+confirmation and draft-continuity scope, not complete Composer containment or
+whole-product visual acceptance.
+
+The source comparison covers **6,716 non-Markdown inputs**, with only the existing
+Workspace spec changed; two maintained documents record the scope. No files are
+added or removed. All **12 output/cache roots** return to baseline before normal
+publication hooks, with no later functional tests. The primary checkout and
+all native production inputs remain unchanged. The app is unregistered, its
+server stops, six private Library paths return to absence and three existing
+helper roots retain their identities and flags. Verified evidence is retained
+before guarded private-root retirement. No user-data migration is required.
 
 Qualified from synchronized main `e41f63c00`. The user's Schedules crop and
 subsequent request to inspect every page extend this batch to four demonstrated

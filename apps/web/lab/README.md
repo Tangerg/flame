@@ -205,6 +205,16 @@ failure and never manufacture a lifecycle change. The component-state test also
 checks one original mutation key through unknown acknowledgement, query changes
 and reconciliation. Neither coverage path adds a catalog, fixture or runner.
 
+Schedule deletion cancellation uses the existing `dock-schedules` records in
+the same Workspace spec. Chromium/WebKit and English/Chinese tasks follow
+expanded details, keyboard action-menu entry, confirmation resizing, Cancel and
+Escape return, retained query/disclosure and exact continued Composer drafts.
+Read-only geometry checks complete object and consequence text, complete footer
+button bounds and returned action visibility at 560 × 364 and 373 × 243. The
+flow never activates deletion; the existing component-state test verifies that
+Cancel issues no delete command. This scope does not certify Send containment
+under native page zoom or live Schedule mutation.
+
 The Workspace variant `dock-diagnostics-recorded` retains three span statuses,
 two metrics and two multiline logs, including their original IDs,
 source paths and raw JSON. It clones the typed snapshot once into the existing

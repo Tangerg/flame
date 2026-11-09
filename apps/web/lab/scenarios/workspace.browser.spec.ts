@@ -9,6 +9,8 @@ import { en as usageEnglish } from "../../../../plugins/usage/component/locales/
 import { zh as usageChinese } from "../../../../plugins/usage/component/locales/zh";
 import { en as reportsEnglish } from "../../../../plugins/usagereports/component/locales/en";
 import { zh as reportsChinese } from "../../../../plugins/usagereports/component/locales/zh";
+import { en as schedulesEnglish } from "../../../../plugins/schedules/component/locales/en";
+import { zh as schedulesChinese } from "../../../../plugins/schedules/component/locales/zh";
 import { solidFill } from "@/features/theme/kit/scale";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
@@ -27,7 +29,7 @@ import {
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 import { expectLabReady } from "../readiness";
-import { VISUAL_LONG_MEMORY_PAGE } from "./componentSnapshots";
+import { VISUAL_LONG_MEMORY_PAGE, VISUAL_SCHEDULES_PAGE } from "./componentSnapshots";
 import { VISUAL_LONG_SKILL_DOCUMENTS } from "./skillSnapshots";
 // The Browse panels trigger also carries the active view id; only the retained view hosts its body.
 function dockView(page: Page, id: string) {
@@ -2109,6 +2111,268 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
 
   await expect(pluginView(page, "schedules").locator("article")).toHaveCount(2);
 });
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  const scheduleTest = test.extend({ browserName });
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      dictionary: schedulesEnglish,
+      composer: "Message composer",
+      conversation: "Conversation",
+      material:
+        "Open material full width — the window is too narrow to show it beside the conversation",
+      close: "Close",
+      draft: "  Keep the schedule reading draft.  ",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      dictionary: schedulesChinese,
+      composer: "消息输入框",
+      conversation: "对话",
+      material: "全宽打开材料——窗口太窄，无法与对话并排显示",
+      close: "关闭",
+      draft: "  读完定时任务后继续原草稿。  ",
+    },
+  ] as const) {
+    scheduleTest(
+      `Schedule deletion cancellation retains narrow reading and draft return in ${profile.locale} ${browserName}`,
+      async ({ page }, testInfo) => {
+        const t = (key: string, values: Record<string, string> = {}) =>
+          Object.entries(values).reduce(
+            (text, [name, value]) => text.replace(`{{${name}}}`, value),
+            profile.dictionary[key]!,
+          );
+        const measure = async (target: Locator) =>
+          target.evaluate((element) => {
+            const frame = { top: 0, left: 0, right: innerWidth, bottom: innerHeight };
+            for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+              const style = getComputedStyle(parent);
+              const bounds = parent.getBoundingClientRect();
+              if (style.overflowY !== "visible") {
+                frame.top = Math.max(frame.top, bounds.top + parent.clientTop);
+                frame.bottom = Math.min(
+                  frame.bottom,
+                  bounds.top + parent.clientTop + parent.clientHeight,
+                );
+              }
+              if (style.overflowX !== "visible") {
+                frame.left = Math.max(frame.left, bounds.left + parent.clientLeft);
+                frame.right = Math.min(
+                  frame.right,
+                  bounds.left + parent.clientLeft + parent.clientWidth,
+                );
+              }
+            }
+            const controls = element
+              .closest('[data-slot="panel"]')
+              ?.querySelector('[data-slot="panel-controls"]');
+            if (controls && getComputedStyle(controls).position === "sticky")
+              frame.top = Math.max(frame.top, controls.getBoundingClientRect().bottom);
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            const glyphs = [...range.getClientRects()]
+              .filter((rect) => rect.width > 0 && rect.height > 0)
+              .map(({ top, bottom, left, right }) => ({ top, bottom, left, right }));
+            const bounds = element.getBoundingClientRect().toJSON();
+            return {
+              frame,
+              glyphs,
+              bounds,
+              readable:
+                (!(element instanceof HTMLButtonElement) ||
+                  (bounds.top >= frame.top - 1 &&
+                    bounds.bottom <= frame.bottom + 1 &&
+                    bounds.left >= frame.left - 1 &&
+                    bounds.right <= frame.right + 1)) &&
+                glyphs.length > 0 &&
+                glyphs.every((rect) => {
+                  const hit = document.elementFromPoint(
+                    (rect.left + rect.right) / 2,
+                    (rect.top + rect.bottom) / 2,
+                  );
+                  return (
+                    rect.top >= frame.top - 1 &&
+                    rect.bottom <= frame.bottom + 1 &&
+                    rect.left >= frame.left - 1 &&
+                    rect.right <= frame.right + 1 &&
+                    hit !== null &&
+                    (hit === element || element.contains(hit))
+                  );
+                }),
+            };
+          });
+        const evidence: { name: string; geometry: Awaited<ReturnType<typeof measure>> }[] = [];
+        const readable = async (target: Locator, name: string) => {
+          await expect
+            .poll(
+              async () => {
+                const geometry = await measure(target);
+                evidence.push({ name, geometry });
+                return geometry.readable;
+              },
+              { message: `${name} is completely readable in its actual frame` },
+            )
+            .toBe(true);
+        };
+        const capture = async (name: string) =>
+          testInfo.attach(`schedule-cancel-${profile.locale}-${browserName}-${name}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        try {
+          await page.setViewportSize({ width: 1120, height: 728 });
+          await page.goto(
+            `/lab/fixture.html?fixture=workspace&state=dock-schedules&locale=${profile.locale}&theme=${profile.theme}&font-size=${profile.fontSize}`,
+          );
+          await expectLabReady(page);
+          await page
+            .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+            .click();
+          const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+          await composer.fill(profile.draft);
+          const panel = page
+            .getByRole("region", { name: t("panel.title"), exact: true })
+            .and(page.locator('[data-slot="panel"]'));
+          await expect(panel.getByRole("article")).toHaveCount(VISUAL_SCHEDULES_PAGE.Rows.length);
+          await page.setViewportSize({ width: 560, height: 364 });
+          await page.getByRole("button", { name: profile.material, exact: true }).click();
+          const search = panel.getByRole("searchbox", { name: t("search.label"), exact: true });
+          await search.fill("nightly");
+          const item = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+          const row = panel
+            .getByRole("article")
+            .filter({ has: page.getByRole("heading", { name: item.Title, exact: true }) });
+          const details = row.getByRole("button", { name: t("details.title"), exact: true });
+          await details.click();
+          await expect(details).toHaveAttribute("aria-expanded", "true");
+          const cron = row.getByText(item.Cron, { exact: true });
+          await expect(cron).toBeVisible();
+          const cronGeometry = await measure(cron);
+          evidence.push({ name: "expanded Cron before wheel", geometry: cronGeometry });
+          if (!cronGeometry.readable) {
+            await page.mouse.move(
+              (cronGeometry.frame.left + cronGeometry.frame.right) / 2,
+              cronGeometry.frame.top + (cronGeometry.frame.bottom - cronGeometry.frame.top) * 0.75,
+            );
+            await page.mouse.wheel(
+              0,
+              cronGeometry.bounds.top - (cronGeometry.frame.top + cronGeometry.frame.bottom) / 2,
+            );
+          }
+          await readable(cron, "expanded Cron");
+          const trigger = row.getByRole("button", {
+            name: t("actions.more", { name: item.Title }),
+            exact: true,
+          });
+          await search.click();
+          for (let step = 0; step < 6; step++) await page.keyboard.press("Tab");
+          await expect(trigger).toBeFocused();
+          const openConfirmation = async () => {
+            await page.keyboard.press("Enter");
+            await expect(
+              page.getByRole("menuitem", { name: t("action.runNow"), exact: true }),
+            ).toBeFocused();
+            await page.keyboard.press("End");
+            await expect(
+              page.getByRole("menuitem", { name: t("action.delete"), exact: true }),
+            ).toBeFocused();
+            await page.keyboard.press("Enter");
+          };
+          await openConfirmation();
+          const dialog = page.getByRole("alertdialog", {
+            name: t("delete.title", { name: item.Title }),
+            exact: true,
+          });
+          const cancel = dialog.getByRole("button", { name: t("cancel"), exact: true });
+          const confirmation = dialog.getByRole("button", {
+            name: t("delete.confirm"),
+            exact: true,
+          });
+          const checkConfirmation = async (width: number) => {
+            await expect(cancel).toBeFocused();
+            await readable(
+              dialog.getByRole("heading", {
+                name: t("delete.title", { name: item.Title }),
+                exact: true,
+              }),
+              `object title at ${width}`,
+            );
+            await readable(
+              dialog.getByText(t("delete.description"), { exact: true }),
+              `consequence at ${width}`,
+            );
+            await readable(cancel, `Cancel at ${width}`);
+            await readable(confirmation, `Confirm deletion at ${width}`);
+            const bounds = await dialog.boundingBox();
+            expect(bounds).not.toBeNull();
+            expect(bounds!.x).toBeGreaterThanOrEqual(0);
+            expect(bounds!.y).toBeGreaterThanOrEqual(0);
+            expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+            expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
+            expect(
+              await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+            ).toBe(0);
+          };
+          await checkConfirmation(560);
+          await capture("confirmation-560");
+          await page.setViewportSize({ width: 373, height: 243 });
+          await checkConfirmation(373);
+          await capture("confirmation-373");
+          await page.keyboard.press("Enter");
+          await expect(dialog).toHaveCount(0);
+          await expect(trigger).toBeFocused();
+          await expect(search).toHaveValue("nightly");
+          await expect(details).toHaveAttribute("aria-expanded", "true");
+          await expect(cron).toHaveText(item.Cron);
+          await readable(trigger, "returned record action");
+          await expect(panel.getByRole("article")).toHaveCount(1);
+          await expect(
+            panel.getByRole("region", { name: t("command.status.label"), exact: true }),
+          ).toHaveCount(0);
+          await capture("cancel-return");
+          await openConfirmation();
+          await expect(cancel).toBeFocused();
+          await page.keyboard.press("Escape");
+          await expect(dialog).toHaveCount(0);
+          await expect(trigger).toBeFocused();
+          await expect(search).toHaveValue("nightly");
+          await expect(details).toHaveAttribute("aria-expanded", "true");
+          for (let step = 0; step < 6; step++) await page.keyboard.press("Shift+Tab");
+          await expect(search).toBeFocused();
+          await page.keyboard.press("Escape");
+          await expect(search).toHaveValue("");
+          await expect(search).toBeFocused();
+          await expect(panel.getByRole("article")).toHaveCount(VISUAL_SCHEDULES_PAGE.Rows.length);
+          await page.getByRole("button", { name: profile.close, exact: true }).click();
+          await expect(
+            page.getByRole("region", { name: profile.conversation, exact: true }),
+          ).toBeFocused();
+          await expect(composer).toHaveValue(profile.draft);
+          await composer.focus();
+          await page.keyboard.press(
+            process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End",
+          );
+          await page.keyboard.press("x");
+          await expect(composer).toHaveValue(profile.draft + "x");
+          await capture("continued-draft");
+        } catch (error) {
+          await capture("failure");
+          throw error;
+        } finally {
+          await testInfo.attach(`schedule-cancel-${profile.locale}-${browserName}-geometry`, {
+            body: JSON.stringify(evidence, null, 2),
+            contentType: "application/json",
+          });
+        }
+      },
+    );
+  }
+}
 
 test("the portable trajectory preserves canonical Tool evidence for inspection", async ({
   page,
