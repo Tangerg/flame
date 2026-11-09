@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { motion as anim } from "motion/react";
 import { ItemHighlight } from "./item-highlight";
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
@@ -96,7 +97,8 @@ export function Segmented<T extends string | number>({
           key={String(opt.value)}
           value={opt.value}
           nativeButton
-          render={<button type="button" />}
+          // Keep the current backplate in its item's native layout coordinates.
+          render={<anim.button type="button" layout layoutRoot />}
           {...stylex.props(styles.option, typeStep.uiMd)}
         >
           {opt.value === value && (

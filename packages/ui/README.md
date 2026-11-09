@@ -672,8 +672,13 @@ layout and content-specific geometry.
 motion rung and motion scale from the current CSS projection, so a theme change
 affects the next movement without a second animation preference. No animation
 runs before styles are available, during server rendering, or when motion is
-disabled. System reduced motion retains the static backplate without shared
-layout projection, including while its scrolling container reflows. A `Segmented` track uses
+disabled. Both system reduced motion and a zero computed transition duration
+retain the static backplate without shared layout projection. Each `Segmented`
+item supplies a non-animating layout root on its existing button, so surrounding
+reflow and scrolling carry the label and its selected background together.
+Changing the selection still hands the shared backplate between items and can
+reverse from its painted position. The controls themselves retain native layout;
+no position state or scroll listener is added. A `Segmented` track uses
 `segmented-radius`; its items and backplate share the host-derived
 `segment-radius`, the track radius minus the track padding.
 

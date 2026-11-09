@@ -84,7 +84,9 @@ test("layout tokens change page gutters, form padding and field groups together"
   );
 });
 
-test("segments slide continuously and reverse from their painted position", async ({ page }) => {
+test("segments slide continuously and reverse from their painted position", async ({
+  page,
+}, testInfo) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await open(page, "fixture=atoms&theme=light&motion=full");
   const tabs = page.getByRole("radiogroup", { name: "Diagnostics", exact: true });
@@ -112,6 +114,47 @@ test("segments slide continuously and reverse from their painted position", asyn
   ).toBe(true);
   expect(Math.abs(reversed.at(-1)! - from)).toBeLessThan(1);
   await expect(trace).toHaveAttribute("aria-checked", "true");
+  await expect(tabs.locator('[data-slot="item-highlight"]')).toHaveCount(1);
+
+  await page.setViewportSize({ width: 720, height: 900 });
+  await tabs.scrollIntoViewIfNeeded();
+  const resizedReading = tabs.evaluate(async (track) => {
+    const frames = [];
+    const start = performance.now();
+    while (performance.now() - start < 420) {
+      const indicator = track.querySelector('[data-slot="item-highlight"]')!;
+      frames.push({
+        track: track.getBoundingClientRect().toJSON(),
+        indicator: indicator.getBoundingClientRect().toJSON(),
+      });
+      await new Promise(requestAnimationFrame);
+    }
+    return frames;
+  });
+  await metrics.click();
+  const resizedFrames = await resizedReading;
+  await testInfo.attach("segment-after-resize-frames", {
+    body: JSON.stringify(resizedFrames),
+    contentType: "application/json",
+  });
+  expect(resizedFrames.length).toBeGreaterThan(1);
+  for (const frame of resizedFrames) {
+    expect(frame.indicator.left, JSON.stringify(frame)).toBeGreaterThanOrEqual(
+      frame.track.left - 1,
+    );
+    expect(frame.indicator.top, JSON.stringify(frame)).toBeGreaterThanOrEqual(frame.track.top - 1);
+    expect(frame.indicator.right, JSON.stringify(frame)).toBeLessThanOrEqual(frame.track.right + 1);
+    expect(frame.indicator.bottom, JSON.stringify(frame)).toBeLessThanOrEqual(
+      frame.track.bottom + 1,
+    );
+  }
+  const destination = (await metrics.boundingBox())!;
+  const last = resizedFrames.at(-1)!.indicator;
+  expect(Math.abs(last.x - destination.x)).toBeLessThan(1);
+  expect(Math.abs(last.y - destination.y)).toBeLessThan(1);
+  expect(Math.abs(last.width - destination.width)).toBeLessThan(1);
+  expect(Math.abs(last.height - destination.height)).toBeLessThan(1);
+  await expect(metrics).toHaveAttribute("aria-checked", "true");
   await expect(tabs.locator('[data-slot="item-highlight"]')).toHaveCount(1);
 });
 
@@ -166,118 +209,128 @@ for (const [engine, engineTest] of [
 ] as const) {
   engineTest.describe(`Skills selection reading in ${engine}`, () => {
     for (const preference of ["reduce", "no-preference"] as const) {
-      engineTest(
-        `the unchanged segment stays behind its label through proposal reflow and wheel reading ${preference}`,
-        async ({ page }, testInfo) => {
-          await page.emulateMedia({ reducedMotion: preference });
-          await page.setViewportSize({ width: 1440, height: 900 });
-          await page.goto(
-            "/lab/fixture.html?fixture=workspace&state=dock-skills&locale=zh&theme=dark&font-size=18&motion=off&skills-commands=accept",
-          );
-          await expectLabReady(page);
-          await page
-            .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
-            .click();
-          const panel = page
-            .getByRole("region", { name: "技能", exact: true })
-            .and(page.locator('[data-slot="panel"]'));
-          await panel.getByRole("radio", { name: "技能提议", exact: true }).click();
-          for (let step = 1; step <= 20; step += 1) {
-            const scale = 1 + step / 20;
-            await page.setViewportSize({
-              width: Math.round(1440 / scale),
-              height: Math.round(900 / scale),
-            });
-            await page.evaluate(async () => {
-              await new Promise(requestAnimationFrame);
-              await new Promise(requestAnimationFrame);
-            });
-          }
-          await page.getByRole("button", { name: /窗口太窄/ }).click();
-          await panel
-            .getByRole("group", { name: "risk-first-review 的提议操作", exact: true })
-            .getByRole("button", { name: "拒绝", exact: true })
-            .click();
-          const review = panel.getByRole("region", { name: "确认提议决定", exact: true });
-          const firstCancel = review.getByRole("button", { name: "取消", exact: true });
-          await expect(firstCancel).toBeFocused();
-          const firstCancelBounds = (await firstCancel.boundingBox())!;
-          await page.mouse.move(
-            firstCancelBounds.x + firstCancelBounds.width / 2,
-            firstCancelBounds.y + firstCancelBounds.height / 2,
-          );
-          await page.mouse.wheel(0, -600);
-          for (const size of [
-            { width: 756, height: 475 },
-            { width: 720, height: 450 },
-          ]) {
-            await page.setViewportSize(size);
-            await page.evaluate(async () => {
-              for (let frame = 0; frame < 8; frame += 1) {
+      for (const appMotion of ["off", "full"] as const) {
+        engineTest(
+          `the unchanged segment stays behind its label through proposal reflow and wheel reading app ${appMotion} system ${preference}`,
+          async ({ page }, testInfo) => {
+            await page.emulateMedia({ reducedMotion: preference });
+            await page.setViewportSize({ width: 1440, height: 900 });
+            await page.goto(
+              `/lab/fixture.html?fixture=workspace&state=dock-skills&locale=zh&theme=dark&font-size=18&motion=${appMotion}&skills-commands=accept`,
+            );
+            await expectLabReady(page);
+            await page
+              .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
+              .click();
+            const panel = page
+              .getByRole("region", { name: "技能", exact: true })
+              .and(page.locator('[data-slot="panel"]'));
+            await panel.getByRole("radio", { name: "技能提议", exact: true }).click();
+            for (let step = 1; step <= 20; step += 1) {
+              const scale = 1 + step / 20;
+              await page.setViewportSize({
+                width: Math.round(1440 / scale),
+                height: Math.round(900 / scale),
+              });
+              await page.evaluate(async () => {
+                await new Promise(requestAnimationFrame);
+                await new Promise(requestAnimationFrame);
+              });
+            }
+            await page.getByRole("button", { name: /窗口太窄/ }).click();
+            await panel
+              .getByRole("group", { name: "risk-first-review 的提议操作", exact: true })
+              .getByRole("button", { name: "拒绝", exact: true })
+              .click();
+            const review = panel.getByRole("region", { name: "确认提议决定", exact: true });
+            const firstCancel = review.getByRole("button", { name: "取消", exact: true });
+            await expect(firstCancel).toBeFocused();
+            const firstCancelBounds = (await firstCancel.boundingBox())!;
+            await page.mouse.move(
+              firstCancelBounds.x + firstCancelBounds.width / 2,
+              firstCancelBounds.y + firstCancelBounds.height / 2,
+            );
+            await page.mouse.wheel(0, -600);
+            for (const size of [
+              { width: 756, height: 475 },
+              { width: 720, height: 450 },
+            ]) {
+              await page.setViewportSize(size);
+              await page.evaluate(async () => {
+                for (let frame = 0; frame < 8; frame += 1) {
+                  await new Promise(requestAnimationFrame);
+                }
+              });
+            }
+            await page.keyboard.press("Shift+Tab");
+            await page.keyboard.press("Enter");
+            await page.keyboard.press("Tab");
+            await page.keyboard.press("Tab");
+            await page.keyboard.press("Enter");
+            await expect(
+              panel.getByRole("searchbox", { name: "搜索此目录", exact: true }),
+            ).toBeFocused();
+            await expect(panel).toContainText("1 项待处理提议");
+            for (let step = 0; step < 4; step += 1) await page.keyboard.press("Tab");
+            await expect(
+              panel
+                .getByRole("group", { name: "release-notes 的提议操作", exact: true })
+                .getByRole("button", { name: "批准", exact: true }),
+            ).toBeFocused();
+            const indicator = panel
+              .getByRole("radio", { name: "技能提议", exact: true })
+              .locator('[data-slot="item-highlight"]');
+            const reading = indicator.evaluate(async (element) => {
+              const radio = element.closest('[role="radio"]')!;
+              const frames = [];
+              const start = performance.now();
+              while (performance.now() - start < 840) {
+                const radioTransform = getComputedStyle(radio).transform;
+                frames.push({
+                  radio: radio.getBoundingClientRect().toJSON(),
+                  indicator: element.getBoundingClientRect().toJSON(),
+                  radioTransform,
+                  radioUntransformed:
+                    radioTransform === "none" || new DOMMatrix(radioTransform).isIdentity,
+                  transform: getComputedStyle(element).transform,
+                });
                 await new Promise(requestAnimationFrame);
               }
+              return frames;
             });
-          }
-          await page.keyboard.press("Shift+Tab");
-          await page.keyboard.press("Enter");
-          await page.keyboard.press("Tab");
-          await page.keyboard.press("Tab");
-          await page.keyboard.press("Enter");
-          await expect(
-            panel.getByRole("searchbox", { name: "搜索此目录", exact: true }),
-          ).toBeFocused();
-          await expect(panel).toContainText("1 项待处理提议");
-          for (let step = 0; step < 4; step += 1) await page.keyboard.press("Tab");
-          await expect(
-            panel
-              .getByRole("group", { name: "release-notes 的提议操作", exact: true })
-              .getByRole("button", { name: "批准", exact: true }),
-          ).toBeFocused();
-          const indicator = panel
-            .getByRole("radio", { name: "技能提议", exact: true })
-            .locator('[data-slot="item-highlight"]');
-          const reading = indicator.evaluate(async (element) => {
-            const radio = element.closest('[role="radio"]')!;
-            const frames = [];
-            const start = performance.now();
-            while (performance.now() - start < 840) {
-              frames.push({
-                radio: radio.getBoundingClientRect().toJSON(),
-                indicator: element.getBoundingClientRect().toJSON(),
-                transform: getComputedStyle(element).transform,
-              });
-              await new Promise(requestAnimationFrame);
+            await page.keyboard.press("Enter");
+            const cancel = review.getByRole("button", { name: "取消", exact: true });
+            await expect(cancel).toBeFocused();
+            const cancelBounds = (await cancel.boundingBox())!;
+            await page.mouse.move(
+              cancelBounds.x + cancelBounds.width / 2,
+              cancelBounds.y + cancelBounds.height / 2,
+            );
+            await page.mouse.wheel(0, -600);
+            const frames = await reading;
+            await testInfo.attach("segment-reading-frames", {
+              body: JSON.stringify(frames),
+              contentType: "application/json",
+            });
+            await testInfo.attach(`segment-reading-${engine}-${appMotion}`, {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+            for (const frame of frames) {
+              expect(frame.radioUntransformed, JSON.stringify(frame)).toBe(true);
+              if (preference === "reduce" || appMotion === "off") {
+                expect(frame.transform, JSON.stringify(frame)).toBe("none");
+              }
+              for (const edge of ["left", "top", "right", "bottom"] as const) {
+                expect(
+                  Math.abs(frame.indicator[edge] - frame.radio[edge]),
+                  JSON.stringify(frame),
+                ).toBeLessThan(1);
+              }
             }
-            return frames;
-          });
-          await page.keyboard.press("Enter");
-          const cancel = review.getByRole("button", { name: "取消", exact: true });
-          await expect(cancel).toBeFocused();
-          const cancelBounds = (await cancel.boundingBox())!;
-          await page.mouse.move(
-            cancelBounds.x + cancelBounds.width / 2,
-            cancelBounds.y + cancelBounds.height / 2,
-          );
-          await page.mouse.wheel(0, -600);
-          const frames = await reading;
-          await testInfo.attach("segment-reading-frames", {
-            body: JSON.stringify(frames),
-            contentType: "application/json",
-          });
-          await testInfo.attach(`segment-reading-${engine}`, {
-            body: await page.screenshot({ animations: "disabled" }),
-            contentType: "image/png",
-          });
-          for (const frame of frames) {
-            for (const edge of ["left", "top", "right", "bottom"] as const) {
-              expect(
-                Math.abs(frame.indicator[edge] - frame.radio[edge]),
-                JSON.stringify(frame),
-              ).toBeLessThan(1);
-            }
-          }
-        },
-      );
+          },
+        );
+      }
     }
   });
 }

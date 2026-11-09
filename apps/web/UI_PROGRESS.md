@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Lab development now prebundles the linked icon entry; the traced eight-task gallery workflow drops from **244,453 to 80,440 requests**, while all eight tasks pass before and after. The complete current run records **1,402 passed / 2 failed** in **4,011.990 s**, with no skips, retries or global errors. Prior-config controls reproduce both failures: Skills selection projection and an unsupported-file header shift. All **1,245 browser images** are reviewed or matched; one belongs to the failed selection case and does not qualify its behavior. Native review inspects **17 captures / 144 AX records**, with fifteen final-task images qualifying gallery reading, independent drafts and actual **200%** zoom. The **492 canonical Lab assets** remain byte-identical, and production components and Runtime are unchanged. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Shared selected backgrounds now stay with their native controls through reflow and wheel reading, including application motion-off and ordinary motion. The final existing-Lab selection passes **395 / 395** across **14 files**, including all eight motion/engine profiles with **420 zero-offset frames**. All **867 browser images** are inspected or matched. UI, full Web (**433 files / 4,790 tests**), all **20** portable ESM resources and the supported native gate pass. Actual Wails review inspects **23 captures / 127 AX records**, covering English/light/14 px/full and Chinese/dark/18 px/off, real **200%** zoom, proposal decisions and continued drafts. The **492 canonical Lab assets** remain identical. The earlier complete Lab run remains historical; its separate unsupported-file header-shift finding is open. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -580,98 +580,119 @@ no functional check runs after output restoration.
 
 ### Shared selection stability during Skills decisions (2026-11-09)
 
-The original Chinese native task exposes a transient blank backplate below the
-unchanged Skills proposal selection after window reflow, an accepted decision
-and wheel reading. Matching that preceding operation history in the existing Lab
-reproduces one displaced first frame in WebKit with system reduced motion:
-the radio stays at **58 px**, while its backplate moves to **85 px**, with a
-**27 px** translation. The other 51 sampled frames settle correctly. Direct-open
-controls pass, but do not reproduce this history; a settled screenshot alone
-would miss the defect.
+The original native Skills task exposes a selected backplate **27 px** below its
+unchanged radio after proposal decisions, window reflow and wheel reading. The
+initial system-reduced-motion repair did not cover application motion-off with
+system no-preference, or ordinary motion. The preceding icon-loading controls
+reproduce the static failure on the old configuration. On current source, the
+expanded baseline also fails ordinary motion in both Chromium and WebKit:
+**10 / 52 frames** are displaced in each engine, by up to **23.188 px** and
+**15.936 px** respectively. Settled screenshots remain identical; frame sampling
+is necessary to expose this defect.
 
-`packages/ui/src/item-highlight.tsx:101` now omits `layoutId` under its existing
-`useReducedMotion` result. A zero-duration transition still participated in shared
-layout projection; the static backplate needs no projection. Its paint, radius,
-public props and ordinary interruptible movement remain with their existing
-owners. No component state, event handler, wrapper or preference is added.
-[Motion's layout documentation](https://motion.dev/docs/react-layout-animations)
-provides the projection reference. Better UI guides the reduced-motion boundary;
-Better Layout and Typography guide reading and alignment. React review retains
-the existing render path and adds no speculative optimization.
+`ItemHighlight` now omits shared projection when either system reduced motion
+or its existing CSS-derived transition duration disables movement. Each
+`Segmented` item supplies `layoutRoot` on its existing native Motion button.
+The control stays in native layout coordinates; its backplate follows local
+reflow and scrolling while selection changes retain shared sliding and reversal.
+No wrapper, position state, scroll listener, preference copy, skin override or
+dependency is added. [Motion's layout reference](https://motion.dev/docs/react-layout-animations)
+and its installed projection implementation explain the parent-relative boundary.
+Better UI guides motion continuity and reduced motion; React review keeps the
+simple render-time decision.
 
-Four cases in the existing `designSystem.browser.spec.ts` follow Chromium and
-WebKit with both system motion preferences. They collapse the real fixture
-sidebar, progressively reduce the viewport, open the folded material, reject the
-first captured proposal, restore the window frame and review the remaining one.
-The check samples every frame around entry and wheel reading, including the
-first frame, and compares all four backplate edges with its selected radio.
-Viewport reflow complements actual native zoom; it does not simulate page zoom.
-The original history control fails **1 / 4** cases. The focused candidate passes
-**4 / 4**; the final broader run records **209 frames**, all with zero edge offset
-and no transform. Existing normal-motion sliding and reversal checks pass.
+Eight cases in the existing `designSystem.browser.spec.ts` cover both application
+motion modes and both system preferences in Chromium and WebKit. They retain the
+real proposal-decision history, progressive reflow, material entry and wheel
+reading, then compare all four selected-background edges on every sampled frame.
+The radio must remain untransformed, preventing a moving control from concealing
+the error. Static modes also require no background transform. Existing sliding,
+interruption/reversal and navigation-hover assertions remain; selection after
+horizontal resize must stay within its track and reach the destination.
 
-Claude Code CLI prepares the one-line component candidate in **23.010 s**, with
-seven protected references unchanged. Primary review verifies the exact diff and
-owns the Lab regression and native acceptance. An initial browser-fixture scope
-error fails before test execution and is corrected using the existing WebKit
-worker extension. No product assertion or deadline is weakened.
+A bounded **26.620 s** Claude Code CLI candidate combines the static guard with a
+fixed layout dependency. Geometry passes, but two ordinary-motion tests fail.
+Primary rejects that dependency, confirms the unchanged sliding controls, and
+places the coordinate boundary on each existing item. The focused final run
+passes **11 / 11** in **57.068 s**, including **409** zero-offset reading frames.
+The final broader run samples **420** reading frames across all eight profiles,
+again with zero offset and no control transform. No assertion, retry, deadline
+or visual configuration is weakened.
+
+The full Web gate also catches an older Lab-consumer mismatch: adding Usage
+Reports makes three contributed roles, while `ProviderSelections.test.tsx`
+still expects two and chooses Memory by global row position. A bounded
+**65.491 s** CLI candidate updates the three-role expectations and targets the
+named Memory group through the existing binding. Primary preserves every
+read-failure, recovery, command, DOM-identity, focus and draft assertion. Its
+extra unsupported query option is rejected by typechecking and removed.
+The focused consumer passes **11 / 11** in **5.507 s**. Both candidate tasks leave
+all twelve protected references unchanged; production provider behavior and Lab
+data are unchanged.
 
 Verification:
 
-- The complete UI gate passes **276 tests** and the offline packed consumer in
-  **10.137 s**. The complete Web gate passes **433 files / 4,770 tests** in
-  **263.320 s**, including its Runtime integration. The first attempt lacks the
-  pinned Node archive and leaves 52 integration tests unexecuted; normal artifact
-  preparation resolves that environment failure before the complete rerun.
-- `make check-native` passes in **70.578 s**. The private Wails v3.1.0 build passes
-  in **20.212 s**. The original 46 native source files and 45 unchanged private
-  copies remain verified; the private application wrapper retains its pinned
-  bytes. Browser and final native tasks use the same **491 canonical Lab assets**.
-- The existing-config selection passes **319 / 319** in **591.412 s**, without
-  retries, skips, flaky results or global errors. It includes the complete
-  component captures, Design System, Workspace, Skills confirmation/acceptance,
-  Panel focus/presentation, Workspace chrome and Settings navigation. All **739
-  final images** are accounted for: 52 are inspected now, representing 48 unique
-  images, and 687 match previously inspected bytes. The complete Lab and backend
-  gates are not rerun; their earlier results retain their original scopes.
-- Actual final English/light/14 px/full-motion and Chinese/dark/18 px/motion-off
-  tasks cover native 100%/200%, material entry, cancellation to the original
-  action, target disclosure, wheel reading, mixed decisions through **2 → 1 → 0**,
-  visible search focus, material Close and exact continued unsent drafts. Chinese
-  Window > Zoom and restoration retain reading and selection; capture widths
-  change **2878 → 3024 → 2878 device pixels**. Complete Chinese target path, scope
-  and 64-character revision remain readable through ordinary scrolling.
+- The complete UI build/type/lint/format gate passes **276 tests** and the offline
+  packed consumer in **11.379 s**. Initial consumer attempts lack frozen tarballs;
+  preparing the existing 29-dependency closure in the private cache resolves
+  those environment failures without changing a manifest or lock.
+- The complete Web gate passes **433 files / 4,790 tests** and all subsequent
+  checks in **358.274 s**, including every Runtime integration case, portable
+  component lifecycle and all **20** exact ESM resource checks. The initial run
+  records six stale consumer failures and leaves 52 Runtime cases unexecuted
+  after cold artifact compilation exceeds the existing 60-second setup budget.
+  Serial preparation of the verified fixture builders resolves that prerequisite;
+  the final run has no skips or deadline changes.
+- `make check-native` passes in **74.712 s**; the private Wails v3.1.0 build
+  passes in **3.688 s**. Both supported and private binaries are arm64, target
+  macOS **13.0**, and use SDK **27.2**. All **46** production native inputs,
+  **45** unchanged private copies and the pinned private wrapper remain verified.
+  Existing duplicate-library, SDK-minimum, iframe and loopback diagnostics remain
+  separate from the passing results.
+- The existing Lab selection passes **395 / 395** across **14 files** in
+  **1,190.351 s**, with no retries, skips, flaky results or global errors. It covers
+  every component capture, eight gallery-navigation tasks, Design System,
+  Workspace, Skills decisions, Panel focus/presentation, Workspace chrome,
+  Settings, Memory and recorded Diagnostics. Of **867** final images, **856**
+  match inspected bytes; all **11** new images are inspected in two sheets,
+  with Memory editing, Skills source and saved-report removal also viewed at
+  original scale. The complete Lab and unrelated backend suites are not rerun.
 
-Failure-path cleanup debt remains in the Runtime integration fixture:
-`runtime-http.e2e.test.ts:1184` starts artifact builders with `Promise.all`, so
-siblings can outlive its first rejection and overlap teardown. The missing-archive
-attempt leaves a 15-node plugin stage in its exact temporary root. All captured
-nodes are retired after identity, hash, process and open-file checks. Revisit this
-fixture lifecycle when setup changes or another prerequisite failure leaves files;
-the successful final gate does not exercise that cleanup failure path.
+Actual English/light/14 px/application-full and Chinese/dark/18 px/application-off
+Wails tasks inspect **23 captures / 127 AX records**. Both cover actual
+**100% → 200% → 100%** zoom, folded material entry, wheel reading, keyboard target
+disclosure, cancellation to the original action, mixed decisions through
+**2 → 1 → 0**, search focus, material Close/reopen and exact continued unsent
+drafts. Chinese Window > Zoom and restoration preserve reading and selection;
+capture widths change **2878 → 3024 → 2878 device pixels**. The original stray
+backplate is absent in the observed paths. Both native processes exit 0, and
+the same **492 canonical Lab assets** remain byte-identical through browser
+builds and native inspection.
 
-All **38 native images** and **91 AX records** are retained for inspection; 21
-images precede the repair and 17 qualify it. All four native processes exit 0.
-The original stray native backplate is absent in the final observed path. Native
-system media preference is not measured; browser cases explicitly control it.
-Decisions use the Lab's existing `skills-commands=accept` in-memory transport,
-not live provider publication. VoiceOver, physical OS IME and 10% Animations-panel
-playback are not verified. The original English wheel-to-pointer return anomaly
-remains outside this repair.
+The Runtime setup's existing `Promise.all` cleanup debt remains: artifact
+builders can outlive the first rejection and teardown. This cold-start failure
+leaves one new empty late-builder root; it is retired only after identity,
+open-file and process checks. Older fixture roots are untouched. Revisit this
+lifecycle when a prerequisite failure again leaves files or writers.
 
-| Severity       | Location                                 | Before                                                                                                | After                                                                                                                   | Why                                                                                                    |
-| -------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| HIGH, resolved | `packages/ui/src/item-highlight.tsx:101` | Reduced-motion selection retains shared projection and can paint 27 px below its label for one frame. | Static selected/hover paint has no shared projection under system reduced motion; ordinary sliding and reversal remain. | Honor reduced motion and keep the visible selection attached to the control during reflow and reading. |
+| Severity       | Location                            | Before                                                                                                                                  | After                                                                                                                                                  | Why                                                                           |
+| -------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| HIGH, resolved | `packages/ui/src/segmented.tsx:101` | Surrounding reflow animates a selected background separately from its unchanged label; static application motion can retain projection. | Each existing button supplies stable local coordinates, and static backplates omit shared projection. Ordinary switching and reversal remain verified. | Keep the visible selection attached to its actual control throughout reading. |
 
-Approve for the inspected selection and proposal paths only. Whole-product visual
-acceptance remains open. No story, visual entry or browser configuration is added;
-all 97 specs remain under the Lab. The 6,715 non-Markdown inputs differ only in
-the shared component and its existing Lab spec; the two documentation paths
-record the contract and evidence. Twelve output/cache roots are restored after
-functional checks, six private Library paths return to absence, and the three
-pre-existing helper roots retain their identities and flags. The primary checkout
-is unchanged. Normal hooks, publication and fenced private-root retirement finish
-this delivery; no functional check runs after output restoration.
+Approve for the inspected paths only. Native system media preference is
+unmeasured; browser cases control it explicitly. Decisions use the Lab's existing
+in-memory transport, not live provider publication. VoiceOver, physical OS IME,
+RTL and 10% Animations-panel playback are not qualified. The separate unsupported-file
+header-shift finding and whole-product visual coverage remain open.
+
+All visual checks still use the same Lab, catalog and single Playwright config.
+The **6,715** non-Markdown inputs differ only in the two shared components,
+existing Lab spec and existing provider-consumer unit test; two documentation
+paths record the contract and evidence. Twelve output/cache roots return to their
+original baselines after functional checks. Six private Library paths return to
+absence, three pre-existing helper roots retain their identities and flags, and
+the primary checkout is unchanged. No functional check runs after restoration.
+Normal hooks, publication and fenced private-root retirement close this delivery.
 
 ### Persistent Skills catalog reading in the Lab (2026-11-09)
 

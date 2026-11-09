@@ -92,14 +92,14 @@ export function ItemHighlight({
   variant?: "hover" | "segment";
   styles?: StyleXArray<StyleXStyles | null | false>;
 }) {
-  const reduced = useReducedMotion();
+  const still = useReducedMotion() || selectionTransition.duration === 0;
   return (
     <anim.span
       aria-hidden
       data-slot="item-highlight"
       initial={false}
-      layoutId={reduced ? undefined : layoutId}
-      transition={reduced ? reducedSelectionTransition : selectionTransition}
+      layoutId={still ? undefined : layoutId}
+      transition={still ? reducedSelectionTransition : selectionTransition}
       {...stylex.props(
         highlight.fill,
         variant === "segment" && highlight.segment,

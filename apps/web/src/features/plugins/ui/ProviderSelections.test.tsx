@@ -8,7 +8,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type Host } from "dougong";
@@ -22,10 +22,16 @@ import { queryClient } from "@/lib/queryClient";
 import { PROVIDERS_KEY, type PackageOperations } from "@/features/plugins/adapters/packages";
 import { ProviderSelections } from "./ProviderSelections";
 import {
+  VISUAL_MEMORY_BINDING,
   VISUAL_PACKAGES,
   VISUAL_PLUGIN_PROVIDERS,
 } from "../../../../lab/scenarios/componentSnapshots";
 import { VISUAL_CAPABILITIES } from "../../../../lab/scenarios/agentFixtureFacts";
+
+const memorySelection = VISUAL_PLUGIN_PROVIDERS.find(
+  (value) => value.installationId === VISUAL_MEMORY_BINDING.installationId,
+)!;
+const memoryToolbar = () => within(screen.getByRole("group", { name: memorySelection.role }));
 
 let host: Host | undefined;
 let client: FlameClient | undefined;
@@ -163,8 +169,8 @@ it("keeps contributed candidates available without inventing a selection during 
       ),
   );
   await mountSelections(read);
-  expect(screen.getAllByRole("combobox", { name: "Choose provider" })).toHaveLength(2);
-  expect(screen.getAllByText("Selection not read.")).toHaveLength(2);
+  expect(screen.getAllByRole("combobox", { name: "Choose provider" })).toHaveLength(3);
+  expect(screen.getAllByText("Selection not read.")).toHaveLength(3);
   expect(screen.queryByText("No provider selected for this role.")).toBeNull();
 });
 
@@ -175,7 +181,7 @@ it("shows an initial read failure beside known roles and recovers through the pe
     .mockResolvedValue(VISUAL_PLUGIN_PROVIDERS);
   await mountSelections(read);
   expect(await screen.findByText("Couldn't load")).toBeTruthy();
-  expect(screen.getAllByText("Selection not read.")).toHaveLength(2);
+  expect(screen.getAllByText("Selection not read.")).toHaveLength(3);
   expect(screen.queryByText("No provider selected for this role.")).toBeNull();
   const refresh = screen.getByRole("button", { name: "Refresh selections" });
   act(() => refresh.focus());
@@ -188,7 +194,7 @@ it("shows an initial read failure beside known roles and recovers through the pe
 it("treats a successful empty read as known unselected roles", async () => {
   await mountSelections(async () => []);
   await waitFor(() =>
-    expect(screen.getAllByText("No provider selected for this role.")).toHaveLength(2),
+    expect(screen.getAllByText("No provider selected for this role.")).toHaveLength(3),
   );
   expect(screen.queryByText("Selection not read.")).toBeNull();
   expect(screen.queryByText("Couldn't load")).toBeNull();
@@ -202,7 +208,7 @@ it("retains selected identities, the candidate draft and later focus after a fai
   const select = vi.fn((value: PluginProviderSelection) => value);
   await mountSelections(read, select);
   await screen.findByText(/Selected: flame.memory/);
-  const chooser = screen.getAllByRole("combobox", { name: "Choose provider" })[0]!;
+  const chooser = memoryToolbar().getByRole("combobox", { name: "Choose provider" });
   fireEvent.click(chooser);
   fireEvent.click(await screen.findByRole("option", { name: /flame.memory/ }));
   const refresh = screen.getByRole("button", { name: "Refresh selections" });
@@ -211,7 +217,7 @@ it("retains selected identities, the candidate draft and later focus after a fai
   act(() => draft.focus());
   expect(await screen.findByText("Showing the last read selections.")).toBeTruthy();
   expect(screen.getByText(/Selected: flame.memory/)).toBeTruthy();
-  expect(screen.getAllByRole("combobox", { name: "Choose provider" })[0]).toBe(chooser);
+  expect(memoryToolbar().getByRole("combobox", { name: "Choose provider" })).toBe(chooser);
   expect(chooser.textContent).toContain("flame.memory");
   expect(document.activeElement).toBe(draft);
   expect(select).not.toHaveBeenCalled();
@@ -231,12 +237,12 @@ it("allows an explicit selection after an unavailable read without inferring a s
   });
   await mountSelections(read, select);
   await screen.findByText("Couldn't load");
-  const chooser = screen.getAllByRole("combobox", { name: "Choose provider" })[0]!;
+  const chooser = memoryToolbar().getByRole("combobox", { name: "Choose provider" });
   fireEvent.click(chooser);
   fireEvent.click(await screen.findByRole("option", { name: /flame.memory/ }));
-  fireEvent.click(screen.getAllByRole("button", { name: "Apply selection" })[0]!);
+  fireEvent.click(memoryToolbar().getByRole("button", { name: "Apply selection" }));
   await screen.findByText(/Selected: flame.memory/);
-  expect(select).toHaveBeenCalledExactlyOnceWith(VISUAL_PLUGIN_PROVIDERS[0]);
+  expect(select).toHaveBeenCalledExactlyOnceWith(memorySelection);
   expect(screen.queryByText("Couldn't load")).toBeNull();
 });
 
@@ -264,5 +270,5 @@ it("preserves unsupported-method feedback alongside contributed roles", async ()
   });
   expect(await screen.findByText("Not supported by this runtime")).toBeTruthy();
   expect(screen.queryByText("Couldn't load")).toBeNull();
-  expect(screen.getAllByText("Selection not read.")).toHaveLength(2);
+  expect(screen.getAllByText("Selection not read.")).toHaveLength(3);
 });
