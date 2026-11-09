@@ -248,6 +248,14 @@ nor changes the draft or selection, and retires when the transcript starts or
 the view becomes hidden. Transcript reading and shared Panel focus retain their
 separate owners.
 
+The started conversation bounds its complete Composer stack with a normal-flow
+scrollport, so a standing Goal or connection notice cannot compress the editor
+and actions away in a short window. The jump control stays outside that clipping
+boundary. This scrollport and the empty conversation reuse `useViewportFocus`
+for focused-control visibility; only the applicable visible viewport observes
+reflow. Wheel reading, pointer presses, outside focus and hidden content retain
+their existing retirement rules. Neither viewport advances commands or drafts.
+
 The transcript's reading-focus owner projects its measured safe height as
 `--reading-frame-height` on the attached scroll viewport. The same existing
 resize observation updates this budget when the window or Composer clearance

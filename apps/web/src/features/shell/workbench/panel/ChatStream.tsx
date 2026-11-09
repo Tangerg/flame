@@ -30,7 +30,7 @@ import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex"
 import { ScrollRegion, vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
 import { useAgentShellElement } from "@/ui/agent/index";
-import { useEmptyConversationFocus } from "@/features/shell/workbench/panel/useEmptyConversationFocus";
+import { useViewportFocus } from "@/features/shell/workbench/panel/useViewportFocus";
 import {
   NOTIFICATION_BOTTOM_PROPERTY,
   NOTIFICATION_TOP_PROPERTY,
@@ -221,7 +221,7 @@ export function ChatStream({ onSend }: Props) {
     };
   }, [started, visible, shell]);
 
-  useEmptyConversationFocus(emptyViewportRef, !started && visible);
+  useViewportFocus(emptyViewportRef, !started && visible);
 
   // Only this host survives the question-to-Composer replacement.
   const questionFocusRef = useRef<{ element: Element; sessionId: string } | null>(null);

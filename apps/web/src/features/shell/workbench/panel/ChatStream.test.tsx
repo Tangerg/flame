@@ -173,12 +173,13 @@ function measureStream() {
   vi.stubGlobal("ResizeObserver", TestResizeObserver);
   vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(600);
   return (input: Element) => {
+    const composerOverlay = input.closest('[data-slot="composer-overlay"]')!;
     const emptyViewport = input.closest('[data-slot="empty-conversation-layout"]');
     const observer = observers.find(
       (entry) =>
         entry.active &&
-        (!emptyViewport || !entry.nodes.has(emptyViewport)) &&
-        [...entry.nodes].filter((node) => node.contains(input)).length > 1,
+        entry.nodes.has(composerOverlay) &&
+        (!emptyViewport || !entry.nodes.has(emptyViewport)),
     )!;
     expect(observer).toBeTruthy();
     const ancestors = [...observer.nodes].filter((node) => node.contains(input));

@@ -20622,7 +20622,7 @@ to a thin strip below the Goal tray. The preserved original build reproduces
 the same failure, and the final group build retains it. Enlarging the window
 restores the exact draft and controls. This is an explicit unresolved vertical
 allocation issue around `FloatingComposer`, not a passing narrow-height result.
-It is the next bounded repair through this same Lab. **24 native images and 598
+The following bounded repair addresses it through this same Lab. **24 native images and 598
 AX records** retain accepted and failed observations. An asset-generation
 rollback initially reused cached entry HTML and failed to load; native Force
 Reload admits the original bytes before its counterexample. Physical OS IME,
@@ -20639,6 +20639,87 @@ output/cache roots** return to their exact baseline contents and modes, and the
 primary checkout remains unchanged. No functional checks run after restoration.
 Final handoff retires the captured private evidence tree after verified in-memory
 retention. No Runtime, storage, protocol or user-data migration is required.
+
+### Short-window Composer allocation (2026-11-10)
+
+The floating overlay limits total height, but its Goal tray cannot shrink. The
+previous flex stack therefore compressed the editor and footer into a clipped
+strip. `FloatingComposer.tsx` now gives the complete stack normal block flow
+inside a bounded scrollport. Goal, connection notice, editor and actions keep
+their intrinsic content; scrolling supplies the missing space. The jump control
+stays outside that clipping boundary, and a 2 px inset preserves the Composer
+perimeter without moving its reading edges.
+
+The existing empty-conversation focus hook is renamed `useViewportFocus` and
+reused without changing its implementation. Empty and floating conversations
+enable it only for their applicable visible viewport. Previously visible focus
+survives reflow; keyboard return reveals the same control. Deliberate wheel
+reading, pointer presses, outside focus and hidden content retain their existing
+retirement rules. Draft, selection, Goal commands and Runtime ownership do not
+gain another writer. The trailing action group and secondary-label rules from
+the preceding batch remain intact.
+
+Better-layout's bounded scrolling and content-led allocation, together with
+better-accessibility's visible-focus guidance, guide this repair. Read-only
+reference inspection revisits ZCode's bounded Lexical editor and HeroUI's
+max-height ScrollShadow example. Neither establishes Flame's complete host
+behavior or supplies a copied component. Two bounded Claude Code CLI candidates
+edit only disposable copies; primary review admits the CSS change and the
+existing focus guarantee's second consumer.
+
+The existing Lab toolbar file gains four short-window tasks across
+Chromium/WebKit, English/light/14 px and Chinese/dark/18 px. With the fixture
+drawer closed, a running Goal and explicit Auto policy, all four fail against
+the original sources in **33.142 s**. Scrolling alone still leaves existing focus
+outside the viewport. The repaired flow retains the exact draft, input node and
+initial selection through **373 × 243 px** reflow, then traverses every footer
+control, cancels model and Goal editors, visits Pause/Clear without activating
+them, reads by wheel and restores the window for continued input.
+
+The related selection passes **47 / 47** in **98.686 s**. Inspection of its
+**138 images** exposes a wheel-to-keyboard capture that outlives the preceding
+geometry sample. The strengthened task waits for wheel settling, requires eight
+consecutive complete focus/hit frames, and checks again after its screenshot.
+A transient WebKit post-capture hit failure is retained as failed evidence;
+the final strengthened selection passes **4 / 4** in **30.783 s**, without
+retries, skips or global errors. The same five pointer locations and every
+clipping ancestor remain required. Its 72 final images supersede the earlier
+short-window captures. No alternate fixture, runner or visual suite is added.
+
+Shell, Composer and Goal units pass **53 files / 576 tests** in **15.726 s**.
+Their initial notification-space failures expose a test helper that guessed the
+observer from ancestor counts. It now identifies the actual Composer-overlay
+observer and excludes the empty viewport's focus observer; every geometry,
+hidden-retirement and draft assertion remains. Web typecheck, lint, unused-code,
+style, shorthand and layer checks pass. **`make check-native` passes in
+65.882 s**. Complete Web, Runtime and Lab suites are not newly qualified.
+
+Two private production Wails processes use **492 byte-identical canonical Lab
+assets**, with all **46 native production inputs** unchanged. Chinese/dark/18 px
+checks the editable running Goal at the native minimum frame, actual **200% and
+300%** page zoom, footer traversal, visible Steer/Stop, model/policy cancellation,
+Goal edit cancellation, Pause/Clear focus, wheel reading, enlargement/restoration
+and the continued exact padded draft. English/light/14 px checks a read-only
+running Goal in Workspace at 200%/300%, all footer controls, searched and scrolled
+Schedules material, conversation return and continued input with observation off.
+The optional existing readout confirms a **373.67 × 243 px** viewport at DPR 6.
+**21 native images and 106 recorded zoom/traversal AX states** retain the task
+evidence. A short window scrolls the stack; it cannot show every Goal and Composer
+control simultaneously. No Send, Steer, Stop, Pause or Clear command is activated.
+OS IME, VoiceOver speech, RTL and live Runtime execution remain unqualified.
+Material return qualifies draft continuation, not retention of the new internal
+Composer scroll offset; that continuity remains a focused follow-up candidate.
+
+The fresh main fetch has no incoming commits at `43e5aa646`. Source comparison
+covers **6,716 non-Markdown inputs** and admits four owned modifications plus
+the focus-hook rename. Three maintained documents describe this boundary. Both
+private native processes exit normally, the app is unregistered and its server
+stops. All **12 output/cache roots** return to their exact baseline contents and
+modes; six private Library paths return to absence and three preexisting helper
+roots retain their identities and flags. The primary checkout is unchanged.
+No functional checks run after restoration. The final source batch uses ordinary
+commit hooks and publication to main; the captured evidence tree is retired after
+verified in-memory retention. No storage, protocol or user-data migration is needed.
 
 ### Model catalog reading and recovery
 

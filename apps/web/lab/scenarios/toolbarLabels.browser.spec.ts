@@ -4,6 +4,84 @@ import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/me
 import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
 import { expectLabReady } from "../readiness";
+import type { Locator } from "@playwright/test";
+
+async function measureControl(control: Locator, frames = 1) {
+  return control.evaluate(async (node, frames) => {
+    const sample = () => {
+      const rect = node.getBoundingClientRect();
+      const clippedBy = [];
+      const ancestors = [];
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        const box = parent.getBoundingClientRect();
+        ancestors.push({
+          slot: parent.getAttribute("data-slot") ?? parent.tagName,
+          top: box.top,
+          bottom: box.bottom,
+          height: box.height,
+          clientHeight: parent.clientHeight,
+          scrollHeight: parent.scrollHeight,
+          display: style.display,
+          maxHeight: style.maxHeight,
+          overflow: style.overflowY,
+        });
+        if (
+          /(auto|scroll|hidden|clip)/.test(style.overflowY) &&
+          (rect.top < box.top + parent.clientTop - 1 ||
+            rect.bottom > box.top + parent.clientTop + parent.clientHeight + 1)
+        )
+          clippedBy.push(parent.getAttribute("data-slot") ?? parent.tagName);
+      }
+      const x = (rect.left + rect.right) / 2;
+      const y = (rect.top + rect.bottom) / 2;
+      const hits = [
+        [x, y],
+        [rect.left + 2, y],
+        [rect.right - 2, y],
+        [x, rect.top + 2],
+        [x, rect.bottom - 2],
+      ].map(([px, py]) => {
+        const hit = document.elementFromPoint(px!, py!);
+        return {
+          x: px,
+          y: py,
+          tag: hit?.tagName,
+          label: hit?.getAttribute("aria-label"),
+          slot: hit?.getAttribute("data-slot"),
+          contains: hit !== null && node.contains(hit),
+        };
+      });
+      return {
+        bounds: { top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height },
+        clippedBy,
+        ancestors,
+        inViewport:
+          rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth,
+        hits,
+        reachable: hits.every((hit) => hit.contains),
+        focused: document.activeElement === node,
+      };
+    };
+    const samples: ReturnType<typeof sample>[] = [];
+    for (let frame = 0; frame < frames; frame++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      samples.push(sample());
+    }
+    return {
+      ...samples.at(-1)!,
+      stable: samples.every(
+        (reading) =>
+          reading.focused &&
+          reading.clippedBy.length === 0 &&
+          reading.inViewport &&
+          reading.reachable &&
+          reading.bounds.width >= 24 &&
+          reading.bounds.height >= 24,
+      ),
+    };
+  }, frames);
+}
 
 for (const environment of [
   { locale: "en", theme: "light", fontSize: 14, messages: en },
@@ -364,6 +442,165 @@ for (const browserName of ["chromium", "webkit"] as const) {
       }
     }
   });
+
+  for (const environment of [
+    { locale: "en", theme: "light", fontSize: 14, messages: en },
+    { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
+  ]) {
+    capacityTest(
+      `${browserName} short composer keeps editing and Goal controls reachable in ${environment.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = environment.messages;
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await page.goto(
+          `/lab/fixture.html?${new URLSearchParams({
+            fixture: "agent",
+            state: "running",
+            locale: environment.locale,
+            theme: environment.theme,
+            "font-size": String(environment.fontSize),
+          })}`,
+        );
+        await expectLabReady(page);
+        await page
+          .getByRole("button", { name: "Collapse the agent fixture sidebar", exact: true })
+          .click();
+        const draft = page.getByRole("textbox", { name: messages["composer.input.label"] });
+        const footer = page.locator('[data-slot="composer-footer"]');
+        const approval = footer.getByRole("button", {
+          name: new RegExp(`${messages["approvals.mode.aria"]}$`),
+        });
+        await approval.click();
+        await page
+          .getByRole("menuitem", { name: new RegExp(`^${messages["approvals.mode.auto"]}`) })
+          .click();
+        const value = "  Keep this draft while the controls reflow.  ";
+        await draft.fill(value);
+        await draft.evaluate((node: HTMLTextAreaElement) => node.setSelectionRange(2, 12));
+        const original = await draft.elementHandle();
+        const expectReachable = async (control: Locator, name: string) => {
+          try {
+            await expect(control).toBeFocused();
+            await expect
+              .poll(async () => {
+                const reading = await measureControl(control, 8);
+                return {
+                  unclipped: reading.clippedBy.length === 0,
+                  inViewport: reading.inViewport,
+                  reachable: reading.reachable,
+                  size: reading.bounds.width >= 24 && reading.bounds.height >= 24,
+                  stable: reading.stable,
+                };
+              })
+              .toEqual({
+                unclipped: true,
+                inViewport: true,
+                reachable: true,
+                size: true,
+                stable: true,
+              });
+          } finally {
+            await testInfo.attach(name, {
+              body: JSON.stringify(await measureControl(control), null, 2),
+              contentType: "application/json",
+            });
+            await testInfo.attach(`${name}-view`, {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+          }
+          await expect(control).toBeFocused();
+          const captured = await measureControl(control);
+          await testInfo.attach(`${name}-after-capture`, {
+            body: JSON.stringify(captured, null, 2),
+            contentType: "application/json",
+          });
+          expect(captured.clippedBy).toEqual([]);
+          expect(captured.inViewport && captured.reachable).toBe(true);
+        };
+        await page.setViewportSize({ width: 373, height: 243 });
+        await expectReachable(draft, "short-focused-draft");
+        await expect(draft).toHaveValue(value);
+        expect(
+          await draft.evaluate((node: HTMLTextAreaElement) => [
+            node.selectionStart,
+            node.selectionEnd,
+          ]),
+        ).toEqual([2, 12]);
+        for (const [index, button] of (await footer.getByRole("button").all()).entries()) {
+          await page.keyboard.press("Tab");
+          await expectReachable(button, `short-footer-${index}`);
+        }
+        const stop = footer.getByRole("button", {
+          name: messages["composer.action.stop"],
+          exact: true,
+        });
+        await expect(stop).toBeFocused();
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await expectReachable(stop, "restored-stop");
+        await page.setViewportSize({ width: 373, height: 243 });
+        await expectReachable(stop, "short-focused-stop");
+        const model = footer.getByRole("button", {
+          name: new RegExp(`${messages["composer.switchModel"]}$`),
+        });
+        await model.focus();
+        await expectReachable(model, "short-model");
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("combobox")).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expectReachable(model, "short-model-return");
+        await draft.focus();
+        await page.keyboard.press("Shift+Tab");
+        const edit = page.getByRole("button", { name: messages["goal.action.edit"], exact: true });
+        await expectReachable(edit, "short-edit-goal");
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("dialog", { name: messages["goal.edit.title"] })).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expectReachable(edit, "short-goal-return");
+        for (const action of ["goal.action.pause", "goal.action.clear"]) {
+          await page.keyboard.press("Shift+Tab");
+          await expectReachable(
+            page.getByRole("button", { name: messages[action], exact: true }),
+            `short-${action}`,
+          );
+        }
+        const scrollport = page.locator('[data-slot="composer-scrollport"]');
+        const port = (await scrollport.boundingBox())!;
+        await page.mouse.move(port.x + port.width / 2, port.y + port.height / 2);
+        await page.mouse.wheel(0, 1000);
+        await expect.poll(() => scrollport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+        await scrollport.evaluate(async (node) => {
+          let previous = node.scrollTop;
+          let stable = 0;
+          for (let frame = 0; frame < 120; frame++) {
+            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            const current = node.scrollTop;
+            stable = current === previous ? stable + 1 : 0;
+            previous = current;
+            if (stable === 8) return;
+          }
+          throw new Error("Composer wheel reading did not settle");
+        });
+        await page.setViewportSize({ width: 390, height: 243 });
+        await expect.poll(() => scrollport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+        await page.keyboard.press("Shift+Tab");
+        const summary = page.locator('[data-slot="composer-top-tray-surface"] button').first();
+        await expectReachable(summary, "short-goal-after-wheel");
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await draft.focus();
+        await expectReachable(draft, "restored-draft");
+        await expect(draft).toHaveValue(value);
+        expect(await draft.evaluate((node, previous) => node === previous, original)).toBe(true);
+        await page.keyboard.press("ControlOrMeta+ArrowDown");
+        await page.keyboard.insertText(" Continue editing.");
+        await expect(draft).toHaveValue(`${value} Continue editing.`);
+        expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))).toEqual({
+          x: 0,
+          y: 0,
+        });
+      },
+    );
+  }
 }
 
 test("navigation density does not rescale reading or input geometry", async ({ page }) => {

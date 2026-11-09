@@ -425,6 +425,16 @@ glyph bounds, pointer hit areas, an aligned end-action group, menu focus return
 and the same draft node. Native page zoom remains a separate Wails inspection of
 these same Lab documents.
 
+Short-window toolbar checks use the same Agent scenario with its drawer closed,
+a standing Goal and an explicit Auto policy. Chromium and WebKit retain the exact
+draft, node and selection through 373 × 243 px reflow. The task follows complete
+keyboard traversal, model and Goal editor cancellation, deliberate wheel reading
+and restoration with continued editing. Each focused control must fit every
+clipping ancestor and admit five pointer hit locations over eight consecutive
+frames, with another check after capture. Wheel reading settles before keyboard
+return. These checks exercise the production Composer scrollport; they add no
+alternate fixture, runner or layout measurement authority.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

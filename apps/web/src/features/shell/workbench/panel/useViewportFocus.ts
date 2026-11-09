@@ -1,9 +1,6 @@
 import { type RefObject, useLayoutEffect } from "react";
 
-export function useEmptyConversationFocus(
-  viewportRef: RefObject<HTMLDivElement | null>,
-  enabled: boolean,
-) {
+export function useViewportFocus(viewportRef: RefObject<HTMLDivElement | null>, enabled: boolean) {
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!enabled || !viewport) return;
