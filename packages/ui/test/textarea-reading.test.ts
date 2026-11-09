@@ -137,7 +137,7 @@ describe("TextArea caret reading through reflow", () => {
     area.scrollTop = 0;
     area.dispatchEvent(new Event("scroll"));
     area.dispatchEvent(new FocusEvent("focus"));
-    area.dispatchEvent(new Event("select"));
+    area.dispatchEvent(new Event("selectionchange", { bubbles: true }));
     resize(60);
     paint();
 
@@ -177,13 +177,36 @@ describe("TextArea caret reading through reflow", () => {
     const { area, resize, measuredOffset } = editor();
     area.dispatchEvent(new WheelEvent("wheel"));
     area.setSelectionRange(5, 9, "backward");
-    area.dispatchEvent(new Event("select"));
+    area.dispatchEvent(new Event("selectionchange", { bubbles: true }));
     resize(80);
     paint();
 
     expect(measuredOffset()).toBe(5);
     expect(area.scrollTop).toBe(254);
   });
+
+  it.each(["control", "document"])(
+    "resumes a collapsed caret from a %s selectionchange",
+    (target) => {
+      const { area, setCaretTop, measuredOffset } = editor();
+      const value = area.value;
+      area.dispatchEvent(new WheelEvent("wheel"));
+      area.setSelectionRange(0, 0);
+      setCaretTop(0);
+      area.scrollTop = 10;
+      (target === "control" ? area : document).dispatchEvent(
+        new Event("selectionchange", { bubbles: true }),
+      );
+      area.dispatchEvent(new Event("scroll"));
+      paint();
+
+      expect(measuredOffset()).toBe(0);
+      expect(area.scrollTop).toBe(0);
+      expect(area.value).toBe(value);
+      expect([area.selectionStart, area.selectionEnd]).toEqual([0, 0]);
+      expect(document.activeElement).toBe(area);
+    },
+  );
 
   it("defers pointer-caused reflow until the press has ended", () => {
     const { area, resize } = editor();
@@ -230,6 +253,8 @@ describe("TextArea caret reading through reflow", () => {
     resize(60);
     window.dispatchEvent(new Event("resize"));
     area.dispatchEvent(new InputEvent("input"));
+    area.setSelectionRange(0, 0);
+    document.dispatchEvent(new Event("selectionchange"));
     paint();
 
     expect(disconnected).toBe(true);

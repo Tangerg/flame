@@ -583,9 +583,12 @@ authored blank lines, an unbroken path and a scrollable list exercise the actual
 Memory reader. Existing short pages remain unchanged. The named variant feeds
 the catalog, state picker and independent captures without another story list.
 Its existing Memory suite checks wrapping, local drafts, filtered-out openers,
-scope identity and conversation return in Chromium and WebKit. These are fixed
-reading inputs; unmodelled mutations still refuse and cancellation leaves the
-recorded content unchanged.
+scope identity and conversation return in Chromium and WebKit. At 720 × 450,
+keyboard collapse to each draft endpoint must restore its reading inset without
+changing the draft, selection or focus. Edge scroll allowance is bounded by the
+computed half-leading, independently of the shared caret implementation.
+These are fixed reading inputs; unmodelled mutations still refuse and
+cancellation leaves the recorded content unchanged.
 
 The `dock-usage-reports` Workspace variant mounts the installed Saved usage
 reports component over its declared public SDK binding. A single fixed report

@@ -321,6 +321,57 @@ for (const engine of ["chromium", "webkit"] as const) {
         await expect(content).toHaveValue(projectRow.Content);
         const localDraft = `${projectRow.Content}\n\n${draft}`;
         await content.fill(localDraft);
+        await page.setViewportSize({ width: 720, height: 450 });
+        const readingDraft =
+          (profile.locale === "zh" ? "保留当前项目记忆草稿。" : "Keep this project draft.") +
+          "\n\n/Users/visual/" +
+          "retained-reading-".repeat(16) +
+          "review.md\n\n" +
+          (profile.locale === "zh" ? "窗口变化后仍保留最后一段。" : "Keep the final paragraph.");
+        await content.fill(readingDraft);
+        const edgeReading = () =>
+          content.evaluate((element: HTMLTextAreaElement) => {
+            const style = getComputedStyle(element);
+            return {
+              top: element.scrollTop,
+              remaining: element.scrollHeight - element.clientHeight - element.scrollTop,
+              maximum: element.scrollHeight - element.clientHeight,
+              leading: Math.ceil((parseFloat(style.lineHeight) - parseFloat(style.fontSize)) / 2),
+              start: element.selectionStart,
+              end: element.selectionEnd,
+            };
+          });
+        await page.keyboard.press("ControlOrMeta+A");
+        await page.keyboard.press("ArrowLeft");
+        await expect(content).toHaveJSProperty("selectionStart", 0);
+        await expect(content).toHaveJSProperty("selectionEnd", 0);
+        await expect
+          .poll(async () => {
+            const reading = await edgeReading();
+            return reading.top <= reading.leading;
+          })
+          .toBe(true);
+        const startReading = await edgeReading();
+        expect(startReading.maximum).toBeGreaterThan(0);
+        await capture("caret-start");
+        await page.keyboard.press("ControlOrMeta+A");
+        await page.keyboard.press("ArrowRight");
+        await expect(content).toHaveJSProperty("selectionStart", readingDraft.length);
+        await expect(content).toHaveJSProperty("selectionEnd", readingDraft.length);
+        await expect
+          .poll(async () => {
+            const reading = await edgeReading();
+            return reading.remaining <= reading.leading;
+          })
+          .toBe(true);
+        await expect(content).toBeFocused();
+        await expect(content).toHaveValue(readingDraft);
+        await testInfo.attach("long-memory-caret-reading.json", {
+          body: JSON.stringify({ start: startReading, end: await edgeReading() }),
+          contentType: "application/json",
+        });
+        await capture("caret-end");
+        await content.fill(localDraft);
         await page.setViewportSize({ width: 320, height: 600 });
         await expect(content).toHaveValue(localDraft);
         await expect(project).toBeDisabled();

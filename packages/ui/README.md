@@ -573,10 +573,12 @@ reading viewport or displace a focused action beside a capped textarea.
 temporary, inaccessible text mirror measures the active selection endpoint;
 only the textarea's vertical scroll position changes. Values, selection and
 focus remain native. Wheel reading or a moved scrollbar retires following until
-new focus, input or selection movement. Same-control window reactivation does
-not restart it. Pointer presses and composition defer the reveal, and later
-focus or unmount fences pending work. This reading observation is independent
-of the optional autosize height owner.
+new focus, input or selection movement. A document `selectionchange` listener
+observes both collapsed caret movement and range changes through native offsets;
+unchanged selections and other focused controls do not restart following.
+Same-control window reactivation does not restart it. Pointer presses and
+composition defer the reveal, and later focus or unmount fences pending work.
+This reading observation is independent of the optional autosize height owner.
 
 The shared stylesheet also applies the application's `data-motion="off"` projection
 and the system reduced-motion preference. Both disable motion with zero duration;

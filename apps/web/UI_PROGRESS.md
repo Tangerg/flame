@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Long Project and User Memory records now expose reading, local editing and return through the same installed component. They reveal a WebKit sizing defect: temporarily collapsing a live textarea clamps its outer scroll position and hides the focused Cancel action. Shared textarea sizing now measures through its existing inert text mirror. The final existing-Lab selection passes **82 / 82**, including Chromium/WebKit short-window regressions. All **365 retained browser images** are accounted for; four early external traces were not retained. Shared UI checks pass **276 tests** and the independent packed consumer; full Web passes **433 files / 4,799 tests** and its subsequent gates. Actual Wails review retains **39 original-size captures / 328 AX records**, including **25 final captures**, with dual-language **200%** zoom, small-window focus, independent scope drafts and exact conversation continuation. The **492 final canonical Lab assets** match the served native copy. Entrypoint migration is complete; whole-product visual coverage remains unfinished. Chinese final-line clearance at native zoom is a recorded follow-up. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. Shared TextArea reading now observes native caret-only movement as well as ranges, restoring the first/last-line clearance exposed by long Memory editing. The existing Lab selection passes **82 / 82**, including dual-language Chromium/WebKit reading, manual scroll, resize, focus, cancellation and draft return. Shared UI passes **278 tests** and its independent packed consumer; full Web passes **433 files / 4,799 tests** and subsequent gates. Actual Wails review confirms both languages at **200%**, small-window caret reading, visible Cancel, scope facts and exact continued conversation drafts. All **492 canonical assets** match their served bytes. All **289 retained browser PNG references** and **25 native captures / 301 AX records** are accounted for; 22 native images qualify final observations. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10394,8 +10394,8 @@ and 240 records belong to final acceptance. Early blank, unconfigured post-Quit
 relaunch and `zh-CN` raw-fixture admissions are preparation errors and excluded.
 The valid raw fixture uses `locale=zh`; the outer Lab still uses `zh-CN`.
 Chinese draft endpoints remain legible, but the last glyph line sits against
-the textarea outline at native zoom. Investigate that observed typographic
-clearance next, through this same Lab. Physical IME, VoiceOver, RTL, quantitative
+the textarea outline at native zoom. The caret-only movement follow-up below
+addresses this observed clearance through the same Lab. Physical IME, VoiceOver, RTL, quantitative
 contrast, native system motion preference and live provider/accepted-mutation
 execution remain outside this isolated task's qualification.
 
@@ -10412,7 +10412,102 @@ eight intended changes and no additions. The primary checkout retains its
 original HEAD, clean status and `go.work.sum` bytes. Subsequent work is document
 formatting, normal static lint hooks and read-only integrity checks. Publication
 uses the authorized normal-hook commit and non-forced `HEAD:main` push. The
-goal remains active; continue from the recorded final-line clearance observation.
+goal remains active; the follow-up below repairs that final-line observation.
+
+#### Caret-only movement and reading insets
+
+**LOW — shared TextArea reading:** at native 200%, the active first or last
+Chinese line remains legible but sits against the field outline. Passive
+observation in the existing Memory workflow identifies an event mismatch.
+WebKit fires `select` for a character range, but collapsing that range to a
+caret produces `selectionchange` instead. The unchanged implementation misses
+that movement: at 720 × 450, first-line scroll remains **10 px** and the final
+line retains **13 px** of unused scroll range despite **8 px** block padding.
+The same caret changes reach both the text control and its document.
+
+`packages/ui/src/textarea-reading.ts` replaces its `select` observation with
+one document `selectionchange` listener and symmetric disposal. Native offsets,
+selection signatures and focus ownership continue to decide whether reading
+resumes. The inert mirror, sizing owner, manual wheel/scrollbar retirement,
+window reactivation, pointer/composition deferral and pending-work fences retain
+their existing contracts. No keyboard-specific handler, timer, padding override,
+new state, dependency or Memory-only branch is added. The
+[textarea event contract](https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement/selectionchange_event)
+and [document event description](https://developer.mozilla.org/en-US/docs/Web/API/Document/selectionchange_event)
+distinguish caret/range changes and bubbled text-control delivery. These sources
+explain event semantics; actual browser and native observations qualify the fix.
+
+Better Typography and Accessibility guide active-line clearance and native
+keyboard/focus behavior. Read-only ZCode and HeroUI textarea implementations
+inform consistent native-field insets. Claude Code CLI completes a bounded
+single-file candidate in **22.812 s**, with five protected references unchanged.
+Primary review narrows its explanatory comment and owns regression coverage,
+source review, real-browser checks and native acceptance.
+
+Verification:
+
+- The new owner regression fails against the original implementation. Final
+  caret-owner coverage passes **13 tests**, including collapsed control/document
+  event delivery, manual reading, later focus, composition and disposal. Shared
+  UI checks pass **278 tests** and the independent offline packed consumer in
+  **9.274 s**, after preparing its **31 locked tarballs** in the private cache.
+- The existing Memory workflow fails on original WebKit first-line clearance.
+  The first candidate selection passes both Chinese cases; both English cases
+  fail the overflow assertion because the initial draft fits at 14 px. Extending
+  the same path input for both languages preserves that assertion. All four final tasks
+  pass in **22.284 s**. Chinese endpoints reach their actual scroll boundaries;
+  English endpoint scroll stays within computed half-leading. Exact drafts,
+  selection, focus, scope identity, Cancel return and continued conversation
+  remain checked through the existing complete task.
+- The final existing-config selection passes **82 / 82** in **334.676 s**, with
+  zero skips, retries, flaky outcomes or global errors. Memory, shared ownership
+  in Chromium/WebKit, Panel focus, plugin forms/errors, Composer and all 26
+  Workspace variants share the same catalog and configuration. Across retained
+  runs, all **487 artifact references** verify, including **289 PNG references**:
+  248 match previously reviewed bytes, and **24 new unique images** are inspected
+  in three contact sheets and four original-size checks. No attachment is lost.
+- Full Web passes **433 files / 4,799 tests** and all subsequent gates in
+  **336.967 s**, after managed Node preparation and five serial fixture builders.
+  All three pre-existing Runtime fixture roots retain their **17 captured nodes**;
+  no new root remains. Existing non-failing iframe and loopback diagnostics are
+  retained. `make check-native` passes in **51.932 s**, retaining its existing
+  duplicate-library and independent-build deployment linker warnings.
+
+Actual Wails **v3.1.0** uses all **492 final canonical assets**, each verified
+against its HTTP-served bytes. Its private host builds in **19.870 s** and is
+reused with all **46 production native inputs** and 45 unchanged private copies
+verified. The private binary targets macOS **13.0**, SDK **27.2**. English/light/
+14 px/full and Chinese/dark/18 px/off each use Actual Size plus twenty native
+Zoom In actions for **200%**. Range collapse and native start/end navigation
+restore active-line clearance. Wheel reading, keyboard resumption and small
+window reading retain exact drafts. Tab reaches Cancel; Window > Top Left and
+Return to Previous Size retain visible Cancel focus and the same temporary
+content. Enter cancels back to the original Edit action. Project/User reading,
+source facts, Escape back to the conversation and exact appended drafts pass.
+Save, approval, deletion and Send are not activated.
+
+All **25 native PNGs** are inspected and **301 AX records** retained; 22 images
+qualify final observations. Two images establish the original native failure.
+One Window-menu preparation sequence sends Escape to the editor and cancels its
+temporary draft; its resulting restore is excluded from draft-continuity
+acceptance. The repeated window task without that dismissal key passes. Native
+menu Escape routing still needs a focused reproduction to distinguish host
+behavior from verification input. Physical IME, VoiceOver, RTL, older Safari,
+quantitative contrast, system motion preference and live provider mutations are
+not qualified by this isolated task.
+
+Both final native processes exit **0**. The static server stops through its
+captured identity with expected exit **130**, and the private app is
+unregistered. Six private Library paths and the ordinary temporary path return
+to absence; three owned helper children are removed while all three original
+helper roots and flags remain. After functional verification, all **12** output
+and cache roots return to their original snapshots: **4,360 captured nodes** are
+retired and **317 files** restored. All **6,715 non-Markdown inputs** compare,
+with exactly three intended changes and no additions. The primary checkout
+retains its original HEAD, clean status and checksum bytes. Later work is
+formatting, normal static lint hooks and read-only integrity checks. No
+production data migration is required. Publication uses the authorized normal
+commit hooks and non-forced `HEAD:main` push. The continuous goal remains active.
 
 ### Memory Lab target identity and User reading (2026-11-09)
 

@@ -166,7 +166,8 @@ export function followTextAreaCaret(area: HTMLTextAreaElement) {
     window.cancelAnimationFrame(pending);
     pending = 0;
   };
-  const onSelect = () => {
+  // Observe caret-only movement as well as ranges; text-control events bubble.
+  const onSelectionChange = () => {
     const next = selection(area);
     if (next === selected) return;
     selected = next;
@@ -213,7 +214,7 @@ export function followTextAreaCaret(area: HTMLTextAreaElement) {
   observer.observe(area, { box: "border-box" });
   area.addEventListener("focus", onFocus);
   area.addEventListener("blur", onBlur);
-  area.addEventListener("select", onSelect);
+  document.addEventListener("selectionchange", onSelectionChange);
   area.addEventListener("input", onInput);
   area.addEventListener("wheel", onWheel, { passive: true });
   area.addEventListener("scroll", onScroll, { passive: true });
@@ -229,7 +230,7 @@ export function followTextAreaCaret(area: HTMLTextAreaElement) {
     window.cancelAnimationFrame(pending);
     area.removeEventListener("focus", onFocus);
     area.removeEventListener("blur", onBlur);
-    area.removeEventListener("select", onSelect);
+    document.removeEventListener("selectionchange", onSelectionChange);
     area.removeEventListener("input", onInput);
     area.removeEventListener("wheel", onWheel);
     area.removeEventListener("scroll", onScroll);
