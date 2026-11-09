@@ -2166,9 +2166,9 @@ test("every dock view the app offers is a view some state opens", async ({ page 
   expect(visited).toEqual(opened);
 });
 
-test("every dock state keeps its visible view within the dock canvas", async ({ page }) => {
-  for (const [state] of Object.entries(DOCK_VIEW_BY_STATE)) {
-    if (state === "dock-catalog") continue;
+for (const [state] of Object.entries(DOCK_VIEW_BY_STATE)) {
+  if (state === "dock-catalog") continue;
+  test(`${state} keeps its visible view within the dock canvas`, async ({ page }) => {
     await openWorkspace(page, { state: state as VisualWorkspaceState });
     await waitForWorkspaceState(page, state as VisualWorkspaceState);
     const dock = page.locator(".agent-context-dock");
@@ -2185,8 +2185,8 @@ test("every dock state keeps its visible view within the dock canvas", async ({ 
     expect(content!.y, state).toBeGreaterThanOrEqual(canvas!.y);
     expect(content!.x + content!.width, state).toBeLessThanOrEqual(canvas!.x + canvas!.width);
     expect(content!.y + content!.height, state).toBeLessThanOrEqual(canvas!.y + canvas!.height);
-  }
-});
+  });
+}
 
 for (const answer of [
   { button: "Allow once", decision: "approve", label: "Approved" },

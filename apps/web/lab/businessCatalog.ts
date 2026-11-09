@@ -2,7 +2,11 @@ import { COMPOSITION_SAMPLES } from "./scenarios/compositionFixtureStates";
 import { COMPUTER_FIXTURE_VARIANTS } from "./scenarios/computerFixtureStates";
 import { VISUAL_AGENT_STATES } from "./scenarios/agentFixtureStates";
 import { VISUAL_WORK_INDEX_STATES } from "./scenarios/shellFixtureStates";
-import { VISUAL_SETTINGS_PANES, VISUAL_WORKSPACE_STATES } from "./scenarios/workspaceFixtureStates";
+import {
+  VISUAL_SETTINGS_PANES,
+  VISUAL_WORKSPACE_STATE_TITLES,
+  VISUAL_WORKSPACE_STATES,
+} from "./scenarios/workspaceFixtureStates";
 import { businessMessages as messages } from "./businessMessages";
 import {
   activityVariants,
@@ -17,7 +21,7 @@ import {
   reasoningVariants,
   statusVariants,
 } from "./businessVariants";
-import type { FixtureVariant, LabFixtureTarget, LabStory } from "./story";
+import type { FixtureVariant, LabFixtureTarget, LabStory, LabText } from "./story";
 
 const COMPACT_PREVIEW = { width: 480, height: 260 } as const;
 const READING_PREVIEW = { width: 560, height: 360 } as const;
@@ -27,10 +31,11 @@ const PRODUCT_PREVIEW = { width: 1440, height: 900 } as const;
 function fixtureVariants<T extends string>(
   values: readonly [T, ...T[]],
   target: (value: T) => LabFixtureTarget,
+  title: (value: T) => LabText = (value) => ({ "zh-CN": value, en: value }),
 ): readonly [FixtureVariant, ...FixtureVariant[]] {
   const variant = (value: T): FixtureVariant => ({
     id: value,
-    title: { "zh-CN": value, en: value },
+    title: title(value),
     target: target(value),
   });
   return [variant(values[0]), ...values.slice(1).map(variant)];
@@ -202,10 +207,11 @@ export const businessStories: readonly LabStory[] = [
     group: messages.groups.scenarios,
     source: "apps/web/lab/scenarios/installVisualWorkspaceFixture.ts",
     ...PRODUCT_PREVIEW,
-    variants: fixtureVariants(VISUAL_WORKSPACE_STATES, (state) => ({
-      fixture: "workspace",
-      state,
-    })),
+    variants: fixtureVariants(
+      VISUAL_WORKSPACE_STATES,
+      (state) => ({ fixture: "workspace", state }),
+      (state) => VISUAL_WORKSPACE_STATE_TITLES[state],
+    ),
   },
   {
     kind: "fixture",

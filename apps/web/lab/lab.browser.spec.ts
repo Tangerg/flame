@@ -26,7 +26,10 @@ async function inspect(
     ...options,
   });
   await page.goto(`${LAB_PATH}?${query}`);
-  await expect(page.getByRole("region", { name: "Preview canvas", exact: true })).toBeVisible();
+  const locale = query.get("locale") === "zh-CN" ? "zh-CN" : "en";
+  await expect(
+    page.getByRole("region", { name: localize(messages.canvas, locale), exact: true }),
+  ).toBeVisible();
   await expect(page.locator("[data-preview-status]")).toHaveAttribute(
     "data-preview-status",
     "ready",
@@ -36,6 +39,115 @@ async function inspect(
 
 function preview(page: Page, title: string, theme: "light" | "dark" = "light") {
   return page.getByTitle(`Component preview · ${title} · ${theme}`, { exact: true });
+}
+
+for (const engine of ["chromium", "webkit"] as const) {
+  const sceneTest = test.extend({ browserName: engine });
+  for (const profile of [
+    { locale: "en", theme: "light", fontSize: 14, title: "Saved usage reports" },
+    { locale: "zh-CN", theme: "dark", fontSize: 18, title: "已保存的用量报告" },
+  ] as const) {
+    sceneTest(
+      `Workspace scene names preserve search and links ${engine}/${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const story = catalog.story("business-workspace-scenarios");
+        const sceneId = "dock-usage-reports";
+        const t = (key: keyof typeof messages) => localize(messages[key], profile.locale);
+        const capture = async (name: string) =>
+          testInfo.attach(`workspace-scene-names-${name}-${engine}-${profile.locale}`, {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        await page.setViewportSize(DESKTOP_VIEWPORT);
+        await inspect(page, story.id, sceneId, {
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: "off",
+        });
+        const variants = page.getByRole("combobox", { name: t("variants"), exact: true });
+        await expect(variants).toContainText(profile.title);
+        await variants.press("Enter");
+        await expect(page.getByRole("option")).toHaveText(
+          story.variants.map((variant) => localize(variant.title, profile.locale)),
+        );
+        await page.keyboard.press("Home");
+        const reportIndex = story.variants.findIndex((variant) => variant.id === sceneId);
+        for (let index = 0; index < reportIndex; index++) await page.keyboard.press("ArrowDown");
+        const reportOption = page.getByRole("option", { name: profile.title, exact: true });
+        await expect(reportOption).toBeFocused();
+        await capture("menu");
+        await page.keyboard.press("Enter");
+        await expect(variants).toBeFocused();
+        await expect(page).toHaveURL(new RegExp(`variant=${sceneId}`));
+        const frame = page
+          .getByTitle(
+            `${t("frameTitle")} · ${localize(story.title, profile.locale)} · ${profile.theme}`,
+            { exact: true },
+          )
+          .contentFrame();
+        await expectLabReady(frame);
+        await expect(frame.getByTestId("requested-workspace-state")).toHaveText(sceneId);
+        await expect(
+          frame.getByRole("button", { name: profile.title, exact: true }),
+        ).toHaveAttribute("data-active", "");
+        await expect(
+          page.getByRole("link", { name: t("openPreview"), exact: true }),
+        ).toHaveAttribute("href", new RegExp(`state=${sceneId}`));
+        const search = page.getByRole("searchbox", { name: t("search"), exact: true });
+        await search.fill(profile.title);
+        await expect(search).toBeFocused();
+        await expect(
+          page.getByRole("navigation", { name: t("catalog"), exact: true }).getByRole("button"),
+        ).toHaveText([localize(story.title, profile.locale)]);
+        await page.setViewportSize({ width: 390, height: 700 });
+        const compactCatalog = page.getByRole("combobox", { name: t("catalog"), exact: true });
+        await compactCatalog.press("Enter");
+        await expect(page.getByRole("option")).toHaveText([localize(story.title, profile.locale)]);
+        await page.keyboard.press("Escape");
+        await expect(compactCatalog).toBeFocused();
+        await variants.scrollIntoViewIfNeeded();
+        await expect(variants).toContainText(profile.title);
+        expect(await variants.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          ),
+        ).toBe(0);
+        await capture("phone");
+        await page.getByRole("button", { name: t("clearSearch"), exact: true }).click();
+        await expect(search).toBeFocused();
+        const language = page.getByRole("combobox", { name: t("language"), exact: true });
+        await language.press("Enter");
+        const otherLocale = profile.locale === "en" ? "zh-CN" : "en";
+        const otherTitle = profile.locale === "en" ? "已保存的用量报告" : "Saved usage reports";
+        await page
+          .getByRole("option", { name: otherLocale === "en" ? "English" : "简体中文", exact: true })
+          .click();
+        const otherT = (key: keyof typeof messages) => localize(messages[key], otherLocale);
+        await expect(
+          page.getByRole("combobox", { name: otherT("language"), exact: true }),
+        ).toBeFocused();
+        await expect(
+          page.getByRole("combobox", { name: otherT("variants"), exact: true }),
+        ).toContainText(otherTitle);
+        await expect(page).toHaveURL(new RegExp(`variant=${sceneId}`));
+        const translated = page
+          .getByTitle(
+            `${otherT("frameTitle")} · ${localize(story.title, otherLocale)} · ${profile.theme}`,
+            { exact: true },
+          )
+          .contentFrame();
+        await expectLabReady(translated);
+        await expect(translated.getByTestId("requested-workspace-state")).toHaveText(sceneId);
+        await expect(
+          translated.getByRole("button", { name: otherTitle, exact: true }),
+        ).toHaveAttribute("data-active", "");
+        await page.setViewportSize(DESKTOP_VIEWPORT);
+        await capture("translated");
+      },
+    );
+  }
 }
 
 async function expectLabFailure(page: Page, cause: string) {

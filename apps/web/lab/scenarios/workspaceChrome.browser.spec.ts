@@ -179,9 +179,17 @@ for (const profile of [
     const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
     const draft = "Keep the current reading draft.";
     await composer.fill(draft);
-    await page.getByRole("button", { name: "Schedules", exact: true }).focus();
+    await page
+      .getByRole("button", {
+        name: profile.locale === "zh" ? "计划任务" : "Schedules",
+        exact: true,
+      })
+      .focus();
     await page.keyboard.press("Tab");
-    const row = page.getByRole("button", { name: "Schedules · model choices", exact: true });
+    const row = page.getByRole("button", {
+      name: profile.locale === "zh" ? "计划任务 · 模型选择" : "Schedules · model choices",
+      exact: true,
+    });
     await expect(row).toBeFocused();
     const samples: unknown[] = [];
     const expectReading = async (target: Locator, focused: boolean) => {
@@ -206,7 +214,10 @@ for (const profile of [
       await expectReading(row, true);
       await composer.focus();
       await page.setViewportSize({ width: 720, height: 450 });
-      const selected = page.getByRole("button", { name: "Skills · catalog", exact: true });
+      const selected = page.getByRole("button", {
+        name: profile.locale === "zh" ? "技能 · 目录" : "Skills · catalog",
+        exact: true,
+      });
       await expectReading(selected, false);
       await expect(composer).toBeFocused();
       await expect(composer).toHaveValue(draft);
@@ -251,8 +262,11 @@ for (const theme of ["light", "dark"]) {
       const draft = "Keep this fixture draft.";
       await composer.fill(draft);
       await page.setViewportSize({ width, height: 568 });
-      const label = "Schedules · model choices";
-      const previous = page.getByRole("button", { name: "Schedules", exact: true });
+      const label = theme === "dark" ? "计划任务 · 模型选择" : "Schedules · model choices";
+      const previous = page.getByRole("button", {
+        name: theme === "dark" ? "计划任务" : "Schedules",
+        exact: true,
+      });
       const row = page.getByRole("button", { name: label, exact: true });
       const tooltip = page.getByRole("tooltip").filter({ hasText: label });
       await previous.focus();

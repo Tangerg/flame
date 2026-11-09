@@ -11,38 +11,17 @@ import {
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentRow } from "@/ui/agent/index";
 import { AgentSurfaceHeader } from "@/ui/agent/index";
-import { type VisualWorkspaceState } from "./workspaceFixtureStates";
+import { useLocale } from "@/lib/i18n";
+import {
+  VISUAL_WORKSPACE_STATE_TITLES,
+  VISUAL_WORKSPACE_STATES,
+  type VisualWorkspaceState,
+} from "./workspaceFixtureStates";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { observationTargetName } from "../observations";
-const STATE_LABELS: Record<VisualWorkspaceState, string> = {
-  "dock-light": "Files workspace",
-  "dock-review": "Diff review",
-  "dock-trajectory": "Session trajectory",
-  "dock-runs": "Run tree",
-  "dock-subagents": "Subagents",
-  "dock-diagnostics": "Diagnostics",
-  "dock-diagnostics-recorded": "Diagnostics · recorded",
-  "dock-files": "Files",
-  "dock-skills": "Skills",
-  "dock-skills-catalog": "Skills · catalog",
-  "dock-usage": "Usage",
-  "dock-usage-reports": "Saved usage reports",
-  "dock-schedules": "Schedules",
-  "dock-schedules-models": "Schedules · model choices",
-  "dock-agent-memory": "Agent memory",
-  "dock-feature-off": "Features off",
-  "dock-file": "File viewer",
-  "dock-file-error": "File read failure",
-  "dock-file-unsupported": "Unsupported file",
-  "dock-empty": "Diff · empty",
-  "dock-catalog": "Dock catalogue",
-  "dock-loading": "Diff · loading",
-  "dock-error": "Diff · error",
-  "full-view": "Full view",
-  settings: "Settings",
-};
+import { localize } from "../story";
 
 function WorkspaceStateSidebar({
   state,
@@ -53,6 +32,7 @@ function WorkspaceStateSidebar({
   observeLayout: boolean;
   onObserveLayoutChange: (observe: boolean) => void;
 }) {
+  const locale = useLocale() === "zh" ? "zh-CN" : "en";
   const listRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -82,7 +62,7 @@ function WorkspaceStateSidebar({
       <AgentSurfaceHeader corner="drawer" divider={false} />
       <div ref={listRef} {...stylex.props(fx.scroller)}>
         <span {...stylex.props(fx.listHead, typeStep.uiMd)}>Workspace states</span>
-        {(Object.keys(STATE_LABELS) as VisualWorkspaceState[]).map((candidate) => (
+        {VISUAL_WORKSPACE_STATES.map((candidate) => (
           <AgentRow
             key={candidate}
             icon={
@@ -95,7 +75,7 @@ function WorkspaceStateSidebar({
             active={candidate === state}
             revealOverflow
           >
-            {STATE_LABELS[candidate]}
+            {localize(VISUAL_WORKSPACE_STATE_TITLES[candidate], locale)}
           </AgentRow>
         ))}
       </div>

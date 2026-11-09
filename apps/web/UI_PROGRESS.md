@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner. All **97** browser, capture and measurement spec files live under `lab/`, with one Playwright configuration and **44 stories**. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The Workspace catalog now includes **25 variants**, adding the production Saved usage reports reader with fixed Daily and Weekly evidence. Final verification passes **103 related unit tests** and **106 Lab cases**: 99 Workspace tasks and 7 capture/facts cases. The final selection retains **177 reviewed or matched browser images**, with no skips, retries or flaky cases. Four native runs retain **40 inspected captures / 317 AX records**, including both profiles after the final catalog contract correction. English/light/14 px/full motion and Chinese/dark/18 px/motion off cover a **320 px Dock**, actual native **200%** zoom, exact large integers, zero versus absent prices, identity, refresh, cancellation, window changes and continued drafts. Production components and Runtime are unchanged. The preceding Usage, Diagnostics, Memory, Tool reading and wider gates retain their original scopes below. The most recent complete Lab baseline, `f08d723c`, retains its **1,296 / 1,296 cases** and **985 reviewed or matched images**; it does not qualify later changes. The goal remains active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **25 Workspace variants**. Workspace scene names now share one English/Chinese owner across search, selection and preview rows while links retain canonical IDs. Related verification passes **44 unit tests** and all four new cross-browser tasks. A broader run passes **157 / 160**; subsequent scoped checks provide passing evidence for both failed gallery tasks and **22 independent Dock containment cases**, replacing the former combined loop. The combined evidence covers **181 distinct cases / 227 reviewed or matched browser images**, not one complete green rerun. Intermittent development-server resource failures remain unresolved. Native review retains **18 inspected captures / 168 AX records**, including actual **200%** zoom and continued drafts. Production UI and Runtime are unchanged. Entrypoint migration is complete; whole-product visual coverage remains unfinished. The complete `f08d723c` baseline retains its original **1,296 cases / 985 images** and does not qualify later changes. The goal remains active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,88 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+### Readable Workspace scenes and independent Dock checks (2026-11-09)
+
+Actual Chinese Wails inspection shows raw `dock-*` values in the Lab variant
+picker while the preview rail uses a separate English title map. The existing
+`workspaceFixtureStates.ts` now owns all 25 English/Chinese titles. Catalog
+search, the named picker and fixture rows project those names and the existing
+state order. Canonical IDs, URL targets, production components and structural
+fixture-control names remain unchanged. Other fixture families retain their
+existing variant vocabularies. No story, route, manifest or visual runner is added.
+
+Better Writing, Layout and Accessibility guide recognizable names, translated
+text, keyboard selection and focus continuity. A bounded three-file Claude Code
+CLI candidate completes in **65.820 s**, with twelve protected references
+unchanged. Primary review applies those files and owns regression and native
+acceptance. The public catalog regression first fails for both raw names;
+final related tests pass **3 files / 44 tests** in **5.944 s**. Existing Chinese
+fixture-row checks now expect their actual localized names without changing
+geometry, tooltip, draft or focus assertions.
+
+All four new Chromium/WebKit tasks pass in **31.192 s**, covering English/light/
+14 px and Chinese/dark/18 px. They check all named options, keyboard selection,
+search, compact catalog behavior, URL identity, preview selection, clearing and
+language-switch focus. The inspector helper now derives its accessible canvas
+name from the admitted locale rather than assuming English.
+
+Broader verification passes **157 / 160** in **698.170 s**. Two gallery tasks
+report Chromium `ERR_INSUFFICIENT_RESOURCES`; the combined Dock task exhausts
+its 30-second total deadline while repeatedly opening captured states. After
+native processes stop, the isolated selection passes one gallery task but still
+fails the other and the Dock loop. A guarded prior-source comparison restores
+only the three implementation files to `0aeb653b`, runs the same checks, then
+restores their exact final hashes: the old Dock loop also times out, while its
+gallery task passes. This does not establish the resource error's cause.
+
+The current English 320 px gallery task subsequently passes with Playwright
+loading trace enabled in **22.286 s**. Its earlier resource failures remain an
+open intermittent development-loading finding. The existing Dock containment
+assertions now run as **22 independent state cases**, all passing in **43.073 s**;
+per-test deadlines, readiness and console guards remain unchanged. Failures can
+identify their own scene instead of the loop's last arrival. Across the broader
+run and these scoped checks, **181 distinct cases** have passing evidence and
+**227 final browser image attachments** are inspected or matched by SHA-256 to
+inspected bytes. This is a reconciled evidence set, not a single complete green
+run. No skips, retries or deadline increases are introduced. Full Lab, Web, shared
+UI, backend and native gates are not repeated for this Lab-only batch; earlier
+results retain their original scopes. Final Web typecheck, lint, formatting,
+unused-code and design-system receipts are retained privately.
+
+The private Wails **v3.1.0** host builds in **53.406 s** and consumes **492 final
+canonical Lab assets**, verified byte for byte. All **46 production native
+inputs** and 45 unchanged private copies retain their bytes. The baseline and
+both final profiles retain **18 inspected PNGs / 168 AX records**. Native review
+checks readable options and rail names, keyboard selection and focus return,
+search and clearing, locale changes retaining the same canonical state, real
+comparison documents and independent drafts. Actual Size plus twenty native
+Zoom In actions establishes **200%** in both profiles. Wheel reading, menu Escape,
+Window Zoom/restore and continued drafts remain reachable. All three native
+parent processes exit **0**. Native paste does not qualify physical IME;
+VoiceOver, RTL and live Runtime behavior remain outside this acceptance.
+
+Cleanup stops the private host and server, unregisters the app and removes all
+six private Library paths and owned helper contents. Three newly created, empty
+WebKit temporary roots retain macOS `sunlnk` protection and cannot be removed
+by this user. Their identities and flags are preserved; this is a cleanup
+limitation, not a restored absence baseline. Reuse an already captured private
+identity for later native review rather than creating more protected roots.
+All **12 output roots** return to their captured baselines, restoring **21 files**
+and retiring **1,902 captured output nodes**. The primary checkout and its checksum
+remain unchanged. The source comparison covers **6,715 non-Markdown inputs**,
+with only the seven owned Lab TypeScript paths changed and no additions. No
+functional checks run after output restoration. Normal hooks, publication and
+read-only integrity checks complete delivery; private evidence is retained in
+process memory before the qualification root is retired.
+
+Next, trace the intermittent development-gallery resource failure before
+attributing it to product code. Native comparison at 200% also retains a prior
+camera pose after adding a second preview or resizing, leaving one preview partly
+offscreen while Fit remains reachable. Reproduce that path and inspect camera
+ownership before deciding whether automatic fit is required; it is an observation,
+not a confirmed defect. Whole-product coverage and other fixture-family naming
+remain open within the existing Lab.
 
 ### Saved usage report reading in the Lab (2026-11-09)
 

@@ -2,6 +2,17 @@ import { expect, it } from "vitest";
 import { catalog } from "./catalog";
 import { labCases } from "./cases";
 import { readSelection } from "./selection";
+import { localize } from "./story";
+
+it.each([
+  { locale: "en", title: "Saved usage reports" },
+  { locale: "zh-CN", title: "已保存的用量报告" },
+] as const)("finds a Workspace scenario by its readable $locale title", ({ locale, title }) => {
+  const story = catalog.story("business-workspace-scenarios");
+  const variant = story.variants.find((entry) => entry.id === "dock-usage-reports")!;
+  expect(localize(variant.title, locale)).toBe(title);
+  expect(catalog.search("business", title, locale).map((entry) => entry.id)).toContain(story.id);
+});
 
 it("projects every registered variant into a unique independently openable case", () => {
   const selection = readSelection("theme=dark&locale=zh-CN&font-size=18", catalog);

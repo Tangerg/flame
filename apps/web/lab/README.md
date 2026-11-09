@@ -115,6 +115,14 @@ URLs, verification cases and source links are projections of those definitions. 
 and freezes its descriptions at construction. Production components do not
 import the lab.
 
+Workspace scenario titles have one localized owner in
+`scenarios/workspaceFixtureStates.ts`. Catalog search, the variant picker and
+preview state rows project those same names and the existing state order.
+English and Chinese use readable titles while reproducible links retain the
+canonical scene IDs. Structural fixture controls keep their existing names.
+Dock containment checks run independently for each registered state, retaining
+the existing assertions and per-test deadline with a specific failure name.
+
 Each component example owns only its local input, selection or disclosure state.
 Its variant vocabulary is checked against the production public API. Examples
 compare one dimension at a time instead of generating every props combination.
