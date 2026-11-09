@@ -132,6 +132,7 @@ export function FormExample({ variant, locale, observe }: LabExampleProps) {
             <Checkbox
               checked={reviewed}
               label={copy.accept}
+              className={stylex.props(styles.fieldChoice).className}
               onCheckedChange={(next) => {
                 setReviewed(next);
                 setSaved(false);

@@ -294,6 +294,15 @@ for (const story of catalog.stories) {
               const checkbox = await bounds(
                 page.getByRole("checkbox", { name: copy.accept, exact: true }),
               );
+              const centerOffset = checkbox.y + checkbox.height / 2 - (field.y + field.height / 2);
+              await testInfo.attach(entry.id + "-control-row-" + entry.width + "px", {
+                body: JSON.stringify({ field, checkbox, centerOffset }),
+                contentType: "application/json",
+              });
+              expect(
+                Math.abs(centerOffset),
+                "Review is centered beside the Name input",
+              ).toBeLessThanOrEqual(1);
               expect(checkbox.y, "Review stays beside the Name input").toBeGreaterThanOrEqual(
                 field.y - 1,
               );

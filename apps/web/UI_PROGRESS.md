@@ -2132,7 +2132,56 @@ unregistered and the owned server exits. Evidence is preserved in memory before
 guarded QA-root retirement. Normal hooks and an ordinary push to `main` deliver
 the coverage; continue visual qualification through this same Lab.
 
-### Complete Lab baseline and stationary scroll sampling (2026-11-08)
+### Complete Lab baseline and stationary scroll sampling (2026-11-10)
+
+The latest complete collection at `d301bc845` reports **1,439 passed / 2 failed**
+of **1,441 cases** in **4,857.369 s**, without retries, skips, flaky results or
+global errors. Both failures stop in `waitForWorkspaceState` because
+`dock-agent-memory-recorded` lacks a readiness expectation; neither reaches its
+geometry assertions. The existing Workspace spec now checks the visible Memory
+view, exact captured row identities and literal paragraph content, including
+newlines. Its final `never` check makes future omitted states a type error.
+The existing Workspace selection passes **49 / 49** in **107.459 s**. This
+qualifies the repaired state reader, not the original failed invocation.
+
+All **1,365 baseline captures / 1,241 unique images** are accounted for: **1,123**
+unique images receive overview review on all **281 contact sheets**, four are
+reviewed as originals, and **114** exactly match explicitly reviewed historical
+bytes. Uncertain details also receive original-image/source inspection. Overview
+review does not establish full-resolution text acceptance. A suspected Computer
+record overlap is scrolled metadata passing under its intentional sticky header;
+the test scrolls the result image into view before capture. No new product repair
+is justified there. Open Workspace Tooltips are covered by the existing keyboard,
+pointer, Escape and collapse cases, and their four final captures are reviewed.
+The confirmed Form center mismatch and its final qualification are recorded below.
+
+Actual Wails v3.1.0 Memory inspection uses **492 canonical pre-Form Lab assets**,
+the production native host/menu/zoom and a private identity/home. EN/light/14 px
+and ZH/dark/18 px cover **200%** zoom, minimum window width, inner scrolling,
+query clearing, Project/User switching, Escape to conversation, exact retained
+drafts, and a real continuation key. Chinese editing/cancellation preserves the
+original multiline record and returns focus to Edit. All **16 native captures**
+are inspected; one select-all diagnostic is excluded from qualification. Both
+native runs exit normally. These captured fixtures do not qualify live Runtime,
+physical IME, VoiceOver or whole-product visual acceptance.
+
+A bounded one-file Claude Code CLI candidate completes in **93.924 s**; primary
+reviews and applies its diff. Workspace typecheck, lint and formatting pass.
+`make stage-web` passes in **18.778 s**, and the private native build in
+**20.158 s**. No shared UI, production layout, protocol or Runtime source changes.
+The existing Lab remains the sole visual scenario and browser-check owner.
+
+After functional checks, all **12 output/cache roots** return to baseline bytes,
+modes and directory state or absence. Source comparison covers **6,716
+non-Markdown inputs**, exactly four owned changes and no additions, all **46
+native inputs**, and the unchanged primary checkout. No functional check runs
+against restored older outputs. The private app is unregistered; its servers and
+hosts have exited, six Library paths and ordinary temp are absent, and three
+existing helper roots retain their empty identities and flags. Evidence is
+preserved before guarded retirement. Delivery uses normal hooks and an ordinary
+push to `main`; whole-product acceptance and the continuing goal remain open.
+
+The earlier 2026-11-08 qualification follows with its original scope and receipts.
 
 The complete current non-performance collection runs through the existing Lab
 configuration. The interaction baseline reports **1,100 passed / 1 failed** in
@@ -2194,7 +2243,44 @@ memory before guarded QA-root retirement. Normal hooks and an ordinary push to
 `main` deliver the repair. The form defect is repaired below through this same
 Lab; no second visual runner is introduced.
 
-### Field feedback grouping and adjacent-control alignment (2026-11-08)
+### Field feedback grouping and adjacent-control alignment (2026-11-10)
+
+The latest baseline originals reveal Review above the neighboring Name input's
+center despite passing the earlier within-row bounds. A center-line assertion
+in the same four catalog cases reproduces **-5.15625 px** in EN/light/14 px and
+**-2.0625 px** in ZH/dark/18 px at **720 px**; both **390 px** stacked cases pass.
+Shared `FormGroup` intentionally preserves natural control heights. The local
+`FormExample` mixes a natural-height Checkbox with an md TextField, so it now
+applies the existing `--control-height-md` minimum through the Checkbox's public
+`className`. Natural growth, direct FormField/subgrid composition, shared defaults
+and production consumers retain their contracts.
+
+A bounded two-file Claude Code CLI candidate completes in **39.056 s** and is
+reviewed before application. The final selection passes **4 / 4** in **9.174 s**,
+without retries, skips, flaky results or global errors. All four wide editable
+and invalid center offsets are **0 px**. Feedback grouping, stacked order,
+accessible names, exact padded drafts and save behavior remain required.
+All **24 final browser captures / 20 unique images** are reviewed as originals
+or exact duplicates of those originals. Foundation units pass **7 / 7** in
+**2.565 s**; typecheck, lint, formatting and style/class/token/design-system
+guards pass. An initial formatting failure is corrected before the final check.
+The complete Lab, Web, shared UI and native gates are not repeated for this
+Lab-only composition repair; the preceding full invocation retains its failures.
+
+Actual Wails inspection uses **492 final Lab assets**, compared byte for byte
+with the final browser build; these supersede the pre-Form assets for Form
+qualification. All **16 native Form captures** are inspected. EN/light/14 px and
+ZH/dark/18 px verify wide alignment before/after invalid Save, Name focus and
+feedback, Tab/Space Review activation, exact padded drafts, multiline Chinese
+description and keyboard Save. Minimum window width at **200%** remains two
+columns; **300%** stacks the fields. Real scrolling reaches Reset/Save, and
+invalid Save from the bottom reveals and focuses Name with its error before
+Review. Both native runs exit normally. Better Layout and Typography guide this
+composition-local repair; no offset, shared row-height change or second visual
+entry is introduced. Cleanup and publication belong to the same batch as the
+latest complete-baseline audit above.
+
+The earlier 2026-11-08 feedback-grouping repair follows with its original scope.
 
 Baseline screenshot review identifies Name validation below Review at **390 px**.
 The local `FormExample` places that feedback after its complete `FormRow`.
@@ -2859,7 +2945,9 @@ retains all these tests and remains unqualified as a complete suite. Nothing is
 skipped or excluded to manufacture a pass. The Composer-name failures are now
 repaired under **Current choice names and native return (2026-11-06)**, which also
 records the subsequent complete WCAG subset audit. Two new Composer flow tests
-extend the same Lab suite; the entire interaction suite has not been rerun.
+extend the same Lab suite. These migration-era receipts are historical; the
+latest complete collection and focused repairs are recorded under **Complete
+Lab baseline and stationary scroll sampling (2026-11-10)**.
 
 The subsequent reasoning repair adds one direct component story to this same
 catalog, bringing it to **42 stories**. Its current qualification is recorded in
@@ -4260,8 +4348,13 @@ shared control failures are now resolved within the scopes above. The fixture
 calendar already gives argument-free Date reads the advancing
 recorded clock; its qualification is recorded under **Coherent fixture calendar
 and visible outcome evidence**. Temporal text is not required to be pixel-identical.
-The latest complete **1,282-case Lab collection** passes after the shared Select
-first-open repair. The Composer follow-up measures the incomplete line as a
+The earlier complete **1,282-case Lab collection** passes after the shared Select
+first-open repair. The latest **1,441-case collection** reports **1,439 passed /
+2 failed** from an omitted Memory readiness expectation; the repaired Workspace
+selection passes **49 / 49**. All retained baseline images are accounted for, and
+the Form center-alignment repair passes its four existing cases plus actual
+EN/ZH native zoom tasks. These results retain their separate scopes. The
+Composer follow-up measures the incomplete line as a
 pending sizing frame and qualifies complete captures through the existing Lab.
 Continue native task inspection, including long-string Schedule editor reading
 at zoom, through this same owner.

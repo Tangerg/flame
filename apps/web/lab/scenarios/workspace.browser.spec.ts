@@ -27,6 +27,7 @@ import {
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 import { expectLabReady } from "../readiness";
+import { VISUAL_LONG_MEMORY_PAGE } from "./componentSnapshots";
 import { VISUAL_LONG_SKILL_DOCUMENTS } from "./skillSnapshots";
 // The Browse panels trigger also carries the active view id; only the retained view hosts its body.
 function dockView(page: Page, id: string) {
@@ -238,6 +239,21 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "dock-agent-memory-recorded") {
+    const view = pluginView(page, "memory");
+    await expect(view).toBeVisible();
+    const rows = VISUAL_LONG_MEMORY_PAGE.Rows;
+    await expect(view.locator("[data-memory-id]")).toHaveCount(rows.length);
+    for (const row of rows) {
+      const record = view.locator(`[data-memory-id="${row.ID}"]`);
+      await expect(record).toHaveCount(1);
+      await expect(record.getByRole("paragraph").first(), row.ID).toHaveJSProperty(
+        "textContent",
+        row.Content,
+      );
+    }
+    return;
+  }
   if (state === "dock-feature-off") {
     await expect(
       pluginView(page, "skills")
@@ -260,12 +276,8 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
       ).toBeVisible();
     return;
   }
-  const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
-    "dock-subagents": "Sub-agent 4 of 4",
-  };
-  const catalogueReady = CATALOGUE_READY[state];
-  if (catalogueReady !== undefined) {
-    await expect(page.locator(".agent-workspace-view:visible")).toContainText(catalogueReady);
+  if (state === "dock-subagents") {
+    await expect(page.locator(".agent-workspace-view:visible")).toContainText("Sub-agent 4 of 4");
     return;
   }
   if (state === "dock-files") {
@@ -323,7 +335,8 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
     return;
   }
-  throw new Error(`No expectation declared for workspace state "${state}"`);
+  const unhandled: never = state;
+  throw new Error(`No expectation declared for workspace state "${unhandled}"`);
 }
 
 for (const state of VISUAL_WORKSPACE_STATES) {

@@ -26,4 +26,5 @@ export const foundationStyles = stylex.create({
     paddingInlineStart: space.s5,
   },
   area: { maxHeight: "12rem" },
+  fieldChoice: { minHeight: "var(--control-height-md)" },
 });
