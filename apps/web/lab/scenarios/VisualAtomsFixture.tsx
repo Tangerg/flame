@@ -446,6 +446,8 @@ export function VisualAtomsFixture() {
   );
 }
 
+const noteStyle = { maxHeight: 160 };
+
 export function VisualInputContractFixture() {
   const initial = "A short note";
   const [value, setValue] = useState(initial);
@@ -453,6 +455,7 @@ export function VisualInputContractFixture() {
   const [visible, setVisible] = useState(false);
   const [narrow, setNarrow] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const [longHint, setLongHint] = useState(false);
   const [pending, setPending] = useState(true);
   const [submitted, setSubmitted] = useState(0);
   return (
@@ -473,6 +476,9 @@ export function VisualInputContractFixture() {
         >
           Toggle note font
         </Button>
+        <Button variant="outline" onClick={() => setLongHint(!longHint)}>
+          Toggle note hint
+        </Button>
         <form onReset={() => setValue(initial)}>
           <div hidden={!visible}>
             <TextArea
@@ -480,6 +486,7 @@ export function VisualInputContractFixture() {
               rows={1}
               aria-label="Controlled note"
               value={value}
+              placeholder={longHint ? "Compare the recorded observation." : "Note"}
               onChange={(event) => setValue(event.target.value)}
               style={{ maxHeight: 160, fontSize }}
             />
@@ -488,7 +495,8 @@ export function VisualInputContractFixture() {
               rows={1}
               aria-label="Uncontrolled note"
               defaultValue={initial}
-              style={{ maxHeight: 160 }}
+              placeholder={longHint ? "Compare the recorded observation." : "Note"}
+              style={noteStyle}
             />
           </div>
           <Button variant="outline" type="reset">

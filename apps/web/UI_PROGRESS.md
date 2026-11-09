@@ -1781,6 +1781,88 @@ VoiceOver, physical IME, RTL, live Git/provider execution and whole-product rout
 coverage remain unqualified. Controlled asynchronous unit outcomes are separate
 from the fixed native business-error fixture. The goal remains active.
 
+### Empty Composer hints and shared natural height (2026-11-10)
+
+The 18 px English code-reading capture exposes a two-line empty Composer hint
+inside a roughly 41 px textarea, with 54 px of native text content. The same
+clipping reproduces in the actual narrow Wails window. Shared `TextArea autosize`
+measured only the value, while its update dependencies omitted `placeholder`.
+The Composer's existing 1.5-line minimum therefore hid the hint's second line.
+
+`packages/ui/src/textarea-reading.ts` now measures the placeholder while the
+value is empty, including its computed typography. Control width, box model and
+the native `rows` minimum keep their existing owner and font metrics. Caret
+measurement still receives the exact native value. `text-field.tsx` includes
+placeholder changes in its existing sizing effect. CSS minimum/maximum height,
+caret following, scrolling, Runtime and Composer command semantics are retained.
+Better Typography and Better Layout guide complete text and field containment.
+Read-only ZCode Textarea/PromptInputTextarea and HeroUI TextArea implementations
+provide one-control sizing and composition comparisons.
+
+The existing Lab `input-contracts` fixture gains one hint toggle; its uncontrolled
+field has a stable style prop so a hint-only update exercises that dependency
+independently. The existing Chromium/WebKit UI ownership scenarios check hint
+growth/shrink, value precedence, width, larger font, reset, input identity,
+selection and retained action focus. Actual Workspace Composer cases check EN
+and ZH at an 18 px request before narrowing and after restoring width. Native
+scroll dimensions, the toolbar boundary and exact values supply the assertions;
+the checks do not reproduce the private sizing algorithm. Everything remains in
+`apps/web/lab` and its existing Playwright configuration.
+
+The four earlier baseline cases pass in **16.047 s** while their screenshot still
+contains the defect. New checks fail the English Composer and shared empty-field
+cases in both engines: **4 failures / 6 cases**, **37.087 s**. Applying only the
+height repair then fails both hint-only shrink checks in **20.145 s**, proving
+the separate update trigger. A bounded Claude Code CLI candidate changes only
+its two allowed private copies in **56.250 s**; primary review and actual checks
+qualify the resulting patch.
+
+Final verification:
+
+- Focused Lab: **10 / 10**, **27.714 s**, including the original code and autosize
+  contracts. Existing long/short Composer reading and material-return cases:
+  **4 / 4**, **18.107 s**. Both reports have zero skips, retries, flaky outcomes
+  or global errors. All **40 final browser PNGs** are inspected at original size.
+  The English hint now has **54 px** of client/content height in both engines;
+  every accepted empty-hint sample has zero content overflow.
+- Complete UI check: **278 tests**, types, lint, formatting and the offline
+  packed-consumer check pass in **9.356 s**. Complete Web check: **433 files /
+  4807 tests** and every module gate pass in **343.090 s**. `make check-native`
+  passes in **51.403 s**. Existing SDK/deployment-target linker warnings remain.
+- Native review uses the same **492 canonical Lab assets**, 45 unchanged host
+  inputs and the existing private application wrapper. EN/dark/custom-purple
+  and ZH/light retain the 18 px request at narrow 100% and 200%; each reaches
+  200% through twenty production 0.05 zoom increments. Empty hints, retained
+  drafts, material return, continued editing and clearing are inspected.
+  The shared input scene also qualifies hint-only shrink/growth, keyboard
+  activation, larger text and reset. All **17 accepted native PNGs** are viewed.
+  The three acceptance processes and the earlier baseline process exit 0.
+
+Native multiline paste correctly creates an attachment; Put back in message
+restores the exact 12-line English draft. Native text selection plus Backspace
+qualifies clearing. An app-target Cmd+A sequence did not establish full selection
+and is excluded from acceptance. Native clipboard/accessibility selection does
+not qualify physical IME or VoiceOver audio. Native Lab review uses recorded
+fixtures; the real Runtime lifecycle runs separately in the full Web suite.
+
+| Severity | Owner and issue                              | Result                                                                |
+| -------- | -------------------------------------------- | --------------------------------------------------------------------- |
+| P2       | Shared natural height omitted the empty hint | Complete text in both browser engines and native window               |
+| P2       | Hint-only changes did not trigger sizing     | Independent failing regression, then browser/native shrink and growth |
+
+**Approve** for this shared empty-text sizing contract. The six private Library
+paths return to absence, four new helper children are removed and three original
+empty helper roots remain unchanged. The server and native applications stop and
+the private app is unregistered. All twelve output/cache roots return to their
+captured baseline: **4201 captured nodes removed / 317 files restored**.
+All **6715 non-Markdown inputs** are compared, with only the four authored source
+paths changed; all 46 native inputs and the primary checkout remain unchanged.
+No functional checks run after output restoration. One original screenshot is
+delivered outside the repository; other temporary evidence is retained in the
+conversation archive before its private root is retired. Next inspect the
+captured 200% clipboard-attachment surface in this same Lab before deciding
+whether an attachment-layout change is justified.
+
 ### Long Composer reading and material return (2026-11-08)
 
 Original-image review corrects the preceding English tail-only observation: the

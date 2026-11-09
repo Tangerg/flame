@@ -443,6 +443,14 @@ measurement; its ResizeObserver can leave one pending frame before sizing runs.
 The same report retains geometry from the width change and the settled draft,
 then rechecks complete text after model selection changes the toolbar.
 
+Empty-input contracts stay in the existing UI ownership scenarios for Chromium
+and WebKit. The input scene changes only the placeholder on the same uncontrolled
+TextArea, then follows width, font, typed-value precedence and form reset. A stable
+style prop keeps a hint-only update independent from other sizing triggers.
+The actual Workspace Composer checks English and Chinese hints at 18 px before
+and after narrowing, using native scroll geometry and the footer boundary rather
+than a copy of the sizing implementation. Captures accompany the assertions.
+
 Math loading checks hold the actual KaTeX stylesheet request in the existing
 Markdown scenario at desktop and 320 px widths. The lazy renderer must keep its
 pending surface until that stylesheet applies, then expose the styled formulas.

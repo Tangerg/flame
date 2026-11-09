@@ -260,6 +260,7 @@ export function TextArea({
       props.value,
       props.defaultValue,
       props.rows,
+      props.placeholder,
       props.style,
       className,
       extra,

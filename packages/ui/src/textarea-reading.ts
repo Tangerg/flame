@@ -24,11 +24,17 @@ function px(style: CSSStyleDeclaration, property: string) {
   return Number.parseFloat(style.getPropertyValue(property)) || 0;
 }
 
-// Measures the textarea's text in an inert offscreen copy of its content box,
+function typeset(mirror: HTMLElement, style: CSSStyleDeclaration) {
+  for (const property of TEXT_STYLE)
+    mirror.style.setProperty(property, style.getPropertyValue(property));
+}
+
+// Measures text in an inert offscreen copy of the textarea's content box,
 // so the live element's layout is never disturbed.
 function measureMirror<T>(
   area: HTMLTextAreaElement,
   style: CSSStyleDeclaration,
+  value: string,
   measure: (text: Text, mirror: HTMLElement) => T,
 ) {
   const document = area.ownerDocument;
@@ -48,12 +54,11 @@ function measureMirror<T>(
   mirror.setAttribute("aria-hidden", "true");
   mirror.style.cssText =
     "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;contain:layout style paint;box-sizing:content-box;margin:0;border:0;padding:0;";
-  for (const property of TEXT_STYLE)
-    mirror.style.setProperty(property, style.getPropertyValue(property));
+  typeset(mirror, style);
   mirror.style.whiteSpace = area.wrap === "off" ? "pre" : "pre-wrap";
   mirror.style.width = `${width - scrollbar}px`;
   // The trailing break opportunity keeps an empty or newline-ended last line.
-  const text = document.createTextNode(`${area.value}\u200b`);
+  const text = document.createTextNode(`${value}\u200b`);
   mirror.append(text);
   document.body.append(mirror);
   try {
@@ -68,8 +73,14 @@ export function textAreaContentHeight(
   area: HTMLTextAreaElement,
   style = getComputedStyle(area),
 ) {
-  return measureMirror(area, style, (text, mirror) => {
+  // An empty control's visible placeholder is its natural text, set in the
+  // placeholder's typography; the rows minimum stays in the control's own.
+  const hint = area.value === "" && area.placeholder !== "";
+  const value = hint ? area.placeholder : area.value;
+  return measureMirror(area, style, value, (text, mirror) => {
+    if (hint) typeset(mirror, getComputedStyle(area, "::placeholder"));
     const content = mirror.getBoundingClientRect().height;
+    if (hint) typeset(mirror, style);
     text.data = "\u200b";
     const line = mirror.getBoundingClientRect().height;
     return Math.ceil(Math.max(content, line * area.rows));
@@ -80,7 +91,7 @@ function caretFrame(area: HTMLTextAreaElement) {
   const document = area.ownerDocument;
   const style = getComputedStyle(area);
   // Native selection owns the offsets; this transient text only measures its line.
-  return measureMirror(area, style, (text, mirror) => {
+  return measureMirror(area, style, area.value, (text, mirror) => {
     const range = document.createRange();
     const offset =
       area.selectionDirection === "backward"

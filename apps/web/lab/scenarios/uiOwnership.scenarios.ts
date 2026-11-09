@@ -164,6 +164,153 @@ export function registerUiOwnershipContracts() {
       .toBeLessThan(initial * 2);
   });
 
+  test("empty autosize follows a changing hint without replacing the input", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/lab/fixture.html?fixture=atoms&state=input-contracts&theme=light");
+    await expectLabReady(page);
+    await page.getByRole("button", { name: "Show notes", exact: true }).click();
+    await page.getByRole("button", { name: "Toggle note width", exact: true }).click();
+    const note = page.getByRole("textbox", { name: "Uncontrolled note", exact: true });
+    const original = (await note.elementHandle())!;
+    const height = () => note.evaluate((node) => node.getBoundingClientRect().height);
+    const hint = page.getByRole("button", { name: "Toggle note hint", exact: true });
+    await note.fill("");
+    const short = await height();
+    await note.fill("Retain.");
+    const typed = await height();
+    await hint.click();
+    await expect(note).toHaveAttribute("placeholder", "Compare the recorded observation.");
+    await expect(note).toHaveValue("Retain.");
+    expect(await height()).toBe(typed);
+    await note.fill("");
+    try {
+      await expect.poll(height).toBeGreaterThan(short);
+      await expect(note).toBeFocused();
+      expect(
+        await note.evaluate((node) => node.scrollHeight - node.clientHeight),
+      ).toBeLessThanOrEqual(1);
+      await testInfo.attach("wrapped-hint.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+      await hint.click();
+      await expect(note).toHaveAttribute("placeholder", "Note");
+      await expect.poll(height).toBe(short);
+      await expect(hint).toBeFocused();
+      await hint.press("Enter");
+      await expect.poll(height).toBeGreaterThan(short);
+      await expect(hint).toBeFocused();
+      await page.getByRole("button", { name: "Toggle note width", exact: true }).click();
+      await expect.poll(height).toBe(short);
+      await page.getByRole("button", { name: "Toggle note width", exact: true }).click();
+      await expect.poll(height).toBeGreaterThan(short);
+      expect(await note.evaluate((node, input) => node === input, original)).toBe(true);
+      await expect(note).toHaveValue("");
+      await expect(note).toHaveJSProperty("selectionStart", 0);
+      await expect(note).toHaveJSProperty("selectionEnd", 0);
+      const controlled = page.getByRole("textbox", { name: "Controlled note", exact: true });
+      await controlled.fill("");
+      const smallFont = await controlled.evaluate((node) => node.getBoundingClientRect().height);
+      await page.getByRole("button", { name: "Toggle note font", exact: true }).click();
+      await expect
+        .poll(() => controlled.evaluate((node) => node.getBoundingClientRect().height))
+        .toBeGreaterThan(smallFont);
+      await testInfo.attach("larger-hint.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+      await page.getByRole("button", { name: "Reset notes", exact: true }).click();
+      await expect(note).toHaveValue("A short note");
+      await expect(controlled).toHaveValue("A short note");
+      await expect.poll(height).toBe(short);
+    } finally {
+      await testInfo.attach("autosize-hint.png", {
+        body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+        contentType: "image/png",
+      });
+    }
+  });
+
+  for (const profile of [
+    { locale: "en", theme: "light", composer: "Message composer" },
+    { locale: "zh", theme: "dark", composer: "消息输入框" },
+  ]) {
+    test(`empty Composer keeps its complete hint above the toolbar in ${profile.locale}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 1120, height: 728 });
+      await page.goto(
+        `/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=code-reading&locale=${profile.locale}&theme=${profile.theme}&font-size=18&motion=off`,
+      );
+      await expectLabReady(page);
+      const composer = page.getByRole("textbox", { name: profile.composer, exact: true });
+      const original = (await composer.elementHandle())!;
+      const samples: unknown[] = [];
+      const checkHint = async (label: string) => {
+        await expect(composer).toHaveValue("");
+        await expect(composer).toBeFocused();
+        await expect(async () => {
+          const frame = await composer.evaluate((node) => {
+            const area = node as HTMLTextAreaElement;
+            const box = area.getBoundingClientRect();
+            const footer = area
+              .closest('[data-slot="composer-root"]')!
+              .lastElementChild!.getBoundingClientRect();
+            return {
+              box: box.toJSON(),
+              clientHeight: area.clientHeight,
+              scrollHeight: area.scrollHeight,
+              scrollTop: area.scrollTop,
+              footerTop: footer.top,
+              viewportHeight: innerHeight,
+              placeholder: area.placeholder,
+              lineHeight: parseFloat(getComputedStyle(area).lineHeight),
+              selection: [area.selectionStart, area.selectionEnd],
+            };
+          });
+          samples.push({ label, ...frame });
+          expect(frame.placeholder.length).toBeGreaterThan(0);
+          expect(frame.scrollHeight - frame.clientHeight).toBeLessThanOrEqual(1);
+          expect(frame.scrollTop).toBe(0);
+          expect(frame.box.top).toBeGreaterThanOrEqual(0);
+          expect(frame.box.bottom).toBeLessThanOrEqual(
+            Math.min(frame.footerTop, frame.viewportHeight),
+          );
+          expect(frame.selection).toEqual([0, 0]);
+        }).toPass({ timeout: 3_000 });
+        await testInfo.attach(`${label}.png`, {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+      };
+      try {
+        await composer.focus();
+        await checkHint("empty-hint");
+        await composer.fill("Retain this draft.");
+        await expect(composer).toHaveValue("Retain this draft.");
+        await composer.fill("");
+        await page.setViewportSize({ width: 560, height: 400 });
+        await checkHint("narrow-empty-hint");
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await checkHint("restored-empty-hint");
+        expect(await composer.evaluate((node, input) => node === input, original)).toBe(true);
+        await composer.press("x");
+        await expect(composer).toHaveValue("x");
+        await expect(composer).toBeFocused();
+      } finally {
+        await testInfo.attach("empty-hint-geometry.json", {
+          body: JSON.stringify(samples),
+          contentType: "application/json",
+        });
+        await testInfo.attach("empty-hint-final.png", {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+      }
+    });
+  }
+
   test("search mutation paths obey the field state with real keyboard activation", async ({
     page,
   }) => {

@@ -561,8 +561,10 @@ fill and ink. A `search-line` slot with `data-current-match` marks a line-based
 result with the same wash and a leading accent rule, preserving its ANSI ink and
 fixed row height. Each consumer retains its own query, matching and navigation.
 
-`TextArea autosize` measures its content across supported hosts. The component owns
-height updates for input, controlled values, form reset, width and font changes;
+`TextArea autosize` measures its visible text across supported hosts: the value,
+or its placeholder while empty. Placeholder typography supplies its natural height;
+the native `rows` minimum retains the control's own font metrics. The component owns
+height updates for input, controlled values, placeholder, form reset, width and font changes;
 CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
 Natural height and caret geometry share the same inert typography mirror. Sizing
 retains the native `rows` minimum and box model, then applies only the final
