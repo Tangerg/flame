@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The narrow Material-toggle action is now concise across all eight existing locales; native English/light/14 px and Chinese/dark/18 px qualify its 200%/300% entry, material reading, Close and exact continued drafts. The focused workspace regression passes **113 tests** and the locale gate passes **25 tests / 919 keys / 8 locales**. The preceding full Web check (**433 files / 4,824 tests**), Subagent Lab selection (**21 tasks**) and supported native verification retain their earlier scope. The Lab remains the sole UI visual verification owner, with one Playwright configuration. The Chinese continued-draft capture supplies a separate lower-focus-perimeter lead for the existing Composer task. Whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The narrow Material-toggle action remains concise across all eight existing locales. Its preceding copy batch passes **113 workspace tests**, **25 locale tests / 919 keys / 8 locales**, and native English/light/14 px and Chinese/dark/18 px material entry, Close and exact continuation. The current unchanged-source follow-up resolves the Chinese lower-perimeter lead: **151 px** of Composer content scrolls within its **146 px** viewport, and **5 px** of internal scrolling exposes the bottom while preserving controls, focus and the exact draft. The earlier full Web check (**433 files / 4,824 tests**), Subagent Lab selection (**21 tasks**) and supported native verification retain their scope. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20781,20 +20781,60 @@ No functional checks run after restoration. The final source batch uses ordinary
 commit hooks and publication to main; the captured evidence tree is retired after
 verified in-memory retention. No storage, protocol or user-data migration is needed.
 
-### Composer reading across full-width material (2026-11-10)
+### Composer reading across full-width material (2026-11-11)
 
-The Material-toggle follow-up retains both exact continued drafts. Its Chinese
-18 px / 300% capture after native Window Zoom/restore shows an incomplete lower
-Composer focus perimeter once the continued draft wraps to two visual lines.
-The input and footer actions remain visible, and Actual Size shows the complete
-frame. This is a new reproduction lead, not an established allocation defect;
-check that exact transition through the existing Lab Composer task before
-selecting a layout change. No Composer implementation changes in this copy batch.
+The Material-toggle follow-up's lower-perimeter lead reproduces on `3929e055b`
+in a fresh native process. Chinese/dark/18 px/**#5B8DEF**/motion off repeats the
+same padded draft, long-path Diff visits, native Window menu Zoom/restore actions
+and exact continuation. The first continuation image and a later capture without
+another key retain the partial lower card perimeter. The existing Lab scene and
+all **488 canonical assets** are byte-identical to the preceding qualified task.
 
-The preceding native task leaves the new internal Composer scroll offset
-unqualified. A fixed Lab task reproduces the defect: at 373 × 243 px, opening
-Schedules and closing it moves WebKit's offset from 61 to 10 px in English and
-96 to 10 px in Chinese. Chromium preserves it. Exact draft, selection and DOM
+The existing `Observe layout` readout resolves the geometry. At its reported
+**373 × 251 px** window, the Composer's **333.333 px** width contains **151 px**
+of scrollable content in a **146 px** viewport. Wheel reading moves the retained
+offset from **0 to 5 px** and exposes the complete bottom perimeter. The top
+perimeter then scrolls out normally. Both text lines remain readable and the
+same textarea retains focus and exact whitespace. At **200%**, the readout is
+**560 × 377 px** and content/viewport both measure **101 px**; the complete card
+fits. Actual Size retains that **101 / 101 px** fit and permits another literal
+continuation without replacing the draft.
+
+All five footer actions are reached in source order with native Tab, and
+Shift+Tab returns to the retained input. The inspected Add and Send captures
+show complete independent focus indicators. No Send, Copy or Runtime command is
+activated. The observation-off task establishes the behavior first; the existing
+observation-on follow-up supplies the bounded geometry without a new fixture,
+listener or visual entry. Enlarged-window bounds are not freshly measured.
+
+Better-layout's content-growth rule and better-accessibility's focused-control
+visibility guide this scoped review. `FloatingComposer.tsx` already owns the
+bounded scrollport and its **2 px** perimeter clearance; `useViewportFocus`
+retains the active control through reflow. `AgentComposerSurface` paints the
+card's existing focus-within edge. The observed overflow and visible controls
+fit those contracts. No actionable layout or keyboard-focus defect remains in
+this inspected task, and no implementation or Claude Code CLI candidate is
+selected. VoiceOver speech, physical IME, other native profiles, live Runtime
+behavior and whole-product acceptance are not newly qualified.
+
+All **12 original JPEG captures** and **36 retained AX records** are inspected.
+Image bounds are **2238 × 1508 native pixels**, not CSS viewport claims.
+Serial `make stage-web`, `lab:build` and the signed Wails **v3.1.0** host build
+pass in **7.582 s**, **2.871 s** and **20.075 s**. The intended native process
+exits **0**. No additional browser visual suite, behavioral suite or performance
+benchmark runs; the earlier automated gates retain their unchanged-source scope.
+All **6,734 non-Markdown inputs** and **46 production native inputs** remain
+unchanged. The private registration is removed, six Library locations return to
+absence, three pre-existing empty WebKit helper roots retain identity/mode/flags,
+and all **12 output/cache roots** return to baseline content/mode or absence.
+The current-lock dependency installation and the user's primary checkout remain
+unchanged. Four original captures and qualification evidence are retained outside
+the repository; functional checks end before output restoration.
+
+An earlier material-return task exposed a separate WebKit retention defect.
+A fixed Lab task reproduced it: at 373 × 243 px, opening
+Schedules and closing it moved WebKit's offset from 61 to 10 px in English and
+96 to 10 px in Chinese. Chromium preserved it. Exact draft, selection and DOM
 identity alone therefore cannot qualify reading continuity.
 
 `ChatPanel.tsx` now gives the conversation the existing retained-view treatment:
