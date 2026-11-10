@@ -181,6 +181,146 @@ for (const browserName of ["chromium", "webkit"] as const) {
     );
   }
 }
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  const headerTest = test.extend({ browserName });
+  for (const profile of [
+    { locale: "en", theme: "light", messages: en },
+    { locale: "zh", theme: "dark", messages: zh },
+  ]) {
+    headerTest(
+      `${browserName} running conversation header preserves action space in ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = profile.messages;
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await page.goto(
+          `/lab/fixture.html?${new URLSearchParams({
+            fixture: "workspace",
+            state: "dock-schedules",
+            "agent-state": "running",
+            locale: profile.locale,
+            theme: profile.theme,
+            "font-size": "18",
+            motion: "off",
+          })}`,
+        );
+        await expectLabReady(page);
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+        await page.getByRole("button", { name: messages["dock.action.hide"], exact: true }).click();
+        const composer = page.getByRole("textbox", {
+          name: messages["composer.input.label"],
+          exact: true,
+        });
+        const draft = "  Keep this draft while reviewing changes. 保留原始草稿。  ";
+        await composer.fill(draft);
+        const conversation = page.getByRole("region", {
+          name: messages["shell.region.conversation"],
+          exact: true,
+        });
+        const header = conversation.locator(".agent-surface-header");
+        const changes = header.getByRole("button", {
+          name: profile.locale === "zh" ? /^查看工作区差异/ : /^Review working tree changes/,
+        });
+        for (const width of [373, 320, 480, 1120]) {
+          await page.setViewportSize({ width, height: 568 });
+          const geometry = await header.evaluate(async (node) => {
+            await new Promise(requestAnimationFrame);
+            await new Promise(requestAnimationFrame);
+            return {
+              width: node.clientWidth,
+              total: node.scrollWidth,
+              children: [...node.children].map((child) => ({
+                text: child.textContent,
+                rect: child.getBoundingClientRect().toJSON(),
+                minWidth: getComputedStyle(child).minWidth,
+                shrink: getComputedStyle(child).flexShrink,
+              })),
+            };
+          });
+          await testInfo.attach(`running-header-${width}-geometry`, {
+            body: JSON.stringify(geometry),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`running-header-${width}-view`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          const toggle = page.getByRole("button", {
+            name: messages[width < 760 ? "dock.action.openFull" : "dock.action.show"],
+            exact: true,
+          });
+          const action = (await changes.boundingBox())!;
+          const dock = (await toggle.boundingBox())!;
+          expect(action.x + action.width).toBeLessThanOrEqual(dock.x);
+          expect(geometry.total).toBeLessThanOrEqual(geometry.width);
+          await expect(header.getByRole("heading", { level: 1 })).toBeVisible();
+          for (const button of await header.getByRole("button").all()) {
+            const bounds = (await button.boundingBox())!;
+            expect(bounds.width).toBeGreaterThanOrEqual(24);
+            expect(bounds.height).toBeGreaterThanOrEqual(24);
+            await expectCentreHit(button);
+          }
+          await expectCentreHit(toggle);
+          if (width === 320) {
+            const status = header.locator('[data-slot="run-status"]');
+            const label = (await status.textContent())!;
+            const identityMenu = header.getByRole("button").first();
+            await page
+              .getByRole("button", { name: "Expand the workspace fixture sidebar", exact: true })
+              .focus();
+            await page.keyboard.press("Tab");
+            await expect(identityMenu).toBeFocused();
+            await expectCentreHit(identityMenu);
+            await page.keyboard.press("Enter");
+            const menu = page.getByRole("menu", { name: "Agent · running", exact: true });
+            await expect(menu).toBeVisible();
+            await expect(menu).toContainText(label);
+            await testInfo.attach("running-header-keyboard-status", {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+            await page.keyboard.press("Escape");
+            await expect(menu).toHaveCount(0);
+            await expect(identityMenu).toBeFocused();
+          }
+        }
+        await page.setViewportSize({ width: 373, height: 243 });
+        const status = header.locator('[data-slot="run-status"]');
+        const label = (await status.textContent())!;
+        await status.hover();
+        await expect(page.getByRole("tooltip")).toHaveText(label);
+        await testInfo.attach("running-header-pointer-status", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        await changes.focus();
+        await expect(changes).toBeFocused();
+        await expectCentreHit(changes);
+        const opener = await changes.elementHandle();
+        await page.keyboard.press("Enter");
+        await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
+        await expect(page.getByRole("tooltip").filter({ hasText: label })).toHaveCount(0);
+        expect(await opener!.evaluate((node) => node.isConnected)).toBe(false);
+        const back = page.getByRole("button", {
+          name: messages["dock.action.returnToConversation"],
+          exact: true,
+        });
+        await back.click();
+        await expect(conversation).toBeFocused();
+        await changes.click();
+        await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
+        await back.click();
+        await expect(conversation).toBeFocused();
+        await expect(composer).toHaveValue(draft);
+        await composer.focus();
+        await page.keyboard.press("ControlOrMeta+ArrowDown");
+        await page.keyboard.insertText(" Continue.");
+        await expect(composer).toHaveValue(draft + " Continue.");
+      },
+    );
+  }
+}
+
 async function expectBelowWindowControl(content: Locator, toggle: Locator) {
   await expect(content).toBeVisible();
   const control = (await toggle.boundingBox())!;

@@ -8,7 +8,13 @@ import {
 } from "@testing-library/react";
 import { useRef, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ActionMenu, ContentVisibility, Select } from "../dist/index.js";
+import {
+  ActionMenu,
+  ContentVisibility,
+  RichTooltip,
+  Select,
+  Tooltip,
+} from "../dist/index.js";
 
 beforeEach(() => {
   // Happy DOM has no layout; an open anchor needs a real nonzero box for Base UI.
@@ -70,6 +76,54 @@ const options = [
   { value: "split", label: "Split" },
   { value: "unified", label: "Unified" },
 ];
+
+describe("Tooltip retirement", () => {
+  for (const [name, control] of [
+    [
+      "plain",
+      <Tooltip label="Running · 6h 30m" delayDuration={0}>
+        <button>Run status</button>
+      </Tooltip>,
+    ],
+    [
+      "rich",
+      <RichTooltip trigger={<button>Run status</button>} delay={0}>
+        <span>Running · 6h 30m</span>
+      </RichTooltip>,
+    ],
+  ] as const) {
+    it(`retires the ${name} tip without reclaiming focus and requires a new hover`, async () => {
+      const host = mount(control);
+      const trigger = screen.getByRole("button", { name: "Run status" });
+      const hover = () => {
+        fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+        fireEvent.mouseEnter(trigger);
+      };
+      hover();
+      expect((await screen.findByRole("tooltip")).textContent).toBe(
+        "Running · 6h 30m",
+      );
+      const outside = screen.getByRole("button", { name: "Outside" });
+      act(() => outside.focus());
+
+      host.hide();
+
+      await vi.waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+      expect(document.activeElement).toBe(outside);
+      host.reveal();
+      expect(screen.getByRole("button", { name: "Run status" })).toBe(trigger);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      expect(document.activeElement).toBe(outside);
+
+      fireEvent.mouseLeave(trigger);
+      fireEvent.pointerLeave(trigger, { pointerType: "mouse" });
+      hover();
+      expect((await screen.findByRole("tooltip")).textContent).toBe(
+        "Running · 6h 30m",
+      );
+    });
+  }
+});
 
 async function openPopup(trigger: HTMLElement, role: "listbox" | "menu") {
   act(() => trigger.focus());

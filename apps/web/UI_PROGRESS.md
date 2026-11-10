@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The shared Composer footer now wraps fitting control groups and keeps Send or Steer/Stop at the trailing edge. The existing Lab selection passes **48 / 48** cases; Composer passes **29 files / 293 tests**, and the current production native gate passes. Actual Wails checks the same **492 canonical Lab assets**, including complete English Send at native **300%** and Chinese running actions at **200% / 300%** in the enlarged window. A separate preexisting short-window failure still lets the Goal tray compress the Composer; original and final native captures preserve that unresolved case. Whole-product visual acceptance remains unfinished and the goal stays active.
+The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The running conversation header now preserves space for its title, Diff and Dock actions; hidden status tips retire with their owner. The existing Workspace/content selection passes **60 / 60** cases, shared UI passes **280 tests** plus its independent packed consumer, and the production native gate passes. Actual Wails checks the same **492 canonical Lab assets**, including English/light/14 px and Chinese/dark/18 px headers at native **200% / 300%**, full-status menu reading, material return and exact continued drafts. The separate short-window Goal/Composer allocation defect remains visible and unresolved. Whole-product visual acceptance remains unfinished and the goal stays active.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20815,10 +20815,112 @@ ordinary commit hooks and read-only integrity checks follow. The batch is
 published to main and its captured evidence tree is retired after verified
 in-memory retention. No storage, protocol or user-data migration is needed.
 
-The next observed candidate is Conversation header pressure at the existing
+The next observed candidate was Conversation header pressure at the existing
 373 × 243 px Chinese Lab size: Diff statistics crowd the full-width material
-opener. The 480 px native view fits. Reproduce and trace that narrower geometry
-before deciding whether another production change is justified.
+opener. The 480 px native view fits. The following section reproduces and repairs
+that narrower geometry.
+
+### Conversation header capacity and hidden status tips (2026-11-10)
+
+The preceding candidate reproduces in both Lab engines at the supported maximum
+**18 px** font. At a **373 px** viewport, the original header reaches **395 px**
+in English and **416–417 px** in Chinese. The Session identity receives zero
+width; the non-shrinking status, spacer and installed Diff action crowd More and
+the Dock opener, which starts at **339 px**. All four baseline tasks fail. Actual
+Wails Chinese/dark/18 px at **300%** also shows the title lost, More underneath
+the status, and Diff cropped behind the Dock opener.
+
+`ChatPanel.tsx` now passes the existing Run readout into `SessionIdentity.tsx`.
+One flexible group contains title and status, and replaces the separate spacer.
+The existing conversation container stacks the status below the title at
+640 px or less, with a plain, unpadded status line. Its text can truncate without
+forcing the header's actions outside their frame. The same complete value is
+available through the existing pointer tip and Session menus. More remains the
+keyboard entry; an intermediate focusable read-only span is removed after lint
+correctly rejects its artificial tab stop. Session-keyed copy actions, installed
+Diff, navigation and the Runtime Run/elapsed-time owners retain their contracts.
+
+The new material-return case also reproduces an open Run tip surviving its hidden
+conversation owner in WebKit. Shared `Tooltip`/`RichTooltip` now use the existing
+popup visibility retirement hooks. Two behavioral cases fail on the original
+compiled package, then pass for both tip forms: hiding closes the tip without
+reclaiming outside focus, and revealing the same trigger requires fresh hover.
+This adds no visibility store, document listener or second visual suite.
+
+Better Layout, Typography and Accessibility guide capacity, full-value reading
+and actual keyboard entry. Read-only ZCode's `WorkspaceHeaderActionSection.tsx`
+keeps essential actions while simplifying narrow secondary chrome; its separate
+layout is not copied. The bounded Claude Code CLI candidate reaches **180 s**
+without source edits. Primary authors and reviews the final repair.
+
+The existing `workspaceChrome.browser.spec.ts` adds four tasks for both engines
+and languages at 18 px. Widths **320 / 373 / 480 / 1120 px** retain a visible title,
+complete action bounds, separate hit targets and no header overflow. Actual
+Tab/Enter reads the full status through More; hover reads the same value at the
+short **373 × 243 px** frame. Keyboard and pointer Diff visits retire only the
+old Run-label tip, retain the exact padded draft and continue input. The captured
+Diff opener is actually replaced by the installed view revision; the tests prove
+it detached and check the existing Conversation focus fallback instead of
+retargeting a successor control. No navigation behavior is changed for the test.
+
+Final verification:
+
+- Header tasks: **4 / 4**, **19.241 s**. Full existing Workspace chrome and content
+  layout selection: **60 / 60**, **133.590 s**. No skips, retries, flaky cases or
+  global errors. All **24 + 58 image attachments** are inspected in 14 sheets.
+- Shared UI check: **15 files / 280 tests**, plus independent packed consumer
+  **1 / 1**, **17.855 s** total. Final shell units: **14 files / 204 tests**,
+  **10.893 s**. Web typecheck, lint, unused-code, circular-dependency, layers,
+  design-system, token, style, shorthand, chrome, locale and bundle gates pass.
+- `make check-native` passes in **63.160 s**. The private native wrapper builds in
+  **19.588 s**; all **46 production native inputs** remain unchanged. Final Lab
+  build passes in **3.102 s**, and its 492 copied assets match canonical bytes.
+
+Earlier failures remain recorded: one Lab argument admission error, one incorrect
+Tooltip import, a wrong Close expectation for reference inspection, pointer-mode
+focus mistaken for keyboard tooltip entry, an overbroad assertion that rejected
+the legitimate Back tip, and the stale-opener focus assumption. None qualifies
+the final revision. Two UI consumer checks stop on missing offline tarballs after
+their units pass; 28 exact root-lock registry tarballs seed only the private cache.
+The initial npm fallback is corrected to **Node 24.22.1 / npm 11.21.1** before all
+final gates. No manifest, dependency, assertion tolerance or retry policy changes.
+
+Actual Wails v3.1.0 loads the qualified static Lab documents in both profiles:
+English/light/14 px and Chinese/dark/18 px, motion off. The private wrapper
+requests the product's **1120 × 720** minimum; its observed WebView is
+**1120 × 755**, **560 × 377.5 at 200%**, and **373.33 × 251.67 at 300%**.
+Both profiles retain distinct header actions, pointer/keyboard full-status menu
+reading, Escape focus return, keyboard and pointer Diff entry, wheel reading,
+Conversation fallback and exact continued drafts. Native Window Zoom enlarges
+and restores each window; Actual Size restores the whole workspace. Each task
+repeats menu reading, Diff entry and draft continuation with observation disabled.
+Both intended processes exit **0** and
+the final app inventory is empty. **26 native PNG/AX pairs** (two baseline, 24
+final) and **120 zoom-step AX states** retain the actual observations. All native
+images are inspected, including five complete contact sheets.
+
+Native page zoom keeps the header's inline presentation in these captures, while
+ordinary narrow containers show the stacked form. The flexible group still
+preserves all action targets. This observation is not a claim that native zoom
+and browser viewport resizing select identical container styles. The existing
+short-window Goal/Composer clipping remains visible, and the English full-width
+material title is heavily truncated beside Back at 300%. These captured leads
+need their own reproduction and ownership trace before another change. Pending
+hover before hiding, OS IME, VoiceOver speech, RTL and live Runtime execution are
+not newly qualified. No product-wide visual certification is claimed.
+
+The private app is closed and unregistered; the captured server exits **143**
+after its verified TERM. Six private Library paths return to absence and three
+preexisting WebKit helper roots retain their identities and flags. The latest
+main fetch has no incoming commits at `1083c6ca6`. All **12 output/cache roots**
+return to their original contents and modes: **3,297 captured nodes** are removed
+and **317 files** restored. Source comparison covers **6,716 non-Markdown
+inputs**, admitting only the seven owned modifications and no added sources.
+All 46 native inputs and the primary checkout remain unchanged. After output
+restoration, only document formatting, normal static hooks and read-only integrity
+checks run. The reviewed batch is published to main; its captured qualification
+tree is retired after verified in-memory evidence retention. No storage, protocol
+or user-data migration is needed.
 
 ### Model catalog reading and recovery
 

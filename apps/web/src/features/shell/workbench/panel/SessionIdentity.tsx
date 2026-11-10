@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactElement } from "react";
+import { type ReactElement, type ReactNode } from "react";
 import { basename } from "@/lib/path";
 import { ContextMenu, DropdownMenu, Icon } from "@/ui/index";
 import { iconGlyph } from "@/ui/icons/index";
@@ -9,6 +9,16 @@ import { IconButton, vocab } from "@flame/ui";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
+  fill: { flex: 1 },
+  menuDetail: { paddingInline: space.s2, paddingBlock: space.s1_5 },
+  summary: {
+    display: "flex",
+    minWidth: 0,
+    flexShrink: 1,
+    flexDirection: { default: "row", "@container conversation (max-width: 640px)": "column" },
+    alignItems: { default: "center", "@container conversation (max-width: 640px)": "stretch" },
+    gap: { default: space.s2, "@container conversation (max-width: 640px)": 0 },
+  },
   cwd: {
     display: { default: "none", "@media (min-width: 1024px)": "inline" },
     minWidth: 0,
@@ -35,9 +45,10 @@ interface Props {
   sessionId: string;
   title: string;
   workspacePath?: string;
+  detail?: ReactNode;
 }
 
-export function SessionIdentity({ sessionId, title, workspacePath }: Props): ReactElement {
+export function SessionIdentity({ sessionId, title, workspacePath, detail }: Props): ReactElement {
   const t = useT();
   const copies: { id: string; label: string; copy: () => void }[] = [
     ...(workspacePath
@@ -65,23 +76,29 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
   ];
 
   const identity = (
-    <div {...stylex.props(si.bar)}>
-      {workspacePath && (
-        <>
-          <span
-            title={workspacePath}
-            className={stylex.props(si.cwd, vocab.truncate, typeStep.uiSm).className}
-          >
-            {basename(workspacePath)}
-          </span>
-          <span aria-hidden {...stylex.props(si.sep, typeStep.uiSm)}>
-            /
-          </span>
-        </>
-      )}
-      <h1 title={title} className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}>
-        {title}
-      </h1>
+    <div {...stylex.props(si.summary)}>
+      <div {...stylex.props(si.bar)}>
+        {workspacePath && (
+          <>
+            <span
+              title={workspacePath}
+              className={stylex.props(si.cwd, vocab.truncate, typeStep.uiSm).className}
+            >
+              {basename(workspacePath)}
+            </span>
+            <span aria-hidden {...stylex.props(si.sep, typeStep.uiSm)}>
+              /
+            </span>
+          </>
+        )}
+        <h1
+          title={title}
+          className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}
+        >
+          {title}
+        </h1>
+      </div>
+      {detail}
     </div>
   );
 
@@ -89,10 +106,11 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
   // Session ID keys both menus so an open menu retires with its Session instead of
   // retargeting its copy actions to the next one.
   return (
-    <div key={sessionId} {...stylex.props(si.bar)}>
+    <div key={sessionId} {...stylex.props(si.bar, si.fill)}>
       <ContextMenu.Root>
         <ContextMenu.Trigger render={identity} />
         <ContextMenu.Content aria-label={title}>
+          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
           {copies.map((item) => (
             <ContextMenu.IconItem key={item.id} icon="copy" onSelect={item.copy}>
               {item.label}
@@ -111,6 +129,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
           }
         />
         <DropdownMenu.Content align="start" sideOffset={4} aria-label={title}>
+          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
           {copies.map((item) => (
             <DropdownMenu.Item key={item.id} layout="glyph" onClick={item.copy}>
               <Icon name="copy" size="md" />

@@ -446,6 +446,15 @@ Hidden content retains layout without exposing the conversation to interaction
 or accessibility. Evidence includes the Plan, Goal, editor and footer geometry;
 actual Wails page zoom qualifies the native host separately.
 
+The same chrome suite checks running-header capacity at 320, 373, 480 and
+1120 px with the supported maximum 18 px font, Chromium/WebKit and English/Chinese.
+The title must retain visible space, while More, Diff and the Dock opener retain
+complete, distinct targets. Actual Tab/Enter opens the existing Session menu to
+read the complete status. Hover reveals the same value. Keyboard and pointer Diff
+visits retire the old status tip, return to the conversation when the captured
+opener has been replaced, and preserve the exact padded draft for continued input.
+These cases extend the existing Workspace scene and verification configuration.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

@@ -6,15 +6,23 @@ import { StatusDot } from "@/ui/atoms/status-dot";
 const styles = stylex.create({
   pill: {
     display: "inline-flex",
-    minHeight: "calc(var(--spacing) * 5.5)",
-    flexShrink: 0,
+    minWidth: 0,
+    maxWidth: "100%",
+    minHeight: {
+      default: "calc(var(--spacing) * 5.5)",
+      "@container conversation (max-width: 640px)": "auto",
+    },
+    flexShrink: 1,
     borderRadius: radius.button,
     "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
-    backgroundColor: surface.sunken,
-    paddingInline: space.s2_5,
-    paddingBlock: space.s1,
+    backgroundColor: {
+      default: surface.sunken,
+      "@container conversation (max-width: 640px)": "transparent",
+    },
+    paddingInline: { default: space.s2_5, "@container conversation (max-width: 640px)": 0 },
+    paddingBlock: { default: space.s1, "@container conversation (max-width: 640px)": 0 },
     fontFamily: "var(--font-sans)",
     fontWeight: weight.medium,
     lineHeight: 1,

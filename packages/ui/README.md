@@ -63,6 +63,9 @@ unbroken paths and identifiers within their existing bounded width.
 Focus-opened tips retain their keyboard owner while pointer activation passes
 through to overlapping controls. Hover-opened tips remain pointer-reachable,
 so moving from a trigger into its supporting text keeps it readable.
+Both tips use the shared `ContentVisibility` retirement boundary. Hiding their
+retained owner closes an open tip without reclaiming outside focus; revealing the
+same trigger requires a fresh interaction to reopen it.
 
 `Popover` owns the same portal, floating surface, Base UI nesting and focus
 contract for application controls and portable views. Focus-managed floating

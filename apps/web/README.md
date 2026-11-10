@@ -280,6 +280,13 @@ closing material retains the draft, selection and reading position while the
 existing navigation owner returns focus to the conversation. No second
 scroll-position cache is introduced.
 
+The conversation header allocates one flexible identity group to the Session
+title and running status, leaving installed actions and the Dock opener their
+own space. Narrow conversation containers stack the read-only status below the
+title. Its complete value is available on hover and in the existing Session
+menus, including keyboard entry through More actions. Runtime still owns the Run
+and elapsed-time source; menu copies are readouts of that same projection.
+
 Inline Markdown tables consume the same safe height, with their actions and
 reader forming one fitting reading unit. Each table measures only its intrinsic
 minimum: actions, header and one padded body line. When that minimum exceeds the

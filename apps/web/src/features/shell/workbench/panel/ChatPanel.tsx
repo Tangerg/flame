@@ -410,9 +410,8 @@ export function ChatPanel({ onSend, ref }: Props) {
                     sessionId={activeSessionId}
                     title={activeSession?.title.trim() || t("sidebar.action.newSession")}
                     workspacePath={activeSession?.workspace.path}
+                    detail={<RunStatusPill />}
                   />
-                  <RunStatusPill />
-                  <span {...stylex.props(sh.spacer)} />
                   <Slot name="chat.header.meta" />
                 </AgentSurfaceHeader>
                 <Slot name="chat.search" />

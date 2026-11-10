@@ -4,6 +4,10 @@ import type { ReactElement, ReactNode } from "react";
 import { leading, space, type } from "./tokens.stylex";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
+import {
+  useHiddenPopupRelease,
+  useHiddenRootRetirement,
+} from "./popup-visibility";
 
 const tip = stylex.create({
   layer: { pointerEvents: "none" },
@@ -83,11 +87,16 @@ export function RichTooltip({
   disabled,
   styles,
 }: RichTooltipProps) {
+  const retirement = useHiddenRootRetirement<
+    TooltipPrimitive.Root.Actions,
+    TooltipPrimitive.Root.ChangeEventDetails
+  >({});
+  const { portalRef } = useHiddenPopupRelease();
   const popup = stylex.props(FLOATING_TIP, type.uiSm, tip.measure, styles);
   return (
-    <TooltipPrimitive.Root disabled={disabled}>
+    <TooltipPrimitive.Root disabled={disabled} {...retirement}>
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
-      <TooltipPrimitive.Portal>
+      <TooltipPrimitive.Portal ref={portalRef}>
         <TooltipPrimitive.Positioner
           {...stylex.props(FLOATING_LAYER, tip.layer)}
           side={side}
