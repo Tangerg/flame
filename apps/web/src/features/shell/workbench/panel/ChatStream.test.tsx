@@ -292,7 +292,6 @@ describe("ChatStream notification space", () => {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     });
     const pane = view.container.querySelector<HTMLElement>('[style*="--composer-overlay:"]')!;
-    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("554px");
     reader.scrollTop = 2275;
     act(() => {
       draft.setSelectionRange(5, 10);
@@ -311,7 +310,7 @@ describe("ChatStream notification space", () => {
     expect(view.container.querySelector(".msg-scroll-viewport")).toBe(reader);
     expect(reader.scrollTop).toBe(2275);
     expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("120px");
-    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("500px");
+    expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("");
     expect(document.activeElement).toBe(outside);
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(draft.value).toBe("Keep this authored draft");

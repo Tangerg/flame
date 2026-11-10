@@ -864,14 +864,19 @@ html.theme-dark {
     #000 calc(var(--transcript-bottom-edge) - var(--transcript-fade)),
     transparent var(--transcript-bottom-edge)
   );
-  scroll-padding-top: var(--transcript-fade);
-  scroll-padding-bottom: calc(
+  --transcript-bottom-clearance: calc(
     var(--composer-overlay, 0px) +
       max(
         var(--transcript-fade),
         var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap)
       )
   );
+  --reading-frame-height: max(
+    0px,
+    calc(100cqh - var(--transcript-fade) - var(--transcript-bottom-clearance))
+  );
+  scroll-padding-top: var(--transcript-fade);
+  scroll-padding-bottom: var(--transcript-bottom-clearance);
 }
 
 .agent-composer-glass {

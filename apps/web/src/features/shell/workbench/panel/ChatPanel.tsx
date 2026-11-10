@@ -310,12 +310,34 @@ export function ChatPanel({ onSend, ref }: Props) {
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
-    setRowWidth(row.clientWidth);
-    // Delivery runs after layout but before paint; committing here keeps a Dock sized for the
-    // previous row from painting over the conversation for a frame.
-    const observer = new ResizeObserver(() => flushSync(() => setRowWidth(row.clientWidth)));
+    let width = row.clientWidth;
+    let capacity = canPresentDock(width);
+    let frame = 0;
+    setRowWidth(width);
+    // Delivery runs after layout but before paint. Only a capacity change commits here, so an
+    // unavailable Dock never paints at its old width; committing every intermediate width would
+    // reflow the row inside delivery and trip WebKit's undelivered-notification loop guard.
+    const observer = new ResizeObserver(() => {
+      width = row.clientWidth;
+      const nextCapacity = canPresentDock(width);
+      if (nextCapacity !== capacity) {
+        capacity = nextCapacity;
+        cancelAnimationFrame(frame);
+        frame = 0;
+        flushSync(() => setRowWidth(width));
+        return;
+      }
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setRowWidth(width);
+      });
+    });
     observer.observe(row);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
   const viewsById = new Map(views.map((view) => [view.id, view]));

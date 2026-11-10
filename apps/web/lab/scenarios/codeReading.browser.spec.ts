@@ -216,7 +216,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
             body: JSON.stringify(geometry),
             contentType: "application/json",
           });
-          for (const sample of geometry.settled) {
+          for (const sample of [...geometry.delivery.slice(1), ...geometry.settled]) {
             expect(sample.bounds.top).toBeGreaterThanOrEqual(sample.top - 1);
             expect(sample.bounds.bottom).toBeLessThanOrEqual(sample.bottom + 1);
             expect(sample.textHeight).toBeGreaterThanOrEqual(sample.lineHeight);
@@ -322,6 +322,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await captureResize(size, `wheel-${size.width}`);
         }
         await capture("wheel-reflow");
+        const readingPosition = await source.evaluate((node) => node.scrollTop);
 
         await page.getByRole("button", name("dock.action.openFull")).click();
         const material = page.locator('[data-slot="workspace-view-body"]:visible');
@@ -362,6 +363,11 @@ for (const browserName of ["chromium", "webkit"] as const) {
           expect.stringContaining(CODE_READING_SOURCE),
         );
         await capture("recorded-evidence");
+        await page.setViewportSize({ width: 504, height: 316 });
+        await expect(raw).toBeInViewport({ ratio: 1 });
+        await page.setViewportSize({ width: 373, height: 251 });
+        await expect(raw).toBeInViewport({ ratio: 1 });
+        await expect(raw).toBeFocused();
         await raw.hover();
         await page.getByRole("button", name("common.close")).hover();
         const tooltip = page.getByRole("tooltip");
@@ -381,6 +387,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
         ).toBe(true);
         expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
         expect(await source.textContent()).toBe(CODE_READING_SOURCE);
+        expect(await source.evaluate((node) => node.scrollTop)).toBeCloseTo(readingPosition, 0);
         await expect(composer).toHaveValue(profile.draft);
         await composer.focus();
         await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");

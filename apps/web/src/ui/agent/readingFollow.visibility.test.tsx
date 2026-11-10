@@ -35,34 +35,50 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
-  it("projects the safe reading height through resize and Composer clearance without moving later focus", () => {
+  it("reveals the retained reader during resize delivery before the next frame", () => {
     const s = scenario();
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("300px");
+    s.shape.height = 240;
+
+    s.resize(s.viewport, { deliverFrame: false });
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+    s.shape.height = 220;
+    s.resize(s.content, { deliverFrame: false });
+    expect(s.bounds().bottom).toBeLessThanOrEqual(140);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("captures current clearance for an inactive reader without moving later focus", () => {
+    const s = scenario();
     const draft = screen.getByRole("textbox", { name: "Later draft" });
     act(() => draft.focus());
     s.shape.height = 246.5;
 
     s.resize();
 
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("146.5px");
     s.viewport.style.scrollPaddingBottom = "96.5px";
     s.resize(s.content);
+    s.rerender(<s.Harness attached={false} />);
     expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("130px");
     expect(s.viewport.scrollTop).toBe(0);
     expect(document.activeElement).toBe(draft);
     expect((draft as HTMLInputElement).value).toBe("Keep this draft");
   });
 
-  it("projects zero when the reserved controls exceed the viewport and recovers on resize", () => {
+  it("freezes an empty frame and resumes current geometry on reattachment", () => {
     const s = scenario();
     act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
     s.shape.height = 80;
 
     s.resize();
+    s.rerender(<s.Harness attached={false} />);
 
     expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("0px");
     s.shape.height = 340;
+    s.rerender(<s.Harness />);
     s.resize();
+    s.rerender(<s.Harness attached={false} />);
     expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("240px");
     expect(s.viewport.scrollTop).toBe(0);
   });
@@ -147,7 +163,7 @@ describe("reading focus geometry", () => {
     },
   );
 
-  it("retains the measured height while hidden and measures again on reattachment", () => {
+  it("freezes the visible budget while hidden and releases it on reattachment", () => {
     const s = scenario();
     const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
     s.viewport.scrollTop = 120;
@@ -165,7 +181,7 @@ describe("reading focus geometry", () => {
     s.rerender(<s.Harness />);
 
     expect(s.follow.scrollRef.current).toBe(s.viewport);
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("160px");
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("");
     expect(s.viewport.scrollTop).toBe(120);
     expect(s.order).toEqual([]);
     expect(document.activeElement).toBe(draft);
@@ -658,12 +674,15 @@ describe("reading focus geometry", () => {
 
   it("leaves deliberate reading scroll untouched by a later resize", () => {
     const s = scenario();
-    s.viewport.scrollTop = 250;
-    fireEvent.scroll(s.viewport);
     s.shape.height = 240;
     s.resize();
+    const revealed = [...s.order];
+    s.viewport.scrollTop = 250;
+    fireEvent.scroll(s.viewport);
+    s.shape.height = 220;
+    s.resize();
     expect(s.viewport.scrollTop).toBe(250);
-    expect(s.order).toEqual([]);
+    expect(s.order).toEqual(revealed);
     expect(document.activeElement).toBe(s.target);
   });
 
@@ -679,7 +698,7 @@ describe("reading focus geometry", () => {
     expect(document.activeElement).toBe(s.target);
   });
 
-  it("keeps its focused action through layout scrolling before the resize frame", () => {
+  it("keeps its focused action through native scrolling delivered after resize", () => {
     const s = scenario();
     s.follow.state.isAtBottom = true;
     s.follow.state.targetScrollTop = 350;
@@ -688,34 +707,38 @@ describe("reading focus geometry", () => {
 
     s.viewport.scrollTop = 250;
     fireEvent.scroll(s.viewport);
+    expect(s.bounds().top).toBeGreaterThanOrEqual(20);
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
     s.frame();
 
     expect(s.bounds().top).toBeGreaterThanOrEqual(20);
     expect(s.bounds().bottom).toBeLessThanOrEqual(160);
-    expect(s.order).toEqual(["follow retired", "target revealed"]);
+    expect(s.order).toEqual(["follow retired", "target revealed", "target revealed"]);
     expect(document.activeElement).toBe(s.target);
   });
 
-  it("keeps a later focus that arrives before the queued resize frame", () => {
+  it("keeps a later focus after the resize reveal", () => {
     const s = scenario();
     const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
     s.shape.height = 240;
     s.resize(s.viewport, { deliverFrame: false });
+    const position = s.viewport.scrollTop;
+    const revealed = [...s.order];
 
     act(() => draft.focus());
     s.frame();
 
-    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("140px");
-    expect(s.viewport.scrollTop).toBe(0);
-    expect(s.order).toEqual([]);
+    expect(s.viewport.scrollTop).toBe(position);
+    expect(s.order).toEqual(revealed);
     expect(document.activeElement).toBe(draft);
     expect(draft.value).toBe("Keep this draft");
   });
 
-  it("keeps manual reading that starts before the queued resize frame", () => {
+  it("keeps manual reading that starts after resize delivery", () => {
     const s = scenario();
     s.shape.height = 240;
     s.resize(s.viewport, { deliverFrame: false });
+    const revealed = [...s.order];
 
     fireEvent.wheel(s.viewport, { deltaY: 100 });
     s.viewport.scrollTop = 250;
@@ -723,24 +746,45 @@ describe("reading focus geometry", () => {
     s.frame();
 
     expect(s.viewport.scrollTop).toBe(250);
-    expect(s.order).toEqual([]);
+    expect(s.order).toEqual(revealed);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("does not re-witness a wheel-retired reader during resize scroll delivery", () => {
+    const s = scenario();
+    s.shape.height = 240;
+    s.resize(s.viewport, { deliverFrame: false });
+    const revealed = [...s.order];
+    fireEvent.wheel(s.viewport, { deltaY: 10 });
+    s.viewport.scrollTop += 10;
+    const position = s.viewport.scrollTop;
+    fireEvent.scroll(s.viewport);
+    s.frame();
+
+    s.shape.height = 200;
+    s.resize();
+
+    expect(s.viewport.scrollTop).toBe(position);
+    expect(s.order).toEqual(revealed);
     expect(document.activeElement).toBe(s.target);
   });
 
   it.each(["hidden", "unmounted"] as const)(
-    "cancels a queued resize reveal once the reader is %s",
+    "retires resize scroll handling once the reader is %s",
     (ending) => {
       const s = scenario();
       s.shape.height = 240;
       s.resize(s.viewport, { deliverFrame: false });
+      const position = s.viewport.scrollTop;
+      const revealed = [...s.order];
 
       if (ending === "hidden") s.rerender(<s.Harness attached={false} />);
       else s.unmount();
       s.frame();
 
-      expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("300px");
-      expect(s.viewport.scrollTop).toBe(0);
-      expect(s.order).toEqual([]);
+      expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("140px");
+      expect(s.viewport.scrollTop).toBe(position);
+      expect(s.order).toEqual(revealed);
     },
   );
 

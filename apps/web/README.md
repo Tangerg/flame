@@ -266,19 +266,21 @@ for focused-control visibility; only the applicable visible viewport observes
 reflow. Wheel reading, pointer presses, outside focus and hidden content retain
 their existing retirement rules. Neither viewport advances commands or drafts.
 
-The transcript's reading-focus owner projects its measured safe height as
-`--reading-frame-height` on the attached scroll viewport. The same existing
-resize observation updates this budget when the window or Composer clearance
-changes. Shared code frames use that inherited budget while native source
-scrolling, selection and later focus keep their existing owners.
+The externally sized transcript viewport owns the live reading height through
+CSS size containment. Its `--reading-frame-height` uses the current container
+height and the same top and bottom clearances as scroll padding. Code and table
+readers consume that inherited budget during layout, without a measured pixel
+height feeding back into observed content. The existing resize observer reveals
+the retained focused reader during delivery. Native scroll notifications in that
+rendering update retain the witness; a later focus or deliberate wheel still
+retires it.
 
-The reading height and the started conversation's `--composer-overlay` are
-projections of the retained DOM, not of active observation. When a Workspace
-material hides the conversation, observers, listeners and focus witnesses
-retire, but both values stay on their existing nodes. Clearing them would let
-the revealed reader expand before remeasurement and clamp native scroll
-positions such as a code source's. Reveal measures current geometry normally.
-An empty conversation removes the Composer overlay, and the shared shell's
+When a Workspace material hides the conversation, observers, listeners and focus
+witnesses retire. The reading-focus owner freezes the last visible height on the
+retained viewport until attachment releases it back to CSS. This prevents hidden
+window changes from expanding a reader and clamping its native source position.
+The started conversation likewise retains `--composer-overlay` on its existing
+node. An empty conversation removes the Composer overlay, and the shared shell's
 notification insets still clear while hidden.
 
 The conversation keeps its layout while a full-width material makes it inert,
@@ -544,7 +546,10 @@ Session changes and view retirement retain their existing lifetime boundaries.
 Collapsing clips the Dock while its contents retain their measured width through
 the motion. When a parallel Dock no longer fits, retained contents use the full
 row width before material opens there, avoiding a hidden zero-width or minimum-Dock
-reflow. The saved Dock ratio remains unchanged.
+reflow. Capacity changes commit during resize delivery, so an unavailable Dock
+releases its width before paint. Ordinary width changes coalesce outside that
+observer delivery to avoid reflowing its descendants inside the same resize cycle.
+The saved Dock ratio remains unchanged.
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.

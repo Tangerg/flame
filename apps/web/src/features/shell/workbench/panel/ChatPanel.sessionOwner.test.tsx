@@ -321,12 +321,16 @@ it("projects the saved ratio onto the observed row width without saving a new ra
 
     rowWidth = 1000;
     act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
+    expect(measure()).toBe("660px");
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     expect(measure()).toBe("440px");
 
     model.width = null;
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(measure()).toBe("480px");
 
+    rowWidth = 1100;
+    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
     rowWidth = 700;
     observers.forEach((observe) => observe([], {} as ResizeObserver));
     await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));

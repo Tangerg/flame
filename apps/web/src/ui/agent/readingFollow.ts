@@ -6,6 +6,7 @@ type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopSc
 // Native zoom reports fractional CSS pixels.
 const EDGE_TOLERANCE = 0.5;
 const CLIPPING_OVERFLOW = ["auto", "scroll", "hidden", "clip"];
+const FRAME_HEIGHT_PROPERTY = "--reading-frame-height";
 
 function readingTargetBounds(target: Element) {
   const bounds = target.getBoundingClientRect();
@@ -94,21 +95,15 @@ export function useReadingFocusVisibility(
     const viewport = scrollRef.current;
     const content = contentRef.current;
     if (!attached || !viewport || !content) return;
-    const measure = () => {
-      const next = safeReadingBounds(viewport);
-      viewport.style.setProperty(
-        "--reading-frame-height",
-        `${Math.max(0, next.bottom - next.top)}px`,
-      );
-      return next;
-    };
-    const frameState = { value: measure() };
+    viewport.style.removeProperty(FRAME_HEIGHT_PROPERTY);
+    const frameState = { value: safeReadingBounds(viewport) };
     const observedScrollTopState = { value: viewport.scrollTop };
     const witnessState: { value: Element | null } = { value: null };
     const pressedTargetState: { value: Element | null } = { value: null };
-    const queuedRevealState = { value: 0 };
+    const resizeScrollFrameState = { value: 0 };
+    const window = content.ownerDocument.defaultView!;
     const remember = () => {
-      frameState.value = measure();
+      frameState.value = safeReadingBounds(viewport);
       observedScrollTopState.value = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
       witnessState.value = null;
@@ -131,9 +126,12 @@ export function useReadingFocusVisibility(
         observedScrollTopState.value = viewport.scrollTop;
         if (!moved) return;
       }
-      // Layout-driven scrolling before the queued reveal must not re-witness a displaced target.
-      if (queuedRevealState.value) return;
-      // Defer re-witnessing until resize has observed the changed frame.
+      // Native layout can scroll after resize observation; keep its existing reading witness.
+      if (resizeScrollFrameState.value) {
+        if (witnessState.value) reveal();
+        return;
+      }
+      // Re-witness only once resize has observed the changed frame.
       if (
         next.top !== frameState.value.top ||
         next.bottom !== frameState.value.bottom ||
@@ -143,7 +141,7 @@ export function useReadingFocusVisibility(
       remember();
     };
     const reveal = () => {
-      frameState.value = measure();
+      frameState.value = safeReadingBounds(viewport);
       const target = witnessState.value;
       if (!target) return;
       if (
@@ -175,6 +173,14 @@ export function useReadingFocusVisibility(
       });
       // Its delayed native scroll event still belongs to this reveal, even after another reflow.
       observedScrollTopState.value = viewport.scrollTop;
+    };
+    const onResize = () => {
+      // The guard only expires; a late layout scroll is handled by onScroll itself.
+      if (!resizeScrollFrameState.value)
+        resizeScrollFrameState.value = window.requestAnimationFrame(() => {
+          resizeScrollFrameState.value = 0;
+        });
+      reveal();
     };
     const onPointerDown = (event: PointerEvent) => {
       pressedTargetState.value = event.target instanceof Element ? event.target : null;
@@ -221,18 +227,9 @@ export function useReadingFocusVisibility(
       }
       remember();
     };
-    const window = content.ownerDocument.defaultView!;
-    // Measuring during delivery resizes the reading frame's descendants in the same rendering
-    // update, and WebKit can deliver layout-driven scrolling after ResizeObserver.
-    const revealAfterLayout = () => {
-      if (queuedRevealState.value) return;
-      queuedRevealState.value = window.requestAnimationFrame(() => {
-        queuedRevealState.value = 0;
-        reveal();
-      });
-    };
     remember();
-    const resize = new ResizeObserver(revealAfterLayout);
+    // CSS owns reader sizing; revealing focus here does not resize the observed content.
+    const resize = new ResizeObserver(onResize);
     resize.observe(viewport);
     resize.observe(content);
     content.ownerDocument.addEventListener("focusin", onFocus);
@@ -241,11 +238,12 @@ export function useReadingFocusVisibility(
     content.ownerDocument.addEventListener("pointercancel", clearPress, true);
     viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
     viewport.addEventListener("wheel", onWheel, { passive: true, capture: true });
-    // The retained DOM keeps its last measured height; clearing it would let a revealed reader
-    // expand and clamp native scroll positions before this effect remeasures.
     return () => {
       resize.disconnect();
-      if (queuedRevealState.value) window.cancelAnimationFrame(queuedRevealState.value);
+      if (resizeScrollFrameState.value) window.cancelAnimationFrame(resizeScrollFrameState.value);
+      // Retained hidden DOM keeps its last visible budget until CSS resumes on attachment.
+      const { top, bottom } = frameState.value;
+      viewport.style.setProperty(FRAME_HEIGHT_PROPERTY, `${Math.max(0, bottom - top)}px`);
       content.ownerDocument.removeEventListener("focusin", onFocus);
       content.removeEventListener("pointerdown", onPointerDown, true);
       content.ownerDocument.removeEventListener("pointerup", clearPress, true);

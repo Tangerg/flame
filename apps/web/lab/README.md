@@ -769,10 +769,11 @@ inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
 The existing Code reading scenario follows the same highlighted source and padded
 multiline draft through short reading frames in Chromium and WebKit, English and
-Chinese. After recording layout delivery, eight consecutive settled frames check
-the complete focused reader, a readable line, pointer access and clearance from
-Jump. The initial eight delivery frames remain in the same geometry attachment;
-those callbacks alone do not establish what the browser painted. Each resize now also
+Chinese. The first delivery sample can precede layout delivery; the following
+seven delivery samples and all eight settled samples require the complete focused
+reader, a readable line, pointer access and clearance from Jump. All sixteen samples
+remain in the same geometry attachment; those callbacks alone do not establish
+what the browser painted. Each resize now also
 retains the public Playwright Screencast's original JPEGs and a callback index with
 presentation timestamps, viewport dimensions and the resize request/acknowledgement
 times. Only byte-identical JPEGs share an attachment. Capture starts from a settled
@@ -781,10 +782,12 @@ resize must yield a frame at the requested dimensions after acknowledgement.
 Sampling, including WebKit's 25 fps limit and inherited frames during viewport
 changes, does not establish every native compositor frame. A consumed internal wheel retains
 that context through another resize. The same task opens its captured trajectory
-evidence, closes the hovered Close tooltip with Escape while retaining reader
-focus, then returns with Escape and continues the original draft at its verified
-caret endpoint. These CSS viewport changes complement separate native page-zoom
-qualification; the bounded reader does not show all 48 source lines at once.
+evidence and resizes that material while its source remains hidden. The first
+Escape closes the hovered Close tooltip while retaining reader focus; the next
+returns to the same literal source at its original scroll position and the
+unchanged draft. That draft continues at its verified caret endpoint. These CSS
+viewport changes complement separate native page-zoom qualification; the bounded
+reader does not show all 48 source lines at once.
 
 Code wrapping uses the shared `data-wrap` preference. Schedule dialogs and
 alertdialogs remain portaled and named, with background controls outside modal

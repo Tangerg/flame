@@ -23,6 +23,7 @@ const ms = stylex.create({
     width: "100%",
     minHeight: 0,
     flex: 1,
+    containerType: "size",
     overflowY: "auto",
     overscrollBehavior: "contain",
     scrollbarGutter: "stable both-edges",
