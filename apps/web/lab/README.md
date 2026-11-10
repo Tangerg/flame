@@ -410,6 +410,8 @@ or its draft. Composer observations include control bounds and secondary-label
 visibility. Named screen-reader outputs expose one snapshot in full and a compact
 reading projection for native accessibility tools with bounded text nodes. The
 Composer projection includes its scrollport's offset, viewport and content height.
+The transcript projection exposes its safe reading edges, measured capacity,
+scroll position and focused reader bounds and offsets in a separate bounded output.
 Editable values never enter these outputs. Disabling the option clears them and
 disconnects its observers and event listeners; clean qualification keeps it off.
 The same ResizeObserver tracks the current Panel body and Composer, so filtering,

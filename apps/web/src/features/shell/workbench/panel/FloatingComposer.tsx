@@ -23,9 +23,9 @@ const fc = stylex.create({
     bottom: 0,
     zIndex: 2,
     display: "flex",
-    // Keep the jump control, its gap, and focus clearance inside the conversation.
+    // Reading focus reserves history space; editing retains the existing jump clearance.
     maxHeight:
-      "calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
+      "min(var(--composer-reading-limit, 100%), calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px)))",
     flexDirection: "column",
   },
   bounded: {

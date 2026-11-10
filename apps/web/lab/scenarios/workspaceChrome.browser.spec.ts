@@ -527,9 +527,11 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   const observe = page.getByRole("checkbox", { name: "Observe layout", exact: true });
   const output = page.getByTestId("workspace-layout-observation");
   const readingOutput = page.getByTestId("workspace-reading-observation");
+  const transcriptOutput = page.getByTestId("transcript-reading-observation");
   await expect(observe).not.toBeChecked();
   await expect(output).toHaveText("");
   await expect(readingOutput).toHaveText("");
+  await expect(transcriptOutput).toHaveText("");
   await observe.click();
   await expect(observe).toBeChecked();
   await expect
@@ -590,6 +592,32 @@ test("Workspace layout observation is opt-in and preserves the material and draf
     return frames.at(-1)!.measured.width;
   };
   const initialComposerWidth = await expectObservedComposer("workspace-composer-initial-frames");
+  const messageAction = page.locator(".msg-scroll-viewport").getByRole("button", {
+    name: "Regenerate response",
+    exact: true,
+  });
+  await messageAction.focus();
+  await expect
+    .poll(async () =>
+      transcriptOutput.evaluate((node) => {
+        const viewport = document.querySelector<HTMLElement>(".msg-scroll-viewport")!;
+        const rect = viewport.getBoundingClientRect();
+        const style = getComputedStyle(viewport);
+        const focus = document.activeElement!;
+        const bounds = focus.getBoundingClientRect();
+        const reported = JSON.parse(node.textContent!) as {
+          frame: number[];
+          focus: { bounds: [number, number] } | null;
+        };
+        return (
+          reported.focus?.bounds[0] === bounds.top &&
+          reported.focus?.bounds[1] === bounds.bottom &&
+          reported.frame[0] === rect.top + parseFloat(style.scrollPaddingTop) &&
+          reported.frame[1] === rect.bottom - parseFloat(style.scrollPaddingBottom)
+        );
+      }),
+    )
+    .toBe(true);
   const search = page.getByRole("searchbox", { name: "Search this catalog", exact: true });
   const viewport = page.locator('[data-slot="workspace-view-body"]:visible');
   const reportedHeight = async () => {
@@ -644,6 +672,8 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   await expect(readingOutput).toContainText("runtime-review-035");
   await expect(readingOutput).not.toContainText(draft);
   await expect(composer).toHaveValue(draft);
+  await expect(transcriptOutput).toContainText('"frame":');
+  await expect(transcriptOutput).not.toContainText(draft);
   await expect(search).toHaveValue("runtime");
   expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
 
@@ -657,6 +687,7 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   await expect(observe).not.toBeChecked();
   await expect(output).toHaveText("");
   await expect(readingOutput).toHaveText("");
+  await expect(transcriptOutput).toHaveText("");
   await search.fill("");
   await page.setViewportSize({ width: 1400, height: 900 });
   const retired = await output.evaluate(async (node) => {
@@ -669,6 +700,7 @@ test("Workspace layout observation is opt-in and preserves the material and draf
   });
   expect(retired).toEqual(["", "", ""]);
   await expect(readingOutput).toHaveText("");
+  await expect(transcriptOutput).toHaveText("");
   await expect(composer).toHaveValue(draft);
   expect(await viewport.evaluate((node, before) => node === before, reader)).toBe(true);
 });

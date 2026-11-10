@@ -39,7 +39,14 @@ import {
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
   notices: { maxHeight: "40%", paddingBlock: 0 },
-  queryable: { containerType: "inline-size", "--transcript-jump-gap": space.s2 },
+  queryable: {
+    containerType: "inline-size",
+    "--transcript-jump-gap": space.s2,
+    "--composer-reading-limit": {
+      default: "100%",
+      ":has(.msg-scroll-viewport:focus-within)": "calc(100% / 3)",
+    },
+  },
   emptyQuery: { containerType: "size", containerName: "empty-conversation" },
   rail: {
     position: "absolute",

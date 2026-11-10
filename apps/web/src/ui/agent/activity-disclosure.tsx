@@ -249,13 +249,23 @@ export function AgentActivityDisclosure({
       if (fits) body.style.setProperty("--disclosure-header-height", `${height}px`);
       else body.style.removeProperty("--disclosure-header-height");
     };
-    const observer = new ResizeObserver(measure);
+    const view = header.ownerDocument.defaultView!;
+    let frame = 0;
+    // Publishing clearance resizes the observed content; deliver it outside that resize cycle.
+    const observer = new ResizeObserver(() => {
+      if (!frame)
+        frame = view.requestAnimationFrame(() => {
+          frame = 0;
+          measure();
+        });
+    });
     observer.observe(header, { box: "border-box" });
     observer.observe(scrollViewport, { box: "border-box" });
     observer.observe(content, { box: "border-box" });
     measure();
     return () => {
       observer.disconnect();
+      if (frame) view.cancelAnimationFrame(frame);
       header.removeAttribute("data-sticky");
       body.removeAttribute("data-activity-clearance");
       body.style.removeProperty("--disclosure-header-height");

@@ -284,6 +284,136 @@ for (const profile of [
       await page.setViewportSize({ width: 640, height: 400 });
       await retained();
       await capture("arguments-narrow");
+      const reflow = [];
+      for (let zoom = 200; zoom <= 300; zoom += 5) {
+        await page.setViewportSize({
+          width: Math.floor(112000 / zoom),
+          height: Math.floor(75500 / zoom),
+        });
+        reflow.push(
+          await args.evaluate(async (node) => {
+            for (let frame = 0; frame < 8; frame += 1) await new Promise(requestAnimationFrame);
+            const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+            const rect = viewport.getBoundingClientRect();
+            const style = getComputedStyle(viewport);
+            return {
+              width: innerWidth,
+              height: innerHeight,
+              bounds: node.getBoundingClientRect().toJSON(),
+              top: rect.top + parseFloat(style.scrollPaddingTop),
+              bottom: rect.bottom - parseFloat(style.scrollPaddingBottom),
+              scroll: viewport.scrollTop,
+            };
+          }),
+        );
+      }
+      await testInfo.attach(`continuous-tool-reflow-${locale}`, {
+        body: JSON.stringify(reflow),
+        contentType: "application/json",
+      });
+      for (const frame of reflow) {
+        expect(frame.bounds.top).toBeGreaterThanOrEqual(frame.top - 1);
+        expect(frame.bounds.bottom).toBeLessThanOrEqual(frame.bottom + 1);
+      }
+      await page.setViewportSize({ width: 373, height: 251 });
+      await retained();
+      await args.evaluate(async () => {
+        for (let frame = 0; frame < 8; frame += 1) await new Promise(requestAnimationFrame);
+      });
+      await page.keyboard.press("End");
+      await atTail(args);
+      const observeReading = () =>
+        args.evaluate(async (node, jumpLabel) => {
+          const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+          const jump = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+            (button) => button.getAttribute("aria-label") === jumpLabel,
+          );
+          const frames = [];
+          for (let frame = 0; frame < 8; frame += 1) {
+            const bounds = node.getBoundingClientRect();
+            const outside = viewport.getBoundingClientRect();
+            const style = getComputedStyle(viewport);
+            const top = outside.top + parseFloat(style.scrollPaddingTop);
+            const bottom = outside.bottom - parseFloat(style.scrollPaddingBottom);
+            const action = jump?.getBoundingClientRect();
+            const overlap = action
+              ? Math.max(
+                  0,
+                  Math.min(bounds.right, action.right) - Math.max(bounds.left, action.left),
+                ) *
+                Math.max(
+                  0,
+                  Math.min(bounds.bottom, action.bottom) - Math.max(bounds.top, action.top),
+                )
+              : 0;
+            const padding = getComputedStyle(node);
+            const left = bounds.left + parseFloat(padding.paddingLeft);
+            const right = bounds.right - parseFloat(padding.paddingRight);
+            const start = bounds.top + parseFloat(padding.paddingTop);
+            const end = bounds.bottom - parseFloat(padding.paddingBottom);
+            // Native overlay scrollbars can occupy the padding outside the source area.
+            const points = [
+              [left, start],
+              [right, start],
+              [bounds.left + bounds.width / 2, bounds.top + bounds.height / 2],
+              [left, end],
+              [right, end],
+            ];
+            const hits = points.map(([x, y]) => {
+              const hit = document.elementFromPoint(x!, y!);
+              return {
+                point: [x, y],
+                tag: hit?.localName,
+                label: hit?.getAttribute("aria-label"),
+                slot: hit?.getAttribute("data-slot"),
+                contained: hit !== null && node.contains(hit),
+              };
+            });
+            frames.push({
+              bounds: bounds.toJSON(),
+              client: [node.clientWidth, node.clientHeight],
+              top,
+              bottom,
+              overlap,
+              hits,
+              readable: hits.every((hit) => hit.contained),
+            });
+            await new Promise(requestAnimationFrame);
+          }
+          return frames;
+        }, t("chat.jumpToBottom"));
+      const expectReading = async (label: string) => {
+        const reading = await observeReading();
+        await testInfo.attach(`tool-reading-${label}-${locale}`, {
+          body: JSON.stringify(reading),
+          contentType: "application/json",
+        });
+        for (const frame of reading) {
+          expect(frame.bounds.top).toBeGreaterThanOrEqual(frame.top - 1);
+          expect(frame.bounds.bottom).toBeLessThanOrEqual(frame.bottom + 1);
+          expect(frame.overlap, "floating actions must remain outside the focused reader").toBe(0);
+          expect(frame.readable, "the focused code reader must admit pointer reading").toBe(true);
+        }
+      };
+      await expectReading("short");
+      await capture("arguments-short");
+      await atTail(args);
+      await args.hover();
+      const beforeWheel = await args.evaluate((node) => node.scrollTop);
+      await page.mouse.wheel(0, -80);
+      await expect.poll(() => args.evaluate((node) => node.scrollTop)).toBeLessThan(beforeWheel);
+      for (const size of [
+        { width: 504, height: 316 },
+        { width: 373, height: 251 },
+      ]) {
+        await page.setViewportSize(size);
+        await args.evaluate(async () => {
+          for (let frame = 0; frame < 8; frame += 1) await new Promise(requestAnimationFrame);
+        });
+        await retained();
+        await expectReading(`pointer-${size.width}`);
+      }
+      await capture("arguments-pointer-restored");
       await page.setViewportSize({ width: 1120, height: 720 });
       await retained();
       await page.keyboard.press("End");

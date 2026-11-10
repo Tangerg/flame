@@ -278,6 +278,19 @@ describe("AgentActivityDisclosure", () => {
 });
 
 function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } = {}) {
+  const frames = new Map<number, FrameRequestCallback>();
+  let lastFrame = 0;
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    frames.set(++lastFrame, callback);
+    return lastFrame;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+  const frame = () =>
+    act(() => {
+      const queued = [...frames.values()];
+      frames.clear();
+      for (const callback of queued) callback(performance.now());
+    });
   const observers: Array<{ nodes: Set<Element>; callback: ResizeObserverCallback }> = [];
   vi.stubGlobal(
     "ResizeObserver",
@@ -336,7 +349,7 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
   vi.spyOn(headerNode, "getBoundingClientRect").mockImplementation(
     () => new DOMRect(0, 46, 600, shape.header),
   );
-  const resize = (node: Element) =>
+  const resize = (node: Element, { deliverFrame = true } = {}) => {
     act(() => {
       for (const observer of observers)
         if (observer.nodes.has(node))
@@ -353,6 +366,8 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
             {} as ResizeObserver,
           );
     });
+    if (deliverFrame) frame();
+  };
   resize(headerNode);
   const reading = () => ({
     sticky: headerNode.hasAttribute("data-sticky"),
@@ -370,6 +385,7 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
     trigger,
     region,
     resize,
+    frame,
     reading,
     observed,
   };
@@ -379,6 +395,21 @@ describe("AgentActivityDisclosure reading space", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("publishes the current clearance after resize delivery and cancels it on unmount", () => {
+    const s = readingScenario();
+    s.viewport.style.scrollPaddingBottom = "340px";
+    s.resize(s.content, { deliverFrame: false });
+    expect(s.reading()).toEqual({ sticky: true, clearance: true, reserved: "30px" });
+    s.frame();
+    expect(s.reading()).toEqual({ sticky: false, clearance: false, reserved: "" });
+
+    s.viewport.style.scrollPaddingBottom = "80px";
+    s.resize(s.content, { deliverFrame: false });
+    s.unmount();
+    s.frame();
+    expect(s.reading()).toEqual({ sticky: false, clearance: false, reserved: "" });
   });
 
   it("reserves its sticky summary only while the safe reading frame keeps body room", () => {

@@ -18,6 +18,16 @@ function scenario() {
   });
 }
 
+function scrollableScenario() {
+  const s = scenario();
+  s.target.style.overflowY = "auto";
+  Object.defineProperties(s.target, {
+    clientHeight: { get: () => s.shape.targetHeight },
+    scrollHeight: { value: 200 },
+  });
+  return s;
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -56,6 +66,86 @@ describe("reading focus geometry", () => {
     expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("240px");
     expect(s.viewport.scrollTop).toBe(0);
   });
+
+  it("keeps focused reading through its own scroll while clearance temporarily fills the frame", () => {
+    const s = scenario();
+    s.target.style.overflowY = "auto";
+    s.shape.height = 80;
+    s.resize();
+    s.target.scrollTop = 12;
+    fireEvent.scroll(s.target, { bubbles: false });
+
+    s.shape.height = 240;
+    s.resize();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+    expect(s.target.scrollTop).toBe(12);
+  });
+
+  it("leaves deliberate wheel reading alone after a focused reader scrolls in a filled frame", () => {
+    const s = scenario();
+    s.target.style.overflowY = "auto";
+    s.shape.height = 80;
+    s.resize();
+    fireEvent.wheel(s.target, { deltaY: 12 });
+    s.target.scrollTop = 12;
+    fireEvent.scroll(s.target, { bubbles: false });
+
+    s.shape.height = 240;
+    s.resize();
+
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(s.target);
+    expect(s.target.scrollTop).toBe(12);
+  });
+
+  it("retains a visible focused reader after scrolling its contents with a wheel", () => {
+    const s = scrollableScenario();
+    s.resize(s.content, { deliverFrame: false });
+    fireEvent.wheel(s.target, { deltaY: 12 });
+    s.target.scrollTop = 12;
+    fireEvent.scroll(s.target, { bubbles: false });
+    s.frame();
+
+    s.shape.height = 240;
+    s.resize();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+    expect(s.target.scrollTop).toBe(12);
+  });
+
+  it("keeps a reader through resize before its consumed wheel scroll is delivered", () => {
+    const s = scrollableScenario();
+    fireEvent.wheel(s.target, { deltaY: 12 });
+    s.shape.height = 240;
+    s.resize();
+    s.target.scrollTop = 12;
+    fireEvent.scroll(s.target, { bubbles: false });
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+    expect(s.target.scrollTop).toBe(12);
+  });
+
+  it.each([
+    { top: 0, delta: -12 },
+    { top: 176, delta: 12 },
+  ])(
+    "retires focus following when a wheel can chain beyond the reader ($top px)",
+    ({ top, delta }) => {
+      const s = scrollableScenario();
+      s.target.scrollTop = top;
+      fireEvent.wheel(s.target, { deltaY: delta });
+      s.shape.height = 240;
+      s.resize();
+
+      expect(s.viewport.scrollTop).toBe(0);
+      expect(document.activeElement).toBe(s.target);
+      expect(s.target.scrollTop).toBe(top);
+    },
+  );
 
   it("retains the measured height while hidden and measures again on reattachment", () => {
     const s = scenario();
@@ -360,6 +450,20 @@ describe("reading focus geometry", () => {
     expect(s.viewport.scrollTop).toBe(0);
 
     s.shape.top = 225;
+    fireEvent.scroll(s.viewport);
+    s.resize(s.content);
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(220);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps reading when its own reveal scroll arrives after another content reflow", () => {
+    const s = scenario();
+    s.shape.height = 300;
+    s.resize();
+    expect(s.bounds().bottom).toBeLessThanOrEqual(220);
+
+    s.shape.top += 40;
     fireEvent.scroll(s.viewport);
     s.resize(s.content);
 

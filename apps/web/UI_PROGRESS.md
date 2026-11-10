@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. The worktree fast-forwards from the published `2182073f9` pause checkpoint to main `58a3995da`, incorporating three commits across 449 files without conflicts. The material-header change now passes the complete merged Web check, 70 existing Lab browser tasks and actual Wails English/light/14 px and Chinese/dark/18 px checks at 200%/300%. The only new source change makes syntax-foreground assertions follow source characters rather than incidental span boundaries. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The current Tool-reading repair preserves usable source space, focus and exact drafts through continuous reflow, internal wheel reading and native window changes. The merged Web check passes **433 files / 4,824 tests**, the targeted existing Lab selection passes **34 tasks**, and supported native verification passes. Actual Wails English/light/14 px and Chinese/dark/18 px tasks qualify 200%/300% reading and return to editing. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3728,7 +3728,67 @@ reservations needed by backend accounting. No substitute count or byte model is
 invented. Capacity coverage, remaining migrated interactions and whole-product
 visual acceptance remain unfinished; continue qualification in this same Lab.
 
-### Tool action alignment and current interaction contracts (2026-11-07)
+### Tool reading, action alignment and current interaction contracts (2026-11-10)
+
+Actual Wails inspection exposes a source reader reduced to a strip and covered
+by the floating Jump action at 300%. The frozen original fails both existing
+English/Chinese short-viewport regressions. `ChatStream` now reserves history
+space while focus is in the transcript: its existing floating Composer is capped
+at one-third of the pane. Returning to editing restores its existing height
+limit. The same DOM readers, draft and Composer scrollport remain mounted.
+
+The shared `readingFollow` owner distinguishes scrolling a focused reader's
+contents from leaving its visible frame. A consumed internal wheel retains the
+reading witness; a wheel at either edge or outside that reader still retires
+following. The owner's own reveal records its resulting offset immediately, so
+a delayed native scroll event after another reflow cannot erase that witness.
+Seven regression cases cover these event orders and manual-scroll boundaries.
+Continuous full-motion reflow also exposes an Activity Disclosure ResizeObserver
+loop: publishing clearance changes observed content. Its existing observer now
+coalesces that publication into the next animation frame and cancels it on
+teardown, with one new regression. No console guard or deadline is weakened.
+
+The existing Tool Inspector WebKit tasks retain exact source, draft, focus and
+node identity through 200%–300% effective viewport sizes, then wheel inside the
+reader and resize twice. Eight-frame geometry checks require the complete reader
+inside the safe frame and zero overlap with Jump. Pointer probes use the padded
+source area because a native overlay scrollbar occupies outer padding. Real
+native page zoom is verified separately. The Lab's existing opt-in layout
+observation adds bounded transcript edges, capacity and focused-reader offsets;
+it captures no editable values and disconnects when disabled. There is no second
+fixture, visual runner, production observer or competing scroll state.
+
+The final existing-Lab selection passes **34 tasks** without skips, retries or
+flaky results. All **103 final PNGs** are reviewed: 100 exactly match previously
+inspected bytes, and the three new images receive direct inspection. Focused
+owner checks pass **101 tests**. The complete Web check passes **433 files /
+4,824 tests** in **338.562 s**, including Runtime integration and the production
+build; `make check-native` passes in **53.922 s**. Existing macOS linker-version
+warnings remain. An earlier cold Web invocation times out in Runtime setup;
+building its normal prerequisites resolves that setup failure. Earlier failing
+layout, delayed-scroll, wheel and resize-loop candidates remain diagnostic
+evidence rather than accepted results.
+
+The final private Wails **v3.1.0** host serves the exact **488 canonical Lab
+assets**. English/light/14 px/full motion and Chinese/dark/18 px/motion off
+qualify actual 200%/300% source reading, wheel input, Window Zoom/restore with
+reader focus retained, keyboard return and exact continued padded drafts. The
+Composer footer remains keyboard-reachable at 300%; Send is focused but never
+activated. All **14 final native captures** are inspected and both processes
+quit normally. VoiceOver, physical IME composition, live Runtime and the rest
+of the product are outside this bounded acceptance.
+
+Read-only ZCode Tool Parameters/Output and HeroUI bounded-reader contracts,
+together with better-layout and better-accessibility guidance, inform this
+repair. Claude Code CLI returns an expired OAuth error; primary implementation,
+review and qualification continue as authorized. All **46 production native
+inputs** and the primary checkout remain unchanged. The private host is
+unregistered, its server stops, six private Library paths return to absence,
+and three pre-existing empty WebKit helper roots retain their identities and
+flags. All twelve captured output/cache roots return to their original contents
+and modes or absence. No functional checks run against restored outputs.
+
+The earlier action-alignment qualification remains applicable:
 
 The broader migrated interaction audit exposes a real shared layout defect:
 copy-only tool rows and rows with a file opener leave different widths before

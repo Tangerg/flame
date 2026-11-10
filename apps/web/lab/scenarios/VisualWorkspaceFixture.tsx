@@ -144,6 +144,33 @@ function captureComposerLayout(view: Window, composer: HTMLElement | null) {
   };
 }
 
+function captureTranscriptLayout(view: Window, active: Element | null) {
+  const viewport = view.document.querySelector<HTMLElement>(".msg-scroll-viewport");
+  if (!viewport) return null;
+  const rect = viewport.getBoundingClientRect();
+  const style = view.getComputedStyle(viewport);
+  const focus = active instanceof HTMLElement && viewport.contains(active) ? active : null;
+  const bounds = focus?.getBoundingClientRect();
+  return {
+    frame: [
+      rect.top + (parseFloat(style.scrollPaddingTop) || 0),
+      rect.bottom - (parseFloat(style.scrollPaddingBottom) || 0),
+      parseFloat(style.getPropertyValue("--reading-frame-height")),
+      viewport.scrollTop,
+      viewport.scrollHeight,
+    ],
+    focus:
+      focus && bounds
+        ? {
+            tag: focus.localName,
+            label: focus.getAttribute("aria-label"),
+            bounds: [bounds.top, bounds.bottom],
+            scroll: [focus.scrollTop, focus.clientHeight, focus.scrollHeight],
+          }
+        : null,
+  };
+}
+
 function captureWorkspaceLayout({
   view,
   scope,
@@ -201,6 +228,7 @@ function captureWorkspaceLayout({
     focus: active ? { tag: active.localName, label: active.getAttribute("aria-label") } : null,
     blur,
     reading: reading ? { name: observationTargetName(reading), rect: layoutRect(reading) } : null,
+    transcript: captureTranscriptLayout(view, active),
     composer: captureComposerLayout(view, composer),
   };
 }
@@ -258,12 +286,15 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
   const scope = mainViewId ?? dock.activeViewId;
   const output = useRef<HTMLOutputElement>(null);
   const readingOutput = useRef<HTMLOutputElement>(null);
+  const transcriptOutput = useRef<HTMLOutputElement>(null);
   useLayoutEffect(() => {
     const node = output.current;
     const readingNode = readingOutput.current;
-    if (!node || !readingNode) return;
+    const transcriptNode = transcriptOutput.current;
+    if (!node || !readingNode || !transcriptNode) return;
     node.textContent = "";
     readingNode.textContent = "";
+    transcriptNode.textContent = "";
     if (!enabled) return;
     const document = node.ownerDocument;
     const view = document.defaultView!;
@@ -275,6 +306,8 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       observedControls: null as Element | null,
       observedBody: null as Element | null,
       observedComposer: null as Element | null,
+      observedTranscript: null as Element | null,
+      observedTranscriptContent: null as Element | null,
       blur: null as FocusDeparture | null,
     };
     const capture = () => {
@@ -295,11 +328,15 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       // Content can reflow inside an unchanged viewport.
       const body = reader?.querySelector('[data-slot="panel-body"]') ?? null;
       const composer = document.querySelector<HTMLElement>('[data-slot="composer-root"]');
+      const transcript = document.querySelector(".msg-scroll-viewport");
+      const transcriptContent = transcript?.firstElementChild ?? null;
       for (const [before, next] of [
         [state.observedReader, reader],
         [state.observedControls, controls],
         [state.observedBody, body],
         [state.observedComposer, composer],
+        [state.observedTranscript, transcript],
+        [state.observedTranscriptContent, transcriptContent],
       ]) {
         if (before === next) continue;
         if (before) observer.unobserve(before);
@@ -309,6 +346,8 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       state.observedControls = controls;
       state.observedBody = body;
       state.observedComposer = composer;
+      state.observedTranscript = transcript;
+      state.observedTranscriptContent = transcriptContent;
       const snapshot = captureWorkspaceLayout({
         view,
         scope,
@@ -322,6 +361,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       node.textContent = JSON.stringify(snapshot);
       // Native accessibility snapshots bound each text node independently.
       readingNode.textContent = JSON.stringify(compactWorkspaceLayout(snapshot));
+      transcriptNode.textContent = JSON.stringify(snapshot.transcript);
     };
     const schedule = () => {
       if (!state.frame) state.frame = view.requestAnimationFrame(capture);
@@ -358,6 +398,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       view.visualViewport?.removeEventListener("resize", schedule);
       node.textContent = "";
       readingNode.textContent = "";
+      transcriptNode.textContent = "";
     };
   }, [enabled, scope]);
   return (
@@ -375,6 +416,13 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
         aria-label="Workspace reading observation"
         aria-live="off"
         data-testid="workspace-reading-observation"
+      />
+      <output
+        ref={transcriptOutput}
+        className="sr-only"
+        aria-label="Transcript reading observation"
+        aria-live="off"
+        data-testid="transcript-reading-observation"
       />
     </>
   );

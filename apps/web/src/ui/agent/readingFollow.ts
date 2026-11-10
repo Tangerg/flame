@@ -122,6 +122,8 @@ export function useReadingFocusVisibility(
       witnessState.value = null;
     };
     const onScroll = (event: Event) => {
+      // A focused reader's internal scroll does not move its frame during reflow.
+      if (event.target !== viewport && event.target === content.ownerDocument.activeElement) return;
       const next = safeReadingBounds(viewport);
       // Native zoom can notify before its frame or content reflow is observed, without moving.
       if (event.target === viewport) {
@@ -171,12 +173,33 @@ export function useReadingFocusVisibility(
         top: viewport.scrollTop + (alignStart ? Math.floor(delta) : Math.ceil(delta)),
         behavior: "instant",
       });
+      // Its delayed native scroll event still belongs to this reveal, even after another reflow.
+      observedScrollTopState.value = viewport.scrollTop;
     };
     const onPointerDown = (event: PointerEvent) => {
       pressedTargetState.value = event.target instanceof Element ? event.target : null;
     };
     const clearPress = () => {
       pressedTargetState.value = null;
+    };
+    const onWheel = (event: WheelEvent) => {
+      const reader = content.ownerDocument.activeElement;
+      if (
+        reader instanceof HTMLElement &&
+        reader !== viewport &&
+        event.target instanceof Node &&
+        reader.contains(event.target) &&
+        ["auto", "scroll"].includes(getComputedStyle(reader).overflowY) &&
+        withinSafeReading(reader, viewport)
+      ) {
+        // A consumed wheel can report its scroll only after the next native reflow.
+        const remaining =
+          event.deltaY < 0
+            ? reader.scrollTop
+            : reader.scrollHeight - reader.clientHeight - reader.scrollTop;
+        if (event.deltaY !== 0 && remaining > 0) return;
+      }
+      retire();
     };
     const onFocus = () => {
       const active = content.ownerDocument.activeElement;
@@ -217,7 +240,7 @@ export function useReadingFocusVisibility(
     content.ownerDocument.addEventListener("pointerup", clearPress, true);
     content.ownerDocument.addEventListener("pointercancel", clearPress, true);
     viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
-    viewport.addEventListener("wheel", retire, { passive: true, capture: true });
+    viewport.addEventListener("wheel", onWheel, { passive: true, capture: true });
     // The retained DOM keeps its last measured height; clearing it would let a revealed reader
     // expand and clamp native scroll positions before this effect remeasures.
     return () => {
@@ -228,7 +251,7 @@ export function useReadingFocusVisibility(
       content.ownerDocument.removeEventListener("pointerup", clearPress, true);
       content.ownerDocument.removeEventListener("pointercancel", clearPress, true);
       viewport.removeEventListener("scroll", onScroll, true);
-      viewport.removeEventListener("wheel", retire, true);
+      viewport.removeEventListener("wheel", onWheel, true);
     };
   }, [attached, scrollRef, contentRef, state, stopScroll]);
 }
