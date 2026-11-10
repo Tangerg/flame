@@ -389,7 +389,6 @@ describe("full-width material picker", () => {
       });
 
       const back = screen.getByRole("button", { name: "Back to Subagents" });
-      expect(back.textContent).toBe("Back to Subagents");
       fireEvent.click(back);
       expect(testClient.navigation.get().view).toBe("subagents");
       expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(evidence);

@@ -34,9 +34,7 @@ export function WorkspaceWindowHeader({
   const icon = knownIconName(view?.icon);
   return (
     <AgentSurfaceHeader corner="window" data-slot="workspace-window-header" onKeyDown={onKeyDown}>
-      {exit.kind === "return" && (
-        <ReturnButton label={exit.label} onReturn={exit.onReturn} showLabel />
-      )}
+      {exit.kind === "return" && <ReturnButton label={exit.label} onReturn={exit.onReturn} />}
       {icon && (
         <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
       )}

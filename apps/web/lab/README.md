@@ -455,6 +455,13 @@ visits retire the old status tip, return to the conversation when the captured
 opener has been replaced, and preserve the exact padded draft for continued input.
 These cases extend the existing Workspace scene and verification configuration.
 
+The material-header task opens the real Diff inspection in the Dock and then
+full width, retaining its source. At 18 px, both engines and languages check
+320, 373, 480 and 1120 px frames: the name remains visible, fits completely from
+373 px, and every header action retains a distinct 24 px target. Keyboard and
+pointer return tips preserve the full destination. Both returns retain the
+literal padded Composer draft for continued input after enlargement.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

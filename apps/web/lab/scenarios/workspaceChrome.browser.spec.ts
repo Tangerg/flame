@@ -321,6 +321,148 @@ for (const browserName of ["chromium", "webkit"] as const) {
   }
 }
 
+for (const browserName of ["chromium", "webkit"] as const) {
+  const materialTest = test.extend({ browserName });
+  for (const profile of [
+    { locale: "en", theme: "light", messages: en },
+    { locale: "zh", theme: "dark", messages: zh },
+  ]) {
+    materialTest(
+      `${browserName} full-width material preserves its name and return path in ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = profile.messages;
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await page.goto(
+          `/lab/fixture.html?${new URLSearchParams({
+            fixture: "workspace",
+            state: "dock-schedules",
+            "agent-state": "running",
+            locale: profile.locale,
+            theme: profile.theme,
+            "font-size": "18",
+            motion: "off",
+          })}`,
+        );
+        await expectLabReady(page);
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+        await page.getByRole("button", { name: messages["dock.action.hide"], exact: true }).click();
+        const conversation = page.getByRole("region", {
+          name: messages["shell.region.conversation"],
+          exact: true,
+        });
+        const composer = conversation.getByRole("textbox", {
+          name: messages["composer.input.label"],
+          exact: true,
+        });
+        const draft = "  Keep this draft while identifying the material. 保留原文。  ";
+        await composer.fill(draft);
+        const changes = conversation.getByRole("button", {
+          name: profile.locale === "zh" ? /^查看工作区差异/ : /^Review working tree changes/,
+        });
+        await changes.focus();
+        await page.keyboard.press("Enter");
+        await page
+          .getByRole("button", { name: messages["dock.action.expand"], exact: true })
+          .click();
+        const header = page.locator('[data-slot="workspace-window-header"]');
+        const title = header.locator(":scope > span[title]");
+        await expect(title).toHaveText("Workspace diff");
+        const frames = [];
+        for (const width of [373, 320, 480, 1120]) {
+          await page.setViewportSize({ width, height: 568 });
+          const geometry = await header.evaluate(async (node) => {
+            await new Promise(requestAnimationFrame);
+            await new Promise(requestAnimationFrame);
+            const title = node.querySelector<HTMLElement>(":scope > span[title]")!;
+            return {
+              width: node.clientWidth,
+              total: node.scrollWidth,
+              title: {
+                width: title.clientWidth,
+                total: title.scrollWidth,
+                rect: title.getBoundingClientRect().toJSON(),
+              },
+              actions: Array.from(node.querySelectorAll("button"), (button) => {
+                const rect = button.getBoundingClientRect();
+                const hit = node.ownerDocument.elementFromPoint(
+                  rect.x + rect.width / 2,
+                  rect.y + rect.height / 2,
+                );
+                return {
+                  label: button.getAttribute("aria-label"),
+                  rect: rect.toJSON(),
+                  reachable: hit !== null && button.contains(hit),
+                };
+              }),
+            };
+          });
+          frames.push(geometry);
+          await testInfo.attach(`material-header-${width}-geometry`, {
+            body: JSON.stringify(geometry),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`material-header-${width}-view`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+        }
+        for (const frame of frames) {
+          expect(frame.total, `header at ${frame.width}px`).toBeLessThanOrEqual(frame.width);
+          expect(frame.title.width, `title at ${frame.width}px`).toBeGreaterThan(0);
+          if (frame.width >= 373)
+            expect(frame.title.total, `complete name at ${frame.width}px`).toBeLessThanOrEqual(
+              frame.title.width,
+            );
+          for (const action of frame.actions) {
+            expect(action.reachable, action.label ?? "material action").toBe(true);
+            expect(action.rect.width).toBeGreaterThanOrEqual(24);
+            expect(action.rect.height).toBeGreaterThanOrEqual(24);
+          }
+        }
+        await page.setViewportSize({ width: 373, height: 243 });
+        const back = header.getByRole("button", {
+          name: messages["dock.action.returnToConversation"],
+          exact: true,
+        });
+        await page
+          .getByRole("button", { name: "Expand the workspace fixture sidebar", exact: true })
+          .focus();
+        await page.keyboard.press("Tab");
+        await expect(back).toBeFocused();
+        await expectCentreHit(back);
+        await expect(page.getByRole("tooltip")).toHaveText(
+          messages["dock.action.returnToConversation"]!,
+        );
+        await testInfo.attach("material-header-keyboard-return", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        await page.keyboard.press("Enter");
+        await expect(conversation).toBeFocused();
+        await expect(composer).toHaveValue(draft);
+        await changes.click();
+        await expect(header).toBeVisible();
+        await back.hover();
+        await expect(page.getByRole("tooltip")).toHaveText(
+          messages["dock.action.returnToConversation"]!,
+        );
+        await testInfo.attach("material-header-pointer-return", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        await back.click();
+        await expect(conversation).toBeFocused();
+        await expect(composer).toHaveValue(draft);
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await composer.focus();
+        await page.keyboard.press("ControlOrMeta+ArrowDown");
+        await page.keyboard.insertText(" Continue.");
+        await expect(composer).toHaveValue(draft + " Continue.");
+      },
+    );
+  }
+}
+
 async function expectBelowWindowControl(content: Locator, toggle: Locator) {
   await expect(content).toBeVisible();
   const control = (await toggle.boundingBox())!;

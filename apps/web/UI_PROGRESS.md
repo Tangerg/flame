@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. The running conversation header now preserves space for its title, Diff and Dock actions; hidden status tips retire with their owner. The existing Workspace/content selection passes **60 / 60** cases, shared UI passes **280 tests** plus its independent packed consumer, and the production native gate passes. Actual Wails checks the same **492 canonical Lab assets**, including English/light/14 px and Chinese/dark/18 px headers at native **200% / 300%**, full-status menu reading, material return and exact continued drafts. The separate short-window Goal/Composer allocation defect remains visible and unresolved. Whole-product visual acceptance remains unfinished and the goal stays active.
+UI polishing is **paused at the user's request**. The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. This checkpoint follows the published `cfd4ca463` baseline; its material-header candidate preserves the name with the existing compact return arrow. Its Workspace/content selection passes **64 / 64** cases, short Composer reachability passes **4 / 4**, and Shell units pass **204 tests**. Baseline native review confirms that keyboard focus reveals the bounded Goal/Composer controls; the earlier screenshot alone did not establish another allocation defect. Final native qualification of the new return presentation and remaining image review are pending. The user explicitly requests committing and pushing this pause checkpoint to main. Resume UI work from the full-width material section below only when requested; whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20902,10 +20902,11 @@ images are inspected, including five complete contact sheets.
 Native page zoom keeps the header's inline presentation in these captures, while
 ordinary narrow containers show the stacked form. The flexible group still
 preserves all action targets. This observation is not a claim that native zoom
-and browser viewport resizing select identical container styles. The existing
-short-window Goal/Composer clipping remains visible, and the English full-width
-material title is heavily truncated beside Back at 300%. These captured leads
-need their own reproduction and ownership trace before another change. Pending
+and browser viewport resizing select identical container styles. Cropped
+Goal/Composer portions and a heavily truncated English full-width material title
+at 300% supplied separate leads. The following section validates bounded focus
+revelation for the former and reproduces the title-capacity defect for the latter;
+cropping alone did not establish another allocation defect. Pending
 hover before hiding, OS IME, VoiceOver speech, RTL and live Runtime execution are
 not newly qualified. No product-wide visual certification is claimed.
 
@@ -20921,6 +20922,89 @@ restoration, only document formatting, normal static hooks and read-only integri
 checks run. The reviewed batch is published to main; its captured qualification
 tree is retired after verified in-memory evidence retention. No storage, protocol
 or user-data migration is needed.
+
+### Full-width material identity and return (2026-11-10)
+
+The native header lead reproduces on the preceding `cfd4ca463` revision with
+**492 byte-identical canonical Lab assets**. At native English/light/14 px and
+**300%**, the non-shrinking text return action leaves only `W` of `Workspace diff`.
+The same Lab scene at 18 px gives the English title **zero width** at 373 px,
+with a **377 px** header; at 320 px it reaches **356 px**. Chinese keeps only
+**61–62 px** of a **124 px** name at 373 px. All four Chromium/WebKit and EN/ZH
+baseline tasks fail in **19.805 s**. Sixteen baseline images are inspected.
+
+`ReturnButton.tsx` now uses its existing compact arrow presentation for both
+ordinary Dock and full-width material. `WorkspaceWindowHeader.tsx` stops
+requesting the text variant; its now-unused `showLabel` option and label measure
+are removed. The same label, Tooltip, button size, focus treatment and captured
+return callback survive. The material title receives the recovered space, and
+Close retains its separate existing behavior. No navigation, Runtime, viewport
+observer, breakpoint or alternate header implementation is added.
+
+Better Layout and Accessibility guide readable object identity, stable actions
+and full destination names. Vercel React Best Practices supports the simple
+render-only change without another effect or derived state. Flame's existing
+Dock is the direct presentation precedent; read-only ZCode's action section
+also reserves compact essential actions. HeroUI's bounded ScrollShadow example
+supports the separate Composer reachability review without supplying another
+scrolling implementation. A **17.474 s** Claude Code CLI candidate changes only
+the two permitted disposable copies; five protected context files remain
+unchanged. Primary reviews and applies that exact production candidate.
+
+The new cases extend `workspaceChrome.browser.spec.ts` and the same fixture,
+catalog and Playwright configuration. They enter the actual Diff inspection in
+the Dock, open full width, resize through **373 / 320 / 480 / 1120 px**, and check
+whole-header overflow, title capacity and independent action targets. At the
+short **373 × 243 px** frame, actual Tab reads the full return Tooltip and Enter
+returns to Conversation. A pointer visit repeats the return and preserves the
+exact padded draft before enlargement and continued input. All four candidate
+cases pass in **22.122 s**, without skips, retries, flaky cases or global errors;
+their 24 images are inspected.
+
+The preceding handoff's Goal/Composer allocation claim was too strong. Before
+this production change, actual Wails at **373.33 × 251.67 CSS px**, DPR 6, retains
+the same padded draft while Tab reveals all seven footer controls, including
+Steer and Stop. Shift+Tab returns to the Goal control and reveals its full focus
+frame. The existing bounded scrollport moves from **0 to 67 px**, then **38 px**
+for Goal reading. The complete stack cannot fit simultaneously in this frame;
+its clipped off-screen portions alone do not establish another allocation
+defect. The seven focused captures and complete Goal/Stop views are inspected.
+No Send, Steer, Stop, Pause or Clear command is activated.
+
+The full Workspace chrome/content selection passes **64 / 64** in **154.174 s**,
+with all **82 images** inspected. The existing short Composer scenarios pass
+**4 / 4** in **32.538 s** without skips, retries, flaky cases or global errors;
+**48 of 72 images** are inspected, with the remaining **24** pending at pause.
+The first Shell run passes 202 tests and fails two assertions requiring visible
+return-button text. That presentation expectation is superseded by this deliberate
+compact-arrow change and its Lab regressions. The redundant text-content assertion
+is removed; the test still finds the exact accessible destination and verifies
+return navigation, retained evidence, focus and draft. The next run passes all
+**14 files / 204 tests** in **12.605 s**.
+
+Web typecheck, lint, unused-code, circular-dependency, layer, design-system,
+token, style, shorthand, chrome, locale and bundle checks pass. The user requests
+a milestone pause while `make check-native` is running; its owned process tree
+is stopped, and the final Lab build is not started. The candidate has no final
+native qualification. The user subsequently requests committing and pushing this
+pause checkpoint to main; this publication does not resume UI polishing. The
+preceding published native result does not qualify this changed presentation.
+
+Resume with the remaining image review, interrupted native gate, final Lab build
+and actual Wails English/light/14 px and Chinese/dark/18 px checks at 200%/300%.
+Confirm complete material identity, keyboard and pointer return descriptions,
+return focus and exact continued drafts, with observation both enabled and
+disabled. The reviewed checkpoint includes four source/test changes and these three documentation
+changes. No new visual entrypoint, runner, fixture catalog or progress file is added.
+
+Pause cleanup stops the verifier and static server with observed exit **143**,
+unregisters the closed private app, restores six private Library paths to absence
+and preserves three preexisting WebKit helper roots. All **12 output/cache roots**
+return to their captured contents and modes: **2,596 captured nodes** are removed
+and **316 files** restored. Source comparison covers **6,716 non-Markdown inputs**,
+admitting only the four owned changes and no added sources. All **46 native inputs**
+and the primary checkout remain unchanged. No functional checks run after this
+restoration; resumption must rebuild the candidate before native qualification.
 
 ### Model catalog reading and recovery
 

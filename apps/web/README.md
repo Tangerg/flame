@@ -287,6 +287,11 @@ title. Its complete value is available on hover and in the existing Session
 menus, including keyboard entry through More actions. Runtime still owns the Run
 and elapsed-time source; menu copies are readouts of that same projection.
 
+Full-width material and the Dock use the same compact return arrow. Its accessible
+name and keyboard/pointer Tooltip retain the complete destination, while the
+material name receives the remaining header width. Return and Close keep their
+existing navigation and focus owners.
+
 Inline Markdown tables consume the same safe height, with their actions and
 reader forming one fitting reading unit. Each table measures only its intrinsic
 minimum: actions, header and one padded body line. When that minimum exceeds the
