@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The Lab's Code reading scenario now follows exact source, short reading frames, captured trajectory evidence, nested Escape and the original Composer draft in Chromium and WebKit. Its final selection passes **6 browser cases**; the initial content/Dock survey passes **23**. The complete Web check passes **433 files / 4,829 tests** and every module gate. Actual Wails qualification covers English/light/14 px/Orange and Chinese/dark/18 px/custom blue at 200% and 300%, with 22 native captures reviewed. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The Lab now retains original browser-presented resize frames alongside its Code reading task. Those frames expose a stale-width Dock squeezing the conversation; its existing width owner now releases unavailable Dock space during resize delivery. The final selection passes **13 browser cases** and the complete Web check passes **433 files / 4,830 tests** and every module gate. Actual Wails qualification covers the English 195%/200% Dock boundary and Chinese 200%/300% reading, material return and continued drafts, with 12 native captures reviewed. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Dependent reader delivery and whole-product visual acceptance remain unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3959,79 +3959,89 @@ remain unchanged. No functional checks run after output restoration. Four
 original desktop images are retained outside the repository; temporary evidence
 is archived before the private qualification root is retired.
 
-The following content/Dock qualification extends the existing
-`codeReading.browser.spec.ts` with four complete tasks. Chromium and WebKit use
-English/light/14 px/Orange with full application and system motion, and
-Chinese/dark/18 px/blue with both motion boundaries reduced. The original two
-highlighting and shared-wrap cases keep their assertions. The same 48-line
-source and padded multiline draft retain their original nodes through 560 × 377,
-373 × 251 and 504 × 316 reading budgets. Literal source checks preserve authored
-whitespace. Keyboard entry, an internally consumed wheel, complete reader bounds,
-one readable line, center hit testing and clearance from Jump remain covered.
+The content/Dock qualification uses the existing `codeReading.browser.spec.ts`.
+Chromium and WebKit follow English/light/14 px/Orange with full application and
+system motion, and Chinese/dark/18 px/blue with both motion boundaries reduced.
+The original highlighting and shared-wrap cases retain their assertions. The
+same 48-line source and padded multiline draft retain their nodes through
+560 × 377, 373 × 251 and 504 × 316 reading budgets. Literal source, keyboard entry,
+consumed internal wheel, complete reader bounds, one readable line, center hit
+testing and Jump clearance remain covered.
 
-Read-only frame records distinguish eight layout-delivery samples from eight
-consecutive settled samples. The first candidate incorrectly asserted dependent
-ResizeObserver and queued-reveal geometry before delivery completed; its original
-samples remain retained. This scope qualifies settled reading, with the same
-strict geometry and hit-test assertions, and does not establish the first paint
-of an abrupt resize. The full-width task targets the actual visible material
-body, since the Dock-only identity attribute retires in main presentation.
+Eight layout-delivery measurements and eight consecutive settled measurements
+remain distinct. Starting from a settled reading entry, each resize also retains
+the public [Playwright Screencast](https://playwright.dev/docs/api/class-screencast)'s
+original JPEGs and every callback's presentation timestamp, viewport dimensions
+and attachment identity. The index includes resize request and acknowledgement
+times. Only byte-identical images share an attachment; every resize must include
+a target-size frame after acknowledgement. Capture stops and retains collected
+evidence on failure. No overlays, pixel manipulation, second runner or added
+deadline accompanies these records.
 
-Each task opens `item_code_reading` and its complete recorded evidence, checks
-the original item identity and literal source, then returns to the same draft.
-WebKit's initial Escape failure is traced to the hovered Close tooltip: the
-captured Escape is non-composing, non-repeating and already prevented. The final
-task explicitly enters that hover in both engines. The first Escape closes its
-tooltip while retaining the evidence focus and material; the second returns to
-Conversation. Reading the retained input handle preserves the hidden Composer's
-value without widening its accessible scope. The platform caret endpoint is
-verified before typing the exact continuation. All diagnostic listeners are
-removed from the final test.
+The original presented frames expose an unavailable Dock retaining its old width
+and squeezing Conversation into a narrow strip. `ChatPanel` now commits its
+existing row-width state inside native ResizeObserver delivery, before paint,
+instead of scheduling another animation frame. Initial ref measurement remains
+inside React's ordinary commit. The externally sized row stays the only width
+source; `canPresentDock` retains the existing geometry rule. Its availability is
+projected through `AgentDockRow`, so capacity loss retires the Dock's collapse
+transition immediately while ordinary user toggles retain their motion. The
+[React browser-integration guidance](https://react.dev/reference/react-dom/flushSync),
+Better Layout/UI and Vercel React Best Practices inform this bounded change.
+No navigation, theme, fixture, Runtime or native host contract changes.
 
-The initial six-file survey passes **23 / 23 in 74.295 s**. The final Code reading
-selection passes **6 / 6 in 28.701 s**, including the four new tasks, with no
-skips, retries, flaky results or global errors. Together they qualify 27 distinct
-tasks in stages; no clean 27-case invocation or unfiltered-suite pass is claimed.
-All **22 final PNG attachments** are reviewed: two match the inspected baseline,
-18 new originals receive direct inspection and two further attachments repeat
-those exact bytes. Intermediate geometry, selector, hidden-field and tooltip
-setup failures remain diagnostic receipts. No production UI, dependency, theme,
-fixture, route, catalog or visual configuration changes.
+The new owner regression fails the original implementation at the stale `open`
+state, then passes with the fix. It checks collapse and reopening inside delivery
+and retains the same child and draft. Its initial observer stub incorrectly kept
+disconnected callbacks; primary review corrects that premise before establishing
+the product failure. The related owner selection passes **143 tests / 4 files**.
+Two bounded Claude Code CLI candidates complete in **26.577 s** and **82.445 s**;
+all six and two protected inputs retain their bytes. Primary review owns those
+corrections, integration and qualification.
 
-The private signed Wails **v3.1.0** host builds in **21.349 s** and loads the same
+Each browser task opens `item_code_reading` and its complete captured evidence,
+checks identity and literal source, dismisses the hovered Close tooltip with the
+first Escape and returns to Conversation with the second. The actual visible
+material body owns full-width reading; the hidden Composer remains outside its
+accessible scope. Retained handles preserve its exact draft and node identity,
+and the platform caret endpoint is verified before continuing that draft.
+
+The unchanged six-case baseline passes in **34.833 s**. With the settled entry and
+timestamp index, the diagnostic selection passes in **30.991 s** before the Dock
+fix. The final four-file selection passes **13 / 13 in 83.425 s**, with no skips,
+retries, flaky results or global errors. It includes Code reading, Dock geometry,
+keyboard paths and reading expansion. All **119 final image attachments** are
+reviewed: 94 receive direct inspection and 25 match reviewed bytes. They include
+22 PNGs and 97 distinct-per-resize JPEG originals from **98 callbacks / 16 resizes**.
+The complete gallery and unfiltered migrated suite are not rerun.
+
+The private signed Wails **v3.1.0** host builds in **20.514 s** and loads the same
 **488 canonical Lab assets** as the final browser build. All 46 production native
-inputs retain their bytes. English and Chinese actual 200%/300% tasks preserve
-code focus and the padded draft, open trajectory evidence, return with Escape and
-continue the original text. Chinese additionally qualifies a consumed internal
-wheel, Window Zoom/restore at 300% and keyboard access to Send without activation.
-All **22 native images / 22 AX records** are reviewed, including diagnostic
-observations. Pure zoom retains reading; the mixed long-arrow/zoom departure is
-not accepted as a zoom defect. A boundary-wheel capture is superseded by the
-visible evidence re-entry. Chinese paste qualifies continuation after an input
-probe inserts no text; physical IME remains unverified. A post-Quit AX observation
-relaunches the private host without its test environment; that launch is excluded
-and closed, with the final app inventory empty.
+inputs retain their bytes. English native zoom crosses the maximum-window Dock
+boundary at 195%/200%, retaining code focus, internal scrolling and the exact
+draft. Chinese/dark/18 px qualifies 200%/300%, Window Zoom/restore, evidence entry,
+Escape return and exact continued text. Both profiles use real keyboard reader
+entry. Chinese reaches the complete Send control by Tab without activation.
+All **12 native images / 12 AX records** are reviewed. Chinese continuation uses
+native paste; physical IME, VoiceOver and live Runtime tasks remain unverified.
 
-The complete Web check passes **433 files / 4,829 tests** and all module gates in
-**281.293 s**. Read-only ZCode code-header/body separation, HeroUI disclosure and
-bounded-tab examples, and Better Layout/Accessibility guidance inform the task
-model. The bounded Claude Code CLI attempt times out after **180 s**, with zero
-source edits and all eleven read-only inputs unchanged; primary implementation,
-review and qualification complete the task. Both intended native processes exit
-0, the server exits 143 after its identity-verified SIGTERM, and the private app
-is unregistered. Six Library paths return to absence, three original empty WebKit
-helper roots retain their identities, and all twelve output/cache roots return
-to captured contents and modes or absence. All 6,734 non-Markdown inputs are
-checked: only the existing Lab spec changes. The primary checkout is unchanged,
-two pre-existing Runtime fixture roots are preserved and no new fixture root
-remains. Functional checks stop before output restoration. Four unchanged native
-originals are retained outside the repository; temporary qualification evidence
-is retained for guarded retirement after publication.
+The complete Web check passes **433 files / 4,830 tests** and all module gates in
+**314.368 s**; final production staging passes in **7.431 s**. Both native processes
+exit 0, the identity-verified server exits 143 and the private app is unregistered.
+Six Library paths return to absence and three original empty WebKit helper roots
+retain their identities. The twelve output/cache roots return to captured contents
+and modes or absence before publication. All 6,734 non-Markdown inputs are checked:
+only five scoped authored paths change. The primary checkout and two pre-existing
+Runtime fixture roots remain unchanged. Functional checks stop before output
+restoration. Four original native images are retained outside the repository;
+temporary evidence is retained for guarded retirement after publication.
 
-Continue remaining content/Dock paths and migrated interactions from fresh
-evidence, including actual first-painted frames during abrupt window changes.
-Computer capacity, live Runtime tasks, VoiceOver, physical IME and whole-product
-visual acceptance remain open.
+Presented-frame records still include inherited/cropped buffers and a transient
+dependent-reader height/Jump obstruction during abrupt resize. Those are diagnostic
+evidence, not a claim that every resize frame is correct. WebKit sampling is bounded
+at 25 fps and does not qualify every native compositor frame. Continue that reader
+delivery boundary and remaining content/Dock tasks from this evidence. Computer
+capacity and whole-product visual acceptance also remain open.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 

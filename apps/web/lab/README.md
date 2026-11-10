@@ -772,7 +772,14 @@ multiline draft through short reading frames in Chromium and WebKit, English and
 Chinese. After recording layout delivery, eight consecutive settled frames check
 the complete focused reader, a readable line, pointer access and clearance from
 Jump. The initial eight delivery frames remain in the same geometry attachment;
-this does not qualify the first paint of an abrupt resize. A consumed internal wheel retains
+those callbacks alone do not establish what the browser painted. Each resize now also
+retains the public Playwright Screencast's original JPEGs and a callback index with
+presentation timestamps, viewport dimensions and the resize request/acknowledgement
+times. Only byte-identical JPEGs share an attachment. Capture starts from a settled
+reading entry, stops in `finally` and retains evidence on assertion failure. Each
+resize must yield a frame at the requested dimensions after acknowledgement.
+Sampling, including WebKit's 25 fps limit and inherited frames during viewport
+changes, does not establish every native compositor frame. A consumed internal wheel retains
 that context through another resize. The same task opens its captured trajectory
 evidence, closes the hovered Close tooltip with Escape while retaining reader
 focus, then returns with Escape and continues the original draft at its verified

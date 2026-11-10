@@ -235,12 +235,70 @@ for (const browserName of ["chromium", "webkit"] as const) {
           );
         };
 
+        await expectReading("entry");
+        // Screencast frames are what the browser presented; sampling is throttled (WebKit ≤ 25fps).
+        const captureResize = async (size: { width: number; height: number }, label: string) => {
+          const originals: Buffer[] = [];
+          const frames: {
+            timestamp: number;
+            viewportWidth: number;
+            viewportHeight: number;
+            attachment: string;
+          }[] = [];
+          let requestedAt = 0;
+          let resizedAt = 0;
+          await page.screencast.start({
+            size: { width: 1120, height: 755 },
+            quality: 100,
+            onFrame: ({ data, timestamp, viewportWidth, viewportHeight }) => {
+              let index = originals.findIndex((original) => original.equals(data));
+              if (index < 0) index = originals.push(data) - 1;
+              frames.push({
+                timestamp,
+                viewportWidth,
+                viewportHeight,
+                attachment: `code-reading-${label}-frame-${index}.jpg`,
+              });
+            },
+          });
+          try {
+            requestedAt = Date.now();
+            await page.setViewportSize(size);
+            resizedAt = Date.now();
+            await expectReading(label);
+          } finally {
+            try {
+              await page.screencast.stop();
+            } finally {
+              const presented = originals.slice();
+              const index = frames.slice();
+              for (const [position, body] of presented.entries()) {
+                await testInfo.attach(`code-reading-${label}-frame-${position}.jpg`, {
+                  body,
+                  contentType: "image/jpeg",
+                });
+              }
+              await testInfo.attach(`code-reading-${label}-frames`, {
+                body: JSON.stringify({ requestedAt, resizedAt, frames: index }),
+                contentType: "application/json",
+              });
+            }
+          }
+          expect(
+            frames.some(
+              (frame) =>
+                frame.timestamp >= resizedAt &&
+                frame.viewportWidth === size.width &&
+                frame.viewportHeight === size.height,
+            ),
+          ).toBe(true);
+        };
+
         for (const size of [
           { width: 560, height: 377 },
           { width: 373, height: 251 },
         ]) {
-          await page.setViewportSize(size);
-          await expectReading(String(size.width));
+          await captureResize(size, String(size.width));
         }
         await capture("short");
         await source.press("End");
@@ -261,8 +319,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           { width: 504, height: 316 },
           { width: 373, height: 251 },
         ]) {
-          await page.setViewportSize(size);
-          await expectReading(`wheel-${size.width}`);
+          await captureResize(size, `wheel-${size.width}`);
         }
         await capture("wheel-reflow");
 

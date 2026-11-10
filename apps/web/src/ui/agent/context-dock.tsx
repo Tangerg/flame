@@ -183,12 +183,14 @@ export const DOCK_MEASURE_PROPERTY = "--dock-measure";
 
 export function AgentDockRow({
   open,
+  available,
   width,
   presentation,
   ref,
   children,
 }: {
   open: boolean;
+  available: boolean;
   width: number;
   presentation: "dock" | "main";
   ref?: Ref<HTMLDivElement>;
@@ -199,6 +201,7 @@ export function AgentDockRow({
       ref={ref}
       className={cn("agent-dock-row", stylex.props(styles.row).className)}
       data-dock={open ? "open" : "collapsed"}
+      data-dock-available={available ? "" : undefined}
       data-presentation={presentation}
       style={{ [DOCK_MEASURE_PROPERTY]: `${width}px` } as CSSProperties}
     >

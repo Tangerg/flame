@@ -12,6 +12,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import { flushSync } from "react-dom";
 import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons/index";
@@ -309,27 +310,12 @@ export function ChatPanel({ onSend, ref }: Props) {
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
-    const reconcile = () => setRowWidth(row.clientWidth);
-    reconcile();
-    const deliveredState = { value: false };
-    const queuedState = { value: 0 };
-    const observer = new ResizeObserver(() => {
-      if (!deliveredState.value) {
-        deliveredState.value = true;
-        reconcile();
-        return;
-      }
-      if (queuedState.value) return;
-      queuedState.value = requestAnimationFrame(() => {
-        queuedState.value = 0;
-        reconcile();
-      });
-    });
+    setRowWidth(row.clientWidth);
+    // Delivery runs after layout but before paint; committing here keeps a Dock sized for the
+    // previous row from painting over the conversation for a frame.
+    const observer = new ResizeObserver(() => flushSync(() => setRowWidth(row.clientWidth)));
     observer.observe(row);
-    return () => {
-      if (queuedState.value) cancelAnimationFrame(queuedState.value);
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
   const viewsById = new Map(views.map((view) => [view.id, view]));
@@ -419,6 +405,7 @@ export function ChatPanel({ onSend, ref }: Props) {
       <AgentDockRow
         ref={dockRowRef}
         open={dockVisible}
+        available={dockAvailable}
         width={dockAvailable ? dockWidth : measuredWidth}
         presentation={presentedMain ? "main" : "dock"}
       >

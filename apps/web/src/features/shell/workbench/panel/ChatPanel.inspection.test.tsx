@@ -1266,6 +1266,49 @@ describe("Dock collapse focus handoff", () => {
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
   });
 
+  it("collapses and reopens the Dock inside the row's resize delivery", () => {
+    let width = 1200;
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
+    const rowCallbacks = new Set<() => void>();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        deliver: () => void;
+        constructor(callback: ResizeObserverCallback) {
+          this.deliver = () => callback([], this as unknown as ResizeObserver);
+        }
+        observe(target: Element) {
+          if (!target.classList.contains("agent-dock-row")) return;
+          rowCallbacks.add(this.deliver);
+        }
+        unobserve() {
+          rowCallbacks.delete(this.deliver);
+        }
+        disconnect() {
+          rowCallbacks.delete(this.deliver);
+        }
+      },
+    );
+    const { dock, child, draft } = retainedDock();
+    const row = document.querySelector<HTMLElement>(".agent-dock-row")!;
+    const deliver = (next: number) => {
+      width = next;
+      rowCallbacks.forEach((callback) => callback());
+    };
+    act(() => deliver(1200));
+
+    act(() => {
+      deliver(560);
+      expect(row.dataset.dock).toBe("collapsed");
+      expect(row.hasAttribute("data-dock-available")).toBe(false);
+      deliver(1200);
+      expect(row.dataset.dock).toBe("open");
+      expect(row.hasAttribute("data-dock-available")).toBe(true);
+    });
+
+    expectRetainedDock(dock, child, draft);
+  });
+
   async function settleCleanup() {
     await act(async () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
