@@ -21,7 +21,10 @@ export type ComposerDraftReplacement = (input: ComposerDraftInput) => boolean;
 export interface ComposerStatePort {
   focus(selectionEnd?: number): void;
   captureFocus(): () => void;
-  registerFocusTarget(element: HTMLTextAreaElement | null): () => void;
+  registerFocusTarget(
+    element: HTMLTextAreaElement | null,
+    synchronizeSelection?: () => void,
+  ): () => void;
   registerFocusPresentation(present: (focus: () => void) => void): () => void;
   useText(): string;
   useSetText(): (value: string) => void;

@@ -66,6 +66,15 @@ for (const story of catalog.stories) {
             const sample = COMPOSITION_SAMPLES.find((sample) => sample.id === entry.variantId)!;
             await expect(page.locator("#root section")).toHaveCount(sample.frames);
           }
+          if (
+            entry.storyId === "business-agent-scenarios" &&
+            entry.variantId === "file-list-error"
+          ) {
+            await expect(page.getByRole("textbox")).toHaveValue("@store");
+            await expect(
+              page.getByRole("button", { name: chinese ? "重试" : "Retry", exact: true }),
+            ).toBeVisible();
+          }
           if (entry.storyId === "business-workspace-scenarios") {
             if (entry.variantId === "dock-usage-reports") {
               await expect(

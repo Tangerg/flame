@@ -267,4 +267,25 @@ describe("draft focus presentation", () => {
     expect(present).not.toHaveBeenCalled();
     unregister();
   });
+
+  it("synchronizes the registered input after delivering its native selection", () => {
+    testClient.render(<Harness />);
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    const observed: Array<{ focused: boolean; start: number; end: number }> = [];
+    const unregister = registerComposerFocusTarget(testClient.composer.access, field, () => {
+      observed.push({
+        focused: document.activeElement === field,
+        start: field.selectionStart,
+        end: field.selectionEnd,
+      });
+    });
+
+    act(() => focusComposer(testClient.composer.access, 1));
+
+    expect(observed).toEqual([{ focused: true, start: 1, end: 1 }]);
+    unregister();
+    act(() => focusComposer(testClient.composer.access, 2));
+    expect(observed).toHaveLength(1);
+    expect(field.selectionEnd).toBe(1);
+  });
 });

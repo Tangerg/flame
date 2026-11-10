@@ -16,6 +16,8 @@ import {
 import { en } from "@/lib/i18n/locales/en";
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { expectLabReady } from "../readiness";
+import { catalog } from "../catalog";
+import { previewURL, readSelection } from "../selection";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
 const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
@@ -1804,6 +1806,209 @@ for (const browserName of ["chromium", "webkit"] as const) {
     { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
   ]) {
     mentionTest(
+      `${browserName} failed file suggestions keep keyboard retry and the draft in ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = profile.messages;
+        await page.setViewportSize({ width: 373, height: 360 });
+        const story = catalog.story("business-agent-scenarios");
+        const selection = readSelection(
+          new URLSearchParams({
+            story: story.id,
+            variant: "file-list-error",
+            locale: profile.locale === "zh" ? "zh-CN" : "en",
+            theme: profile.theme,
+            "font-size": String(profile.fontSize),
+            motion: "off",
+          }).toString(),
+          catalog,
+        );
+        await page.goto(
+          previewURL(story, selection, `retry:${browserName}`) + "&sidebar=collapsed",
+        );
+        await expectLabReady(page);
+        const input = page.getByRole("textbox", {
+          name: messages["composer.input.label"],
+          exact: true,
+        });
+        const draft = "  Keep this draft. @store";
+        await expect(input).toHaveValue("@store");
+        const panel = page.getByRole("dialog", {
+          name: messages["composer.mention.heading"],
+          exact: true,
+        });
+        const retry = panel.getByRole("button", { name: messages["common.retry"], exact: true });
+        await expect(retry).toBeVisible();
+        await expect(input).toBeFocused();
+        await testInfo.attach("file-list-independent-error", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        await input.fill(draft);
+        await expect(panel.getByRole("status")).toContainText(
+          messages["composer.mention.status.error"]!,
+        );
+        await expect(retry).toBeVisible();
+        await expect(input).toBeFocused();
+        await page.setViewportSize({ width: 373, height: 251 });
+        const retryFrames = await retry.evaluate(async (button) => {
+          const panel = button.closest('[role="dialog"]')!;
+          const frames = [];
+          for (let frame = 0; frame < 8; frame++) {
+            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            const action = button.getBoundingClientRect();
+            const view = panel.getBoundingClientRect();
+            const label = document.createRange();
+            label.selectNodeContents(button);
+            frames.push({
+              action: action.toJSON(),
+              view: view.toJSON(),
+              labelHeight: label.getBoundingClientRect().height,
+              lineHeight: Number.parseFloat(getComputedStyle(button).lineHeight),
+              clipped: action.top < view.top - 0.5 || action.bottom > view.bottom + 0.5,
+            });
+          }
+          return frames;
+        });
+        await testInfo.attach("file-list-error-geometry", {
+          body: JSON.stringify(retryFrames),
+          contentType: "application/json",
+        });
+        await testInfo.attach("file-list-error", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        for (const frame of retryFrames) {
+          expect(frame.labelHeight).toBeLessThanOrEqual(frame.lineHeight + 0.5);
+          expect(frame.clipped).toBe(false);
+        }
+        const failure = panel.getByText("workspace file listing is temporarily unavailable.", {
+          exact: true,
+        });
+        await failure.hover();
+        await page.mouse.wheel(0, 240);
+        await expect
+          .poll(() =>
+            failure.evaluate((text) => {
+              const node = text.firstChild!;
+              const range = document.createRange();
+              range.setStart(node, node.textContent!.length - 1);
+              range.setEnd(node, node.textContent!.length);
+              const glyph = range.getBoundingClientRect();
+              for (let parent = text.parentElement; parent; parent = parent.parentElement) {
+                if (getComputedStyle(parent).overflowY === "visible") continue;
+                const box = parent.getBoundingClientRect();
+                const top = box.top + parent.clientTop;
+                if (glyph.top < top - 0.5 || glyph.bottom > top + parent.clientHeight + 0.5)
+                  return false;
+              }
+              return true;
+            }),
+          )
+          .toBe(true);
+        const readAction = await retry.evaluate((button) => {
+          const box = button.getBoundingClientRect();
+          const panel = button.closest('[role="dialog"]')!.getBoundingClientRect();
+          return { top: box.top, bottom: box.bottom, panel: panel.toJSON() };
+        });
+        await testInfo.attach("file-list-read-error", {
+          body: await page.screenshot({ animations: "disabled" }),
+          contentType: "image/png",
+        });
+        await input.press("Tab");
+        await expect(retry).toBeFocused();
+        await retry.press("Shift+Tab");
+        await expect(input).toBeFocused();
+        await expect(input).toHaveValue(draft);
+        await input.press("Tab");
+        await expect(retry).toBeFocused();
+        await retry.press("Tab");
+        const readForwardFocus = () =>
+          input.evaluate((field) => ({
+            input: document.activeElement === field,
+            button: document.activeElement?.tagName === "BUTTON",
+            withinComposer: field
+              .closest('[data-slot="composer-root"]')!
+              .contains(document.activeElement),
+          }));
+        await expect
+          .poll(readForwardFocus)
+          .toEqual({ input: false, button: true, withinComposer: true });
+        const forwardFocus = await readForwardFocus();
+        await testInfo.attach("file-list-reading-and-forward-focus", {
+          body: JSON.stringify({ readAction, forwardFocus }),
+          contentType: "application/json",
+        });
+        expect(readAction.top).toBeGreaterThanOrEqual(readAction.panel.top - 0.5);
+        expect(readAction.bottom).toBeLessThanOrEqual(readAction.panel.bottom + 0.5);
+        await expect(panel).toBeHidden();
+        await input.focus();
+        await input.press("Space");
+        await input.press("Backspace");
+        await expect(retry).toBeVisible();
+        await input.press("Tab");
+        await expect(retry).toBeFocused();
+        const attempts = () =>
+          page.evaluate(() => Number(document.documentElement.dataset.visualFileListAttempts));
+        const beforeRetry = await attempts();
+        await retry.press("Enter");
+        await expect.poll(attempts).toBeGreaterThan(beforeRetry);
+        await expect(retry).toBeVisible();
+        await expect(input).toBeFocused();
+        await expect(input).toHaveValue(draft);
+        await input.press("Tab");
+        await expect(retry).toBeFocused();
+        await retry.press("Escape");
+        await expect(panel).toBeHidden();
+        await expect(input).toBeFocused();
+        await input.press("Space");
+        await input.press("Backspace");
+        await expect(retry).toBeVisible();
+        const beforePointerRetry = await attempts();
+        await retry.click();
+        await expect.poll(attempts).toBeGreaterThan(beforePointerRetry);
+        await expect(retry).toBeVisible();
+        await expect(input).toBeFocused();
+        await expect(input).toHaveValue(draft);
+        expect(
+          await input.evaluate((field) => {
+            if (!(field instanceof HTMLTextAreaElement))
+              throw new Error("the Composer must expose a textarea");
+            return [field.selectionStart, field.selectionEnd];
+          }),
+        ).toEqual([draft.length, draft.length]);
+        expect(await page.locator("html").getAttribute("data-visual-sent-input")).toBeNull();
+        await input.press("Escape");
+        await expect(panel).toBeHidden();
+        await input.press("End");
+        await input.pressSequentially(" continued.");
+        await expect(input).toHaveValue(draft + " continued.");
+        await expect(input).toBeFocused();
+        const add = page.getByRole("button", { name: messages["composer.add"], exact: true });
+        await add.click();
+        await page
+          .getByRole("menuitem", { name: messages["composer.add.file"], exact: true })
+          .click();
+        await expect(input).toHaveValue(draft + " continued. @");
+        await expect(retry).toBeVisible();
+        await expect(input).toBeFocused();
+        await input.press("Escape");
+        await input.fill("");
+        await add.click();
+        await page
+          .getByRole("menuitem", { name: messages["composer.add.command"], exact: true })
+          .click();
+        await expect(input).toHaveValue("/");
+        await expect(
+          page.getByRole("listbox", { name: messages["composer.slash.heading"], exact: true }),
+        ).toBeVisible();
+        await input.press("Tab");
+        await expect(input).toHaveValue("/goal ");
+        await input.pressSequentially("Continue this review.");
+        await expect(input).toHaveValue("/goal Continue this review.");
+        expect(await page.locator("html").getAttribute("data-visual-sent-input")).toBeNull();
+      },
+    );
+    mentionTest(
       `${browserName} file suggestions preserve complete basenames in ${profile.locale}`,
       async ({ page }, testInfo) => {
         const messages: Record<string, string> = profile.messages;
@@ -1902,6 +2107,14 @@ for (const browserName of ["chromium", "webkit"] as const) {
           const frames = await retainedOption.evaluate(async (row) => {
             const scroller = row.closest<HTMLElement>('[role="listbox"]');
             if (!scroller) throw new Error("the selected option must belong to its listbox");
+            // rAF runs before layout's resize notifications; sample after their first delivery.
+            await new Promise<void>((resolve) => {
+              const observer = new ResizeObserver(() => {
+                observer.disconnect();
+                resolve();
+              });
+              observer.observe(scroller);
+            });
             const readings = [];
             for (let frame = 0; frame < 8; frame++) {
               await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));

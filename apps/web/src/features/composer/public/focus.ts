@@ -11,8 +11,9 @@ export function captureComposerFocus(composerAccess: ComposerAccess): () => void
 export function registerComposerFocusTarget(
   composerAccess: ComposerAccess,
   element: HTMLTextAreaElement | null,
+  synchronizeSelection?: () => void,
 ): () => void {
-  return composerAccess.registerFocusTarget(element);
+  return composerAccess.registerFocusTarget(element, synchronizeSelection);
 }
 
 export function registerComposerFocusPresentation(

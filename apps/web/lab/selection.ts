@@ -181,6 +181,9 @@ export function previewURL(story: LabStory, selection: LabSelection, instanceId:
   query.set("locale", selection.locale === "zh-CN" ? "zh" : "en");
   query.set("fixture", variant.target.fixture);
   query.set("state", variant.target.state);
+  if (variant.target.fixture === "agent" && variant.target.fileList) {
+    query.set("file-list", variant.target.fileList);
+  }
   if (variant.target.fixture === "workspace" && variant.target.pane) {
     query.set("pane", variant.target.pane);
   }

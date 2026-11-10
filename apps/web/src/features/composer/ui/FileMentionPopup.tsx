@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type RefObject } from "react";
+import { type RefObject, useCallback } from "react";
 import { basename } from "@/lib/path";
 import { Icon } from "@/ui/index";
 import { OptionRow } from "@/ui/index";
@@ -15,10 +15,25 @@ import { suggestionStyles } from "@/features/composer/ui/suggestionStyles";
 interface Props {
   mentions: FileMentions;
   anchor: RefObject<HTMLElement | null>;
+  retryRef: RefObject<HTMLButtonElement | null>;
+  onReturnFocus: () => void;
 }
 
-export function FileMentionPopup({ mentions, anchor }: Props) {
+export function FileMentionPopup({ mentions, anchor, retryRef, onReturnFocus }: Props) {
   const t = useT();
+  // React 19 detaches refs before removing the node, so a Retry that still
+  // holds focus when loading or dismissal unmounts it hands focus back.
+  const bindRetry = useCallback(
+    (button: HTMLButtonElement | null) => {
+      retryRef.current = button;
+      if (!button) return;
+      return () => {
+        retryRef.current = null;
+        if (button.ownerDocument.activeElement === button) onReturnFocus();
+      };
+    },
+    [retryRef, onReturnFocus],
+  );
   return (
     <SuggestionPopup
       open={mentions.open}
@@ -37,9 +52,20 @@ export function FileMentionPopup({ mentions, anchor }: Props) {
             </span>
             {mentions.status === "error" && (
               <TextButton
+                ref={bindRetry}
                 tone="accent"
+                className={stylex.props(vocab.hold).className}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={mentions.retry}
+                onKeyDown={(event) => {
+                  if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
+                  if (event.shiftKey) {
+                    event.preventDefault();
+                    onReturnFocus();
+                  } else {
+                    mentions.dismiss();
+                  }
+                }}
               >
                 {t("common.retry")}
               </TextButton>

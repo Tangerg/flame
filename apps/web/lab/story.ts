@@ -28,7 +28,11 @@ export type LabFixtureTarget =
   | { readonly fixture: "atoms"; readonly state: "default" | "input-contracts" }
   | { readonly fixture: "computer"; readonly state: ComputerFixtureState }
   | { readonly fixture: "composition"; readonly state: CompositionFixtureState }
-  | { readonly fixture: "agent"; readonly state: VisualAgentState }
+  | {
+      readonly fixture: "agent";
+      readonly state: VisualAgentState;
+      readonly fileList?: "error";
+    }
   | { readonly fixture: "shell"; readonly state: VisualWorkIndexState }
   | {
       readonly fixture: "workspace";

@@ -2,7 +2,7 @@ import { GOAL_WORKFLOW } from "@/features/plugins/public/workflows";
 import { mutationResult } from "@/test/runtimeClient";
 import { type VisualClient } from "./client";
 import { type FlameClient } from "@flame/runtime-client";
-import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
+import { VISUAL_FILE_MENTION_DRAFT, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { type CommandResult, type ServerCapabilities } from "@flame/runtime-client/wire";
 
 import { subagentsView } from "@/features/chat/message/subagents";
@@ -163,23 +163,31 @@ const VISUAL_WORKSPACE_FILES: readonly WorkspaceFileEntry[] = [
 ];
 
 // Literal path-fragment selection over captured presentation data; Runtime owns real search ranking.
-const fileListProvider = definePlugin({
-  name: "flame.visual.file-list",
-  setup(ctx) {
-    ctx.contributions.add(DATA_PROVIDER, {
-      key: WORKSPACE_LIST_FILES_KEY,
-      fetcher: async (params) => {
-        const { nameQuery, limit } = (params ?? {}) as WorkspaceListFilesQuery;
-        const fragment = nameQuery?.toLowerCase();
-        const selected =
-          fragment === undefined
-            ? VISUAL_WORKSPACE_FILES
-            : VISUAL_WORKSPACE_FILES.filter((file) => file.path.toLowerCase().includes(fragment));
-        return selected.slice(0, limit);
-      },
-    });
-  },
-});
+const fileListProvider = (failure: Error | undefined) =>
+  definePlugin({
+    name: "flame.visual.file-list",
+    setup(ctx) {
+      ctx.contributions.add(DATA_PROVIDER, {
+        key: WORKSPACE_LIST_FILES_KEY,
+        fetcher: async (params) => {
+          if (failure) {
+            const root = document.documentElement;
+            root.dataset.visualFileListAttempts = String(
+              Number(root.dataset.visualFileListAttempts ?? 0) + 1,
+            );
+            throw failure;
+          }
+          const { nameQuery, limit } = (params ?? {}) as WorkspaceListFilesQuery;
+          const fragment = nameQuery?.toLowerCase();
+          const selected =
+            fragment === undefined
+              ? VISUAL_WORKSPACE_FILES
+              : VISUAL_WORKSPACE_FILES.filter((file) => file.path.toLowerCase().includes(fragment));
+          return selected.slice(0, limit);
+        },
+      });
+    },
+  });
 
 const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameClient) =>
   definePlugin({
@@ -208,6 +216,7 @@ export async function installVisualAgentFixture(
   commandOutput: string | undefined,
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
+  fileListFailure?: Error,
 ): Promise<AgentSessionView> {
   if (commandOutput !== undefined) {
     const command = snapshot.items.find(
@@ -312,12 +321,18 @@ export async function installVisualAgentFixture(
     subagentsView,
     ...createToolRenderingPlugins(visual.workspace.access),
     await visualToolResults(runtimeClient, state === "genui-report"),
-    fileListProvider,
+    fileListProvider(fileListFailure),
   );
 
   visual.composer.store.setState((current) => ({
     composer: current.composer.edit((draft) =>
-      draft.withValue(state === "steer" ? "Tighten the error copy and continue." : ""),
+      draft.withValue(
+        fileListFailure
+          ? VISUAL_FILE_MENTION_DRAFT
+          : state === "steer"
+            ? "Tighten the error copy and continue."
+            : "",
+      ),
     ),
     modelPreference: {
       kind: "explicit",

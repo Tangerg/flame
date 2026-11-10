@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The narrow Material-toggle action remains concise across all eight existing locales. Its preceding copy batch passes **113 workspace tests**, **25 locale tests / 919 keys / 8 locales**, and native English/light/14 px and Chinese/dark/18 px material entry, Close and exact continuation. The current unchanged-source follow-up resolves the Chinese lower-perimeter lead: **151 px** of Composer content scrolls within its **146 px** viewport, and **5 px** of internal scrolling exposes the bottom while preserving controls, focus and the exact draft. The earlier full Web check (**433 files / 4,824 tests**), Subagent Lab selection (**21 tasks**) and supported native verification retain their scope. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. File-suggestion failure now exposes keyboard Retry, preserves the padded draft and returns to the original input. Programmatic file/command entry synchronizes the actual caret, and suggestion acceptance allows immediate continued input. The Lab owns the independent failed-list comparison and its interaction checks. The final selection passes **11 browser cases**; the complete Web check passes **433 files / 4,826 tests** and every module gate. Actual Wails qualification covers English/light/14 px/Orange and Chinese/dark/18 px/custom blue at 200% and 300%. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3822,8 +3822,83 @@ including the prepared Node archive. All 6734 non-Markdown inputs are checked:
 only this popup and the existing Lab scenario change. The primary checkout and
 all native inputs remain unchanged. No functional checks run after restoration.
 Four original desktop images are retained outside the repository; temporary
-evidence is archived before the private root is retired. Next inspect the
-existing file-suggestion status and retry path before extending qualification.
+evidence is archived before the private root is retired.
+
+The file-suggestion failure follow-up reproduces another complete task gap:
+forward Tab dismisses the error without reaching Retry in all four language /
+engine cases. At native Chinese 300%, the shrinking action wraps its two
+characters and clips the lower half. `FileMentionPopup.tsx`, its input controller
+and existing status-row styles now keep Retry's natural width and let constrained
+error content scroll. Tab reaches Retry; Shift-Tab returns to the input; forward
+Tab proceeds into the Composer toolbar. Loading or dismissal restores focus only
+when the disappearing Retry still owns it. Pointer Retry retains the draft and
+selection. Shared Base UI keeps Escape dismissal ownership.
+
+Native acceptance also exposes a stale caret projection: a public focus request
+can set the DOM selection correctly without delivering another selection event.
+The existing focus-target registration now synchronizes the controller after
+native selection delivery. A real toolbar file or command request immediately
+opens its popup, including an already positioned, blurred input. Accepted
+suggestions settle their selection with the committed draft in a layout effect,
+replacing the later animation-frame write that could reorder the first following
+character in WebKit. Captured-focus eligibility still protects later focus.
+One adapter contract test covers delivery and target retirement. Read-only ZCode
+MentionPanel and Better Layout/Accessibility guide the task boundary. A bounded
+Claude Code CLI supplies the initial four-file candidate; primary review traces
+the additional native entry and caret defects and qualifies the final change.
+
+The existing Agent catalog adds `file-list-error`. Its captured DataProvider
+always refuses the real file-list request; the attempt witness records calls
+without controlling their result. The independent preview seeds `@store`, sets
+its blurred native selection, then enters through public Composer focus. Four
+new cases in the existing closure scenario fail the original keyboard path.
+Removing the final selection synchronizer also fails this independent entry.
+All sensitivity controls restore the qualified source bytes afterwards.
+
+The retained-row measurement now starts after ResizeObserver's first delivery,
+then keeps all eight geometry samples and explicit-scroll assertions. The
+[HTML rendering sequence](https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering)
+places animation callbacks before layout and resize notifications; an earlier
+first-frame sample could inspect the preceding geometry before paint. Restoring
+the original broken popup still fails both Chinese cases, with all eight resize
+and all eight reopen samples clipped. The production popup remains unchanged
+from the preceding verified repair.
+
+The final focused invocation passes **11/11 in 60.151 s**, with zero skips,
+retries, flaky results or global errors. It includes both engines, both profiles,
+373 × 251 error reading, Retry geometry, keyboard/pointer refusal, exact padded
+drafts, real toolbar entries and immediate `/goal` continuation without Send.
+All **36 final PNGs** are reviewed at original size; 32 retain already inspected
+bytes. The complete Web check passes **433 files / 4826 tests** and all module
+gates in **283.630 s**; production staging passes in **8.123 s**. An earlier
+typecheck failure in a new browser assertion is corrected with a real textarea
+type guard. Diagnostic intermediate focus, navigation and caret failures are
+excluded from final acceptance. The complete gallery and migrated interaction
+suite are not rerun; their earlier coverage limits remain.
+
+Actual Wails v3.1.0 uses the final **488 canonical Lab assets** and unchanged
+46 native inputs. English/light/14 px/Orange/full motion and Chinese/dark/18 px/
+blue/no motion cover automatic independent entry, native 200% and 300%, keyboard
+and pointer retry, retained leading spaces, error reading and continued input.
+Both real toolbar entries open immediately, and Tab acceptance followed by
+typing yields exactly `/goal Continue this review.`. Chinese native Window
+Zoom/restore at 200% retains that draft. All **37 native images / 37 AX records**
+are reviewed, including baselines and diagnostic arrivals. An initial English
+scene retains the earlier blue preference; the explicit Orange scene supplies
+final default-color acceptance. Recorded refusal does not qualify successful
+filesystem recovery or live Runtime discovery. Runtime lifecycle is covered
+separately by the Web suite; physical IME and VoiceOver audio remain unverified.
+
+All six native processes exit 0, the owned HTTP server stops and the private app
+is unregistered. Six Library paths return to absence, three original empty
+WebKit helper roots retain their identity, and all twelve output/cache roots
+return to captured contents and modes or absence. All 6734 non-Markdown inputs
+are checked: only the seventeen authored source paths change. Native inputs and
+the primary checkout remain unchanged. No functional checks run after output
+restoration. Four original desktop images are retained outside the repository;
+temporary evidence is archived before the private qualification root is retired.
+Next inspect the remaining suggestion states and migrated task paths from fresh
+evidence. Computer capacity and whole-product visual acceptance remain open.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 

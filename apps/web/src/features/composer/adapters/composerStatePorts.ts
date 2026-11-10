@@ -14,13 +14,19 @@ export function createComposer(
   let stopSessionSync: (() => void) | null = null;
   let disposed = false;
 
-  let focusTarget: { element: HTMLTextAreaElement | null } | null = null;
+  let focusTarget: {
+    element: HTMLTextAreaElement | null;
+    synchronizeSelection?: () => void;
+  } | null = null;
   let focusPresentation: { present: (focus: () => void) => void } | null = null;
   const focus = (selectionEnd?: number) => {
-    const element = focusTarget?.element;
-    if (!element) return;
+    const target = focusTarget;
+    if (!target?.element) return;
+    const element = target.element;
     element.focus();
     if (selectionEnd !== undefined) element.setSelectionRange(selectionEnd, selectionEnd);
+    if (focusTarget === target && element.ownerDocument.activeElement === element)
+      target.synchronizeSelection?.();
   };
   const presentFocus = (deliver: () => void) => {
     const target = focusTarget;
@@ -39,8 +45,8 @@ export function createComposer(
         if (document.activeElement === origin && focusTarget === target) focus();
       };
     },
-    registerFocusTarget: (element) => {
-      const target = { element };
+    registerFocusTarget: (element, synchronizeSelection) => {
+      const target = { element, synchronizeSelection };
       focusTarget = target;
       return () => {
         if (focusTarget === target) focusTarget = null;
@@ -70,8 +76,9 @@ export function createComposer(
         // A fast rollback can settle before the original presentation request.
         selectionEnd = input.text.length;
         const element = target?.element;
-        if (element && focusTarget === target && document.activeElement === element) {
+        if (target && element && focusTarget === target && document.activeElement === element) {
           element.setSelectionRange(selectionEnd, selectionEnd);
+          target.synchronizeSelection?.();
         }
         return true;
       };

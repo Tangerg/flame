@@ -1,7 +1,7 @@
 import { createVisualClient } from "./client";
 import { disposeOnHmr } from "@/lib/hmr";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
-import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import { VISUAL_CAPABILITIES, VISUAL_FILE_MENTION_DRAFT } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
 import {
   VISUAL_REMOVE_SCHEDULE_EVENT,
@@ -386,6 +386,10 @@ async function fixtureNode(): Promise<ReactNode> {
       throw new Error("The Agent fixture has no workspace diff read");
     },
   );
+  const fileListFailure =
+    query.get("file-list") === "error"
+      ? new Error("workspace file listing is temporarily unavailable.")
+      : undefined;
   const view = await installVisualAgentFixture(
     visualClient,
     () => runtimeClient,
@@ -393,6 +397,7 @@ async function fixtureNode(): Promise<ReactNode> {
     output,
     snapshot,
     VISUAL_CAPABILITIES,
+    fileListFailure,
   );
   visualClient.workspace.layout.setState({
     sidebarCollapsed: !sidebarOpen,
@@ -489,6 +494,13 @@ void Promise.all(FIXTURE_FACES.map((face) => document.fonts.load(face)))
   .then(renderedFrame)
   .then(() => document.fonts.ready)
   .then(renderedFrame)
-  .then(() => {
+  .then(async () => {
+    if (fixture === "agent" && query.get("file-list") === "error") {
+      const input = container.querySelector("textarea");
+      if (!input) throw new Error("file suggestions require the mounted Composer");
+      input.setSelectionRange(VISUAL_FILE_MENTION_DRAFT.length, VISUAL_FILE_MENTION_DRAFT.length);
+      await renderedFrame();
+      visualClient.composer.access.focus(VISUAL_FILE_MENTION_DRAFT.length);
+    }
     rootElement.dataset.visualReady = "";
   });

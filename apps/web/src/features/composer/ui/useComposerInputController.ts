@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type SyntheticEvent,
 } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type AgentInput } from "@/features/agent/public/input";
 import { imageFiles } from "@/features/composer/public/input";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
@@ -59,26 +59,50 @@ export function useComposerInputController({
 
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    return registerComposerFocusTarget(composerAccess, inputRef.current);
-  }, [composerAccess]);
+  // The file-error Retry lives in the portaled popup, outside the textarea's
+  // tab order, so the composer hands focus to it and takes it back.
+  const retryRef = useRef<HTMLButtonElement>(null);
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const [caret, setCaret] = useState(0);
   const composition = useCompositionCommitGuard();
+  const synchronizeCaret = useCallback(() => {
+    const input = inputRef.current;
+    if (input && input.ownerDocument.activeElement === input && !composition.isComposing()) {
+      setCaret(input.selectionStart);
+    }
+  }, [composition]);
+  const returnFocusToInput = useCallback(() => {
+    inputRef.current?.focus();
+    synchronizeCaret();
+  }, [synchronizeCaret]);
+  useEffect(
+    () => registerComposerFocusTarget(composerAccess, inputRef.current, synchronizeCaret),
+    [composerAccess, synchronizeCaret],
+  );
+  const acceptedSelection = useRef<(() => void) | null>(null);
+  useLayoutEffect(() => {
+    const settle = acceptedSelection.current;
+    acceptedSelection.current = null;
+    if (settle) settle();
+    else synchronizeCaret();
+  }, [value, synchronizeCaret]);
   const applyMention = useCallback(
     (text: string, next: number) => {
-      onChange(text);
-      requestAnimationFrame(() => {
-        const textarea = inputRef.current;
-        if (textarea) {
-          textarea.focus();
-          textarea.setSelectionRange(next, next);
+      const input = inputRef.current;
+      const restoreFocus = captureComposerFocus(composerAccess);
+      // Settle the caret with the accepted text before a following keystroke can arrive.
+      acceptedSelection.current = () => {
+        if (!input || inputRef.current !== input || input.value !== text) return;
+        restoreFocus();
+        if (input.ownerDocument.activeElement === input) {
+          input.setSelectionRange(next, next);
+          synchronizeCaret();
         }
-        setCaret(next);
-      });
+      };
+      onChange(text);
     },
-    [onChange],
+    [onChange, composerAccess, synchronizeCaret],
   );
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
   const slash = useSlashSuggestions({ value, caret, apply: applyMention });
@@ -162,6 +186,21 @@ export function useComposerInputController({
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
     }
+    const retry = retryRef.current;
+    if (
+      retry &&
+      mentions.open &&
+      mentions.status === "error" &&
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      retry.focus();
+      return;
+    }
     if (handleSuggestionKey(mentions, event) || handleSuggestionKey(slash, event)) {
       event.preventDefault();
       return;
@@ -182,6 +221,8 @@ export function useComposerInputController({
 
   return {
     inputRef,
+    retryRef,
+    returnFocusToInput,
     mentions,
     slash,
     knownPaths,

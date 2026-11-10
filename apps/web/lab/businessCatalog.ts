@@ -197,7 +197,14 @@ export const businessStories: readonly LabStory[] = [
     group: messages.groups.scenarios,
     source: "apps/web/lab/scenarios/installVisualAgentFixture.ts",
     ...PRODUCT_PREVIEW,
-    variants: fixtureVariants(VISUAL_AGENT_STATES, (state) => ({ fixture: "agent", state })),
+    variants: [
+      ...fixtureVariants(VISUAL_AGENT_STATES, (state) => ({ fixture: "agent", state })),
+      {
+        id: "file-list-error",
+        title: { en: "File suggestions: failed listing", "zh-CN": "文件候选：列表加载失败" },
+        target: { fixture: "agent", state: "idle", fileList: "error" },
+      },
+    ],
   },
   {
     kind: "fixture",

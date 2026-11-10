@@ -55,6 +55,8 @@ export function Composer({
   const surfaceRef = useRef<HTMLDivElement>(null);
   const {
     inputRef,
+    retryRef,
+    returnFocusToInput,
     mentions,
     slash,
     knownPaths,
@@ -88,7 +90,12 @@ export function Composer({
       data-dropping={dropping ? "" : undefined}
     >
       {dropping && <ComposerDropCue acceptsImages={acceptsImages} />}
-      <FileMentionPopup mentions={mentions} anchor={surfaceRef} />
+      <FileMentionPopup
+        mentions={mentions}
+        anchor={surfaceRef}
+        retryRef={retryRef}
+        onReturnFocus={returnFocusToInput}
+      />
       <SlashSuggestions slash={slash} anchor={surfaceRef} />
       <div {...stylex.props(composerStyles.editorInset)}>
         <ComposerAttachments

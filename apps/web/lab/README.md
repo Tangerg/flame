@@ -185,6 +185,16 @@ Opening or resizing at short heights reveals the current selection; explicit
 scrolling can still browse the remaining options without being pulled back.
 This recorded list does not qualify Runtime search ranking.
 
+The same Agent catalog offers `file-list-error`. Its DataProvider rejects every
+file-list request with one captured error; an attempt witness only records real
+calls and never decides their outcome. The independent preview seeds `@store`
+and enters through the public Composer focus delivery, including an already
+positioned, blurred native caret. Production suggestion state owns loading,
+failure, retry and dismissal. Closure checks cover short-height error reading,
+the complete Retry label, keyboard and pointer recovery, preserved padded drafts,
+and the real file/command toolbar entries with immediate continued input. This
+comparison does not qualify live filesystem discovery or successful recovery.
+
 The recorded `apps/web/package.json` read imports the current Web manifest as raw
 text, so its displayed path and contents share that source instead of returning
 the generic code sample. These recorded responses do not qualify live filesystem

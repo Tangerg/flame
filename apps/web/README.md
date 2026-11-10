@@ -195,6 +195,14 @@ input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
 
+Composer focus delivery synchronizes the registered input's caret projection
+after applying its actual native selection. Programmatic file and command
+entries therefore open suggestions even when focus does not produce a new
+selection event. Suggestion acceptance settles selection with the committed
+draft before following input, preserving the captured focus owner's eligibility.
+File-list failure exposes keyboard Retry and returns from its disappearing
+action only while that action still owns focus.
+
 Regeneration keeps rollback and follow-up admission under one captured Agent
 command lease. Only a committed rollback with Runtime's original dropped input
 can submit another Run in that Session. Missing targets, unavailable checkpoints,

@@ -61,3 +61,16 @@ it("changes verification geometry without changing the scenario document", () =>
   expect(narrow.map((entry) => entry.url)).toEqual(original.map((entry) => entry.url));
   expect(narrow.every((entry) => entry.width === 390)).toBe(true);
 });
+
+it("opens failed file suggestions through the registered Agent comparison", () => {
+  const cases = labCases(catalog, readSelection("", catalog));
+  const entry = cases.find(
+    (entry) =>
+      entry.storyId === "business-agent-scenarios" && entry.variantId === "file-list-error",
+  )!;
+  const url = new URL(entry.url, "https://flame.test");
+  expect(url.pathname).toBe("/lab/fixture.html");
+  expect(url.searchParams.get("fixture")).toBe("agent");
+  expect(url.searchParams.get("state")).toBe("idle");
+  expect(url.searchParams.get("file-list")).toBe("error");
+});
