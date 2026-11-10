@@ -1897,6 +1897,41 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await expect(input).toBeFocused();
           await expect(input).toHaveValue(prefix + "@store");
         }
+        const retainedOption = listbox.getByRole("option", { name: paths[1], exact: true });
+        async function captureRetainedOption(phase: string) {
+          const frames = await retainedOption.evaluate(async (row) => {
+            const scroller = row.closest<HTMLElement>('[role="listbox"]');
+            if (!scroller) throw new Error("the selected option must belong to its listbox");
+            const readings = [];
+            for (let frame = 0; frame < 8; frame++) {
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+              const bounds = row.getBoundingClientRect();
+              const box = scroller.getBoundingClientRect();
+              const top = box.top + scroller.clientTop;
+              const bottom = top + scroller.clientHeight;
+              readings.push({
+                bounds: bounds.toJSON(),
+                viewport: { top, bottom, height: scroller.clientHeight },
+                scrollTop: scroller.scrollTop,
+                scrollHeight: scroller.scrollHeight,
+                clipped: bounds.top < top - 0.5 || bounds.bottom > bottom + 0.5,
+              });
+            }
+            return readings;
+          });
+          await testInfo.attach(`file-selected-${phase}-geometry`, {
+            body: JSON.stringify(frames),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`file-selected-${phase}-view`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          return frames;
+        }
+        await page.setViewportSize({ width: 373, height: 251 });
+        await expect(retainedOption).toHaveAttribute("aria-selected", "true");
+        const resized = await captureRetainedOption("resized");
         await input.press("Escape");
         await expect(listbox).toBeHidden();
         await expect(input).toHaveValue(prefix + "@store");
@@ -1908,6 +1943,26 @@ for (const browserName of ["chromium", "webkit"] as const) {
           "aria-selected",
           "true",
         );
+        const reopened = await captureRetainedOption("reopened");
+        for (const [phase, frames] of [
+          ["resized", resized],
+          ["reopened", reopened],
+        ] as const) {
+          for (const frame of frames) {
+            expect(frame.bounds.height).toBeGreaterThan(0);
+            expect(frame.viewport.height).toBeGreaterThanOrEqual(frame.bounds.height - 0.5);
+            expect(frame.clipped, phase).toBe(false);
+          }
+        }
+        await listbox.evaluate((node) => {
+          node.scrollTop = 0;
+        });
+        for (const frame of await captureRetainedOption("browsed")) {
+          expect(frame.scrollTop).toBe(0);
+        }
+        await expect(retainedOption).toHaveAttribute("aria-selected", "true");
+        await expect(input).toBeFocused();
+        await expect(input).toHaveValue(prefix + "@store");
         await input.press("ArrowUp");
         await expect(listbox.getByRole("option", { name: paths[0], exact: true })).toHaveAttribute(
           "aria-selected",

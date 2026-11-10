@@ -3771,10 +3771,59 @@ are checked: only the three authored source paths change. Native inputs and the
 primary checkout remain unchanged. No functional checks run after restoration.
 Four original desktop images are retained outside the repository; remaining
 temporary evidence is archived before the private qualification root is retired.
-Next trace the existing selected-row scroll owner: reopening at Chinese native
-300% retains the second choice but initially clips it vertically until arrow
-navigation reveals it. This filename-width repair does not claim that separate
-reopen/scroll behavior is resolved.
+The subsequent selected-row qualification resolves that separate vertical
+failure. At 373 × 251, both engines leave **11.78 px** of the selected second
+row below a 60 px list viewport after resizing and reopening; all eight paint
+samples remain clipped. Native 300% repeats the persistent failure, while manual
+scrolling reveals the row and Tab still accepts its exact path.
+
+`SuggestionPopup.tsx` now binds its reveal observer to the mounted list through
+a React callback ref, with cleanup on detach, closure or selection change. The
+observer follows the list's actual dimensions and scopes its lookup to that
+list. This replaces the parent effect that ran before deferred portal content
+or later height constraints settled. Selection, query and keyboard owners stay
+unchanged. Read-only Base UI portal source, ZCode MentionPanel and Better
+Layout/Accessibility inform this boundary. A bounded Claude Code CLI supplies
+the one-file candidate; primary review and verification admit it.
+
+The same four Lab cases gain the short frame and independent explicit browsing
+checks. Baseline: **2 passed / 2 failed**, **29.657 s**. Final focused invocation:
+**7/7**, **23.440 s**, with zero skips, retries, flaky results or global errors.
+All **64 automatic-reveal samples** are unclipped; all **32 explicit-scroll
+samples** retain their requested offset without changing the selected path,
+query or input focus. The existing 192 basename samples still pass. All
+**24 final browser PNGs** are inspected at original size.
+
+The complete Web check passes **433 files / 4824 tests** and all module gates in
+**266.722 s**; production staging passes in **7.501 s**. Two earlier invocations
+each pass 4772 tests while 52 Runtime cases do not run: first the prepared Node
+archive is absent, then cold prerequisite compilation reaches the existing
+60 s setup limit. Preparing the pinned archive and the existing Runtime,
+runner, CLI and plugin builds completes verification with that same limit.
+Revisit cold preparation and cancellation of timed-out build children when the
+Runtime fixture is next changed; this batch keeps that harness unchanged.
+
+The signed Wails host uses the same **488 canonical Lab assets** and unchanged
+46 native inputs. Chinese/dark/18 px/blue/no motion proves automatic reveal at
+200% → 300%, Escape/reopen, pointer browsing, keyboard reentry, exact path
+acceptance and continued padded drafts. Native Window Zoom/restore qualifies
+query retention. Changed-hover and outside-dismissal arrivals remain diagnostic;
+corrected reentry supplies final acceptance. English/light/14 px/Orange/full
+motion qualifies the one captured `/goal` option at both zoom levels, query
+editing after Escape, Tab completion and continued drafting. It does not execute
+a Goal. All **19 native captures / 32 AX records** are reviewed. Native tasks use
+recorded inputs; Runtime lifecycle is covered separately by the Web suite.
+Physical IME and VoiceOver audio remain unverified.
+
+All three native processes exit 0, both HTTP servers stop and the private app is
+unregistered. Six Library paths return to absence, three original empty WebKit
+helper roots remain unchanged and all twelve output/cache roots are restored,
+including the prepared Node archive. All 6734 non-Markdown inputs are checked:
+only this popup and the existing Lab scenario change. The primary checkout and
+all native inputs remain unchanged. No functional checks run after restoration.
+Four original desktop images are retained outside the repository; temporary
+evidence is archived before the private root is retired. Next inspect the
+existing file-suggestion status and retry path before extending qualification.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 

@@ -181,6 +181,8 @@ for a basename that fits by itself, allowing the parent directory to ellipsize
 first. The complete path remains the option's accessible name and title. Existing
 closure scenarios exercise both Go matches at narrow widths, dismissal, retained
 selection, keyboard acceptance and continued input in the original Composer.
+Opening or resizing at short heights reveals the current selection; explicit
+scrolling can still browse the remaining options without being pulled back.
 This recorded list does not qualify Runtime search ranking.
 
 The recorded `apps/web/package.json` read imports the current Web manifest as raw
