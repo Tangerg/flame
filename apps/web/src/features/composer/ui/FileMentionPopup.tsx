@@ -58,6 +58,7 @@ export function FileMentionPopup({ mentions, anchor }: Props) {
             id={suggestionOptionId(i)}
             tabIndex={-1}
             selected={i === mentions.index}
+            aria-label={path}
             title={path}
             onMouseEnter={() => mentions.setIndex(i)}
             onMouseDown={(event) => {
@@ -70,9 +71,13 @@ export function FileMentionPopup({ mentions, anchor }: Props) {
               size="sm"
               className={stylex.props(vocab.hold, vocab.muted).className}
             />
-            <span {...stylex.props(vocab.truncate, face.mono)}>
-              <span {...stylex.props(suggestionStyles.directory)}>{dir}</span>
-              <span {...stylex.props(suggestionStyles.name)}>{name}</span>
+            <span {...stylex.props(vocab.min, face.mono, suggestionStyles.path)}>
+              <span {...stylex.props(vocab.min, vocab.truncate, suggestionStyles.directory)}>
+                {dir}
+              </span>
+              <span {...stylex.props(vocab.truncate, vocab.hold, suggestionStyles.name)}>
+                {name}
+              </span>
             </span>
           </OptionRow>
         );

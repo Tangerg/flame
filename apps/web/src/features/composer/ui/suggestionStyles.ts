@@ -27,6 +27,7 @@ export const suggestionStyles = stylex.create({
     fontWeight: weight.medium,
     color: color.accentText,
   },
+  path: { display: "flex" },
   directory: { color: color.fgFaint },
-  name: { fontWeight: weight.medium, color: color.fg },
+  name: { maxWidth: "100%", fontWeight: weight.medium, color: color.fg },
 });

@@ -175,6 +175,14 @@ from the fixture-owned `VISUAL_*` arrays, and their existing in-memory transport
 unmodelled Runtime operations. Clipboard, download and other browser interactions
 retain their existing explicit behavior.
 
+The Agent file list honors literal, case-insensitive path fragments and the
+requested limit over its five captured records. File suggestions reserve room
+for a basename that fits by itself, allowing the parent directory to ellipsize
+first. The complete path remains the option's accessible name and title. Existing
+closure scenarios exercise both Go matches at narrow widths, dismissal, retained
+selection, keyboard acceptance and continued input in the original Composer.
+This recorded list does not qualify Runtime search ranking.
+
 The recorded `apps/web/package.json` read imports the current Web manifest as raw
 text, so its displayed path and contents share that source instead of returning
 the generic code sample. These recorded responses do not qualify live filesystem

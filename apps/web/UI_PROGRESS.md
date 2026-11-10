@@ -3728,6 +3728,54 @@ reservations needed by backend accounting. No substitute count or byte model is
 invented. Capacity coverage, remaining migrated interactions and whole-product
 visual acceptance remain unfinished; continue qualification in this same Lab.
 
+The **2026-11-11 filename follow-up** reproduces `store_test.go` as `store_t…`
+in the selected Chinese/dark/18 px suggestion at native 300%. One outer ellipsis
+let the directory consume the basename. `FileMentionPopup.tsx` and its existing
+`suggestionStyles.ts` now let the directory shrink first, keeping an ordinary
+basename complete and an oversized basename bounded. The literal full path stays
+in DOM order, title, acceptance and the explicit accessible name; no selection,
+query, event or popup-sizing owner changes. Read-only ZCode file display and
+Better Layout, Typography and Accessibility inform the repair. A bounded Claude
+Code CLI supplies the two-file candidate; primary review resolves its vocabulary
+assumptions and preserves the exact accessible path after splitting the layout.
+
+Four new cases in the existing closure scenario fail the original clipping in
+both Chromium and WebKit, then pass with the repair. English/light/14 px and
+Chinese/dark/18 px cover 320, 373 and 560 px, both basenames across **192 paint
+samples**, exact accessible paths, Escape/reopen, retained selection, Up/Down,
+Tab acceptance, the same input node and the padded draft's continuation. All
+**12 final browser PNGs** are inspected at original size. The final selected
+invocation passes **7/7 in 22.026 s**, including both existing popup-layer checks
+and the shared chip contract, with zero skips, retries, flaky results or global
+errors. Intermediate failures expose the changed computed name and a new test's
+incorrect assumption that reopening resets selection; both are resolved without
+changing the selection owner. **51 focused tests / 5 files**, types, lint,
+formatting and relevant style/design guards pass. Production staging passes in
+**7.032 s**; the configured Lab production build supplies the native assets.
+
+Actual Wails uses the same **488 canonical Lab assets** and unchanged 46 native
+inputs. English/light/14 px/Orange/full motion and Chinese/dark/18 px/blue/no
+motion cover 200% and 300%, exact query retention, file identity, keyboard or
+pointer acceptance and continued drafts. Chinese native Window Zoom and restore
+retain the original draft and reference; English transcript scrolling does too.
+All **17 native captures**, including baseline and diagnostic arrivals, are
+viewed. An initial English shortcut probe did not focus this fixture and is
+excluded; explicit input entry supplies acceptance. Recorded Lab inputs do not
+qualify live Runtime discovery, physical IME or VoiceOver audio.
+
+The three native processes exit 0, both owned HTTP servers stop and the private
+app is unregistered. Six Library paths return to absence, the three original
+empty WebKit helper roots remain unchanged and all twelve output/cache roots
+return to their captured contents and modes. All **6734 non-Markdown inputs**
+are checked: only the three authored source paths change. Native inputs and the
+primary checkout remain unchanged. No functional checks run after restoration.
+Four original desktop images are retained outside the repository; remaining
+temporary evidence is archived before the private qualification root is retired.
+Next trace the existing selected-row scroll owner: reopening at Chinese native
+300% retains the second choice but initially clips it vertically until arrow
+navigation reveals it. This filename-width repair does not claim that separate
+reopen/scroll behavior is resolved.
+
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 
 Actual Wails inspection exposes a source reader reduced to a strip and covered

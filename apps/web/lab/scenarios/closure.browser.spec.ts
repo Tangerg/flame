@@ -14,6 +14,7 @@ import {
   type VisualSettingsPane,
 } from "./workspaceFixtureStates";
 import { en } from "@/lib/i18n/locales/en";
+import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { expectLabReady } from "../readiness";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
@@ -1795,6 +1796,144 @@ test("the file mention picker paints over the transcript, not under the composer
   expect(geometry.focusStillInInput).toBe(true);
   expect(geometry.selects).toBe(1);
 });
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  const mentionTest = test.extend({ browserName });
+  for (const profile of [
+    { locale: "en", theme: "light", fontSize: 14, messages: en },
+    { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
+  ]) {
+    mentionTest(
+      `${browserName} file suggestions preserve complete basenames in ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = profile.messages;
+        await page.goto(
+          `/lab/fixture.html?${new URLSearchParams({
+            fixture: "agent",
+            state: "idle",
+            sidebar: "collapsed",
+            locale: profile.locale,
+            theme: profile.theme,
+            "font-size": String(profile.fontSize),
+            motion: "off",
+          })}`,
+        );
+        await expectLabReady(page);
+        const input = page.getByRole("textbox", {
+          name: messages["composer.input.label"],
+          exact: true,
+        });
+        const originalInput = await input.elementHandle();
+        const prefix = "  Keep this draft. ";
+        await input.fill(prefix + "@store");
+        const listbox = page.getByRole("listbox", {
+          name: messages["composer.mention.heading"],
+          exact: true,
+        });
+        const paths = ["runtime/session/store.go", "runtime/session/store_test.go"];
+        await expect(listbox.getByRole("option")).toHaveCount(2);
+        for (const width of [320, 373, 560]) {
+          await page.setViewportSize({ width, height: 568 });
+          const first = listbox.getByRole("option", { name: paths[0], exact: true });
+          if ((await first.getAttribute("aria-selected")) !== "true") {
+            await input.press("ArrowUp");
+          }
+          const records = [];
+          for (const [index, path] of paths.entries()) {
+            if (index > 0) await input.press("ArrowDown");
+            const option = listbox.getByRole("option", { name: path, exact: true });
+            await expect(option).toHaveAttribute("aria-selected", "true");
+            const name = path.slice(path.lastIndexOf("/") + 1);
+            records.push(
+              await option.evaluate(async (row, filename) => {
+                const frames = [];
+                for (let frame = 0; frame < 8; frame++) {
+                  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+                  const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+                  let text = walker.nextNode();
+                  while (text && text.textContent !== filename) text = walker.nextNode();
+                  if (!text) throw new Error("the option must contain its literal basename");
+                  const range = document.createRange();
+                  range.selectNodeContents(text);
+                  const bounds = range.getBoundingClientRect();
+                  const clips = [{ owner: "window", left: 0, right: window.innerWidth }];
+                  for (
+                    let parent: HTMLElement | null = text.parentElement;
+                    parent;
+                    parent = parent.parentElement
+                  ) {
+                    if (!/(hidden|auto|scroll|clip)/.test(getComputedStyle(parent).overflowX))
+                      continue;
+                    const rect = parent.getBoundingClientRect();
+                    const left = rect.left + parent.clientLeft;
+                    clips.push({ owner: parent.localName, left, right: left + parent.clientWidth });
+                  }
+                  frames.push({
+                    filename,
+                    bounds: bounds.toJSON(),
+                    clippedBy: clips.filter(
+                      (clip) => bounds.left < clip.left - 0.5 || bounds.right > clip.right + 0.5,
+                    ),
+                  });
+                }
+                return frames;
+              }, name),
+            );
+          }
+          await testInfo.attach(`file-name-${width}-geometry`, {
+            body: JSON.stringify(records),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`file-name-${width}-view`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          for (const frames of records) {
+            for (const frame of frames) {
+              expect(frame.bounds.width).toBeGreaterThan(0);
+              expect(frame.clippedBy, frame.filename).toEqual([]);
+            }
+          }
+          await expect(input).toBeFocused();
+          await expect(input).toHaveValue(prefix + "@store");
+        }
+        await input.press("Escape");
+        await expect(listbox).toBeHidden();
+        await expect(input).toHaveValue(prefix + "@store");
+        await input.press("Space");
+        await expect(input).toHaveValue(prefix + "@store ");
+        await input.press("Backspace");
+        await expect(listbox).toBeVisible();
+        await expect(listbox.getByRole("option", { name: paths[1], exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        await input.press("ArrowUp");
+        await expect(listbox.getByRole("option", { name: paths[0], exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        await input.press("ArrowDown");
+        await expect(listbox.getByRole("option", { name: paths[1], exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        await input.press("Tab");
+        await expect(listbox).toBeHidden();
+        const accepted = prefix + "@" + paths[1] + " ";
+        await expect(input).toHaveValue(accepted);
+        await expect(input).toBeFocused();
+        expect(await input.evaluate((node, original) => node === original, originalInput)).toBe(
+          true,
+        );
+        await input.press("ControlOrMeta+A");
+        await input.press("ArrowRight");
+        await page.keyboard.insertText(" Continue.");
+        await expect(input).toHaveValue(accepted + " Continue.");
+      },
+    );
+  }
+}
 
 test("the composer's attachment chips are one component, not two", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
