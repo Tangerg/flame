@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Tool reading retains its qualified reflow behavior; the current Subagent repair also reserves usable source space beneath long titles. The Web check passes **433 files / 4,824 tests**, the targeted existing Lab selection passes **21 tasks**, and supported native verification passes. Actual Wails English/light/14 px and Chinese/dark/18 px tasks qualify 200%/300% reading, independent title scrolling, source return and exact continued drafts. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The current unchanged-source Diff review qualifies native 200%/300% long-path reading, file/layout navigation, filtered-list return and exact continued drafts in English/light/14 px and Chinese/dark/18 px. The Subagent header repair remains qualified. Its preceding full Web check passes **433 files / 4,824 tests**, its existing Lab selection passes **21 tasks**, and supported native verification passes; this follow-up changes no product source. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to the inspected tasks; whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -25193,91 +25193,85 @@ artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
 
-### File and Diff native reading review after main (2026-11-05)
+### File and Diff native reading (2026-11-11)
 
-The task is existing conversation draft → file or comparison → source, list and
-reading controls → original conversation → continued draft. This follow-up
-reviews the product bytes published as `0bf3b198d`; a fresh origin/main fetch
-confirms the same head. It selects no product-source change. The bounded
-filename, full canonical path in ordinary scrolling content and existing return
-owners remain intact. A root-level README still needs its complete path even
-when its short header appears similar; hiding that path would damage the
-full-path identity contract for filenames without a directory component. The Diff table's second AX path is its
-existing screen-reader-only caption, not another visible breadcrumb.
+This unchanged-source follow-up reviews `85e6ac6b6` through the existing Lab
+`dock-review` scene: exact conversation draft → three-file overview → selected
+long-path Diff → file and layout navigation → filtered-list return → continued
+draft. A fresh main fetch confirms identical heads. Actual inspection supports
+the existing shared Panel reading budget; no new layout, scroll or focus mechanism
+is selected. The historical Files qualification at `0bf3b198d` covered source,
+README Preview/Source, line navigation and continuing the original draft. This
+follow-up does not requalify that separate Files task.
 
-Actual Wails 3.1.0 acceptance uses current production components and generated
-plugin modules, deterministic fixture providers and a private signed host. Its
-served files, host and bundle retain exact hashes across the tasks: **331 Web
-files, 24 host files and four signed bundle files**. Node 24.22.1, npm 11.21.1
-and Go 1.27.3 use the existing owned toolchain. The nine serial preparation,
-build, signing and registration steps pass. No browser visual suite, performance
-benchmark or new test runs; the unchanged-source checks above retain their
-original scope. Better-layout informs the alignment and wrapping review. No
-spacing, type, color, theme, motion, Runtime or interaction owner changes.
+Read-only ZCode's actual `components/ui/diff-viewer.tsx` separates file identity
+from the renderer, keeps patch/full-content semantics distinct and uses ordinary
+scrolling. Better-layout and better-accessibility guide clipping, shared edges
+and keyboard return. Flame's own Panel, DiffFileHeader, DiffTable, ScrollRegion,
+Base UI and tokens remain authoritative. The private Wails **v3.1.0** wrapper
+retains the production minimum window and native host/menu/zoom implementations.
+All **46 production native inputs** and 45 unchanged private copies retain their
+hashes; only the existing private asset/URL/initial-size shim differs.
 
-- **English / light / 14 px / Orange #FB6E30 / full motion:** the actual file
-  Dock starts at 363 px. Keyboard focus on its splitter followed by Home reaches
-  **320 px**, with separate readable filename, actions and full wrapped path.
-  Go to line selects line 3. Opening the main area and using Actual Size plus
-  twenty native Zoom In actions reaches **200%** at **2238 × 1720**. The full
-  path and all eight source rows remain readable. Back to files, opening README,
-  Preview/Source switching and keyboard End reveal its final line 24 with the
-  filename and actions retained. Copy path then actual Close returns the exact
-  draft; native paste produces `Keep the file review draft. README.md`. Explicit
-  continued input, switching the actual Diff tab and collapsing the Dock retain
-  `Keep the file review draft. README.md Continue. Diff reviewed.`.
-- **Chinese / dark / 18 px / #5B8DEF / full motion:** actual Files navigation
-  opens the three-file comparison before selecting the supported **146-character
-  canonical path / 113-character filename**. The 351 px Dock bounds the filename
-  beside Unified and wraps the complete path through its extension. Main-area
-  entry, sidebar collapse and twenty native Zoom In actions from Actual Size
-  reach **200%** at **2238 × 1720**. Next selects `module-001.ts` with truthful
-  `2 / 3`; Previous returns to the long filename. Native Window → Move & Resize →
-  Top Left settles at **2240 × 1456**. The filename, layout and file controls
-  retain their separate reading edges. At this shorter, enlarged geometry the
-  canonical path is read in successive scroll positions; captures verify its
-  prefix, continuation and final `.tsx`. Tab reaches the named diff reader,
-  Page keys and coordinate wheel reveal the source, and scrolling back from End
-  reveals both final line-24 changes. Focused Right navigation reaches the long
-  code's `// before` and `// after` suffixes without moving the header controls.
-  Back to files restores the current long-file row. Actual Close, Actual Size,
-  Dock collapse and explicit Composer caret placement preserve and continue
-  `文件比较草稿。已核对文件末尾并返回对话。`.
+Both English/light/**14 px**/Orange **#FB6E30**/full motion and Chinese/dark/
+**18 px**/**#5B8DEF**/motion off qualify the same captured **146-character path**.
+Keyboard focus on the real Dock splitter followed by Home establishes **320 px**.
+The bounded filename, independent layout control, status, counts and complete
+wrapped path remain readable at that width. Actual full-width entry, sidebar
+collapse, Actual Size and twenty/forty native Zoom In actions establish
+**200% / 300%**. The shared controls stay fixed when their reading budget fits
+and join normal scrolling when it does not. Native End reveals line **24**;
+Right reading exposes both `before` and `after` suffixes in Unified and the
+final `after` column in Side by side. Coordinate wheel reading changes the
+source position while retaining the reader's focus.
 
-Evidence limits remain explicit. The first private preparation omitted the
-visual entry-to-root index mapping and showed a blank test page; that process
-exits 0 and is excluded. Adding the existing private mapping leaves the other
-330 served files unchanged before the two accepted profiles. A pointer click
-on the English splitter does not focus it: the misleadingly named
-`en-dock-minimum` capture still reports 363 px and proves no minimum-width
-claim. The later keyboard-focused capture proves 320 px. The initial Chinese
-fixture focus retains a previous file constant; actual Files navigation supplies
-the coherent overview and long-path selection. Static fixture sidebar labels
-are readouts, not navigation. Rescaled captures and the 1458 px native resize
-transition are excluded from geometry claims. Whole-region AX scroll attempts
-do not prove movement; the observed coordinate wheel, Page keys and focused
-Right tasks above do. There is no claim for Send, live provider or Git/filesystem
-writes, automatic Composer focus, physical IME, VoiceOver, RTL, other native
-locales or whole-product acceptance.
+Native Window → Zoom and its reverse retain that same reader's focus. Original
+captures measure **2238 × 1508** and **3024 × 1898** pixels; these are native
+capture bounds, not CSS viewport claims. Next selects `module-001.ts` with
+**2 / 3** and focuses its heading. Previous restores the long file. Layout-menu
+Escape closes only that popup and restores its control. Keyboard selection
+switches to Side by side. Reader Escape returns to the original file row;
+filtering `WorkspaceDiffReview` gives **1 / 1 matching files** in the reader,
+then returns to that same row and retained query. Accepted comparison, baseline
+and read time do not advance during these local navigations. Close returns to
+the conversation, and both padded drafts retain their exact whitespace before
+native paste appends the continuation. No Send or Copy action is activated.
 
-The blank initial profile and both accepted launch receipts are reaped with
-exit **0**; the accepted English and Chinese lifetimes are **448.534 s** and
-**809.019 s**. A post-Quit AX request reopens an environment-free shell; its
-empty-root page is excluded, and native Quit plus an exact executable process
-check confirms retirement. No product change masks this harness behavior.
+All **31 original JPEG captures** and **37 AX records** are inspected; **28 images**
+support qualification. Three probes remain excluded: one names source focus
+but actually focuses Layout, one Home capture shows the Panel start rather than
+the first code row, and the initial English post-zoom End capture shows the
+start. A separate unchanged-source native process repeats the latter sequence:
+its **first** End shows line 24, and a later capture without another key retains
+that line and focus. The initial discrepancy is not reproduced in that probe;
+this bounded result does not establish universal timing behavior. Initial
+fixture focus still references DockResizer; explicit Files navigation and actual
+long-file selection establish the coherent task. File names are captured inputs,
+not proof of live filesystem or Git accuracy.
 
-All **6,630 tracked non-Markdown files** remain byte-identical to the accepted
-source. The evidence retains **109 UTF-8 records and 44 capture digests**, with
-a verified gzip round trip of **1,019,225 bytes**, SHA-256
-`03ef95f971771bb8c8ad0f5779e37aacec7a5621ba0cab7b5608bf71063bf051`.
-The exact app registration, two created UID stores and private root are retired;
-all six UID locations are absent, and port **50966** and the exact executable
-are inactive. Six original output trees and two UI cache files match their
-baselines; only two generated UI files require restoration. All five originally
-absent output roots remain absent, and the 58 real nested Web dependency files
-are preserved. The user-owned primary checkout remains clean on
-`00c172c73`. Continue with observed remaining defects; this is a scoped native
-review, not certification that every page is complete.
+Serial preparation passes `make stage-web` in **7.790 s**, `lab:build` in
+**2.813 s**, and the signed private host build in **20.101 s**. All **488 canonical
+Lab assets** match the served bytes. Existing Diff owner coverage passes
+**1 file / 48 tests** in **5.290 s**. There is no additional browser visual suite,
+performance benchmark or candidate implementation. The preceding full Web and
+`make check-native` results retain their unchanged-source scope. All three
+native processes exit **0**, including the first-End timing probe.
+
+All **6,734 non-Markdown inputs** remain unchanged. The exact private app
+registration is removed, six Library locations return to absence, and three
+pre-existing empty WebKit helper roots retain identity, mode and flags. All
+**12 output/cache roots** return to baseline content/mode or original absence;
+functional checks end before restoration. The current merged-lock dependency
+install remains. The user's primary checkout stays clean on `58a3995da`.
+Evidence and four original task captures are retained outside the repository;
+disposable qualification resources are retired after publication.
+
+VoiceOver, physical IME, RTL, other native locales, live provider/Git behavior
+and whole-product acceptance remain unqualified. A separate observed follow-up
+is the English Material-toggle explanation, which grows to several lines at
+300% while the Composer remains usable. Review its copy density through the
+same Lab rather than adding a second visual verification path. No task-blocking
+layout or accessibility finding remains in the inspected Diff flows.
 
 ### Bounded file-preview identity
 
@@ -41813,7 +41807,7 @@ wheel reading inside the title with source focus retained, Window Zoom/restore,
 Home/End title reading, pointer and Enter source opening, Escape return,
 All subagents return to the original completed row, re-entry, Close and exact
 continued Composer drafts. All four baseline/final application processes exit
-**0**. The inspected **38 native PNGs** retain eleven baseline captures and
+**0**. The inspected **38 native images** retain eleven baseline captures and
 27 final captures; **21 final captures** support acceptance. Four intermediate
 title-paint captures, one intermediate source-paint capture and one unpaired
 supporting duplicate remain diagnostic evidence, excluded from acceptance.
