@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ func TestSessionStorageCannotCreateCompetingFlagValues(t *testing.T) {
 		`UPDATE sessions SET favorite = 2 WHERE id = 'ses_flags'`,
 		`UPDATE sessions SET isolated = -1 WHERE id = 'ses_flags'`,
 	} {
-		if _, err := db.ExecContext(t.Context(), statement); err == nil {
+		if _, err := execFixture(t.Context(), db, statement); err == nil {
 			t.Fatalf("storage accepted a non-boolean flag: %s", statement)
 		}
 	}
@@ -49,12 +50,14 @@ func TestSessionStorageRejectsInvalidDecodedFlags(t *testing.T) {
 			if err != nil || !got.Favorite() || !got.Isolated() {
 				t.Fatalf("valid flags failed to round-trip: %+v, %v", got.Snapshot(), err)
 			}
-			if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), "PRAGMA ignore_check_constraints=ON"); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), "UPDATE sessions SET "+column+"=2 WHERE id=?", value.ID()); err != nil {
-				t.Fatal(err)
-			}
+			db := corruptFixture(t, fixtureDatabase(store.db), func(connection *sql.Conn) error {
+				if _, err := connection.ExecContext(t.Context(), "PRAGMA ignore_check_constraints=ON"); err != nil {
+					return err
+				}
+				_, err := connection.ExecContext(t.Context(), "UPDATE sessions SET "+column+"=2 WHERE id=?", value.ID())
+				return err
+			})
+			store = newSessionStore(databaseFor(db))
 			if _, err := store.Get(t.Context(), value.ID()); err == nil {
 				t.Fatal("read normalized a corrupt flag into valid Session authority")
 			}

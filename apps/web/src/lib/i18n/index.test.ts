@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { browserLocale, activeLocale, mountLocaleBundle, setLocale, useT } from "@/lib/i18n/index";
 afterEach(async () => {
   setLocale("en");
@@ -41,6 +41,22 @@ describe("the document's declared language", () => {
 });
 
 describe("locale selection identity", () => {
+  it("keeps the translator stable until the selected locale changes", async () => {
+    const remove = mountLocaleBundle("fr-x-translator", { "callout.note": "Captured locale" });
+    const view = renderHook(() => useT());
+    try {
+      const original = view.result.current;
+      view.rerender();
+      expect(view.result.current).toBe(original);
+      await act(async () => setLocale("fr-x-translator"));
+      expect(view.result.current).not.toBe(original);
+      expect(view.result.current("callout.note")).toBe("Captured locale");
+    } finally {
+      view.unmount();
+      remove();
+    }
+  });
+
   it("preserves the requested locale while its lazy dictionary falls back to English", async () => {
     setLocale("fixture-locale-without-a-bundle");
     await Promise.resolve();

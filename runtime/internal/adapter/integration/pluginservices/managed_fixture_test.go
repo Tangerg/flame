@@ -135,7 +135,11 @@ func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpser
 			t.Error(err)
 		}
 	})
-	fixture := &managedFixture{directory: directory, store: store, packages: managedPackages{server, digest}, callbacks: callbacks, prepare: prepare, runner: runner.Dial(filepath.Join(directory, "runner", "control.sock"))}
+	client, err := runner.NewClient(filepath.Join(directory, "runner", "control.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := &managedFixture{directory: directory, store: store, packages: managedPackages{server, digest}, callbacks: callbacks, prepare: prepare, runner: client}
 	t.Cleanup(func() { fixture.close(t) })
 	fixture.open(t, true)
 	return fixture

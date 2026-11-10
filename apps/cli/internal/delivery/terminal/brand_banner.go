@@ -105,7 +105,7 @@ func (b *brandBanner) lines(width, height int) []brandLine {
 	}
 
 	mark := unicodeBrandMark
-	if b.glyphs.Horizontal == "-" {
+	if b.glyphs.Horizontal.String() == "-" {
 		mark = asciiBrandMark
 	}
 	lines := make([]brandLine, 0, len(mark)+4)

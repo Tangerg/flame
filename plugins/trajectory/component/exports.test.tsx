@@ -11,13 +11,30 @@ import type {
   ExportSessionResponse,
   ExportTrajectoryResponse,
 } from "@flame/runtime-client/wire";
-import { parseJSON } from "@frame/sdk/json";
+import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { SessionExports, saveSessionExport } from "./exports";
 
 afterEach(cleanup);
 
-const artifactText =
-  '{"session":{"id":"captured"},"evidence":{"count":9007199254740993,"fraction":0.1000000000000000000001}}';
+const artifact: NonNullable<ExportSessionResponse["artifact"]> = {
+  version: 1,
+  session: {
+    id: "captured",
+    title: "Captured session",
+    provider: "fixture",
+    model: "fixture",
+    workspace: { path: "/fixture" },
+    createdAt: "2026-09-28T00:00:00Z",
+    updatedAt: "2026-09-28T00:00:00Z",
+  },
+  items: [],
+  messages: [
+    parseJSON('{"count":9007199254740993,"fraction":0.1000000000000000000001}'),
+  ],
+  runs: [],
+  toolResults: [],
+};
+const artifactText = stringifyJSON(artifact);
 const trajectory = {
   schemaVersion: 1,
   collectedAt: "2026-09-28T00:00:00Z",
@@ -52,9 +69,7 @@ function fixture() {
         ? { format: "md", markdown: "# Résumé 🔥\n" }
         : {
             format: "json",
-            artifact: parseJSON(
-              artifactText,
-            ) as ExportSessionResponse["artifact"],
+            artifact,
           },
   );
   const trajectoryQuery = vi.fn(
@@ -236,7 +251,7 @@ it.each(["md", "json", "trajectory"] as const)(
     response.resolve({
       format: "md",
       markdown: "retired",
-      artifact: parseJSON(artifactText) as ExportSessionResponse["artifact"],
+      artifact,
     });
     evidence.resolve({ trajectory } as unknown as ExportTrajectoryResponse);
     await expect(exporting).rejects.toBe(context.signal.reason);

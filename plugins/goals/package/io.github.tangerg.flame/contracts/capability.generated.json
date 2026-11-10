@@ -11,11 +11,11 @@
       "description": "Decide a lifecycle transition for the captured objective or retain its current state.",
       "input": {
         "$defs": {
-          "goalworkflow.Request": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.UmVxdWVzdA": {
             "additionalProperties": false,
             "properties": {
               "current": {
-                "$ref": "#/$defs/goalworkflow.Value"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU"
               },
               "explanation": {
                 "type": "string"
@@ -47,7 +47,7 @@
             ],
             "type": "object"
           },
-          "goalworkflow.Value": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU": {
             "additionalProperties": false,
             "properties": {
               "explanation": {
@@ -77,7 +77,7 @@
         "additionalProperties": false,
         "properties": {
           "current": {
-            "$ref": "#/$defs/goalworkflow.Value"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU"
           },
           "explanation": {
             "type": "string"
@@ -111,14 +111,14 @@
       },
       "output": {
         "$defs": {
-          "goalworkflow.Decision": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.RGVjaXNpb24": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
                 "type": "string"
               },
               "next": {
-                "$ref": "#/$defs/goalworkflow.Value"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU"
               },
               "refusal": {
                 "type": "string"
@@ -126,7 +126,7 @@
             },
             "type": "object"
           },
-          "goalworkflow.Value": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU": {
             "additionalProperties": false,
             "properties": {
               "explanation": {
@@ -159,7 +159,7 @@
             "type": "string"
           },
           "next": {
-            "$ref": "#/$defs/goalworkflow.Value"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9nb2Fsd29ya2Zsb3c.VmFsdWU"
           },
           "refusal": {
             "type": "string"

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
@@ -135,7 +138,10 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE policy SET snapshot='{"revision":2}'`); err != nil {
+	if err := sqlite.RunInTx(t.Context(), store.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, store.db).ExecContext(ctx, `UPDATE policy SET snapshot='{"revision":2}'`)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	store.db.Close()

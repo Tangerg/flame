@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -22,7 +23,7 @@ func prepare(in extension.FeedbackDraft) (plugin.FeedbackSignal, error) {
 	return plugin.FeedbackSignal{Rating: protocol.FeedbackRating(in.Rating), Text: in.Text}, nil
 }
 
-func newServer(db *sql.DB) (*sdk.Server, error) {
+func newServer(db *framesqlite.Database) (*sdk.Server, error) {
 	contract, err := plugin.FeedbackContract()
 	if err != nil {
 		return nil, err
@@ -37,8 +38,12 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 		return nil, err
 	}
 	classify := func(err error) (string, bool) { return "invalid_feedback", errors.Is(err, errEmptySignal) }
-	if err := errors.Join(pluginstorage.RegisterReceipts(backend, db), pluginstorage.RegisterCommand(backend, db, prepareMethod, classify, func(_ context.Context, _ *sdk.ServerSession, in extension.FeedbackDraft) (plugin.FeedbackSignal, error) {
-		return prepare(in)
+	if err := errors.Join(pluginstorage.RegisterReceipts(backend, db), pluginstorage.RegisterCommand(backend, db, prepareMethod, classify, func(_ context.Context, _ *sdk.ServerSession, in extension.FeedbackDraft) (pluginstorage.CommandPlan[plugin.FeedbackSignal], error) {
+		signal, err := prepare(in)
+		if err != nil {
+			return pluginstorage.CommandPlan[plugin.FeedbackSignal]{}, err
+		}
+		return pluginstorage.NewCommandPlan(signal, nil)
 	})); err != nil {
 		return nil, err
 	}

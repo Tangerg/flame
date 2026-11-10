@@ -9,6 +9,7 @@ import (
 	"time"
 
 	domain "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/management"
 )
 
 func testMemoryItemID(digit byte) domain.ItemID {
@@ -32,6 +33,7 @@ type fakeStore struct {
 	decision    domain.ReviewDecision
 	err         error
 	addChanged  bool
+	applied     int
 }
 
 func (f *fakeStore) Get(_ context.Context, id domain.ItemID) (domain.Item, bool, error) {
@@ -87,12 +89,14 @@ func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) 
 	)}, f.err
 }
 
-func (f *fakeStore) Review(_ context.Context, _ domain.ItemID, _ uint64, decision domain.ReviewDecision, _ time.Time) error {
+func (f *fakeStore) persist(context.Context) error { f.applied++; return nil }
+
+func (f *fakeStore) PrepareReview(_ context.Context, id domain.ItemID, _ uint64, decision domain.ReviewDecision, now time.Time) (management.Mutation, error) {
 	f.decision = decision
-	return f.err
+	return management.New(validMemoryItem(id, domain.ScopeUser, "", "fact", false, now), f.persist), f.err
 }
 
-func (f *fakeStore) Update(_ context.Context, id domain.ItemID, _ uint64, content *string, pinned *bool, now time.Time) (domain.Item, error) {
+func (f *fakeStore) PrepareUpdate(_ context.Context, id domain.ItemID, _ uint64, content *string, pinned *bool, now time.Time) (management.Mutation, error) {
 	f.content, f.pinned, f.updatedAt = nil, nil, now
 	if content != nil {
 		f.content = new(*content)
@@ -108,13 +112,19 @@ func (f *fakeStore) Update(_ context.Context, id domain.ItemID, _ uint64, conten
 	if pinned != nil {
 		isPinned = *pinned
 	}
-	return validMemoryItem(id, domain.ScopeUser, "", text, isPinned, now), f.err
+	return management.New(validMemoryItem(id, domain.ScopeUser, "", text, isPinned, now), f.persist), f.err
 }
 
-func (f *fakeStore) Delete(context.Context, domain.ItemID, uint64) error { return f.err }
+func (f *fakeStore) PrepareDelete(_ context.Context, id domain.ItemID, _ uint64) (management.Mutation, error) {
+	return management.New(validMemoryItem(id, domain.ScopeUser, "", "fact", false, time.Unix(1, 0)), f.persist), f.err
+}
 
-func (f *fakeStore) Add(_ context.Context, scope domain.Scope, project, content string, now time.Time) (domain.Item, bool, error) {
-	return validMemoryItem(testMemoryItemID('2'), scope, project, content, false, now), f.addChanged, f.err
+func (f *fakeStore) PrepareAdd(_ context.Context, scope domain.Scope, project, content string, now time.Time) (management.Mutation, error) {
+	var persist func(context.Context) error
+	if f.addChanged {
+		persist = f.persist
+	}
+	return management.New(validMemoryItem(testMemoryItemID('2'), scope, project, content, false, now), persist), f.err
 }
 
 type rootResolver struct {
@@ -199,7 +209,7 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	content := "- use table-driven tests"
 	pinned := true
 
-	if _, err := c.Update(context.Background(), testMemoryItemID('1').String(), 1, &content, &pinned); err != nil {
+	if _, err := c.PrepareUpdate(context.Background(), testMemoryItemID('1').String(), 1, &content, &pinned); err != nil {
 		t.Fatal(err)
 	}
 	if store.content == nil || *store.content != content || store.pinned == nil || *store.pinned != pinned || !store.updatedAt.Equal(now) {
@@ -211,7 +221,7 @@ func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
 	store := &fakeStore{}
 	content, pinned := "original fact", true
 	coordinator := newCoordinator(t, Config{Store: store})
-	item, err := coordinator.Update(t.Context(), testMemoryItemID('1').String(), 1, &content, &pinned)
+	item, err := coordinator.PrepareUpdate(t.Context(), testMemoryItemID('1').String(), 1, &content, &pinned)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +229,7 @@ func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
 	if store.content == nil || *store.content != "original fact" || store.pinned == nil || !*store.pinned {
 		t.Fatalf("retained patch = content=%v pinned=%v", store.content, store.pinned)
 	}
-	if item.Content() != "original fact" || !item.Pinned() {
+	if item.Item().Content() != "original fact" || !item.Item().Pinned() {
 		t.Fatalf("acknowledged item = %+v, want original patch", item)
 	}
 }
@@ -227,13 +237,13 @@ func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
 func TestReviewAcceptsDecisionNotTargetState(t *testing.T) {
 	store := &fakeStore{}
 	c := newCoordinator(t, Config{Store: store})
-	if err := c.Review(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewApprove); err != nil {
+	if _, err := c.PrepareReview(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewApprove); err != nil {
 		t.Fatal(err)
 	}
 	if store.decision != domain.ReviewApprove {
 		t.Fatalf("decision = %q, want approve", store.decision)
 	}
-	if err := c.Review(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewDecision("active")); err == nil {
+	if _, err := c.PrepareReview(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewDecision("active")); err == nil {
 		t.Fatal("target status was accepted as a review decision")
 	}
 }
@@ -242,13 +252,13 @@ func TestMutationRejectsNonCanonicalItemIdentityBeforeStore(t *testing.T) {
 	wantStoreErr := errors.New("store must not be reached")
 	c := newCoordinator(t, Config{Store: &fakeStore{err: wantStoreErr}})
 
-	if err := c.Review(t.Context(), "mem_1", 1, domain.ReviewApprove); err == nil || errors.Is(err, wantStoreErr) {
+	if _, err := c.PrepareReview(t.Context(), "mem_1", 1, domain.ReviewApprove); err == nil || errors.Is(err, wantStoreErr) {
 		t.Fatalf("Review error = %v, want invalid identity before store", err)
 	}
-	if _, err := c.Update(t.Context(), "mem_1", 1, nil, nil); err == nil || errors.Is(err, wantStoreErr) {
+	if _, err := c.PrepareUpdate(t.Context(), "mem_1", 1, nil, nil); err == nil || errors.Is(err, wantStoreErr) {
 		t.Fatalf("Update error = %v, want invalid identity before store", err)
 	}
-	if err := c.Delete(t.Context(), "mem_1", 1); err == nil || errors.Is(err, wantStoreErr) {
+	if _, err := c.PrepareDelete(t.Context(), "mem_1", 1); err == nil || errors.Is(err, wantStoreErr) {
 		t.Fatalf("Delete error = %v, want invalid identity before store", err)
 	}
 }
@@ -275,56 +285,52 @@ func TestCoordinatorRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func TestCommittedAgentMemoryMutationsSignalChanges(t *testing.T) {
-	var changes int
+func TestPreparationRetainsChangesWithoutApplyingThem(t *testing.T) {
 	store := &fakeStore{addChanged: true}
-	c := newCoordinator(t, Config{
-		Store: store,
-		Roots: rootResolver{root: "/repo"},
-		OnChange: func() {
-			changes++
+	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/repo"}})
+	preparations := []func() (management.Mutation, error){
+		func() (management.Mutation, error) {
+			return c.PrepareReview(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewApprove)
 		},
-	})
-	content := "updated"
-	pinned := true
-	if err := c.Review(t.Context(), testMemoryItemID('1').String(), 1, domain.ReviewApprove); err != nil {
-		t.Fatal(err)
+		func() (management.Mutation, error) {
+			return c.PrepareUpdate(t.Context(), testMemoryItemID('1').String(), 1, new("updated"), new(true))
+		},
+		func() (management.Mutation, error) {
+			return c.PrepareDelete(t.Context(), testMemoryItemID('1').String(), 1)
+		},
+		func() (management.Mutation, error) {
+			return c.PrepareAdd(t.Context(), domain.ScopeProject, "/repo", "new")
+		},
 	}
-	if _, err := c.Update(t.Context(), testMemoryItemID('1').String(), 1, &content, &pinned); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.Delete(t.Context(), testMemoryItemID('1').String(), 1); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := c.Add(t.Context(), domain.ScopeProject, "/repo", "new"); err != nil {
-		t.Fatal(err)
-	}
-	if changes != 4 {
-		t.Fatalf("changes = %d, want four", changes)
+	for _, prepare := range preparations {
+		before := store.applied
+		mutation, err := prepare()
+		if err != nil || !mutation.Changed() || store.applied != before {
+			t.Fatalf("preparation changed storage: changed=%t, writes=%d, err=%v", mutation.Changed(), store.applied-before, err)
+		}
+		if err := mutation.Apply(t.Context()); err != nil || store.applied != before+1 {
+			t.Fatalf("mutation failed to apply its decision once: writes=%d, err=%v", store.applied-before, err)
+		}
 	}
 	store.addChanged = false
-	if _, err := c.Add(t.Context(), domain.ScopeProject, "/repo", "new"); err != nil {
-		t.Fatal(err)
+	mutation, err := c.PrepareAdd(t.Context(), domain.ScopeProject, "/repo", "new")
+	if err != nil || mutation.Changed() {
+		t.Fatalf("duplicate changed the target: %v, %v", mutation.Changed(), err)
 	}
-	if changes != 4 {
-		t.Fatalf("duplicate Add published changes = %d", changes)
+	if err := mutation.Apply(t.Context()); err != nil || store.applied != len(preparations) {
+		t.Fatalf("duplicate applied a write: %d, %v", store.applied, err)
 	}
 }
 
-func TestFailedAgentMemoryMutationDoesNotPublishInvalidation(t *testing.T) {
+func TestFailedPreparationCannotApplyStorage(t *testing.T) {
 	wantErr := errors.New("store unavailable")
-	var changes int
-	c := newCoordinator(t, Config{
-		Store: &fakeStore{err: wantErr},
-		OnChange: func() {
-			changes++
-		},
-	})
-	if _, err := c.Update(t.Context(), testMemoryItemID('1').String(), 1, nil, nil); !errors.Is(err, wantErr) {
+	store := &fakeStore{err: wantErr}
+	c := newCoordinator(t, Config{Store: store})
+	if _, err := c.PrepareUpdate(t.Context(), testMemoryItemID('1').String(), 1, nil, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("Update error = %v, want %v", err, wantErr)
 	}
-	if changes != 0 {
-		t.Fatalf("failed mutation published %+v", changes)
+	if store.applied != 0 {
+		t.Fatalf("failed preparation applied writes: %d", store.applied)
 	}
 }
 

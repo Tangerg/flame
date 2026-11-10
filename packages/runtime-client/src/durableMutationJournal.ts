@@ -1,7 +1,12 @@
 import { canonicalJSON } from "@frame/sdk/json";
 import { z } from "zod";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
+import {
+  captureRequestMeta,
+  checkRequest,
+  requestRequiresIdempotency,
+  pluginDeliveryMethod,
+} from "./request";
 import type { RequestMeta } from "./generated/wire.generated";
 import { validateWire } from "./generated/wire.validate.generated";
 import { cloneJSON, parseJSON } from "@frame/sdk/json";
@@ -66,6 +71,10 @@ const runCommand = z.discriminatedUnion("operation", [
   z.strictObject({ operation: z.literal("steer"), params: commandParams("runs.steer") }),
 ]);
 export type RunCommand = z.infer<typeof runCommand>;
+
+export function captureRunCommand(command: RunCommand): RunCommand {
+  return runCommand.parse(cloneJSON(command));
+}
 const boundedText = z.string().min(1).max(MAX_IDENTITY_LENGTH);
 const digest = z.string().regex(FINGERPRINT_PATTERN);
 const entrySchema = z.strictObject({
@@ -170,6 +179,13 @@ function validInstalledRoute(value: unknown): value is InstalledRoute {
   }
 }
 
+export function captureInstalledRoute(route: InstalledRoute): InstalledRoute {
+  const captured = cloneJSON(route);
+  if (!validInstalledRoute(captured))
+    throw new MutationJournalError("plugin command binding is invalid");
+  return captured;
+}
+
 function validEntry(value: unknown): value is JournalEntry {
   const admission = entrySchema.safeParse(value);
   if (!admission.success) return false;
@@ -202,17 +218,17 @@ function prepareCommand(
     case "runs.start":
       return {
         operation: "start",
-        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        params: checkRequest(method, cloneJSON(params), requestMeta),
       };
     case "runs.resume":
       return {
         operation: "resume",
-        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        params: checkRequest(method, cloneJSON(params), requestMeta),
       };
     case "runs.steer":
       return {
         operation: "steer",
-        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        params: checkRequest(method, cloneJSON(params), requestMeta),
       };
     default:
       return null;
@@ -244,9 +260,11 @@ function readKeys(storage: MutationJournalStorage): string[] {
   }
 }
 
+// Storage adapters may retain objects. Capture at their boundary so a record and
+// the active identity cannot advance each other through a shared reference.
 function readValue(storage: MutationJournalStorage, key: string): unknown {
   try {
-    return storage.get(key);
+    return cloneJSON(storage.get(key));
   } catch (error) {
     throw storageError(`Runtime mutation journal record is unreadable: ${key}`, error);
   }
@@ -254,7 +272,7 @@ function readValue(storage: MutationJournalStorage, key: string): unknown {
 
 function persistValue(storage: MutationJournalStorage, key: string, value: unknown): void {
   try {
-    storage.set(key, value);
+    storage.set(key, cloneJSON(value));
   } catch (error) {
     throw storageError(`Runtime mutation journal record was not persisted: ${key}`, error);
   }
@@ -454,11 +472,11 @@ export function openDurableMutationJournal(
                 installed.intent === null
                   ? null
                   : fingerprint(fingerprintFields(salt, "plugins.call", installed.intent)),
-              route: installed.route,
+              route: captureInstalledRoute(installed.route),
             },
           }),
       command: prepareCommand(method, params, requestMeta),
-      requestMeta: cloneJSON(requestMeta),
+      requestMeta: captureRequestMeta(requestMeta),
     };
     persistEntry(entry);
     return entry;
@@ -484,7 +502,11 @@ export function openDurableMutationJournal(
       const entry = matches[0];
       if (!entry) return undefined;
       const route = entry.installed!.route;
-      const request = { ...cloneJSON(route), ...cloneJSON(input) };
+      const request = checkRequest(
+        "plugins.call",
+        cloneJSON({ ...route, ...input }),
+        entry.requestMeta,
+      );
       if (!matchesCommand(entry, pluginDeliveryMethod(request), request, entry.requestMeta))
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
@@ -496,6 +518,7 @@ export function openDurableMutationJournal(
       return { identity: { entry }, request };
     },
     stagePluginCommand(intent, request, claimed, requestMeta) {
+      request = checkRequest("plugins.call", cloneJSON(request), requestMeta);
       const original = journal.findPluginCommand(intent, request, claimed);
       if (original) return original;
       const method = pluginDeliveryMethod(request);
@@ -505,17 +528,17 @@ export function openDurableMutationJournal(
       const scope = currentScope();
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
-      const { input: _, ...route } = cloneJSON(request);
+      const { input: _, ...route } = request;
       const entry = createEntry(method, request, scope, crypto.randomUUID(), requestMeta, {
         intent,
         route,
       });
-      return { identity: { entry }, request: cloneJSON(request) };
+      return { identity: { entry }, request };
     },
     pendingCommands() {
       return loadEntries(options.storage)
         .filter((entry) => entry.command !== null)
-        .map((entry) => ({ entry: cloneJSON(entry) }));
+        .map((entry) => ({ entry }));
     },
     pendingPluginCommands() {
       return loadEntries(options.storage)
@@ -524,7 +547,7 @@ export function openDurableMutationJournal(
             (entry.method === "plugins.call" || entry.method === "plugins.stream") &&
             entry.installed !== undefined,
         )
-        .map((entry) => ({ entry: cloneJSON(entry) }));
+        .map((entry) => ({ entry }));
     },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
@@ -573,7 +596,7 @@ export function openDurableMutationJournal(
         const installed =
           method === "plugins.call" || method === "plugins.stream"
             ? (() => {
-                const { input: _, ...route } = cloneJSON(params as CallPluginRequest);
+                const { input: _, ...route } = checkRequest(method, cloneJSON(params), requestMeta);
                 return { intent: null, route };
               })()
             : undefined;

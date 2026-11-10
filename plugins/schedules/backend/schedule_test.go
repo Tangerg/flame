@@ -282,15 +282,27 @@ func (s *scheduleOperationsFixture) Create(ctx context.Context, input createSche
 	if err != nil {
 		return scheduledomain.Schedule{}, err
 	}
-	return s.coordinator.Create(ctx, draft)
+	mutation, err := s.coordinator.PrepareCreate(ctx, draft)
+	if err != nil {
+		return scheduledomain.Schedule{}, err
+	}
+	return mutation.State(), mutation.Apply(ctx)
 }
 
 func (s *scheduleOperationsFixture) Update(ctx context.Context, input updateScheduleArgs) (scheduledomain.Schedule, error) {
-	return s.coordinator.Update(ctx, input.command())
+	mutation, err := s.coordinator.PrepareUpdate(ctx, input.command())
+	if err != nil {
+		return scheduledomain.Schedule{}, err
+	}
+	return mutation.State(), mutation.Apply(ctx)
 }
 
 func (s *scheduleOperationsFixture) Delete(ctx context.Context, input deleteScheduleArgs) error {
-	return s.coordinator.Delete(ctx, input.ScheduleID)
+	apply, err := s.coordinator.PrepareDelete(ctx, input.ScheduleID)
+	if err != nil || apply == nil {
+		return err
+	}
+	return apply(ctx)
 }
 
 func (m *memoryScheduleRegistry) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]scheduledomain.Schedule, error) {

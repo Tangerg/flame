@@ -22,6 +22,7 @@ import {
   ComponentLoading,
 } from "@/features/plugins/ui/InstalledComponent";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
+import { onAbort } from "dougong/advanced";
 import { type FlameClient } from "@flame/runtime-client";
 import { type PluginInstallation } from "@flame/runtime-client/wire";
 import { type ContributionScope } from "@/extensions/definePlugin";
@@ -495,11 +496,14 @@ export function registerPackageContributions(
     component: SharedEffects,
   });
   scope.lifetime.defer(
-    packages.publishOperations({
-      ...client.plugins,
-      signal: scope.lifetime.signal,
-      track: (operation) => trackContributionIO(scope, operation),
-    }),
+    onAbort(
+      scope.lifetime.signal,
+      packages.publishOperations({
+        ...client.plugins,
+        signal: scope.lifetime.signal,
+        track: (operation) => trackContributionIO(scope, operation),
+      }),
+    ),
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
     (

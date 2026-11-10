@@ -1,4 +1,5 @@
 import { cloneJSON } from "@frame/sdk/json";
+import { checkRequest } from "./request";
 import {
   callPluginCommand,
   pendingPluginCommand,
@@ -786,7 +787,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 return {
                   ...observed,
                   operation: "start",
-                  params: cloneJSON(command.params),
+                  params: checkRequest("runs.start", cloneJSON(command.params)),
                   retry: (options) =>
                     openRun("runs.start", command.params, options?.signal, command),
                 };
@@ -794,7 +795,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 return {
                   ...observed,
                   operation: "resume",
-                  params: cloneJSON(command.params),
+                  params: checkRequest("runs.resume", cloneJSON(command.params)),
                   retry: (options) =>
                     openRun("runs.resume", command.params, options?.signal, command),
                 };
@@ -803,7 +804,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                   ...observed,
                   operation: "steer",
                   userItemId: command.steerItemId,
-                  params: cloneJSON(command.params),
+                  params: checkRequest("runs.steer", cloneJSON(command.params)),
                   retry: (options) => openSteer(command.params, options?.signal, command),
                 };
             }

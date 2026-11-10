@@ -182,7 +182,7 @@ func TestToolInvocationReadRejectsForeignOwnershipWithoutPartialEvidence(t *test
 			t.Fatal(err)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE tool_invocations SET session_id = 'session_a' WHERE call_id = 'call_b'`); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE tool_invocations SET session_id = 'session_a' WHERE call_id = 'call_b'`); err != nil {
 		t.Fatal(err)
 	}
 	if rows, err := store.ListSession(t.Context(), "session_a"); err == nil || len(rows) != 0 {

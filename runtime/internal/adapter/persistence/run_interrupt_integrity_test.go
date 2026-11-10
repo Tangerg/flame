@@ -42,9 +42,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		t.Fatalf("parked Run read = (found %t, %v), want a healthy waiting Run", found, readErr)
 	}
 
-	if _, execErr := db.ExecContext(ctx,
-		`UPDATE interrupts SET payload = ? WHERE root_run_id = ?`, "{not json", "run_1",
-	); execErr != nil {
+	if _, execErr := execFixture(ctx, db, `UPDATE interrupts SET payload = ? WHERE root_run_id = ?`, "{not json", "run_1"); execErr != nil {
 		t.Fatalf("corrupt payload: %v", execErr)
 	}
 

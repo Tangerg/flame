@@ -91,7 +91,7 @@ test("published components preserve the Host's Runtime error and exact JSON inst
   }
 });
 
-test("bundles private static and dynamic modules into an executable browser graph", async () => {
+test("bundles private static and dynamic modules into one captured executable module", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-graph-"));
   try {
     const input = join(directory, "entry.ts");
@@ -116,13 +116,14 @@ test("bundles private static and dynamic modules into an executable browser grap
     assert.equal(graph.schemaVersion, profile.moduleGraph.schemaVersion);
     assert.equal(graph.entry, "component.js");
     assert.deepEqual(graph.sharedSpecifiers, []);
-    assert.equal(graph.modules.length, 2);
+    assert.equal(graph.modules.length, 1);
     const root = graph.modules.find((module) => module.path === graph.entry);
-    assert.equal(root.dynamicImports.length, 1);
-    assert(
-      graph.modules.some((module) => module.path === root.dynamicImports[0]),
+    assert.deepEqual(root.imports, []);
+    assert.deepEqual(root.dynamicImports, []);
+    const source = await readFile(join(output, "component.js"));
+    const component = await import(
+      `data:text/javascript;base64,${source.toString("base64")}`
     );
-    const component = await import(pathToFileURL(join(output, "component.js")));
     assert.equal(component.value, 7);
     assert.equal((await component.lazy()).value, 9);
     assert.doesNotMatch(

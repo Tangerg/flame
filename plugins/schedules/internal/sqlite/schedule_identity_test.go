@@ -28,7 +28,7 @@ func TestScheduleOccurrenceIndexesCannotRewriteItsIdentity(t *testing.T) {
 		`UPDATE schedule_firings SET due_at = due_at + 1`,
 		`UPDATE schedule_firings SET id = 'sch_other:3600000'`,
 	} {
-		if _, err := db.ExecContext(t.Context(), statement); err == nil {
+		if _, err := execDatabase(t.Context(), db, statement); err == nil {
 			t.Fatalf("storage permitted an occurrence projection to rewrite identity: %s", statement)
 		}
 	}

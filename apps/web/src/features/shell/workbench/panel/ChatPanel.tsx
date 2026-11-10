@@ -214,6 +214,41 @@ function DockHeader({
   );
 }
 
+function ConversationContent({
+  ready,
+  sessionId,
+  onSend,
+}: {
+  ready: boolean;
+  sessionId: string;
+  onSend: Props["onSend"];
+}) {
+  const t = useT();
+  const session = useActiveSession();
+  if (!ready)
+    return (
+      <div {...stylex.props(rc.box, rc.gutter, paneStyles.pendingConnection)}>
+        <RuntimeConnectionNotice />
+      </div>
+    );
+  return (
+    <>
+      <AgentSurfaceHeader corner="window">
+        <SessionIdentity
+          sessionId={sessionId}
+          title={session?.title.trim() || t("sidebar.action.newSession")}
+          workspacePath={session?.workspace.path}
+          detail={<RunStatusPill />}
+        />
+        <Slot name="chat.header.meta" />
+      </AgentSurfaceHeader>
+      <Slot name="chat.search" />
+      <ChatStream onSend={onSend} />
+      <RunAnnouncer />
+    </>
+  );
+}
+
 export function ChatPanel({ onSend, ref }: Props) {
   const composerAccess = useComposer();
   const workspaceAccess = useWorkspace();
@@ -224,7 +259,6 @@ export function ChatPanel({ onSend, ref }: Props) {
   const views = useWorkspaceViews();
   const { width: dockWidthRatio } = useDockWidth();
   const { data: sessions } = useAgentSessions();
-  const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
   const t = useT();
   const inspection = useWorkspaceInspection();
@@ -403,26 +437,11 @@ export function ChatPanel({ onSend, ref }: Props) {
           )}
         >
           <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
-            {conversationReady ? (
-              <>
-                <AgentSurfaceHeader corner="window">
-                  <SessionIdentity
-                    sessionId={activeSessionId}
-                    title={activeSession?.title.trim() || t("sidebar.action.newSession")}
-                    workspacePath={activeSession?.workspace.path}
-                    detail={<RunStatusPill />}
-                  />
-                  <Slot name="chat.header.meta" />
-                </AgentSurfaceHeader>
-                <Slot name="chat.search" />
-                <ChatStream onSend={onSend} />
-                <RunAnnouncer />
-              </>
-            ) : (
-              <div {...stylex.props(rc.box, rc.gutter, paneStyles.pendingConnection)}>
-                <RuntimeConnectionNotice />
-              </div>
-            )}
+            <ConversationContent
+              ready={conversationReady}
+              sessionId={activeSessionId}
+              onSend={onSend}
+            />
           </ContentVisibility>
         </div>
         {!presentedMain && dockVisible && <DockResizer width={dockWidth} />}

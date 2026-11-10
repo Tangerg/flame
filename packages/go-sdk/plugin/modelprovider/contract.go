@@ -3,11 +3,6 @@
 package modelprovider
 
 import (
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json/jsontext"
@@ -20,15 +15,19 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/embedding"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+	"github.com/Tangerg/scope/models/catalog"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/embedding"
-	"github.com/Tangerg/scope/models/catalog"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 const Reference = extension.ModelProviderContract
@@ -408,9 +407,9 @@ var callMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, ChatResult], po
 
 func CallMethod() (*pluginmcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
 
-var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], portable.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
+var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], portable.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
 
-func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error) {
+func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], error) {
 	return streamMethod()
 }
 

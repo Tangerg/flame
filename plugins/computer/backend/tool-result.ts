@@ -174,7 +174,9 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
       ...(annotation.lastModified
         ? { lastModified: annotation.lastModified }
         : {}),
-      priority: annotation.priority ?? 0,
+      ...(annotation.priority !== undefined
+        ? { priority: annotation.priority }
+        : {}),
     };
   }
   let part: ToolContent;

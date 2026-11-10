@@ -287,7 +287,8 @@ through Dougong alone; the client has no separate registration path for names.
 Dougong's `SnapshotPublisher` owns notifications to React and query consumers,
 including observer failure isolation and reentrant publication ordering.
 
-Plugins transfer each acquired resource to `ctx.cleanup` immediately. Dougong
+Plugins transfer each acquired resource to `ctx.lifetime.use` or register its
+release with `ctx.lifetime.defer` immediately. Dougong
 owns rollback, reverse-order release, and failure aggregation; a plugin does not
 collect a second disposer stack. Plugin subscriptions follow the Host during
 renderer retirement and HMR. Only subscriptions created at module scope need a
@@ -295,10 +296,14 @@ separate module HMR hook.
 
 Each package realization attempt owns its contributed views, themes, and event iterator
 under one Dougong child lifetime. A failed attempt joins that lifetime before publishing
-its failure, so a rejected page cleanup cannot strand sibling contributions or hide the
-original read or event failure. The Runtime generation owns the observer task, allowing
-it to join the contribution lifetime without waiting for itself. Retrying consumes only
-the current failure; a consumed or retired failure cannot start another observer.
+a retryable failure. Unconfirmed cleanup quarantines the Host; its diagnostics retain
+the original failure and cleanup causes while the same lifetime retains unresolved
+resources. Package operations withdraw when that generation is aborted, even if resource
+release remains pending. The Runtime generation owns the observer task, allowing it to
+join the contribution lifetime without waiting for itself. Retrying consumes only the
+current failure; a consumed or retired failure cannot start another observer. Installed
+plugin disposal joins contribution retirement and module closure once, retaining its
+original failure rather than allowing a second disposal to report success.
 The generation reads Runtime admission directly before reconciling its resources and
 publishes that snapshot into the Settings query cache. Cancelling or refreshing that
 cache cannot cancel realization or create a contribution transition.
@@ -316,6 +321,9 @@ Dougong's `SerialQueue` owns ordered execution. Client task cohorts partition
 queues by product identity and fence retired generations, releasing pending
 callers even when a remote operation ignores cancellation. Retirement cannot
 start queued dependencies or publish a late result into a successor generation.
+Each `settled()` barrier covers only previously submitted work. A cohort releases
+an identity's queue only if that barrier still belongs to its latest registration;
+it does not infer the queue's current work from Promise identity.
 
 ## Query ownership
 

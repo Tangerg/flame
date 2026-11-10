@@ -103,8 +103,13 @@ export class ComponentCompositions {
             row.presentation === "admitted",
         );
         if (!installation) throw new Error("The composed plugin release is no longer available.");
-        const value = parseJSON(binding.value) as ComponentValue;
-        if (!value || typeof value !== "object" || typeof value.component !== "string")
+        const value = parseJSON(binding.value);
+        if (
+          !value ||
+          typeof value !== "object" ||
+          !("component" in value) ||
+          typeof value.component !== "string"
+        )
           throw new Error("The component point value must name a local component.");
         const entry = installation.selected.components.find(
           (row) => row.id === value.component && row.placement === "export",
@@ -152,7 +157,7 @@ export class ComponentCompositions {
           valueSource: binding.value,
           key: `${binding.installationId}/${binding.digest}/${binding.contribution}`,
           reference,
-          value,
+          value: { component: value.component, props: value.props },
           binding: contribution
             ? {
                 installationId: binding.installationId,

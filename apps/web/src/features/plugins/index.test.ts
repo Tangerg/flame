@@ -331,6 +331,83 @@ it("joins the retired Runtime before publishing the latest package generation", 
   expect(contributionsTo(COLOR_THEME)).toEqual([]);
 });
 
+it("retires the exact owner when publishing operations advances the Runtime generation", async () => {
+  let generation = RuntimeConnectionGeneration.forProcess("first");
+  const subscribers = new Set<() => void>();
+  const original = vi.fn(async () => ({ data: [] }));
+  const successor = vi.fn(async () => ({ data: [] }));
+  const next = client(successor);
+  let selected: FlameClient;
+  const subscribe = vi.fn(async (_params: unknown, signal: AbortSignal) => ({
+    events: connectionEvents(signal),
+  }));
+  selected = client(original, subscribe);
+  const loader = installedLoader(() => selected);
+  const publish = installed.access.publishOperations;
+  vi.spyOn(installed.access, "publishOperations").mockImplementationOnce((operations) => {
+    const withdraw = publish(operations);
+    selected = next;
+    generation = RuntimeConnectionGeneration.forProcess("successor");
+    for (const listener of subscribers) listener();
+    return withdraw;
+  });
+  await loadPluginsForTest(
+    definePlugin({
+      name: "test.reentrant-package-runtime",
+      provides: { stream: RUNTIME_STREAM },
+      setup: () => ({
+        stream: {
+          connectionGeneration: () => generation,
+          subscribeConnection(listener: () => void) {
+            subscribers.add(listener);
+            return () => subscribers.delete(listener);
+          },
+          reportConnectionLoss: vi.fn(),
+        },
+      }),
+    }),
+    loader,
+  );
+  await vi.waitFor(() => expect(successor).toHaveBeenCalledOnce());
+  expect(subscribe).not.toHaveBeenCalled();
+  expect(original).not.toHaveBeenCalled();
+  expect(installed.access.captureOperations()!.signal.aborted).toBe(false);
+});
+
+it("shares the original disposal when a withdrawn workflow observer synchronously reenters", async () => {
+  installedLoader(() => client(async () => ({ data: [] })));
+  const clear = vi.spyOn(installed.access, "clear");
+  const close = vi.spyOn(ComponentModules.prototype, "close");
+  onTestFinished(() => close.mockRestore());
+  let reentered: Promise<void> | undefined;
+  const unsubscribe = installed.access.workflows.subscribe(() => {
+    unsubscribe();
+    reentered = installed.dispose();
+  });
+  const disposal = installed.dispose();
+  expect(reentered).toBe(disposal);
+  await disposal;
+  expect(installed.dispose()).toBe(disposal);
+  expect(clear).toHaveBeenCalledOnce();
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("preserves synchronous withdrawal failures while closing the original component Realm", async () => {
+  installedLoader(() => client(async () => ({ data: [] })));
+  quarantinedOwners.add(installed);
+  const failure = new Error("workflow observer failed");
+  const unsubscribe = installed.access.workflows.subscribe(() => {
+    throw failure;
+  });
+  onTestFinished(unsubscribe);
+  const close = vi.spyOn(ComponentModules.prototype, "close");
+  onTestFinished(() => close.mockRestore());
+  const disposal = installed.dispose();
+  await expect(disposal).rejects.toMatchObject({ errors: [failure] });
+  expect(installed.dispose()).toBe(disposal);
+  expect(close).toHaveBeenCalledOnce();
+});
+
 it("keeps a failed realization local to this client and retries it on request", async () => {
   const list = vi.fn(async () => ({
     data: [installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "package")],
@@ -422,7 +499,7 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
       },
     },
   });
-  await loadPluginsForTest(
+  const host = await loadPluginsForTest(
     runtimePlugin(),
     installedLoader(() =>
       client(
@@ -441,11 +518,20 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   failure.resolve();
   await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toEqual([]));
   expect(disposed.sort()).toEqual(["first · first", "second · second"]);
-  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
-  const reason = installed.access.failure()!.reason;
-  expect(reason).toContain("event stream failed");
-  expect(reason).toContain("page close failed");
-  expect(installed.access.failure()!.retry).toBeUndefined();
+  await vi.waitFor(() => expect(host.status).toBe("quarantined"));
+  await vi.waitFor(() =>
+    expect(usePluginErrorStore.getState().log).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ detail: expect.stringContaining("event stream failed") }),
+        expect.objectContaining({ detail: expect.stringContaining("page close failed") }),
+      ]),
+    ),
+  );
+  expect(installed.access.captureOperations()).toBeNull();
+  expect(installed.access.failure()).toBeNull();
+  const retirement = installed.dispose();
+  await expect(retirement).rejects.toBeInstanceOf(AggregateError);
+  expect(installed.dispose()).toBe(retirement);
   await expect(resetKernelForTest()).rejects.toMatchObject({ code: "HOST_QUARANTINED" });
 });
 
@@ -465,7 +551,7 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
       },
     },
   });
-  await loadPluginsForTest(
+  const host = await loadPluginsForTest(
     runtimePlugin(),
     installedLoader(() =>
       client(async () => {
@@ -473,13 +559,18 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
       }, subscribe),
     ),
   );
-  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
   quarantinedOwners.add(installed);
-  const reason = installed.access.failure()!.reason;
-  expect(reason).toContain("snapshot refused");
-  expect(reason).toContain("stream close failed");
+  await vi.waitFor(() => expect(host.status).toBe("quarantined"));
+  await vi.waitFor(() =>
+    expect(usePluginErrorStore.getState().log).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ detail: expect.stringContaining("snapshot refused") }),
+        expect.objectContaining({ detail: expect.stringContaining("stream close failed") }),
+      ]),
+    ),
+  );
   expect(close).toHaveBeenCalledOnce();
-  expect(installed.access.failure()!.retry).toBeUndefined();
+  expect(installed.access.failure()).toBeNull();
   await expect(resetKernelForTest()).rejects.toMatchObject({ code: "HOST_QUARANTINED" });
   expect(close).toHaveBeenCalledOnce();
 });

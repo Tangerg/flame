@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -49,25 +50,8 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	rows, err := db.Query(`PRAGMA table_info(sessions)`)
-	if err != nil {
-		t.Fatalf("table_info: %v", err)
-	}
-	defer func() { _ = rows.Close() }()
-	columns := map[string]bool{}
-	for rows.Next() {
-		var cid, notNull, primaryKey int
-		var name, columnType string
-		var defaultValue any
-		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
-			t.Fatalf("scan table_info: %v", err)
-		}
-		columns[name] = true
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("table_info: %v", err)
-	}
-	if !columns["workspace_path"] || columns["cwd"] {
+	columns := fixtureColumns(t, db, "sessions")
+	if !slices.Contains(columns, "workspace_path") || slices.Contains(columns, "cwd") {
 		t.Fatalf("sessions columns = %v, want workspace_path without cwd", columns)
 	}
 
@@ -75,10 +59,10 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 		id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at,
 		provider, model, favorite, isolated, revision
 	) VALUES (?, '', '', ?, ?, '', 1, 1, 'provider', 'model', 0, 0, 1)`
-	if _, err := db.Exec(insert, "ses_empty", "", ""); err == nil {
+	if _, err := execFixture(t.Context(), db, insert, "ses_empty", "", ""); err == nil {
 		t.Fatal("sessions accepted an empty workspace_path")
 	}
-	if _, err := db.Exec(insert, "ses_relative", "relative/work", "relative/work"); err != nil {
+	if _, err := execFixture(t.Context(), db, insert, "ses_relative", "relative/work", "relative/work"); err != nil {
 		t.Fatalf("seed relative workspace: %v", err)
 	}
 	if _, err := newSessionStore(databaseFor(db)).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
@@ -480,15 +464,15 @@ func TestSessionAndPlanRevisionsRequireExactPositiveIntegers(t *testing.T) {
 				t.Cleanup(func() { _ = db.Close() })
 				statement := insertSession
 				if table == "session_plans" {
-					if _, err := db.ExecContext(t.Context(), insertSession, sessionID, 1); err != nil {
+					if _, err := execFixture(t.Context(), db, insertSession, sessionID, 1); err != nil {
 						t.Fatalf("seed owning Session: %v", err)
 					}
-					if _, err := db.ExecContext(t.Context(), `INSERT INTO plan_documents(digest, steps) VALUES ('fixture', '[]')`); err != nil {
+					if _, err := execFixture(t.Context(), db, `INSERT INTO plan_documents(digest, steps) VALUES ('fixture', '[]')`); err != nil {
 						t.Fatal(err)
 					}
 					statement = `INSERT INTO session_plans(session_id, document, revision, updated_at) VALUES (?, 'fixture', ?, 1)`
 				}
-				result, err := db.ExecContext(t.Context(), statement, sessionID, test.revision)
+				result, err := execFixture(t.Context(), db, statement, sessionID, test.revision)
 				if test.rejected {
 					failure, ok := errors.AsType[*sqlitedriver.Error](err)
 					if !ok || failure.Code() != sqlite3lib.SQLITE_CONSTRAINT_CHECK {

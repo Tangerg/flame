@@ -150,7 +150,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM execution_tree_commits`).Scan(&count); err != nil || count != 0 {
+	if err := scanFixture(ctx, db, `SELECT COUNT(*) FROM execution_tree_commits`, nil, &count); err != nil || count != 0 {
 		t.Fatalf("retained commit facts: %d, %v", count, err)
 	}
 }
@@ -168,7 +168,7 @@ func TestOpenRejectsExecutionTreesWithoutCommitIdentity(t *testing.T) {
 		`CREATE TABLE execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
 		`INSERT INTO execution_trees VALUES ('root', 'session', 'writer', 'digest', 'retained snapshot')`,
 	} {
-		if _, err := db.ExecContext(ctx, statement); err != nil {
+		if _, err := execFixture(ctx, db, statement); err != nil {
 			t.Fatal(err)
 		}
 	}

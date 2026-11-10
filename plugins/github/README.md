@@ -87,7 +87,9 @@ Closing as a duplicate requires `duplicateIssueId`, the canonical issue's global
 Review submission requires an explicit `commitId` and `APPROVE`, `REQUEST_CHANGES`
 or `COMMENT` event. The latter two require a body. The single GitHub request creates
 and submits that review; no pending review or local review state machine is created.
-Inline ranges use `line`/`side` and paired `startLine`/`startSide`; the plugin does not
+Creating one inline comment takes a named `comment` object containing its path,
+body and location. The same inline-comment type owns each entry in a submitted
+review's `comments`. Ranges use `line`/`side` and paired `startLine`/`startSide`; the plugin does not
 translate outdated lines to a new head. PR creation never pushes or creates commits.
 
 Merge requires `headSha` and `mergeMethod` (`merge`, `squash`, `rebase`). GitHub checks
@@ -95,6 +97,9 @@ that SHA while merging; a changed head returns `conflict`, and a blocked merge
 returns `not_allowed` or `forbidden`. A successful result requires GitHub's explicit
 merged flag and merge commit SHA. Merge queues and stacked PRs require GitHub's
 separate asynchronous API; this direct operation does not implement or emulate it.
+Successful merge results contain the merge SHA and message; successful deletions
+contain the deleted comment ID. The typed success result owns that conclusion,
+without an independently writable `merged` or `deleted` flag.
 
 Before any remote write, one short private transaction retains the exact original
 JSON and command identity and invalidates cached read projections. Only the first

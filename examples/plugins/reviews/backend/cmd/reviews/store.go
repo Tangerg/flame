@@ -20,19 +20,19 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
-
-	_ "modernc.org/sqlite"
 )
 
 // store owns this backend's business transitions and immutable invocation
 // receipts. The review and its receipt commit together in the private database.
 type store struct {
-	db          *sql.DB
+	db          *sqlite.Database
 	inputSchema jsonschema.Schema
 }
 
+const maximumInvocationIDBytes = 256
+
 func validateInvocationID(id string) error {
-	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
+	if id == "" || len(id) > maximumInvocationIDBytes || !utf8.ValidString(id) {
 		return errors.New("reviews: bounded invocation identity is required")
 	}
 	return nil
@@ -61,10 +61,7 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
 )`, fmt.Sprintf(`INSERT INTO reviews VALUES ('%s', 'Inspect the plugin ownership boundary', '%s', 1)`, reviews.ExampleReviewID, reviews.Open)}
 	db, err := sqlite.OpenSchema(ctx, filepath.Join(directory, "reviews.sqlite"), statements)
 	if err != nil {
-		return nil, fmt.Errorf("reviews: open private database: %w", err)
-	}
-	if _, err = db.ExecContext(ctx, `PRAGMA synchronous = FULL`); err != nil {
-		return nil, errors.Join(err, db.Close())
+		return nil, errors.Join(fmt.Errorf("reviews: open private database: %w", err), db.Close())
 	}
 	return &store{db: db, inputSchema: inputSchema}, nil
 }
@@ -73,7 +70,9 @@ func (s *store) Close() error { return s.db.Close() }
 
 func (s *store) list(ctx context.Context) ([]reviews.Snapshot, error) {
 	var snapshot reviews.Snapshot
-	if err := s.db.QueryRowContext(ctx, `SELECT id, title, status, revision FROM reviews`).Scan(&snapshot.ID, &snapshot.Title, &snapshot.Status, &snapshot.Revision); err != nil {
+	if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT id, title, status, revision FROM reviews`).Scan(&snapshot.ID, &snapshot.Title, &snapshot.Status, &snapshot.Revision)
+	}); err != nil {
 		return nil, err
 	}
 	review, err := restoreReview(snapshot)
@@ -93,7 +92,9 @@ func (s *store) receipt(ctx context.Context, request pluginmcp.ReceiptRequest, u
 		return pluginmcp.Receipt{}, errors.New("reviews: receipt method conflicts")
 	}
 	var arguments, encoded []byte
-	err := s.db.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
+	err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return pluginmcp.Receipt{}, nil
 	}
@@ -143,57 +144,57 @@ func (s *store) update(ctx context.Context, invocationID string, admitted framev
 		return reviews.UpdateResult{}, err
 	}
 	arguments := admitted.String()
-	tx, err := s.db.BeginTx(ctx, nil)
+	var result reviews.UpdateResult
+	err = sqlite.RunIndependentTx(ctx, s.db, func(ctx context.Context) error {
+		connection := sqlite.Connection(ctx, s.db)
+		var previousArguments string
+		var encoded []byte
+		err := connection.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, invocationID).Scan(&previousArguments, &encoded)
+		if err == nil {
+			if previousArguments != arguments {
+				result = reviews.UpdateResult{Type: reviews.IdentityConflict}
+				return nil
+			}
+			if err := json.Unmarshal(encoded, &result, json.RejectUnknownMembers(true)); err != nil {
+				return err
+			}
+			return result.Validate()
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+			var err error
+			result, err = decideUpdate(ctx, reader, input)
+			return err
+		}); err != nil {
+			return err
+		}
+		encoded, err = json.Marshal(result)
+		if err != nil {
+			return err
+		}
+		if result.Type == reviews.Updated {
+			snapshot := result.Review
+			if _, err := connection.ExecContext(ctx, `UPDATE reviews SET status = ?, revision = ? WHERE id = ?`, snapshot.Status, snapshot.Revision, snapshot.ID); err != nil {
+				return err
+			}
+		}
+		_, err = connection.ExecContext(ctx, `INSERT INTO invocations VALUES (?, ?, ?)`, invocationID, arguments, encoded)
+		return err
+	})
 	if err != nil {
-		return reviews.UpdateResult{}, err
-	}
-	defer func() {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
-			err = errors.Join(err, rollbackErr)
-		}
-	}()
-	var previousArguments string
-	var encoded []byte
-	err = tx.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, invocationID).Scan(&previousArguments, &encoded)
-	if err == nil {
-		if previousArguments != arguments {
-			return reviews.UpdateResult{Type: reviews.IdentityConflict}, nil
-		}
-		var result reviews.UpdateResult
-		if err := json.Unmarshal(encoded, &result, json.RejectUnknownMembers(true)); err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		if err := result.Validate(); err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		return result, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return reviews.UpdateResult{}, err
-	}
-	result, err := applyUpdate(ctx, tx, input)
-	if err != nil {
-		return reviews.UpdateResult{}, err
-	}
-	encoded, err = json.Marshal(result)
-	if err != nil {
-		return reviews.UpdateResult{}, err
-	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO invocations VALUES (?, ?, ?)`, invocationID, arguments, encoded); err != nil {
-		return reviews.UpdateResult{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return reviews.UpdateResult{}, fmt.Errorf("reviews: commit update: %w", err)
+		return reviews.UpdateResult{}, errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
 	}
 	return result, nil
 }
 
-func applyUpdate(ctx context.Context, tx *sql.Tx, input reviews.Update) (reviews.UpdateResult, error) {
+func decideUpdate(ctx context.Context, reader sqlite.Reader, input reviews.Update) (reviews.UpdateResult, error) {
 	if input.ValidateChange() != nil {
 		return reviews.UpdateResult{Type: reviews.Invalid}, nil
 	}
 	var snapshot reviews.Snapshot
-	err := tx.QueryRowContext(ctx, `SELECT id, title, status, revision FROM reviews WHERE id = ?`, input.ID).Scan(&snapshot.ID, &snapshot.Title, &snapshot.Status, &snapshot.Revision)
+	err := reader.QueryRowContext(ctx, `SELECT id, title, status, revision FROM reviews WHERE id = ?`, input.ID).Scan(&snapshot.ID, &snapshot.Title, &snapshot.Status, &snapshot.Revision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return reviews.UpdateResult{Type: reviews.NotFound}, nil
 	}
@@ -215,8 +216,5 @@ func applyUpdate(ctx context.Context, tx *sql.Tx, input reviews.Update) (reviews
 		return reviews.UpdateResult{}, err
 	}
 	snapshot = next.snapshot()
-	if _, err := tx.ExecContext(ctx, `UPDATE reviews SET status = ?, revision = ? WHERE id = ?`, snapshot.Status, snapshot.Revision, snapshot.ID); err != nil {
-		return reviews.UpdateResult{}, err
-	}
 	return reviews.UpdateResult{Type: reviews.Updated, Review: &snapshot}, nil
 }

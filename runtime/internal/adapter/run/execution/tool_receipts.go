@@ -149,7 +149,7 @@ func (i *interactionSession) publishToolReceipt(ctx context.Context, request sco
 	if err := i.rememberToolMetadata(projected); err != nil {
 		return false, err
 	}
-	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()], request, toolcontract.Result{Output: projection.output}, state, nil)
+	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()].program, request, toolcontract.Result{Output: projection.output}, state, nil)
 	if err != nil {
 		return false, err
 	}

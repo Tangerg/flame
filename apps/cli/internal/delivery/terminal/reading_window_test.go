@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
@@ -97,7 +98,7 @@ func TestReadingWindowPreparesNativeStreamsAndAuthoritativeCompletion(t *testing
 	if got := strings.Join(surface.Rows(), "\n"); !strings.Contains(got, "authoritative replacement") || strings.Contains(got, "provisional text") {
 		t.Fatalf("final reading window:\n%s", got)
 	}
-	old := copyableRowsText(previous.(base.TextProjector).Rows(36))
+	old := copyableRowsText(previous.(text.Projector).Rows(36))
 	if !strings.Contains(old, "provisional text") {
 		t.Fatal("authoritative completion mutated a previously prepared passive value")
 	}
@@ -110,13 +111,13 @@ func TestReadingWindowAbortsCandidateGeometryAndRetainsBusinessIdentity(t *testi
 	}
 	root := newSceneTestRoot(t, view.Element())
 	root.Draw(grid.NewSurface(32, 6).View())
-	previousWidth := view.content.Width()
+	previousWidth := view.content.Layout().Width()
 	candidate, err := root.Prepare(grid.NewSurface(12, 5).View())
 	if err != nil {
 		t.Fatal(err)
 	}
 	candidate.Abort()
-	if view.content.Width() != previousWidth || view.projected.Value().Width() != previousWidth {
+	if view.content.Layout().Width() != previousWidth || view.projected.Value().Width() != previousWidth {
 		t.Fatal("aborted frame published candidate geometry")
 	}
 	view.retain = 4
@@ -142,7 +143,7 @@ func TestReadingWindowReaderKeepsFullSectionsAndScrollIntent(t *testing.T) {
 	root := newSceneTestRoot(t, reader.Element())
 	surface := grid.NewSurface(40, 8)
 	root.Draw(surface.View())
-	if reader.content.Height() < 35 {
+	if reader.content.Layout().Height() < 35 {
 		t.Fatal("reader dropped full semantic sections")
 	}
 	reader.scroll.By(6)

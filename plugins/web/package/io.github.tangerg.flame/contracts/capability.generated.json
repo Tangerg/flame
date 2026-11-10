@@ -11,7 +11,7 @@
       "description": "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused.",
       "input": {
         "$defs": {
-          "wire.BrowseInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.QnJvd3NlSW5wdXQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -104,7 +104,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Page": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg.UGFnZQ": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -237,7 +237,7 @@
       "description": "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset.",
       "input": {
         "$defs": {
-          "web.FetchRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg.RmV0Y2hSZXF1ZXN0": {
             "additionalProperties": false,
             "properties": {
               "format": {
@@ -294,7 +294,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Page": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg.UGFnZQ": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -427,7 +427,7 @@
       "description": "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted.",
       "input": {
         "$defs": {
-          "httpreq.Request": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE.UmVxdWVzdA": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -566,7 +566,7 @@
       },
       "output": {
         "$defs": {
-          "wire.HTTPContent": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUENvbnRlbnQ": {
             "additionalProperties": false,
             "properties": {
               "data": {
@@ -586,11 +586,11 @@
             ],
             "type": "object"
           },
-          "wire.HTTPResponse": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUFJlc3BvbnNl": {
             "additionalProperties": false,
             "properties": {
               "body": {
-                "$ref": "#/$defs/wire.HTTPContent"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUENvbnRlbnQ"
               },
               "duration": {
                 "type": "string"
@@ -598,7 +598,7 @@
               "headers": {
                 "additionalProperties": {
                   "items": {
-                    "$ref": "#/$defs/wire.HTTPContent"
+                    "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUENvbnRlbnQ"
                   },
                   "type": "array"
                 },
@@ -629,7 +629,7 @@
         "additionalProperties": false,
         "properties": {
           "body": {
-            "$ref": "#/$defs/wire.HTTPContent"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUENvbnRlbnQ"
           },
           "duration": {
             "type": "string"
@@ -637,7 +637,7 @@
           "headers": {
             "additionalProperties": {
               "items": {
-                "$ref": "#/$defs/wire.HTTPContent"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.SFRUUENvbnRlbnQ"
               },
               "type": "array"
             },
@@ -671,7 +671,7 @@
       "description": "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB.",
       "input": {
         "$defs": {
-          "web.SearchRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg.U2VhcmNoUmVxdWVzdA": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -812,10 +812,10 @@
       },
       "output": {
         "$defs": {
-          "instant.Timestamp": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "wire.SearchResponse": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.U2VhcmNoUmVzcG9uc2U": {
             "additionalProperties": false,
             "properties": {
               "query": {
@@ -823,7 +823,7 @@
               },
               "results": {
                 "items": {
-                  "$ref": "#/$defs/wire.SearchResult"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.U2VhcmNoUmVzdWx0"
                 },
                 "type": "array"
               }
@@ -834,14 +834,14 @@
             ],
             "type": "object"
           },
-          "wire.SearchResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.U2VhcmNoUmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "favicon_url": {
                 "type": "string"
               },
               "published_time": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "snippet": {
                 "type": "string"
@@ -872,7 +872,7 @@
           },
           "results": {
             "items": {
-              "$ref": "#/$defs/wire.SearchResult"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU.U2VhcmNoUmVzdWx0"
             },
             "type": "array"
           }

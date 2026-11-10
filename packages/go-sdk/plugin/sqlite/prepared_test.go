@@ -41,16 +41,16 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, framemcp.ErrInvocationConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
-	if _, err := Command(t.Context(), db, "maintain", "original", input, nil, func(context.Context, string) (string, error) {
+	if _, err := Command(t.Context(), db, "maintain", "original", input, nil, func(context.Context, string) (CommandPlan[string], error) {
 		t.Fatal("pending command entered atomic handler again")
-		return "", nil
+		return CommandPlan[string]{}, nil
 	}); !errors.Is(err, ErrCommandUnconfirmed) {
 		t.Fatalf("atomic reentry=%v", err)
 	}
 }
 
 func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
-	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`})
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`, `CREATE TABLE fault(enabled INTEGER NOT NULL)`, `INSERT INTO fault VALUES(1)`, `CREATE TRIGGER abort_completion BEFORE UPDATE OF reply ON commands WHEN (SELECT enabled FROM fault)=1 BEGIN SELECT RAISE(ABORT,'receipt failure'); END`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,30 +65,27 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	reply := outcome.Bytes()
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER abort_completion BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failure'); END`); err != nil {
-		t.Fatal(err)
-	}
 	mutate := func(ctx context.Context) error {
-		if _, err := Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return err
 		}
 		return prepared.Complete(ctx, reply)
 	}
-	if err := WithinTransaction(t.Context(), db, mutate); err == nil {
+	if err := sqlite.RunInTx(t.Context(), db, mutate); err == nil {
 		t.Fatal("receipt failure committed mutation")
 	}
 	var count int
 	var saved sql.NullString
-	if err := db.QueryRowContext(t.Context(), `SELECT value FROM counter`).Scan(&count); err != nil || count != 0 {
+	if err := scanDatabase(t.Context(), db, `SELECT value FROM counter`, nil, &count); err != nil || count != 0 {
 		t.Fatalf("mutation survived failed receipt: %d, %v", count, err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT reply FROM commands WHERE id='original'`).Scan(&saved); err != nil || saved.Valid {
+	if err := scanDatabase(t.Context(), db, `SELECT reply FROM commands WHERE id='original'`, nil, &saved); err != nil || saved.Valid {
 		t.Fatalf("failed receipt became known: %v, %v", saved, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER abort_completion`); err != nil {
+	if _, err := execDatabase(t.Context(), db, `UPDATE fault SET enabled=0`); err != nil {
 		t.Fatal(err)
 	}
-	if err := WithinTransaction(t.Context(), db, mutate); err != nil {
+	if err := sqlite.RunInTx(t.Context(), db, mutate); err != nil {
 		t.Fatal(err)
 	}
 	if err := prepared.Complete(t.Context(), reply); err != nil {
@@ -128,7 +125,7 @@ func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T)
 		if _, ok := ctx.Deadline(); !ok {
 			t.Fatal("settlement has no deadline")
 		}
-		_, err := Connection(ctx, db).ExecContext(ctx, `INSERT INTO evidence VALUES('remote-id')`)
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO evidence VALUES('remote-id')`)
 		return err
 	}
 	failure := errors.New("local failure")
@@ -147,4 +144,103 @@ func TestExternalSettlementCommitsEvidenceOnceOutsideCancelledCall(t *testing.T)
 	if err := prepared.SettleExternal(call, outcome.Bytes(), evidence); err != nil {
 		t.Fatalf("settled evidence was replayed: %v", err)
 	}
+}
+
+func TestCompleteCommandKeepsBusinessDecisionAndReceiptAtomic(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		refuse    bool
+		failWrite bool
+	}{
+		{name: "success"},
+		{name: "read decision refuses", refuse: true},
+		{name: "write error remains unconfirmed", failWrite: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, _ := commandDatabase(t)
+			prepared, _, err := AdmitCommand(t.Context(), db, "publish", "original", receiptInput(t, "input"), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			known := errors.New("publication no longer applies")
+			classify := func(err error) (string, bool) { return "stale", errors.Is(err, known) }
+			prepare := func(ctx context.Context) (CommandPlan[string], error) {
+				if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=10`); err == nil {
+					t.Fatal("local publication decision could write")
+				}
+				if test.refuse {
+					return CommandPlan[string]{}, known
+				}
+				return NewCommandPlan("published", func(ctx context.Context) error {
+					if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=1`); err != nil {
+						return err
+					}
+					if test.failWrite {
+						return known
+					}
+					return nil
+				})
+			}
+			result, err := CompleteCommand(t.Context(), prepared, classify, prepare)
+			if test.failWrite {
+				if result != "" || !errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
+					t.Fatalf("write failure acquired finality: %q, %v", result, err)
+				}
+				assertCommandState(t, db, 0, 1)
+				_, _, reply, readErr := ResumeCommand(t.Context(), db, "publish", "original")
+				if readErr != nil || len(reply) != 0 {
+					t.Fatalf("write failure settled original admission: %s, %v", reply, readErr)
+				}
+				return
+			}
+			if test.refuse {
+				if refusal, known := errors.AsType[*framemcp.Refusal](err); !known || refusal.Code != "stale" {
+					t.Fatalf("decision lost original refusal: %v", err)
+				}
+				assertCommandState(t, db, 0, 1)
+			} else {
+				if err != nil || result != "published" {
+					t.Fatalf("publication: %q, %v", result, err)
+				}
+				assertCommandState(t, db, 1, 1)
+			}
+			_, replayErr := CompleteCommand(t.Context(), prepared, classify, func(context.Context) (CommandPlan[string], error) {
+				t.Fatal("receipt replay prepared work again")
+				return CommandPlan[string]{}, nil
+			})
+			if test.refuse {
+				if _, known := errors.AsType[*framemcp.Refusal](replayErr); !known {
+					t.Fatal(replayErr)
+				}
+			} else if replayErr != nil {
+				t.Fatal(replayErr)
+			}
+		})
+	}
+}
+
+func TestCompleteExternalCommandRetainsAcknowledgementAfterCancellation(t *testing.T) {
+	db, _ := commandDatabase(t)
+	prepared, _, err := AdmitCommand(t.Context(), db, "publish", "original", receiptInput(t, "input"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	result, err := CompleteExternalCommand(ctx, prepared, nil, func(ctx context.Context) (CommandPlan[string], error) {
+		if ctx.Err() != nil {
+			t.Fatal("cancelled call erased external acknowledgement")
+		}
+		if _, bounded := ctx.Deadline(); !bounded {
+			t.Fatal("external settlement lost its lifetime bound")
+		}
+		return NewCommandPlan("accepted", func(ctx context.Context) error {
+			_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=1`)
+			return err
+		})
+	})
+	if err != nil || result != "accepted" {
+		t.Fatalf("acknowledgement settlement: %q, %v", result, err)
+	}
+	assertCommandState(t, db, 1, 1)
 }

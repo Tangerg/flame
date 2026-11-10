@@ -1,8 +1,9 @@
-import { cloneJSON } from "@frame/sdk/json";
 import {
   MutationJournalError,
   MutationJournalOwnershipError,
   openDurableMutationJournal,
+  captureInstalledRoute,
+  captureRunCommand,
   type DurableMutationIdentity,
   type DurableMutationJournal,
   type MutationJournalScope,
@@ -14,6 +15,7 @@ import {
 import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
+import { captureRequestMeta } from "./request";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
 import type { RequestMeta } from "./generated/wire.generated";
@@ -153,7 +155,7 @@ class MutationAuthority implements MutationJournal {
       .map((identity) => ({
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
-        binding: cloneJSON(identity.entry.installed!.route),
+        binding: captureInstalledRoute(identity.entry.installed!.route),
         matchesIntent: (intent) => {
           this.#assertCurrent();
           return this.#journal.matchesPluginCommandIntent(identity, intent);
@@ -187,12 +189,16 @@ class MutationAuthority implements MutationJournal {
       throw new MutationJournalOwnershipError("plugin command intent is already being prepared");
     this.#preparing.add(intent);
     try {
-      const preparedInput = cloneJSON(input);
+      const preparedInput: PluginCommandInput = {
+        contract: input.contract,
+        method: input.method,
+        input: input.input,
+      };
       let captured = this.#journal.findPluginCommand(intent, preparedInput, (key) =>
         this.#claims.has(key),
       );
       if (!captured) {
-        const metadata = cloneJSON(requestMeta?.() ?? null);
+        const metadata = captureRequestMeta(requestMeta?.());
         const binding = await prepare();
         this.#assertCurrent();
         if (signal?.aborted) throw new RpcCancellationError();
@@ -214,7 +220,7 @@ class MutationAuthority implements MutationJournal {
       .pendingCommands()
       .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
       .map((identity) => ({
-        ...cloneJSON(identity.entry.command!),
+        ...captureRunCommand(identity.entry.command!),
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         steerItemId: identity.entry.steerItemId,
@@ -264,7 +270,7 @@ class MutationAuthority implements MutationJournal {
         this.#journal.bindSteerItem(identity, userItemId);
       },
       get requestMeta() {
-        return cloneJSON(identity.entry.requestMeta);
+        return captureRequestMeta(identity.entry.requestMeta);
       },
       lookupNamespace: () => {
         this.#assertClaim(identity);
@@ -353,8 +359,8 @@ class MutationAuthority implements MutationJournal {
 export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
   const values = new Map<string, unknown>();
   const storage = options.storage ?? {
-    get: (key: string) => cloneJSON(values.get(key)),
-    set: (key: string, value: unknown) => void values.set(key, cloneJSON(value)),
+    get: (key: string) => values.get(key),
+    set: (key: string, value: unknown) => void values.set(key, value),
     remove: (key: string) => void values.delete(key),
     keys: () => [...values.keys()],
   };

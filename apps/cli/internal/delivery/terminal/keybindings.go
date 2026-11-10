@@ -28,6 +28,12 @@ func configuredKeyBindings(configured settings.Config) (keyBindings, error) {
 	if err != nil {
 		return keyBindings{}, err
 	}
+	// Retained toolkit bindings would keep replaced shortcuts active and override the configured hint order.
+	for action := range configured.Keys {
+		for _, sequence := range bindings.editor.Keys(keymap.Action(action)) {
+			bindings.editor.Unbind(sequence...)
+		}
+	}
 	for _, binding := range parsed {
 		action := keymap.Action(binding.Action)
 		bindings.editor.Bind(action, binding.Keys...)
@@ -42,7 +48,7 @@ func configuredKeyBindings(configured settings.Config) (keyBindings, error) {
 func (k keyBindings) setResolver(resolve keymap.Resolver) {
 	for _, keys := range []*keymap.Map{k.editor, k.application, k.global} {
 		if keys != nil {
-			keys.Resolve = resolve
+			keys.SetResolver(resolve)
 		}
 	}
 }

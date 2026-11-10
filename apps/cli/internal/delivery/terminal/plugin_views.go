@@ -389,7 +389,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 			controls = append(controls, choice)
 		default:
 			text := base.NewText(base.TextConfig{Label: field.Title, Initial: field.Initial})
-			text.Clipboard = p.clipboard
+			text.SetClipboard(p.clipboard)
 			values[field.Path] = text.Text
 			controls = append(controls, text)
 		}

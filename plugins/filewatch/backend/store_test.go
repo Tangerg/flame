@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -32,8 +33,8 @@ func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.D
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
-		return s.configure(ctx, input.ExpectedRevision, input.Trigger)
+	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
+		return s.prepareConfiguration(ctx, input.ExpectedRevision, input.Trigger)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +85,10 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 	if err != nil || len(pending) != 1 || !reflect.DeepEqual(pending[0].Capture, observation.Capture()) {
 		t.Fatalf("original intent changed after disable/reopen: %+v %v", pending, err)
 	}
-	if _, err := s.db.ExecContext(t.Context(), `UPDATE events SET capture='{}'`); err == nil {
+	if err := sqlite.RunInTx(t.Context(), s.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET capture='{}'`)
+		return err
+	}); err == nil {
 		t.Fatal("captured intent was mutable")
 	}
 	if err := s.acceptRun(t.Context(), observation.Capture().Invocation.ID); err != nil {
@@ -99,8 +103,8 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoke := func() (filewatch.Snapshot, error) {
-		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
-			return s.configure(ctx, input.ExpectedRevision, input.Trigger)
+		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
+			return s.prepareConfiguration(ctx, input.ExpectedRevision, input.Trigger)
 		})
 	}
 	original, err := invoke()
@@ -171,7 +175,10 @@ func TestCorruptCaptureIsNotAKnownBusinessRefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.db.ExecContext(t.Context(), `INSERT INTO events(id,generation,sequence,capture,accepted) VALUES(?,?,?,?,0)`, capture.Invocation.ID, capture.Generation, capture.Sequence, string(encoded)); err != nil {
+	if err := sqlite.RunInTx(t.Context(), s.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO events(id,generation,sequence,capture,accepted) VALUES(?,?,?,?,0)`, capture.Invocation.ID, capture.Generation, capture.Sequence, string(encoded))
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	_, err = s.pending(t.Context())

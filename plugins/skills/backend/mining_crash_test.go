@@ -41,18 +41,20 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		reply, err := pluginmcp.EncodeReply(result, nil, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = cmd.SettleExternal(t.Context(), reply.Bytes(), func(ctx context.Context) error {
-			if err := l.recordMined(ctx, id, run, result); err != nil {
-				return err
+		_, err = storage.CompleteExternalCommand(t.Context(), cmd, nil, func(ctx context.Context) (storage.CommandPlan[skilllearning.MineResult], error) {
+			persist, err := l.prepareMined(ctx, id, run, result)
+			if err != nil {
+				return storage.CommandPlan[skilllearning.MineResult]{}, err
 			}
-			if phase == "before-commit" {
-				os.Exit(miningCrashExit)
-			}
-			return nil
+			return storage.NewCommandPlan(result, func(ctx context.Context) error {
+				if err := persist(ctx); err != nil {
+					return err
+				}
+				if phase == "before-commit" {
+					os.Exit(miningCrashExit)
+				}
+				return nil
+			})
 		})
 		if err != nil {
 			t.Fatal(err)

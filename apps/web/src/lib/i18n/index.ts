@@ -1,4 +1,5 @@
 import i18next from "i18next";
+import { useCallback } from "react";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { en } from "@/lib/i18n/locales/en";
 export { Trans } from "react-i18next";
@@ -71,7 +72,7 @@ export function setLocale(loc: Locale): void {
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
-  return i18next.t(key, params) as string;
+  return params === undefined ? i18next.t(key) : i18next.t(key, params);
 }
 
 export type Translate = typeof t;
@@ -82,7 +83,11 @@ export function useLocale(): Locale {
 }
 
 export function useT(): typeof t {
-  return useTranslation().t;
+  const { t: translate } = useTranslation();
+  return useCallback<typeof t>(
+    (key, params) => (params === undefined ? translate(key) : translate(key, params)),
+    [translate],
+  );
 }
 
 export function mountLocaleBundle(locale: string, dict: Record<string, string>): () => void {

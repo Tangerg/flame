@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ExactSequence } from "@/foundation/exactSequence";
+import { failureDiagnostics } from "@/lib/diagnostics";
 export type PluginErrorSource = "setup" | "render" | "events" | "command" | "other";
 
 export interface PluginError {
@@ -51,7 +52,7 @@ export function reportPluginError(
   detail?: string,
 ): void {
   const message = err instanceof Error ? err.message : String(err);
-  const trace = detail ?? (err instanceof Error ? err.stack : undefined);
+  const trace = detail ?? (err instanceof Error ? failureDiagnostics(plugin, err) : undefined);
   usePluginErrorStore.getState().push({ plugin, source, message, detail: trace });
 }
 

@@ -42,11 +42,11 @@ it("shares structural admission for backend calls and published contracts", () =
     expect(valid).toBe(accepted);
     if (valid)
       expect(() =>
-        contract.portable.method(METHODS.open).validateInput(value),
+        contract.portable.method(METHODS.open).admitInput(value),
       ).not.toThrow();
     else
       expect(() =>
-        contract.portable.method(METHODS.open).validateInput(value),
+        contract.portable.method(METHODS.open).admitInput(value),
       ).toThrow();
   }
 });

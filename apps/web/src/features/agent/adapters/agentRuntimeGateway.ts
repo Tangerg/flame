@@ -1,4 +1,3 @@
-import { cloneJSON } from "@frame/sdk/json";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
 import { type FlameClient } from "@flame/runtime-client";
 import {
@@ -181,9 +180,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                     model: command.params.model,
                     reasoningEffort: command.params.reasoningEffort,
                   },
-                  ...(command.params.params
-                    ? { generation: cloneJSON({ ...command.params.params }) }
-                    : {}),
+                  ...(command.params.params ? { generation: { ...command.params.params } } : {}),
                 }
               : {
                   operation: "resume" as const,
@@ -191,7 +188,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                   ...(command.params.input
                     ? { input: contentBlocksToAgentInput(command.params.input) }
                     : {}),
-                  responses: cloneJSON(command.params.responses),
+                  responses: command.params.responses,
                 };
           unresolvedOpenings.push({
             ...request,

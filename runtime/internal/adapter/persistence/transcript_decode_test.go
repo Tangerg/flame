@@ -31,7 +31,7 @@ func TestTranscriptReadsRetainConflictingContentFactsForValidation(t *testing.T)
 				t.Fatal(err)
 			}
 			payload := `{"status":"completed","kind":"userMessage","content":[` + test.content + `]}`
-			if _, err := db.ExecContext(t.Context(), `UPDATE history_items SET payload = ? WHERE item_id = ?`, payload, item.ID()); err != nil {
+			if _, err := execFixture(t.Context(), db, `UPDATE history_items SET payload = ? WHERE item_id = ?`, payload, item.ID()); err != nil {
 				t.Fatal(err)
 			}
 			if _, _, err := store.Item(t.Context(), item.ID()); err == nil || !strings.Contains(err.Error(), test.want) {

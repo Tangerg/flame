@@ -15,7 +15,7 @@ import (
 func run(ctx context.Context, data string) (err error) {
 	db, err := sqlite.Open(ctx, filepath.Join(data, "schedules.db"))
 	if err != nil {
-		return err
+		return errors.Join(err, db.Close())
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.schedules", Version: "3.0.0"}, nil)

@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
@@ -21,7 +22,7 @@ type observedRunHost struct {
 	seen    chan schedule.RunRequest
 	noticed chan struct{}
 
-	db        *sql.DB
+	db        *framesqlite.Database
 	namespace string
 	calls     atomic.Int32
 	lost      atomic.Bool
@@ -41,7 +42,7 @@ func (h *observedRunHost) Admit(ctx context.Context, request schedule.RunRequest
 	// This read needs the database's single connection. Admission under an outer
 	// private transaction would block it until this test's context expires.
 	var rows int
-	if err := h.db.QueryRowContext(ctx, `SELECT count(*) FROM manual_firings`).Scan(&rows); err != nil {
+	if err := scanDatabase(ctx, h.db, `SELECT count(*) FROM manual_firings`, nil, &rows); err != nil {
 		return err
 	}
 	if h.seen != nil {
@@ -82,7 +83,7 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 		t.Fatal("captured target was replaced")
 	}
 	var original string
-	if err := db.QueryRow(`SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original); err != nil || original != "original" {
+	if err := scanDatabase(t.Context(), db, `SELECT namespace FROM runtime_target WHERE id=1`, nil, &original); err != nil || original != "original" {
 		t.Fatalf("original target=%q error=%v", original, err)
 	}
 }

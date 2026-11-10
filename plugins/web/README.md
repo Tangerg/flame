@@ -37,7 +37,7 @@ API keys nor a mutable "latest page" pointer.
 
 HTTP provider responses are bounded to eight MiB before Scope decoding, requests
 have a 30-second deadline and credential-bearing redirects remain on their
-original origin. Unexpected read failures retain their diagnostic cause while
+original origin. Unexpected read failures retain their diagnostic `Cause()` while
 the model receives a definite failed read. Cancellation retains core control
 semantics. The plugin constructs SaaS clients; model provider construction,
 execution, waiting recovery and accounting retain their core owners.
@@ -55,6 +55,10 @@ array such as `["api.example.com", "*.example.org"]`. This host-supplied grant
 is fixed for an activation and cannot be widened by model arguments. An absent
 or empty grant refuses HTTP requests. Scope enforces the same grant on redirects,
 allows GET and HEAD, and bounds responses to 256 KiB and requests to two minutes.
+Host patterns without a port authorize only the scheme's default port; a different
+port requires an explicit `host:port` grant. Scope's own transport admits only
+public unicast addresses, including after DNS resolution. A host grant cannot
+authorize loopback, private or link-local destinations.
 The request and response retain Scope's byte-preserving content encoding.
 
 `request.v1` is a command. Its private admission records the exact input before

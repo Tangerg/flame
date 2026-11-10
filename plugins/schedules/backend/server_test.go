@@ -167,17 +167,17 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if result, err := lookup("original", string(changed)); result != nil || !errors.Is(decodeError(err), framemcp.ErrInvocationConflict) {
 		t.Fatalf("wrong input became evidence: %+v,%v", result, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply='{"wrong":"result"}' WHERE id='tool:original'`); err != nil {
+	if _, err := execDatabase(t.Context(), db, `UPDATE commands SET reply='{"wrong":"result"}' WHERE id='tool:original'`); err != nil {
 		t.Fatal(err)
 	}
 	if result, err := lookup("original", string(arguments)); result != nil || err == nil {
 		t.Fatalf("corrupt receipt became evidence: %+v,%v", result, err)
 	}
 	var schedules, creates int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM schedules`).Scan(&schedules); err != nil {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM schedules`, nil, &schedules); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, wire.Create).Scan(&creates); err != nil {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM commands WHERE method=?`, []any{wire.Create}, &creates); err != nil {
 		t.Fatal(err)
 	}
 	if schedules != 0 || creates != 2 {
@@ -241,7 +241,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 				t.Fatalf("activation connection was not joined once: %d", closed.Load())
 			}
 			var rows int
-			if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM runtime_target`).Scan(&rows); err != nil {
+			if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM runtime_target`, nil, &rows); err != nil {
 				t.Fatal(err)
 			}
 			want := 0

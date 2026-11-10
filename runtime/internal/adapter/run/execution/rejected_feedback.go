@@ -70,32 +70,28 @@ func (i *interactionSession) commitRejectedToolFeedback(ctx context.Context, pre
 }
 
 func committedModelResponse(history scoperun.Log, process scoperun.ProcessID, sequence uint64) (*chat.Response, error) {
-	settlements := make(map[scoperun.EffectID]scoperun.Settlement)
+	settlements := make(map[scoperun.EffectID]scoperun.EffectSettled)
 	for _, entry := range slices.Backward(history.Entries) {
 		switch record := entry.Record.(type) {
 		case scoperun.EffectSettled:
 			if record.ID.Process == process {
-				settlements[record.ID] = record.Outcome
+				settlements[record.ID] = record
 			}
 		case scoperun.EffectIntent:
 			if record.ID.Process != process {
 				continue
 			}
-			request, found, err := interaction.ModelRequestFromEffect(record.Effect)
+			intent, found, err := interaction.ModelCallFromEffect(record.Effect)
 			if err != nil {
 				return nil, err
 			}
 			if !found {
 				continue
 			}
-			reference, _, err := modelPreparationReference(request.Messages)
-			if err != nil {
-				return nil, err
-			}
-			if reference.Sequence != sequence {
+			if intent.Sequence != sequence {
 				continue
 			}
-			settlement, err := interaction.ModelSettlementFromOutcome(settlements[record.ID])
+			settlement, err := interaction.ModelSettlementFromRecord(settlements[record.ID])
 			return settlement.Response, err
 		}
 	}
@@ -124,7 +120,7 @@ func (i *interactionSession) unexecutedProposals(history scoperun.Log, process s
 	if !found || !owned {
 		return nil, nil, errors.New("execution: proposed Tools have no committed Interaction program")
 	}
-	rounds, err := interaction.SettledResults(program, history)
+	rounds, err := program.history.SettledResults(history)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -79,7 +79,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err := store.save(t.Context(), otherGraph); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("transitive dependencies changed: %v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_commands SET activation_json='{}' WHERE id='command'`); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plugin_commands SET activation_json='{}' WHERE id='command'`); err == nil {
 		t.Fatal("SQL rewrote the original activation dependencies")
 	}
 	changed := command.Snapshot()
@@ -102,7 +102,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err := store.save(t.Context(), other); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("contract replacement=%v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_commands SET contract_json='{}' WHERE id='command'`); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plugin_commands SET contract_json='{}' WHERE id='command'`); err == nil {
 		t.Fatal("SQL changed the original contract")
 	}
 	if err := restored.Observe(); err != nil {
@@ -119,7 +119,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err != nil || !found || retained.Snapshot().Provider != provider {
 		t.Fatalf("observation erased the original route=%v, %v", retained, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_commands SET phase='prepared' WHERE id='command'`); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plugin_commands SET phase='prepared' WHERE id='command'`); err == nil {
 		t.Fatal("command phase regressed")
 	}
 }
@@ -131,7 +131,7 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
-	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
+	_, err = execFixture(t.Context(), db, `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
 INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),?,'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", extension.ScopeInstallation).String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String(), testsupport.ServerActivation("activation", "backend", provider).Binding.String())
 	if err != nil {
 		t.Fatal(err)

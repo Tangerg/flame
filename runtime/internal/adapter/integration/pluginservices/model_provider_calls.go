@@ -183,7 +183,7 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 			}
 			if value.Chunk != nil {
 				chunks++
-				if !sender.send(value.Chunk.Clone(), nil) {
+				if !sender.send((*chat.ResponseDelta)(value.Chunk).Clone(), nil) {
 					return
 				}
 				continue

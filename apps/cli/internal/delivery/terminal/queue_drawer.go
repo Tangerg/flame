@@ -106,10 +106,10 @@ type queueDrawer struct {
 
 func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard base.Clipboard) *queueDrawer {
 	drawer := &queueDrawer{theme: theme, glyphs: glyphs, keys: keys}
-	drawer.editor = kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 4})
-	drawer.editor.Controller().Keys = keys
-	drawer.editor.Controller().Clipboard = clipboard
-	drawer.editor.Controller().Placeholder = "Edit queued prompt"
+	drawer.editor = kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 4})
+	drawer.editor.Controller().SetKeys(keys)
+	drawer.editor.Controller().SetClipboard(clipboard)
+	drawer.editor.Controller().SetPlaceholder("Edit queued prompt")
 	return drawer
 }
 

@@ -64,6 +64,11 @@ Use `declareMethod(descriptor)` when declaring a standalone method: it returns
 the actual Frame method after portable admission. `Capability.portable` holds
 the generic Frame contract; `Capability.identity` also binds the Flame
 composition and scope. Method descriptions do not change either callable identity.
+Frame admission methods return the captured value they validated. Backends pass
+that value to decoders, handlers and encoders; reading the caller's source again
+can change both the validated input and the recorded outcome. MCP tool results
+retain their `_meta` extension payloads and exact numeric evidence after SDK validation;
+known tool errors do not have to satisfy a successful result's output schema.
 
 In the Flame declaration, a managed Node backend names the packaged entry:
 
@@ -78,7 +83,7 @@ In the Flame declaration, a managed Node backend names the packaged entry:
 The package builder maps the entry to author source and bundles the complete
 module graph. Installation does not run npm or a compiler. The Runtime selects
 its managed Node executable and leases the release. Portable packages need no
-OS suffix. See the [Frame SDK](https://github.com/Tangerg/frame/tree/v0.1.0/sdk)
+OS suffix. See the [Frame SDK](https://github.com/Tangerg/frame/tree/v0.2.0/sdk)
 for portable admission and lifetime rules and [Usage Reports](../../plugins/usagereports/README.md)
 for a Flame consumer with durable business receipts.
 

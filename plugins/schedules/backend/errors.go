@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
@@ -44,6 +46,9 @@ func codedCause(code string) error {
 }
 
 func classify(err error) (string, bool) {
+	if errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
+		return "", false
+	}
 	if modelchoice.IsInvalid(err) {
 		return modelInputCode, true
 	}
@@ -61,6 +66,9 @@ func classify(err error) (string, bool) {
 }
 
 func decodeError(err error) error {
+	if errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
+		return err
+	}
 	var failure *framemcp.Refusal
 	if errors.As(err, &failure) {
 		if cause := codedCause(failure.Code); cause != nil {

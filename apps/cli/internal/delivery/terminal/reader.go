@@ -238,7 +238,7 @@ func (r *readerPane) searchRows() []text.Row {
 	width := max(r.viewport.Value().X, 1)
 	var rows []text.Row
 	for _, block := range r.blocks {
-		if body, ok := block.(base.TextProjector); ok {
+		if body, ok := block.(text.Projector); ok {
 			rows = append(rows, body.Rows(width)...)
 		} else {
 			rows = append(rows, make([]text.Row, block.HeightForWidth(width))...)
@@ -420,12 +420,13 @@ func (r *readerPane) ObservingSource() bool {
 }
 
 func (r *readerPane) copy() {
-	value, err := r.selection.Text(r.content.Layout())
+	layout := r.content.Layout()
+	value, err := r.selection.Text(layout)
 	if err != nil {
 		value = ""
 	}
 	if value == "" {
-		value = copyableRowsText(r.content.Rows(r.content.StartRow(), r.content.Height()))
+		value = copyableRowsText(layout.Rows(layout.StartRow(), layout.Height()))
 	}
 	if value == "" || r.clipboard == nil || !r.clipboard.Copy(value) {
 		return
@@ -457,7 +458,7 @@ type readerSectionBlock struct {
 	content base.Block
 }
 
-var _ base.TextProjector = (*readerSectionBlock)(nil)
+var _ text.Projector = (*readerSectionBlock)(nil)
 
 func newReaderSectionBlock(theme kit.Theme, title string, content base.Block) *readerSectionBlock {
 	return &readerSectionBlock{theme: theme, title: strings.TrimSpace(title), content: content}
@@ -484,7 +485,7 @@ func (r *readerSectionBlock) Rows(width int) []text.Row {
 	if r.title != "" {
 		rows = append(rows, text.Row{Text: r.title})
 	}
-	if copyable, ok := r.content.(base.TextProjector); ok {
+	if copyable, ok := r.content.(text.Projector); ok {
 		rows = append(rows, copyable.Rows(width)...)
 	} else {
 		rows = append(rows, make([]text.Row, r.content.HeightForWidth(width))...)

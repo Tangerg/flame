@@ -189,8 +189,8 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 		},
 	})
 	keyField.SetMask("•")
-	baseField.Clipboard = m.clipboard
-	keyField.Clipboard = m.clipboard
+	baseField.SetClipboard(m.clipboard)
+	keyField.SetClipboard(m.clipboard)
 	form := kit.FormConfig{Fields: []base.Field{baseChoice, baseField, keyChoice, keyField}, Theme: m.theme, Glyphs: m.glyphs,
 		Hints: []keymap.Action{base.Submit, base.Cancel}}
 	form.Keys = base.DefaultFormKeys()
@@ -259,7 +259,7 @@ func (d *providerEndpointDraft) Set(value string) {
 	case d.policy.Example != "":
 		label += " (complete API base)"
 	}
-	d.field.Label = label
+	d.field.SetLabel(label)
 }
 
 func providerUpdate(providerID string, baseMode formChange, baseURL string, keyMode formChange, apiKey string) (models.UpdateProvider, error) {

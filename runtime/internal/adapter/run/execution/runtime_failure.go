@@ -66,10 +66,12 @@ func (i *interactionSession) capturePendingFailures(inspection scoperun.TreeInsp
 			if _, known := i.state.deployments.interactions[process.Program]; !known || !pending.Outcome.Valid() {
 				continue
 			}
-			if _, model, err := interaction.ModelRequestFromEffect(pending.Request.Effect()); err != nil {
+			if _, model, err := interaction.ModelCallFromEffect(pending.Request.Effect()); err != nil {
 				return err
 			} else if model {
-				settlement, err := interaction.ModelSettlementFromOutcome(pending.Outcome)
+				settlement, err := interaction.ModelSettlementFromRecord(scoperun.EffectSettled{
+					ID: pending.Request.ID(), Outcome: pending.Outcome, Failure: pending.Failure,
+				})
 				if err != nil {
 					return err
 				}

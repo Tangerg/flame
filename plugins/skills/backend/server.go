@@ -49,8 +49,8 @@ func newServer(learning *learner) (*sdk.Server, error) {
 					return skilllearning.MineResult{}, err
 				}
 				return result, nil
-			}, func(ctx context.Context, run skilllearning.Run, result skilllearning.MineResult) error {
-				return learning.recordMined(ctx, string(command.ID), run, result)
+			}, func(ctx context.Context, run skilllearning.Run, result skilllearning.MineResult) (func(context.Context) error, error) {
+				return learning.prepareMined(ctx, string(command.ID), run, result)
 			})
 
 		}),
@@ -74,7 +74,7 @@ func newServer(learning *learner) (*sdk.Server, error) {
 	return server, nil
 }
 
-func learningCommand[P, R any](ctx context.Context, l *learner, method string, command pluginmcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error), record func(context.Context, P, R) error) (R, error) {
+func learningCommand[P, R any](ctx context.Context, l *learner, method string, command pluginmcp.Command[P], validate func(P) error, execute func(context.Context, P) (R, error), prepareRecord func(context.Context, P, R) (func(context.Context) error, error)) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
@@ -102,45 +102,29 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	value, err := execute(ctx, request)
 	if errors.Is(err, errInvalidSkillDraft) {
 		refusal := &framemcp.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
-		reply, encodeErr := pluginmcp.EncodeReply(zero, refusal, nil)
-		if encodeErr != nil {
-			return zero, encodeErr
-		}
-		if settleErr := prepared.SettleExternal(ctx, reply.Bytes(), nil); settleErr != nil {
-			return zero, settleErr
-		}
-		return zero, refusal
+		return pluginstorage.CompleteExternalCommand(ctx, prepared, nil, func(context.Context) (pluginstorage.CommandPlan[R], error) {
+			return pluginstorage.CommandPlan[R]{}, refusal
+		})
 	}
 	if err != nil {
 		return zero, err
 	}
-	outcome, err := pluginmcp.EncodeReply(value, nil, nil)
-	if err != nil {
-		return zero, err
-	}
-	var commit func(context.Context) error
-	if record != nil {
-		commit = func(tx context.Context) error { return record(tx, request, value) }
-	}
-	if err := prepared.SettleExternal(ctx, outcome.Bytes(), commit); err != nil {
-		if _, known := errors.AsType[*framemcp.Refusal](err); known {
-			refusal, encodeErr := pluginmcp.EncodeReply(zero, err, nil)
-			if encodeErr != nil {
-				return zero, encodeErr
-			}
-			if settleErr := prepared.SettleExternal(ctx, refusal.Bytes(), nil); settleErr != nil {
-				return zero, settleErr
+	return pluginstorage.CompleteExternalCommand(ctx, prepared, nil, func(ctx context.Context) (pluginstorage.CommandPlan[R], error) {
+		var persist func(context.Context) error
+		if prepareRecord != nil {
+			var err error
+			persist, err = prepareRecord(ctx, request, value)
+			if err != nil {
+				return pluginstorage.CommandPlan[R]{}, err
 			}
 		}
-		return zero, err
-	}
-	return value, nil
+		return pluginstorage.NewCommandPlan(value, persist)
+	})
 }
 
-func (l *learner) recordMined(ctx context.Context, id string, run skilllearning.Run, result skilllearning.MineResult) error {
+func (l *learner) prepareMined(ctx context.Context, id string, run skilllearning.Run, result skilllearning.MineResult) (func(context.Context) error, error) {
 	if result.Proposal == nil {
-		return nil
+		return nil, nil
 	}
-	_, err := (reviewQueue{db: l.db}).stageCommand(ctx, id, result.Proposal.Draft(run))
-	return err
+	return (reviewQueue{db: l.db}).prepareStage(ctx, id, result.Proposal.Draft(run))
 }

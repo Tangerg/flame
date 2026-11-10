@@ -9,11 +9,13 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 )
 
+const commandPrefix = "/"
+
 func parseSlashCommand(line string) (name, argument string, ok bool) {
-	if !strings.HasPrefix(line, "/") {
+	if !strings.HasPrefix(line, commandPrefix) {
 		return "", "", false
 	}
-	name, argument, _ = strings.Cut(strings.TrimPrefix(line, "/"), " ")
+	name, argument, _ = strings.Cut(strings.TrimPrefix(line, commandPrefix), " ")
 	return name, strings.TrimSpace(argument), true
 }
 

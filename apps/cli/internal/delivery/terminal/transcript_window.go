@@ -206,10 +206,11 @@ func (t *transcriptView) projectSelection(layout base.TranscriptLayout, intent *
 }
 
 func (t *transcriptView) restoreSelection() {
-	if t.selectionIntent == nil || t.content.Width() == 0 {
+	layout := t.content.Layout()
+	if t.selectionIntent == nil || layout.Width() == 0 {
 		return
 	}
-	if selected, valid := t.projectSelection(t.content.Layout(), t.selectionIntent); valid {
+	if selected, valid := t.projectSelection(layout, t.selectionIntent); valid {
 		t.selection.Set(selected)
 	}
 	t.selectionIntent = nil

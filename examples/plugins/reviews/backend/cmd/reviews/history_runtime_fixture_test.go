@@ -96,7 +96,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 		t.Fatalf("history refusal changed private review: %+v, %v", current, err)
 	}
 	var receipts int
-	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 4098 {
+	if err := scanDatabase(t.Context(), store.db, `SELECT count(*) FROM invocations`, nil, &receipts); err != nil || receipts != 4098 {
 		t.Fatalf("new refusals were lost or recovery wrote receipts: %d, %v", receipts, err)
 	}
 	if updates.Load() != 1 || inputChecks.Load() != 1 || toolUpdates.Load() != 1 || receiptReads.Load() != 2 {

@@ -2,6 +2,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { z } from "zod";
+import { canonicalJSON, parseJSON } from "@frame/sdk/json";
 import { Backend } from "./backend.ts";
 import { Capability, PROTOCOL } from "./contract.ts";
 import { StdioTransport } from "./transport.ts";
@@ -66,6 +67,125 @@ function params(input: unknown, extra = {}) {
 }
 const response = z.record(z.string(), z.unknown());
 const contribution = { id: "fixture", export: "fixture", requires: [] };
+
+it("preserves captured MCP extension evidence while admitting structured output", async () => {
+  const backend = new Backend({ name: "fixture", version: "1" });
+  const evidence = parseJSON(
+    '{"wide":9007199254740993,"fraction":1.0000000000000001}',
+  );
+  const content = { type: "text" as const, text: "raw", _meta: { evidence } };
+  let reads = 0;
+  backend.tool(
+    {
+      name: "fixture.tool",
+      inputSchema: { type: "object" },
+      outputSchema: {
+        type: "object",
+        properties: { value: { const: "captured" } },
+        required: ["value"],
+        additionalProperties: false,
+      },
+    },
+    () => ({
+      content: [content],
+      structuredContent: {
+        get value() {
+          reads++;
+          return reads === 1 ? "captured" : "changed after admission";
+        },
+      },
+      _meta: { evidence },
+    }),
+  );
+  const client = await connect(backend);
+  const result = await client.request(
+    { method: "tools/call", params: { name: "fixture.tool" } },
+    response,
+  );
+  expect(canonicalJSON(result)).toBe(
+    canonicalJSON({
+      content: [content],
+      structuredContent: { value: "captured" },
+      _meta: { evidence },
+    }),
+  );
+  expect(reads).toBe(1);
+});
+
+it("preserves an MCP tool error without requiring its success output schema", async () => {
+  const backend = new Backend({ name: "fixture", version: "1" });
+  backend.tool(
+    {
+      name: "fixture.tool",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "object", required: ["value"] },
+    },
+    () => ({
+      isError: true,
+      content: [{ type: "text", text: "known refusal" }],
+      structuredContent: { failure: "known refusal" },
+    }),
+  );
+  const client = await connect(backend);
+  expect(
+    await client.request(
+      { method: "tools/call", params: { name: "fixture.tool" } },
+      response,
+    ),
+  ).toEqual({
+    isError: true,
+    content: [{ type: "text", text: "known refusal" }],
+    structuredContent: { failure: "known refusal" },
+  });
+});
+
+it("encodes the output captured by admission without rereading caller accessors", async () => {
+  const objectContract = new Capability({
+    ...contract.descriptor,
+    methods: [
+      {
+        ...contract.descriptor.methods[0]!,
+        output: {
+          type: "object",
+          properties: { value: { type: "string", const: "captured" } },
+          required: ["value"],
+          additionalProperties: false,
+        },
+      },
+    ],
+  });
+  const method = objectContract.portable.method("fixture.read");
+  const backend = new Backend({ name: "fixture", version: "1" });
+  backend.bindCapability("fixture", objectContract);
+  let reads = 0;
+  backend.implement(
+    method,
+    (value) => value,
+    () => ({
+      get value() {
+        reads++;
+        return reads === 1 ? "captured" : "changed after admission";
+      },
+    }),
+  );
+  const client = await connect(backend);
+  expect(
+    await client.request(
+      {
+        method: wire.constants.invokeMethod!,
+        params: params(
+          { value: "request" },
+          {
+            contract: method.identity,
+            capability: objectContract.identity,
+          },
+        ),
+      },
+      response,
+    ),
+  ).toEqual({ value: { value: "captured" } });
+  expect(reads).toBe(1);
+});
 
 it("rejects malformed invocation evidence without consuming call capacity", async () => {
   let executions = 0;

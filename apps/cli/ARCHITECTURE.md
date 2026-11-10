@@ -53,6 +53,12 @@ Domain contains no I/O interfaces and no `context.Context`. A narrow port is dec
 
 CLI Domain types are behavior-rich only for CLI-owned invariants. A draft, queue, replay intent, or selection owner validates its state and exposes legal transitions. Runtime snapshots, protocol values, render rows, and command inputs remain typed data; wrapping them in getters does not create a domain model.
 
+Oolong's Editor owns completion tokens, including their line and byte range. The
+terminal captures those tokens for asynchronous candidates and reads the current
+Editor token before acceptance; moving to an identical token on another line
+cannot accept the earlier offer. Transcript rendering and hit testing consume
+Oolong's layout snapshot instead of maintaining another geometry owner.
+
 ## Runtime path
 
 The production process selects one explicit Runtime mode and fans its binding adapter into consumer-owned ports. Remote mode is the default and connects to `http://127.0.0.1:17171` unless configured otherwise. Embedded mode exclusively owns the local Runtime data directory through complete shutdown. An empty or unreachable remote endpoint never selects another target. Both bindings enter the same server delivery Endpoint. The process closes the binding once; only the embedded binding owns Runtime shutdown.
@@ -127,6 +133,11 @@ The application root only composes the terminal: it builds the owners below, rou
 - `sessionBrowser` is the Session center. `localExtensions` owns the local command extension host and the operations its commands run.
 - `screens` are the management surfaces, each owning one Runtime port and its state: run options (model choice, catalog, status), approval policy, workspace inspection, goals, model configuration, usage, feedback, MCP, Skills, hooks, diagnostic tools, agent documents, and installed plugins with their terminal views. A screen reaches the terminal only through `screenHost`; a screen whose port is absent is nil, which command availability reports.
 - `taskRunner` applies background results on the loop under an operation lease. `readerSurface` owns the reader and the query behind its document. `pickerDialog` pairs a searchable picker with its modal; `confirmPrompt`, `contextEditing`, `liveSearch`, the timeline and the shortcut guide own their modals likewise. `keyRouter` owns key bindings and partial sequences.
+
+Configured product actions replace Oolong's default bindings for those actions.
+Input routing and help read the resulting maps; configured sequence order
+determines which shortcut help presents first. Oolong supplies defaults only for
+unconfigured editor actions.
 
 Whether the connected Runtime offers an optional surface is the composition root's question, answered once against the negotiated `Profile` and expressed by leaving that consumer port unset. A binding accessor therefore returns a usable value and never reports absence with a nil pointer: assigned into a consumer's interface-typed port, a nil pointer arrives as a non-nil interface, so the consumer's own "is this wired?" check cannot fire and its first call dereferences nil. Absence is the absent field, not a present value that fails on use.
 

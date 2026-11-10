@@ -40,7 +40,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, statement := range []string{change.statement, `INSERT INTO trusted_projects VALUES ('/retained')`} {
-				if _, err := db.ExecContext(t.Context(), statement); err != nil {
+				if _, err := execFixture(t.Context(), db, statement); err != nil {
 					t.Fatalf("%s: %v", statement, err)
 				}
 			}

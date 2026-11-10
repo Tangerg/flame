@@ -11,7 +11,7 @@
       "description": "Add a human-authored memory item in the requested scope.",
       "input": {
         "$defs": {
-          "contract.AddInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
@@ -70,14 +70,17 @@
       },
       "output": {
         "$defs": {
-          "contract.AddResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "Changed": {
                 "type": "boolean"
               },
               "Item": {
-                "$ref": "#/$defs/domain.ItemSnapshot"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
               }
             },
             "required": [
@@ -86,7 +89,7 @@
             ],
             "type": "object"
           },
-          "domain.ItemID": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -94,10 +97,10 @@
             ],
             "type": "string"
           },
-          "domain.ItemSnapshot": {
-            "$ref": "#/$defs/domain.itemProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
           },
-          "domain.itemProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -117,14 +120,14 @@
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "$ref": "#/$defs/value.Number"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
                 },
                 "type": "array"
               },
@@ -132,7 +135,7 @@
                 "type": "string"
               },
               "ID": {
-                "$ref": "#/$defs/domain.ItemID"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
               },
               "Origin": {
                 "allOf": [
@@ -188,7 +191,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -209,10 +212,7 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
@@ -223,7 +223,7 @@
             "type": "boolean"
           },
           "Item": {
-            "$ref": "#/$defs/domain.ItemSnapshot"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
           }
         },
         "required": [
@@ -240,7 +240,7 @@
       "description": "Delete one memory item through its private owner.",
       "input": {
         "$defs": {
-          "contract.ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -307,7 +307,7 @@
       },
       "output": {
         "$defs": {
-          "contract.Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -326,7 +326,7 @@
       "description": "Read active memory items that can inform a Run.",
       "input": {
         "$defs": {
-          "contract.ItemsInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA": {
             "additionalProperties": false,
             "properties": {
               "Project": {
@@ -377,7 +377,10 @@
       },
       "output": {
         "$defs": {
-          "domain.ItemID": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -385,10 +388,10 @@
             ],
             "type": "string"
           },
-          "domain.ItemSnapshot": {
-            "$ref": "#/$defs/domain.itemProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
           },
-          "domain.itemProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -408,14 +411,14 @@
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "$ref": "#/$defs/value.Number"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
                 },
                 "type": "array"
               },
@@ -423,7 +426,7 @@
                 "type": "string"
               },
               "ID": {
-                "$ref": "#/$defs/domain.ItemID"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
               },
               "Origin": {
                 "allOf": [
@@ -479,7 +482,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -500,16 +503,13 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/domain.ItemSnapshot"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
         },
         "type": "array"
       }
@@ -521,7 +521,7 @@
       "description": "List memory items visible in the requested scope.",
       "input": {
         "$defs": {
-          "contract.ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -618,7 +618,10 @@
       },
       "output": {
         "$defs": {
-          "contract.Page": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -648,7 +651,7 @@
               },
               "Rows": {
                 "items": {
-                  "$ref": "#/$defs/domain.ItemSnapshot"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
                 },
                 "type": "array"
               }
@@ -660,7 +663,7 @@
             ],
             "type": "object"
           },
-          "domain.ItemID": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -668,10 +671,10 @@
             ],
             "type": "string"
           },
-          "domain.ItemSnapshot": {
-            "$ref": "#/$defs/domain.itemProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
           },
-          "domain.itemProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -691,14 +694,14 @@
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "$ref": "#/$defs/value.Number"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
                 },
                 "type": "array"
               },
@@ -706,7 +709,7 @@
                 "type": "string"
               },
               "ID": {
-                "$ref": "#/$defs/domain.ItemID"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
               },
               "Origin": {
                 "allOf": [
@@ -762,7 +765,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -783,10 +786,7 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
@@ -820,7 +820,7 @@
           },
           "Rows": {
             "items": {
-              "$ref": "#/$defs/domain.ItemSnapshot"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
             },
             "type": "array"
           }
@@ -840,7 +840,7 @@
       "description": "Extract and curate captured conversation under the private ledger and watermark.",
       "input": {
         "$defs": {
-          "contract.Conversation": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u": {
             "additionalProperties": false,
             "properties": {
               "MessageCount": {
@@ -862,14 +862,14 @@
             ],
             "type": "object"
           },
-          "contract.MaintenanceInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA": {
             "additionalProperties": false,
             "properties": {
               "Compacted": {
                 "type": "boolean"
               },
               "Conversation": {
-                "$ref": "#/$defs/contract.Conversation"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u"
               },
               "Project": {
                 "type": "string"
@@ -894,7 +894,7 @@
             "type": "boolean"
           },
           "Conversation": {
-            "$ref": "#/$defs/contract.Conversation"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u"
           },
           "Project": {
             "type": "string"
@@ -913,7 +913,7 @@
       },
       "output": {
         "$defs": {
-          "contract.MaintenanceResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ": {
             "additionalProperties": false,
             "properties": {
               "Published": {
@@ -946,7 +946,7 @@
       "description": "Apply a human review decision to a pending memory item.",
       "input": {
         "$defs": {
-          "contract.ReviewInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -1037,7 +1037,7 @@
       },
       "output": {
         "$defs": {
-          "contract.Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -1056,7 +1056,7 @@
       "description": "Rank active memories for the supplied project and query.",
       "input": {
         "$defs": {
-          "contract.SearchInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
               "EmbeddingSpace": {
@@ -1119,7 +1119,10 @@
       },
       "output": {
         "$defs": {
-          "domain.ItemID": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -1127,10 +1130,10 @@
             ],
             "type": "string"
           },
-          "domain.ItemSnapshot": {
-            "$ref": "#/$defs/domain.itemProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
           },
-          "domain.itemProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -1150,14 +1153,14 @@
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "$ref": "#/$defs/value.Number"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
                 },
                 "type": "array"
               },
@@ -1165,7 +1168,7 @@
                 "type": "string"
               },
               "ID": {
-                "$ref": "#/$defs/domain.ItemID"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
               },
               "Origin": {
                 "allOf": [
@@ -1221,7 +1224,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -1242,16 +1245,13 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/domain.ItemSnapshot"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
         },
         "type": "array"
       }
@@ -1263,7 +1263,7 @@
       "description": "Edit the current content or pin state of a memory item.",
       "input": {
         "$defs": {
-          "contract.UpdateInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -1342,7 +1342,10 @@
       },
       "output": {
         "$defs": {
-          "domain.ItemID": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -1350,10 +1353,10 @@
             ],
             "type": "string"
           },
-          "domain.ItemSnapshot": {
-            "$ref": "#/$defs/domain.itemProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
           },
-          "domain.itemProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -1373,14 +1376,14 @@
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Day": {
                 "type": "string"
               },
               "Embedding": {
                 "items": {
-                  "$ref": "#/$defs/value.Number"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
                 },
                 "type": "array"
               },
@@ -1388,7 +1391,7 @@
                 "type": "string"
               },
               "ID": {
-                "$ref": "#/$defs/domain.ItemID"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
               },
               "Origin": {
                 "allOf": [
@@ -1444,7 +1447,7 @@
                 "type": "string"
               },
               "UpdatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -1465,15 +1468,121 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
-        "$ref": "#/$defs/domain.itemProjection",
-        "$schema": "https://json-schema.org/draft/2020-12/schema"
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "Content": {
+                "maxLength": 4096
+              },
+              "Revision": {
+                "maximum": 9.007199254740991e+15
+              }
+            }
+          }
+        ],
+        "properties": {
+          "Content": {
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "CreatedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "Day": {
+            "type": "string"
+          },
+          "Embedding": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
+            },
+            "type": "array"
+          },
+          "EmbeddingSpace": {
+            "type": "string"
+          },
+          "ID": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
+          },
+          "Origin": {
+            "allOf": [
+              {
+                "enum": [
+                  "auto",
+                  "user"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "Pinned": {
+            "type": "boolean"
+          },
+          "Project": {
+            "type": "string"
+          },
+          "Revision": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "Scope": {
+            "allOf": [
+              {
+                "enum": [
+                  "project",
+                  "user"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "SessionID": {
+            "type": "string"
+          },
+          "Status": {
+            "allOf": [
+              {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "UpdatedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          }
+        },
+        "required": [
+          "ID",
+          "Revision",
+          "Scope",
+          "Project",
+          "Content",
+          "Origin",
+          "Status",
+          "Pinned",
+          "SessionID",
+          "Day",
+          "CreatedAt",
+          "UpdatedAt",
+          "EmbeddingSpace",
+          "Embedding"
+        ],
+        "type": "object"
       }
     }
   ]

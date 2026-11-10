@@ -20,12 +20,7 @@ func TestRevisionlessMemoryIsRefusedWithoutMigratingContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `ALTER TABLE agent_memory_items DROP COLUMN revision`); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
+	alterClosedDatabase(t, db, path, `ALTER TABLE agent_memory_items DROP COLUMN revision`)
 	if current, err := Open(t.Context(), path); err == nil {
 		_ = current.Close()
 		t.Fatal("revisionless memory was admitted")
@@ -50,15 +45,10 @@ func TestFormerCallContextInputIsRefusedWithoutChangingPrivateEvidence(t *testin
 		t.Fatal(err)
 	}
 	const input = `{"Grant":{"Credential":"former-call-context"},"captured":true}`
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','maintain',?,NULL)`, input); err != nil {
+	if _, err := execDatabase(t.Context(), db, `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','maintain',?,NULL)`, input); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `ALTER TABLE commands RENAME COLUMN business_input_json TO input_json`); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
+	alterClosedDatabase(t, db, path, `ALTER TABLE commands RENAME COLUMN business_input_json TO input_json`)
 	if current, err := Open(t.Context(), path); err == nil {
 		_ = current.Close()
 		t.Fatal("former call-context input was admitted as business-only input")

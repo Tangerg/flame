@@ -12,11 +12,11 @@ export type Method = ReturnType<PortableCapability["method"]>;
 export const PROTOCOL = wire.constants.protocol;
 
 export interface CapabilityDescriptor {
-  protocol: string;
-  reference: string;
-  composition: "collection" | "selection" | "decoration";
-  scope: string;
-  methods: readonly MethodDescriptor[];
+  readonly protocol: string;
+  readonly reference: string;
+  readonly composition: "collection" | "selection" | "decoration";
+  readonly scope: string;
+  readonly methods: readonly MethodDescriptor[];
 }
 
 export function digestJSON(value: unknown): string {
@@ -62,11 +62,19 @@ export function exactFields(
     throw new Error("plugin: invalid protocol members");
 }
 
-export function declareMethod(descriptor: MethodDescriptor): Method {
+export function declareMethod(source: unknown): Method {
+  const descriptor: unknown = freezeJSON(source);
+  if (
+    descriptor === null ||
+    typeof descriptor !== "object" ||
+    !("name" in descriptor) ||
+    typeof descriptor.name !== "string"
+  )
+    throw new Error("plugin: method contract requires a name");
   return new PortableCapability({
     protocol: wire.constants.portableProtocol,
     reference: descriptor.name,
-    methods: [descriptor],
+    methods: [descriptor as MethodDescriptor],
   }).method(descriptor.name);
 }
 
@@ -75,8 +83,8 @@ export class Capability {
   readonly identity: string;
   readonly portable: PortableCapability;
 
-  constructor(source: CapabilityDescriptor) {
-    const descriptor = freezeJSON(source);
+  constructor(source: unknown) {
+    const descriptor: unknown = freezeJSON(source);
     exactFields(descriptor, [
       "protocol",
       "reference",
@@ -86,10 +94,12 @@ export class Capability {
     ]);
     if (
       descriptor.protocol !== PROTOCOL ||
+      !validToken(descriptor.reference) ||
       !validToken(descriptor.scope) ||
-      !["collection", "selection", "decoration"].includes(
-        descriptor.composition,
-      )
+      !Array.isArray(descriptor.methods) ||
+      (descriptor.composition !== "collection" &&
+        descriptor.composition !== "selection" &&
+        descriptor.composition !== "decoration")
     )
       throw new Error("plugin: invalid capability contract");
     this.portable = new PortableCapability({
@@ -100,7 +110,13 @@ export class Capability {
     const methods = [...this.portable.descriptor.methods].sort((left, right) =>
       compareTokens(left.name, right.name),
     );
-    this.descriptor = freezeJSON({ ...descriptor, methods });
+    this.descriptor = Object.freeze({
+      protocol: PROTOCOL,
+      reference: this.portable.descriptor.reference,
+      composition: descriptor.composition,
+      scope: descriptor.scope,
+      methods: Object.freeze(methods),
+    });
     this.identity = digestJSON({
       ...this.descriptor,
       methods: methods.map((method) => ({ ...method, description: "" })),

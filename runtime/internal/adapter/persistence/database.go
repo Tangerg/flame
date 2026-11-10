@@ -22,7 +22,7 @@ type database struct{ boundary databaseBoundary }
 
 type frameDatabase struct {
 	store     *sqlite.Store
-	owner     *sqlite.Owner
+	owner     sqlite.Owner
 	admission *frame.Admission
 }
 

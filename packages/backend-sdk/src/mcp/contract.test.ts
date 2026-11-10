@@ -5,18 +5,14 @@ import {
   canonicalJSON,
   declareMethod,
   digestJSON,
-  type CapabilityDescriptor,
-  type MethodDescriptor,
 } from "./contract.ts";
 import wire from "./protocol.generated.json";
 
 it("agrees with the Go publisher on portable methods and Flame capability identities", () => {
-  const capability = new Capability(
-    parseJSON(wire.capability) as CapabilityDescriptor,
-  );
+  const capability = new Capability(parseJSON(wire.capability));
   expect(capability.identity).toBe(wire.capabilityIdentity);
   expect(canonicalJSON(capability.descriptor)).toBe(wire.capability);
-  const receipt = declareMethod(parseJSON(wire.receipt) as MethodDescriptor);
+  const receipt = declareMethod(parseJSON(wire.receipt));
   expect(receipt.identity).toBe(wire.receiptIdentity);
   for (const input of wire.inputs) {
     const value = parseJSON(input.source);
@@ -26,7 +22,7 @@ it("agrees with the Go publisher on portable methods and Flame capability identi
 });
 
 it("keeps Flame composition and scope separate from Frame method identity", () => {
-  const descriptor = parseJSON(wire.capability) as CapabilityDescriptor;
+  const descriptor = new Capability(parseJSON(wire.capability)).descriptor;
   const original = new Capability(descriptor);
   const selection = new Capability({ ...descriptor, composition: "selection" });
   const scoped = new Capability({ ...descriptor, scope: "workspace" });
@@ -49,23 +45,23 @@ it("keeps Flame composition and scope separate from Frame method identity", () =
 });
 
 it("delegates exact schema admission to the released Frame method", () => {
-  const receipt = declareMethod(parseJSON(wire.receipt) as MethodDescriptor);
+  const receipt = declareMethod(parseJSON(wire.receipt));
   expect(() =>
-    receipt.validateInput({
+    receipt.admitInput({
       id: "command",
       method: "read",
       inputDigest: "a".repeat(64),
     }),
   ).not.toThrow();
   expect(() =>
-    receipt.validateInput({
+    receipt.admitInput({
       id: "command",
       method: "read",
       inputDigest: "invalid",
     }),
   ).toThrow();
   expect(() =>
-    receipt.validateInput({
+    receipt.admitInput({
       id: "command",
       method: "read",
       inputDigest: "a".repeat(64),

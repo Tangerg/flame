@@ -71,6 +71,20 @@ afterEach(() => {
 });
 
 describe("mutation journal", () => {
+  it("refuses a storage-side transition of the reserved identity", () => {
+    const values = new Map<string, unknown>();
+    const current = journal({
+      get: (key) => values.get(key),
+      set: (key, value) => void values.set(key, value),
+      remove: (key) => void values.delete(key),
+      keys: () => [...values.keys()],
+    });
+    const reserved = current.reserve("sessions.create", { title: "original" });
+    const stored = values.values().next().value as { delivery: string };
+    stored.delivery = "dispatched";
+    expect(() => reserved.authorizeDispatch()).toThrow(MutationJournalOwnershipError);
+  });
+
   it("retains exact edited Tool arguments across persistence and original-command recovery", () => {
     const values = new Map<string, string>();
     const storage: MutationJournalStorage = {

@@ -51,7 +51,7 @@ Session, Goal or physical-model invocation for detached title generation.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
-Scope v0.60.0 owns complete Tool failure classification. Runtime uses
+Scope v0.61.0 owns complete Tool failure classification. Runtime uses
 `tool.ClassifyFailure` for dispatch and original-result recovery: independent
 joined errors cannot establish a definite result. A plugin's classified Failure
 retains its diagnostic cause inside that outcome instead of joining it as a
@@ -88,8 +88,13 @@ Scope's public contracts own framework behavior. Tool discovery implements
 direct-result, input-validation and advertisement capabilities. Ordinary Tools
 execute as Effects in their owning Interaction. Delegated tasks use
 `workflow.Adapt` around an Interaction, with one product Run for the task and its
-inner model loop. Restoration reads `interaction.DelegateAttributions` from the
+inner model loop. Restoration reads `interaction.HistoryProjection.DelegateAttributions` from the
 complete log and uses the acknowledged tree's statuses.
+Each compiled Interaction owns one immutable history projection bound to that
+program. Model and Tool sequence attribution comes from Scope's committed call
+intent; request-preparation metadata is only checked against that sequence.
+Settlement decoding receives the complete `run.EffectSettled` record so a
+framework-recorded failure cannot disappear when its payload is absent.
 Definite model failures settle through Scope without synthetic cancellation.
 Model failures use `invocation.Failure` and `invocation.ClassifyFailure` for the complete
 invocation. Nested failures cannot replace that classification, and known
@@ -1095,7 +1100,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 
 - Runtime is a product backend. Scope owns Process, program, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`Frame MCP`](https://github.com/Tangerg/frame/blob/v0.1.0/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `frame/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
+- [`Frame MCP`](https://github.com/Tangerg/frame/blob/v0.2.0/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `frame/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1349,7 +1354,7 @@ normal delegate result or retry the attempt. Cancellation before dispatch and a
 known result that arrives during draining remain distinct cases.
 
 Known Tool and Delegate results are extracted through Scope's
-`interaction.SettledResults` at the Store's `Append` boundary. Locally rejected
+`interaction.HistoryProjection.SettledResults` at the Store's `Append` boundary. Locally rejected
 proposals that emitted no Effect are published from the exact feedback in Scope's
 next context-preparation request. Runtime atomically commits the authoritative
 execution log, product Items, invocation journal and content-bound result
@@ -1763,11 +1768,13 @@ one `flame-frame.db` database, with WAL and FULL synchronous durability. This is
 breaking storage and plugin protocol cutover: use a fresh product root and rebuild
 plugin releases. Historical state is retained separately, never converted on open.
 
-Transaction context binds the exact `*sql.DB`, so work for another database cannot
-accidentally enter the first owner's write-set. Nested work for one database joins
-its transaction; an independent transaction for that same active database is
-refused before connection acquisition. Separate owners do not become a distributed
-transaction. See [SQLite ownership](https://github.com/Tangerg/frame/blob/v0.1.0/sqlite/README.md) and
+Transaction context binds the exact Frame `*sqlite.Database` owner, so work for another
+database cannot accidentally enter the first owner's write-set. `Connection` is valid
+only inside that owner's transaction scope; independent reads use `Database.Read` or
+`RunReadSnapshot`. Nested work for one database joins its transaction; an independent
+transaction for that same active database is refused before connection acquisition.
+Separate owners do not become a distributed transaction.
+See [SQLite ownership](https://github.com/Tangerg/frame/blob/v0.2.0/sqlite/README.md) and
 [private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
@@ -2166,7 +2173,7 @@ compaction's mutable candidate or the transcript. Compaction budgets count it. R
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
-Scope v0.60.0 retains advertised tools and rebuilds their ordinary function definitions
+Scope v0.61.0 retains advertised tools and rebuilds their ordinary function definitions
 in canonical name order. Loading another tool can therefore change the tools prefix;
 Flame does not claim native provider tool-search or append-only wire ordering. That
 framework capability must be implemented and released by Scope rather than shadowed

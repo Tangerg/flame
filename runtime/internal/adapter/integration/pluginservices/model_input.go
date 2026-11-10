@@ -81,7 +81,8 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 		}
 		result, err := func() (chat.Request, error) {
 			defer release()
-			return operation.CallWithMetadata(calling, pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()}, metadata)
+			result, err := operation.CallWithMetadata(calling, pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()}, metadata)
+			return chat.Request(result), err
 		}()
 		if err != nil {
 			return nil, err

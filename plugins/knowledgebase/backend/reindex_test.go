@@ -71,7 +71,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		t.Fatalf("reindex did not restore retrieval: %+v %v", matches, err)
 	}
 	before := calls
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "stale", reindexJSON); !errors.Is(err, knowledge.ErrRevisionConflict) || calls != before {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "stale", reindexJSON); !isRevisionConflict(err) || calls != before {
 		t.Fatalf("stale reindex dispatched embedding: calls=%d %v", calls, err)
 	}
 	if err := store.db.Close(); err != nil {
@@ -96,16 +96,26 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		duringEmbedding = nil
 		changed := content
 		changed.Text = "a concurrent human edit"
-		draft, _ := knowledge.NewDraft(changed)
-		indexed, _ := draft.Index(space, [][]float32{{1, 0}})
-		if err := pluginstorage.WithinTransaction(t.Context(), reopened.db, func(ctx context.Context) error {
-			_, err := reopened.replace(ctx, content.ID, rebuilt.Revision, indexed)
-			return err
-		}); err != nil {
+		input, err := framevalue.EncodeJSON(wire.ImportInput{Content: changed, ExpectedRevision: rebuilt.Revision})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = pluginstorage.Command(t.Context(), reopened.db, contracts.Import.Name(), "concurrent-edit", input, classify, func(ctx context.Context, input wire.ImportInput) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			draft, err := knowledge.NewDraft(input.Content)
+			if err != nil {
+				return pluginstorage.CommandPlan[knowledge.Header]{}, err
+			}
+			indexed, err := draft.Index(space, [][]float32{{1, 0}})
+			if err != nil {
+				return pluginstorage.CommandPlan[knowledge.Header]{}, err
+			}
+			return reopened.prepareReplacement(ctx, input.Content.ID, input.ExpectedRevision, indexed)
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "racing", currentJSON); !errors.Is(err, knowledge.ErrRevisionConflict) {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "racing", currentJSON); !isRevisionConflict(err) {
 		t.Fatalf("reindex overwrote a later human revision: %v", err)
 	}
 	read, err = library.read(t.Context(), wire.ReadInput{ID: content.ID})

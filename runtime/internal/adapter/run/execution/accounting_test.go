@@ -90,16 +90,12 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 		if !ok {
 			continue
 		}
-		request, model, err := interaction.ModelRequestFromEffect(intent.Effect)
+		call, model, err := interaction.ModelCallFromEffect(intent.Effect)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if model {
-			reference, _, err := modelPreparationReference(request.Messages)
-			if err != nil {
-				t.Fatal(err)
-			}
-			invocation = modelCallSource{process: intent.ID.Process, effect: intent.ID, sequence: reference.Sequence, program: live.deployment.ProgramRef()}
+			invocation = modelCallSource{process: intent.ID.Process, effect: intent.ID, sequence: call.Sequence, program: live.deployment.ProgramRef()}
 		}
 	}
 

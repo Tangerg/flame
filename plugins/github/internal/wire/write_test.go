@@ -17,11 +17,11 @@ func TestWriteSchemasPreserveOwnedConstraints(t *testing.T) {
 	}{
 		{
 			name: "confirmed deletion", schema: portable.SchemaFor[DeletedComment],
-			valid: `{"id":1,"deleted":true}`, invalid: `{"id":1,"deleted":false}`,
+			valid: `{"id":1}`, invalid: `{"id":1,"deleted":false}`,
 		},
 		{
 			name: "confirmed merge", schema: portable.SchemaFor[MergeResult],
-			valid: `{"sha":"abc","merged":true,"message":"merged"}`, invalid: `{"sha":"abc","merged":false,"message":"merged"}`,
+			valid: `{"sha":"` + strings.Repeat("a", 40) + `","message":"merged"}`, invalid: `{"sha":"` + strings.Repeat("a", 40) + `","merged":false,"message":"merged"}`,
 		},
 		{
 			name: "inspected commit", schema: portable.SchemaFor[SubmitReviewInput],

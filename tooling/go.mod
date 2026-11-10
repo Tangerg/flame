@@ -3,15 +3,15 @@ module github.com/Tangerg/flame/tooling
 go 1.27.3
 
 require (
-	github.com/Tangerg/scope/agent v0.60.0 // indirect
-	github.com/Tangerg/scope/core v0.60.0 // indirect
-	github.com/Tangerg/scope/mcp v0.60.0 // indirect
-	github.com/Tangerg/scope/models/catalog v0.60.0 // indirect
-	github.com/Tangerg/scope/otel v0.60.0 // indirect
-	github.com/Tangerg/scope/otel/agent v0.60.0 // indirect
-	github.com/Tangerg/scope/skills v0.60.0 // indirect
-	github.com/Tangerg/scope/tools v0.60.0 // indirect
-	github.com/Tangerg/scope/tools/skills v0.60.0 // indirect
+	github.com/Tangerg/scope/agent v0.61.0 // indirect
+	github.com/Tangerg/scope/core v0.61.0 // indirect
+	github.com/Tangerg/scope/mcp v0.61.0 // indirect
+	github.com/Tangerg/scope/models/catalog v0.61.0 // indirect
+	github.com/Tangerg/scope/otel v0.61.0 // indirect
+	github.com/Tangerg/scope/otel/agent v0.61.0 // indirect
+	github.com/Tangerg/scope/skills v0.61.0 // indirect
+	github.com/Tangerg/scope/tools v0.61.0 // indirect
+	github.com/Tangerg/scope/tools/skills v0.61.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
@@ -41,7 +41,7 @@ require (
 	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/pflag v1.1.0 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
@@ -51,24 +51,24 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.9 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	modernc.org/libc v1.80.1 // indirect
+	modernc.org/libc v1.80.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.61.1 // indirect
+	modernc.org/sqlite v1.62.0 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.6-dev.20261105.t6685853a20dc
+	github.com/Tangerg/flame/packages/go-sdk v0.1.7-dev.20261110.tde9fbe441e4c
 	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
-	github.com/Tangerg/flame/runtime v0.1.13-dev.20261106.t73d1cd511485
-	github.com/Tangerg/frame v0.1.1
-	github.com/Tangerg/go-sdk v1.8.1-scope.5
-	golang.org/x/mod v0.42.0
+	github.com/Tangerg/flame/runtime v0.1.14-dev.20261110.t7e77ca446a90
+	github.com/Tangerg/frame v0.2.0
+	github.com/Tangerg/go-sdk v1.9.0-scope.1
+	golang.org/x/mod v0.43.0
 	golang.org/x/tools v0.52.0
 )

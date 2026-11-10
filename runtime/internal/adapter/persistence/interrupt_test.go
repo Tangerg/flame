@@ -2,13 +2,14 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -19,7 +20,7 @@ import (
 // seededInterruptStore opens each hand-off after writing the Runs it names.
 type seededInterruptStore struct {
 	*InterruptStore
-	db *sql.DB
+	db *framesqlite.Database
 	t  *testing.T
 }
 
@@ -236,11 +237,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 		t.Fatalf("Open interrupt: %v", err)
 	}
 	var encoded string
-	if err := database.QueryRowContext(
-		t.Context(),
-		`SELECT continuations FROM interrupts WHERE root_run_id = ?`,
-		pending.RootRunID,
-	).Scan(&encoded); err != nil {
+	if err := scanFixture(t.Context(), database, `SELECT continuations FROM interrupts WHERE root_run_id = ?`, []any{pending.RootRunID}, &encoded); err != nil {
 		t.Fatalf("read continuation JSON: %v", err)
 	}
 	poisoned := strings.Replace(
@@ -252,12 +249,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 	if poisoned == encoded {
 		t.Fatalf("continuation JSON does not contain member identity: %s", encoded)
 	}
-	if _, err := database.ExecContext(
-		t.Context(),
-		`UPDATE interrupts SET continuations = ? WHERE root_run_id = ?`,
-		poisoned,
-		pending.RootRunID,
-	); err != nil {
+	if _, err := execFixture(t.Context(), database, `UPDATE interrupts SET continuations = ? WHERE root_run_id = ?`, poisoned, pending.RootRunID); err != nil {
 		t.Fatalf("inject unknown topology field: %v", err)
 	}
 	if _, _, err := store.Get(t.Context(), pending.RootRunID); !errors.Is(err, json.ErrUnknownName) || !strings.Contains(err.Error(), `"parentProcessId"`) {

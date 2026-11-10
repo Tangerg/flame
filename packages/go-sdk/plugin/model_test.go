@@ -8,15 +8,14 @@ import (
 	"testing"
 	"time"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 type modelAuthorityKey struct{}
@@ -49,7 +48,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 		t.Fatal(err)
 	}
 	seen := make(chan framemcp.Invocation, 2)
-	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || invocation.ID != string(command.ID) {
 			return nil, errors.Join(err, errors.New("model command identity was not projected"))
@@ -91,7 +90,7 @@ func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	started, stopped := make(chan struct{}), make(chan struct{})
-	callback, err := NewModelCallback(func(ctx context.Context, _ pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, _ pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		close(started)
 		<-ctx.Done()
 		close(stopped)
@@ -146,7 +145,7 @@ func TestModelCallbackRetainsCompleteScopeResponseAndAuthority(t *testing.T) {
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "inner-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		if ctx.Value(modelAuthorityKey{}) != "captured-model" || command.ID != "original-model-call" {
 			return nil, errors.New("captured model identity changed")
 		}

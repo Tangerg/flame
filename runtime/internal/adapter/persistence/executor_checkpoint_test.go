@@ -3,17 +3,18 @@ package persistence
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"reflect"
 	"slices"
 	"testing"
 
+	framesqlite "github.com/Tangerg/frame/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *ExecutorCheckpointStore) {
+func newExecutorCheckpointStorage(t *testing.T) (*framesqlite.Database, *ExecutorCheckpointStore) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), ":memory:")
 	if err != nil {
@@ -52,7 +53,7 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 		t.Fatalf("checkpoint = %+v, want %+v", got, replacement)
 	}
 	var rows int
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM executor_checkpoints`).Scan(&rows); err != nil || rows != 1 {
+	if err := scanFixture(ctx, db, `SELECT count(*) FROM executor_checkpoints`, nil, &rows); err != nil || rows != 1 {
 		t.Fatalf("checkpoint rows = %d, %v; want one aggregate", rows, err)
 	}
 }
@@ -155,7 +156,7 @@ func TestExecutorCheckpointStoreRejectsInvalidEnvelopeBeforeMutation(t *testing.
 		t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
 	}
 	var rows int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM executor_checkpoints`).Scan(&rows); err != nil || rows != 0 {
+	if err := scanFixture(t.Context(), db, `SELECT count(*) FROM executor_checkpoints`, nil, &rows); err != nil || rows != 0 {
 		t.Fatalf("checkpoint rows after rejection = %d, %v", rows, err)
 	}
 }
@@ -231,21 +232,7 @@ func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 
 func TestExecutorCheckpointSchemaContainsOnlyOwnedData(t *testing.T) {
 	db, _ := newExecutorCheckpointStorage(t)
-	rows, err := db.Query(`PRAGMA table_info(executor_checkpoints)`)
-	if err != nil {
-		t.Fatalf("table_info: %v", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var columns []string
-	for rows.Next() {
-		var cid, notNull, primaryKey int
-		var name, dataType string
-		var defaultValue any
-		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &primaryKey); err != nil {
-			t.Fatalf("scan table_info: %v", err)
-		}
-		columns = append(columns, name)
-	}
+	columns := fixtureColumns(t, db, "executor_checkpoints")
 	want := []string{"root_member_id", "session_id", "build_id", "payload"}
 	if !slices.Equal(columns, want) {
 		t.Fatalf("executor checkpoint columns = %v, want %v", columns, want)

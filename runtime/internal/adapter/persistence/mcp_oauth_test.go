@@ -115,7 +115,7 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			var triggers int
-			if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND sql LIKE '%mcp_oauth_sessions%'`).Scan(&triggers); err != nil || triggers != 0 {
+			if err := scanFixture(t.Context(), db, `SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND sql LIKE '%mcp_oauth_sessions%'`, nil, &triggers); err != nil || triggers != 0 {
 				t.Fatalf("credential invalidation triggers = %d, %v", triggers, err)
 			}
 			owner := testsupport.InstallationID(t)
@@ -169,7 +169,7 @@ func TestMCPAuthorizationRefusesUnboundLegacyCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = db.ExecContext(t.Context(), `ALTER TABLE mcp_oauth_sessions DROP COLUMN target_fingerprint`); err != nil {
+	if _, err = execFixture(t.Context(), db, `ALTER TABLE mcp_oauth_sessions DROP COLUMN target_fingerprint`); err != nil {
 		t.Fatal(err)
 	}
 	if err = db.Close(); err != nil {

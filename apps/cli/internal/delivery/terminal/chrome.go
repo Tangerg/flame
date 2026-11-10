@@ -246,7 +246,7 @@ func (a *activityView) Draw(view grid.View) {
 		case protocol.PlanStatusPending:
 		default:
 		}
-		view.Text(0, row, a.glyphs.Vertical, a.theme.Divider)
+		view.Text(0, row, a.glyphs.Vertical.String(), a.theme.Divider)
 		labelWidth := text.Width(label)
 		contentWidth := max(width-labelWidth-4, 1)
 		view.Text(2, row, mark+" "+text.Truncate(item.Description, contentWidth, a.glyphs.Ellipsis), style)

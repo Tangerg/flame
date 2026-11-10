@@ -7,7 +7,15 @@ import {
 import { validateMethodParams, validateWire } from "@flame/runtime-client/validation";
 import type { RequestMeta, CallPluginRequest } from "@flame/runtime-client/wire";
 import { RpcProtocolError } from "./errors";
-import { parseJSON } from "@frame/sdk/json";
+import { cloneJSON, parseJSON } from "@frame/sdk/json";
+
+export function captureRequestMeta(value: unknown): RequestMeta | null {
+  const captured = cloneJSON(value);
+  if (captured === undefined || captured === null) return null;
+  const violations = validateWire("RequestMeta", captured, "request");
+  if (violations.length > 0) throw new RpcProtocolError("request metadata", violations);
+  return captured as RequestMeta;
+}
 
 export function checkRequest<M extends WireMethodName>(
   method: M,

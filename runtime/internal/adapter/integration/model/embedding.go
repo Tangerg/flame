@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
+	corevector "github.com/Tangerg/scope/core/vector"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
@@ -160,11 +160,9 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 func projectEmbeddingVectors(response *embedding.Response) ([][]float32, error) {
 	vectors := make([][]float32, len(response.Outputs))
 	for index, output := range response.Outputs {
-		vector := embedding.Float32Vector(output.Embedding)
-		for coordinate, value := range vector {
-			if math.IsInf(float64(value), 0) {
-				return nil, fmt.Errorf("model: embedding output %d coordinate %d exceeds float32 range", index, coordinate)
-			}
+		vector := corevector.Coordinates[float32](corevector.Float32(output.Embedding))
+		if err := vector.Validate(); err != nil {
+			return nil, fmt.Errorf("model: embedding output %d exceeds float32 range: %w", index, err)
 		}
 		vectors[index] = vector
 	}

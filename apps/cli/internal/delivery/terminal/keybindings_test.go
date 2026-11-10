@@ -80,6 +80,28 @@ func TestConfiguredKeysExposeMultilineAndTranscriptNavigation(t *testing.T) {
 	}
 }
 
+func TestConfiguredKeysReplaceToolkitDefaults(t *testing.T) {
+	configured := settings.Default()
+	configured.Keys[settings.ActionNewline] = []string{"ctrl+enter"}
+	bindings, err := configuredKeyBindings(configured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, keys := range []*keymap.Map{bindings.editor, bindings.application} {
+		if action, ok := keys.Action(input.Ctrl.With(input.Enter)); !ok || action != base.InsertNewline {
+			t.Fatalf("configured newline = %q, %v", action, ok)
+		}
+		for _, chord := range []input.Chord{input.Shift.With(input.Enter), input.Alt.With(input.Enter)} {
+			if action, ok := keys.Action(chord); ok {
+				t.Errorf("replaced shortcut %s still resolves to %q", chord, action)
+			}
+		}
+		if got := formatKeyBindings(keys, base.InsertNewline, " / "); got != "ctrl+enter" {
+			t.Errorf("configured newline hint = %q", got)
+		}
+	}
+}
+
 func TestConfiguredKeysRejectInvalidAndDuplicateBindings(t *testing.T) {
 	configured := settings.Default()
 	configured.Keys[settings.ActionQuit] = []string{"not-a-key"}

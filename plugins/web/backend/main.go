@@ -58,7 +58,7 @@ func run(ctx context.Context, data string) (err error) {
 			return errors.New("web: HTTP_ALLOWED_HOSTS must be a JSON array of hosts")
 		}
 	}
-	requests, err := newRequests(store.db, httpreq.ClientConfig{AllowedHosts: allowedHosts, HTTPClient: client})
+	requests, err := newRequests(store.db, httpreq.ClientConfig{AllowedHosts: allowedHosts})
 	if err != nil {
 		return err
 	}

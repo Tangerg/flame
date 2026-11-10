@@ -22,7 +22,7 @@ type Bundle struct {
 	db                *database
 	Frame             *sqlite.Store
 	Admission         *frame.Admission
-	PluginUses        *sqlite.Owner
+	PluginUses        sqlite.Owner
 	closeOnce         sync.Once
 	closeErr          error
 	validateDirectory func() error

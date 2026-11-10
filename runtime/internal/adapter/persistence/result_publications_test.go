@@ -75,7 +75,7 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 		t.Fatalf("history rewrite removed immutable receipt: committed=%v err=%v", committed, err)
 	}
 	var retainedAnchors int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM result_publications WHERE source_message_seq IS NOT NULL`).Scan(&retainedAnchors); err != nil || retainedAnchors != 0 {
+	if err := scanFixture(t.Context(), db, `SELECT count(*) FROM result_publications WHERE source_message_seq IS NOT NULL`, nil, &retainedAnchors); err != nil || retainedAnchors != 0 {
 		t.Fatalf("deleted history retained receipt foreign keys: count=%d err=%v", retainedAnchors, err)
 	}
 }

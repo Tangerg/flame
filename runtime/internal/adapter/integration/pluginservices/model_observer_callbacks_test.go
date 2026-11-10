@@ -10,16 +10,16 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 type continuationOwnerModel struct {
@@ -73,25 +73,25 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			}
 			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginmcp.Backend) {
 				call, _ := pluginsdk.ModelMethod()
-				if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+				if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[scopewire.Request]) (pluginsdk.ModelResult, error) {
 					ref, err := beforeNext(ctx)
 					if err != nil {
 						return pluginsdk.ModelResult{}, err
 					}
-					response, err := pluginsdk.CallModel(ctx, ref, input.ID, input.Input.Clone())
+					response, err := pluginsdk.CallModel(ctx, ref, input.ID, (*chat.Request)(&input.Input).Clone())
 					return pluginsdk.ModelResult{Response: response}, err
 				}); err != nil {
 					t.Fatal(err)
 				}
 				stream, _ := pluginsdk.ModelStreamMethod()
-				if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-					return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+				if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error] {
+					return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 						ref, err := beforeNext(ctx)
 						if err != nil {
-							yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+							yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 							return
 						}
-						pluginsdk.StreamModel(ctx, ref, input.ID, input.Input.Clone())(yield)
+						pluginsdk.StreamModel(ctx, ref, input.ID, (*chat.Request)(&input.Input).Clone())(yield)
 					}
 				}); err != nil {
 					t.Fatal(err)

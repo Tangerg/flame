@@ -13,15 +13,14 @@ import (
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *pluginmcp.Binding, func()) {
@@ -95,7 +94,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				t.Fatal(err)
 			}
 			var modelCalls atomic.Int32
-			model, err := pluginsdk.NewModelCallback(func(context.Context, pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+			model, err := pluginsdk.NewModelCallback(func(context.Context, pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 				modelCalls.Add(1)
 				if outcome == "response lost" {
 					return nil, errors.New("model reply lost")

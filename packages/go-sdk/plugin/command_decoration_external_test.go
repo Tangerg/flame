@@ -87,14 +87,15 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		if err != nil {
 			return 0, err
 		}
-		return private.Command(ctx, db, method.Name(), string(command.ID), input, nil, func(ctx context.Context, _ string) (int64, error) {
-			connection := private.Connection(ctx, db)
-			if _, err := connection.ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
-				return 0, err
+		return private.Command(ctx, db, method.Name(), string(command.ID), input, nil, func(ctx context.Context, _ string) (private.CommandPlan[int64], error) {
+			var previous int64
+			if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT value FROM counter`).Scan(&previous); err != nil {
+				return private.CommandPlan[int64]{}, err
 			}
-			var value int64
-			err := connection.QueryRowContext(ctx, `SELECT value FROM counter`).Scan(&value)
-			return value, err
+			return private.NewCommandPlan(previous+1, func(ctx context.Context) error {
+				_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=?`, previous+1)
+				return err
+			})
 		})
 	})
 	if err != nil {
@@ -168,7 +169,9 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatalf("original inner receipt changed: %d, %v", value, err)
 	}
 	var count int
-	if err := reopened.QueryRowContext(t.Context(), `SELECT value FROM counter`).Scan(&count); err != nil || count != 1 {
+	if err := reopened.Read(t.Context(), func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(t.Context(), `SELECT value FROM counter`).Scan(&count)
+	}); err != nil || count != 1 {
 		t.Fatalf("command redelivery repeated the mutation: count=%d, %v", count, err)
 	}
 }

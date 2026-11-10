@@ -32,11 +32,11 @@ func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
 					t.Fatal(err)
 				}
 				if state == run.Waiting {
-					if _, err := db.ExecContext(t.Context(), `UPDATE runs SET state = 'waiting', active_segment_id = ''`); err != nil {
+					if _, err := execFixture(t.Context(), db, `UPDATE runs SET state = 'waiting', active_segment_id = ''`); err != nil {
 						t.Fatal(err)
 					}
 				}
-				if _, err := db.ExecContext(t.Context(), "UPDATE runs SET "+fact.column+" = ?", fact.value); err != nil {
+				if _, err := execFixture(t.Context(), db, "UPDATE runs SET "+fact.column+" = ?", fact.value); err != nil {
 					t.Fatal(err)
 				}
 				if _, err := store.ListNonTerminalRuns(t.Context()); err == nil || !strings.Contains(err.Error(), fact.want) {

@@ -1,11 +1,6 @@
 package main
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"context"
 	"database/sql"
 	json "encoding/json/v2"
@@ -20,15 +15,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 )
 
 func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, func()) {
@@ -417,7 +416,9 @@ func TestCloseJoinsAnAcceptedExchangeAndFencesNewDispatch(t *testing.T) {
 	defer deadline.Stop()
 	for {
 		var snapshot sql.NullString
-		if err := store.db.QueryRowContext(t.Context(), `SELECT snapshot FROM clients WHERE id=?`, opened.ID).Scan(&snapshot); err != nil {
+		if err := store.db.Read(t.Context(), func(reader sqlite.Reader) error {
+			return reader.QueryRowContext(t.Context(), `SELECT snapshot FROM clients WHERE id=?`, opened.ID).Scan(&snapshot)
+		}); err != nil {
 			t.Fatal(err)
 		}
 		if !snapshot.Valid {
@@ -490,5 +491,56 @@ func TestFailedCloseDoesNotAdvanceCapturedHandle(t *testing.T) {
 	}
 	if oldErr != nil || newErr != nil {
 		t.Fatalf("close changed original handle: before restart %v, after %v", oldErr, newErr)
+	}
+}
+
+func TestStoreRetirementFencesUncachedHandlesWhileJoiningAcceptedWork(t *testing.T) {
+	s, session, _ := connectProvider(t, filepath.Join(t.TempDir(), "providers.db"))
+	first := openChat(t, session, "openai-compatible", "https://example.invalid")
+	method, err := modelprovider.OpenChatMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := providerMethod(t, session, method).CallCommand(providerContext(t), "second-open", modelprovider.Open{
+		Connection: modelprovider.Connection{Provider: "openai-compatible", APIKey: "captured-key", BaseURL: "https://example.invalid"},
+		Model:      "model-test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, release, err := s.acquire(t.Context(), first.Handle, chatClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release = sync.OnceFunc(release)
+	defer release()
+	closed := make(chan error, 1)
+	go func() { closed <- s.Close() }()
+	deadline := time.NewTimer(3 * time.Second)
+	defer deadline.Stop()
+	for {
+		_, leave, err := s.acquire(t.Context(), first.Handle, chatClient)
+		if err != nil {
+			break
+		}
+		leave()
+		select {
+		case <-deadline.C:
+			t.Fatal("store retirement did not fence cached work")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	if _, leave, err := s.acquire(t.Context(), second.Handle, chatClient); err == nil {
+		leave()
+		t.Fatal("store retirement reconstructed an uncached handle")
+	}
+	select {
+	case err := <-closed:
+		t.Fatalf("store retirement abandoned accepted work: %v", err)
+	default:
+	}
+	release()
+	if err := <-closed; err != nil {
+		t.Fatal(err)
 	}
 }

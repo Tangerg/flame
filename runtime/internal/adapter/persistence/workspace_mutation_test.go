@@ -2,18 +2,19 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd string) {
+func seedWorkspaceMutationSession(t *testing.T, db *framesqlite.Database, sessionID, cwd string) {
 	t.Helper()
 	if err := newSessionStore(databaseFor(db)).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(cwd),
@@ -23,7 +24,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd strin
 	}
 }
 
-func seedWorkspaceMutationRun(t *testing.T, db *sql.DB, sessionID, runID string) {
+func seedWorkspaceMutationRun(t *testing.T, db *framesqlite.Database, sessionID, runID string) {
 	t.Helper()
 	if err := newRunStore(databaseFor(db)).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Finished,
@@ -249,9 +250,9 @@ func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
 	for _, pair := range [][2]string{{"/repo", "/repo/a"}, {"/repo/a", "/repo"}} {
 		t.Run(pair[0]+"/"+pair[1], func(t *testing.T) {
 			runs, _ := newRunStores(t)
-			seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), "ses_owner", pair[0])
-			seedWorkspaceMutationRun(t, rawFixtureDatabase(runs.db), "ses_owner", "run_boundary")
-			seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), "ses_waiting", pair[1])
+			seedWorkspaceMutationSession(t, fixtureDatabase(runs.db), "ses_owner", pair[0])
+			seedWorkspaceMutationRun(t, fixtureDatabase(runs.db), "ses_owner", "run_boundary")
+			seedWorkspaceMutationSession(t, fixtureDatabase(runs.db), "ses_waiting", pair[1])
 			draft := testsupport.RunDraft(run.Draft{RunID: "run_waiting", SessionID: "ses_waiting", SegmentID: "seg_initial", CreatedAt: time.Unix(3, 0)})
 			if err := runs.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
@@ -282,8 +283,8 @@ func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
 func TestRecoveryRefusesOverlappingRetainedMutationOwnership(t *testing.T) {
 	runs, _ := newRunStores(t)
 	for _, scope := range []struct{ session, run, cwd string }{{"ses_parent", "run_parent", "/repo"}, {"ses_child", "run_child", "/repo/a"}} {
-		seedWorkspaceMutationSession(t, rawFixtureDatabase(runs.db), scope.session, scope.cwd)
-		seedWorkspaceMutationRun(t, rawFixtureDatabase(runs.db), scope.session, scope.run)
+		seedWorkspaceMutationSession(t, fixtureDatabase(runs.db), scope.session, scope.cwd)
+		seedWorkspaceMutationRun(t, fixtureDatabase(runs.db), scope.session, scope.run)
 	}
 	store := newWorkspaceMutationStore(databaseFor(runs.db))
 	if _, err := store.recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_parent", CWD: "/repo", ToRunID: "run_parent"}); err != nil {
@@ -292,7 +293,7 @@ func TestRecoveryRefusesOverlappingRetainedMutationOwnership(t *testing.T) {
 	if _, err := store.pendingMutations(t.Context()); err != nil {
 		t.Fatalf("valid retained ownership refused: %v", err)
 	}
-	if _, err := rawFixtureDatabase(runs.db).ExecContext(t.Context(), `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES ('ses_child', '/repo/a', 'run_child', 0)`); err != nil {
+	if _, err := execFixture(t.Context(), fixtureDatabase(runs.db), `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES ('ses_child', '/repo/a', 'run_child', 0)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pendingMutations(t.Context()); err == nil {

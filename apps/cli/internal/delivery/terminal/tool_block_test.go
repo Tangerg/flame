@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/oolong/extensions/highlight"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
+	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
@@ -81,7 +82,7 @@ func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
 	blocks := renderToolSections(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}, presentation.Sections, false)
 	var copied []string
 	for _, block := range blocks {
-		projector, ok := block.(base.TextProjector)
+		projector, ok := block.(text.Projector)
 		if !ok {
 			t.Fatalf("raw patch cannot be copied: %T", block)
 		}
@@ -291,8 +292,8 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 	}
 	for row := range height - 1 {
 		cell, ok := surface.CellAt(0, row)
-		if !ok || cell.Content() != glyphs.Vertical || cell.Style != theme.Success {
-			t.Fatalf("status rail row %d = %+v, want %q with success style", row, cell, glyphs.Vertical)
+		if !ok || cell.Content() != glyphs.Vertical.String() || cell.Style != theme.Success {
+			t.Fatalf("status rail row %d = %+v, want %q with success style", row, cell, glyphs.Vertical.String())
 		}
 	}
 	if strings.Contains(drawn, "✓") || strings.Contains(drawn, "…") {
@@ -300,7 +301,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 	}
 
 	rows := block.Rows(width)
-	if len(rows) != height || strings.HasPrefix(rows[0].Text, glyphs.Vertical) {
+	if len(rows) != height || strings.HasPrefix(rows[0].Text, glyphs.Vertical.String()) {
 		t.Fatalf("copied rows include visual rail or have wrong height: %+v", rows)
 	}
 }

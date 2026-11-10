@@ -11,15 +11,15 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFinalBudget(t *testing.T) {
@@ -34,13 +34,13 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (scopewire.Request, error) {
 					invocation, err := pluginmcp.InvocationFromContext(ctx)
 					if err != nil || invocation.ID != invocation.Target.Reference || invocation.Parent != "original-effect" || command.ID != "" {
-						return chat.Request{}, errors.New("input transformation lost original query attribution")
+						return scopewire.Request{}, errors.New("input transformation lost original query attribution")
 					}
 					if mode == "failure" {
-						return chat.Request{}, errors.New("transform unavailable")
+						return scopewire.Request{}, errors.New("transform unavailable")
 					}
 					request := command.Input.Request.Clone()
 					if mode == "route" {
@@ -54,7 +54,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 						text = strings.Repeat("x", 129)
 					}
 					request.Messages[0] = chat.NewUserMessage(chat.NewTextPart(text))
-					return *request, nil
+					return scopewire.Request(*request), nil
 				}); err != nil {
 					t.Fatal(err)
 				}

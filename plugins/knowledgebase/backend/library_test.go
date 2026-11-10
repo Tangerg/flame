@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/frame/sqlite"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
 
@@ -89,7 +91,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatalf("changed intent = %v", err)
 	}
 	staleCalls := calls.Load()
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", admitted); !errors.Is(err, knowledge.ErrRevisionConflict) || calls.Load() != staleCalls {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", admitted); !isRevisionConflict(err) || calls.Load() != staleCalls {
 		t.Fatalf("stale import dispatched embedding: calls=%d %v", calls.Load(), err)
 	}
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", admitted); err == nil || calls.Load() != staleCalls {
@@ -115,11 +117,19 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if headers, err := library.list(t.Context()); err != nil || len(headers) != 1 || headers[0] != first {
 		t.Fatalf("failed publication changed the document: %+v, %v", headers, err)
 	}
-	if _, err := reopened.db.ExecContext(t.Context(), `UPDATE documents SET snapshot='{"content":{}}'`); err != nil {
+	if err := sqlite.RunInTx(t.Context(), reopened.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, reopened.db).ExecContext(ctx, `UPDATE documents SET snapshot='{"content":{}}'`)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	_, err = library.list(t.Context())
 	if _, refused := classify(err); err == nil || refused {
 		t.Fatalf("corruption became a business refusal: %v", err)
 	}
+}
+
+func isRevisionConflict(err error) bool {
+	refusal, ok := errors.AsType[*framemcp.Refusal](err)
+	return ok && refusal.Code == "revision_conflict"
 }

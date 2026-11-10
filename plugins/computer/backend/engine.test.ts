@@ -132,6 +132,20 @@ it("refuses required-task controls during handshake", async () => {
   });
 });
 
+it.each(["1.0000000000000001", "1e1000", "[]", "null"])(
+  "rejects non-object request metadata %s before starting a process",
+  async (metadata) => {
+    await expect(
+      open({ env: { NODE_REPL_REQUEST_META: metadata } }),
+    ).rejects.toMatchObject({
+      cleanup: "closed",
+      cause: expect.objectContaining({
+        message: "computer: engine request metadata must be an object",
+      }),
+    });
+  },
+);
+
 it("preserves original raw result fields and exact numeric evidence", async () => {
   const { engine } = await open();
   const result = await engine.call("js", { code: "exact-result" }, scope());
@@ -158,6 +172,21 @@ it("validates original declared structured output without rewriting valid result
   await expect(
     engine.call("js", { code: "invalid-structured-output" }, scope()),
   ).rejects.toThrow("outcome is unconfirmed");
+});
+
+it("keeps a declared tool's structured error as a known result without applying its success schema", async () => {
+  const { engine, retired } = await open({ mode: "output-schema" });
+  expect(
+    await engine.call("js", { code: "structured-tool-error" }, scope()),
+  ).toEqual({
+    result: {
+      isError: true,
+      content: [{ type: "text", text: "known refusal" }],
+      structuredContent: { failure: "known refusal" },
+    },
+    cleanup: "ended",
+  });
+  expect(retired).not.toHaveBeenCalled();
 });
 
 it("forwards original elicitation constraints and absent mode without a parsed projection", async () => {
@@ -223,6 +252,27 @@ it("sends only plugin-owned identities and ends the actual upstream turn", async
       },
     },
   ]);
+});
+
+it("uses one captured tool input for timeout admission and process dispatch", async () => {
+  const { engine, records } = await open();
+  let reads = 0;
+  await engine.call(
+    "js",
+    {
+      code: "hello",
+      get timeout_ms() {
+        reads++;
+        return reads === 1 ? 100 : 2 ** 31;
+      },
+    },
+    scope(),
+  );
+  expect(reads).toBe(1);
+  expect((await records()).find((entry) => entry.name === "js")?.args).toEqual({
+    code: "hello",
+    timeout_ms: 100,
+  });
 });
 
 it("preserves text, images, audio, resources, structured output and metadata", async () => {

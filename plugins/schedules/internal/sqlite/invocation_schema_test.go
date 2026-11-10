@@ -17,15 +17,10 @@ func TestFormerTriggerStorageIsRefusedWithoutChangingItsData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','dispatch','{}',NULL)`); err != nil {
+			if _, err := execDatabase(t.Context(), db, `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','dispatch','{}',NULL)`); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), statement); err != nil {
-				t.Fatal(err)
-			}
-			if err := db.Close(); err != nil {
-				t.Fatal(err)
-			}
+			alterClosedDatabase(t, db, path, statement)
 			if opened, err := Open(t.Context(), path); err == nil {
 				_ = opened.Close()
 				t.Fatal("former trigger storage was admitted")

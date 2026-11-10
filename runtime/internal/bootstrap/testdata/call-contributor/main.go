@@ -12,15 +12,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/frame/portable"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func main() {
@@ -158,7 +158,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 	if err != nil {
 		return err
 	}
-	mark := func(ctx context.Context, command pluginmcp.Command[chat.Request], phase string) error {
+	mark := func(ctx context.Context, command pluginmcp.Command[scopewire.Request], phase string) error {
 		if len(command.Input.Tools) == 0 {
 			return nil
 		}
@@ -172,7 +172,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) (pluginsdk.ModelResult, error) {
 		if err := mark(ctx, command, "before"); err != nil {
 			return pluginsdk.ModelResult{}, err
 		}
@@ -180,7 +180,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 		if err != nil {
 			return pluginsdk.ModelResult{}, err
 		}
-		response, err := pluginsdk.CallModel(ctx, next, command.ID, command.Input.Clone())
+		response, err := pluginsdk.CallModel(ctx, next, command.ID, (*chat.Request)(&command.Input).Clone())
 		if err != nil {
 			return pluginsdk.ModelResult{}, err
 		}
@@ -195,24 +195,24 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 	if err != nil {
 		return err
 	}
-	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 			if err := mark(ctx, command, "before"); err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 				return
 			}
 			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 				return
 			}
-			for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, command.Input.Clone()) {
+			for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, (*chat.Request)(&command.Input).Clone()) {
 				if !yield(value, err) || err != nil {
 					return
 				}
 			}
 			if err := mark(ctx, command, "after"); err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 			}
 		}
 	}); err != nil {

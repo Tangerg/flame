@@ -567,10 +567,14 @@ export class Control {
       const method = resource.inputs?.get(input.tool);
       if (!method)
         throw new Error("computer: unavailable original tool schema");
-      method.validateInput(exact);
-      args = engineJSON(exact) as Record<string, unknown>;
-      if (!args || typeof args !== "object" || Array.isArray(args))
+      const projected = engineJSON(method.admitInput(exact));
+      if (
+        !projected ||
+        typeof projected !== "object" ||
+        Array.isArray(projected)
+      )
         throw new Error("computer: upstream tool arguments must be an object");
+      args = projected as Record<string, unknown>;
     } catch (cause) {
       const refusal = new Refusal(
         "invalid_arguments",

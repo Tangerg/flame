@@ -52,11 +52,7 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 		t.Fatalf("contradictory conclusion = %v, want conflict", err)
 	}
 	var state string
-	if err := db.QueryRowContext(
-		t.Context(),
-		`SELECT state FROM child_run_start_reservations WHERE member_id = ?`,
-		record.MemberID,
-	).Scan(&state); err != nil || state != "started" {
+	if err := scanFixture(t.Context(), db, `SELECT state FROM child_run_start_reservations WHERE member_id = ?`, []any{record.MemberID}, &state); err != nil || state != "started" {
 		t.Fatalf("stored conclusion = %q, %v; want started", state, err)
 	}
 }
@@ -90,10 +86,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 	); err == nil {
 		t.Fatal("unknown conclusion succeeded")
 	}
-	if _, err := db.ExecContext(t.Context(),
-		`UPDATE child_run_start_reservations SET state = ? WHERE member_id = ?`,
-		"corrupt", record.MemberID,
-	); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE child_run_start_reservations SET state = ? WHERE member_id = ?`, "corrupt", record.MemberID); err == nil {
 		t.Fatal("SQLite accepted a corrupt child Run start state")
 	}
 }
@@ -117,14 +110,10 @@ func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {
 		t.Fatalf("DeleteSession: %v", err)
 	}
 	var sessionA, sessionB int
-	if err := db.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM child_run_start_reservations WHERE session_id = ?`, "session-a",
-	).Scan(&sessionA); err != nil {
+	if err := scanFixture(t.Context(), db, `SELECT count(*) FROM child_run_start_reservations WHERE session_id = ?`, []any{"session-a"}, &sessionA); err != nil {
 		t.Fatalf("count session-a: %v", err)
 	}
-	if err := db.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM child_run_start_reservations WHERE session_id = ?`, "session-b",
-	).Scan(&sessionB); err != nil {
+	if err := scanFixture(t.Context(), db, `SELECT count(*) FROM child_run_start_reservations WHERE session_id = ?`, []any{"session-b"}, &sessionB); err != nil {
 		t.Fatalf("count session-b: %v", err)
 	}
 	if sessionA != 0 || sessionB != 1 {

@@ -1,8 +1,6 @@
 package execution
 
 import (
-	corecontent "github.com/Tangerg/scope/core/content"
-
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -28,6 +26,7 @@ import (
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
+	corecontent "github.com/Tangerg/scope/core/content"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -158,15 +157,14 @@ func TestInvalidToolCallErrorHasNoObservedOutput(t *testing.T) {
 
 func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 	for _, test := range []struct {
-		name        string
-		limit       int
-		beforeCall  bool
-		outcome     run.Outcome
-		commitError error
+		name              string
+		limit             int
+		invalidDefinition bool
+		commitError       error
 	}{
-		{name: "stream exceeds budget", limit: 512, outcome: run.OutcomeLost},
-		{name: "minimum response cannot fit", limit: 64, beforeCall: true, outcome: run.OutcomeFailed},
-		{name: "rejected stream observation cannot commit", limit: 512, outcome: run.OutcomeLost, commitError: errors.New("failed observation store unavailable")},
+		{name: "stream exceeds budget", limit: 512},
+		{name: "minimum response cannot fit", limit: 64, invalidDefinition: true},
+		{name: "rejected stream observation cannot commit", limit: 512, commitError: errors.New("failed observation store unavailable")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			model := streamingObservationModel{chunks: test.limit * 2, streamed: make(chan struct{})}
@@ -175,6 +173,11 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				if err := executor.Release(context.Background(), ref); err != nil {
+					t.Error(err)
+				}
+			}()
 			session, err := executor.session(ref)
 			if err != nil {
 				t.Fatal(err)
@@ -197,12 +200,27 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 				Model: interaction.StreamModel(stream), MaxResponseBytes: test.limit,
 				ContextProcessor: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil),
 			})
+			if test.invalidDefinition {
+				if !errors.Is(err, interaction.ErrInvalidDefinitionConfig) {
+					t.Fatalf("unusable response budget admitted: %v", err)
+				}
+				select {
+				case <-model.streamed:
+					t.Fatal("provider was dispatched without a usable response budget")
+				default:
+				}
+				return
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
 			session.deployment = replacement.Erase()
 			session.state.deployments.root = session.deployment
-			session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{replacement.ProgramRef(): replacement}
+			compiled, err := newCompiledInteraction(replacement)
+			if err != nil {
+				t.Fatal(err)
+			}
+			session.state.deployments.interactions = map[scoperun.ProgramRef]compiledInteraction{replacement.ProgramRef(): compiled}
 			sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 			if err != nil {
 				t.Fatal(err)
@@ -228,33 +246,16 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			}
 			events := <-ready
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Ending.Outcome() != test.outcome {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
 				t.Fatalf("resource rejection = %+v", ends)
 			}
 			effects := ends[0].UnresolvedEffects()
-			if test.beforeCall {
-				if len(effects) != 0 || len(payloadsOf[runs.ModelCallStarted](events)) != 0 {
-					t.Fatalf("pre-call rejection recorded external work: effects=%+v events=%+v", effects, events)
-				}
-				if segmentFailure(ends[0]) == nil || !strings.Contains(segmentFailure(ends[0]).Detail, interaction.ErrModelResponseTooLarge.Error()) {
-					t.Fatalf("pre-call rejection lost its cause: %+v", ends[0])
-				}
-				select {
-				case <-model.streamed:
-					t.Fatal("provider was dispatched without a usable response budget")
-				default:
-				}
-			} else {
-				cause := interaction.ErrModelResponseTooLarge
-				if test.commitError != nil {
-					cause = test.commitError
-				}
-				if len(effects) != 1 || !strings.Contains(effects[0].Detail(), cause.Error()) {
-					t.Fatalf("dispatch cause lost: %+v", effects)
-				}
+			cause := interaction.ErrModelResponseTooLarge
+			if test.commitError != nil {
+				cause = test.commitError
 			}
-			if err := executor.Release(t.Context(), ref); err != nil {
-				t.Fatal(err)
+			if len(effects) != 1 || !strings.Contains(effects[0].Detail(), cause.Error()) {
+				t.Fatalf("dispatch cause lost: %+v", effects)
 			}
 		})
 	}
@@ -301,7 +302,11 @@ func TestCapacityStopAfterCompleteResponseRetainsKnownUsage(t *testing.T) {
 	}
 	session.deployment = replacement.Erase()
 	session.state.deployments.root = session.deployment
-	session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{replacement.ProgramRef(): replacement}
+	compiled, err := newCompiledInteraction(replacement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.state.deployments.interactions = map[scoperun.ProgramRef]compiledInteraction{replacement.ProgramRef(): compiled}
 	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 	if err != nil {
 		t.Fatal(err)

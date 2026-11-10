@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domain "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/management"
 	"github.com/samber/lo"
 )
 
@@ -21,25 +22,22 @@ type RootResolver interface {
 type Store interface {
 	Get(ctx context.Context, id domain.ItemID) (domain.Item, bool, error)
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
-	Review(ctx context.Context, id domain.ItemID, expectedRevision uint64, decision domain.ReviewDecision, now time.Time) error
-	Update(ctx context.Context, id domain.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (domain.Item, error)
-	Delete(ctx context.Context, id domain.ItemID, expectedRevision uint64) error
-	Add(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (item domain.Item, changed bool, err error)
+	PrepareReview(ctx context.Context, id domain.ItemID, expectedRevision uint64, decision domain.ReviewDecision, now time.Time) (management.Mutation, error)
+	PrepareUpdate(ctx context.Context, id domain.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (management.Mutation, error)
+	PrepareDelete(ctx context.Context, id domain.ItemID, expectedRevision uint64) (management.Mutation, error)
+	PrepareAdd(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (management.Mutation, error)
 }
 
 type Config struct {
 	Store Store
 	Roots RootResolver
 	Now   func() time.Time
-	// The caller owns external publication after the current write-set commits.
-	OnChange func()
 }
 
 type Coordinator struct {
-	store    Store
-	roots    RootResolver
-	now      func() time.Time
-	onChange func()
+	store Store
+	roots RootResolver
+	now   func() time.Time
 }
 
 func New(cfg Config) (*Coordinator, error) {
@@ -53,7 +51,7 @@ func New(cfg Config) (*Coordinator, error) {
 	if now == nil {
 		now = time.Now
 	}
-	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, onChange: cfg.OnChange}, nil
+	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now}, nil
 }
 
 func (c *Coordinator) Item(ctx context.Context, scope domain.Scope, cwd, id string) (domain.Item, error) {
@@ -75,78 +73,50 @@ func (c *Coordinator) Item(ctx context.Context, scope domain.Scope, cwd, id stri
 	return item, nil
 }
 
-func (c *Coordinator) Review(ctx context.Context, id string, expectedRevision uint64, decision domain.ReviewDecision) error {
+func (c *Coordinator) PrepareReview(ctx context.Context, id string, expectedRevision uint64, decision domain.ReviewDecision) (management.Mutation, error) {
 	if _, err := decision.Result(); err != nil {
-		return errors.Join(ErrInvalidInput, err)
+		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return errors.Join(ErrInvalidInput, err)
+		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
-	if err := c.store.Review(ctx, itemID, expectedRevision, decision, c.now()); err != nil {
-		return err
-	}
-	if c.onChange != nil {
-		c.onChange()
-	}
-	return nil
+	return c.store.PrepareReview(ctx, itemID, expectedRevision, decision, c.now())
 }
 
-func (c *Coordinator) Update(ctx context.Context, id string, expectedRevision uint64, content *string, pinned *bool) (domain.Item, error) {
+func (c *Coordinator) PrepareUpdate(ctx context.Context, id string, expectedRevision uint64, content *string, pinned *bool) (management.Mutation, error) {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return domain.Item{}, errors.Join(ErrInvalidInput, err)
+		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
 	if content != nil {
 		canonical, err := domain.NormalizeContent(*content)
 		if err != nil {
-			return domain.Item{}, errors.Join(ErrInvalidInput, err)
+			return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 		}
 		content = &canonical
 	}
-	item, err := c.store.Update(ctx, itemID, expectedRevision, content, pinned, c.now())
-	if err != nil {
-		return domain.Item{}, err
-	}
-	if c.onChange != nil {
-		c.onChange()
-	}
-	return item, nil
+	return c.store.PrepareUpdate(ctx, itemID, expectedRevision, content, pinned, c.now())
 }
 
-func (c *Coordinator) Delete(ctx context.Context, id string, expectedRevision uint64) error {
+func (c *Coordinator) PrepareDelete(ctx context.Context, id string, expectedRevision uint64) (management.Mutation, error) {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return errors.Join(ErrInvalidInput, err)
+		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
-	if err := c.store.Delete(ctx, itemID, expectedRevision); err != nil {
-		return err
-	}
-	if c.onChange != nil {
-		c.onChange()
-	}
-	return nil
+	return c.store.PrepareDelete(ctx, itemID, expectedRevision)
 }
 
-func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content string) (domain.Item, error) {
+func (c *Coordinator) PrepareAdd(ctx context.Context, scope domain.Scope, cwd, content string) (management.Mutation, error) {
 	project, err := c.project(scope, cwd)
 	if err != nil {
-		return domain.Item{}, err
+		return management.Mutation{}, err
 	}
 	content, err = domain.NormalizeContent(content)
 	if err != nil {
-		return domain.Item{}, errors.Join(ErrInvalidInput, err)
+		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
-	item, changed, err := c.store.Add(ctx, scope, project, content, c.now())
-	if err != nil {
-		return domain.Item{}, err
-	}
-	if changed {
-		if c.onChange != nil {
-			c.onChange()
-		}
-	}
-	return item, nil
+	return c.store.PrepareAdd(ctx, scope, project, content, c.now())
 }
 
 func (c *Coordinator) project(scope domain.Scope, cwd string) (string, error) {

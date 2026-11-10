@@ -209,7 +209,7 @@ func (c *promptCompletion) acceptAttachmentCompletion(path string, token base.To
 		return
 	}
 	c.gate.Reset()
-	c.composer.Controller().Replace(max(token.Start-1, 0), token.End, "")
+	c.composer.Controller().Replace(token.Line, token.Start-len(token.Trigger.Prefix), token.End, "")
 	c.composer.insertAttachment(insertion)
 }
 

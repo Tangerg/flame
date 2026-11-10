@@ -66,6 +66,13 @@ separately from acknowledged original deltas. Closing a handle fences new work
 and joins accepted exchanges. Private connections and receipts contain secrets;
 they are never public configuration or model arguments.
 
+The durable handle snapshot alone admits client use, including cached clients.
+Closing writes its tombstone before joining accepted exchanges; the cache retains
+no independent closed state. Retiring the backend fences all handle acquisition
+before joining its accepted work, including handles never loaded into the cache.
+Client construction prepares and encodes its original reply before its snapshot
+and receipt enter the same write transaction.
+
 Runtime owns model selection, trust, request admission, endpoint evidence,
 accounting and execution recovery. Installing this backend grants none of those
 authorities to the provider. A missing or disabled selected adapter is a visible

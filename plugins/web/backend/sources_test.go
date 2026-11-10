@@ -14,6 +14,11 @@ import (
 	scopehttp "github.com/Tangerg/scope/core/httpclient"
 )
 
+type diagnosticCause interface {
+	error
+	Cause() error
+}
+
 func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
 	body := `{"data":{"content":"` + strings.Repeat("x", int(maxProviderResponseBytes)) + `"}}`
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
@@ -29,7 +34,8 @@ func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	if !errors.Is(err, errProviderResponseTooLarge) {
+	diagnostic, ok := errors.AsType[diagnosticCause](err)
+	if !ok || !errors.Is(diagnostic.Cause(), errProviderResponseTooLarge) {
 		t.Fatalf("Fetch error = %v, want errProviderResponseTooLarge", err)
 	}
 }
@@ -46,8 +52,12 @@ func TestProviderFailureKeepsItsCauseWithoutPublishingCredentials(t *testing.T) 
 		t.Fatal(err)
 	}
 	_, err = source(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	if !errors.Is(err, cause) || strings.Contains(err.Error(), secret) {
+	diagnostic, ok := errors.AsType[diagnosticCause](err)
+	if !ok || !errors.Is(diagnostic.Cause(), cause) || strings.Contains(err.Error(), secret) {
 		t.Fatalf("provider failure lost cause or disclosed a key: %v", err)
+	}
+	if errors.Is(err, cause) {
+		t.Fatal("diagnostic cause escaped Scope's outcome classification boundary")
 	}
 }
 
@@ -76,7 +86,8 @@ func TestProviderHTTPClientBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	if !errors.Is(err, scopehttp.ErrOriginNotAllowed) {
+	diagnostic, ok := errors.AsType[diagnosticCause](err)
+	if !ok || !errors.Is(diagnostic.Cause(), scopehttp.ErrOriginNotAllowed) {
 		t.Fatalf("Fetch error = %v, want Scope origin refusal", err)
 	}
 	if targetHit.Load() {

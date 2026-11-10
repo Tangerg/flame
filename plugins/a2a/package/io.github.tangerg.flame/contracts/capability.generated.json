@@ -17,7 +17,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Agent": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.QWdlbnQ": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -33,12 +33,12 @@
             ],
             "type": "object"
           },
-          "wire.Agents": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.QWdlbnRz": {
             "additionalProperties": false,
             "properties": {
               "agents": {
                 "items": {
-                  "$ref": "#/$defs/wire.Agent"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.QWdlbnQ"
                 },
                 "type": "array"
               }
@@ -54,7 +54,7 @@
         "properties": {
           "agents": {
             "items": {
-              "$ref": "#/$defs/wire.Agent"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.QWdlbnQ"
             },
             "type": "array"
           }
@@ -72,7 +72,7 @@
       "description": "Request cancellation of the remote task bound to the original requestId. Only the returned remote state confirms cancellation; local interruption or transport failure does not. An unconfirmed cancel must never be resubmitted.",
       "input": {
         "$defs": {
-          "wire.TaskRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.VGFza1JlcXVlc3Q": {
             "additionalProperties": false,
             "properties": {
               "requestId": {
@@ -99,7 +99,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Result": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.UmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "agent": {
@@ -182,7 +182,7 @@
       "description": "Send one message up to 64 KiB to a configured remote agent. Return the remote task or message and the original requestId. A response is bounded to 2 MiB. Preserve the command identity: an unconfirmed send must never be resubmitted.",
       "input": {
         "$defs": {
-          "wire.SendRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.U2VuZFJlcXVlc3Q": {
             "additionalProperties": false,
             "properties": {
               "agent": {
@@ -217,7 +217,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Result": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.UmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "agent": {
@@ -300,7 +300,7 @@
       "description": "Read the remote task bound to the original requestId, using its captured endpoint and task identity. This does not replay a send or advance local task state.",
       "input": {
         "$defs": {
-          "wire.TaskRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.VGFza1JlcXVlc3Q": {
             "additionalProperties": false,
             "properties": {
               "requestId": {
@@ -327,7 +327,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Result": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU.UmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "agent": {

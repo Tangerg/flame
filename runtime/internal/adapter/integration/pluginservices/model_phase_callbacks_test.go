@@ -8,23 +8,23 @@ import (
 	"sync/atomic"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/content"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/content"
 )
 
 func phaseHostRequest(ctx context.Context, ref pluginmcp.CallbackRef) (int, error) {
@@ -160,8 +160,8 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 						if err != nil {
 							t.Fatal(err)
 						}
-						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
-							return input.Input.Request, callback(ctx)
+						err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginmcp.Command[pluginsdk.ModelInputRequest]) (scopewire.Request, error) {
+							return scopewire.Request(input.Input.Request), callback(ctx)
 						})
 						if err != nil {
 							t.Fatal(err)

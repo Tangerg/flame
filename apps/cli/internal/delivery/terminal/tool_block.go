@@ -53,9 +53,9 @@ type toolBlock struct {
 }
 
 var (
-	_ base.Block         = (*toolBlock)(nil)
-	_ base.TextProjector = (*toolBlock)(nil)
-	_ mutableToolBlock   = (*toolBlock)(nil)
+	_ base.Block       = (*toolBlock)(nil)
+	_ text.Projector   = (*toolBlock)(nil)
+	_ mutableToolBlock = (*toolBlock)(nil)
 )
 
 func newToolBlock(p blockPresentation, block conversation.Block) *toolBlock {
@@ -116,7 +116,7 @@ func (t *toolBlock) Draw(view grid.View) {
 	toggle, label, right, statusStyle := t.header()
 	contentRows := min(t.HeightForWidth(width)-1, height)
 	for row := range contentRows {
-		view.Text(0, row, t.glyphs.Vertical, statusStyle)
+		view.Text(0, row, t.glyphs.Vertical.String(), statusStyle)
 	}
 
 	contentWidth := max(width-toolContentInset, 0)
@@ -161,7 +161,7 @@ func (t *toolBlock) Rows(width int) []text.Row {
 		bodyWidth := max(width-toolContentInset, 1)
 		for _, block := range t.body {
 			height := block.HeightForWidth(bodyWidth)
-			if copyable, ok := block.(base.TextProjector); ok {
+			if copyable, ok := block.(text.Projector); ok {
 				copied := copyable.Rows(bodyWidth)
 				for i := range min(len(copied), height) {
 					copied[i].Offset += toolContentInset
@@ -263,7 +263,7 @@ func renderToolSections(p blockPresentation, sections []toolSection, truncate bo
 		case toolSectionCode:
 			code := kit.NewCode(p.Syntax.Lines(sectionLanguage(section), value))
 			if section.LineNumbers {
-				code.Gutter = kit.LineNumbers{Style: p.Theme.Subtle, Separator: p.Glyphs.Vertical}
+				code.Gutter = kit.LineNumbers{Style: p.Theme.Subtle, Separator: p.Glyphs.Vertical.String()}
 			}
 			blocks = append(blocks, code)
 		}

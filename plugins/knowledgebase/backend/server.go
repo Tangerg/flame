@@ -74,8 +74,8 @@ func newServer(library *library) (*sdk.Server, error) {
 			}
 			return library.reindexDocument(ctx, contracts.Reindex.Name(), string(command.ID), input)
 		}),
-		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (bool, error) {
-			return library.store.delete(ctx, input.ID, input.ExpectedRevision)
+		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (pluginstorage.CommandPlan[bool], error) {
+			return library.store.prepareDeletion(ctx, input.ID, input.ExpectedRevision)
 		}),
 		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) ([]knowledge.Header, error) {
 			return library.list(ctx)

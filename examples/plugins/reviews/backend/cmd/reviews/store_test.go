@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -68,8 +70,14 @@ func TestUpdateReceiptSurvivesRestartAndRejectsIdentityReuse(t *testing.T) {
 }
 
 func TestReceiptFailureRollsBackBusinessTransition(t *testing.T) {
-	store := openTestStore(t, t.TempDir())
-	if _, err := store.db.ExecContext(t.Context(), `CREATE TRIGGER reject_receipt BEFORE INSERT ON invocations BEGIN SELECT RAISE(ABORT, 'receipt rejected'); END`); err != nil {
+	directory := t.TempDir()
+	store := openTestStore(t, directory)
+	faults, err := sql.Open("sqlite", filepath.Join(directory, "reviews.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer faults.Close()
+	if _, err := faults.ExecContext(t.Context(), `CREATE TRIGGER reject_receipt BEFORE INSERT ON invocations BEGIN SELECT RAISE(ABORT, 'receipt rejected'); END`); err != nil {
 		t.Fatal(err)
 	}
 	input := reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: reviews.Resolved}
@@ -85,7 +93,7 @@ func TestReceiptFailureRollsBackBusinessTransition(t *testing.T) {
 	if err != nil || current[0].Revision != 1 || current[0].Status != reviews.Open {
 		t.Fatalf("failed commit advanced review: %+v, %v", current, err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `DROP TRIGGER reject_receipt`); err != nil {
+	if _, err := faults.ExecContext(t.Context(), `DROP TRIGGER reject_receipt`); err != nil {
 		t.Fatal(err)
 	}
 	result, err := testUpdate(t.Context(), store, "original-call", input)
@@ -168,7 +176,7 @@ func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
 		t.Fatalf("receipt reads changed the review: %+v, %v", current, err)
 	}
 	var receipts int
-	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 4098 {
+	if err := scanDatabase(t.Context(), store.db, `SELECT count(*) FROM invocations`, nil, &receipts); err != nil || receipts != 4098 {
 		t.Fatalf("history was lost or recovery wrote receipts: %d, %v", receipts, err)
 	}
 }
@@ -244,7 +252,7 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 				t.Fatalf("invalid-input receipt changed: %+v, %v", result, err)
 			}
 			var receipts int
-			if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 2 {
+			if err := scanDatabase(t.Context(), store.db, `SELECT count(*) FROM invocations`, nil, &receipts); err != nil || receipts != 2 {
 				t.Fatalf("refusal or success was lost or duplicated: %d, %v", receipts, err)
 			}
 			current, err := store.list(t.Context())
@@ -257,7 +265,7 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 
 func TestRevisionExhaustionIsAKnownRefusal(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE reviews SET revision = ?`, int64(exactint.Maximum)); err != nil {
+	if _, err := execDatabase(t.Context(), store.db, `UPDATE reviews SET revision = ?`, int64(exactint.Maximum)); err != nil {
 		t.Fatal(err)
 	}
 	result, err := testUpdate(t.Context(), store, "original", reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: exactint.Maximum, Status: reviews.Resolved})

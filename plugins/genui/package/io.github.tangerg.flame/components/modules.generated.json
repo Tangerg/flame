@@ -3,16 +3,6 @@
   "entry": "component.js",
   "modules": [
     {
-      "path": "ci-info-CFJFRlpw.js",
-      "imports": [
-        "rolldown-runtime-XKyaHtl9.js"
-      ],
-      "dynamicImports": [],
-      "exports": [
-        "default"
-      ]
-    },
-    {
       "path": "component.js",
       "imports": [
         "@flame/component-sdk",
@@ -20,24 +10,11 @@
         "@flame/ui",
         "@frame/sdk/json",
         "react",
-        "react/jsx-runtime",
-        "rolldown-runtime-XKyaHtl9.js"
+        "react/jsx-runtime"
       ],
-      "dynamicImports": [
-        "ci-info-CFJFRlpw.js"
-      ],
-      "exports": [
-        "GenUIResult"
-      ]
-    },
-    {
-      "path": "rolldown-runtime-XKyaHtl9.js",
-      "imports": [],
       "dynamicImports": [],
       "exports": [
-        "n",
-        "r",
-        "t"
+        "GenUIResult"
       ]
     }
   ],

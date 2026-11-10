@@ -9,18 +9,17 @@ import (
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 	"github.com/samber/lo"
+
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 type learningSourceRevision struct{ name, revision string }
@@ -106,9 +105,9 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 	if err != nil {
 		return pluginmcp.CallbackRef{}, nil, err
 	}
-	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (response *chat.Response, err error) {
+	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (response *chat.Response, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
-		if !learningModelRequest(command.Input) {
+		if !learningModelRequest(chat.Request(command.Input)) {
 			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
 		}
 		input, err := command.RequestInput()
@@ -129,7 +128,7 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		if lo.IsNil(captured.Model()) {
 			return nil, errors.New("skill learning: model is required")
 		}
-		return captured.Model().Call(ctx, command.Input.Clone())
+		return captured.Model().Call(ctx, (*chat.Request)(&command.Input).Clone())
 	})
 	if err != nil {
 		return pluginmcp.CallbackRef{}, nil, err

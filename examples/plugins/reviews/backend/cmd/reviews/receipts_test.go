@@ -126,7 +126,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, result := range []string{`{"type":"updated"}`, `{"type":"unknown"}`, `{"type":"notFound","extra":true}`} {
-		if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET result=? WHERE id='original'`, []byte(result)); err != nil {
+		if _, err := execDatabase(t.Context(), store.db, `UPDATE invocations SET result=? WHERE id='original'`, []byte(result)); err != nil {
 			t.Fatal(err)
 		}
 		receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
@@ -134,7 +134,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 			t.Fatalf("corrupt private result became receipt evidence: %s, %v", result, err)
 		}
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET result=? WHERE id='original'`, []byte(`{"type":"notFound"}`)); err != nil {
+	if _, err := execDatabase(t.Context(), store.db, `UPDATE invocations SET result=? WHERE id='original'`, []byte(`{"type":"notFound"}`)); err != nil {
 		t.Fatal(err)
 	}
 	var changed map[string]any
@@ -150,7 +150,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET input_json=? WHERE id='original'`, data); err != nil {
+	if _, err := execDatabase(t.Context(), store.db, `UPDATE invocations SET input_json=? WHERE id='original'`, data); err != nil {
 		t.Fatal(err)
 	}
 	if receipt, err := store.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {

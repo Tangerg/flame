@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -33,7 +34,7 @@ func snapshots(items []memory.Item) []memory.ItemSnapshot {
 	return result
 }
 
-func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootResolver) error {
+func registerServer(server *sdk.Server, db *framesqlite.Database, store store, roots app.RootResolver) error {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return err
@@ -84,25 +85,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 			page, err := review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
 			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
 		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Add, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
-			changed := false
-			owner, err := app.New(app.Config{Store: store, Roots: roots, OnChange: func() { changed = true }})
-			if err != nil {
-				return rpc.AddResult{}, err
-			}
-			item, err := owner.Add(ctx, input.Scope, input.CWD, input.Content)
-			return rpc.AddResult{Item: item.Snapshot(), Changed: changed}, err
-		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
-			item, err := review.Update(ctx, input.ID, input.ExpectedRevision, input.Content, input.Pinned)
-			return item.Snapshot(), err
-		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Delete(ctx, input.ID, input.ExpectedRevision)
-		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Review, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Review(ctx, input.ID, input.ExpectedRevision, input.Decision)
-		}),
+		registerManagementCommands(backend, db, contracts, review),
 		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
 			input := command.Input
 			items, err := read.Items(ctx, input.Scope, input.Project)
@@ -158,8 +141,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 				}
 				return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
 			}
-			published := false
-			curation, err := app.NewCuration(app.CurationConfig{Store: maintenancePublication{CurationStore: store, db: db, command: prepared}, OnChange: func() { published = true }})
+			curation, err := app.NewCuration(maintenancePublication{CurationStore: store, db: db, command: prepared})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
@@ -167,9 +149,9 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			err = consolidator.Consolidate(ctx, input.SessionID, input.Project)
+			published, err := consolidator.Consolidate(ctx, input.SessionID, input.Project)
 			if err != nil {
-				return rpc.MaintenanceResult{Published: published}, err
+				return rpc.MaintenanceResult{}, err
 			}
 			reply, err := maintenanceReply(published)
 			if err != nil {

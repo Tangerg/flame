@@ -1,9 +1,6 @@
 package wire
 
-import (
-	"github.com/Tangerg/scope/core/jsonschema"
-	reflection "github.com/invopop/jsonschema"
-)
+import "github.com/Tangerg/scope/core/jsonschema"
 
 const (
 	MaxBodyRunes  = 65536
@@ -64,8 +61,7 @@ type UpdateCommentInput struct {
 }
 
 type DeletedComment struct {
-	ID      int64 `json:"id" jsonschema:"minimum=1"`
-	Deleted bool  `json:"deleted" `
+	ID int64 `json:"id" jsonschema:"minimum=1"`
 }
 
 type CreatePullInput struct {
@@ -119,8 +115,8 @@ type SubmitReviewInput struct {
 
 type CreateReviewCommentInput struct {
 	IssueInput
-	CommitID CommitSHA `json:"commitId" jsonschema:"minLength=1"`
-	InlineComment
+	CommitID CommitSHA     `json:"commitId" jsonschema:"minLength=1"`
+	Comment  InlineComment `json:"comment"`
 }
 
 type ReplyReviewCommentInput struct {
@@ -150,9 +146,8 @@ type MergePullInput struct {
 }
 
 type MergeResult struct {
-	SHA     string `json:"sha" jsonschema:"minLength=1"`
-	Merged  bool   `json:"merged" `
-	Message string `json:"message"`
+	SHA     CommitSHA `json:"sha"`
+	Message string    `json:"message"`
 }
 
 func (CreateIssueInput) JSONSchemaConstraints() jsonschema.Constraints {
@@ -200,12 +195,6 @@ func (SubmitReviewInput) JSONSchemaConstraints() jsonschema.Constraints {
 	}}
 }
 
-func (CreateReviewCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
-	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
-		"body": {MaxLength: new(uint64(MaxBodyRunes))},
-	}}
-}
-
 func (ReplyReviewCommentInput) JSONSchemaConstraints() jsonschema.Constraints {
 	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
 		"body": {MaxLength: new(uint64(MaxBodyRunes))},
@@ -217,16 +206,4 @@ func (MergePullInput) JSONSchemaConstraints() jsonschema.Constraints {
 		"commitTitle":   {MaxLength: new(uint64(MaxTitleRunes))},
 		"commitMessage": {MaxLength: new(uint64(MaxBodyRunes))},
 	}}
-}
-
-func (DeletedComment) JSONSchemaExtend(schema *reflection.Schema) {
-	if property, ok := schema.Properties.Get("deleted"); ok {
-		property.Const = true
-	}
-}
-
-func (MergeResult) JSONSchemaExtend(schema *reflection.Schema) {
-	if property, ok := schema.Properties.Get("merged"); ok {
-		property.Const = true
-	}
 }

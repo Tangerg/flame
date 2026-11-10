@@ -11,7 +11,7 @@
       "description": "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable.",
       "input": {
         "$defs": {
-          "domain.Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -74,7 +74,7 @@
             ],
             "type": "object"
           },
-          "wire.ConfigureInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU.Q29uZmlndXJlSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -88,7 +88,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/domain.Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
               }
             },
             "required": [
@@ -111,7 +111,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/domain.Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
           }
         },
         "required": [
@@ -121,7 +121,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -184,7 +184,7 @@
             ],
             "type": "object"
           },
-          "domain.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -198,7 +198,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/domain.Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
               }
             },
             "required": [
@@ -221,7 +221,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/domain.Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
           }
         },
         "required": [
@@ -237,7 +237,7 @@
       "description": "Read one retained observation and its complete original dispatch capture.",
       "input": {
         "$defs": {
-          "wire.EventInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU.RXZlbnRJbnB1dA": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -268,10 +268,13 @@
       },
       "output": {
         "$defs": {
-          "domain.Capture": {
-            "$ref": "#/$defs/domain.captureProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
           },
-          "domain.Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.Q2FwdHVyZQ": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.Y2FwdHVyZVByb2plY3Rpb24"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -334,14 +337,14 @@
             ],
             "type": "object"
           },
-          "domain.Event": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
                 "type": "boolean"
               },
               "capture": {
-                "$ref": "#/$defs/domain.Capture"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.Q2FwdHVyZQ"
               }
             },
             "required": [
@@ -350,14 +353,14 @@
             ],
             "type": "object"
           },
-          "domain.captureProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.Y2FwdHVyZVByb2plY3Rpb24": {
             "additionalProperties": false,
             "properties": {
               "generation": {
                 "type": "string"
               },
               "invocation": {
-                "$ref": "#/$defs/mcp.Invocation"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.SW52b2NhdGlvbg"
               },
               "kind": {
                 "allOf": [
@@ -371,7 +374,7 @@
                 "type": "string"
               },
               "observedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "paths": {
                 "items": {
@@ -404,7 +407,7 @@
                 "type": "string"
               },
               "trigger": {
-                "$ref": "#/$defs/domain.Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
               }
             },
             "required": [
@@ -421,33 +424,7 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "mcp.Invocation": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "origin": {
-                "type": "string"
-              },
-              "parent": {
-                "type": "string"
-              },
-              "target": {
-                "$ref": "#/$defs/portable.Target"
-              }
-            },
-            "required": [
-              "id",
-              "origin",
-              "target"
-            ],
-            "type": "object"
-          },
-          "portable.Target": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3BvcnRhYmxl.VGFyZ2V0": {
             "additionalProperties": false,
             "properties": {
               "reference": {
@@ -462,6 +439,29 @@
               "reference"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.SW52b2NhdGlvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "parent": {
+                "type": "string"
+              },
+              "target": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3BvcnRhYmxl.VGFyZ2V0"
+              }
+            },
+            "required": [
+              "id",
+              "origin",
+              "target"
+            ],
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -471,7 +471,7 @@
             "type": "boolean"
           },
           "capture": {
-            "$ref": "#/$defs/domain.Capture"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.Q2FwdHVyZQ"
           }
         },
         "required": [
@@ -494,10 +494,13 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
-            "$ref": "#/$defs/domain.headerProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
           },
-          "domain.headerProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.SGVhZGVy": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.aGVhZGVyUHJvamVjdGlvbg"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.aGVhZGVyUHJvamVjdGlvbg": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
@@ -518,7 +521,7 @@
                 "type": "string"
               },
               "observedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "pathCount": {
                 "allOf": [
@@ -556,14 +559,11 @@
               "accepted"
             ],
             "type": "object"
-          },
-          "instant.Timestamp": {
-            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/domain.Header"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.SGVhZGVy"
         },
         "type": "array"
       }
@@ -581,7 +581,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -644,7 +644,7 @@
             ],
             "type": "object"
           },
-          "domain.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -658,7 +658,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/domain.Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
               }
             },
             "required": [
@@ -681,7 +681,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/domain.Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.RHJhZnQ"
           }
         },
         "required": [
@@ -703,7 +703,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Status": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg.U3RhdHVz": {
             "additionalProperties": false,
             "properties": {
               "dispatchError": {

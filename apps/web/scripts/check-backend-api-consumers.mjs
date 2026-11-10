@@ -2,7 +2,6 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, resolve, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { API, SignatureKind, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
@@ -10,10 +9,6 @@ const ROOT = process.cwd();
 const METHODS_PATH = resolve(ROOT, "../../packages/runtime-client/src/methods.ts");
 const SIDECAR_PATH = resolve(ROOT, "../../packages/runtime-client/src/sidecar.ts");
 const WIRE_PATH = resolve(ROOT, "../../packages/runtime-client/src/generated/wire.generated.ts");
-const MODULES_PATH = resolve(
-  dirname(fileURLToPath(import.meta.resolve("@frame/sdk/browser"))),
-  "modules.d.ts",
-);
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(ROOT, "src/features/workspace/domain/eventInvalidation.ts");
 const EVENT_ADAPTER_PATH = resolve(
@@ -255,8 +250,7 @@ function consumedHTTPEndpoints(call) {
       /[/\\]lib\.(dom|webworker)\.d\.ts$/.test(declaration.getSourceFile().fileName),
     );
   }
-  const sources =
-    imports || fetches ? (call.arguments[0] ? [call.arguments[0]] : []) : openedModuleURLs(call);
+  const sources = (imports || fetches) && call.arguments[0] ? [call.arguments[0]] : [];
   const found = new Set();
   const scanned = new Set();
   function scan(expression) {
@@ -298,97 +292,6 @@ function consumedHTTPEndpoints(call) {
   }
   for (const source of sources) scan(source);
   return found;
-}
-
-// A RealmModules.evaluate call consumes the URL returned by its actual opener.
-// Resolve the constructor and method by their SDK declarations; an unused
-// opener, another class, or a property merely named "url" is not HTTP evidence.
-function openedModuleURLs(call) {
-  if (!ts.isPropertyAccessExpression(call.expression)) return [];
-  const declarations = (expression) => {
-    let symbol = checker.getSymbolAtLocation(
-      ts.isPropertyAccessExpression(expression) ? expression.name : expression,
-    );
-    if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-    return declarationsOf(symbol);
-  };
-  const method = declarations(call.expression).find(
-    (declaration) =>
-      ts.isMethodDeclaration(declaration) &&
-      declaration.name.text === "evaluate" &&
-      resolve(declaration.getSourceFile().fileName) === MODULES_PATH,
-  );
-  if (!method) return [];
-  const receiver = unwrapExpression(call.expression.expression);
-  const initializers = ts.isNewExpression(receiver)
-    ? [receiver]
-    : declarations(receiver)
-        .filter(
-          (declaration) =>
-            ts.isPropertyDeclaration(declaration) || ts.isVariableDeclaration(declaration),
-        )
-        .map((declaration) => declaration.initializer)
-        .filter(Boolean);
-  const urls = [];
-  const scanned = new Set();
-  function returned(expression) {
-    const value = unwrapExpression(expression);
-    if (scanned.has(value)) return;
-    scanned.add(value);
-    if (ts.isAwaitExpression(value)) return returned(value.expression);
-    if (ts.isObjectLiteralExpression(value)) {
-      for (const property of value.properties) {
-        if (ts.isPropertyAssignment(property) && property.name.text === "url")
-          urls.push(property.initializer);
-      }
-      return;
-    }
-    if (
-      ts.isArrowFunction(value) ||
-      ts.isFunctionExpression(value) ||
-      ts.isFunctionDeclaration(value) ||
-      ts.isMethodDeclaration(value)
-    ) {
-      if (!value.body) return;
-      if (!ts.isBlock(value.body)) return returned(value.body);
-      function returns(node) {
-        if (ts.isReturnStatement(node)) {
-          if (node.expression) returned(node.expression);
-          return;
-        }
-        if (
-          ts.isArrowFunction(node) ||
-          ts.isFunctionExpression(node) ||
-          ts.isFunctionDeclaration(node) ||
-          ts.isMethodDeclaration(node)
-        )
-          return;
-        node.forEachChild(returns);
-      }
-      value.body.forEachChild(returns);
-      return;
-    }
-    if (ts.isCallExpression(value)) {
-      for (const declaration of declarations(value.expression)) returned(declaration);
-      return;
-    }
-    for (const declaration of declarations(value)) {
-      if (declaration.initializer) returned(declaration.initializer);
-      else if (ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration))
-        returned(declaration);
-    }
-  }
-  for (const initializer of initializers) {
-    const construction = unwrapExpression(initializer);
-    if (
-      !ts.isNewExpression(construction) ||
-      !declarations(construction.expression).includes(method.parent) ||
-      !construction.arguments?.[0]
-    )
-      continue;
-    returned(construction.arguments[0]);
-  }
-  return urls;
 }
 
 function isHTTPEndpointCatalog(expression) {

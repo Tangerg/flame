@@ -3,21 +3,21 @@ module github.com/Tangerg/flame/packages/go-sdk
 go 1.27.3
 
 require (
-	github.com/Tangerg/frame v0.1.1
-	github.com/Tangerg/go-sdk v1.8.1-scope.5
-	github.com/Tangerg/scope/core v0.60.0
-	github.com/Tangerg/scope/mcp v0.60.0
-	github.com/Tangerg/scope/models/catalog v0.60.0
-	github.com/Tangerg/scope/tools v0.60.0
+	github.com/Tangerg/frame v0.2.0
+	github.com/Tangerg/go-sdk v1.9.0-scope.1
+	github.com/Tangerg/scope/core v0.61.0
+	github.com/Tangerg/scope/mcp v0.61.0
+	github.com/Tangerg/scope/models/catalog v0.61.0
+	github.com/Tangerg/scope/tools v0.61.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/google/uuid v1.6.0
 	github.com/samber/lo v1.53.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/text v0.44.0
 )
 
 require (
-	github.com/Tangerg/scope/otel v0.60.0 // indirect
+	github.com/Tangerg/scope/otel v0.61.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -40,11 +40,11 @@ require (
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	modernc.org/libc v1.80.1 // indirect
+	modernc.org/libc v1.80.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.61.1 // indirect
+	modernc.org/sqlite v1.62.0 // indirect
 )

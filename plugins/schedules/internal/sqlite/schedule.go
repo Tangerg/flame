@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -16,77 +16,89 @@ import (
 )
 
 type ScheduleStore struct {
-	db *sql.DB
+	db *framesqlite.Database
 }
 
-func NewScheduleStore(db *sql.DB) *ScheduleStore {
+func NewScheduleStore(db *framesqlite.Database) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 
 const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision`
 
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
-	if err := scheduled.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate initial schedule: %w", err)
-	}
-	if scheduled.Revision() != exactint.First().Value() {
-		return fmt.Errorf("sqlite: initial schedule revision is %d: %w", scheduled.Revision(), schedule.ErrRevisionConflict)
-	}
-	snapshot := scheduled.Snapshot()
-	_, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
-		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision)
+	return framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		if err := scheduled.Validate(); err != nil {
+			return fmt.Errorf("sqlite: validate initial schedule: %w", err)
+		}
+		if scheduled.Revision() != exactint.First().Value() {
+			return fmt.Errorf("sqlite: initial schedule revision is %d: %w", scheduled.Revision(), schedule.ErrRevisionConflict)
+		}
+		snapshot := scheduled.Snapshot()
+		_, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx,
+			`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
-		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
-		nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
-	if err != nil {
-		return fmt.Errorf("sqlite: create schedule: %w", err)
-	}
-	return nil
+			snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
+			snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
+			nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
+		if err != nil {
+			return fmt.Errorf("sqlite: create schedule: %w", err)
+		}
+		return nil
+	})
 }
 
 func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replacement) error {
-	expectedRevision := replacement.ExpectedRevision()
-	sc := replacement.State()
-	snapshot := sc.Snapshot()
-	res, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
-		`UPDATE schedules
+	return framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		expectedRevision := replacement.ExpectedRevision()
+		sc := replacement.State()
+		snapshot := sc.Snapshot()
+		res, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx,
+			`UPDATE schedules
 		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, time_zone = ?, next_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
-		snapshot.Title, snapshot.Instructions, snapshot.CWD,
-		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
-		nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
-	if err != nil {
-		return fmt.Errorf("sqlite: update schedule: %w", err)
-	}
-	changed, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect schedule update: %w", err)
-	}
-	if changed == 0 {
-		if _, getErr := s.Get(ctx, sc.ID()); getErr != nil {
-			return getErr
+			snapshot.Title, snapshot.Instructions, snapshot.CWD,
+			snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
+			nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
+		if err != nil {
+			return fmt.Errorf("sqlite: update schedule: %w", err)
 		}
-		return schedule.ErrRevisionConflict
-	}
-	return nil
+		changed, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect schedule update: %w", err)
+		}
+		if changed == 0 {
+			if _, getErr := s.Get(ctx, sc.ID()); getErr != nil {
+				return getErr
+			}
+			return schedule.ErrRevisionConflict
+		}
+		return nil
+	})
 }
 
 func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, error) {
-	if err := schedule.ValidateID(id); err != nil {
-		return schedule.Schedule{}, err
-	}
-	row := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx,
-		`SELECT `+scheduleColumns+`
+	var result schedule.Schedule
+	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+		if err := schedule.ValidateID(id); err != nil {
+
+			return err
+		}
+		row := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx,
+			`SELECT `+scheduleColumns+`
 		 FROM schedules WHERE id = ?`, id)
-	sc, err := scanSchedule(row.Scan)
-	if errors.Is(err, sql.ErrNoRows) {
-		return schedule.Schedule{}, schedule.ErrNotFound
-	}
-	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("sqlite: get schedule: %w", err)
-	}
-	return sc, nil
+		sc, err := scanSchedule(row.Scan)
+		if errors.Is(err, sql.ErrNoRows) {
+
+			return schedule.ErrNotFound
+		}
+		if err != nil {
+
+			return fmt.Errorf("sqlite: get schedule: %w", err)
+		}
+		result = sc
+		return nil
+	})
+	return result, err
 }
 
 // The identity breaks creation-time ties so page boundaries do not repeat or drop schedules.
@@ -140,8 +152,8 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 	if err != nil {
 		return false, err
 	}
-	err = pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
-		res, execContextErr := pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
+	err = framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, execContextErr := framesqlite.Connection(ctx, s.db).ExecContext(ctx,
 			`UPDATE schedules SET next_run_at = ?, revision = ?
 				 WHERE id = ? AND revision = ? AND next_run_at = ?
 				   AND NOT EXISTS (
@@ -160,7 +172,7 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 		if changed == 0 {
 			return nil
 		}
-		_, execContextErr = pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
+		_, execContextErr = framesqlite.Connection(ctx, s.db).ExecContext(ctx,
 			`INSERT INTO schedule_firings(
 				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
 				due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
@@ -179,36 +191,45 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 }
 
 func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
-	if limit <= 0 {
-		return nil, errors.New("sqlite: schedule pending limit must be positive")
-	}
-	query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
+	var result []schedule.Occurrence
+	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+		if limit <= 0 {
+
+			return errors.New("sqlite: schedule pending limit must be positive")
+		}
+		query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
 			fired_at, next_run_at, session_id, run_id, invocation_json
 		 FROM schedule_firings WHERE state = ?`
-	args := []any{scheduleFiringPending.databaseValue()}
-	if !afterDueAt.IsZero() || afterID != "" {
-		query += ` AND (due_at > ? OR (due_at = ? AND id > ?))`
-		args = append(args, afterDueAt.UnixMilli(), afterDueAt.UnixMilli(), afterID)
-	}
-	query += ` ORDER BY due_at, id LIMIT ?`
-	args = append(args, limit)
-	rows, err := pluginstorage.Connection(ctx, s.db).QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var occurrences []schedule.Occurrence
-	for rows.Next() {
-		occurrence, err := scanOccurrence(rows.Scan)
-		if err != nil {
-			return nil, fmt.Errorf("sqlite: scan pending schedule occurrence: %w", err)
+		args := []any{scheduleFiringPending.databaseValue()}
+		if !afterDueAt.IsZero() || afterID != "" {
+			query += ` AND (due_at > ? OR (due_at = ? AND id > ?))`
+			args = append(args, afterDueAt.UnixMilli(), afterDueAt.UnixMilli(), afterID)
 		}
-		occurrences = append(occurrences, occurrence)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
-	}
-	return occurrences, nil
+		query += ` ORDER BY due_at, id LIMIT ?`
+		args = append(args, limit)
+		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+		if err != nil {
+
+			return fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
+		}
+		defer func() { _ = rows.Close() }()
+		var occurrences []schedule.Occurrence
+		for rows.Next() {
+			occurrence, err := scanOccurrence(rows.Scan)
+			if err != nil {
+
+				return fmt.Errorf("sqlite: scan pending schedule occurrence: %w", err)
+			}
+			occurrences = append(occurrences, occurrence)
+		}
+		if err := rows.Err(); err != nil {
+
+			return fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
+		}
+		result = occurrences
+		return nil
+	})
+	return result, err
 }
 
 func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptance) error {
@@ -216,8 +237,8 @@ func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptan
 		return fmt.Errorf("sqlite: invalid schedule acceptance: %w", err)
 	}
 	occurrenceID, runID := acceptance.OccurrenceID(), acceptance.RunID()
-	return pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
-		res, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
+	return framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx,
 			`UPDATE schedule_firings SET state = ?
 			  WHERE id = ? AND run_id = ? AND state = ?`,
 			scheduleFiringAccepted.databaseValue(), occurrenceID, runID,
@@ -232,7 +253,7 @@ func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptan
 		if changed != 0 {
 			var scheduleID string
 			var firedAt int64
-			if scanErr := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx,
+			if scanErr := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
 				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
 			}
@@ -240,7 +261,7 @@ func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptan
 			return err
 		}
 		var storedRunID, rawState string
-		err = pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx,
+		err = framesqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 			`SELECT run_id, state FROM schedule_firings WHERE id = ?`, occurrenceID).Scan(&storedRunID, &rawState)
 		if errors.Is(err, sql.ErrNoRows) {
 			return errors.New("sqlite: schedule occurrence not found")
@@ -275,7 +296,7 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 	if err != nil {
 		return false, err
 	}
-	result, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx,
+	result, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
 		 SET last_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
@@ -294,38 +315,54 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 }
 
 func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
-	if err := schedule.ValidateID(id); err != nil {
-		return false, err
-	}
-	result, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: delete schedule: %w", err)
-	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("sqlite: inspect deleted schedule: %w", err)
-	}
-	return deleted > 0, nil
+	var removed bool
+	err := framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		if err := schedule.ValidateID(id); err != nil {
+			removed = false
+			return err
+		}
+		result, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
+		if err != nil {
+			removed = false
+			return fmt.Errorf("sqlite: delete schedule: %w", err)
+		}
+		deleted, err := result.RowsAffected()
+		if err != nil {
+			removed = false
+			return fmt.Errorf("sqlite: inspect deleted schedule: %w", err)
+		}
+		removed = deleted > 0
+		return nil
+	})
+	return removed, err
 }
 
 func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...any) ([]schedule.Schedule, error) {
-	rows, err := pluginstorage.Connection(ctx, s.db).QueryContext(ctx, q, args...)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: %s: %w", operation, err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []schedule.Schedule
-	for rows.Next() {
-		sc, err := scanSchedule(rows.Scan)
+	var result []schedule.Schedule
+	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, q, args...)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: scan schedule: %w", err)
+
+			return fmt.Errorf("sqlite: %s: %w", operation, err)
 		}
-		out = append(out, sc)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: %s: %w", operation, err)
-	}
-	return out, nil
+		defer func() { _ = rows.Close() }()
+		var out []schedule.Schedule
+		for rows.Next() {
+			sc, err := scanSchedule(rows.Scan)
+			if err != nil {
+
+				return fmt.Errorf("sqlite: scan schedule: %w", err)
+			}
+			out = append(out, sc)
+		}
+		if err := rows.Err(); err != nil {
+
+			return fmt.Errorf("sqlite: %s: %w", operation, err)
+		}
+		result = out
+		return nil
+	})
+	return result, err
 }
 
 func nullableMillis(value time.Time) any {

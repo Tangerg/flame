@@ -38,7 +38,6 @@ type Coordinator struct {
 	paths         CWDResolver
 	newScheduleID func() string
 	now           func() time.Time
-	onChange      func()
 }
 
 type CWDResolver interface {
@@ -49,7 +48,6 @@ type Dependencies struct {
 	Store         ManagementStore
 	Paths         CWDResolver
 	NewScheduleID func() string
-	OnChange      func()
 }
 
 // Untrusted CWD and model spellings must be resolved before they reach the Domain patch.
@@ -87,7 +85,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 		paths:         deps.Paths,
 		newScheduleID: deps.NewScheduleID,
 		now:           time.Now,
-		onChange:      deps.OnChange,
 	}, nil
 }
 
@@ -129,18 +126,14 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	})
 }
 
-func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error) {
+func (c *Coordinator) PrepareCreate(ctx context.Context, draft schedule.Draft) (ScheduleMutation, error) {
 	created, err := c.admit(draft)
 	if err != nil {
-		return schedule.Schedule{}, refusal{err}
+		return ScheduleMutation{}, refusal{err}
 	}
-	if err := c.store.Insert(ctx, created); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
-	}
-	if c.onChange != nil {
-		c.onChange()
-	}
-	return created, nil
+	return ScheduleMutation{state: created, persist: func(ctx context.Context) error {
+		return c.store.Insert(ctx, created)
+	}}, nil
 }
 
 func (c *Coordinator) admit(draft schedule.Draft) (schedule.Schedule, error) {
@@ -155,16 +148,16 @@ func (c *Coordinator) admit(draft schedule.Draft) (schedule.Schedule, error) {
 	return schedule.New(c.newScheduleID(), draft, c.now())
 }
 
-func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.Schedule, error) {
+func (c *Coordinator) PrepareUpdate(ctx context.Context, cmd UpdateCommand) (ScheduleMutation, error) {
 	if err := schedule.ValidateID(cmd.ID); err != nil {
-		return schedule.Schedule{}, err
+		return ScheduleMutation{}, err
 	}
 	if cmd.ExpectedRevision == 0 {
-		return schedule.Schedule{}, schedule.ErrRevisionRequired
+		return ScheduleMutation{}, schedule.ErrRevisionRequired
 	}
 	existing, err := c.store.Get(ctx, cmd.ID)
 	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
+		return ScheduleMutation{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
 	patch := schedule.Patch{
 		Title: cmd.Patch.Title, Instructions: cmd.Patch.Instructions, CWD: cmd.Patch.CWD,
@@ -173,57 +166,58 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	if !cmd.Patch.ModelSelection.Empty() {
 		selection, selectionErr := cmd.Patch.ModelSelection.Apply(existing.ModelSelection())
 		if selectionErr != nil {
-			return schedule.Schedule{}, selectionErr
+			return ScheduleMutation{}, selectionErr
 		}
 		patch.Selection = &selection
 	}
-	return c.updateExisting(ctx, existing, patch, cmd.ExpectedRevision)
+	return c.prepareUpdate(existing, patch, cmd.ExpectedRevision)
 }
 
-func (c *Coordinator) updateExisting(
-	ctx context.Context,
+func (c *Coordinator) prepareUpdate(
 	existing schedule.Schedule,
 	patch schedule.Patch,
 	expectedRevision uint64,
-) (schedule.Schedule, error) {
+) (ScheduleMutation, error) {
 	if patch.CWD != nil {
 		resolved, err := c.resolveCWD(*patch.CWD)
 		if err != nil {
-			return schedule.Schedule{}, err
+			return ScheduleMutation{}, err
 		}
 		patch.CWD = &resolved
 	}
 	updated, err := existing.Edit(patch, expectedRevision, c.now())
 	if err != nil {
-		return schedule.Schedule{}, err
+		return ScheduleMutation{}, err
 	}
 	replacement, err := schedule.NewReplacement(existing, updated)
 	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: prepare update %q: %w", existing.ID(), err)
+		return ScheduleMutation{}, fmt.Errorf("schedules: prepare update %q: %w", existing.ID(), err)
 	}
-	if err := c.store.Update(ctx, replacement); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
-	}
-	if c.onChange != nil {
-		c.onChange()
-	}
-	return updated, nil
+	return ScheduleMutation{state: updated, persist: func(ctx context.Context) error {
+		return c.store.Update(ctx, replacement)
+	}}, nil
 }
 
-func (c *Coordinator) Delete(ctx context.Context, id string) error {
+func (c *Coordinator) PrepareDelete(ctx context.Context, id string) (func(context.Context) error, error) {
 	if err := schedule.ValidateID(id); err != nil {
-		return refusal{err}
+		return nil, refusal{err}
 	}
-	deleted, err := c.store.Delete(ctx, id)
-	if err != nil {
-		return fmt.Errorf("schedules: delete %q: %w", id, err)
-	}
-	if deleted {
-		if c.onChange != nil {
-			c.onChange()
+	if _, err := c.store.Get(ctx, id); err != nil {
+		if errors.Is(err, schedule.ErrNotFound) {
+			return nil, nil
 		}
+		return nil, err
 	}
-	return nil
+	return func(ctx context.Context) error {
+		deleted, err := c.store.Delete(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !deleted {
+			return errors.New("schedules: decided deletion lost its original schedule")
+		}
+		return nil
+	}, nil
 }
 
 func (c *Coordinator) resolveCWD(cwd string) (string, error) {

@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -24,7 +25,7 @@ func newScheduleStore(t *testing.T) *ScheduleStore {
 	return store
 }
 
-func newScheduleStores(t *testing.T) (*ScheduleStore, *sql.DB) {
+func newScheduleStores(t *testing.T) (*ScheduleStore, *framesqlite.Database) {
 	t.Helper()
 	db, err := Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -158,7 +159,7 @@ func TestScheduleCRUD(t *testing.T) {
 	if !deleted {
 		t.Fatal("delete reported no committed mutation")
 	}
-	if _, getErr := s.Get(ctx, created.ID()); getErr != schedule.ErrNotFound {
+	if _, getErr := s.Get(ctx, created.ID()); !errors.Is(getErr, schedule.ErrNotFound) {
 		t.Errorf("get after delete err = %v, want ErrNotFound", getErr)
 	}
 	deleted, err = s.Delete(ctx, created.ID())
@@ -244,7 +245,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	}
 	setRevision := func(revision uint64) {
 		t.Helper()
-		if _, execErr := db.ExecContext(ctx, `UPDATE schedules SET revision = ? WHERE id = ?`, revision, created.ID()); execErr != nil {
+		if _, execErr := execDatabase(ctx, db, `UPDATE schedules SET revision = ? WHERE id = ?`, revision, created.ID()); execErr != nil {
 			t.Fatalf("set revision %d: %v", revision, execErr)
 		}
 	}
@@ -535,11 +536,9 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 			return err
 		}
 		encodedInvocation := string(encoded)
-		_, err = db.ExecContext(ctx, `INSERT INTO schedule_firings(
+		_, err = execDatabase(ctx, db, `INSERT INTO schedule_firings(
 			id, schedule_id, instructions, due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
-		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, ?, 'pending')`,
-			occurrence.ID(), occurrence.ScheduleID(), occurrence.DueAt().UnixMilli(), occurrence.Snapshot().FiredAt.UnixMilli(),
-			occurrence.Snapshot().NextRunAt.UnixMilli(), occurrence.Snapshot().SessionID, occurrence.Snapshot().RunID, encodedInvocation)
+		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, ?, 'pending')`, occurrence.ID(), occurrence.ScheduleID(), occurrence.DueAt().UnixMilli(), occurrence.Snapshot().FiredAt.UnixMilli(), occurrence.Snapshot().NextRunAt.UnixMilli(), occurrence.Snapshot().SessionID, occurrence.Snapshot().RunID, encodedInvocation)
 		return err
 	}
 	first := testClaim(created, "ses_first", "run_first", dueAt)
@@ -573,7 +572,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 		t.Fatalf("prepare unknown replacement: %v", replacementErr)
 	}
 	err := s.Update(context.Background(), replacement)
-	if err != schedule.ErrNotFound {
+	if !errors.Is(err, schedule.ErrNotFound) {
 		t.Errorf("update unknown id err = %v, want ErrNotFound", err)
 	}
 }
@@ -660,11 +659,10 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 	createdAt := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC).UnixMilli()
 	nextRunAt := time.Date(2026, 7, 19, 11, 0, 0, 0, time.UTC).UnixMilli()
 	for _, id := range []string{"sch_a", "sch_c", "sch_b"} {
-		_, execContextErr := db.ExecContext(t.Context(), `INSERT INTO schedules(
+		_, execContextErr := execDatabase(t.Context(), db, `INSERT INTO schedules(
 			id, title, instructions, cwd, provider, model, cron, time_zone,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`,
-			id, nextRunAt, createdAt)
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`, id, nextRunAt, createdAt)
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)
 		}
@@ -719,11 +717,10 @@ func TestScheduleDuePrioritizesOldestBacklog(t *testing.T) {
 	newDueAt := oldDueAt.Add(time.Minute)
 	insert := func(id string, dueAt time.Time) {
 		t.Helper()
-		_, execContextErr := db.ExecContext(ctx, `INSERT INTO schedules(
+		_, execContextErr := execDatabase(ctx, db, `INSERT INTO schedules(
 			id, title, instructions, cwd, provider, model, cron, time_zone,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`,
-			id, dueAt.UnixMilli(), dueAt.UnixMilli())
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`, id, dueAt.UnixMilli(), dueAt.UnixMilli())
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)
 		}

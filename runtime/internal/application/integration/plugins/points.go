@@ -82,32 +82,23 @@ func ResolvePoint(ctx context.Context, host *frame.Host, store Store, contract *
 	if err != nil {
 		return nil, FrameworkError(err)
 	}
-	bindings := make(map[string]PointBinding, len(candidates))
-	selectedByKey := make(map[string]frame.Candidate[framevalue.JSON, framevalue.JSON], len(candidates))
+	type boundCandidate struct {
+		binding   PointBinding
+		candidate frame.Candidate[framevalue.JSON, framevalue.JSON]
+	}
+	bindings := make(map[string]boundCandidate, len(candidates))
 	values := make([]plugincontract.PointValue, 0, len(candidates))
 	for _, candidate := range candidates {
-		source := candidate.Source()
-		installation, err := identity.ParseHostInstallation(source.InstallationID)
+		binding, err := readPointBinding(candidate)
 		if err != nil {
 			return nil, err
 		}
-		contribution, err := plugin.ParseContributionID(source.Export)
-		if err != nil {
-			return nil, err
-		}
-		digest := source.Release
-		if err := digest.Validate(); err != nil {
-			return nil, err
-		}
-		reference := PointReference{Installation: installation, Contribution: contribution}
-		key := reference.key()
+		key := binding.Reference.key()
 		if _, exists := bindings[key]; exists {
 			return nil, plugin.ErrInvalid
 		}
-		value := candidate.Metadata()
-		bindings[key] = PointBinding{Reference: reference, Digest: digest, Value: value}
-		selectedByKey[key] = candidate
-		values = append(values, plugincontract.PointValue{Key: key, Data: value})
+		bindings[key] = boundCandidate{binding: binding, candidate: candidate}
+		values = append(values, plugincontract.PointValue{Key: key, Data: binding.Value})
 	}
 	keys := make([]string, 0, len(order))
 	for _, reference := range order {
@@ -126,8 +117,9 @@ func ResolvePoint(ctx context.Context, host *frame.Host, store Store, contract *
 	result := make([]PointBinding, 0, len(composed))
 	selected := make([]frame.Candidate[framevalue.JSON, framevalue.JSON], 0, len(composed))
 	for _, value := range composed {
-		result = append(result, bindings[value.Key])
-		selected = append(selected, selectedByKey[value.Key])
+		binding := bindings[value.Key]
+		result = append(result, binding.binding)
+		selected = append(selected, binding.candidate)
 	}
 	selection, err := frame.Select(snapshot, point, "flame-point/1", selected...)
 	if err != nil {
@@ -147,6 +139,29 @@ func ResolvePoint(ctx context.Context, host *frame.Host, store Store, contract *
 		return nil, FrameworkError(err)
 	}
 	return result, nil
+}
+
+func readPointBinding(candidate frame.Candidate[framevalue.JSON, framevalue.JSON]) (PointBinding, error) {
+	source := candidate.Source()
+	installation, err := identity.ParseHostInstallation(source.InstallationID)
+	if err != nil {
+		return PointBinding{}, err
+	}
+	contribution, err := plugin.ParseContributionID(source.Export)
+	if err != nil {
+		return PointBinding{}, err
+	}
+	if err := source.Release.Validate(); err != nil {
+		return PointBinding{}, err
+	}
+	value, err := candidate.Metadata()
+	if err != nil {
+		return PointBinding{}, FrameworkError(err)
+	}
+	return PointBinding{
+		Reference: PointReference{Installation: installation, Contribution: contribution},
+		Digest:    source.Release, Value: value,
+	}, nil
 }
 
 func validatePointDeclaration(ctx context.Context, store Store, declarations []plugin.Dependency) error {

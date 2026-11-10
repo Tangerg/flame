@@ -224,8 +224,7 @@
                 "origin": "record"
               },
               "annotations": {
-                "audience": ["user"],
-                "priority": 0
+                "audience": ["user"]
               },
               "title": "Report",
               "description": "Summary",

@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"context"
 	"database/sql"
 	json "encoding/json/v2"
 	"testing"
@@ -14,13 +15,17 @@ type ParkedMember struct {
 	Lineage run.Lineage
 }
 
+type StatementExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
 // SeedParkedRuns gives a test hand-off the Runs that own its facts. A hand-off
 // stores none of them: each member Run absent from the store is written waiting
 // with the root's Goal incarnation and capabilities and its own lineage; a Run
 // the test already wrote keeps its own facts.
 func SeedParkedRuns(
 	t testing.TB,
-	db *sql.DB,
+	db StatementExecutor,
 	sessionID, rootRunID, goalIncarnationID string,
 	capabilities run.Capabilities,
 	members []ParkedMember,

@@ -11,17 +11,17 @@
       "description": "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival.",
       "input": {
         "$defs": {
-          "instant.Timestamp": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "skilllearning.ArchiveRequest": {
-            "$ref": "#/$defs/skilllearning.archiveRequestProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.QXJjaGl2ZVJlcXVlc3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.YXJjaGl2ZVJlcXVlc3RQcm9qZWN0aW9u"
           },
-          "skilllearning.archiveRequestProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.YXJjaGl2ZVJlcXVlc3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
               "now": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
@@ -30,29 +30,44 @@
             "type": "object"
           }
         },
-        "$ref": "#/$defs/skilllearning.archiveRequestProjection",
-        "$schema": "https://json-schema.org/draft/2020-12/schema"
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "now": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          }
+        },
+        "required": [
+          "now"
+        ],
+        "type": "object"
       },
       "output": {
         "$defs": {
-          "instant.Timestamp": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "skilllearning.ArchiveAdvice": {
-            "$ref": "#/$defs/skilllearning.archiveAdviceProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.QXJjaGl2ZUFkdmljZQ": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.YXJjaGl2ZUFkdmljZVByb2plY3Rpb24"
           },
-          "skilllearning.archiveAdviceProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.YXJjaGl2ZUFkdmljZVByb2plY3Rpb24": {
             "additionalProperties": false,
             "properties": {
               "inactiveSince": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "type": "object"
           }
         },
-        "$ref": "#/$defs/skilllearning.archiveAdviceProjection",
-        "$schema": "https://json-schema.org/draft/2020-12/schema"
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "inactiveSince": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          }
+        },
+        "type": "object"
       }
     },
     {
@@ -62,7 +77,7 @@
       "description": "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction.",
       "input": {
         "$defs": {
-          "skilllearning.Run": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UnVu": {
             "additionalProperties": false,
             "properties": {
               "library": {
@@ -119,35 +134,16 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.MineResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.TWluZVJlc3VsdA": {
             "additionalProperties": false,
             "properties": {
               "proposal": {
-                "$ref": "#/$defs/skilllearning.Proposal"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UHJvcG9zYWw"
               }
             },
             "type": "object"
           },
-          "skilllearning.Proposal": {
-            "additionalProperties": false,
-            "properties": {
-              "previous": {
-                "type": "string"
-              },
-              "revises": {
-                "type": "boolean"
-              },
-              "skill": {
-                "$ref": "#/$defs/skilllearning.Skill"
-              }
-            },
-            "required": [
-              "skill",
-              "revises"
-            ],
-            "type": "object"
-          },
-          "skilllearning.Skill": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.U2tpbGw": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -166,13 +162,32 @@
               "instructions"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UHJvcG9zYWw": {
+            "additionalProperties": false,
+            "properties": {
+              "previous": {
+                "type": "string"
+              },
+              "revises": {
+                "type": "boolean"
+              },
+              "skill": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.U2tpbGw"
+              }
+            },
+            "required": [
+              "skill",
+              "revises"
+            ],
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "proposal": {
-            "$ref": "#/$defs/skilllearning.Proposal"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UHJvcG9zYWw"
           }
         },
         "type": "object"
@@ -185,7 +200,7 @@
       "description": "Record a human decision for the current proposal and retain its original publication permit.",
       "input": {
         "$defs": {
-          "skilllearning.ReviewRef": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -212,7 +227,7 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.Permit": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UGVybWl0": {
             "additionalProperties": false,
             "properties": {
               "decision": {
@@ -245,7 +260,7 @@
       "description": "Record an interaction's original Skill source choices for exact receipt recovery.",
       "input": {
         "$defs": {
-          "skilllearning.Candidate": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl": {
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -265,12 +280,12 @@
             ],
             "type": "object"
           },
-          "skilllearning.Candidates": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRlcw": {
             "additionalProperties": false,
             "properties": {
               "items": {
                 "items": {
-                  "$ref": "#/$defs/skilllearning.Candidate"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl"
                 },
                 "type": "array"
               },
@@ -290,7 +305,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/$defs/skilllearning.Candidate"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl"
             },
             "type": "array"
           },
@@ -306,12 +321,12 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.Catalog": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2F0YWxvZw": {
             "additionalProperties": false,
             "properties": {
               "entries": {
                 "items": {
-                  "$ref": "#/$defs/skilllearning.Choice"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl"
                 },
                 "type": "array"
               }
@@ -321,7 +336,7 @@
             ],
             "type": "object"
           },
-          "skilllearning.Choice": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl": {
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -343,7 +358,7 @@
         "properties": {
           "entries": {
             "items": {
-              "$ref": "#/$defs/skilllearning.Choice"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl"
             },
             "type": "array"
           }
@@ -361,7 +376,7 @@
       "description": "Close the original publication after the authorized filesystem owner confirms publication or a definite precondition conflict.",
       "input": {
         "$defs": {
-          "skilllearning.Permit": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UGVybWl0": {
             "additionalProperties": false,
             "properties": {
               "decision": {
@@ -373,14 +388,14 @@
             ],
             "type": "object"
           },
-          "skilllearning.Publication": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UHVibGljYXRpb24": {
             "additionalProperties": false,
             "properties": {
               "permit": {
-                "$ref": "#/$defs/skilllearning.Permit"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UGVybWl0"
               },
               "proposal": {
-                "$ref": "#/$defs/skilllearning.ReviewRef"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm"
               },
               "published": {
                 "type": "boolean"
@@ -393,7 +408,7 @@
             ],
             "type": "object"
           },
-          "skilllearning.ReviewRef": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -410,10 +425,10 @@
         "additionalProperties": false,
         "properties": {
           "permit": {
-            "$ref": "#/$defs/skilllearning.Permit"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UGVybWl0"
           },
           "proposal": {
-            "$ref": "#/$defs/skilllearning.ReviewRef"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm"
           },
           "published": {
             "type": "boolean"
@@ -440,7 +455,7 @@
       "description": "Select among the host-admitted Skill readers for a human catalog.",
       "input": {
         "$defs": {
-          "skilllearning.Candidate": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl": {
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -460,12 +475,12 @@
             ],
             "type": "object"
           },
-          "skilllearning.Candidates": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRlcw": {
             "additionalProperties": false,
             "properties": {
               "items": {
                 "items": {
-                  "$ref": "#/$defs/skilllearning.Candidate"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl"
                 },
                 "type": "array"
               },
@@ -485,7 +500,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/$defs/skilllearning.Candidate"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2FuZGlkYXRl"
             },
             "type": "array"
           },
@@ -501,12 +516,12 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.Catalog": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2F0YWxvZw": {
             "additionalProperties": false,
             "properties": {
               "entries": {
                 "items": {
-                  "$ref": "#/$defs/skilllearning.Choice"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl"
                 },
                 "type": "array"
               }
@@ -516,7 +531,7 @@
             ],
             "type": "object"
           },
-          "skilllearning.Choice": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl": {
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -538,7 +553,7 @@
         "properties": {
           "entries": {
             "items": {
-              "$ref": "#/$defs/skilllearning.Choice"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.Q2hvaWNl"
             },
             "type": "array"
           }
@@ -556,7 +571,7 @@
       "description": "Stage a reviewed library draft under its immutable originating command.",
       "input": {
         "$defs": {
-          "skilllearning.Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.RHJhZnQ": {
             "additionalProperties": false,
             "properties": {
               "library": {
@@ -575,7 +590,7 @@
                 "type": "string"
               },
               "skill": {
-                "$ref": "#/$defs/skilllearning.Skill"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.U2tpbGw"
               },
               "sourceSession": {
                 "type": "string"
@@ -592,7 +607,7 @@
             ],
             "type": "object"
           },
-          "skilllearning.Skill": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.U2tpbGw": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -632,7 +647,7 @@
             "type": "string"
           },
           "skill": {
-            "$ref": "#/$defs/skilllearning.Skill"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.U2tpbGw"
           },
           "sourceSession": {
             "type": "string"
@@ -651,7 +666,7 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.ReviewRef": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -684,7 +699,7 @@
       "description": "Withdraw an exact pending proposal before approval.",
       "input": {
         "$defs": {
-          "skilllearning.ReviewRef": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -723,7 +738,7 @@
       "description": "List outstanding proposal commands in the admitted libraries, including publications awaiting confirmation.",
       "input": {
         "$defs": {
-          "skilllearning.Libraries": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.TGlicmFyaWVz": {
             "additionalProperties": false,
             "properties": {
               "project": {
@@ -758,12 +773,12 @@
       },
       "output": {
         "$defs": {
-          "skilllearning.Queue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UXVldWU": {
             "additionalProperties": false,
             "properties": {
               "proposals": {
                 "items": {
-                  "$ref": "#/$defs/skilllearning.ReviewRef"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm"
                 },
                 "type": "array"
               }
@@ -773,7 +788,7 @@
             ],
             "type": "object"
           },
-          "skilllearning.ReviewRef": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -791,7 +806,7 @@
         "properties": {
           "proposals": {
             "items": {
-              "$ref": "#/$defs/skilllearning.ReviewRef"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw.UmV2aWV3UmVm"
             },
             "type": "array"
           }

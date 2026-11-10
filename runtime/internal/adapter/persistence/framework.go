@@ -46,36 +46,36 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *fr
 				})
 				return frame.CompactDependencies(dependencies), err
 			},
-		}},
-		ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change frame.InstallationChange) error {
-			return db.withExecutor(ctx, executor, func(ctx context.Context) error {
-				if change.After == nil {
-					if change.Before == nil {
-						return plugin.ErrInvalid
-					}
-					_, err := executor.ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, change.Before.ID)
-					return err
-				}
-				record, err := plugins.DecodeFrameworkConfiguration(*change.After)
-				if err != nil {
-					return err
-				}
-				if change.Before != nil && change.Before.Release == change.After.Release {
-					var staged *string
-					if err := executor.QueryRowContext(ctx, `SELECT staged_digest FROM plugin_installations WHERE id=?`, record.ID.String()).Scan(&staged); err != nil {
+			ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change frame.InstallationChange) error {
+				return db.withExecutor(ctx, executor, func(ctx context.Context) error {
+					if change.After == nil {
+						if change.Before == nil {
+							return plugin.ErrInvalid
+						}
+						_, err := executor.ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, change.Before.ID)
 						return err
 					}
-					if staged != nil {
-						digest, err := framevalue.ParseDigest(*staged)
-						if err != nil {
+					record, err := plugins.DecodeFrameworkConfiguration(*change.After)
+					if err != nil {
+						return err
+					}
+					if change.Before != nil && change.Before.Release == change.After.Release {
+						var staged *string
+						if err := executor.QueryRowContext(ctx, `SELECT staged_digest FROM plugin_installations WHERE id=?`, record.ID.String()).Scan(&staged); err != nil {
 							return err
 						}
-						record.Staged = &digest
+						if staged != nil {
+							digest, err := framevalue.ParseDigest(*staged)
+							if err != nil {
+								return err
+							}
+							record.Staged = &digest
+						}
 					}
-				}
-				return installations.projectRecord(ctx, record)
-			})
-		},
+					return installations.projectRecord(ctx, record)
+				})
+			},
+		}},
 	})
 	if err != nil {
 		if store != nil {

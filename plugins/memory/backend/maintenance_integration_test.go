@@ -11,20 +11,19 @@ import (
 	"testing"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/frame/portable"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // promptModel adapts a prompt-oriented completion to the chat.Model the host
@@ -399,8 +398,8 @@ func memoryContract(t *testing.T) *plugincontract.Capability {
 // The callback fixture supplies the public model exchange. Runtime owns admission
 // and provider budgets; these tests assert Memory's private publication lifetime.
 func openTestModel(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model) (pluginmcp.CallbackRef, func(), error) {
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
-		return model.Call(ctx, command.Input.Clone())
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
+		return model.Call(ctx, (*chat.Request)(&command.Input).Clone())
 	})
 	if err != nil {
 		return pluginmcp.CallbackRef{}, nil, err

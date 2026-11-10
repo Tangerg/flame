@@ -15,16 +15,16 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const inspectedSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -120,7 +120,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 		{"create_pull_request", contracts.CreatePull.Name(), "POST", "/repos/owner/repo/pulls", strings.Replace(pullJSON, `"draft":true`, `"draft":true,"maintainer_can_modify":false`, 1), 201, contractwire.CreatePullInput{Repository: "owner/repo", Title: "New PR", Head: "fork:topic", Base: "main", HeadRepository: new("fork-repo"), Draft: new(false), MaintainerCanModify: new(false)}, `{"title":"New PR","head":"fork:topic","base":"main","head_repo":"fork-repo","draft":false,"maintainer_can_modify":false}`},
 		{"submit_pull_request_review", contracts.SubmitReview.Name(), "POST", "/repos/owner/repo/pulls/42/reviews", submitted, 200, contractwire.SubmitReviewInput{IssueInput: issue, CommitID: inspectedSHA, Event: contractwire.Approve, Body: new("Looks good"), Comments: []contractwire.InlineComment{location}}, `{"commit_id":"` + inspectedSHA + `","event":"APPROVE","body":"Looks good","comments":[{"path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}]}`},
 		{"merge_pull_request", contracts.MergePull.Name(), "PUT", "/repos/owner/repo/pulls/42/merge", `{"sha":"` + mergedSHA + `","merged":true,"message":"Merged"}`, 200, contractwire.MergePullInput{IssueInput: issue, HeadSHA: inspectedSHA, MergeMethod: contractwire.Squash, CommitTitle: new("Squashed"), CommitMessage: new("")}, `{"sha":"` + inspectedSHA + `","merge_method":"squash","commit_title":"Squashed","commit_message":""}`},
-		{"create_pull_request_comment", contracts.CreateReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments", inline, 201, contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, InlineComment: location}, `{"commit_id":"` + inspectedSHA + `","path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}`},
+		{"create_pull_request_comment", contracts.CreateReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments", inline, 201, contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, Comment: location}, `{"commit_id":"` + inspectedSHA + `","path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}`},
 		{"reply_pull_request_comment", contracts.ReplyReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments/32/replies", inline, 201, contractwire.ReplyReviewCommentInput{IssueInput: issue, CommentID: 32, Body: "Thread reply"}, `{"body":"Thread reply"}`},
 		{"update_pull_request_comment", contracts.UpdateReviewComment.Name(), "PATCH", "/repos/owner/repo/pulls/comments/33", inline, 200, contractwire.UpdateCommentInput{CommentInput: inlineID, Body: "Edited review"}, `{"body":"Edited review"}`},
 		{"delete_pull_request_comment", contracts.DeleteReviewComment.Name(), "DELETE", "/repos/owner/repo/pulls/comments/33", "", 204, inlineID, ""},
@@ -132,7 +132,9 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 			transport := roundTrip(func(request *http.Request) (*http.Response, error) {
 				calls++
 				var pending int
-				if err := c.store.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM commands WHERE id=? AND reply IS NULL`, commandID).Scan(&pending); err != nil || pending != 1 {
+				if err := c.store.db.Read(t.Context(), func(reader sqlite.Reader) error {
+					return reader.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM commands WHERE id=? AND reply IS NULL`, commandID).Scan(&pending)
+				}); err != nil || pending != 1 {
 					t.Errorf("HTTP preceded durable admission: pending=%d %v", pending, err)
 				}
 				if request.Method != test.verb || request.URL.String() != apiOrigin+test.path || request.Header.Get("Authorization") != "Bearer "+token || request.Header.Get("X-GitHub-Api-Version") != apiVersion || request.GetBody != nil || request.Header.Get("Idempotency-Key") != "" {
@@ -228,7 +230,10 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			})
 			c, session, close := connectGitHubWrites(t, path, transport, &token)
 			if failure == "commit" {
-				if _, err := c.store.db.ExecContext(t.Context(), `CREATE TRIGGER refuse_settlement BEFORE UPDATE OF reply ON commands WHEN NEW.reply IS NOT NULL BEGIN SELECT RAISE(FAIL,'fixture commit failed'); END`); err != nil {
+				if err := sqlite.RunInTx(t.Context(), c.store.db, func(ctx context.Context) error {
+					_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `CREATE TRIGGER refuse_settlement BEFORE UPDATE OF reply ON commands WHEN NEW.reply IS NOT NULL BEGIN SELECT RAISE(FAIL,'fixture commit failed'); END`)
+					return err
+				}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -244,7 +249,10 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 				t.Fatalf("uncertain request was retried: %d", calls)
 			}
 			if failure == "commit" {
-				if _, err := c.store.db.ExecContext(t.Context(), `DROP TRIGGER refuse_settlement`); err != nil {
+				if err := sqlite.RunInTx(t.Context(), c.store.db, func(ctx context.Context) error {
+					_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DROP TRIGGER refuse_settlement`)
+					return err
+				}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -323,7 +331,9 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 			return upstream(200, issueJSON, http.Header{"Etag": {`"original"`}}), nil
 		}
 		var cached int
-		if err := c.store.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM responses`).Scan(&cached); err != nil || cached != 0 {
+		if err := c.store.db.Read(t.Context(), func(reader sqlite.Reader) error {
+			return reader.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM responses`).Scan(&cached)
+		}); err != nil || cached != 0 {
 			t.Errorf("write left pre-write projections available: %d %v", cached, err)
 		}
 		return nil, errors.New("fixture: response lost")
@@ -374,7 +384,7 @@ func TestConfirmedDeleteSurvivesCancellationBeforeSettlement(t *testing.T) {
 		cancel()
 		return result, err
 	})
-	if err != nil || !deleted.Deleted {
+	if err != nil || deleted.ID != 42 {
 		t.Fatalf("delete = %+v, %v", deleted, err)
 	}
 	close()

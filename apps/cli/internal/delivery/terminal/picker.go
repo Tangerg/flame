@@ -64,9 +64,9 @@ func (p *pickerPointerGesture) cancel() { *p = pickerPointerGesture{} }
 
 func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, label, detail func(T) string, pick func(T)) *picker[T] {
 	p := &picker[T]{theme: theme, glyphs: glyphs, label: label, detail: detail, pick: pick}
-	p.query = kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 1})
-	p.query.Controller().Placeholder = placeholder
-	p.items = &base.Filter[T]{Row: p.row}
+	p.query = kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 1})
+	p.query.Controller().SetPlaceholder(placeholder)
+	p.items = base.NewFilter(base.FilterConfig[T]{Row: p.row})
 	p.query.Controller().Session().Subscribe(func(base.ChangeMap) {
 		p.pointerGesture.cancel()
 		p.items.SetPattern(p.query.Controller().Text())

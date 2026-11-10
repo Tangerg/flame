@@ -153,14 +153,17 @@ func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]p
 			if !owned || !preparation.effectID.Precedes(record.ID) {
 				continue
 			}
-			request, model, err := interaction.ModelRequestFromEffect(record.Effect)
+			intent, model, err := interaction.ModelCallFromEffect(record.Effect)
 			if err != nil {
 				return nil, err
 			}
 			if model {
-				reference, _, err := modelPreparationReference(request.Messages)
+				reference, _, err := modelPreparationReference(intent.Request.Messages)
 				if err != nil {
 					return nil, err
+				}
+				if reference.Sequence != intent.Sequence {
+					return nil, errors.New("execution: settled model differs from its preparation sequence")
 				}
 				models[record.ID] = reference
 			}

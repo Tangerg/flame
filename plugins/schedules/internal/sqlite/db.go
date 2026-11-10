@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
@@ -10,7 +9,7 @@ import (
 	"github.com/Tangerg/frame/sqlite"
 )
 
-func Open(ctx context.Context, path string) (*sql.DB, error) {
+func Open(ctx context.Context, path string) (*sqlite.Database, error) {
 	firstExactInteger := exactint.First().Value()
 	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, manualSchema,
 		pluginstorage.RuntimeTargetSchema,

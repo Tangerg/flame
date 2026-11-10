@@ -8,11 +8,11 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 // ModelCallBudget bounds the complete request, including context, Tools and media.
@@ -67,8 +67,8 @@ func (r ModelCallRequest) Validate() error {
 func SelectedModelMethod() (*pluginmcp.Method[ModelCallRequest, ModelResult], error) {
 	return pluginmcp.NewMethod[ModelCallRequest, ModelResult](portable.MethodConfig{Name: "flame.model/selected-call.v1", Kind: portable.Command, Target: extension.ScopeCall, Description: "Perform one independently selected, budgeted and observed model exchange."})
 }
-func SelectedModelStreamMethod() (*pluginmcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
-	return pluginmcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](portable.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Command, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
+func SelectedModelStreamMethod() (*pluginmcp.StreamingMethod[ModelCallRequest, scopewire.ResponseDelta, ModelResult], error) {
+	return pluginmcp.NewStreamingMethod[ModelCallRequest, scopewire.ResponseDelta, ModelResult](portable.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Command, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
 }
 func CallSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {
@@ -85,14 +85,14 @@ func CallSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id plugin
 	}
 	return modelOutcome(result)
 }
-func StreamSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+func StreamSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error] {
 	method, err := SelectedModelStreamMethod()
 	if err == nil {
 		err = input.Validate()
 	}
 	if err != nil {
-		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
-			yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+		return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error) bool) {
+			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 		}
 	}
 	input.Request = *input.Request.Clone()
@@ -130,16 +130,16 @@ func NewSelectedModelStreamCallback(stream func(context.Context, pluginmcp.Comma
 	if err != nil {
 		return pluginmcp.Callback{}, err
 	}
-	return pluginmcp.NewStreamingCallback(method, func(ctx context.Context, command pluginmcp.Command[ModelCallRequest]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+	return pluginmcp.NewStreamingCallback(method, func(ctx context.Context, command pluginmcp.Command[ModelCallRequest]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error) bool) {
 			if err := command.Input.Validate(); err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			command.Input.Request = *command.Input.Request.Clone()
 			ctx, err := selectedModelCallContext(ctx, string(command.ID))
 			if err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 				return
 			}
 			modelStreamResult(ctx, func() iter.Seq2[*chat.ResponseDelta, error] { return stream(ctx, command) })(yield)

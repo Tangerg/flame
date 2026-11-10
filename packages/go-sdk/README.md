@@ -22,6 +22,7 @@ including in tests and development commands.
 | `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters                   |
 | `plugin/hookprovider`                                                                  | Installed rule sources and original command outcomes                                 |
 | `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                                         |
+| `scopewire`                                                                            | Explicit portable encodings of Scope requests, responses and content                 |
 | `model`                                                                                | Provider/model selection, generation values and token estimates                      |
 | `model/catalog`                                                                        | Translation of Scope's released model catalog                                        |
 | `identity`                                                                             | Shared resource identities, canonical digests and lexical constraints                |
@@ -81,6 +82,17 @@ representation. Protocol consumers validate complete values with
 external mutation. An existing Scope Failure already owns its kind, public
 output and diagnostic cause; the SDK returns it and any boundary wrapping
 unchanged. Execution cancellation remains control rather than model feedback.
+
+`scopewire` declares Scope's complete portable transport shapes with exact JSON
+numbers, base64 byte strings and explicit timestamp codecs. Scope still validates
+message roles, media sources, tool payloads, options and response semantics. The
+adapter checks numeric conversion before entering native model options, accepting
+equivalent spellings such as `0.7` and `7e-1` while refusing input that would round
+to another setting. Opaque provider metadata and tool details retain their original
+JSON. Model callbacks carry `scopewire.Request` and streamed increments carry
+`scopewire.ResponseDelta`; convert them to the corresponding Scope type when
+entering a native model or accumulator. Rebuild consumers and regenerate contracts
+together.
 
 Use the Go version in `go.mod`. From this directory run `GOWORK=off go test ./...`.
 Cross-module regeneration is coordinated from the repository root by

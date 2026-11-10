@@ -9,11 +9,12 @@ import (
 	"os/exec"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
@@ -42,7 +43,7 @@ func TestExecutableUsesThePublicCapturedModelContract(t *testing.T) {
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	callback, err := pluginsdk.NewModelCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+	callback, err := pluginsdk.NewModelCallback(func(_ context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		if command.ID != "executable-model-call" {
 			return nil, errors.New("model identity was replaced")
 		}

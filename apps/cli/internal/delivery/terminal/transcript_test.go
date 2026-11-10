@@ -748,8 +748,8 @@ func TestToolClickRequiresTheReplacementWindowToBePresented(t *testing.T) {
 	root := newSceneTestRoot(t, view.Element())
 	surface := grid.NewSurface(48, 12)
 	root.Draw(surface.View())
-	secondTop, _, visible := view.content.Extent(view.entries[view.toolViews[1].id].nativeID)
-	row := secondTop - view.content.StartRow() - view.scroll.Offset()
+	secondTop, _, visible := view.content.Layout().Extent(view.entries[view.toolViews[1].id].nativeID)
+	row := secondTop - view.content.Layout().StartRow() - view.scroll.Offset()
 	if !visible || row < 0 || row >= 12 {
 		t.Fatalf("second tool header is not visible: top %d row %d", secondTop, row)
 	}
@@ -765,7 +765,7 @@ func TestToolClickRequiresTheReplacementWindowToBePresented(t *testing.T) {
 	}
 	view.selectEntry(view.toolViews[1].id, true)
 	root.Draw(surface.View())
-	top, _, ok := view.content.Extent(view.entries[view.toolViews[1].id].nativeID)
+	top, _, ok := view.content.Layout().Extent(view.entries[view.toolViews[1].id].nativeID)
 	row = top - view.scroll.Offset()
 	if !ok || row < 0 || row >= 12 {
 		t.Fatalf("replacement second header is not visible: top %d row %d", top, row)
@@ -804,7 +804,7 @@ func TestTranscriptResetRetiresCapturedInputAfterTheNewWindowIsPresented(t *test
 	root.Draw(surface.View())
 	oldWindow := view.content
 	oldTarget := oldWindow.Element().Target()
-	press := root.CaptureInput(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseDown, Button: input.ButtonLeft})
+	press := root.CapturePresentedInput(input.Mouse{Pos: image.Pt(0, 0), Action: input.MouseDown, Button: input.ButtonLeft}, root.sequence)
 
 	view.Reset()
 	replacement := appendTestTool(view, "replacement", "REPLACEMENT_DETAIL")
@@ -1077,8 +1077,8 @@ func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID tr
 	root.Draw(surface.View())
 	view.Scroll(scrollPageDown)
 	root.Draw(surface.View())
-	header, _, ok := view.content.Extent(view.entries[toolID].nativeID)
-	if !ok || header >= view.content.StartRow()+view.scroll.Offset() {
+	header, _, ok := view.content.Layout().Extent(view.entries[toolID].nativeID)
+	if !ok || header >= view.content.Layout().StartRow()+view.scroll.Offset() {
 		t.Fatal("test did not scroll below the selected tool header")
 	}
 	return selectedToolViewport{view: view, root: root, surface: surface, header: header}
@@ -1086,7 +1086,7 @@ func scrollBelowSelectedToolHeader(t *testing.T, view *transcriptView, toolID tr
 
 func (s selectedToolViewport) requireHeaderVisible(t *testing.T) {
 	t.Helper()
-	from := s.view.content.StartRow() + s.view.scroll.Offset()
+	from := s.view.content.Layout().StartRow() + s.view.scroll.Offset()
 	if s.header < from || s.header >= from+testTranscriptWindowRows {
 		t.Fatalf("selected header row %d is outside visible range [%d,%d)",
 			s.header, from, from+testTranscriptWindowRows)

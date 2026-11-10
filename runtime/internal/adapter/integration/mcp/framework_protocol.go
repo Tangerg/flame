@@ -105,7 +105,7 @@ func (c *processConnection) Connect(ctx context.Context, channel io.ReadWriteClo
 		if err != nil {
 			return nil, err
 		}
-		values = append(values, frame.ExportValue{Name: export.Name, Contract: export.Contract, Value: binding, Metadata: null, Durable: true})
+		values = append(values, frame.ExportValue{Name: export.Name, Contract: export.Contract, Value: binding, Metadata: null})
 	}
 	return values, nil
 }

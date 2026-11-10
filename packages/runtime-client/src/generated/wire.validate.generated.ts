@@ -1845,7 +1845,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   ListApprovalRulesResult: object({
-    rules: allOf([array(ref(() => CHECKS.ApprovalRule)), maxItems(2048)]),
+    rules: maxItems(2048, array(ref(() => CHECKS.ApprovalRule))),
   }, ["rules"]),
   ListFilesRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
@@ -2219,7 +2219,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     server: ref(() => CHECKS.MCPServerID),
   }, ["modelName", "name", "nameConflicts", "server"]),
   MCPToolExposure: object({
-    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    disabledTools: maxItems(2048, allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), uniqueItems()])),
     server: ref(() => CHECKS.MCPServerID),
   }, ["disabledTools", "server"]),
   MCPTransport: enumOf(["stdio", "streamableHttp"]),
@@ -3488,14 +3488,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["outcome"]),
   Question: object({
     answers: array(array(text())),
-    fields: allOf([array(ref(() => CHECKS.QuestionField)), minItems(1), maxItems(4)]),
+    fields: maxItems(4, allOf([array(ref(() => CHECKS.QuestionField)), minItems(1)])),
   }, ["fields"]),
   QuestionField: allOf([
     object({
       allowCustom: flag(),
       header: allOf([text(), maxLength(12)]),
       multiple: flag(),
-      options: allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2), maxItems(4)]),
+      options: maxItems(4, allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2)])),
       prompt: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.QuestionFieldType),
     }, []),

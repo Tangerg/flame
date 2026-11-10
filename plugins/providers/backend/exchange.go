@@ -1,9 +1,6 @@
 package main
 
 import (
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -13,12 +10,15 @@ import (
 	"strconv"
 	"time"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func execute[P, R any](ctx context.Context, s *store, method string, command pluginmcp.Command[P], validate func(P) error, call func(context.Context, P) (R, func(), error)) (R, error) {
@@ -121,11 +121,11 @@ func (s *store) embed(ctx context.Context, request modelprovider.EmbeddingReques
 	return result, leave, nil
 }
 
-func (s *store) stream(ctx context.Context, method string, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error] {
-	return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error) bool) {
+func (s *store) stream(ctx context.Context, method string, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult], error] {
+	return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult], error) bool) {
 		continuing := true
 		emit := func(delta chat.ResponseDelta) bool {
-			continuing = yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Chunk: &delta}, nil)
+			continuing = yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{Chunk: (*scopewire.ResponseDelta)(&delta)}, nil)
 			return continuing
 		}
 		result, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.ChatResult, func(), error) {
@@ -167,10 +167,10 @@ func (s *store) stream(ctx context.Context, method string, command pluginmcp.Com
 			return
 		}
 		if err != nil {
-			yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{}, err)
+			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{}, err)
 			return
 		}
-		yield(pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult]{Result: &result}, nil)
+		yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{Result: &result}, nil)
 	}
 }
 

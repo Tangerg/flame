@@ -18,10 +18,40 @@ import { providerResource, type ProviderSettings } from "./settings";
 import { EndpointField } from "./endpointField";
 import { CommandFeedback } from "./feedback";
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
+
+function ProviderCredentialBadge({
+  provider,
+  t,
+}: {
+  provider: Provider;
+  t: Translate;
+}) {
+  const credential = provider.credential;
+  if (credential?.source === "env")
+    return (
+      <Badge tone="info" title={credential.masked} face="mono">
+        {t("providers.fromEnv")}
+      </Badge>
+    );
+  if (!provider.configured)
+    return (
+      <Badge tone="neutral" face="mono">
+        {t("providers.notConfigured")}
+      </Badge>
+    );
+  return (
+    <Badge tone="success" face="mono">
+      {credential
+        ? t("providers.key", { masked: credential.masked })
+        : t("providers.ready")}
+    </Badge>
+  );
+}
+
 export function ProviderRow({
   context,
   settings,
-  provider: p,
+  provider,
   t,
 }: {
   context: ComponentContext;
@@ -30,24 +60,25 @@ export function ProviderRow({
   t: Translate;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
-  const draft = state.drafts.get(p.id) ?? ProviderCredentialsDraft.initial();
-  const resource = providerResource(p.id);
+  const draft =
+    state.drafts.get(provider.id) ?? ProviderCredentialsDraft.initial();
+  const resource = providerResource(provider.id);
   const command = state.commands.get(resource);
   const feedback = state.feedback.get(resource);
-  const probing = state.probing.has(p.id);
+  const probing = state.probing.has(provider.id);
   const busy = Boolean(command) || probing;
   const [confirmingClear, setConfirmingClear] = useState(false);
   const feedbackId = useId();
-  const dirty = draft.dirty(p);
-  const error = draft.endpointError(p);
+  const dirty = draft.dirty(provider);
+  const error = draft.endpointError(provider);
   const valid = error === undefined;
-  const fromEnv = p.credential?.source === "env";
+  const fromEnv = provider.credential?.source === "env";
   const describedBy =
     feedback?.kind === "error" || command?.phase === "unknown"
       ? feedbackId
       : undefined;
   const change = (value: ProviderCredentialsDraft) =>
-    settings.edit(context, p, value);
+    settings.edit(context, provider, value);
   return (
     <ListRow>
       <div
@@ -60,20 +91,8 @@ export function ProviderRow({
         }}
       >
         <Icon glyph={Server} size="lg" />
-        <strong style={{ ...literal, flex: "1 1 10rem" }}>{p.id}</strong>
-        <Badge
-          tone={fromEnv ? "info" : p.configured ? "success" : "neutral"}
-          title={fromEnv ? p.credential?.masked : undefined}
-          face="mono"
-        >
-          {fromEnv
-            ? t("providers.fromEnv")
-            : p.configured
-              ? p.credential
-                ? t("providers.key", { masked: p.credential.masked })
-                : t("providers.ready")
-              : t("providers.notConfigured")}
-        </Badge>
+        <strong style={{ ...literal, flex: "1 1 10rem" }}>{provider.id}</strong>
+        <ProviderCredentialBadge provider={provider} t={t} />
       </div>
       <FormRow>
         <FormField label={t("providers.apiKey.label")}>
@@ -81,21 +100,21 @@ export function ProviderRow({
             font="mono"
             type="password"
             autoComplete="off"
-            aria-label={t("providers.apiKey.aria", { provider: p.id })}
+            aria-label={t("providers.apiKey.aria", { provider: provider.id })}
             aria-describedby={describedBy}
             value={draft.apiKey}
             onChange={(event) => change(draft.withAPIKey(event.target.value))}
             placeholder={t(
               fromEnv
                 ? "providers.apiKey.envPlaceholder"
-                : p.credential
+                : provider.credential
                   ? "providers.apiKey.replace"
                   : "providers.apiKey.placeholder",
             )}
           />
         </FormField>
         <EndpointField
-          provider={p}
+          provider={provider}
           draft={draft}
           error={dirty ? error : undefined}
           feedback={describedBy}
@@ -106,7 +125,7 @@ export function ProviderRow({
       <FormActions
         label={t("providers.save")}
         auxiliaryAction={
-          p.credential?.source === "stored" && (
+          provider.credential?.source === "stored" && (
             <Button
               variant="ghost"
               size="sm"
@@ -121,9 +140,9 @@ export function ProviderRow({
         <Button
           variant="outline"
           size="sm"
-          disabled={Boolean(command) || (dirty ? !valid : !p.configured)}
+          disabled={Boolean(command) || (dirty ? !valid : !provider.configured)}
           pending={probing}
-          onClick={() => void settings.test(context, p, draft)}
+          onClick={() => void settings.test(context, provider, draft)}
         >
           {dirty
             ? t("providers.saveAndTest")
@@ -139,7 +158,7 @@ export function ProviderRow({
             feedback?.kind === "saved" || command?.phase === "unknown"
           }
           pending={command?.phase === "running"}
-          onClick={() => void settings.save(context, p, draft)}
+          onClick={() => void settings.save(context, provider, draft)}
         >
           {command?.phase === "running"
             ? t("providers.saving")
@@ -160,7 +179,9 @@ export function ProviderRow({
         open={confirmingClear}
         onOpenChange={setConfirmingClear}
         title={t("providers.apiKey.clear.title")}
-        description={t("providers.apiKey.clear.body", { provider: p.id })}
+        description={t("providers.apiKey.clear.body", {
+          provider: provider.id,
+        })}
         role="alertdialog"
         closeLabel={t("close")}
         footer={
@@ -173,7 +194,7 @@ export function ProviderRow({
               disabled={busy}
               onClick={() => {
                 setConfirmingClear(false);
-                void settings.clearKey(context, p.id);
+                void settings.clearKey(context, provider.id);
               }}
             >
               {t("providers.apiKey.clear")}

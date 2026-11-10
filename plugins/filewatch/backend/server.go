@@ -30,8 +30,8 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (filewatch.Snapshot, error) {
-			return store.configure(ctx, input.ExpectedRevision, input.Trigger)
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
+			return store.prepareConfiguration(ctx, input.ExpectedRevision, input.Trigger)
 		}),
 		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (filewatch.Snapshot, error) {
 			configuration, err := store.configuration(ctx)

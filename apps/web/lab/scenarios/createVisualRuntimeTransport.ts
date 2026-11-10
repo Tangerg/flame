@@ -51,6 +51,41 @@ type VisualMemoryPages = Readonly<
   Record<MemoryInputs["flame.memory/list.v2"]["Scope"], MemoryOutputs["flame.memory/list.v2"]>
 >;
 
+function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPages) {
+  switch (call.method) {
+    case "flame.memory/list.v2": {
+      const input = JSON.parse(call.input ?? "") as Partial<
+        MemoryInputs["flame.memory/list.v2"]
+      > | null;
+      const scope = input?.Scope;
+      if (scope === "project") return { output: JSON.stringify(memoryPages.project) };
+      if (scope === "user") return { output: JSON.stringify(memoryPages.user) };
+      throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
+    }
+    // stringifyJSON keeps bigint tokens exact and an absent cost absent.
+    case "flame.usage-reports/list.v2": {
+      const reports = VISUAL_USAGE_REPORTS.map(({ id, period, observedAt, since }) => ({
+        id,
+        period,
+        observedAt,
+        since,
+      }));
+      return { output: stringifyJSON({ reports }) };
+    }
+    case "flame.usage-reports/get.v1": {
+      const input = JSON.parse(call.input ?? "") as Partial<
+        UsageReportInputs["flame.usage-reports/get.v1"]
+      > | null;
+      const id = input?.id;
+      const report = VISUAL_USAGE_REPORTS.find((candidate) => candidate.id === id);
+      if (!report) throw new Error(`Visual usage reports has no report "${String(id)}"`);
+      return { output: stringifyJSON(report) };
+    }
+    default:
+      throw new Error(`Visual plugin has no response for "${call.method}"`);
+  }
+}
+
 function resultFor(
   request: TransportRequest,
   snapshot: RuntimeAgentSessionSnapshot,
@@ -125,38 +160,8 @@ function resultFor(
       return structuredClone(VISUAL_HOOKS);
     case "runtime.subscribe":
       return {};
-    case "plugins.call": {
-      const call = request.params as CallPluginRequest;
-      if (call.method === "flame.memory/list.v2") {
-        const input = JSON.parse(call.input ?? "") as Partial<
-          MemoryInputs["flame.memory/list.v2"]
-        > | null;
-        const scope = input?.Scope;
-        if (scope === "project") return { output: JSON.stringify(memoryPages.project) };
-        if (scope === "user") return { output: JSON.stringify(memoryPages.user) };
-        throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
-      }
-      // stringifyJSON keeps bigint tokens exact and an absent cost absent.
-      if (call.method === "flame.usage-reports/list.v2") {
-        const reports = VISUAL_USAGE_REPORTS.map(({ id, period, observedAt, since }) => ({
-          id,
-          period,
-          observedAt,
-          since,
-        }));
-        return { output: stringifyJSON({ reports }) };
-      }
-      if (call.method === "flame.usage-reports/get.v1") {
-        const input = JSON.parse(call.input ?? "") as Partial<
-          UsageReportInputs["flame.usage-reports/get.v1"]
-        > | null;
-        const id = input?.id;
-        const report = VISUAL_USAGE_REPORTS.find((candidate) => candidate.id === id);
-        if (!report) throw new Error(`Visual usage reports has no report "${String(id)}"`);
-        return { output: stringifyJSON(report) };
-      }
-      throw new Error(`Visual plugin has no response for "${call.method}"`);
-    }
+    case "plugins.call":
+      return pluginCallResult(request.params as CallPluginRequest, memoryPages);
     default:
       throw new Error(`Visual Runtime has no response for "${request.method}"`);
   }

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
+	"errors"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
@@ -16,13 +18,13 @@ import (
 // work; human edits remain possible while an external model call is pending.
 type maintenancePublication struct {
 	app.CurationStore
-	db      *sql.DB
+	db      *framesqlite.Database
 	command *pluginstorage.PreparedCommand
 }
 
 func (s maintenancePublication) Reconcile(ctx context.Context, publication memory.Publication) (bool, error) {
 	var published bool
-	err := pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
+	err := framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		published, err = s.CurationStore.Reconcile(ctx, publication)
 		if err != nil {
@@ -34,7 +36,10 @@ func (s maintenancePublication) Reconcile(ctx context.Context, publication memor
 		}
 		return s.command.Complete(ctx, reply)
 	})
-	return published, err
+	if err != nil {
+		return false, errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
+	}
+	return published, nil
 }
 
 func maintenanceReply(published bool) ([]byte, error) {

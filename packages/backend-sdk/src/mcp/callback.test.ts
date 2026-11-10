@@ -2,7 +2,13 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import { once } from "node:events";
 import { afterEach, expect, it } from "vitest";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
-import { callHost, decodeReply, Refusal, type Invocation } from "./callback.ts";
+import {
+  callHost,
+  callbackFetch,
+  decodeReply,
+  Refusal,
+  type Invocation,
+} from "./callback.ts";
 import { declareMethod } from "./contract.ts";
 import wire from "./protocol.generated.json";
 
@@ -98,6 +104,58 @@ it("does not invent invocation metadata when none was captured", async () => {
   const fixture = await host({ value: true });
   await callHost(fixture.ref, method, {}, new AbortController().signal);
   expect((await fixture.received).header).toBeUndefined();
+});
+
+it("sends the captured admitted input and callback destination exactly once", async () => {
+  const fixture = await host({ value: true });
+  let reads = 0;
+  let endpoints = 0;
+  const reference = {
+    ...fixture.ref,
+    get endpoint() {
+      endpoints++;
+      return endpoints === 1 ? fixture.ref.endpoint : "http://127.0.0.1:1/";
+    },
+  };
+  await callHost(
+    reference,
+    method,
+    {
+      get value() {
+        reads++;
+        return reads === 1 ? "captured" : "changed after admission";
+      },
+    },
+    new AbortController().signal,
+  );
+  expect(parseJSON((await fixture.received).body)).toMatchObject({
+    input: { value: "captured" },
+  });
+  expect(reads).toBe(1);
+  expect(endpoints).toBe(1);
+});
+
+it("keeps the invocation captured by the callback transport after caller mutation", async () => {
+  const fixture = await host({ value: true });
+  const invocation = {
+    id: "original",
+    origin: "human",
+    target: { scope: "installation", reference: "original-target" },
+  };
+  const fetch = callbackFetch(fixture.ref, invocation);
+  invocation.id = "replacement";
+  invocation.target.reference = "replacement-target";
+  const response = await fetch(fixture.ref.endpoint, {
+    method: "POST",
+    body: "{}",
+  });
+  await response.text();
+  const header = (await fixture.received).header;
+  expect(typeof header).toBe("string");
+  expect(parseJSON(header as string)).toMatchObject({
+    id: "original",
+    target: { reference: "original-target" },
+  });
 });
 
 it.each([

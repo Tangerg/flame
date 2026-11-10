@@ -5,7 +5,6 @@ import {
   parseJSON,
   type CallContext,
   type ReceiptRequest,
-  type MethodDescriptor,
 } from "@flame/backend-sdk/mcp";
 import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import wire from "./protocol.generated.json";
@@ -33,6 +32,6 @@ export function toolReceipts(
     request: ReceiptRequest,
   ) => ToolReceipt | Promise<ToolReceipt>,
 ): void {
-  const method = declareMethod(parseJSON(wire.toolReceipt) as MethodDescriptor);
+  const method = declareMethod(parseJSON(wire.toolReceipt));
   backend.implement(method, decodeReceipt, handler);
 }

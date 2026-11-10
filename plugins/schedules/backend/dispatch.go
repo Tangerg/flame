@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
@@ -19,7 +20,7 @@ type runHost interface {
 
 type runConnector func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error)
 
-func connectRuntime(ctx context.Context, db *sql.DB, connect runConnector) (runHost, func() error, error) {
+func connectRuntime(ctx context.Context, db *framesqlite.Database, connect runConnector) (runHost, func() error, error) {
 	ref, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -40,12 +41,12 @@ func connectRuntime(ctx context.Context, db *sql.DB, connect runConnector) (runH
 
 type dispatchCommit struct {
 	app.DispatchStore
-	db      *sql.DB
+	db      *framesqlite.Database
 	command *pluginstorage.PreparedCommand
 }
 
 func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
-	return pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
+	err := framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		request, err := s.DispatchStore.CapturedRun(ctx, id)
 		if err != nil {
 			return err
@@ -59,4 +60,8 @@ func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
 		}
 		return s.command.Complete(ctx, result.Bytes())
 	})
+	if err != nil {
+		return errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
+	}
+	return nil
 }

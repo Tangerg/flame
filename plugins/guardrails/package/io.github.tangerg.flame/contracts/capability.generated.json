@@ -17,7 +17,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Summary": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4.U3VtbWFyeQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -104,7 +104,7 @@
       "description": "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch.",
       "input": {
         "$defs": {
-          "wire.ReplaceInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC93aXJl.UmVwbGFjZUlucHV0": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -177,7 +177,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Summary": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4.U3VtbWFyeQ": {
             "additionalProperties": false,
             "allOf": [
               {

@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"errors"
 	"log/slog"
 	"sync"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
@@ -31,7 +32,7 @@ type background struct {
 	cancel          context.CancelFunc
 	done            chan struct{}
 	started, closed bool
-	db              *sql.DB
+	db              *framesqlite.Database
 	store           store
 	scanner         *app.Scanner
 	host            runHost
@@ -39,7 +40,7 @@ type background struct {
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, db *sql.DB, store store, scanner *app.Scanner, host runHost, contribution string, target portable.Target, closeHost func() error) *background {
+func newBackground(ctx context.Context, db *framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target portable.Target, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{contribution: contribution, closeDone: make(chan struct{}), ctx: lifetime, cancel: cancel, done: make(chan struct{}), db: db, store: store, scanner: scanner, host: host, target: target, closeHost: closeHost}
 }
@@ -138,7 +139,7 @@ func (b *background) report(stage string, err error) {
 	}
 }
 
-func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, request schedule.RunRequest) (app.RunReference, error) {
+func resumeCaptured(ctx context.Context, db *framesqlite.Database, store store, host runHost, request schedule.RunRequest) (app.RunReference, error) {
 	if err := request.Validate(); err != nil {
 		return app.RunReference{}, err
 	}

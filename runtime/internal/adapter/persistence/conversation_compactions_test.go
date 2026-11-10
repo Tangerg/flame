@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore, *conversationCompactions) {
+func newCompactionFixture(t *testing.T) (*sqlite.Database, *ConversationStore, *RunStore, *conversationCompactions) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -146,12 +145,12 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 		t.Fatalf("twice-compacted Run timeline must remain forkable: %v", err)
 	}
 	var invalid int
-	if err := db.QueryRowContext(t.Context(), `
+	if err := scanFixture(t.Context(), db, `
 		SELECT COUNT(*) FROM runs
 		 WHERE session_id = ? AND state = 'finished'
 		   AND (message_mark < 0 OR message_mark > (
 		       SELECT COUNT(*) FROM messages WHERE conversation_id = ?
-		   ))`, "ses_long", "ses_long").Scan(&invalid); err != nil {
+		   ))`, []any{"ses_long", "ses_long"}, &invalid); err != nil {
 		t.Fatal(err)
 	}
 	if invalid != 0 {
@@ -162,7 +161,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) {
 	db, messages, runs, service := newCompactionFixture(t)
 	before := seedCompactionHistory(t, messages, runs)
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER reject_compaction_mark
+	if _, err := execFixture(t.Context(), db, `CREATE TRIGGER reject_compaction_mark
 		BEFORE UPDATE OF message_mark ON runs
 		BEGIN SELECT RAISE(ABORT, 'injected Run watermark failure'); END`); err != nil {
 		t.Fatal(err)

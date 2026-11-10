@@ -216,7 +216,7 @@ func (t *transcriptView) Draw(frame scene.Frame) {
 				}
 				visible := window.Body.Visible()
 				for row := max(top-window.BodyFrom, visible.Min.Y); row < min(top+height-window.BodyFrom, visible.Max.Y); row++ {
-					window.Body.Text(0, row, t.glyphs.Vertical, style)
+					window.Body.Text(0, row, t.glyphs.Vertical.String(), style)
 				}
 			}
 		}

@@ -26,11 +26,7 @@ func TestMCPServerSchemaRejectsNonCanonicalIdentity(t *testing.T) {
 		strings.Repeat("a", mcpserver.MaximumServerNameCharacters+1),
 	}
 	for _, name := range invalid {
-		if _, err := db.ExecContext(
-			t.Context(),
-			`INSERT INTO mcp_sources (origin, name) VALUES ('user', ?)`,
-			name,
-		); err == nil {
+		if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_sources (origin, name) VALUES ('user', ?)`, name); err == nil {
 			t.Errorf("fresh schema accepted invalid MCP server identity %q", name)
 		}
 	}
@@ -42,30 +38,22 @@ func TestMCPServerExposureSchemaRejectsInvalidIdentityAndSource(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	var source int64
-	if err := db.QueryRowContext(
-		t.Context(),
-		`INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files') RETURNING id`,
-	).Scan(&source); err != nil {
+	inserted, err := execFixture(t.Context(), db, `INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files')`)
+	if err != nil {
 		t.Fatalf("insert server: %v", err)
+	}
+	source, err := inserted.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	invalidNames := []string{"", "with space", "tool/name", "工具", strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)}
 	for _, toolName := range invalidNames {
-		if _, err := db.ExecContext(
-			t.Context(),
-			`INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (?, ?)`,
-			source,
-			toolName,
-		); err == nil {
+		if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (?, ?)`, source, toolName); err == nil {
 			t.Errorf("fresh schema accepted invalid remote tool identity %q", toolName)
 		}
 	}
-	if _, err := db.ExecContext(
-		t.Context(),
-		`INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (?, 'read')`,
-		source+1,
-	); err == nil {
+	if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (?, 'read')`, source+1); err == nil {
 		t.Error("fresh schema accepted an unknown MCP source")
 	}
 }
@@ -80,25 +68,16 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	if _, err := newMCPServerStore(databaseFor(db)).fixtureGrant(t.Context(), testsupport.InstallationID(t), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Connection: mcpserver.StdioConnection{Command: "mcp-server"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(
-		t.Context(),
-		`WITH RECURSIVE sequence(value) AS (
+	if _, err := execFixture(t.Context(), db, `WITH RECURSIVE sequence(value) AS (
 			SELECT 1
 			UNION ALL
 			SELECT value + 1 FROM sequence WHERE value < ?
 		)
 		INSERT INTO mcp_tool_exposure (source_id, tool_name)
-		SELECT (SELECT id FROM mcp_sources WHERE origin = 'user' AND name = ?), 'tool_' || value FROM sequence`,
-		mcpserver.MaxRemoteToolsPerServer,
-		server.String(),
-	); err != nil {
+		SELECT (SELECT id FROM mcp_sources WHERE origin = 'user' AND name = ?), 'tool_' || value FROM sequence`, mcpserver.MaxRemoteToolsPerServer, server.String()); err != nil {
 		t.Fatalf("insert maximum tool policy: %v", err)
 	}
-	if _, err := db.ExecContext(
-		t.Context(),
-		`INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES ((SELECT id FROM mcp_sources WHERE origin = 'user' AND name = ?), 'overflow')`,
-		server.String(),
-	); err == nil {
+	if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES ((SELECT id FROM mcp_sources WHERE origin = 'user' AND name = ?), 'overflow')`, server.String()); err == nil {
 		t.Error("fresh schema accepted more than the MCP tool-policy cardinality limit")
 	}
 }
@@ -155,7 +134,7 @@ func TestMCPTransportGrantsAreBoundToConnectorServerAndExactMaterial(t *testing.
 	if _, err := store.fixtureGrant(t.Context(), owner, s); err == nil {
 		t.Fatal("invalid endpoint admitted")
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE mcp_launch_grants SET material='{"http":{"URL":"file:///etc/passwd"}}' WHERE grant_id=?`, old); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE mcp_launch_grants SET material='{"http":{"URL":"file:///etc/passwd"}}' WHERE grant_id=?`, old); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok, err := store.OpenGrant(t.Context(), owner, s.Name, old); ok || err == nil {

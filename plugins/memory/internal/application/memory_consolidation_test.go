@@ -56,7 +56,7 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 
 func memoryConsolidatorForStore(t *testing.T, memory *sqlite.AgentMemoryStore, replies ...scriptedReply) (*MemoryConsolidator, *scriptedModel) {
 	t.Helper()
-	memoryCuration, err := NewCuration(CurationConfig{Store: memory})
+	memoryCuration, err := NewCuration(memory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,8 +85,8 @@ func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T
 			defer func() { _ = db.Close() }()
 			store := sqlite.NewAgentMemoryStore(db)
 			first, _ := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact A"}, scriptedReply{text: "- fact A"})
-			if err := first.Consolidate(t.Context(), "ses_first", "/repo"); err != nil {
-				t.Fatal(err)
+			if published, err := first.Consolidate(t.Context(), "ses_first", "/repo"); err != nil || !published {
+				t.Fatalf("publication = %t, %v", published, err)
 			}
 			before, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 			if err != nil || len(before) != 1 || before[0].Status() != agentmemory.StatusPending {
@@ -104,8 +104,8 @@ func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T
 				store = sqlite.NewAgentMemoryStore(db)
 			}
 			second, model := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact B"}, scriptedReply{text: "- fact A\n- fact B"})
-			if err := second.Consolidate(t.Context(), "ses_second", "/repo"); err != nil {
-				t.Fatal(err)
+			if published, err := second.Consolidate(t.Context(), "ses_second", "/repo"); err != nil || !published {
+				t.Fatalf("publication = %t, %v", published, err)
 			}
 			if len(model.requests) != 2 || !strings.Contains(model.requests[1].UserPrompt, "CURRENT CURATED MEMORY\n---\n- fact A\n") {
 				t.Fatalf("curation omitted unreviewed predecessor: %+v", model.requests)
@@ -145,8 +145,8 @@ func TestConsolidatorPreservesProposalsOmittedByTheModelInputBudget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := consolidator.Consolidate(t.Context(), "ses_next", "/repo"); err != nil {
-		t.Fatal(err)
+	if published, err := consolidator.Consolidate(t.Context(), "ses_next", "/repo"); err != nil || !published {
+		t.Fatalf("publication = %t, %v", published, err)
 	}
 	if len(model.requests) != 2 {
 		t.Fatalf("model calls: %d", len(model.requests))
@@ -209,8 +209,8 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 		scriptedReply{text: "- use make test\n- prefer concise errors"},
 		scriptedReply{text: "- Run `make test`.\n- Prefer concise errors."},
 	)
-	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil {
-		t.Fatal(err)
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil || !published {
+		t.Fatalf("publication = %t, %v", published, err)
 	}
 	state, err := memory.State(t.Context(), "/repo")
 	if err != nil || state.Watermark == 0 {
@@ -251,6 +251,18 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 	}
 }
 
+func TestMemoryConsolidatorEmptyBacklogDoesNotReportPublication(t *testing.T) {
+	consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: noExtractedFacts})
+	published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo")
+	if err != nil || published {
+		t.Fatalf("empty backlog publication = %t, %v", published, err)
+	}
+	state, err := memory.State(t.Context(), "/repo")
+	if err != nil || state.Watermark != 0 || len(model.requests) != 1 {
+		t.Fatalf("empty backlog created a generation: state=%+v, requests=%d, error=%v", state, len(model.requests), err)
+	}
+}
+
 func TestBoundedLedgerPrefixNeverSkipsPastOmittedFact(t *testing.T) {
 	facts := []agentmemory.LedgerFact{
 		{Sequence: 41, Day: "2026-08-24", Content: strings.Repeat("a", 20)},
@@ -271,7 +283,7 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 		scriptedReply{err: providerFailure},
 		scriptedReply{text: "- durable fact"},
 	)
-	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); !errors.Is(err, providerFailure) {
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || !errors.Is(err, providerFailure) {
 		t.Fatalf("first extraction error = %v", err)
 	}
 	state, err := memory.State(t.Context(), "/repo")
@@ -287,8 +299,8 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 	}
 
 	consolidator.minMsgs = 100
-	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil {
-		t.Fatal(err)
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil || !published {
+		t.Fatalf("publication = %t, %v", published, err)
 	}
 	state, _ = memory.State(t.Context(), "/repo")
 	items, _ := memory.List(t.Context(), agentmemory.ScopeProject, "/repo")
@@ -301,7 +313,7 @@ func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *tes
 	for _, malformed := range []string{"", "Here are the facts:\n- durable fact", "```markdown\n- durable fact\n```"} {
 		t.Run("extraction="+malformed, func(t *testing.T) {
 			consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: malformed})
-			if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil {
+			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil {
 				t.Fatal("malformed extraction was accepted")
 			}
 			pending, err := memory.PendingLedger(t.Context(), "/repo", 0, 10)
@@ -313,7 +325,7 @@ func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *tes
 			consolidator, memory, _ := memoryConsolidationFixture(t,
 				scriptedReply{text: "- durable fact"}, scriptedReply{text: malformed},
 			)
-			if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil {
+			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil {
 				t.Fatal("malformed curation was accepted")
 			}
 			state, err := memory.State(t.Context(), "/repo")
@@ -356,7 +368,7 @@ func TestMemoryConsolidatorDoesNotAdvanceWatermarkForOversizedCuration(t *testin
 		scriptedReply{text: strings.Repeat("界", 20)},
 	)
 	consolidator.policy.maxTokens = 10
-	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil || !strings.Contains(err.Error(), "limit is 10") {
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil || !strings.Contains(err.Error(), "limit is 10") {
 		t.Fatalf("oversized curation error = %v", err)
 	}
 	state, err := memory.State(t.Context(), "/repo")

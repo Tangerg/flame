@@ -211,8 +211,7 @@ export class Archive {
     const method = this.#commands.get(row.method);
     if (!method)
       throw new Error("usage reports: stored command method is not published");
-    const input = parseJSON(row.input);
-    method.validateInput(input);
+    const input = method.admitInput(parseJSON(row.input));
     if (canonicalJSON(input) !== row.input || digestJSON(input) !== row.digest)
       throw new Error("usage reports: corrupt original command evidence");
     if (row.reply !== null) {
@@ -233,8 +232,7 @@ export class Archive {
     if (canonicalJSON(reply) !== raw)
       throw new Error("usage reports: corrupt original outcome");
     try {
-      const output = decodeReply(reply);
-      method.validateOutput(output);
+      const output = method.admitOutput(decodeReply(reply));
       if (method === this.#capture) admitHeader(output);
       else if (output !== true)
         throw new Error("usage reports: invalid saved removal outcome");
@@ -256,8 +254,7 @@ export class Archive {
     const id = context.commandId;
     if (!validCommand(id))
       throw new Error("usage reports: original command is required");
-    const input = parseJSON(context.requestInput);
-    method.validateInput(input);
+    const input = method.admitInput(parseJSON(context.requestInput));
     if (
       canonicalJSON(input) !== context.requestInput ||
       digestJSON(input) !== context.inputDigest
@@ -347,7 +344,7 @@ export class Archive {
         return this.#settle(this.#capture, context, {
           failure: { code: refusal.code, message: refusal.message },
         });
-      this.#get.validateOutput({ ...header(snapshot), summary: value });
+      this.#get.admitOutput({ ...header(snapshot), summary: value });
       this.#db
         .prepare("INSERT INTO reports(id,snapshot) VALUES(?,?)")
         .run(snapshot.id, canonicalJSON(snapshot));
@@ -389,7 +386,7 @@ export class Archive {
       throw new Error(
         "usage reports: saved report differs from its settlement",
       );
-    this.#get.validateOutput({ ...projected, summary: snapshot.value });
+    this.#get.admitOutput({ ...projected, summary: snapshot.value });
     return { snapshot: snapshot as Snapshot, header: projected };
   }
   read(id: string): RecordValue {

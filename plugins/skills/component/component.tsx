@@ -44,6 +44,67 @@ function catalogSummary(
     ? t(`summary.matching.${target}`, { matching, count })
     : t(`summary.${target}`, { count });
 }
+
+function SkillReadStatus({
+  opened,
+  read,
+  snapshot,
+  skillDocument,
+  title,
+  observationError,
+  t,
+}: Pick<
+  ReturnType<typeof useSkills>,
+  | "opened"
+  | "read"
+  | "snapshot"
+  | "skillDocument"
+  | "title"
+  | "observationError"
+  | "t"
+>) {
+  return (
+    <>
+      {!opened && read.loading && <p role="status">{t("reading")}</p>}
+      {!opened && read.error && (
+        <p role="alert">
+          {t("read.error", {
+            catalog: title.toLocaleLowerCase(),
+            error: read.error,
+          })}
+          {snapshot && ` ${t("read.retained")}`}
+        </p>
+      )}
+      {opened?.loading && (
+        <p role="status">{t("document.reading", { name: opened.name })}</p>
+      )}
+      {opened?.error && (
+        <p role="alert">
+          {skillDocument
+            ? t("document.error.refresh", {
+                name: opened.name,
+                error: opened.error,
+              })
+            : t("document.error.read", {
+                name: opened.name,
+                error: opened.error,
+              })}
+        </p>
+      )}
+      {opened?.error && skillDocument && (
+        <Metadata role="status">
+          {t("document.retained", { name: opened.name })}
+        </Metadata>
+      )}
+      {observationError && (
+        <p role="alert">
+          {t("observation.error", { error: observationError })}
+        </p>
+      )}
+    </>
+  );
+}
+
 export function Skills({ context }: { context: ComponentContext }) {
   const {
     t,
@@ -205,42 +266,15 @@ export function Skills({ context }: { context: ComponentContext }) {
         )
       }
     >
-      {!opened && read.loading && <p role="status">{t("reading")}</p>}
-      {!opened && read.error && (
-        <p role="alert">
-          {t("read.error", {
-            catalog: title.toLocaleLowerCase(),
-            error: read.error,
-          })}
-          {snapshot && ` ${t("read.retained")}`}
-        </p>
-      )}
-      {opened?.loading && (
-        <p role="status">{t("document.reading", { name: opened.name })}</p>
-      )}
-      {opened?.error && (
-        <p role="alert">
-          {skillDocument
-            ? t("document.error.refresh", {
-                name: opened.name,
-                error: opened.error,
-              })
-            : t("document.error.read", {
-                name: opened.name,
-                error: opened.error,
-              })}
-        </p>
-      )}
-      {opened?.error && skillDocument && (
-        <Metadata role="status">
-          {t("document.retained", { name: opened.name })}
-        </Metadata>
-      )}
-      {observationError && (
-        <p role="alert">
-          {t("observation.error", { error: observationError })}
-        </p>
-      )}
+      <SkillReadStatus
+        opened={opened}
+        read={read}
+        snapshot={snapshot}
+        skillDocument={skillDocument}
+        title={title}
+        observationError={observationError}
+        t={t}
+      />
       {feedbackRow === undefined && feedback}
       {review && (
         <RecordForm

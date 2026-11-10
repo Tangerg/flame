@@ -86,8 +86,8 @@ export async function buildComponent({ input, directory, compiler }) {
     const emitted = await bundle.write({
       dir: directory,
       format: "esm",
+      codeSplitting: false,
       entryFileNames: "component.js",
-      chunkFileNames: "[name]-[hash].js",
       assetFileNames: "[name]-[hash][extname]",
       minify: true,
     });

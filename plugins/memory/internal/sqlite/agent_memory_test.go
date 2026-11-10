@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
@@ -312,10 +315,9 @@ func TestAgentMemorySchemaRejectsInvalidDomainVocabulary(t *testing.T) {
 		{name: "user pending", scope: "user", origin: "user", status: "pending"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := db.Exec(`INSERT INTO agent_memory_items(
+			_, err := execDatabase(t.Context(), db, `INSERT INTO agent_memory_items(
 				id, scope, project, content, digest, origin, status, created_at, updated_at, revision
-) VALUES (?, ?, '/repo', 'fact', ?, ?, ?, 1, 1, 1)`,
-				storedAgentMemoryItemID(index).String(), test.scope, "digest_"+test.name, test.origin, test.status)
+) VALUES (?, ?, '/repo', 'fact', ?, ?, ?, 1, 1, 1)`, storedAgentMemoryItemID(index).String(), test.scope, "digest_"+test.name, test.origin, test.status)
 			if err == nil {
 				t.Fatal("invalid agent-memory row was accepted")
 			}
@@ -338,7 +340,7 @@ func TestAgentMemorySchemaRejectsNonCanonicalItemIdentity(t *testing.T) {
 		agentmemory.ItemIDPrefix + strings.Repeat("g", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
 	}
 	for index, id := range invalidIDs {
-		if _, err := db.Exec(`INSERT INTO agent_memory_items(
+		if _, err := execDatabase(t.Context(), db, `INSERT INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
 ) VALUES (?, 'project', '/repo', 'fact', ?, 'user', 'active', 1, 1, 1)`, id, fmt.Sprintf("digest_%d", index)); err == nil {
 			t.Fatalf("non-canonical agent-memory identity %q was persisted", id)
@@ -354,12 +356,12 @@ func TestAgentMemorySchemaRejectsContentBeyondDomainBound(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	oversized := strings.Repeat("界", agentmemory.MaxContentCharacters+1)
-	if _, err := db.Exec(`INSERT INTO agent_memory_items(
+	if _, err := execDatabase(t.Context(), db, `INSERT INTO agent_memory_items(
 		id, scope, project, content, digest, origin, status, created_at, updated_at, revision
 ) VALUES (?, 'project', '/repo', ?, 'digest', 'user', 'active', 1, 1, 1)`, storedAgentMemoryItemID(0).String(), oversized); err == nil {
 		t.Fatal("agent memory item beyond the Domain bound was persisted")
 	}
-	if _, err := db.Exec(`INSERT INTO agent_memory_ledger(
+	if _, err := execDatabase(t.Context(), db, `INSERT INTO agent_memory_ledger(
 		project, day, session_id, fact, digest, captured_at
 	) VALUES ('/repo', '2026-08-24', 'session', ?, 'digest', 1)`, oversized); err == nil {
 		t.Fatal("agent memory ledger fact beyond the Domain bound was persisted")
@@ -624,21 +626,19 @@ func TestAgentMemoryListRejectsCorruptOverfullTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	tx, err := db.BeginTx(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for index := range 513 {
-		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
+	if err := framesqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		for index := range agentmemory.MaxVisiblePerTarget + 1 {
+			_, err = framesqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
 ) VALUES (?, 'project', '/repo', ?, ?, 'user', 'active', 1, 1, 1)`,
-			storedAgentMemoryItemID(index).String(), fmt.Sprintf("memory %d", index), fmt.Sprintf("digest_%d", index))
-		if err != nil {
-			_ = tx.Rollback()
-			t.Fatal(err)
+				storedAgentMemoryItemID(index).String(), fmt.Sprintf("memory %d", index), fmt.Sprintf("digest_%d", index))
+			if err != nil {
+				return err
+			}
 		}
-	}
-	if err := tx.Commit(); err != nil {
+
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	store := NewAgentMemoryStore(db)
@@ -694,30 +694,27 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	tx, err := db.BeginTx(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for index := range maximumRejected {
-		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
+	newID := storedAgentMemoryItemID(maximumRejected)
+	if err := framesqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		for index := range maximumRejected {
+			_, err = framesqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
 ) VALUES (?, 'project', '/repo', ?, ?, 'auto', 'rejected', 1, ?, 1)`,
-			storedAgentMemoryItemID(index).String(), fmt.Sprintf("old rejection %d", index),
-			fmt.Sprintf("old_digest_%d", index), index+1)
-		if err != nil {
-			_ = tx.Rollback()
-			t.Fatal(err)
+				storedAgentMemoryItemID(index).String(), fmt.Sprintf("old rejection %d", index),
+				fmt.Sprintf("old_digest_%d", index), index+1)
+			if err != nil {
+				return err
+			}
 		}
-	}
-	newID := storedAgentMemoryItemID(maximumRejected)
-	_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
+		_, err = framesqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO agent_memory_items(
 		id, scope, project, content, digest, origin, status, created_at, updated_at, revision
 ) VALUES (?, 'project', '/repo', 'new rejection', 'new_digest', 'auto', 'pending', 1, 1, 1)`, newID.String())
-	if err != nil {
-		_ = tx.Rollback()
-		t.Fatal(err)
-	}
-	if err := tx.Commit(); err != nil {
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	store := NewAgentMemoryStore(db)
@@ -728,16 +725,16 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 		t.Fatal(err)
 	}
 	var rejected int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM agent_memory_items
-		WHERE scope = 'project' AND project = '/repo' AND status = 'rejected'`).Scan(&rejected); err != nil {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM agent_memory_items
+		WHERE scope = 'project' AND project = '/repo' AND status = 'rejected'`, nil, &rejected); err != nil {
 		t.Fatal(err)
 	}
 	if rejected != maximumRejected {
 		t.Fatalf("rejected tombstones = %d, want %d", rejected, maximumRejected)
 	}
 	var preserved int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM agent_memory_items
-		WHERE id = ? AND status = 'rejected'`, newID.String()).Scan(&preserved); err != nil || preserved != 1 {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM agent_memory_items
+		WHERE id = ? AND status = 'rejected'`, []any{newID.String()}, &preserved); err != nil || preserved != 1 {
 		t.Fatalf("new rejection preserved = %d, err=%v", preserved, err)
 	}
 }

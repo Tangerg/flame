@@ -832,7 +832,7 @@ keep their formats. The Core wire epoch is unchanged.
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
 admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
-per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.1.0/sqlite/README.md).
+per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.2.0/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
 `framemcp.ErrInvocationConflict` classifies changed original method/input under
 one invocation identity. Host replay retention and execution lifecycle remain

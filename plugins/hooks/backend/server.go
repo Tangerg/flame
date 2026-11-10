@@ -9,19 +9,19 @@ import (
 	"fmt"
 	"time"
 
-	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 )
 
-func newServer(db *sql.DB) (*sdk.Server, error) {
+func newServer(db *sqlite.Database) (*sdk.Server, error) {
 	if db == nil {
 		return nil, errors.New("hooks: private command store is required")
 	}
@@ -60,7 +60,7 @@ func newServer(db *sql.DB) (*sdk.Server, error) {
 	return server, nil
 }
 
-func evaluateEvent(ctx context.Context, db *sql.DB, method string, command pluginmcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
+func evaluateEvent(ctx context.Context, db *sqlite.Database, method string, command pluginmcp.Command[hookprovider.Evaluation]) (hookprovider.Advice, error) {
 	input, err := command.RequestInput()
 	if err != nil {
 		return hookprovider.Advice{}, err
@@ -106,7 +106,7 @@ func evaluateEvent(ctx context.Context, db *sql.DB, method string, command plugi
 
 type eventCommands struct {
 	reconcileOnly bool
-	db            *sql.DB
+	db            *sqlite.Database
 	eventID       pluginmcp.CommandID
 	uncertain     error
 }

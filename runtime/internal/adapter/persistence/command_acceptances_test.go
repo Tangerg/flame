@@ -103,7 +103,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		t.Fatalf("reopened record = %+v, want the original opening with live material", record)
 	}
 
-	if _, err := reopened.ExecContext(ctx, `DELETE FROM runs WHERE run_id = ?`, acceptance.RunID); err != nil {
+	if _, err := execFixture(ctx, reopened, `DELETE FROM runs WHERE run_id = ?`, acceptance.RunID); err != nil {
 		t.Fatalf("delete run material: %v", err)
 	}
 	retired, err := store.Lookup(ctx, acceptance.Key)
@@ -140,10 +140,8 @@ func TestCommandAcceptanceLookupReportsForeignOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := db.ExecContext(ctx,
-		`INSERT INTO idempotency_records(key, kind, fingerprint, payload, expires_at)
-		 VALUES ('cancel-once', 'response', 'fp', x'00', 9999999999)`,
-	); err != nil {
+	if _, err := execFixture(ctx, db, `INSERT INTO idempotency_records(key, kind, fingerprint, payload, expires_at)
+		 VALUES ('cancel-once', 'response', 'fp', x'00', 9999999999)`); err != nil {
 		t.Fatalf("seed generic response: %v", err)
 	}
 	record, err := newCommandAcceptanceStore(databaseFor(db)).Lookup(ctx, "cancel-once")

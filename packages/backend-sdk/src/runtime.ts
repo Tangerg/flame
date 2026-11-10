@@ -7,7 +7,6 @@ import {
 } from "@flame/runtime-client";
 import { HTTP_ENDPOINTS } from "@flame/runtime-client/wire";
 import { callbackFetch, callbackRef } from "@flame/backend-sdk/mcp/callback";
-import { freezeJSON } from "@flame/backend-sdk/mcp/contract";
 import type {
   CallContext,
   Invocation,
@@ -54,6 +53,6 @@ export async function runtime(
     throw new Error(
       "plugin: host protocol differs from the published Flame client",
     );
-  capabilities = freezeJSON(discovery.capabilities);
+  capabilities = discovery.capabilities;
   return client;
 }

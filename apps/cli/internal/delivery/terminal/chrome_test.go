@@ -269,7 +269,7 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
 	status := newStatusView(theme, glyphs)
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
 	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, authoredPrompt)
 
@@ -298,8 +298,8 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
-	composer.Controller().Keys = bindings.editor
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().SetKeys(bindings.editor)
 	composer.Controller().SetText("TINY_DRAFT")
 	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs), authoredPrompt)
@@ -339,8 +339,8 @@ func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
 	prompts := newQueueView(theme, glyphs)
 	prompts.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{Message: authoring.Message{Text: "HIDDEN_QUEUE"}}}})
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
-	composer.Controller().Keys = bindings.editor
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().SetKeys(bindings.editor)
 	composer.Controller().SetText("VISIBLE_DRAFT")
 	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(header, transcript, activity, prompts, newStatusView(theme, glyphs), authoredPrompt)
@@ -366,8 +366,8 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
-	composer.Controller().Keys = bindings.editor
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer.Controller().SetKeys(bindings.editor)
 	composer.Controller().SetText("PRESERVED_DRAFT")
 	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(
@@ -405,7 +405,7 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6})
+	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
 	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
 	shell := newShellView(
 		newSessionHeader(theme, glyphs, conversation.Session{}), transcript,

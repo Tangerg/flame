@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"maps"
 	"slices"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
@@ -15,7 +16,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func registerDiscovery(server *pluginmcp.Backend, db *sql.DB) error {
+func registerDiscovery(server *pluginmcp.Backend, db *framesqlite.Database) error {
 	discover, err := skilllearning.DiscoverMethod()
 	if err != nil {
 		return err
@@ -27,8 +28,8 @@ func registerDiscovery(server *pluginmcp.Backend, db *sql.DB) error {
 	return errors.Join(discover.RegisterServer(server, nil, func(_ context.Context, _ *sdk.ServerSession, c pluginmcp.Command[skilllearning.Candidates]) (skilllearning.Catalog, error) {
 		return selectSources(c.Input), nil
 	}),
-		storage.RegisterCommand(server, db, capture, nil, func(_ context.Context, _ *sdk.ServerSession, c skilllearning.Candidates) (skilllearning.Catalog, error) {
-			return selectSources(c), nil
+		storage.RegisterCommand(server, db, capture, nil, func(_ context.Context, _ *sdk.ServerSession, c skilllearning.Candidates) (storage.CommandPlan[skilllearning.Catalog], error) {
+			return storage.NewCommandPlan(selectSources(c), nil)
 		}))
 }
 func sourceRank(scope skill.Scope) int {

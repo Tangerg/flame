@@ -53,6 +53,7 @@ import {
   useActiveSessionWorkspace,
 } from "@/features/agent/public/session";
 import {
+  type WorkspaceFileContent,
   useWorkspaceListFiles,
   useWorkspaceReadFile,
 } from "@/features/workspace/application/workspaceQueries";
@@ -348,6 +349,18 @@ function FilePreviewMode({
   );
 }
 
+function FileReadSummary({ file, partial }: { file: WorkspaceFileContent; partial: boolean }) {
+  const t = useT();
+  return (
+    <span>
+      {partial
+        ? t("file.range", { start: file.startLine, end: file.endLine, total: file.totalLines })
+        : t("file.lines", { count: file.totalLines })}
+      {file.truncated && ` · ${t("file.truncated")}`}
+    </span>
+  );
+}
+
 function FilePreview({
   viewer,
   backRef,
@@ -480,12 +493,7 @@ function FilePreview({
 
   const sub =
     data && !unsupported ? (
-      <span>
-        {moreBefore || moreAfter
-          ? t("file.range", { start: firstShown, end: lastShown, total: data.totalLines })
-          : t("file.lines", { count: data.totalLines })}
-        {data.truncated && ` · ${t("file.truncated")}`}
-      </span>
+      <FileReadSummary file={data} partial={moreBefore || moreAfter} />
     ) : undefined;
 
   return (

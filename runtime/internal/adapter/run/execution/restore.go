@@ -186,7 +186,7 @@ func (i *interactionSession) restoreDelegateCalls(
 	calls := make(map[delegateCallIdentity]*managedDelegateCall)
 	children := make(map[scoperun.ProcessID]*managedDelegateCall)
 	for _, program := range deployments.interactions {
-		attributions, err := interaction.DelegateAttributions(program, history)
+		attributions, err := program.history.DelegateAttributions(history)
 		if err != nil {
 			return nil, nil, err
 		}

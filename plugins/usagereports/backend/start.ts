@@ -2,12 +2,7 @@ import manifest from "../package/plugin.json" with { type: "json" };
 import { runtime } from "@flame/backend-sdk";
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import {
-  Backend,
-  Capability,
-  parseJSON,
-  type CapabilityDescriptor,
-} from "@flame/backend-sdk/mcp";
+import { Backend, Capability, parseJSON } from "@flame/backend-sdk/mcp";
 import { Archive } from "./archive";
 
 const root = process.env.PLUGIN_ROOT;
@@ -22,7 +17,7 @@ const contract = new Capability(
       join(root, "io.github.tangerg.flame/contracts/capability.generated.json"),
       "utf8",
     ),
-  ) as CapabilityDescriptor,
+  ),
 );
 const backend = new Backend({ name: manifest.name, version: manifest.version });
 let archive: Archive;

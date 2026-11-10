@@ -8,9 +8,12 @@ import type {
   Tool,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  ToolSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { parseJSON } from "@frame/sdk/json";
+import { isJSONNumber, parseJSON } from "@frame/sdk/json";
 import {
   Lifetime,
   FrameError,
@@ -30,7 +33,6 @@ import {
   freezeJSON,
   validCommand,
   validToken,
-  type MethodDescriptor,
 } from "./contract.ts";
 import {
   callbackRef,
@@ -53,20 +55,20 @@ export interface CallContext {
   defer(cleanup: () => void | Release | Promise<void | Release>): Cleanup;
 }
 export interface SetupBinding {
-  installationId: string;
-  digest: string;
-  contribution: string;
-  contract: import("./contract.ts").CapabilityDescriptor;
+  readonly installationId: string;
+  readonly digest: string;
+  readonly contribution: string;
+  readonly contract: import("./contract.ts").CapabilityDescriptor;
 }
 export interface SetupContribution {
-  id: string;
-  export: string;
-  background?: Invocation["target"];
-  requires: Array<{
-    id: string;
-    contract: import("./contract.ts").CapabilityDescriptor;
-    optional: boolean;
-    bindings: SetupBinding[];
+  readonly id: string;
+  readonly export: string;
+  readonly background?: Invocation["target"];
+  readonly requires: ReadonlyArray<{
+    readonly id: string;
+    readonly contract: import("./contract.ts").CapabilityDescriptor;
+    readonly optional: boolean;
+    readonly bindings: readonly SetupBinding[];
   }>;
 }
 function validateRequirements(
@@ -162,8 +164,8 @@ export class Backend {
     string,
     {
       descriptor: Tool;
-      validate: (input: unknown) => void;
-      validateOutput?: (output: unknown) => void;
+      admitInput: (input: unknown) => unknown;
+      admitOutput?: (output: unknown) => unknown;
       handler: (
         context: CallContext,
         input: unknown,
@@ -202,8 +204,7 @@ export class Backend {
       exactFields(params, ["name"], ["arguments", "_meta"]);
       const tool = this.#tools.get(params.name as string);
       if (!tool) throw new Error("plugin: tool is not published");
-      const input = freezeJSON(params.arguments ?? {});
-      tool.validate(input);
+      const input = tool.admitInput(params.arguments ?? {});
       const call = this.#call(extra.signal);
       try {
         const context = this.#context({ input, _meta: params._meta }, call);
@@ -223,9 +224,13 @@ export class Backend {
             cause,
           });
         }
-        CallToolResultSchema.parse(output);
-        if (tool.validateOutput) tool.validateOutput(output.structuredContent);
-        return output;
+        const captured = CallToolResultSchema.parse(freezeJSON(output));
+        if (tool.admitOutput && !captured.isError)
+          return CallToolResultSchema.parse({
+            ...captured,
+            structuredContent: tool.admitOutput(captured.structuredContent),
+          });
+        return captured;
       } finally {
         await closeOwned(call);
       }
@@ -253,7 +258,7 @@ export class Backend {
       if (params.commandId !== undefined)
         throw new Error("plugin: validation cannot carry a command identity");
       try {
-        this.#decode(bound, params.input);
+        this.#decode(bound, bound.method.admitInput(params.input));
         return { value: "" };
       } catch {
         return { value: "plugin: input is not structurally admitted" };
@@ -261,13 +266,10 @@ export class Backend {
     });
     this.#receive(wire.constants.invokeMethod!, async (params, extra) => {
       const bound = this.#resolve(params);
-      if (
-        bound.method.descriptor.kind === "command"
-          ? !validCommand(params.commandId)
-          : params.commandId !== undefined
-      )
-        throw new Error("plugin: invalid command identity for method kind");
-      const input = this.#decode(bound, params.input);
+      const input = this.#decode(
+        bound,
+        bound.method.admitInvocation(params.input, params.commandId),
+      );
       const call = this.#call(extra.signal);
       try {
         const context = this.#context(
@@ -297,8 +299,7 @@ export class Backend {
             cause: error,
           });
         }
-        bound.method.validateOutput(value);
-        return { value };
+        return { value: bound.method.admitOutput(value) };
       } finally {
         await closeOwned(call);
       }
@@ -308,9 +309,7 @@ export class Backend {
       this.#protocol(params);
       if (this.#setupResult || !Array.isArray(params.contributions))
         throw new Error("plugin: setup is invalid or already supplied");
-      const contributions = freezeJSON(
-        params.contributions,
-      ) as SetupContribution[];
+      const contributions: unknown = freezeJSON(params.contributions);
       this.#validateSetup(contributions);
       const metadata = this.#metadata(params);
       const ref =
@@ -434,16 +433,19 @@ export class Backend {
       throw new Error("plugin: capability member requires its export");
     return bound;
   }
-  #decode(bound: BoundMethod, input: unknown): unknown {
-    const frozen = freezeJSON(input);
-    bound.method.validateInput(frozen);
-    return bound.decode(frozen, canonicalJSON(frozen));
+  #decode(bound: BoundMethod, admitted: unknown): unknown {
+    return bound.decode(admitted, canonicalJSON(admitted));
   }
   #metadata(params: Record<string, unknown>): Record<string, unknown> {
-    const meta = params._meta ?? {};
-    if (meta === null || typeof meta !== "object" || Array.isArray(meta))
+    const meta: unknown = freezeJSON(params._meta ?? {});
+    if (
+      meta === null ||
+      typeof meta !== "object" ||
+      Array.isArray(meta) ||
+      isJSONNumber(meta)
+    )
       throw new Error("plugin: metadata must be an object");
-    return freezeJSON(meta as Record<string, unknown>);
+    return meta as Record<string, unknown>;
   }
   #context(
     params: Record<string, unknown>,
@@ -487,7 +489,11 @@ export class Backend {
         owner.cleanup(cleanup),
     });
   }
-  #validateSetup(contributions: SetupContribution[]): void {
+  #validateSetup(
+    contributions: unknown,
+  ): asserts contributions is readonly SetupContribution[] {
+    if (!Array.isArray(contributions))
+      throw new Error("plugin: setup contributions must be an array");
     const ids = new Set<string>();
     for (const value of contributions) {
       exactFields(value, ["id", "export", "requires"], ["background"]);
@@ -495,6 +501,7 @@ export class Backend {
         typeof value.id !== "string" ||
         !validToken(value.id) ||
         ids.has(value.id) ||
+        typeof value.export !== "string" ||
         !this.#capabilities.has(value.export) ||
         !Array.isArray(value.requires)
       )
@@ -528,7 +535,7 @@ export class Backend {
     decode: Decoder<P>,
     handler: (context: CallContext, input: P) => R | Promise<R>,
   ): void {
-    if (method.validateChunk)
+    if (method.admitChunk)
       throw new Error(
         "plugin: streaming method requires streaming implementation",
       );
@@ -546,7 +553,7 @@ export class Backend {
       input: P,
     ) => AsyncIterable<StreamFrame<C, R>>,
   ): void {
-    if (!method.validateChunk)
+    if (!method.admitChunk)
       throw new Error("plugin: unary method requires unary implementation");
     this.#register({
       method,
@@ -565,7 +572,7 @@ export class Backend {
       request: ReceiptRequest,
     ) => unknown | Promise<unknown>,
   ): void {
-    const method = declareMethod(parseJSON(wire.receipt) as MethodDescriptor);
+    const method = declareMethod(parseJSON(wire.receipt));
     this.#register({
       method,
       decode: decodeReceipt,
@@ -584,21 +591,20 @@ export class Backend {
       input: unknown,
     ) => CallToolResult | Promise<CallToolResult>,
   ): void {
-    if (this.#published || !descriptor.name || this.#tools.has(descriptor.name))
+    const captured = ToolSchema.parse(freezeJSON(descriptor));
+    if (this.#published || !captured.name || this.#tools.has(captured.name))
       throw new Error("plugin: duplicate or frozen tool registration");
     const validation = declareMethod({
-      name: descriptor.name,
-      description: descriptor.description ?? "",
+      name: captured.name,
+      description: captured.description ?? "",
       kind: "query",
-      input: descriptor.inputSchema,
-      output: descriptor.outputSchema ?? true,
+      input: captured.inputSchema,
+      output: captured.outputSchema ?? true,
     });
-    this.#tools.set(descriptor.name, {
-      descriptor: freezeJSON(descriptor),
-      validate: validation.validateInput,
-      validateOutput: descriptor.outputSchema
-        ? validation.validateOutput
-        : undefined,
+    this.#tools.set(captured.name, {
+      descriptor: captured,
+      admitInput: validation.admitInput,
+      admitOutput: captured.outputSchema ? validation.admitOutput : undefined,
       handler,
     });
   }
@@ -653,17 +659,16 @@ export class Backend {
       if (final)
         throw new Error("plugin: stream continued after its final result");
       if (frame.kind === "result") {
-        bound.method.validateOutput(frame.value);
-        final = { value: freezeJSON(frame.value) };
+        final = { value: bound.method.admitOutput(frame.value) };
       } else if (frame.kind === "chunk") {
-        bound.method.validateChunk!(frame.value);
+        const value = bound.method.admitChunk!(frame.value);
         if (sequence === 18446744073709551615n)
           throw new Error("plugin: stream sequence exhausted");
         sequence++;
         const acknowledged = await callHost(
           ref,
           streamDelivery,
-          { sequence, value: frame.value },
+          { sequence, value },
           context.signal,
           context.invocation,
           randomUUID(),

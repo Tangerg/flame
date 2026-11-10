@@ -28,7 +28,7 @@ type toolGroupBlock struct {
 
 var (
 	_ base.Block           = (*toolGroupBlock)(nil)
-	_ base.TextProjector   = (*toolGroupBlock)(nil)
+	_ text.Projector       = (*toolGroupBlock)(nil)
 	_ toolDisclosure       = (*toolGroupBlock)(nil)
 	_ readerDocumentSource = (*toolGroupBlock)(nil)
 )
@@ -118,7 +118,7 @@ func (t *toolGroupBlock) Draw(view grid.View) {
 	}
 	toggle, label, status, statusStyle := t.header()
 	for row := range min(t.HeightForWidth(width)-1, height) {
-		view.Text(0, row, t.glyphs.Vertical, statusStyle)
+		view.Text(0, row, t.glyphs.Vertical.String(), statusStyle)
 	}
 	toggleStyle := t.theme.Muted
 	if t.Expanded() {

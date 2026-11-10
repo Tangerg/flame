@@ -49,8 +49,10 @@ source-qualified Memory Tools to that exact generation. Closing a component cann
 `list_memories` pages through active and pending items in the current project or
 the shared user scope. `add_memory`, `update_memory`, `delete_memory` and
 `review_memory` enter the same application and domain owners as human commands.
-Writes require the user's corresponding intent. Item mutations carry the scope
-and observed revision; project scope always resolves the captured Run workspace,
+Writes require the user's corresponding intent. Update and review compose an
+`item` object containing scope, ID and observed revision with their change fields;
+delete consumes that same item object directly. The item contract alone owns its
+revision bound. Item mutations carry the scope and observed revision; project scope always resolves the captured Run workspace,
 and a model cannot supply a different workspace path. User memory remains shared.
 The original Tool JSON, result or business refusal commits in the same private
 receipt database as the mutation. Read-only recovery returns that original
@@ -100,9 +102,12 @@ rechecks source/configuration/session authority and cancellation; refusal releas
 the grant without calling the backend. Every dispatched call releases its grant
 after settlement, including a failed or missing reply.
 
-Human commands commit their mutation and reply in one private transaction. Known
-business refusals roll back mutation and commit the refusal receipt in that same
-transaction; unexpected failures leave no invented receipt. A same-key redelivery
+Human commands prepare an immutable management mutation inside a Frame read
+lease, then apply it and commit its reply in the same private transaction. Known
+business refusals are decided while writes are prohibited and commit only their
+receipt. Unexpected write failures roll back both business changes and receipt;
+they cannot be reclassified as known refusals. The management mutation determines
+whether a change is needed; a separate notification flag does not own that fact. A same-key redelivery
 returns the original reply; changing the method or input is an idempotency conflict.
 Runtime retains immutable installation, release, method and input routing before
 dispatch, and stores no competing business outcome. An unresolved command pins
@@ -295,7 +300,9 @@ Memory workflow.
 
 ## Feature boundary
 
-Business changes expose a local `OnChange` signal within the caller's current
-write-set. The transport owns publication after its private transaction commits;
-no Core invalidation record or resource enum enters the feature application.
-Failed writes and losing curation comparisons cannot emit a successful change.
+Management prepares an immutable item and its persistence operation before the
+transport admits the reply. Curation returns the winning publication directly
+from the store; there is no parallel callback flag. The transport owns publication
+after its private transaction commits, and no Core invalidation record or resource
+enum enters the feature application. Failed writes and losing curation comparisons
+cannot emit a successful change.

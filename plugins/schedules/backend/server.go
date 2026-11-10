@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"io"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
@@ -29,7 +30,7 @@ type store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
+func registerServer(server *sdk.Server, db *framesqlite.Database, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
 	if connect == nil {
 		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
@@ -85,17 +86,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 			}
 			return wire.Page{Rows: rows, NextCursor: page.NextCursor}, err
 		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Create, classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (schedule.Snapshot, error) {
-			value, err := coordinator.Create(ctx, input)
-			return value.Snapshot(), err
-		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.UpdateInput) (schedule.Snapshot, error) {
-			value, err := coordinator.Update(ctx, app.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: app.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, TimeZone: input.TimeZone, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
-			return value.Snapshot(), err
-		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ItemInput) (wire.Ack, error) {
-			return wire.Ack{}, coordinator.Delete(ctx, input.ID)
-		}),
+		registerManagementCommands(backend, db, contracts, coordinator),
 		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
 			return runNow(ctx, db, store, connect, command)
 		}),
@@ -143,7 +134,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 
 type toolCommands struct {
 	coordinator *app.Coordinator
-	db          *sql.DB
+	db          *framesqlite.Database
 	store       store
 	connect     runConnector
 }
@@ -160,13 +151,16 @@ func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, admitted, classify, func(ctx context.Context, input createScheduleArgs) (schedule.Snapshot, error) {
+	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, admitted, classify, func(ctx context.Context, input createScheduleArgs) (pluginstorage.CommandPlan[schedule.Snapshot], error) {
 		draft, err := input.draft(timezone.Host)
 		if err != nil {
-			return schedule.Snapshot{}, err
+			return pluginstorage.CommandPlan[schedule.Snapshot]{}, err
 		}
-		value, err := t.coordinator.Create(ctx, draft)
-		return value.Snapshot(), err
+		mutation, err := t.coordinator.PrepareCreate(ctx, draft)
+		if err != nil {
+			return pluginstorage.CommandPlan[schedule.Snapshot]{}, err
+		}
+		return pluginstorage.NewCommandPlan(mutation.State().Snapshot(), mutation.Apply)
 	})
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
@@ -182,9 +176,12 @@ func (t toolCommands) Update(ctx context.Context, _ updateScheduleArgs) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	value, err := pluginstorage.Command(ctx, t.db, wire.Update, id, admitted, classify, func(ctx context.Context, input updateScheduleArgs) (schedule.Snapshot, error) {
-		value, err := t.coordinator.Update(ctx, input.command())
-		return value.Snapshot(), err
+	value, err := pluginstorage.Command(ctx, t.db, wire.Update, id, admitted, classify, func(ctx context.Context, input updateScheduleArgs) (pluginstorage.CommandPlan[schedule.Snapshot], error) {
+		mutation, err := t.coordinator.PrepareUpdate(ctx, input.command())
+		if err != nil {
+			return pluginstorage.CommandPlan[schedule.Snapshot]{}, err
+		}
+		return pluginstorage.NewCommandPlan(mutation.State().Snapshot(), mutation.Apply)
 	})
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
@@ -214,8 +211,12 @@ func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) error {
 	if err != nil {
 		return err
 	}
-	_, err = pluginstorage.Command(ctx, t.db, wire.Delete, invocation, admitted, classify, func(ctx context.Context, input deleteScheduleArgs) (wire.Ack, error) {
-		return wire.Ack{}, t.coordinator.Delete(ctx, input.ScheduleID)
+	_, err = pluginstorage.Command(ctx, t.db, wire.Delete, invocation, admitted, classify, func(ctx context.Context, input deleteScheduleArgs) (pluginstorage.CommandPlan[wire.Ack], error) {
+		apply, err := t.coordinator.PrepareDelete(ctx, input.ScheduleID)
+		if err != nil {
+			return pluginstorage.CommandPlan[wire.Ack]{}, err
+		}
+		return pluginstorage.NewCommandPlan(wire.Ack{}, apply)
 	})
 	return decodeError(err)
 }

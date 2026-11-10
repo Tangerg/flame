@@ -1,11 +1,10 @@
 import { createElement, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import { Lifetime, Service, FrameError, defineUnit, sameContract } from "@frame/sdk";
+import { Lifetime, Service, FrameError, defineUnit, sameContract, type Cleanup } from "@frame/sdk";
 import { parseJSON } from "@frame/sdk/json";
 import { ControlPump, HTTPControl, RealmModules, Runtime, type Use } from "@frame/sdk/browser";
 import { type ObjectRef, type PlannedUnit } from "@frame/sdk/protocol";
 import { type FlameClient, type MutationPromise } from "@flame/runtime-client";
 import {
-  HTTP_ENDPOINTS,
   type PluginBrowserSession,
   type PluginClientComponent,
   type PluginInstallation,
@@ -59,7 +58,6 @@ export class ComponentModules {
   readonly #modules = new RealmModules((unit, signal) => this.#openArtifact(unit, signal));
   readonly #wrap: (children: ReactNode) => ReactNode;
   #client?: FlameClient;
-  #endpoint = "";
   #generation?: object;
   #session?: PluginBrowserSession;
   #runtime?: Runtime;
@@ -90,7 +88,6 @@ export class ComponentModules {
     if (this.#generation === generation && this.#runtime) return;
     const previousClient = this.#client;
     this.#client = client;
-    this.#endpoint = endpoint;
     this.#connection = this.#bootstrap
       .run(async (signal) => {
         this.#runtime?.disconnect();
@@ -219,44 +216,36 @@ export class ComponentModules {
 
   async #openArtifact(unit: PlannedUnit, signal: AbortSignal) {
     const client = this.#client;
-    const endpoint = this.#endpoint;
     const configuration = parseJSON(unit.configurationJson) as { component?: { id?: unknown } };
     if (!client || typeof configuration.component?.id !== "string" || !configuration.component.id)
       throw new FrameError("invalid_plan", "component execution has no Flame artifact source");
-    const resources = await client.plugins.openResources(
-      {
-        installationId: unit.instance.source.installationId,
-        digest: unit.instance.source.release,
-        componentId: configuration.component.id,
-      },
+    const request = {
+      installationId: unit.instance.source.installationId,
+      digest: unit.instance.source.release,
+      componentId: configuration.component.id,
+    };
+    const resource = await client.plugins.readResource(
+      { ...request, path: unit.module.path },
       signal,
     );
-    if (resources.result.entry !== unit.module.path) {
-      await resources.close();
-      throw new FrameError(
-        "contract_mismatch",
-        "leased component path differs from the approved artifact",
-      );
-    }
-    const route = HTTP_ENDPOINTS.pluginResources.path
-      .replace("{lease}", encodeURIComponent(resources.result.token))
-      .replace("*", resources.result.entry.split("/").map(encodeURIComponent).join("/"));
-    // The authenticated Flame artifact owner checks the exact release and entry.
-    // The browser lease projects that same approved content identity.
+    const bytes = Uint8Array.from(atob(resource.body), (character) => character.charCodeAt(0));
+    // Read before acquiring the lease so a failed read cannot strand an unreturned resource.
+    // Frame hashes and evaluates these same captured bytes after lease admission.
+    const resources = await client.plugins.openResources(request, signal);
     let ended = false;
+    let release: Cleanup | undefined;
     void resources.closed.then(
       () => {
         ended = true;
+        release?.confirmReleased("original component resource subscription closed");
       },
-      () => {
-        ended = true;
-      },
+      () => {},
     );
     return {
-      url: `${endpoint.replace(/\/+$/, "")}${route}`,
-      digest: unit.module.digest,
+      bytes,
       closed: resources.closed,
-      async close() {
+      async close(released: Cleanup) {
+        release = released;
         try {
           await resources.close();
         } catch (error) {

@@ -19,21 +19,15 @@ type CurationStore interface {
 	GenerationItems(ctx context.Context, project string) ([]domain.Item, error)
 }
 
-type CurationConfig struct {
-	Store    CurationStore
-	OnChange func()
-}
-
 type Curation struct {
-	store    CurationStore
-	onChange func()
+	store CurationStore
 }
 
-func NewCuration(cfg CurationConfig) (*Curation, error) {
-	if lo.IsNil(cfg.Store) {
+func NewCuration(store CurationStore) (*Curation, error) {
+	if lo.IsNil(store) {
 		return nil, errors.New("agentmemory: curation store is required")
 	}
-	return &Curation{store: cfg.Store, onChange: cfg.OnChange}, nil
+	return &Curation{store: store}, nil
 }
 
 func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
@@ -68,11 +62,6 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 	published, err := c.store.Reconcile(ctx, publication)
 	if err != nil {
 		return false, err
-	}
-	if published {
-		if c.onChange != nil {
-			c.onChange()
-		}
 	}
 	return published, nil
 }

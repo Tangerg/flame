@@ -289,7 +289,7 @@ func (p *interruptPrompts) buildQuestionFields(response *questionResponse) ([]ba
 
 func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) base.Field {
 	field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
-	field.Clipboard = p.clipboard
+	field.SetClipboard(p.clipboard)
 	return field
 }
 

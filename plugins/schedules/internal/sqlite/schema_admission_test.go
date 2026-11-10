@@ -13,17 +13,10 @@ func TestFormerUnboundRuntimeSchemaIsRefusedWithoutChangingCapturedWork(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{
+	alterClosedDatabase(t, db, path,
 		`DROP TABLE runtime_target`,
 		`INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','schedules.dispatch','{"runId":"run_original"}',NULL)`,
-	} {
-		if _, err := db.ExecContext(t.Context(), statement); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
+	)
 	if reopened, err := Open(t.Context(), path); err == nil {
 		_ = reopened.Close()
 		t.Fatal("former unbound private database was admitted")
@@ -52,19 +45,12 @@ func TestFormerManualCaptureWithoutCommandOwnerIsRefusedWithoutConversion(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{
+	alterClosedDatabase(t, db, path,
 		`DROP TRIGGER immutable_manual_request`,
 		`DROP TABLE manual_firings`,
 		`CREATE TABLE manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)), state TEXT NOT NULL CHECK(state IN ('pending','accepted')))`,
 		`INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES('run_original','{"Invocation":{"ID":"original"}}','pending')`,
-	} {
-		if _, err := db.ExecContext(t.Context(), statement); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
+	)
 	if reopened, err := Open(t.Context(), path); err == nil {
 		_ = reopened.Close()
 		t.Fatal("manual schema without a receipt command was admitted")
@@ -89,15 +75,10 @@ func TestFormerCallContextInputIsRefusedWithoutChangingPrivateEvidence(t *testin
 		t.Fatal(err)
 	}
 	const input = `{"Grant":{"Credential":"former-call-context"},"captured":true}`
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','dispatch',?,NULL)`, input); err != nil {
+	if _, err := execDatabase(t.Context(), db, `INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','dispatch',?,NULL)`, input); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `ALTER TABLE commands RENAME COLUMN business_input_json TO input_json`); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
+	alterClosedDatabase(t, db, path, `ALTER TABLE commands RENAME COLUMN business_input_json TO input_json`)
 	if current, err := Open(t.Context(), path); err == nil {
 		_ = current.Close()
 		t.Fatal("former call-context input was admitted as business-only input")

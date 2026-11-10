@@ -29,7 +29,7 @@ func TestScheduleRevisionRequiresExactPositiveInteger(t *testing.T) {
 			if err != nil {
 				t.Fatalf("seed valid Schedule: %v", err)
 			}
-			result, err := db.ExecContext(t.Context(), `UPDATE schedules SET revision = ? WHERE id = ?`, test.revision, created.ID())
+			result, err := execDatabase(t.Context(), db, `UPDATE schedules SET revision = ? WHERE id = ?`, test.revision, created.ID())
 			want := test.revision
 			if test.rejected {
 				failure, ok := errors.AsType[*sqlitedriver.Error](err)

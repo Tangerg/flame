@@ -51,7 +51,7 @@ func TestProviderStoreUsesNullForAbsentConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var key, baseURL sql.NullString
-	if err := db.QueryRowContext(t.Context(), `SELECT api_key, base_url FROM providers WHERE id = ?`, "openai").Scan(&key, &baseURL); err != nil {
+	if err := scanFixture(t.Context(), db, `SELECT api_key, base_url FROM providers WHERE id = ?`, []any{"openai"}, &key, &baseURL); err != nil {
 		t.Fatal(err)
 	}
 	if key.Valid || baseURL.Valid {

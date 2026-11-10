@@ -326,10 +326,12 @@ receipt recovery; the former Core Schedule facades are removed without aliases.
 
 ## Feature boundary
 
-Business changes expose a local `OnChange` signal within the caller's current
-write-set. The transport owns publication after its private transaction commits;
-no Core invalidation record or resource enum enters the feature application.
-Failed writes and losing curation comparisons cannot emit a successful change.
+Management commands decide their new Schedule under Frame's read-only lease and
+return the exact state with its persistence operation. The original transaction
+applies that decision and stores its receipt atomically. Preparation cannot write,
+and write failures cannot become business refusals. The transport publishes only
+after the private commit; the application maintains no parallel `OnChange` flag
+or Core invalidation record.
 
 Schedule identity parsing, the `sch_` namespace and occurrence framing belong to
 this backend. Core no longer exports a Schedule identity type or Go/TS prefix;

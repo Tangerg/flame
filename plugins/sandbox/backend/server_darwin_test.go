@@ -10,16 +10,15 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
-	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 )
 
 func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T) {
@@ -90,7 +89,10 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	if err != nil || stored != typed {
 		t.Fatalf("Tool recovery changed completed output: %s %v", stored.String(), err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply=json_set(reply,'$.value.status','invalid') WHERE id='tool:model'`); err != nil {
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE commands SET reply=json_set(reply,'$.value.status','invalid') WHERE id='tool:model'`)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model", executeTool, encoded); err == nil || calls != 1 {

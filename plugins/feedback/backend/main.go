@@ -14,7 +14,7 @@ import (
 func run(ctx context.Context, data string) (returned error) {
 	db, err := sqlite.OpenSchema(ctx, filepath.Join(data, "commands.db"), []string{pluginstorage.CommandsSchema})
 	if err != nil {
-		return err
+		return errors.Join(err, db.Close())
 	}
 	defer func() { returned = errors.Join(returned, db.Close()) }()
 	server, err := newServer(db)

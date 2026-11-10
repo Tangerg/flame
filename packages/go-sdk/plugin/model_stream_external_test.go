@@ -10,11 +10,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
@@ -34,7 +35,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 				t.Fatal(err)
 			}
 			if value.Chunk != nil {
-				if err := accumulated.Add(value.Chunk); err != nil {
+				if err := accumulated.Add((*chat.ResponseDelta)(value.Chunk)); err != nil {
 					t.Fatal(err)
 				}
 			} else {
@@ -89,11 +90,11 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 	}
 	order := []chat.StreamMiddleware{prefix("first "), prefix("second ")}
 	remaining := chat.WrapStream(base, order...)
-	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		if command.ID != "frozen-model-call" {
 			return func(yield func(*chat.ResponseDelta, error) bool) { yield(nil, errors.New("call identity replaced")) }
 		}
-		return remaining.Stream(ctx, &command.Input)
+		return remaining.Stream(ctx, (*chat.Request)(&command.Input))
 	})
 	if err != nil {
 		t.Fatal(err)

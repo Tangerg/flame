@@ -17,17 +17,17 @@
       },
       "output": {
         "$defs": {
-          "contract.Analysis": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.QW5hbHlzaXM": {
             "additionalProperties": false,
             "properties": {
               "findings": {
                 "items": {
-                  "$ref": "#/$defs/contract.Finding"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw"
                 },
                 "type": "array"
               },
               "review": {
-                "$ref": "#/$defs/contract.Snapshot"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
               }
             },
             "required": [
@@ -36,7 +36,7 @@
             ],
             "type": "object"
           },
-          "contract.Finding": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw": {
             "additionalProperties": false,
             "properties": {
               "code": {
@@ -66,7 +66,7 @@
             ],
             "type": "object"
           },
-          "contract.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -110,12 +110,12 @@
         "properties": {
           "findings": {
             "items": {
-              "$ref": "#/$defs/contract.Finding"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw"
             },
             "type": "array"
           },
           "review": {
-            "$ref": "#/$defs/contract.Snapshot"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
           }
         },
         "required": [
@@ -138,12 +138,12 @@
       },
       "output": {
         "$defs": {
-          "contract.ListResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.TGlzdFJlc3VsdA": {
             "additionalProperties": false,
             "properties": {
               "reviews": {
                 "items": {
-                  "$ref": "#/$defs/contract.Snapshot"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
                 },
                 "type": "array"
               }
@@ -153,7 +153,7 @@
             ],
             "type": "object"
           },
-          "contract.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -197,7 +197,7 @@
         "properties": {
           "reviews": {
             "items": {
-              "$ref": "#/$defs/contract.Snapshot"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
             },
             "type": "array"
           }
@@ -215,7 +215,7 @@
       "description": "Change one review's status using its inspected revision.",
       "input": {
         "$defs": {
-          "contract.Update": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.VXBkYXRl": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -304,7 +304,7 @@
       },
       "output": {
         "$defs": {
-          "contract.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -342,11 +342,11 @@
             ],
             "type": "object"
           },
-          "contract.UpdateResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.VXBkYXRlUmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "review": {
-                "$ref": "#/$defs/contract.Snapshot"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
               },
               "type": {
                 "allOf": [
@@ -374,7 +374,7 @@
         "additionalProperties": false,
         "properties": {
           "review": {
-            "$ref": "#/$defs/contract.Snapshot"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q"
           },
           "type": {
             "allOf": [

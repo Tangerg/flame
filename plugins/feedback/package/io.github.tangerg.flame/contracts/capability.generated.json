@@ -11,7 +11,7 @@
       "description": "Prepare the immutable quality observation for this command and retain its original decision.",
       "input": {
         "$defs": {
-          "extension.ContributionSource": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24.Q29udHJpYnV0aW9uU291cmNl": {
             "additionalProperties": false,
             "properties": {
               "contribution": {
@@ -31,7 +31,7 @@
             ],
             "type": "object"
           },
-          "extension.FeedbackDraft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24.RmVlZGJhY2tEcmFmdA": {
             "additionalProperties": false,
             "properties": {
               "itemId": {
@@ -47,7 +47,7 @@
                 "type": "string"
               },
               "source": {
-                "$ref": "#/$defs/extension.ContributionSource"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24.Q29udHJpYnV0aW9uU291cmNl"
               },
               "text": {
                 "type": "string"
@@ -72,7 +72,7 @@
             "type": "string"
           },
           "source": {
-            "$ref": "#/$defs/extension.ContributionSource"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24.Q29udHJpYnV0aW9uU291cmNl"
           },
           "text": {
             "type": "string"
@@ -82,7 +82,7 @@
       },
       "output": {
         "$defs": {
-          "plugin.FeedbackSignal": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4.RmVlZGJhY2tTaWduYWw": {
             "additionalProperties": false,
             "properties": {
               "rating": {

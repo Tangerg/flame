@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
@@ -110,7 +113,10 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `DELETE FROM policy`); err != nil {
+	if err := sqlite.RunInTx(t.Context(), store.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, store.db).ExecContext(ctx, `DELETE FROM policy`)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	store.db.Close()

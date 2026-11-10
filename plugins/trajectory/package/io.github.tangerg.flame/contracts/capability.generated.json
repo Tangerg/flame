@@ -11,7 +11,7 @@
       "description": "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity.",
       "input": {
         "$defs": {
-          "plugin.DocumentIdentity": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4.RG9jdW1lbnRJZGVudGl0eQ": {
             "additionalProperties": false,
             "properties": {
               "bytes": {
@@ -58,7 +58,7 @@
       },
       "output": {
         "$defs": {
-          "plugin.DocumentIdentity": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4.RG9jdW1lbnRJZGVudGl0eQ": {
             "additionalProperties": false,
             "properties": {
               "bytes": {

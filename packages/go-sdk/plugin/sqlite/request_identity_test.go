@@ -39,9 +39,11 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := RegisterCommand(binding, db, method, nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
-			_, err := Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
-			return "saved", err
+		if err := RegisterCommand(binding, db, method, nil, func(context.Context, *sdk.ServerSession, input) (CommandPlan[string], error) {
+			return NewCommandPlan("saved", func(ctx context.Context) error {
+				_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
+				return err
+			})
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -115,10 +117,10 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	}
 	var count int
 	var admitted string
-	if err := db.QueryRowContext(t.Context(), `SELECT value FROM counter`).Scan(&count); err != nil || count != 1 {
+	if err := scanDatabase(t.Context(), db, `SELECT value FROM counter`, nil, &count); err != nil || count != 1 {
 		t.Fatalf("recovery or conflicting input repeated mutation: %d, %v", count, err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id='original'`).Scan(&admitted); err != nil || admitted != `{"n":1.0,"z":"same"}` {
+	if err := scanDatabase(t.Context(), db, `SELECT business_input_json FROM commands WHERE id='original'`, nil, &admitted); err != nil || admitted != `{"n":1.0,"z":"same"}` {
 		t.Fatalf("private owner replaced raw request: %s, %v", admitted, err)
 	}
 }
@@ -134,7 +136,9 @@ func TestReceiptRegistrationRequiresACommandMethod(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, method := range []*pluginmcp.Method[struct{}, string]{nil, query} {
-		if err := RegisterCommand(backend, nil, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (string, error) { return "unexpected", nil }); err == nil {
+		if err := RegisterCommand(backend, nil, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (CommandPlan[string], error) {
+			return NewCommandPlan("unexpected", nil)
+		}); err == nil {
 			t.Fatal("receipt registration accepted a non-command method")
 		}
 	}
@@ -172,4 +176,52 @@ func mustNumber(t *testing.T, lexeme string) framevalue.Number {
 		t.Fatal(err)
 	}
 	return number
+}
+
+func TestRegisteredCommandValidatesPublishedOutputBeforeItsMutation(t *testing.T) {
+	type result struct {
+		Value int `json:"value" jsonschema:"minimum=1"`
+	}
+	db, _ := commandDatabase(t)
+	method, err := pluginmcp.NewMethod[string, result](portable.MethodConfig{
+		Name: "bounded.update", Kind: portable.Command, Target: "installation", Description: "Commit a positive value.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := sdk.NewServer(&sdk.Implementation{Name: "output-owner"}, nil)
+	backend, err := pluginmcp.NewBackend(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := RegisterCommand(backend, db, method, func(error) (string, bool) { return "refused", true }, func(context.Context, *sdk.ServerSession, string) (CommandPlan[result], error) {
+		return NewCommandPlan(result{Value: 0}, func(ctx context.Context) error {
+			_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=1`)
+			return err
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := backend.Publish(); err != nil {
+		t.Fatal(err)
+	}
+	client := sdk.NewClient(&sdk.Implementation{Name: "output-caller"}, nil)
+	if err := pluginmcp.RegisterClient(client); err != nil {
+		t.Fatal(err)
+	}
+	left, right := sdk.NewInMemoryTransports()
+	owner, err := server.Connect(t.Context(), left, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	session, err := client.Connect(t.Context(), right, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	if _, err := method.CallCommand(t.Context(), session, "original", "input"); err == nil {
+		t.Fatal("invalid published result was accepted")
+	}
+	assertCommandState(t, db, 0, 0)
 }

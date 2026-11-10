@@ -160,12 +160,12 @@ type terminalAppearance struct {
 
 func newTerminalAppearance(loop *program.Runtime) terminalAppearance {
 	ground := loop.Environment().Ground()
-	style := highlight.Style("github-dark")
+	scheme := highlight.Scheme("github-dark")
 	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
-		style = "github"
+		scheme = "github"
 	}
 	return terminalAppearance{
-		theme: kit.Suited(ground), glyphs: kit.GlyphsFor(loop.Environment().Locale()), syntax: highlight.New(style),
+		theme: kit.Suited(ground), glyphs: kit.GlyphsFor(loop.Environment().Locale()), syntax: highlight.New(scheme),
 	}
 }
 
@@ -331,7 +331,7 @@ func (a *app) setProgress(progress term.Progress) {
 
 func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
 	a.composer.Composer = kit.NewComposer(kit.ComposerConfig{
-		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ", MaxRows: 6,
+		Theme: appearance.theme, Glyphs: appearance.glyphs, Prompt: appearance.glyphs.Marker + " ", MaxRows: 6,
 		Placeholder: "Ask flame to inspect, explain, or change something",
 		Keys:        keys, Clipboard: a.loop.Clipboard(),
 	})

@@ -1,11 +1,11 @@
 package sqlite
 
-import "database/sql"
+import framesqlite "github.com/Tangerg/frame/sqlite"
 
 type AgentMemoryStore struct {
-	db *sql.DB
+	db *framesqlite.Database
 }
 
-func NewAgentMemoryStore(db *sql.DB) *AgentMemoryStore {
+func NewAgentMemoryStore(db *framesqlite.Database) *AgentMemoryStore {
 	return &AgentMemoryStore{db: db}
 }

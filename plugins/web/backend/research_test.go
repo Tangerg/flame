@@ -8,9 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/frame/sqlite"
+	"github.com/Tangerg/scope/tools/web"
+
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
-	"github.com/Tangerg/scope/tools/web"
 )
 
 func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction(t *testing.T) {
@@ -69,7 +71,10 @@ func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction
 	if _, err := research.browse(t.Context(), wire.BrowseInput{SnapshotID: first.SnapshotID, Limit: 1}); !errors.Is(err, capture.ErrNotFound) || calls != 2 {
 		t.Fatalf("eviction silently fetched another version: %v calls=%d", err, calls)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE snapshots SET snapshot='{"id":"forged"}' WHERE id=?`, latestID); err != nil {
+	if err := sqlite.RunInTx(t.Context(), store.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, store.db).ExecContext(ctx, `UPDATE snapshots SET snapshot='{"id":"forged"}' WHERE id=?`, latestID)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := research.browse(t.Context(), wire.BrowseInput{SnapshotID: latestID, Limit: 1}); !errors.Is(err, errStoredSnapshot) {

@@ -42,10 +42,10 @@ func TestCapturedTriggerSurvivesRestartAndCannotBeRewritten(t *testing.T) {
 	if accepted, err := store.Claim(t.Context(), claim); err != nil || !accepted {
 		t.Fatalf("claim: %v, %v", accepted, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE manual_firings SET captured_request_json='{}' WHERE run_id='run_manual'`); err == nil {
+	if _, err := execDatabase(t.Context(), db, `UPDATE manual_firings SET captured_request_json='{}' WHERE run_id='run_manual'`); err == nil {
 		t.Fatal("captured manual trigger was mutable")
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE schedule_firings SET invocation_json='{}' WHERE run_id='run_due'`); err == nil {
+	if _, err := execDatabase(t.Context(), db, `UPDATE schedule_firings SET invocation_json='{}' WHERE run_id='run_due'`); err == nil {
 		t.Fatal("captured automatic trigger was mutable")
 	}
 	if err := db.Close(); err != nil {

@@ -4,7 +4,7 @@ import { SerialQueue } from "dougong/advanced";
 export class RetirableTaskCohort {
   readonly #retiredError: Error;
   readonly #settlers = new Set<() => void>();
-  readonly #queues = new Map<string, SerialQueue>();
+  readonly #queues = new Map<string, { readonly queue: SerialQueue }>();
   #retired = false;
 
   constructor(retiredError: Error) {
@@ -56,18 +56,12 @@ export class RetirableTaskCohort {
 
   runSerial<T>(identity: string, operation: () => PromiseLike<T>): Promise<T> {
     return this.run(() => {
-      let queue = this.#queues.get(identity);
-      if (!queue) {
-        queue = new SerialQueue();
-        this.#queues.set(identity, queue);
-      }
-      const ownedQueue = queue;
-      const result = ownedQueue.run(() => this.run(operation)).then(({ value }) => value);
-      const settlement = ownedQueue.settled;
-      void settlement.then(() => {
-        if (ownedQueue.settled === settlement && this.#queues.get(identity) === ownedQueue) {
-          this.#queues.delete(identity);
-        }
+      const queue = this.#queues.get(identity)?.queue ?? new SerialQueue();
+      const registration = { queue };
+      this.#queues.set(identity, registration);
+      const result = queue.run(() => this.run(operation)).then(({ value }) => value);
+      void queue.settled().then(() => {
+        if (this.#queues.get(identity) === registration) this.#queues.delete(identity);
       });
       return result;
     });

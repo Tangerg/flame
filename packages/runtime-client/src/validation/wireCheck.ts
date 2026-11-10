@@ -5,12 +5,14 @@
 
 import {
   ExactNumber,
+  cloneJSON,
   compareJSONNumbers,
   equalJSON,
   isJSONInteger,
   isJSONNumber,
   projectNumber,
   type JSONNumber,
+  type JSONValue,
 } from "@frame/sdk/json";
 
 export interface WireViolation {
@@ -190,12 +192,17 @@ export function minItems(least: number): WireCheck {
   };
 }
 
-export function maxItems(most: number): WireCheck {
-  return (value, path, out) => {
-    if (Array.isArray(value) && value.length > most) {
-      out.push({ path, detail: `expected at most ${most} item(s)` });
-    }
-  };
+export function maxItems(most: number, contents: WireCheck): WireCheck {
+  return withProjection(
+    (value, path, out, boundary) => {
+      if (Array.isArray(value) && value.length > most) {
+        out.push({ path, detail: `expected at most ${most} item(s)` });
+        return;
+      }
+      contents(value, path, out, boundary);
+    },
+    (value) => projectWireValue(contents, value),
+  );
 }
 
 export function minProperties(least: number): WireCheck {
@@ -212,13 +219,27 @@ export function minProperties(least: number): WireCheck {
 export function uniqueItems(): WireCheck {
   return (value, path, out) => {
     if (!Array.isArray(value)) return;
-    const seen: unknown[] = [];
-    for (const element of value) {
-      if (seen.some((previous) => equalJSON(element, previous))) {
+    const nonNumericPrimitives = new Set<string | boolean | null | undefined>();
+    const numericOrCompositeValues: JSONValue[] = [];
+    for (const authored of value) {
+      const element = cloneJSON(authored);
+      let repeated: boolean;
+      if (
+        element === null ||
+        element === undefined ||
+        typeof element === "string" ||
+        typeof element === "boolean"
+      ) {
+        repeated = nonNumericPrimitives.has(element);
+        nonNumericPrimitives.add(element);
+      } else {
+        repeated = numericOrCompositeValues.some((previous) => equalJSON(element, previous));
+        numericOrCompositeValues.push(element);
+      }
+      if (repeated) {
         out.push({ path, detail: "expected no repeated items" });
         return;
       }
-      seen.push(element);
     }
   };
 }

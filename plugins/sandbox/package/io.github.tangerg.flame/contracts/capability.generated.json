@@ -11,7 +11,7 @@
       "description": "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed.",
       "input": {
         "$defs": {
-          "wire.ExecuteInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl.RXhlY3V0ZUlucHV0": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -86,7 +86,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Output": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.T3V0cHV0": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -110,7 +110,7 @@
             ],
             "type": "object"
           },
-          "domain.Result": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.UmVzdWx0": {
             "additionalProperties": false,
             "properties": {
               "durationMillis": {
@@ -144,10 +144,10 @@
                 "type": "string"
               },
               "stderr": {
-                "$ref": "#/$defs/domain.Output"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.T3V0cHV0"
               },
               "stdout": {
-                "$ref": "#/$defs/domain.Output"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.T3V0cHV0"
               }
             },
             "required": [
@@ -194,10 +194,10 @@
             "type": "string"
           },
           "stderr": {
-            "$ref": "#/$defs/domain.Output"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.T3V0cHV0"
           },
           "stdout": {
-            "$ref": "#/$defs/domain.Output"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4.T3V0cHV0"
           }
         },
         "required": [
@@ -223,7 +223,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Limits": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl.TGltaXRz": {
             "additionalProperties": false,
             "properties": {
               "available": {

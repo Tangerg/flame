@@ -68,7 +68,7 @@ func (c *connector) deleteCommentKind(ctx context.Context, input contractwire.Co
 	if _, err := c.sendWrite(ctx, http.MethodDelete, path, nil, http.StatusNoContent); err != nil {
 		return contractwire.DeletedComment{}, err
 	}
-	return contractwire.DeletedComment{ID: input.CommentID, Deleted: true}, nil
+	return contractwire.DeletedComment{ID: input.CommentID}, nil
 }
 
 func inlineComment(input contractwire.InlineComment) (inlineCommentWire, error) {
@@ -104,7 +104,7 @@ func (c *connector) createReviewComment(ctx context.Context, input contractwire.
 	if !commitSHA.MatchString(string(input.CommitID)) {
 		return contractwire.ReviewComment{}, refused("invalid_input", "an exact inspected commit SHA is required")
 	}
-	location, err := inlineComment(input.InlineComment)
+	location, err := inlineComment(input.Comment)
 	if err != nil {
 		return contractwire.ReviewComment{}, err
 	}
@@ -113,7 +113,7 @@ func (c *connector) createReviewComment(ctx context.Context, input contractwire.
 		inlineCommentWire
 	}{strings.ToLower(string(input.CommitID)), location}
 	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/pulls/%d/comments", repository.apiPath(), input.Number), payload, http.StatusCreated, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
-		if !strings.EqualFold(wire.CommitID, string(input.CommitID)) || wire.Path != input.Path {
+		if !strings.EqualFold(wire.CommitID, string(input.CommitID)) || wire.Path != input.Comment.Path {
 			return contractwire.ReviewComment{}, errors.New("github: created review comment differs from inspected commit or path")
 		}
 		return wire.admit()

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path"
 	"time"
 	"unicode/utf8"
 
@@ -39,6 +40,15 @@ func (f documentFS) Open(name string) (fs.File, error) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
 	return &documentFile{bytes.NewReader(f.content)}, nil
+}
+
+func (f documentFS) OpenInDir(dir, name string) (fs.File, error) {
+	if !fs.ValidPath(dir) || !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
+	}
+	// This filesystem owns only captured bytes; no symlink or host path can
+	// redirect the confined resource lookup after validation.
+	return f.Open(path.Join(dir, name))
 }
 
 type documentFile struct{ *bytes.Reader }

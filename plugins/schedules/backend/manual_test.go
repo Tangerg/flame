@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,8 @@ import (
 
 func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	ctx := t.Context()
-	db, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "schedules.db"))
+	path := filepath.Join(t.TempDir(), "schedules.db")
+	db, err := sqlite.Open(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +113,12 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	host.lost.Store(false)
-	if _, err := db.ExecContext(ctx, `CREATE TRIGGER refuse_manual_reply BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
+	faults, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer faults.Close()
+	if _, err := faults.ExecContext(ctx, `CREATE TRIGGER refuse_manual_reply BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := method.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata); err == nil {
@@ -124,7 +131,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if _, found, err := method.ReadReceipt(ctx, pluginmcp.CommandID(invocation.ID), input); err != nil || found {
 		t.Fatalf("failed receipt fabricated completion: %t, %v", found, err)
 	}
-	if _, err := db.ExecContext(ctx, `DROP TRIGGER refuse_manual_reply`); err != nil {
+	if _, err := faults.ExecContext(ctx, `DROP TRIGGER refuse_manual_reply`); err != nil {
 		t.Fatal(err)
 	}
 	recovered, err := resumeCaptured(ctx, db, store, host, captured)
@@ -175,7 +182,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		t.Fatalf("business refusal was not retained: %t, %v", found, err)
 	}
 	var rows int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands`).Scan(&rows); err != nil || rows != 2 {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM commands`, nil, &rows); err != nil || rows != 2 {
 		t.Fatalf("multiple private outcome owners: %d, %v", rows, err)
 	}
 }

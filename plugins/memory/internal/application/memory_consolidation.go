@@ -19,6 +19,7 @@ import (
 
 const (
 	defaultConsolidationMinMessages = 4
+	noExtractedFacts                = "NO_FACTS"
 
 	defaultMemoryCurationMinPending = 8
 	defaultMemoryCurationMaxPending = agentmemory.MaxLedgerFoldFacts
@@ -93,17 +94,17 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client compl
 }
 
 // Pending folds must run even when extraction is skipped so an earlier failed publication can recover.
-func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) error {
+func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) (bool, error) {
 	if sessionID == "" || cwd == "" {
-		return nil
+		return false, nil
 	}
 	if err := identity.ValidateSession(sessionID); err != nil {
-		return fmt.Errorf("memory extraction: %w", err)
+		return false, fmt.Errorf("memory extraction: %w", err)
 	}
 	project := filepath.Clean(cwd)
 	messages, err := m.history.Read(ctx, sessionID)
 	if err != nil {
-		return fmt.Errorf("memory extraction: read session %q: %w", sessionID, err)
+		return false, fmt.Errorf("memory extraction: read session %q: %w", sessionID, err)
 	}
 	now := m.now()
 	if messages.MessageCount < m.minMsgs {
@@ -112,11 +113,11 @@ func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd str
 
 	markdown, err := m.askForFacts(ctx, messages)
 	if err != nil {
-		return fmt.Errorf("memory extraction: identify facts: %w", err)
+		return false, fmt.Errorf("memory extraction: identify facts: %w", err)
 	}
 	facts, err := parseMemoryFacts(markdown)
 	if err != nil {
-		return fmt.Errorf("memory extraction: parse facts: %w", err)
+		return false, fmt.Errorf("memory extraction: parse facts: %w", err)
 	}
 	appended, err := m.memory.AppendLedger(ctx, agentmemory.FactBatch{
 		Project:    project,
@@ -126,56 +127,56 @@ func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd str
 		CapturedAt: now,
 	})
 	if err != nil {
-		return fmt.Errorf("memory extraction: append daily ledger: %w", err)
+		return false, fmt.Errorf("memory extraction: append daily ledger: %w", err)
 	}
 	recordExtractedFacts(ctx, len(appended))
 	return m.maybeCurate(ctx, project, now)
 }
 
-func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, now time.Time) error {
+func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, now time.Time) (bool, error) {
 	state, err := m.memory.State(ctx, project)
 	if err != nil {
-		return fmt.Errorf("memory curation: load watermark: %w", err)
+		return false, fmt.Errorf("memory curation: load watermark: %w", err)
 	}
 	pending, err := m.memory.PendingLedger(ctx, project, state, m.policy.maxPendingFacts)
 	if err != nil {
-		return fmt.Errorf("memory curation: read ledger after watermark %d: %w", state.Watermark, err)
+		return false, fmt.Errorf("memory curation: read ledger after watermark %d: %w", state.Watermark, err)
 	}
 	if !m.curationDue(state, len(pending), now) {
-		return nil
+		return false, nil
 	}
 	pending = boundedLedgerPrefix(pending, memoryCurationLedgerBytes)
 	if len(pending) == 0 {
-		return errors.New("memory curation: pending ledger cannot fit model input envelope")
+		return false, errors.New("memory curation: pending ledger cannot fit model input envelope")
 	}
 	current, observed, err := m.currentMemory(ctx, project)
 	if err != nil {
-		return fmt.Errorf("memory curation: load current items: %w", err)
+		return false, fmt.Errorf("memory curation: load current items: %w", err)
 	}
 	content, err := m.askForCuration(ctx, current, pending)
 	if err != nil {
-		return fmt.Errorf("memory curation: generate memory: %w", err)
+		return false, fmt.Errorf("memory curation: generate memory: %w", err)
 	}
 	if tokens := modeltext.EstimateTextTokens(content); tokens > m.policy.maxTokens {
-		return fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.policy.maxTokens)
+		return false, fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.policy.maxTokens)
 	}
 	facts, err := parseMemoryFacts(content)
 	if err != nil {
-		return fmt.Errorf("memory curation: parse facts: %w", err)
+		return false, fmt.Errorf("memory curation: parse facts: %w", err)
 	}
 	through := pending[len(pending)-1].Sequence
 	publication, err := agentmemory.NewPublication(project, state, through, observed, facts, now)
 	if err != nil {
-		return fmt.Errorf("memory curation: prepare publication through watermark %d: %w", through, err)
+		return false, fmt.Errorf("memory curation: prepare publication through watermark %d: %w", through, err)
 	}
 	published, err := m.memory.PublishGeneration(ctx, publication)
 	if err != nil {
-		return fmt.Errorf("memory curation: reconcile through watermark %d: %w", through, err)
+		return false, fmt.Errorf("memory curation: reconcile through watermark %d: %w", through, err)
 	}
 	if published {
 		recordPublishedMemoryGeneration(ctx)
 	}
-	return nil
+	return published, nil
 }
 
 // Each fold needs the preceding generation so new ledger facts cannot erase retained context.
@@ -240,7 +241,7 @@ Include project conventions, build or test commands, user preferences,
 project-specific terminology, decisions, and recurring gotchas. Exclude
 transient state, one-off observations, and facts already obvious from source.
 
-If nothing deserves the append-only memory ledger, respond exactly NO_FACTS.
+If nothing deserves the append-only memory ledger, respond exactly ` + noExtractedFacts + `.
 Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bullets,
 ordered from most important to least important, without a preamble or code fence.`
 	text, err := m.client.Complete(ctx, Prompt{
@@ -255,7 +256,7 @@ ordered from most important to least important, without a preamble or code fence
 	if trimmed == "" {
 		return "", errors.New("memory extractor returned an empty response")
 	}
-	if strings.EqualFold(trimmed, "NO_FACTS") {
+	if strings.EqualFold(trimmed, noExtractedFacts) {
 		return "", nil
 	}
 	return trimmed, nil

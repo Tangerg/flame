@@ -59,47 +59,27 @@ func (f *fakeCurationStore) GenerationItems(context.Context, string) ([]domain.I
 
 func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	store := &fakeCurationStore{published: true}
-	var changes int
-	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
-		changes++
-	}})
+	c := newCuration(t, store)
 
 	now := time.Now()
 	published, err := c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, []string{"fact"}, now))
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%t, %v), want (true, nil)", published, err)
 	}
-	if changes != 1 {
-		t.Fatalf("changes = %d, want one AgentMemory invalidation", changes)
-	}
-
 	store.published = false
 	published, err = c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, []string{"stale"}, now))
 	if err != nil || published {
 		t.Fatalf("stale Reconcile = (%t, %v), want (false, nil)", published, err)
 	}
-	if changes != 1 {
-		t.Fatalf("lost CAS changes = %d", changes)
-	}
 }
 
-func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
+func TestCurationFailureDoesNotReportPublication(t *testing.T) {
 	wantErr := errors.New("store unavailable")
 	store := &fakeCurationStore{published: true, err: wantErr}
-	var changes int
-	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
-		changes++
-	}})
+	c := newCuration(t, store)
 
 	if published, err := c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, nil, time.Now())); published || !errors.Is(err, wantErr) {
 		t.Fatalf("failed Reconcile = (%t, %v), want (false, %v)", published, err, wantErr)
-	}
-	store.err = nil
-	if _, err := c.AppendLedger(t.Context(), validFactBatch("fact")); err != nil {
-		t.Fatal(err)
-	}
-	if changes != 0 {
-		t.Fatalf("non-public writes published changes = %d", changes)
 	}
 }
 
@@ -128,7 +108,7 @@ func testPublication(t *testing.T, expected domain.State, through int64, content
 
 func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
-	curation := newCuration(t, CurationConfig{Store: store})
+	curation := newCuration(t, store)
 	appended, err := curation.AppendLedger(t.Context(), validFactBatch(" fact ", "fact"))
 	if err != nil || len(appended) != 1 || len(store.appendBatch.Facts) != 1 || store.appendBatch.Facts[0] != "fact" {
 		t.Fatalf("AppendLedger = (%+v, %v), normalized batch = %+v", appended, err, store.appendBatch)
@@ -148,7 +128,7 @@ func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 func TestAppendLedgerTransfersResultsAndAllowsCallerReuse(t *testing.T) {
 	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
 	batch := validFactBatch("fact")
-	appended, err := newCuration(t, CurationConfig{Store: store}).AppendLedger(t.Context(), batch)
+	appended, err := newCuration(t, store).AppendLedger(t.Context(), batch)
 	if err != nil || len(appended) != 1 || appended[0].Content != "fact" {
 		t.Fatalf("AppendLedger = (%+v, %v), want one acknowledged fact", appended, err)
 	}
@@ -161,7 +141,7 @@ func TestAppendLedgerTransfersResultsAndAllowsCallerReuse(t *testing.T) {
 
 func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 	store := &fakeCurationStore{published: true}
-	curation := newCuration(t, CurationConfig{Store: store})
+	curation := newCuration(t, store)
 	local := time.Date(2026, time.September, 4, 16, 0, 0, 0, time.FixedZone("local", 8*60*60))
 	expected := domain.State{Watermark: 1, UpdatedAt: local.Add(-time.Hour).UTC()}
 	publication := testPublication(t, expected, 2, []string{" fact ", "fact"}, local)
@@ -179,10 +159,7 @@ func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 
 func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	store := &singleWinnerCurationStore{}
-	var changes atomic.Int32
-	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
-		changes.Add(1)
-	}})
+	c := newCuration(t, store)
 
 	const contenders = 32
 	publication := testPublication(t, domain.State{}, 4, []string{"fact"}, time.Now())
@@ -205,23 +182,20 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	if got := published.Load(); got != 1 {
 		t.Fatalf("published generations = %d, want 1", got)
 	}
-	if got := changes.Load(); got != 1 {
-		t.Fatalf("AgentMemory changes = %d, want 1", got)
-	}
 }
 
 func TestCurationRequiresStorage(t *testing.T) {
 	var missingStore *fakeCurationStore
 	for _, store := range []CurationStore{nil, missingStore} {
-		if c, err := NewCuration(CurationConfig{Store: store}); err == nil || c != nil {
+		if c, err := NewCuration(store); err == nil || c != nil {
 			t.Fatalf("NewCuration = (%v, %v), want invalid construction", c, err)
 		}
 	}
 }
 
-func newCuration(t *testing.T, cfg CurationConfig) *Curation {
+func newCuration(t *testing.T, store CurationStore) *Curation {
 	t.Helper()
-	curation, err := NewCuration(cfg)
+	curation, err := NewCuration(store)
 	if err != nil {
 		t.Fatal(err)
 	}

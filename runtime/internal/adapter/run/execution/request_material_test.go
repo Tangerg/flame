@@ -84,13 +84,14 @@ func assertReloadedProviderInput(t *testing.T, original *interactionSession, hea
 		t.Fatal("restored log lost its process")
 	}
 	for _, pending := range process.PendingEffects {
-		canonical, model, err := interaction.ModelRequestFromEffect(pending.Request.Effect())
+		intent, model, err := interaction.ModelCallFromEffect(pending.Request.Effect())
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !model {
 			continue
 		}
+		canonical := intent.Request
 		if canonical.Messages[0].Text() != "current question" || canonical.Options.Temperature != nil {
 			t.Fatal("provider transformation leaked into Scope's retained context")
 		}
@@ -98,7 +99,10 @@ func assertReloadedProviderInput(t *testing.T, original *interactionSession, hea
 		if err != nil {
 			t.Fatal(err)
 		}
-		source := modelCallSource{process: root, effect: pending.Request.ID(), program: process.Program, sequence: reference.Sequence}
+		if reference.Sequence != intent.Sequence {
+			t.Fatal("prepared provider input differs from its committed model call")
+		}
+		source := modelCallSource{process: root, effect: pending.Request.ID(), program: process.Program, sequence: intent.Sequence}
 		assertPreparedRequest(t, &reloaded.material, source, delivered)
 		return
 	}

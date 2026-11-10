@@ -64,7 +64,7 @@ func memoryToolValue[T any](t *testing.T, result *sdk.CallToolResult) T {
 	return value
 }
 
-func assertMemoryRevisionAdmission[T any](t *testing.T, decision bool) {
+func assertMemoryRevisionAdmission[T any](t *testing.T, nested, decision bool) {
 	t.Helper()
 	executable, err := tool.NewFunc[T, rpc.Ack](tool.FuncConfig{Name: "mutation"}, func(_ context.Context, _ T) (rpc.Ack, error) {
 		t.Fatal("admission executed a mutation")
@@ -77,13 +77,17 @@ func assertMemoryRevisionAdmission[T any](t *testing.T, decision bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := map[string]any{"scope": "project", "id": "mem_00000000000000000000000000000001"}
+	item := map[string]any{"scope": "project", "id": "mem_00000000000000000000000000000001"}
+	input := item
+	if nested {
+		input = map[string]any{"item": item}
+	}
 	if decision {
 		input["decision"] = "approve"
 	}
 	for _, revision := range []any{nil, uint64(0), uint64(exactint.Maximum + 1), uint64(1)} {
 		if revision != nil {
-			input["expected_revision"] = revision
+			item["expected_revision"] = revision
 		}
 		encoded, err := framevalue.EncodeJSON(input)
 		if err != nil {
@@ -97,9 +101,9 @@ func assertMemoryRevisionAdmission[T any](t *testing.T, decision bool) {
 }
 
 func TestMemoryMutationToolsRequireTheObservedExactRevision(t *testing.T) {
-	assertMemoryRevisionAdmission[updateMemoryArgs](t, false)
-	assertMemoryRevisionAdmission[memoryItemArgs](t, false)
-	assertMemoryRevisionAdmission[reviewMemoryArgs](t, true)
+	assertMemoryRevisionAdmission[updateMemoryArgs](t, true, false)
+	assertMemoryRevisionAdmission[memoryItemArgs](t, false, false)
+	assertMemoryRevisionAdmission[reviewMemoryArgs](t, true, true)
 }
 
 func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testing.T) {
@@ -120,7 +124,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	if !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("human content conflict remained unconfirmed: %v", err)
 	}
-	model, admitted := callMemoryModelTool(t, session, t.TempDir(), "model-collision", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
+	model, admitted := callMemoryModelTool(t, session, t.TempDir(), "model-collision", "update_memory", updateMemoryArgs{Item: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
 	if !model.IsError {
 		t.Fatal("model content conflict was accepted")
 	}
@@ -157,7 +161,7 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	if original.ID == "" || original.Revision != 1 || original.Status != memory.StatusActive {
 		t.Fatalf("added item: %+v", original)
 	}
-	update, updateInput := callMemoryModelTool(t, session, project, "update", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: original.Revision}, Content: new("corrected memory marker"), Pinned: new(true)})
+	update, updateInput := callMemoryModelTool(t, session, project, "update", "update_memory", updateMemoryArgs{Item: memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: original.Revision}, Content: new("corrected memory marker"), Pinned: new(true)})
 	updated := memoryToolValue[memoryView](t, update)
 	if updated.ID != original.ID || updated.Revision != original.Revision+1 || !updated.Pinned {
 		t.Fatalf("updated item: %+v", updated)
@@ -166,7 +170,7 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale, staleInput := callMemoryModelTool(t, session, project, "stale", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: updated.Revision}, Content: new("stale replacement")})
+	stale, staleInput := callMemoryModelTool(t, session, project, "stale", "update_memory", updateMemoryArgs{Item: memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: updated.Revision}, Content: new("stale replacement")})
 	if !stale.IsError {
 		t.Fatal("stale model correction overwrote the human edit")
 	}
@@ -241,7 +245,7 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 		if strings.Contains(item.Content, "reject") {
 			decision = memory.ReviewReject
 		}
-		result, admitted := callMemoryModelTool(t, session, project, item.ID, "review_memory", reviewMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: item.Scope, ID: item.ID, ExpectedRevision: item.Revision}, Decision: decision})
+		result, admitted := callMemoryModelTool(t, session, project, item.ID, "review_memory", reviewMemoryArgs{Item: memoryItemArgs{Scope: item.Scope, ID: item.ID, ExpectedRevision: item.Revision}, Decision: decision})
 		memoryToolValue[rpc.Ack](t, result)
 		id, err := memory.ParseItemID(item.ID)
 		if err != nil {
@@ -261,7 +265,11 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"update_memory", "delete_memory", "review_memory"} {
-		input := map[string]any{"scope": "project", "id": foreign.ID().String(), "expected_revision": foreign.Revision()}
+		item := map[string]any{"scope": "project", "id": foreign.ID().String(), "expected_revision": foreign.Revision()}
+		input := item
+		if name != "delete_memory" {
+			input = map[string]any{"item": item}
+		}
 		if name == "update_memory" {
 			input["content"] = "cross-project overwrite"
 		}

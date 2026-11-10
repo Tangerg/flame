@@ -23,7 +23,6 @@ export function createInstalledPlugins(
   let retiring = Promise.resolve();
   let latest: object = {};
   let stop: (() => void) | null = null;
-  let disposed = false;
   let disposal: Promise<void> | undefined;
   return {
     access,
@@ -32,7 +31,7 @@ export function createInstalledPlugins(
       ctx: Pick<PluginContext<{}>, "contributions" | "lifetime" | "logger">,
       runtime: RuntimeStream,
     ) {
-      if (disposed) throw new Error("Installed plugins are disposed");
+      if (disposal) throw new Error("Installed plugins are disposed");
       if (stop) throw new Error("Installed plugins are already started");
       const replace = () => {
         modules.disconnect();
@@ -41,57 +40,74 @@ export function createInstalledPlugins(
         const predecessor = current;
         current = undefined;
         const release = predecessor?.[asyncDisposeSymbol]() ?? Promise.resolve();
-        retiring = retiring
-          .then(async () => {
-            await release;
-            if (
-              disposed ||
-              ctx.lifetime.signal.aborted ||
-              latest !== intent ||
-              runtime.connectionGeneration() === null
-            )
-              return;
-            const owned = ctx.contributions.child("runtime-packages");
+        retiring = Promise.all([retiring, release]).then(async () => {
+          const generation = runtime.connectionGeneration();
+          if (disposal || ctx.lifetime.signal.aborted || latest !== intent || generation === null)
+            return;
+          const owned = ctx.contributions.child("runtime-packages");
+          current = owned;
+          try {
+            registerPackageContributions(
+              access,
+              owned,
+              runtimeClient(),
+              modules,
+              generation,
+              runtimeEndpoint(),
+              workspace,
+              themeAccess,
+              saveFile,
+            );
+          } catch (error) {
+            if (current === owned) current = undefined;
             try {
-              registerPackageContributions(
-                access,
-                owned,
-                runtimeClient(),
-                modules,
-                runtime.connectionGeneration()!,
-                runtimeEndpoint(),
-                workspace,
-                themeAccess,
-                saveFile,
-              );
-              current = owned;
-            } catch (error) {
               await owned[asyncDisposeSymbol]();
-              throw error;
+            } catch (cleanup) {
+              throw new AggregateError(
+                [error, cleanup],
+                "Installed plugin registration and retirement failed",
+              );
             }
-          })
-          .catch((error: unknown) => {
-            if (!disposed && !ctx.lifetime.signal.aborted) ctx.logger.error(error);
-          });
+            if (disposal || latest !== intent || ctx.lifetime.signal.aborted) return;
+            throw error;
+          }
+        });
+        void retiring.catch((error: unknown) => {
+          if (!disposal && !ctx.lifetime.signal.aborted) ctx.logger.error(error);
+        });
       };
       stop = followRuntimeGeneration(runtime, replace);
       replace();
     },
     dispose() {
       if (disposal) return disposal;
-      disposed = true;
+      // Withdrawn observers can synchronously reenter and must join this same exit.
+      const completion = Promise.withResolvers<void>();
+      disposal = completion.promise;
       latest = {};
-      stop?.();
+      const unsubscribe = stop;
       stop = null;
-      const release = current?.[asyncDisposeSymbol]() ?? Promise.resolve();
+      const owned = current;
       current = undefined;
-      access.clear();
-      disposal = Promise.all([retiring, release])
-        .then(() => modules.close())
-        .catch((error: unknown) => {
-          disposal = undefined;
-          throw error;
-        });
+      const releases = [
+        () => unsubscribe?.(),
+        () => owned?.[asyncDisposeSymbol](),
+        () => access.clear(),
+      ];
+      void Promise.allSettled([retiring, ...releases.map(async (release) => release())])
+        .then(async (retirements) => {
+          const failures = retirements.flatMap((result) =>
+            result.status === "rejected" ? [result.reason] : [],
+          );
+          try {
+            await modules.close();
+          } catch (error) {
+            failures.push(error);
+          }
+          if (failures.length)
+            throw new AggregateError(failures, "Installed plugin retirement failed");
+        })
+        .then(completion.resolve, completion.reject);
       return disposal;
     },
   };

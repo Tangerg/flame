@@ -1,10 +1,6 @@
 package pluginservices
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -18,10 +14,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/media"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -32,10 +36,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/media"
 )
 
 type routedCallResolver struct {
@@ -175,13 +175,13 @@ func TestSelectedModelFinalRequestBudgetRefusesBeforeProviderDispatch(t *testing
 			}
 			composition, _ := installedCallCompositionFixture(t, contract, []string{"converter"}, func(backend *pluginmcp.Backend) {
 				method, _ := pluginsdk.ModelInputMethod()
-				err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+				err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (scopewire.Request, error) {
 					request := command.Input.Request.Clone()
 					request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("converted"))
 					if mode == "final-bytes" {
 						request.Messages[0] = chat.NewUserMessage(chat.NewTextPart(string(make([]byte, 4096))))
 					}
-					return *request, nil
+					return scopewire.Request(*request), nil
 				})
 				if err != nil {
 					t.Fatal(err)

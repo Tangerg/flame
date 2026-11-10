@@ -48,7 +48,7 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "skill", "plugin/hookprovider", "runoutcome", "goalworkflow", "planworkflow", "mcpconnector", "exactint", "identity", "instant", "extension", "model", "hook", "httporigin", "question", "builtin", "plugin/process", "plugin/contract":
+	case "skill", "plugin/hookprovider", "runoutcome", "goalworkflow", "planworkflow", "mcpconnector", "exactint", "identity", "instant", "extension", "model", "scopewire", "hook", "httporigin", "question", "builtin", "plugin/process", "plugin/contract":
 		return ringValue
 	case "pagination", "capture":
 		return ringMechanism
@@ -305,6 +305,9 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		{from: sdkModulePath + "/extension", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/model", to: sdkModulePath + "/model/catalog"},
 		{from: sdkModulePath + "/model/catalog", to: sdkModulePath + "/model", allowed: true},
+		{from: runtimeModulePath + "/internal/adapter/integration/pluginservices", to: sdkModulePath + "/scopewire", allowed: true},
+		{from: sdkModulePath + "/scopewire", to: frameModulePath + "/value", allowed: true},
+		{from: sdkModulePath + "/scopewire", to: sdkModulePath + "/plugin"},
 		{from: frameModulePath + "/sqlite", to: sdkModulePath + "/capture", allowed: true},
 		{from: frameModulePath + "/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath + "/sqlite"},

@@ -86,21 +86,29 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 	}
 	draft, expectedRevision, err := prepare(ctx)
 	if err != nil {
-		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return pluginstorage.CompleteCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			return pluginstorage.CommandPlan[knowledge.Header]{}, err
+		})
 	}
 	if _, err := l.store.indexTarget(ctx, draft.Content().ID, expectedRevision); err != nil {
-		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return pluginstorage.CompleteCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			return pluginstorage.CommandPlan[knowledge.Header]{}, err
+		})
 	}
 	result, err := embedDocument(ctx, draft.Texts())
 	if err != nil {
-		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return pluginstorage.CompleteCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			return pluginstorage.CommandPlan[knowledge.Header]{}, err
+		})
 	}
 	indexed, err := draft.Index(result.Space, result.Vectors)
 	if err != nil {
-		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return pluginstorage.CompleteCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			return pluginstorage.CommandPlan[knowledge.Header]{}, err
+		})
 	}
-	return l.store.completeIndex(ctx, prepared, func(ctx context.Context) (knowledge.Header, error) {
-		return l.store.replace(ctx, draft.Content().ID, expectedRevision, indexed)
+	return pluginstorage.CompleteCommand(ctx, prepared, classify, func(ctx context.Context) (pluginstorage.CommandPlan[knowledge.Header], error) {
+		return l.store.prepareReplacement(ctx, draft.Content().ID, expectedRevision, indexed)
 	})
 }
 

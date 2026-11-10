@@ -13,6 +13,12 @@ import (
 
 var commitSHA = regexp.MustCompile(contractwire.CommitPattern)
 
+type mergeAcknowledgement struct {
+	SHA     string `json:"sha"`
+	Merged  bool   `json:"merged"`
+	Message string `json:"message"`
+}
+
 func (c *connector) createPull(ctx context.Context, input contractwire.CreatePullInput) (contractwire.PullRequest, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
@@ -98,10 +104,10 @@ func (c *connector) mergePull(ctx context.Context, input contractwire.MergePullI
 		Title   *string                  `json:"commit_title,omitzero"`
 		Message *string                  `json:"commit_message,omitzero"`
 	}{strings.ToLower(string(input.HeadSHA)), input.MergeMethod, input.CommitTitle, input.CommitMessage}
-	return writeValue(ctx, c, http.MethodPut, fmt.Sprintf("%s/pulls/%d/merge", repository.apiPath(), input.Number), payload, http.StatusOK, func(wire contractwire.MergeResult) (contractwire.MergeResult, error) {
+	return writeValue(ctx, c, http.MethodPut, fmt.Sprintf("%s/pulls/%d/merge", repository.apiPath(), input.Number), payload, http.StatusOK, func(wire mergeAcknowledgement) (contractwire.MergeResult, error) {
 		if !wire.Merged || !commitSHA.MatchString(wire.SHA) {
 			return contractwire.MergeResult{}, errors.New("github: merge acknowledgement does not confirm a merge commit")
 		}
-		return wire, nil
+		return contractwire.MergeResult{SHA: contractwire.CommitSHA(wire.SHA), Message: wire.Message}, nil
 	})
 }

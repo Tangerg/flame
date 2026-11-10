@@ -281,7 +281,11 @@ func (c *checkEmitter) compile(node *wiregen.Schema) string {
 	parts = append(parts, c.numericChecks(node)...)
 	parts = append(parts, c.collectionChecks(node)...)
 	parts = append(parts, c.compositionChecks(node)...)
-	return c.conjunction(parts)
+	check := c.conjunction(parts)
+	if node.MaxItems != nil {
+		return c.call("maxItems", strconv.Itoa(*node.MaxItems), check)
+	}
+	return check
 }
 
 func (c *checkEmitter) baseCheck(node *wiregen.Schema) string {
@@ -327,9 +331,6 @@ func (c *checkEmitter) collectionChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if node.MinItems != nil {
 		checks = append(checks, c.call("minItems", strconv.Itoa(*node.MinItems)))
-	}
-	if node.MaxItems != nil {
-		checks = append(checks, c.call("maxItems", strconv.Itoa(*node.MaxItems)))
 	}
 	if node.MinProperties != nil {
 		checks = append(checks, c.call("minProperties", strconv.Itoa(*node.MinProperties)))

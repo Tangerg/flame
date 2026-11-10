@@ -41,7 +41,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 	reader.Open(readerTarget{source: tool})
 	root := newSceneTestRoot(t, reader.Element())
 	root.Draw(grid.NewSurface(72, 16).View())
-	full := copyableRowsText(reader.content.Rows(reader.content.StartRow(), reader.content.Height()))
+	full := copyableRowsText(reader.content.Layout().Rows(reader.content.Layout().StartRow(), reader.content.Layout().Height()))
 	for _, want := range []string{lines[0], lines[179], lines[len(lines)-1]} {
 		if !strings.Contains(full, want) {
 			t.Errorf("reader does not contain %q", want)

@@ -39,7 +39,7 @@ func newPromptView(
 	p := &promptView{
 		theme: theme, composer: composer,
 		box:  kit.Box{Theme: theme, Glyphs: glyphs, Padding: layout.Symmetric(0, 1), FooterAlign: layout.End},
-		help: kit.Help{Theme: theme, Keys: keys, Separator: "  " + glyphs.Vertical + "  "},
+		help: kit.Help{Theme: theme, Keys: keys, Separator: "  " + glyphs.Vertical.String() + "  "},
 		keys: keys, busyKeys: remapHelpAction(keys, sendPrompt, queueFollowUp),
 		busyQueuedKeys: remapHelpAction(keys, sendPrompt, queueOrSendNext),
 	}

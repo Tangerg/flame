@@ -121,7 +121,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 		return manifest, fmt.Errorf("%w: a release version is required", plugin.ErrInvalid)
 	}
 	for _, contract := range projection.Contracts {
-		manifest.Contracts = append(manifest.Contracts, contract.Reference)
+		manifest.Contracts = append(manifest.Contracts, contract.Ref())
 	}
 	for _, projected := range projection.Units {
 		declarationUnit := projected.Declaration

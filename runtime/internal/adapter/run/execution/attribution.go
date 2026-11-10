@@ -143,14 +143,17 @@ func (i *interactionSession) modelSource(ctx context.Context, request *corechat.
 		return modelCallSource{}, errors.New("execution: model preparation has no committed process")
 	}
 	for _, pending := range owner.PendingEffects {
-		candidate, model, err := interaction.ModelRequestFromEffect(pending.Request.Effect())
+		candidate, model, err := interaction.ModelCallFromEffect(pending.Request.Effect())
 		if err != nil {
 			return modelCallSource{}, err
 		}
 		if !model {
 			continue
 		}
-		left, err := json.Marshal(candidate, json.Deterministic(true))
+		if candidate.Sequence != reference.Sequence {
+			return modelCallSource{}, errors.New("execution: model preparation differs from committed call sequence")
+		}
+		left, err := json.Marshal(candidate.Request, json.Deterministic(true))
 		if err != nil {
 			return modelCallSource{}, err
 		}
@@ -163,7 +166,7 @@ func (i *interactionSession) modelSource(ctx context.Context, request *corechat.
 			return modelCallSource{}, err
 		}
 		return modelCallSource{process: reference.Process, effect: pending.Request.ID(), program: owner.Program,
-			sequence: reference.Sequence, steers: steers}, nil
+			sequence: candidate.Sequence, steers: steers}, nil
 	}
 	return modelCallSource{}, errors.New("execution: model call has no committed effect")
 }
@@ -219,12 +222,12 @@ func (i *interactionSession) toolSource(ctx context.Context, bound toolcontract.
 
 func toolProposalSource(history scoperun.Log, reference scoperun.EffectID, call corechat.ToolCall) (toolCallSource, error) {
 	var foundReference bool
-	settlements := make(map[scoperun.EffectID]scoperun.Settlement)
+	settlements := make(map[scoperun.EffectID]scoperun.EffectSettled)
 	for _, entry := range slices.Backward(history.Entries) {
 		switch record := entry.Record.(type) {
 		case scoperun.EffectSettled:
 			if foundReference && record.ID.Process == reference.Process {
-				settlements[record.ID] = record.Outcome
+				settlements[record.ID] = record
 			}
 		case scoperun.EffectIntent:
 			if record.ID == reference {
@@ -234,22 +237,18 @@ func toolProposalSource(history scoperun.Log, reference scoperun.EffectID, call 
 			if !foundReference || record.ID.Process != reference.Process {
 				continue
 			}
-			request, model, err := interaction.ModelRequestFromEffect(record.Effect)
+			intent, model, err := interaction.ModelCallFromEffect(record.Effect)
 			if err != nil {
 				return toolCallSource{}, err
 			}
 			if !model {
 				continue
 			}
-			preparation, _, err := modelPreparationReference(request.Messages)
+			settled, err := interaction.ModelSettlementFromRecord(settlements[record.ID])
 			if err != nil {
 				return toolCallSource{}, err
 			}
-			settled, err := interaction.ModelSettlementFromOutcome(settlements[record.ID])
-			if err != nil {
-				return toolCallSource{}, err
-			}
-			return proposalCallSource(reference.Process, preparation.Sequence, settled.Response, call)
+			return proposalCallSource(reference.Process, intent.Sequence, settled.Response, call)
 		}
 	}
 	return toolCallSource{}, fmt.Errorf("execution: missing original Tool effect %s", reference)

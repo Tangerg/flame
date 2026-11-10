@@ -11,46 +11,10 @@
       "description": "Create one schedule definition.",
       "input": {
         "$defs": {
-          "domain.Draft": {
-            "additionalProperties": false,
-            "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "Cron": {
-                "type": "string"
-              },
-              "Enabled": {
-                "type": "boolean"
-              },
-              "Instructions": {
-                "type": "string"
-              },
-              "ModelSelection": {
-                "$ref": "#/$defs/model.Selection"
-              },
-              "TimeZone": {
-                "type": "string"
-              },
-              "Title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "TimeZone",
-              "Enabled"
-            ],
-            "type": "object"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd"
           },
-          "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
-          },
-          "model.selectionJSON[string]": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd": {
             "additionalProperties": false,
             "properties": {
               "model": {
@@ -67,6 +31,42 @@
               "model",
               "provider",
               "reasoningEffort"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "CWD": {
+                "type": "string"
+              },
+              "Cron": {
+                "type": "string"
+              },
+              "Enabled": {
+                "type": "boolean"
+              },
+              "Instructions": {
+                "type": "string"
+              },
+              "ModelSelection": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
+              },
+              "TimeZone": {
+                "type": "string"
+              },
+              "Title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Title",
+              "Instructions",
+              "CWD",
+              "ModelSelection",
+              "Cron",
+              "TimeZone",
+              "Enabled"
             ],
             "type": "object"
           }
@@ -87,7 +87,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/model.Selection"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
           },
           "TimeZone": {
             "type": "string"
@@ -109,17 +109,43 @@
       },
       "output": {
         "$defs": {
-          "domain.Snapshot": {
-            "$ref": "#/$defs/domain.snapshotProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
           },
-          "domain.snapshotProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Cron": {
                 "type": "string"
@@ -131,13 +157,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/model.Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
               "NextRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Revision": {
                 "allOf": [
@@ -167,36 +193,63 @@
               "Revision"
             ],
             "type": "object"
-          },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
-          },
-          "model.selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
-            "type": "object"
           }
         },
-        "$ref": "#/$defs/domain.snapshotProjection",
-        "$schema": "https://json-schema.org/draft/2020-12/schema"
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "CWD": {
+            "type": "string"
+          },
+          "CreatedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "Cron": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Instructions": {
+            "type": "string"
+          },
+          "LastRunAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "ModelSelection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
+          },
+          "NextRunAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "Revision": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "type": "integer"
+          },
+          "TimeZone": {
+            "type": "string"
+          },
+          "Title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ID",
+          "Title",
+          "Instructions",
+          "CWD",
+          "ModelSelection",
+          "Cron",
+          "TimeZone",
+          "CreatedAt",
+          "Revision"
+        ],
+        "type": "object"
       }
     },
     {
@@ -206,7 +259,7 @@
       "description": "Delete one schedule definition.",
       "input": {
         "$defs": {
-          "wire.ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0": {
             "additionalProperties": false,
             "properties": {
               "ID": {
@@ -233,7 +286,7 @@
       },
       "output": {
         "$defs": {
-          "wire.Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -252,7 +305,7 @@
       "description": "List current schedule definitions and revisions.",
       "input": {
         "$defs": {
-          "wire.ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0": {
             "additionalProperties": false,
             "properties": {
               "Cursor": {
@@ -297,17 +350,43 @@
       },
       "output": {
         "$defs": {
-          "domain.Snapshot": {
-            "$ref": "#/$defs/domain.snapshotProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
           },
-          "domain.snapshotProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Cron": {
                 "type": "string"
@@ -319,13 +398,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/model.Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
               "NextRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Revision": {
                 "allOf": [
@@ -356,33 +435,7 @@
             ],
             "type": "object"
           },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
-          },
-          "model.selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
-            "type": "object"
-          },
-          "wire.Page": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ": {
             "additionalProperties": false,
             "properties": {
               "NextCursor": {
@@ -390,7 +443,7 @@
               },
               "Rows": {
                 "items": {
-                  "$ref": "#/$defs/domain.Snapshot"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q"
                 },
                 "type": "array"
               }
@@ -410,7 +463,7 @@
           },
           "Rows": {
             "items": {
-              "$ref": "#/$defs/domain.Snapshot"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q"
             },
             "type": "array"
           }
@@ -429,7 +482,7 @@
       "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
       "input": {
         "$defs": {
-          "wire.ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0": {
             "additionalProperties": false,
             "properties": {
               "ID": {
@@ -456,7 +509,7 @@
       },
       "output": {
         "$defs": {
-          "application.RunReference": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u.UnVuUmVmZXJlbmNl": {
             "additionalProperties": false,
             "properties": {
               "RunID": {
@@ -497,7 +550,7 @@
       "description": "Change one schedule using its inspected revision.",
       "input": {
         "$defs": {
-          "wire.ModelPatch": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA": {
             "additionalProperties": false,
             "properties": {
               "Model": {
@@ -512,7 +565,7 @@
             },
             "type": "object"
           },
-          "wire.UpdateInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
@@ -540,7 +593,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/wire.ModelPatch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
               },
               "TimeZone": {
                 "type": "string"
@@ -585,7 +638,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/wire.ModelPatch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
           },
           "TimeZone": {
             "type": "string"
@@ -603,17 +656,43 @@
       },
       "output": {
         "$defs": {
-          "domain.Snapshot": {
-            "$ref": "#/$defs/domain.snapshotProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
           },
-          "domain.snapshotProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
                 "type": "string"
               },
               "CreatedAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Cron": {
                 "type": "string"
@@ -625,13 +704,13 @@
                 "type": "string"
               },
               "LastRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/model.Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
               "NextRunAt": {
-                "$ref": "#/$defs/instant.Timestamp"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "Revision": {
                 "allOf": [
@@ -661,36 +740,63 @@
               "Revision"
             ],
             "type": "object"
-          },
-          "instant.Timestamp": {
-            "type": "string"
-          },
-          "model.Selection": {
-            "$ref": "#/$defs/model.selectionJSON%5Bstring%5D"
-          },
-          "model.selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
-            "type": "object"
           }
         },
-        "$ref": "#/$defs/domain.snapshotProjection",
-        "$schema": "https://json-schema.org/draft/2020-12/schema"
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "CWD": {
+            "type": "string"
+          },
+          "CreatedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "Cron": {
+            "type": "string"
+          },
+          "ID": {
+            "type": "string"
+          },
+          "Instructions": {
+            "type": "string"
+          },
+          "LastRunAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "ModelSelection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
+          },
+          "NextRunAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "Revision": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "type": "integer"
+          },
+          "TimeZone": {
+            "type": "string"
+          },
+          "Title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ID",
+          "Title",
+          "Instructions",
+          "CWD",
+          "ModelSelection",
+          "Cron",
+          "TimeZone",
+          "CreatedAt",
+          "Revision"
+        ],
+        "type": "object"
       }
     }
   ]

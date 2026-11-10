@@ -122,7 +122,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		t.Fatalf("conflict recovery or fresh command changed private state: %+v, %v", current, err)
 	}
 	var receipts int
-	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 3 {
+	if err := scanDatabase(t.Context(), store.db, `SELECT count(*) FROM invocations`, nil, &receipts); err != nil || receipts != 3 {
 		t.Fatalf("conflicts replaced or invented private receipts: %d, %v", receipts, err)
 	}
 	mu.Lock()

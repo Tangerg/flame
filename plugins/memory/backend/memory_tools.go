@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -32,22 +33,22 @@ const (
 )
 
 type memoryView struct {
-	ID        string        `json:"id"`
-	Revision  uint64        `json:"revision"`
-	Scope     memory.Scope  `json:"scope"`
-	Project   string        `json:"project,omitzero"`
-	Content   string        `json:"content"`
-	Origin    memory.Origin `json:"origin"`
-	Status    memory.Status `json:"status"`
-	Pinned    bool          `json:"pinned"`
-	SessionID string        `json:"session_id,omitzero"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID        string            `json:"id"`
+	Revision  uint64            `json:"revision"`
+	Scope     memory.Scope      `json:"scope"`
+	Project   string            `json:"project,omitzero"`
+	Content   string            `json:"content"`
+	Origin    memory.Origin     `json:"origin"`
+	Status    memory.Status     `json:"status"`
+	Pinned    bool              `json:"pinned"`
+	SessionID string            `json:"session_id,omitzero"`
+	UpdatedAt instant.Timestamp `json:"updated_at" jsonschema:"format=date-time"`
 }
 
 func viewMemory(item memory.Item) memoryView {
 	return memoryView{ID: item.ID().String(), Revision: item.Revision(), Scope: item.Scope(), Project: item.Project(),
 		Content: item.Content(), Origin: item.Origin(), Status: item.Status(), Pinned: item.Pinned(),
-		SessionID: item.SessionID(), UpdatedAt: item.UpdatedAt()}
+		SessionID: item.SessionID(), UpdatedAt: instant.Timestamp{Time: item.UpdatedAt()}}
 }
 
 type memoryResults struct {
@@ -94,22 +95,22 @@ func (memoryItemArgs) JSONSchemaConstraints() jsonschema.Constraints {
 }
 
 type updateMemoryArgs struct {
-	memoryItemArgs
-	Content *string `json:"content,omitzero" jsonschema:"minLength=1"`
-	Pinned  *bool   `json:"pinned,omitzero"`
+	Item    memoryItemArgs `json:"item"`
+	Content *string        `json:"content,omitzero" jsonschema:"minLength=1"`
+	Pinned  *bool          `json:"pinned,omitzero"`
 }
 
 type reviewMemoryArgs struct {
-	memoryItemArgs
+	Item     memoryItemArgs        `json:"item"`
 	Decision memory.ReviewDecision `json:"decision"`
 }
 
 type memoryTools struct {
 	coordinator *app.Coordinator
-	db          *sql.DB
+	db          *framesqlite.Database
 }
 
-func buildMemoryTools(coordinator *app.Coordinator, db *sql.DB) ([]tool.Tool, error) {
+func buildMemoryTools(coordinator *app.Coordinator, db *framesqlite.Database) ([]tool.Tool, error) {
 	if coordinator == nil || db == nil {
 		return nil, errors.New("memory: coordinator and database are required")
 	}
@@ -165,13 +166,16 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 }
 
 func (t memoryTools) add(ctx context.Context, _ addMemoryArgs) (memoryView, error) {
-	return memoryToolCommand(ctx, t.db, addMemoryTool, func(ctx context.Context, input addMemoryArgs) (memoryView, error) {
+	return memoryToolCommand(ctx, t.db, addMemoryTool, func(ctx context.Context, input addMemoryArgs) (pluginstorage.CommandPlan[memoryView], error) {
 		cwd, err := memoryToolCWD(ctx)
 		if err != nil {
-			return memoryView{}, err
+			return pluginstorage.CommandPlan[memoryView]{}, err
 		}
-		item, err := t.coordinator.Add(ctx, input.Scope, cwd, input.Content)
-		return viewMemory(item), err
+		mutation, err := t.coordinator.PrepareAdd(ctx, input.Scope, cwd, input.Content)
+		if err != nil {
+			return pluginstorage.CommandPlan[memoryView]{}, err
+		}
+		return pluginstorage.NewCommandPlan(viewMemory(mutation.Item()), mutation.Apply)
 	})
 }
 
@@ -185,34 +189,45 @@ func (t memoryTools) authorize(ctx context.Context, input memoryItemArgs) error 
 }
 
 func (t memoryTools) update(ctx context.Context, _ updateMemoryArgs) (memoryView, error) {
-	return memoryToolCommand(ctx, t.db, updateMemoryTool, func(ctx context.Context, input updateMemoryArgs) (memoryView, error) {
-		if err := t.authorize(ctx, input.memoryItemArgs); err != nil {
-			return memoryView{}, err
+	return memoryToolCommand(ctx, t.db, updateMemoryTool, func(ctx context.Context, input updateMemoryArgs) (pluginstorage.CommandPlan[memoryView], error) {
+		if err := t.authorize(ctx, input.Item); err != nil {
+			return pluginstorage.CommandPlan[memoryView]{}, err
 		}
-		item, err := t.coordinator.Update(ctx, input.ID, input.ExpectedRevision, input.Content, input.Pinned)
-		return viewMemory(item), err
+		mutation, err := t.coordinator.PrepareUpdate(ctx, input.Item.ID, input.Item.ExpectedRevision, input.Content, input.Pinned)
+		if err != nil {
+			return pluginstorage.CommandPlan[memoryView]{}, err
+		}
+		return pluginstorage.NewCommandPlan(viewMemory(mutation.Item()), mutation.Apply)
 	})
 }
 
 func (t memoryTools) remove(ctx context.Context, _ memoryItemArgs) (rpc.Ack, error) {
-	return memoryToolCommand(ctx, t.db, deleteMemoryTool, func(ctx context.Context, input memoryItemArgs) (rpc.Ack, error) {
+	return memoryToolCommand(ctx, t.db, deleteMemoryTool, func(ctx context.Context, input memoryItemArgs) (pluginstorage.CommandPlan[rpc.Ack], error) {
 		if err := t.authorize(ctx, input); err != nil {
-			return rpc.Ack{}, err
+			return pluginstorage.CommandPlan[rpc.Ack]{}, err
 		}
-		return rpc.Ack{}, t.coordinator.Delete(ctx, input.ID, input.ExpectedRevision)
+		mutation, err := t.coordinator.PrepareDelete(ctx, input.ID, input.ExpectedRevision)
+		if err != nil {
+			return pluginstorage.CommandPlan[rpc.Ack]{}, err
+		}
+		return pluginstorage.NewCommandPlan(rpc.Ack{}, mutation.Apply)
 	})
 }
 
 func (t memoryTools) review(ctx context.Context, _ reviewMemoryArgs) (rpc.Ack, error) {
-	return memoryToolCommand(ctx, t.db, reviewMemoryTool, func(ctx context.Context, input reviewMemoryArgs) (rpc.Ack, error) {
-		if err := t.authorize(ctx, input.memoryItemArgs); err != nil {
-			return rpc.Ack{}, err
+	return memoryToolCommand(ctx, t.db, reviewMemoryTool, func(ctx context.Context, input reviewMemoryArgs) (pluginstorage.CommandPlan[rpc.Ack], error) {
+		if err := t.authorize(ctx, input.Item); err != nil {
+			return pluginstorage.CommandPlan[rpc.Ack]{}, err
 		}
-		return rpc.Ack{}, t.coordinator.Review(ctx, input.ID, input.ExpectedRevision, input.Decision)
+		mutation, err := t.coordinator.PrepareReview(ctx, input.Item.ID, input.Item.ExpectedRevision, input.Decision)
+		if err != nil {
+			return pluginstorage.CommandPlan[rpc.Ack]{}, err
+		}
+		return pluginstorage.NewCommandPlan(rpc.Ack{}, mutation.Apply)
 	})
 }
 
-func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, apply func(context.Context, P) (R, error)) (R, error) {
+func memoryToolCommand[P, R any](ctx context.Context, db *framesqlite.Database, name string, prepare func(context.Context, P) (pluginstorage.CommandPlan[R], error)) (R, error) {
 	var zero R
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
@@ -222,7 +237,7 @@ func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, a
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
-	value, err := pluginstorage.Command(ctx, db, name, id, admitted, classify, apply)
+	value, err := pluginstorage.Command(ctx, db, name, id, admitted, classify, prepare)
 	return value, memoryToolFailure(name, err)
 }
 
@@ -231,13 +246,13 @@ func memoryToolFailure(name string, err error) error {
 		return nil
 	}
 	wrapped := fmt.Errorf("%s: %w", name, err)
-	if _, known := errors.AsType[*framemcp.Refusal](err); known {
+	if _, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
 		return pluginsdk.DefiniteToolFailure(wrapped)
 	}
 	return wrapped
 }
 
-func memoryToolReceipt(ctx context.Context, db *sql.DB, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func memoryToolReceipt(ctx context.Context, db *framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	switch input.Method {
 	case addMemoryTool, updateMemoryTool, deleteMemoryTool, reviewMemoryTool:
 	default:

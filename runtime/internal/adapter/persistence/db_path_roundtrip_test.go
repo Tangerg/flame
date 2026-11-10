@@ -27,7 +27,7 @@ func TestOpenPreservesLiteralDatabasePath(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			var sequence int
 			var schema, actual string
-			if err := db.QueryRowContext(ctx, "PRAGMA database_list").Scan(&sequence, &schema, &actual); err != nil {
+			if err := scanFixture(ctx, db, "PRAGMA database_list", nil, &sequence, &schema, &actual); err != nil {
 				t.Fatal(err)
 			}
 			wantInfo, err := os.Stat(path)
@@ -38,7 +38,7 @@ func TestOpenPreservesLiteralDatabasePath(t *testing.T) {
 			if err != nil || !os.SameFile(wantInfo, actualInfo) {
 				t.Fatalf("database path = %q, want physical file %q: %v", actual, path, err)
 			}
-			if _, err := db.ExecContext(ctx, "INSERT INTO trusted_projects VALUES ('retained')"); err != nil {
+			if _, err := execFixture(ctx, db, "INSERT INTO trusted_projects VALUES ('retained')"); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {
@@ -50,7 +50,7 @@ func TestOpenPreservesLiteralDatabasePath(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = reopened.Close() })
 			var value string
-			if err := reopened.QueryRowContext(ctx, "SELECT project_root FROM trusted_projects").Scan(&value); err != nil || value != "retained" {
+			if err := scanFixture(ctx, reopened, "SELECT project_root FROM trusted_projects", nil, &value); err != nil || value != "retained" {
 				t.Fatalf("reopened value = %q: %v", value, err)
 			}
 		})

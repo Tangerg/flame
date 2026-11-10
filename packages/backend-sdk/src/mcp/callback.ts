@@ -7,26 +7,26 @@ import {
   declareMethod,
   type Method,
   PROTOCOL,
-  validCommand,
-  type MethodDescriptor,
 } from "./contract.ts";
 import wire from "./protocol.generated.json";
 
 export interface CallbackRef {
-  endpoint: string;
-  credential: string;
-  call: string;
-  maxResponseBytes: number | bigint;
+  readonly endpoint: string;
+  readonly credential: string;
+  readonly call: string;
+  readonly maxResponseBytes: number | bigint;
 }
 export interface Invocation {
-  id: string;
-  origin: string;
-  parent?: string;
-  target: { scope: string; reference: string };
+  readonly id: string;
+  readonly origin: string;
+  readonly parent?: string;
+  readonly target: { readonly scope: string; readonly reference: string };
 }
 export function callbackRef(value: unknown): CallbackRef {
-  exactFields(value, ["endpoint", "credential", "call", "maxResponseBytes"]);
-  const ref = value as unknown as CallbackRef;
+  const ref: unknown = freezeJSON(value);
+  exactFields(ref, ["endpoint", "credential", "call", "maxResponseBytes"]);
+  if (typeof ref.endpoint !== "string")
+    throw new Error("plugin: invalid callback reference");
   const endpoint = new URL(ref.endpoint);
   if (
     endpoint.protocol !== "http:" ||
@@ -37,17 +37,24 @@ export function callbackRef(value: unknown): CallbackRef {
     endpoint.hash ||
     endpoint.username ||
     endpoint.password ||
-    ![ref.credential, ref.call].every(
-      (value) => typeof value === "string" && /^[a-fA-F0-9]{64}$/.test(value),
-    ) ||
+    typeof ref.credential !== "string" ||
+    !/^[a-fA-F0-9]{64}$/.test(ref.credential) ||
+    typeof ref.call !== "string" ||
+    !/^[a-fA-F0-9]{64}$/.test(ref.call) ||
     (typeof ref.maxResponseBytes === "number" &&
       !Number.isSafeInteger(ref.maxResponseBytes)) ||
-    !["number", "bigint"].includes(typeof ref.maxResponseBytes) ||
+    (typeof ref.maxResponseBytes !== "number" &&
+      typeof ref.maxResponseBytes !== "bigint") ||
     BigInt(ref.maxResponseBytes) <= 0n ||
     BigInt(ref.maxResponseBytes) >= 9223372036854775807n
   )
     throw new Error("plugin: invalid callback reference");
-  return freezeJSON(ref);
+  return Object.freeze({
+    endpoint: ref.endpoint,
+    credential: ref.credential,
+    call: ref.call,
+    maxResponseBytes: ref.maxResponseBytes,
+  });
 }
 
 export function callbackFetch(
@@ -56,6 +63,7 @@ export function callbackFetch(
   path = "/",
 ): typeof fetch {
   ref = callbackRef(ref);
+  const owner = invocation === undefined ? undefined : freezeJSON(invocation);
   if (
     !path.startsWith("/") ||
     path.startsWith("//") ||
@@ -79,10 +87,10 @@ export function callbackFetch(
     const headers = new Headers(init.headers);
     headers.set("Authorization", ref.credential);
     headers.set(wire.constants.CallHeader, ref.call);
-    if (invocation) {
+    if (owner) {
       // Header bytes are ASCII; JSON escapes preserve the original Unicode
       // identity without changing admission, request bodies or receipt digests.
-      const encoded = stringifyJSON(invocation).replace(
+      const encoded = stringifyJSON(owner).replace(
         /[\u007f-\uffff]/g,
         (unit) => "\\u" + unit.charCodeAt(0).toString(16).padStart(4, "0"),
       );
@@ -201,17 +209,10 @@ export async function callHost(
   invocation?: Invocation,
   commandId?: string,
 ): Promise<unknown> {
-  if (
-    method.descriptor.kind === "command"
-      ? !validCommand(commandId)
-      : commandId !== undefined
-  )
-    throw new Error(
-      "plugin: invalid callback command identity for method kind",
-    );
-  method.validateInput(input);
-  const response = await callbackFetch(callbackRef(ref), invocation)(
-    ref.endpoint,
+  const admitted = method.admitInvocation(input, commandId);
+  const captured = callbackRef(ref);
+  const response = await callbackFetch(captured, invocation)(
+    captured.endpoint,
     {
       method: "POST",
       signal,
@@ -220,7 +221,7 @@ export async function callHost(
         protocol: PROTOCOL,
         method: method.descriptor.name,
         contract: method.identity,
-        input,
+        input: admitted,
         ...(commandId ? { commandId } : {}),
       }),
     },
@@ -246,9 +247,6 @@ export async function callHost(
       ),
     ),
   );
-  method.validateOutput(value);
-  return value;
+  return method.admitOutput(value);
 }
-export const streamDelivery = declareMethod(
-  parseJSON(wire.streamDelivery) as MethodDescriptor,
-);
+export const streamDelivery = declareMethod(parseJSON(wire.streamDelivery));

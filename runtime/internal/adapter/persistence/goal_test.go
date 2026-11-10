@@ -200,26 +200,7 @@ func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	columnsOf := func(table string) []string {
-		t.Helper()
-		rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
-		if err != nil {
-			t.Fatalf("table_info(%s): %v", table, err)
-		}
-		defer func() { _ = rows.Close() }()
-		var columns []string
-		for rows.Next() {
-			var name string
-			if err := rows.Scan(&name); err != nil {
-				t.Fatalf("scan table_info(%s): %v", table, err)
-			}
-			columns = append(columns, name)
-		}
-		if err := rows.Err(); err != nil {
-			t.Fatalf("table_info(%s): %v", table, err)
-		}
-		return columns
-	}
+	columnsOf := func(table string) []string { return fixtureColumns(t, db, table) }
 
 	for _, test := range []struct {
 		table    string
@@ -580,7 +561,7 @@ func TestGoalReceiptRecoveryIsAtomicAndScopedToItsIncarnation(t *testing.T) {
 					t.Fatalf("replace: %t, %v", applied, err)
 				}
 			} else {
-				if _, err := rawFixtureDatabase(store.db).ExecContext(ctx, `CREATE TRIGGER fail_goal_write BEFORE UPDATE ON goals BEGIN SELECT RAISE(ABORT,'injected'); END`); err != nil {
+				if _, err := execFixture(ctx, fixtureDatabase(store.db), `CREATE TRIGGER fail_goal_write BEFORE UPDATE ON goals BEGIN SELECT RAISE(ABORT,'injected'); END`); err != nil {
 					t.Fatal(err)
 				}
 				if err := recorder.Drain(ctx, store, goaltest.Workflow{}, sessionID, nil); err == nil {
@@ -589,15 +570,15 @@ func TestGoalReceiptRecoveryIsAtomicAndScopedToItsIncarnation(t *testing.T) {
 				if _, found, err := store.PendingGoalRun(ctx, sessionID); err != nil || !found {
 					t.Fatalf("pending receipt: %t, %v", found, err)
 				}
-				if _, err := rawFixtureDatabase(store.db).ExecContext(ctx, `DROP TRIGGER fail_goal_write`); err != nil {
+				if _, err := execFixture(ctx, fixtureDatabase(store.db), `DROP TRIGGER fail_goal_write`); err != nil {
 					t.Fatal(err)
 				}
 			}
 			var file string
-			if err := rawFixtureDatabase(store.db).QueryRowContext(ctx, `SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&file); err != nil {
+			if err := scanFixture(ctx, fixtureDatabase(store.db), `SELECT file FROM pragma_database_list WHERE name='main'`, nil, &file); err != nil {
 				t.Fatal(err)
 			}
-			if err := rawFixtureDatabase(store.db).Close(); err != nil {
+			if err := fixtureDatabase(store.db).Close(); err != nil {
 				t.Fatal(err)
 			}
 			reopened, err := openDatabase(ctx, file)

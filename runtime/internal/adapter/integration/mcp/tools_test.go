@@ -140,7 +140,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 		t.Run(schema, func(t *testing.T) {
 			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "healthy", InputSchema: jsontext.Value(`{"type":"object"}`)}, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
 			tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
-			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
+			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidDefinition) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
 			}
 		})

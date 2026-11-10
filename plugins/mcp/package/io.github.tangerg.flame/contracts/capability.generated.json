@@ -11,7 +11,7 @@
       "description": "Read a retained external authorization attempt.",
       "input": {
         "$defs": {
-          "mcpconnector.Request": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVxdWVzdA": {
             "additionalProperties": false,
             "properties": {
               "epoch": {
@@ -46,7 +46,7 @@
       },
       "output": {
         "$defs": {
-          "mcpconnector.Attempt": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA": {
             "additionalProperties": false,
             "properties": {
               "finishedAt": {
@@ -73,11 +73,11 @@
             ],
             "type": "object"
           },
-          "mcpconnector.AttemptResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA": {
             "additionalProperties": false,
             "properties": {
               "attempt": {
-                "$ref": "#/$defs/mcpconnector.Attempt"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
               }
             },
             "type": "object"
@@ -87,7 +87,7 @@
         "additionalProperties": false,
         "properties": {
           "attempt": {
-            "$ref": "#/$defs/mcpconnector.Attempt"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
           }
         },
         "type": "object"
@@ -100,7 +100,7 @@
       "description": "Begin an authorization attempt against the current enabled entry.",
       "input": {
         "$defs": {
-          "mcpconnector.Start": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U3RhcnQ": {
             "additionalProperties": false,
             "properties": {
               "attemptId": {
@@ -151,7 +151,7 @@
       },
       "output": {
         "$defs": {
-          "mcpconnector.Attempt": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA": {
             "additionalProperties": false,
             "properties": {
               "finishedAt": {
@@ -178,11 +178,11 @@
             ],
             "type": "object"
           },
-          "mcpconnector.AttemptResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA": {
             "additionalProperties": false,
             "properties": {
               "attempt": {
-                "$ref": "#/$defs/mcpconnector.Attempt"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
               }
             },
             "type": "object"
@@ -192,7 +192,7 @@
         "additionalProperties": false,
         "properties": {
           "attempt": {
-            "$ref": "#/$defs/mcpconnector.Attempt"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
           }
         },
         "type": "object"
@@ -205,7 +205,7 @@
       "description": "Compare and change one external directory entry.",
       "input": {
         "$defs": {
-          "mcpconnector.Change": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q2hhbmdl": {
             "additionalProperties": false,
             "properties": {
               "expected": {
@@ -215,7 +215,7 @@
                 "type": "string"
               },
               "replacement": {
-                "$ref": "#/$defs/mcpconnector.Entry"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk"
               }
             },
             "required": [
@@ -223,7 +223,7 @@
             ],
             "type": "object"
           },
-          "mcpconnector.Entry": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -271,7 +271,7 @@
             "type": "string"
           },
           "replacement": {
-            "$ref": "#/$defs/mcpconnector.Entry"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk"
           }
         },
         "required": [
@@ -291,7 +291,7 @@
       "description": "List external servers and their opaque host launch grants.",
       "input": {
         "$defs": {
-          "mcpconnector.Selector": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U2VsZWN0b3I": {
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -312,12 +312,12 @@
       },
       "output": {
         "$defs": {
-          "mcpconnector.Directory": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RGlyZWN0b3J5": {
             "additionalProperties": false,
             "properties": {
               "entries": {
                 "items": {
-                  "$ref": "#/$defs/mcpconnector.Entry"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk"
                 },
                 "type": "array"
               }
@@ -327,7 +327,7 @@
             ],
             "type": "object"
           },
-          "mcpconnector.Entry": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -370,7 +370,7 @@
         "properties": {
           "entries": {
             "items": {
-              "$ref": "#/$defs/mcpconnector.Entry"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk"
             },
             "type": "array"
           }
@@ -388,7 +388,7 @@
       "description": "Cancel uncompleted attempts admitted by a previous Runtime incarnation.",
       "input": {
         "$defs": {
-          "mcpconnector.Recovery": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVjb3Zlcnk": {
             "additionalProperties": false,
             "properties": {
               "epoch": {
@@ -425,7 +425,7 @@
       "description": "Record the original authorization attempt's terminal result.",
       "input": {
         "$defs": {
-          "mcpconnector.Completion": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q29tcGxldGlvbg": {
             "additionalProperties": false,
             "properties": {
               "epoch": {

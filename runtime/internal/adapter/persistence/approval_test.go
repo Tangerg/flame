@@ -230,7 +230,7 @@ func TestApprovalRuleStoreRefusesARuleStoredUnderAnotherIdentity(t *testing.T) {
 	if err := store.Put(t.Context(), rule); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := rawFixtureDatabase(store.db).ExecContext(t.Context(), `UPDATE approval_rules SET id = 'rule_other' WHERE id = ?`, rule.ID()); err != nil {
+	if _, err := execFixture(t.Context(), fixtureDatabase(store.db), `UPDATE approval_rules SET id = 'rule_other' WHERE id = ?`, rule.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if rules, err := store.Visible(t.Context(), "", "", approval.MaximumVisibleRules+1); err == nil {

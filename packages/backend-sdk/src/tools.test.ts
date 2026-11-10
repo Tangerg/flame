@@ -4,7 +4,6 @@ import {
   declareMethod,
   parseJSON,
   type CallContext,
-  type MethodDescriptor,
 } from "@flame/backend-sdk/mcp";
 import { toolCommandId, toolReceipts } from "./tools";
 import wire from "./protocol.generated.json";
@@ -34,15 +33,13 @@ describe("Flame Tool capabilities", () => {
   });
 
   it("uses the published receipt result shape before replying to the host", () => {
-    const method = declareMethod(
-      parseJSON(wire.toolReceipt) as MethodDescriptor,
-    );
+    const method = declareMethod(parseJSON(wire.toolReceipt));
     for (const response of [
       {},
       { result: { output: { content: [{ kind: "text", text: "done" }] } } },
       { result: { output: {}, isError: true } },
     ]) {
-      expect(() => method.validateOutput(response)).not.toThrow();
+      expect(() => method.admitOutput(response)).not.toThrow();
     }
     for (const response of [
       { found: true },
@@ -50,7 +47,7 @@ describe("Flame Tool capabilities", () => {
       { result: {} },
       { result: { output: "null" } },
     ]) {
-      expect(() => method.validateOutput(response)).toThrow();
+      expect(() => method.admitOutput(response)).toThrow();
     }
   });
 
@@ -62,7 +59,7 @@ describe("Flame Tool capabilities", () => {
     expect(registration).toHaveBeenCalledOnce();
     const [method, decode, implementation] = registration.mock.calls[0]!;
     expect(method.identity).toBe(
-      declareMethod(parseJSON(wire.toolReceipt) as MethodDescriptor).identity,
+      declareMethod(parseJSON(wire.toolReceipt)).identity,
     );
     expect(implementation).toBe(handle);
     expect(() =>

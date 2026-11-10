@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
@@ -22,7 +23,7 @@ func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	callback, err := NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			calls.Add(1)
 			if command.ID != "original-stream" || command.Input.Messages[0].Text() != "original request" {
@@ -62,7 +63,7 @@ func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
 			if final != nil {
 				t.Fatal("chunk followed final response")
 			}
-			if err := accumulated.Add(item.Chunk); err != nil {
+			if err := accumulated.Add((*chat.ResponseDelta)(item.Chunk)); err != nil {
 				t.Fatal(err)
 			}
 		} else {
@@ -85,7 +86,7 @@ func TestStoppingModelStreamCancelsAndJoinsItsSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	stopped := make(chan struct{})
-	callback, err := NewModelStreamCallback(func(ctx context.Context, _ pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(ctx context.Context, _ pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			defer close(stopped)
 			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("partial")}}, nil) {
@@ -125,7 +126,7 @@ func TestModelStreamRetainsCompletedInnerResponseAfterOuterFailure(t *testing.T)
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	callback, err := NewModelStreamCallback(func(context.Context, pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(context.Context, pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("known result")}, FinishReason: chat.FinishReasonStop, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9, OutputTokens: 2}}}, nil) {
 				return
@@ -166,7 +167,7 @@ func TestModelStreamAggregateUsesTheCapturedByteCapacity(t *testing.T) {
 		t.Fatal(err)
 	}
 	produced := 0
-	callback, err := NewModelStreamCallback(func(context.Context, pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(context.Context, pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			for range 100 {
 				produced++

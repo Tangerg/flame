@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ func (r *exportSnapshotReader) ReadSnapshot(context.Context, string) (sessions.S
 	return r.value, nil
 }
 
-func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sql.DB, *exportSnapshotReader) {
+func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sqlite.Database, *exportSnapshotReader) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "export.sqlite"))
 	if err != nil {
@@ -99,7 +98,7 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			reader, db, snapshots := trajectoryExportFixture(t)
-			if _, err := db.ExecContext(t.Context(), test.sql, test.args...); err != nil {
+			if _, err := execFixture(t.Context(), db, test.sql, test.args...); err != nil {
 				t.Fatal(err)
 			}
 			value, err := reader.ReadTrajectoryExport(t.Context(), "ses_export")
@@ -112,11 +111,9 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 
 func TestTrajectoryExportDiscardsEarlierPagesWhenLaterEvidenceIsCorrupt(t *testing.T) {
 	reader, db, snapshots := trajectoryExportFixture(t)
-	if _, err := db.ExecContext(t.Context(), `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < 101)
+	if _, err := execFixture(t.Context(), db, `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < 101)
 		INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,finished_at,logical_purpose)
-		SELECT printf('call_%03d',x),'ses_export','run_export',CASE WHEN x=1 THEN '' ELSE 'seg_1' END,'completed',?,?,'conversation' FROM n`,
-		time.Unix(10, 0).UnixNano(), time.Unix(11, 0).UnixNano(),
-	); err != nil {
+		SELECT printf('call_%03d',x),'ses_export','run_export',CASE WHEN x=1 THEN '' ELSE 'seg_1' END,'completed',?,?,'conversation' FROM n`, time.Unix(10, 0).UnixNano(), time.Unix(11, 0).UnixNano()); err != nil {
 		t.Fatal(err)
 	}
 	value, err := reader.ReadTrajectoryExport(t.Context(), "ses_export")
@@ -133,7 +130,7 @@ func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testi
 		 VALUES('call_foreign','item_1','ses_foreign','run_export','seg_1','incomplete',1,2)`,
 	} {
 		reader, db, snapshots := trajectoryExportFixture(t)
-		if _, err := db.ExecContext(t.Context(), statement); err != nil {
+		if _, err := execFixture(t.Context(), db, statement); err != nil {
 			t.Fatal(err)
 		}
 		value, err := reader.ReadTrajectoryExport(t.Context(), "ses_export")
@@ -167,7 +164,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	if value.Snapshot().SessionID != "ses_export" || value.Snapshot().RunID != "" || value.State() != modelref.InvocationFailed || value.Response().Metadata.Usage.InputTokens != 9007199254740993 || !strings.Contains(value.Snapshot().ResponseJSON.String(), "9007199254740993") || !strings.Contains(value.Snapshot().RequestJSON.String(), "original prompt") {
 		t.Fatalf("export changed known endpoint evidence: %+v", value)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET endpoint_json=json_set(endpoint_json,'$.sessionId','ses_other') WHERE call_id='endpoint_session'`); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE model_invocations SET endpoint_json=json_set(endpoint_json,'$.sessionId','ses_other') WHERE call_id='endpoint_session'`); err != nil {
 		t.Fatal(err)
 	}
 	if value, err := reader.ReadTrajectoryExport(t.Context(), "ses_export"); err == nil || len(value.ModelEndpoints) != 0 {

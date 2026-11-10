@@ -31,8 +31,8 @@ type transcriptEntry struct {
 }
 
 var (
-	_ base.Block         = (*transcriptEntry)(nil)
-	_ base.TextProjector = (*transcriptEntry)(nil)
+	_ base.Block     = (*transcriptEntry)(nil)
+	_ text.Projector = (*transcriptEntry)(nil)
 )
 
 func newTranscriptEntry(theme kit.Theme, glyphs kit.Glyphs, content base.Block) *transcriptEntry {
@@ -63,14 +63,14 @@ func (t *transcriptEntry) Draw(view grid.View) {
 		style = t.theme.Accent
 	}
 	for row := range height {
-		view.Text(0, row, t.glyphs.Vertical, style)
+		view.Text(0, row, t.glyphs.Vertical.String(), style)
 	}
 }
 
 func (t *transcriptEntry) Rows(width int) []text.Row {
 	height := t.HeightForWidth(width)
 	rows := make([]text.Row, height)
-	copyable, ok := t.content.(base.TextProjector)
+	copyable, ok := t.content.(text.Projector)
 	if !ok {
 		return rows
 	}

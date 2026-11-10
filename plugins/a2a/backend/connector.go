@@ -11,19 +11,17 @@ import (
 	"unicode/utf8"
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/a2aproject/a2a-go/v2/a2a"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/a2aproject/a2a-go/v2/a2a"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 )
 
 type connector struct {
-	db     *sql.DB
+	db     *sqlite.Database
 	agents map[string]agent
 }
 
@@ -116,7 +114,7 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		if err != nil {
 			return err
 		}
-		_, err = pluginstorage.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
+		_, err = sqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
 		return err
 	})
 	return result, err
@@ -181,7 +179,9 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 		return taskBinding{}, agent{}, invalidRequest()
 	}
 	var raw string
-	err := pluginstorage.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
+	err := c.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return taskBinding{}, agent{}, &framemcp.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
 	}

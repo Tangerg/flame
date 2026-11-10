@@ -93,9 +93,9 @@ func newContextEditor(theme kit.Theme, clipboard base.Clipboard, content, placeh
 			Theme: theme, MaxRows: 1_000,
 		}),
 	}
-	editor.composer.Controller().Keys = keys
-	editor.composer.Controller().Clipboard = clipboard
-	editor.composer.Controller().Placeholder = placeholder
+	editor.composer.Controller().SetKeys(keys)
+	editor.composer.Controller().SetClipboard(clipboard)
+	editor.composer.Controller().SetPlaceholder(placeholder)
 	editor.composer.Controller().SetText(content)
 	return editor
 }

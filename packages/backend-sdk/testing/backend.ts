@@ -9,21 +9,15 @@ import {
   invocationConflictCode,
   callHost,
   parseJSON,
-  type CapabilityDescriptor,
-  type MethodDescriptor,
   type CallContext,
 } from "@flame/backend-sdk/mcp";
 
 console.info("conformance module loaded");
 const contract = new Capability(
-  parseJSON(
-    readFileSync(new URL("./contract.json", import.meta.url), "utf8"),
-  ) as CapabilityDescriptor,
+  parseJSON(readFileSync(new URL("./contract.json", import.meta.url), "utf8")),
 );
 const host = declareMethod(
-  parseJSON(
-    readFileSync(new URL("./host.json", import.meta.url), "utf8"),
-  ) as MethodDescriptor,
+  parseJSON(readFileSync(new URL("./host.json", import.meta.url), "utf8")),
 );
 const backend = new Backend({
   name: "flame.typescript.conformance",

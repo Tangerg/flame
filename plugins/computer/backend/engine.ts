@@ -1,12 +1,19 @@
 import { performance } from "node:perf_hooks";
 import { declareMethod } from "@flame/backend-sdk/mcp";
-import { cloneJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
+import {
+  cloneJSON,
+  isJSONNumber,
+  parseJSON,
+  stringifyJSON,
+} from "@frame/sdk/json";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import {
   CallToolResultSchema,
   ElicitRequestParamsSchema,
+  ImplementationSchema,
   ListToolsResultSchema,
+  ServerCapabilitiesSchema,
   ToolListChangedNotificationSchema,
   type CallToolRequest,
   type CallToolResult,
@@ -86,9 +93,12 @@ const originalToolResult = z.custom<CallToolResult>(
 const originalTools = z.custom<ListToolsResult>(
   (value) => ListToolsResultSchema.safeParse(value).success,
 );
+const originalElicitationParams = z.custom<ElicitRequest["params"]>(
+  (value) => ElicitRequestParamsSchema.safeParse(value).success,
+);
 const originalElicitation = z.object({
   method: z.literal("elicitation/create"),
-  params: z.record(z.string(), z.unknown()),
+  params: originalElicitationParams,
 });
 
 function immutable<T>(value: T): T {
@@ -185,7 +195,7 @@ export class Engine {
   readonly #hooks: EngineHooks;
   readonly #requestMeta: Readonly<Record<string, unknown>>;
   readonly #lifetime = new AbortController();
-  readonly #outputs = new Map<string, (value: unknown) => void>();
+  readonly #outputs = new Map<string, (value: unknown) => unknown>();
   #surface?: Readonly<EngineSurface>;
   #active?: ActiveCall;
   #closing?: Promise<void>;
@@ -194,7 +204,12 @@ export class Engine {
 
   private constructor(config: EngineConfig, hooks: EngineHooks) {
     const metadata = parseJSON(config.env.NODE_REPL_REQUEST_META ?? "{}");
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    if (
+      !metadata ||
+      typeof metadata !== "object" ||
+      Array.isArray(metadata) ||
+      isJSONNumber(metadata)
+    )
       throw new Error("computer: engine request metadata must be an object");
     this.#requestMeta = immutable(metadata as Record<string, unknown>);
     this.#hooks = hooks;
@@ -203,13 +218,9 @@ export class Engine {
       { name: manifest.name, version: manifest.version },
       { capabilities: { elicitation: { form: {}, url: {} } } },
     );
-    this.#client.setRequestHandler(originalElicitation, (request, extra) => {
-      ElicitRequestParamsSchema.parse(request.params);
-      return this.#elicit(
-        request.params as ElicitRequest["params"],
-        extra.signal,
-      );
-    });
+    this.#client.setRequestHandler(originalElicitation, (request, extra) =>
+      this.#elicit(request.params, extra.signal),
+    );
     this.#client.setNotificationHandler(
       ToolListChangedNotificationSchema,
       () => {
@@ -275,19 +286,19 @@ export class Engine {
               description: tool.description ?? "",
               input: tool.inputSchema,
               output: tool.outputSchema,
-            }).validateOutput,
+            }).admitOutput,
           );
       }
-      engine.#surface = immutable(
-        cloneJSON({
-          instructions,
-          tools: listed.tools.filter(
+      engine.#surface = immutable({
+        instructions,
+        tools: originalTools
+          .parse(cloneJSON(listed))
+          .tools.filter(
             (tool) => tool.name === "js" || tool.name === "js_reset",
           ),
-          serverInfo,
-          capabilities,
-        }),
-      );
+        serverInfo: ImplementationSchema.parse(cloneJSON(serverInfo)),
+        capabilities: ServerCapabilitiesSchema.parse(cloneJSON(capabilities)),
+      });
       engine.#lifetime.signal.throwIfAborted();
       return engine;
     } catch (cause) {
@@ -360,9 +371,12 @@ export class Engine {
     try {
       return await Promise.race([
         Promise.resolve().then(() =>
-          this.#hooks.onElicitation(immutable(cloneJSON(params)), {
-            signal,
-          }),
+          this.#hooks.onElicitation(
+            immutable(originalElicitationParams.parse(cloneJSON(params))),
+            {
+              signal,
+            },
+          ),
         ),
         cancelled.promise,
       ]);
@@ -393,16 +407,18 @@ export class Engine {
       throw new Error(
         "computer: engine call requires its owned control identities",
       );
+    const input = immutable(
+      z.record(z.string(), z.unknown()).parse(cloneJSON(args)),
+    );
     const requested =
-      tool === "js" && typeof args.timeout_ms === "number"
-        ? args.timeout_ms
+      tool === "js" && typeof input.timeout_ms === "number"
+        ? input.timeout_ms
         : 0;
     if (
       !Number.isFinite(requested) ||
       requested > MAX_TIMER_MS - RESULT_MARGIN_MS
     )
       throw new Error("computer: engine timeout exceeds timer capacity");
-    const input = immutable(cloneJSON(args));
     this.#process.beginTurn(scope);
     const deadline = new ExecutionDeadline(
       Math.max(CALL_MS, requested + RESULT_MARGIN_MS),
@@ -509,11 +525,16 @@ export class Engine {
       originalToolResult,
       options,
     );
-    const validate = this.#outputs.get(params.name);
-    if (validate) {
-      if (!result.structuredContent && !result.isError)
+    const admitOutput = this.#outputs.get(params.name);
+    if (admitOutput && !result.isError) {
+      if (!result.structuredContent)
         throw new Error("computer: engine omitted declared structured output");
-      if (result.structuredContent) validate(result.structuredContent);
+      return {
+        ...result,
+        structuredContent: z
+          .record(z.string(), z.unknown())
+          .parse(admitOutput(result.structuredContent)),
+      };
     }
     return result;
   }

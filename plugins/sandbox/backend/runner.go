@@ -2,24 +2,22 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"runtime"
 
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
+	toolshell "github.com/Tangerg/scope/tools/shell"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/frame/sqlite"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
 type homeRead func(context.Context) (string, error)
@@ -42,12 +40,12 @@ func coreHome(ctx context.Context) (home string, err error) {
 }
 
 type runner struct {
-	db      *sql.DB
+	db      *sqlite.Database
 	scratch string
 	home    homeRead
 }
 
-func newRunner(db *sql.DB, scratch string, home homeRead) (*runner, error) {
+func newRunner(db *sqlite.Database, scratch string, home homeRead) (*runner, error) {
 	if db == nil || !filepath.IsAbs(scratch) || home == nil {
 		return nil, errors.New("sandbox: private database, absolute scratch directory and core home read are required")
 	}
@@ -134,6 +132,6 @@ func readOutcome(encoded []byte) (sandbox.Result, error) {
 	return result, result.Validate()
 }
 
-func openStore(ctx context.Context, path string) (*sql.DB, error) {
+func openStore(ctx context.Context, path string) (*sqlite.Database, error) {
 	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema})
 }

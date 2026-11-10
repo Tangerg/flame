@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -74,12 +75,14 @@ func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T)
 	if _, found, err := store.Get(t.Context(), id); err != nil || !found {
 		t.Fatalf("admitted installation = (%t, %v)", found, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `PRAGMA foreign_keys=OFF`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_releases WHERE digest=?`, release.Digest().String()); err != nil {
-		t.Fatal(err)
-	}
+	db = corruptFixture(t, db, func(connection *sql.Conn) error {
+		if _, err := connection.ExecContext(t.Context(), `PRAGMA foreign_keys=OFF`); err != nil {
+			return err
+		}
+		_, err := connection.ExecContext(t.Context(), `DELETE FROM plugin_releases WHERE digest=?`, release.Digest().String())
+		return err
+	})
+	store = newInstallationStore(newReleaseStore(databaseFor(db)))
 	if snapshot, found, err := store.Get(t.Context(), id); found || !errors.Is(err, plugin.ErrNotFound) || !strings.Contains(err.Error(), "selected release") {
 		t.Fatalf("malformed installation = (%v, %t, %v), want rejected restoration with release cause", snapshot.Installation, found, err)
 	}

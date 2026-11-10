@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func newServer(store *store) (*sdk.Server, error) {
@@ -38,25 +38,25 @@ func newServer(store *store) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ReplaceInput) (guardrail.Summary, error) {
-			return store.replace(ctx, input.ExpectedRevision, input.Phrases)
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ReplaceInput) (pluginstorage.CommandPlan[guardrail.Summary], error) {
+			return store.prepareReplacement(ctx, input.ExpectedRevision, input.Phrases)
 		}),
 		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (guardrail.Summary, error) {
 			policy, err := store.read(ctx)
 			return policy.Summary(), err
 		}),
-		input.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+		input.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginsdk.ModelInputRequest]) (scopewire.Request, error) {
 			if err := command.Input.Validate(); err != nil {
-				return chat.Request{}, err
+				return scopewire.Request{}, err
 			}
 			policy, err := store.read(ctx)
 			if err != nil {
-				return chat.Request{}, err
+				return scopewire.Request{}, err
 			}
 			if err := inspectRequest(ctx, policy, &command.Input.Request); err != nil {
-				return chat.Request{}, err
+				return scopewire.Request{}, err
 			}
-			return *command.Input.Request.Clone(), nil
+			return scopewire.Request(*command.Input.Request.Clone()), nil
 		}),
 		backend.BindCapability("policy", contracts.Capability),
 		backend.BindCapability("input", inputContract),

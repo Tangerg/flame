@@ -11,6 +11,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
@@ -231,6 +232,9 @@ func commandFailure(name string, cause error) error {
 		return nil
 	}
 	err := fmt.Errorf("%s: %w", name, cause)
+	if errors.Is(cause, pluginmcp.ErrOutcomeUnconfirmed) {
+		return err
+	}
 	_, receipted := errors.AsType[*framemcp.Refusal](err)
 	if _, refused := classify(cause); errors.Is(err, scheduleapp.ErrRefused) || receipted || refused {
 		return pluginsdk.DefiniteToolFailure(err)

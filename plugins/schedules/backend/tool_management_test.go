@@ -3,11 +3,11 @@ package main
 import (
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"context"
-	"database/sql"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
@@ -28,7 +28,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.ClientSession, func() error) {
+func scheduleToolSession(t *testing.T, db *framesqlite.Database, host *observedRunHost) (*sdk.ClientSession, func() error) {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-tool-test"}, nil)
 	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error) {
@@ -122,7 +122,7 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 			t.Fatalf("%s: %+v, %v", name, output, err)
 		}
 		var storedInput string
-		if err := db.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id=?`, "tool:"+id).Scan(&storedInput); err != nil || storedInput != admitted.String() {
+		if err := scanDatabase(t.Context(), db, `SELECT business_input_json FROM commands WHERE id=?`, []any{"tool:" + id}, &storedInput); err != nil || storedInput != admitted.String() {
 			t.Fatalf("%s changed its original Tool input: %s, %v", name, storedInput, err)
 		}
 		assertScheduleToolReceipt(t, session, id, name, arguments, output)
@@ -197,14 +197,14 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 		assertScheduleToolReceipt(t, session, record.id, record.name, record.input, replayed)
 	}
 	var definitions int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM schedules`).Scan(&definitions); err != nil || definitions != 0 {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM schedules`, nil, &definitions); err != nil || definitions != 0 {
 		t.Fatalf("command replay or receipt recovery recreated deleted work: %d, %v", definitions, err)
 	}
 	var commands int
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands`).Scan(&commands); err != nil || commands != len(records) {
+	if err := scanDatabase(t.Context(), db, `SELECT count(*) FROM commands`, nil, &commands); err != nil || commands != len(records) {
 		t.Fatalf("command replay created additional receipts: %d, %v", commands, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply='{"value":null}' WHERE id='tool:delete'`); err != nil {
+	if _, err := execDatabase(t.Context(), db, `UPDATE commands SET reply='{"value":null}' WHERE id='tool:delete'`); err != nil {
 		t.Fatal(err)
 	}
 	admitted, err := framevalue.EncodeJSON(map[string]any{"schedule_id": first.Schedule.ScheduleID})

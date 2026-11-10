@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -58,7 +59,10 @@ func TestHTTPOriginalResultSurvivesRestartWithoutAnotherRequest(t *testing.T) {
 		_, _ = io.WriteString(w, "original response")
 	}))
 	t.Cleanup(server.Close)
-	requests, method, path := httpFixture(t, httpreq.ClientConfig{AllowedHosts: []string{"127.0.0.1"}})
+	requests, method, path := httpFixture(t, httpreq.ClientConfig{
+		AllowedHosts:    []string{server.Listener.Addr().String()},
+		AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
+	})
 	input := httpInput(t, httpreq.Request{URL: server.URL})
 	first, err := requests.execute(t.Context(), method, "original", input)
 	if err != nil || first.Status != http.StatusOK {
@@ -102,6 +106,7 @@ func TestHTTPPolicyRefusalsNeverReachTransport(t *testing.T) {
 	}{
 		{name: "no grant", input: httpreq.Request{URL: "https://allowed.test"}},
 		{name: "host", hosts: []string{"allowed.test"}, input: httpreq.Request{URL: "https://denied.test"}},
+		{name: "port", hosts: []string{"allowed.test"}, input: httpreq.Request{URL: "https://allowed.test:444"}},
 		{name: "method", hosts: []string{"allowed.test"}, input: httpreq.Request{URL: "https://allowed.test", Method: httpreq.MethodPOST}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -164,7 +169,10 @@ func TestHTTPResponseBoundAndRedirectGrant(t *testing.T) {
 		_, _ = io.WriteString(w, strings.Repeat("x", int(httpreq.DefaultMaxResponseBytes)+1))
 	}))
 	t.Cleanup(server.Close)
-	requests, method, _ := httpFixture(t, httpreq.ClientConfig{AllowedHosts: []string{"127.0.0.1"}})
+	requests, method, _ := httpFixture(t, httpreq.ClientConfig{
+		AllowedHosts:    []string{server.Listener.Addr().String()},
+		AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
+	})
 	result, err := requests.execute(t.Context(), method, "bounded", httpInput(t, httpreq.Request{URL: server.URL}))
 	if err != nil || !result.Truncated || len(result.Body.Data) != int(httpreq.DefaultMaxResponseBytes) {
 		t.Fatalf("response bound: bytes=%d truncated=%v error=%v", len(result.Body.Data), result.Truncated, err)
@@ -176,5 +184,18 @@ func TestHTTPResponseBoundAndRedirectGrant(t *testing.T) {
 	}
 	if _, known := tool.ClassifyFailure(requestToolFailure(err)); known {
 		t.Fatal("post-dispatch redirect refusal proved the original request had no effect")
+	}
+}
+
+func TestHTTPHostGrantDoesNotAuthorizePrivateAddresses(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		calls.Add(1)
+	}))
+	t.Cleanup(server.Close)
+	requests, method, _ := httpFixture(t, httpreq.ClientConfig{AllowedHosts: []string{server.Listener.Addr().String()}})
+	_, err := requests.execute(t.Context(), method, "private-address", httpInput(t, httpreq.Request{URL: server.URL}))
+	if err == nil || calls.Load() != 0 {
+		t.Fatalf("host grant bypassed private address policy: calls=%d error=%v", calls.Load(), err)
 	}
 }

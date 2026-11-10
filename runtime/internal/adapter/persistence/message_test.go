@@ -179,9 +179,7 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 		"conv":    `{"role":"user","parts":"not-an-array"}`,
 		"invalid": `{"role":"bogus","parts":[{"type":"text","text":"decodes but is not a message"}]}`,
 	} {
-		if _, err := db.ExecContext(t.Context(),
-			`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`, conversation, row,
-		); err != nil {
+		if _, err := execFixture(t.Context(), db, `INSERT INTO messages(conversation_id, message) VALUES (?, ?)`, conversation, row); err != nil {
 			t.Fatal(err)
 		}
 		if messages, err := store.Read(t.Context(), history.ConversationID(conversation)); err == nil {

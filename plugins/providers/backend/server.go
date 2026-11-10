@@ -6,13 +6,12 @@ import (
 	"iter"
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) {
@@ -125,7 +124,7 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		embed.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.EmbeddingRequest]) (modelprovider.EmbeddingResult, error) {
 			return execute(ctx, store, embed.Name(), command, func(input modelprovider.EmbeddingRequest) error { _, err := input.Native(); return err }, store.embed)
 		}),
-		stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, modelprovider.ChatResult], error] {
+		stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult], error] {
 			return store.stream(ctx, stream.Descriptor().Name, command)
 		}),
 		backend.BindCapability("model-provider", contract),

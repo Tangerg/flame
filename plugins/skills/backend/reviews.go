@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
+	framesqlite "github.com/Tangerg/frame/sqlite"
+
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 
@@ -25,7 +27,7 @@ func staleReview() error {
 	return &framemcp.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
 }
 
-func registerReviews(server *pluginmcp.Backend, db *sql.DB) error {
+func registerReviews(server *pluginmcp.Backend, db *framesqlite.Database) error {
 	propose, e1 := skilllearning.ProposeMethod()
 	queue, e2 := skilllearning.QueueMethod()
 	approve, e3 := skilllearning.ApproveMethod()
@@ -46,7 +48,7 @@ func registerReviews(server *pluginmcp.Backend, db *sql.DB) error {
 	)
 }
 
-func reviewCommand[P, R any](server *pluginmcp.Backend, db *sql.DB, method *pluginmcp.Method[P, R], apply func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+func reviewCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Database, method *pluginmcp.Method[P, R], prepare func(context.Context, *sdk.ServerSession, P) (storage.CommandPlan[R], error)) error {
 	return method.RegisterServer(server, nil, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		var zero R
 		inv, err := pluginmcp.InvocationFromContext(ctx)
@@ -60,49 +62,70 @@ func reviewCommand[P, R any](server *pluginmcp.Backend, db *sql.DB, method *plug
 		if err != nil {
 			return zero, err
 		}
-		return storage.Command(ctx, db, method.Name(), inv.ID, input, nil, func(ctx context.Context, p P) (R, error) { return apply(ctx, session, p) })
+		return storage.Command(ctx, db, method.Name(), inv.ID, input, nil, func(ctx context.Context, input P) (storage.CommandPlan[R], error) {
+			return prepare(ctx, session, input)
+		})
 	})
 }
 
-type reviewQueue struct{ db *sql.DB }
+type reviewQueue struct{ db *framesqlite.Database }
 
-func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (skilllearning.ReviewRef, error) {
-	inv, err := pluginmcp.InvocationFromContext(ctx)
+func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (storage.CommandPlan[skilllearning.ReviewRef], error) {
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return skilllearning.ReviewRef{}, err
+		return storage.CommandPlan[skilllearning.ReviewRef]{}, err
 	}
-	return r.stageCommand(ctx, inv.ID, draft)
+	persist, err := r.prepareStage(ctx, invocation.ID, draft)
+	if err != nil {
+		return storage.CommandPlan[skilllearning.ReviewRef]{}, err
+	}
+	return storage.NewCommandPlan(skilllearning.ReviewRef{Command: invocation.ID}, persist)
 }
 
-func (r reviewQueue) stageCommand(ctx context.Context, command string, draft skilllearning.Draft) (skilllearning.ReviewRef, error) {
-	ref := skilllearning.ReviewRef{Command: command}
-	conn := storage.Connection(ctx, r.db)
-	// Replacing a pending name is free at capacity. An in-flight publication
-	// keeps the slot reserved until the filesystem owner reconciles its permit.
-	result, err := conn.ExecContext(ctx, `INSERT INTO reviews(library,name,proposal)
-	SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM reviews WHERE library=? AND name=?) OR (SELECT count(*) FROM reviews WHERE library=?) < ?
-	ON CONFLICT(library,name) DO UPDATE SET proposal=excluded.proposal WHERE decision IS NULL`, draft.Library, draft.Skill.Name, ref.Command, draft.Library, draft.Skill.Name, draft.Library, skill.MaxPendingProposalsPerScope)
-	if err := reviewChanged(result, err); err != nil {
-		return skilllearning.ReviewRef{}, err
-	}
-	return ref, nil
-}
-
-func (r reviewQueue) pending(ctx context.Context, libs skilllearning.Libraries) (skilllearning.Queue, error) {
-	rows, err := storage.Connection(ctx, r.db).QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libs.Project, libs.User)
-	if err != nil {
-		return skilllearning.Queue{}, err
-	}
-	defer rows.Close()
-	queue := skilllearning.Queue{Proposals: []skilllearning.ReviewRef{}}
-	for rows.Next() {
-		var ref skilllearning.ReviewRef
-		if err := rows.Scan(&ref.Command); err != nil {
-			return skilllearning.Queue{}, err
+func (r reviewQueue) prepareStage(ctx context.Context, command string, draft skilllearning.Draft) (func(context.Context) error, error) {
+	connection := framesqlite.Connection(ctx, r.db)
+	var decision sql.NullString
+	err := connection.QueryRowContext(ctx, `SELECT decision FROM reviews WHERE library=? AND name=?`, draft.Library, draft.Skill.Name).Scan(&decision)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		var count int
+		if err := connection.QueryRowContext(ctx, `SELECT count(*) FROM reviews WHERE library=?`, draft.Library).Scan(&count); err != nil {
+			return nil, err
 		}
-		queue.Proposals = append(queue.Proposals, ref)
+		if count >= skill.MaxPendingProposalsPerScope {
+			return nil, staleReview()
+		}
+	case err != nil:
+		return nil, err
+	case decision.Valid:
+		// An authorized publication keeps its slot until the filesystem owner settles it.
+		return nil, staleReview()
 	}
-	return queue, rows.Err()
+	library, name := draft.Library, draft.Skill.Name
+	return func(ctx context.Context) error {
+		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `INSERT INTO reviews(library,name,proposal) VALUES(?,?,?) ON CONFLICT(library,name) DO UPDATE SET proposal=excluded.proposal`, library, name, command)
+		return err
+	}, nil
+}
+
+func (r reviewQueue) pending(ctx context.Context, libraries skilllearning.Libraries) (skilllearning.Queue, error) {
+	queue := skilllearning.Queue{Proposals: []skilllearning.ReviewRef{}}
+	err := r.db.Read(ctx, func(reader framesqlite.Reader) error {
+		rows, err := reader.QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libraries.Project, libraries.User)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var ref skilllearning.ReviewRef
+			if err := rows.Scan(&ref.Command); err != nil {
+				return err
+			}
+			queue.Proposals = append(queue.Proposals, ref)
+		}
+		return rows.Err()
+	})
+	return queue, err
 }
 
 func humanDecision(ctx context.Context) (framemcp.Invocation, error) {
@@ -116,40 +139,63 @@ func humanDecision(ctx context.Context) (framemcp.Invocation, error) {
 	return inv, nil
 }
 
-func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (skilllearning.Permit, error) {
-	inv, err := humanDecision(ctx)
-	if err != nil {
-		return skilllearning.Permit{}, err
-	}
-	var permit skilllearning.Permit
-	err = storage.Connection(ctx, r.db).QueryRowContext(ctx, `UPDATE reviews SET decision=COALESCE(decision,?) WHERE proposal=? RETURNING decision`, inv.ID, ref.Command).Scan(&permit.Decision)
+func (r reviewQueue) decision(ctx context.Context, proposal string) (sql.NullString, error) {
+	var decision sql.NullString
+	err := framesqlite.Connection(ctx, r.db).QueryRowContext(ctx, `SELECT decision FROM reviews WHERE proposal=?`, proposal).Scan(&decision)
 	if errors.Is(err, sql.ErrNoRows) {
-		return permit, staleReview()
+		return decision, staleReview()
 	}
-	return permit, err
+	return decision, err
 }
 
-func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, effect skilllearning.Publication) (struct{}, error) {
-	if _, err := humanDecision(ctx); err != nil {
-		return struct{}{}, err
-	}
-	result, err := storage.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision=?`, effect.Proposal.Command, effect.Permit.Decision)
-	return struct{}{}, reviewChanged(result, err)
-}
-func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (struct{}, error) {
-	if _, err := humanDecision(ctx); err != nil {
-		return struct{}{}, err
-	}
-	result, err := storage.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=? AND decision IS NULL`, ref.Command)
-	return struct{}{}, reviewChanged(result, err)
-}
-func reviewChanged(result sql.Result, err error) error {
+func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (storage.CommandPlan[skilllearning.Permit], error) {
+	invocation, err := humanDecision(ctx)
 	if err != nil {
+		return storage.CommandPlan[skilllearning.Permit]{}, err
+	}
+	decision, err := r.decision(ctx, ref.Command)
+	if err != nil {
+		return storage.CommandPlan[skilllearning.Permit]{}, err
+	}
+	if decision.Valid {
+		return storage.NewCommandPlan(skilllearning.Permit{Decision: decision.String}, nil)
+	}
+	return storage.NewCommandPlan(skilllearning.Permit{Decision: invocation.ID}, func(ctx context.Context) error {
+		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `UPDATE reviews SET decision=? WHERE proposal=?`, invocation.ID, ref.Command)
 		return err
+	})
+}
+
+func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, publication skilllearning.Publication) (storage.CommandPlan[struct{}], error) {
+	if _, err := humanDecision(ctx); err != nil {
+		return storage.CommandPlan[struct{}]{}, err
 	}
-	n, err := result.RowsAffected()
-	if err == nil && n != 1 {
-		return staleReview()
+	decision, err := r.decision(ctx, publication.Proposal.Command)
+	if err != nil {
+		return storage.CommandPlan[struct{}]{}, err
 	}
-	return err
+	if !decision.Valid || decision.String != publication.Permit.Decision {
+		return storage.CommandPlan[struct{}]{}, staleReview()
+	}
+	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
+		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, publication.Proposal.Command)
+		return err
+	})
+}
+
+func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (storage.CommandPlan[struct{}], error) {
+	if _, err := humanDecision(ctx); err != nil {
+		return storage.CommandPlan[struct{}]{}, err
+	}
+	decision, err := r.decision(ctx, ref.Command)
+	if err != nil {
+		return storage.CommandPlan[struct{}]{}, err
+	}
+	if decision.Valid {
+		return storage.CommandPlan[struct{}]{}, staleReview()
+	}
+	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
+		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, ref.Command)
+		return err
+	})
 }

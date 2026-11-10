@@ -11,7 +11,7 @@
       "description": "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust.",
       "input": {
         "$defs": {
-          "hookprovider.Discovery": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RGlzY292ZXJ5": {
             "additionalProperties": false,
             "properties": {
               "cwd": {
@@ -60,7 +60,7 @@
       },
       "output": {
         "$defs": {
-          "hook.Hook": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SG9vaw": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -133,7 +133,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/hook.Hook"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SG9vaw"
         },
         "type": "array"
       }
@@ -145,7 +145,7 @@
       "description": "Evaluate one captured lifecycle event and return advice. The Runtime retains trust, command material bounds and final authorization.",
       "input": {
         "$defs": {
-          "hook.Hook": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SG9vaw": {
             "additionalProperties": false,
             "properties": {
               "command": {
@@ -215,7 +215,7 @@
             ],
             "type": "object"
           },
-          "hook.Input": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SW5wdXQ": {
             "additionalProperties": false,
             "properties": {
               "cwd": {
@@ -250,7 +250,7 @@
                 "type": "string"
               },
               "tool": {
-                "$ref": "#/$defs/hook.ToolInput"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.VG9vbElucHV0"
               }
             },
             "required": [
@@ -258,7 +258,7 @@
             ],
             "type": "object"
           },
-          "hook.ToolInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.VG9vbElucHV0": {
             "additionalProperties": false,
             "properties": {
               "arguments": {
@@ -279,18 +279,18 @@
             ],
             "type": "object"
           },
-          "hookprovider.Evaluation": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RXZhbHVhdGlvbg": {
             "additionalProperties": false,
             "properties": {
               "declarativeOnly": {
                 "type": "boolean"
               },
               "input": {
-                "$ref": "#/$defs/hook.Input"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SW5wdXQ"
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/hook.Hook"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SG9vaw"
                 },
                 "type": "array"
               }
@@ -309,11 +309,11 @@
             "type": "boolean"
           },
           "input": {
-            "$ref": "#/$defs/hook.Input"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SW5wdXQ"
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/hook.Hook"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.SG9vaw"
             },
             "type": "array"
           }
@@ -326,7 +326,7 @@
       },
       "output": {
         "$defs": {
-          "hook.CommandDecision": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.Q29tbWFuZERlY2lzaW9u": {
             "additionalProperties": false,
             "properties": {
               "injectContext": {
@@ -356,15 +356,15 @@
             ],
             "type": "object"
           },
-          "hookprovider.Advice": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.QWR2aWNl": {
             "additionalProperties": false,
             "properties": {
               "decision": {
-                "$ref": "#/$defs/hook.CommandDecision"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.Q29tbWFuZERlY2lzaW9u"
               },
               "diagnostics": {
                 "items": {
-                  "$ref": "#/$defs/hookprovider.Diagnostic"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RGlhZ25vc3RpYw"
                 },
                 "type": "array"
               }
@@ -375,7 +375,7 @@
             ],
             "type": "object"
           },
-          "hookprovider.Diagnostic": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RGlhZ25vc3RpYw": {
             "additionalProperties": false,
             "properties": {
               "message": {
@@ -396,11 +396,11 @@
         "additionalProperties": false,
         "properties": {
           "decision": {
-            "$ref": "#/$defs/hook.CommandDecision"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r.Q29tbWFuZERlY2lzaW9u"
           },
           "diagnostics": {
             "items": {
-              "$ref": "#/$defs/hookprovider.Diagnostic"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RGlhZ25vc3RpYw"
             },
             "type": "array"
           }

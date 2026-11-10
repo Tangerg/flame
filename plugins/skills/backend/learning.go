@@ -3,7 +3,6 @@ package main
 import (
 	"container/list"
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 	"sync"
@@ -25,7 +24,7 @@ const (
 )
 
 type learner struct {
-	db          *sql.DB
+	db          *sqlite.Database
 	mu          sync.Mutex
 	complexRuns map[string]*list.Element
 	recent      list.List
@@ -35,7 +34,7 @@ type learner struct {
 func openLearner(ctx context.Context, path string) (*learner, error) {
 	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, reviewsSchema})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, db.Close())
 	}
 	return &learner{db: db, complexRuns: make(map[string]*list.Element)}, nil
 }

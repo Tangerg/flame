@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"time"
@@ -20,7 +19,7 @@ import (
 func run(ctx context.Context, data string) (returned error) {
 	db, err := sqlite.OpenSchema(ctx, filepath.Join(data, "external-servers.db"), []string{entriesSchema, attemptsSchema, receipts.CommandsSchema})
 	if err != nil {
-		return err
+		return errors.Join(err, db.Close())
 	}
 	defer func() { returned = errors.Join(returned, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.mcp", Version: "2.0.0"}, nil)
@@ -34,7 +33,7 @@ func run(ctx context.Context, data string) (returned error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
-func register(bound *pluginmcp.Backend, db *sql.DB) error {
+func register(bound *pluginmcp.Backend, db *sqlite.Database) error {
 	m, err := connectormcp.NewMethods()
 	if err != nil {
 		return err
@@ -45,16 +44,16 @@ func register(bound *pluginmcp.Backend, db *sql.DB) error {
 	}); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Recover, nil, c.recover); err != nil {
+	if err := receipts.RegisterCommand(bound, db, m.Recover, nil, c.prepareRecovery); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Change, nil, c.change); err != nil {
+	if err := receipts.RegisterCommand(bound, db, m.Change, nil, c.prepareChange); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Start, nil, c.start); err != nil {
+	if err := receipts.RegisterCommand(bound, db, m.Start, nil, c.prepareStart); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Finish, nil, c.finish); err != nil {
+	if err := receipts.RegisterCommand(bound, db, m.Finish, nil, c.prepareFinish); err != nil {
 		return err
 	}
 	if err := m.Get.RegisterServer(bound, nil, func(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Command[wire.Request]) (wire.AttemptResult, error) {

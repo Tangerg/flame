@@ -3,6 +3,8 @@ package terminal
 import (
 	"context"
 	"fmt"
+
+	"github.com/Tangerg/oolong/extensions/markdown"
 	"github.com/Tangerg/oolong/ui/core/content"
 	"github.com/Tangerg/oolong/ui/core/grid"
 
@@ -64,7 +66,7 @@ func (t *transcriptView) begin(block conversation.Block) error {
 	}
 	t.sealToolGroup()
 	speaker := t.history.Speaker(block)
-	document, err := content.NewStreamDocument(content.StreamConfig{Format: "markdown"})
+	document, err := content.NewStreamDocument(content.StreamConfig{Format: markdown.Format})
 	if err != nil {
 		return err
 	}

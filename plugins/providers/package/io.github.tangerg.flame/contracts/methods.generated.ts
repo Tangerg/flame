@@ -4,49 +4,11 @@ import type { JSONNumber } from "@frame/sdk/json";
 
 export type CallV1Input = CallV1InputModelproviderChatRequest;
 
-export interface CallV1InputChatMessage {
-  metadata?: CallV1InputMetadataMap;
-  parts: Array<CallV1InputChatPart>;
-  role: string;
-}
-
-export interface CallV1InputChatOptions {
-  extensions?: CallV1InputMetadataExtensions;
-  frequency_penalty?: JSONNumber;
-  max_output_tokens?: JSONNumber;
-  model?: string;
-  output_format?: CallV1InputChatOutputFormat;
-  presence_penalty?: JSONNumber;
-  reasoning_effort?: string;
-  stop?: Array<string>;
-  temperature?: JSONNumber;
-  top_k?: JSONNumber;
-  top_p?: JSONNumber;
-}
-
 export interface CallV1InputChatOutputFormat {
   description?: string;
   name?: string;
   schema?: unknown;
   type: string;
-}
-
-export interface CallV1InputChatPart {
-  citations?: Array<CallV1InputContentCitation>;
-  kind: string;
-  media?: CallV1InputMediaMedia;
-  metadata?: CallV1InputMetadataMap;
-  reasoning_state?: null | string;
-  text?: string;
-  tool_call?: CallV1InputChatToolCall;
-  tool_result?: CallV1InputChatToolResult;
-}
-
-export interface CallV1InputChatRequest {
-  messages: Array<CallV1InputChatMessage>;
-  options?: CallV1InputChatOptions;
-  tool_choice?: CallV1InputChatToolChoice;
-  tools?: Array<CallV1InputToolDefinition>;
 }
 
 export interface CallV1InputChatToolCall {
@@ -61,21 +23,6 @@ export interface CallV1InputChatToolChoice {
   parallelism?: string;
 }
 
-export interface CallV1InputChatToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: CallV1InputToolOutput;
-}
-
-export interface CallV1InputContentBlock {
-  citations?: Array<CallV1InputContentCitation>;
-  kind: string;
-  media?: CallV1InputMediaMedia;
-  metadata?: CallV1InputMetadataMap;
-  text?: string;
-}
-
 export interface CallV1InputContentCitation {
   quote?: string;
   source: CallV1InputContentCitationSource;
@@ -87,32 +34,90 @@ export interface CallV1InputContentCitationSource {
   value: string;
 }
 
-export interface CallV1InputMediaMedia {
-  id?: string;
-  metadata?: CallV1InputMetadataMap;
-  mime?: string;
-  name?: string;
-  source: CallV1InputMediaSource;
-}
-
-export interface CallV1InputMediaSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
-
 export type CallV1InputMetadataExtensions = CallV1InputMetadataMap;
 
 export type CallV1InputMetadataMap = null | Record<string, unknown>;
 
 export interface CallV1InputModelproviderChatRequest {
   handle: CallV1InputModelproviderHandle;
-  request: CallV1InputChatRequest;
+  request: CallV1InputScopewireRequest;
 }
 
 export interface CallV1InputModelproviderHandle {
   id: string;
+}
+
+export interface CallV1InputScopewireBlockProjection {
+  citations?: Array<CallV1InputContentCitation>;
+  kind: string;
+  media?: CallV1InputScopewireMediaProjection;
+  metadata?: CallV1InputMetadataMap;
+  text?: string;
+}
+
+export interface CallV1InputScopewireMediaProjection {
+  id?: string;
+  metadata?: CallV1InputMetadataMap;
+  mime?: string;
+  name?: string;
+  source: CallV1InputScopewireMediaSourceProjection;
+}
+
+export interface CallV1InputScopewireMediaSourceProjection {
+  bytes?: string;
+  kind: string;
+  ref?: string;
+  uri?: string;
+}
+
+export interface CallV1InputScopewireMessageProjection {
+  metadata?: CallV1InputMetadataMap;
+  parts: Array<CallV1InputScopewirePartProjection>;
+  role: string;
+}
+
+export interface CallV1InputScopewireOptionsProjection {
+  extensions?: CallV1InputMetadataExtensions;
+  frequency_penalty?: CallV1InputValueNumber;
+  max_output_tokens?: JSONNumber;
+  model?: string;
+  output_format?: CallV1InputChatOutputFormat;
+  presence_penalty?: CallV1InputValueNumber;
+  reasoning_effort?: string;
+  stop?: Array<string>;
+  temperature?: CallV1InputValueNumber;
+  top_k?: JSONNumber;
+  top_p?: CallV1InputValueNumber;
+}
+
+export interface CallV1InputScopewirePartProjection {
+  citations?: Array<CallV1InputContentCitation>;
+  kind: string;
+  media?: CallV1InputScopewireMediaProjection;
+  metadata?: CallV1InputMetadataMap;
+  reasoning_state?: string;
+  text?: string;
+  tool_call?: CallV1InputChatToolCall;
+  tool_result?: CallV1InputScopewireToolResultProjection;
+}
+
+export interface CallV1InputScopewireRequest {
+  messages: Array<CallV1InputScopewireMessageProjection>;
+  options?: CallV1InputScopewireOptionsProjection;
+  tool_choice?: CallV1InputChatToolChoice;
+  tools?: Array<CallV1InputToolDefinition>;
+}
+
+export interface CallV1InputScopewireToolOutputProjection {
+  content?: Array<CallV1InputScopewireBlockProjection>;
+  details?: unknown;
+}
+
+export interface CallV1InputScopewireToolResultProjection {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: CallV1InputScopewireToolOutputProjection;
 }
 
 export interface CallV1InputToolDefinition {
@@ -123,51 +128,12 @@ export interface CallV1InputToolDefinition {
   output_schema?: unknown;
 }
 
-export interface CallV1InputToolOutput {
-  content?: Array<CallV1InputContentBlock>;
-  details?: unknown;
-}
+export type CallV1InputValueNumber = JSONNumber;
 
 export type CallV1Output = CallV1OutputModelproviderChatResult;
 
-export interface CallV1OutputChatMessage {
-  metadata?: CallV1OutputMetadataMap;
-  parts: Array<CallV1OutputChatPart>;
-  role: string;
-}
-
-export interface CallV1OutputChatOutput {
-  finish_reason?: string;
-  message?: CallV1OutputChatMessage;
-  metadata?: CallV1OutputChatOutputMetadata;
-}
-
 export interface CallV1OutputChatOutputMetadata {
   extra?: CallV1OutputMetadataMap;
-}
-
-export interface CallV1OutputChatPart {
-  citations?: Array<CallV1OutputContentCitation>;
-  kind: string;
-  media?: CallV1OutputMediaMedia;
-  metadata?: CallV1OutputMetadataMap;
-  reasoning_state?: null | string;
-  text?: string;
-  tool_call?: CallV1OutputChatToolCall;
-  tool_result?: CallV1OutputChatToolResult;
-}
-
-export interface CallV1OutputChatResponse {
-  metadata?: CallV1OutputChatResponseMetadata;
-  output?: CallV1OutputChatOutput;
-}
-
-export interface CallV1OutputChatResponseMetadata {
-  created_at?: string;
-  extra?: CallV1OutputMetadataMap;
-  id?: string;
-  model?: string;
-  usage?: CallV1OutputChatUsage;
 }
 
 export interface CallV1OutputChatToolCall {
@@ -176,27 +142,12 @@ export interface CallV1OutputChatToolCall {
   name: string;
 }
 
-export interface CallV1OutputChatToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: CallV1OutputToolOutput;
-}
-
 export interface CallV1OutputChatUsage {
   cache_read_input_tokens?: JSONNumber;
   cache_write_input_tokens?: JSONNumber;
   input_tokens?: JSONNumber;
   output_tokens?: JSONNumber;
   reasoning_tokens?: JSONNumber;
-}
-
-export interface CallV1OutputContentBlock {
-  citations?: Array<CallV1OutputContentCitation>;
-  kind: string;
-  media?: CallV1OutputMediaMedia;
-  metadata?: CallV1OutputMetadataMap;
-  text?: string;
 }
 
 export interface CallV1OutputContentCitation {
@@ -210,26 +161,13 @@ export interface CallV1OutputContentCitationSource {
   value: string;
 }
 
-export interface CallV1OutputMediaMedia {
-  id?: string;
-  metadata?: CallV1OutputMetadataMap;
-  mime?: string;
-  name?: string;
-  source: CallV1OutputMediaSource;
-}
-
-export interface CallV1OutputMediaSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
+export type CallV1OutputInstantTimestamp = string;
 
 export type CallV1OutputMetadataMap = null | Record<string, unknown>;
 
 export interface CallV1OutputModelproviderChatResult {
   failure?: CallV1OutputModelproviderFailure;
-  response?: CallV1OutputChatResponse;
+  response?: CallV1OutputScopewireResponse;
 }
 
 export interface CallV1OutputModelproviderFailure {
@@ -238,9 +176,75 @@ export interface CallV1OutputModelproviderFailure {
   retryAfterMillis?: JSONNumber;
 }
 
-export interface CallV1OutputToolOutput {
-  content?: Array<CallV1OutputContentBlock>;
+export interface CallV1OutputScopewireBlockProjection {
+  citations?: Array<CallV1OutputContentCitation>;
+  kind: string;
+  media?: CallV1OutputScopewireMediaProjection;
+  metadata?: CallV1OutputMetadataMap;
+  text?: string;
+}
+
+export interface CallV1OutputScopewireMediaProjection {
+  id?: string;
+  metadata?: CallV1OutputMetadataMap;
+  mime?: string;
+  name?: string;
+  source: CallV1OutputScopewireMediaSourceProjection;
+}
+
+export interface CallV1OutputScopewireMediaSourceProjection {
+  bytes?: string;
+  kind: string;
+  ref?: string;
+  uri?: string;
+}
+
+export interface CallV1OutputScopewireMessageProjection {
+  metadata?: CallV1OutputMetadataMap;
+  parts: Array<CallV1OutputScopewirePartProjection>;
+  role: string;
+}
+
+export interface CallV1OutputScopewireOutputProjection {
+  finish_reason?: string;
+  message?: CallV1OutputScopewireMessageProjection;
+  metadata?: CallV1OutputChatOutputMetadata;
+}
+
+export interface CallV1OutputScopewirePartProjection {
+  citations?: Array<CallV1OutputContentCitation>;
+  kind: string;
+  media?: CallV1OutputScopewireMediaProjection;
+  metadata?: CallV1OutputMetadataMap;
+  reasoning_state?: string;
+  text?: string;
+  tool_call?: CallV1OutputChatToolCall;
+  tool_result?: CallV1OutputScopewireToolResultProjection;
+}
+
+export interface CallV1OutputScopewireResponse {
+  metadata?: CallV1OutputScopewireResponseMetadataProjection;
+  output?: CallV1OutputScopewireOutputProjection;
+}
+
+export interface CallV1OutputScopewireResponseMetadataProjection {
+  created_at?: CallV1OutputInstantTimestamp;
+  extra?: CallV1OutputMetadataMap;
+  id?: string;
+  model?: string;
+  usage?: CallV1OutputChatUsage;
+}
+
+export interface CallV1OutputScopewireToolOutputProjection {
+  content?: Array<CallV1OutputScopewireBlockProjection>;
   details?: unknown;
+}
+
+export interface CallV1OutputScopewireToolResultProjection {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: CallV1OutputScopewireToolOutputProjection;
 }
 
 export type CloseV1Input = CloseV1InputModelproviderHandle;
@@ -253,49 +257,11 @@ export type CloseV1Output = Record<string, never>;
 
 export type CountV1Input = CountV1InputModelproviderChatRequest;
 
-export interface CountV1InputChatMessage {
-  metadata?: CountV1InputMetadataMap;
-  parts: Array<CountV1InputChatPart>;
-  role: string;
-}
-
-export interface CountV1InputChatOptions {
-  extensions?: CountV1InputMetadataExtensions;
-  frequency_penalty?: JSONNumber;
-  max_output_tokens?: JSONNumber;
-  model?: string;
-  output_format?: CountV1InputChatOutputFormat;
-  presence_penalty?: JSONNumber;
-  reasoning_effort?: string;
-  stop?: Array<string>;
-  temperature?: JSONNumber;
-  top_k?: JSONNumber;
-  top_p?: JSONNumber;
-}
-
 export interface CountV1InputChatOutputFormat {
   description?: string;
   name?: string;
   schema?: unknown;
   type: string;
-}
-
-export interface CountV1InputChatPart {
-  citations?: Array<CountV1InputContentCitation>;
-  kind: string;
-  media?: CountV1InputMediaMedia;
-  metadata?: CountV1InputMetadataMap;
-  reasoning_state?: null | string;
-  text?: string;
-  tool_call?: CountV1InputChatToolCall;
-  tool_result?: CountV1InputChatToolResult;
-}
-
-export interface CountV1InputChatRequest {
-  messages: Array<CountV1InputChatMessage>;
-  options?: CountV1InputChatOptions;
-  tool_choice?: CountV1InputChatToolChoice;
-  tools?: Array<CountV1InputToolDefinition>;
 }
 
 export interface CountV1InputChatToolCall {
@@ -310,21 +276,6 @@ export interface CountV1InputChatToolChoice {
   parallelism?: string;
 }
 
-export interface CountV1InputChatToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: CountV1InputToolOutput;
-}
-
-export interface CountV1InputContentBlock {
-  citations?: Array<CountV1InputContentCitation>;
-  kind: string;
-  media?: CountV1InputMediaMedia;
-  metadata?: CountV1InputMetadataMap;
-  text?: string;
-}
-
 export interface CountV1InputContentCitation {
   quote?: string;
   source: CountV1InputContentCitationSource;
@@ -336,32 +287,90 @@ export interface CountV1InputContentCitationSource {
   value: string;
 }
 
-export interface CountV1InputMediaMedia {
-  id?: string;
-  metadata?: CountV1InputMetadataMap;
-  mime?: string;
-  name?: string;
-  source: CountV1InputMediaSource;
-}
-
-export interface CountV1InputMediaSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
-
 export type CountV1InputMetadataExtensions = CountV1InputMetadataMap;
 
 export type CountV1InputMetadataMap = null | Record<string, unknown>;
 
 export interface CountV1InputModelproviderChatRequest {
   handle: CountV1InputModelproviderHandle;
-  request: CountV1InputChatRequest;
+  request: CountV1InputScopewireRequest;
 }
 
 export interface CountV1InputModelproviderHandle {
   id: string;
+}
+
+export interface CountV1InputScopewireBlockProjection {
+  citations?: Array<CountV1InputContentCitation>;
+  kind: string;
+  media?: CountV1InputScopewireMediaProjection;
+  metadata?: CountV1InputMetadataMap;
+  text?: string;
+}
+
+export interface CountV1InputScopewireMediaProjection {
+  id?: string;
+  metadata?: CountV1InputMetadataMap;
+  mime?: string;
+  name?: string;
+  source: CountV1InputScopewireMediaSourceProjection;
+}
+
+export interface CountV1InputScopewireMediaSourceProjection {
+  bytes?: string;
+  kind: string;
+  ref?: string;
+  uri?: string;
+}
+
+export interface CountV1InputScopewireMessageProjection {
+  metadata?: CountV1InputMetadataMap;
+  parts: Array<CountV1InputScopewirePartProjection>;
+  role: string;
+}
+
+export interface CountV1InputScopewireOptionsProjection {
+  extensions?: CountV1InputMetadataExtensions;
+  frequency_penalty?: CountV1InputValueNumber;
+  max_output_tokens?: JSONNumber;
+  model?: string;
+  output_format?: CountV1InputChatOutputFormat;
+  presence_penalty?: CountV1InputValueNumber;
+  reasoning_effort?: string;
+  stop?: Array<string>;
+  temperature?: CountV1InputValueNumber;
+  top_k?: JSONNumber;
+  top_p?: CountV1InputValueNumber;
+}
+
+export interface CountV1InputScopewirePartProjection {
+  citations?: Array<CountV1InputContentCitation>;
+  kind: string;
+  media?: CountV1InputScopewireMediaProjection;
+  metadata?: CountV1InputMetadataMap;
+  reasoning_state?: string;
+  text?: string;
+  tool_call?: CountV1InputChatToolCall;
+  tool_result?: CountV1InputScopewireToolResultProjection;
+}
+
+export interface CountV1InputScopewireRequest {
+  messages: Array<CountV1InputScopewireMessageProjection>;
+  options?: CountV1InputScopewireOptionsProjection;
+  tool_choice?: CountV1InputChatToolChoice;
+  tools?: Array<CountV1InputToolDefinition>;
+}
+
+export interface CountV1InputScopewireToolOutputProjection {
+  content?: Array<CountV1InputScopewireBlockProjection>;
+  details?: unknown;
+}
+
+export interface CountV1InputScopewireToolResultProjection {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: CountV1InputScopewireToolOutputProjection;
 }
 
 export interface CountV1InputToolDefinition {
@@ -372,10 +381,7 @@ export interface CountV1InputToolDefinition {
   output_schema?: unknown;
 }
 
-export interface CountV1InputToolOutput {
-  content?: Array<CountV1InputContentBlock>;
-  details?: unknown;
-}
+export type CountV1InputValueNumber = JSONNumber;
 
 export type CountV1Output = TokenCount;
 
@@ -466,12 +472,12 @@ export interface OpenEmbeddingV1InputModelproviderOpen {
 
 export type OpenEmbeddingV1Output = Embedder;
 
-export interface PartDelta {
+export interface PartDeltaProjection {
   citation?: StreamV1ChunkContentCitation;
   kind: string;
-  media?: StreamV1ChunkMediaMedia;
+  media?: StreamV1ChunkScopewireMediaProjection;
   metadata?: StreamV1ChunkMetadataMap;
-  reasoning_state?: null | string;
+  reasoning_state?: string;
   text?: string;
   tool_call?: ToolCallDelta;
 }
@@ -522,23 +528,15 @@ export interface ReopenChatV1OutputModelproviderChat {
 export interface ResponseDelta {
   finish_reason?: string;
   message_metadata?: StreamV1ChunkMetadataMap;
-  metadata?: StreamV1ChunkChatResponseMetadata;
+  metadata?: StreamV1ChunkScopewireResponseMetadataProjection;
   output_metadata?: StreamV1ChunkChatOutputMetadata;
-  parts?: Array<PartDelta>;
+  parts?: Array<PartDeltaProjection>;
 }
 
 export type StreamV1Chunk = ResponseDelta;
 
 export interface StreamV1ChunkChatOutputMetadata {
   extra?: StreamV1ChunkMetadataMap;
-}
-
-export interface StreamV1ChunkChatResponseMetadata {
-  created_at?: string;
-  extra?: StreamV1ChunkMetadataMap;
-  id?: string;
-  model?: string;
-  usage?: StreamV1ChunkChatUsage;
 }
 
 export interface StreamV1ChunkChatUsage {
@@ -560,68 +558,40 @@ export interface StreamV1ChunkContentCitationSource {
   value: string;
 }
 
-export interface StreamV1ChunkMediaMedia {
+export type StreamV1ChunkInstantTimestamp = string;
+
+export type StreamV1ChunkMetadataMap = null | Record<string, unknown>;
+
+export interface StreamV1ChunkScopewireMediaProjection {
   id?: string;
   metadata?: StreamV1ChunkMetadataMap;
   mime?: string;
   name?: string;
-  source: StreamV1ChunkMediaSource;
+  source: StreamV1ChunkScopewireMediaSourceProjection;
 }
 
-export interface StreamV1ChunkMediaSource {
-  bytes?: null | string;
+export interface StreamV1ChunkScopewireMediaSourceProjection {
+  bytes?: string;
   kind: string;
   ref?: string;
   uri?: string;
 }
 
-export type StreamV1ChunkMetadataMap = null | Record<string, unknown>;
+export interface StreamV1ChunkScopewireResponseMetadataProjection {
+  created_at?: StreamV1ChunkInstantTimestamp;
+  extra?: StreamV1ChunkMetadataMap;
+  id?: string;
+  model?: string;
+  usage?: StreamV1ChunkChatUsage;
+}
 
 export type StreamV1Input = StreamV1InputModelproviderChatRequest;
-
-export interface StreamV1InputChatMessage {
-  metadata?: StreamV1InputMetadataMap;
-  parts: Array<StreamV1InputChatPart>;
-  role: string;
-}
-
-export interface StreamV1InputChatOptions {
-  extensions?: StreamV1InputMetadataExtensions;
-  frequency_penalty?: JSONNumber;
-  max_output_tokens?: JSONNumber;
-  model?: string;
-  output_format?: StreamV1InputChatOutputFormat;
-  presence_penalty?: JSONNumber;
-  reasoning_effort?: string;
-  stop?: Array<string>;
-  temperature?: JSONNumber;
-  top_k?: JSONNumber;
-  top_p?: JSONNumber;
-}
 
 export interface StreamV1InputChatOutputFormat {
   description?: string;
   name?: string;
   schema?: unknown;
   type: string;
-}
-
-export interface StreamV1InputChatPart {
-  citations?: Array<StreamV1InputContentCitation>;
-  kind: string;
-  media?: StreamV1InputMediaMedia;
-  metadata?: StreamV1InputMetadataMap;
-  reasoning_state?: null | string;
-  text?: string;
-  tool_call?: StreamV1InputChatToolCall;
-  tool_result?: StreamV1InputChatToolResult;
-}
-
-export interface StreamV1InputChatRequest {
-  messages: Array<StreamV1InputChatMessage>;
-  options?: StreamV1InputChatOptions;
-  tool_choice?: StreamV1InputChatToolChoice;
-  tools?: Array<StreamV1InputToolDefinition>;
 }
 
 export interface StreamV1InputChatToolCall {
@@ -636,21 +606,6 @@ export interface StreamV1InputChatToolChoice {
   parallelism?: string;
 }
 
-export interface StreamV1InputChatToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: StreamV1InputToolOutput;
-}
-
-export interface StreamV1InputContentBlock {
-  citations?: Array<StreamV1InputContentCitation>;
-  kind: string;
-  media?: StreamV1InputMediaMedia;
-  metadata?: StreamV1InputMetadataMap;
-  text?: string;
-}
-
 export interface StreamV1InputContentCitation {
   quote?: string;
   source: StreamV1InputContentCitationSource;
@@ -662,32 +617,90 @@ export interface StreamV1InputContentCitationSource {
   value: string;
 }
 
-export interface StreamV1InputMediaMedia {
-  id?: string;
-  metadata?: StreamV1InputMetadataMap;
-  mime?: string;
-  name?: string;
-  source: StreamV1InputMediaSource;
-}
-
-export interface StreamV1InputMediaSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
-
 export type StreamV1InputMetadataExtensions = StreamV1InputMetadataMap;
 
 export type StreamV1InputMetadataMap = null | Record<string, unknown>;
 
 export interface StreamV1InputModelproviderChatRequest {
   handle: StreamV1InputModelproviderHandle;
-  request: StreamV1InputChatRequest;
+  request: StreamV1InputScopewireRequest;
 }
 
 export interface StreamV1InputModelproviderHandle {
   id: string;
+}
+
+export interface StreamV1InputScopewireBlockProjection {
+  citations?: Array<StreamV1InputContentCitation>;
+  kind: string;
+  media?: StreamV1InputScopewireMediaProjection;
+  metadata?: StreamV1InputMetadataMap;
+  text?: string;
+}
+
+export interface StreamV1InputScopewireMediaProjection {
+  id?: string;
+  metadata?: StreamV1InputMetadataMap;
+  mime?: string;
+  name?: string;
+  source: StreamV1InputScopewireMediaSourceProjection;
+}
+
+export interface StreamV1InputScopewireMediaSourceProjection {
+  bytes?: string;
+  kind: string;
+  ref?: string;
+  uri?: string;
+}
+
+export interface StreamV1InputScopewireMessageProjection {
+  metadata?: StreamV1InputMetadataMap;
+  parts: Array<StreamV1InputScopewirePartProjection>;
+  role: string;
+}
+
+export interface StreamV1InputScopewireOptionsProjection {
+  extensions?: StreamV1InputMetadataExtensions;
+  frequency_penalty?: StreamV1InputValueNumber;
+  max_output_tokens?: JSONNumber;
+  model?: string;
+  output_format?: StreamV1InputChatOutputFormat;
+  presence_penalty?: StreamV1InputValueNumber;
+  reasoning_effort?: string;
+  stop?: Array<string>;
+  temperature?: StreamV1InputValueNumber;
+  top_k?: JSONNumber;
+  top_p?: StreamV1InputValueNumber;
+}
+
+export interface StreamV1InputScopewirePartProjection {
+  citations?: Array<StreamV1InputContentCitation>;
+  kind: string;
+  media?: StreamV1InputScopewireMediaProjection;
+  metadata?: StreamV1InputMetadataMap;
+  reasoning_state?: string;
+  text?: string;
+  tool_call?: StreamV1InputChatToolCall;
+  tool_result?: StreamV1InputScopewireToolResultProjection;
+}
+
+export interface StreamV1InputScopewireRequest {
+  messages: Array<StreamV1InputScopewireMessageProjection>;
+  options?: StreamV1InputScopewireOptionsProjection;
+  tool_choice?: StreamV1InputChatToolChoice;
+  tools?: Array<StreamV1InputToolDefinition>;
+}
+
+export interface StreamV1InputScopewireToolOutputProjection {
+  content?: Array<StreamV1InputScopewireBlockProjection>;
+  details?: unknown;
+}
+
+export interface StreamV1InputScopewireToolResultProjection {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: StreamV1InputScopewireToolOutputProjection;
 }
 
 export interface StreamV1InputToolDefinition {
@@ -698,51 +711,12 @@ export interface StreamV1InputToolDefinition {
   output_schema?: unknown;
 }
 
-export interface StreamV1InputToolOutput {
-  content?: Array<StreamV1InputContentBlock>;
-  details?: unknown;
-}
+export type StreamV1InputValueNumber = JSONNumber;
 
 export type StreamV1Output = StreamV1OutputModelproviderChatResult;
 
-export interface StreamV1OutputChatMessage {
-  metadata?: StreamV1OutputMetadataMap;
-  parts: Array<StreamV1OutputChatPart>;
-  role: string;
-}
-
-export interface StreamV1OutputChatOutput {
-  finish_reason?: string;
-  message?: StreamV1OutputChatMessage;
-  metadata?: StreamV1OutputChatOutputMetadata;
-}
-
 export interface StreamV1OutputChatOutputMetadata {
   extra?: StreamV1OutputMetadataMap;
-}
-
-export interface StreamV1OutputChatPart {
-  citations?: Array<StreamV1OutputContentCitation>;
-  kind: string;
-  media?: StreamV1OutputMediaMedia;
-  metadata?: StreamV1OutputMetadataMap;
-  reasoning_state?: null | string;
-  text?: string;
-  tool_call?: StreamV1OutputChatToolCall;
-  tool_result?: StreamV1OutputChatToolResult;
-}
-
-export interface StreamV1OutputChatResponse {
-  metadata?: StreamV1OutputChatResponseMetadata;
-  output?: StreamV1OutputChatOutput;
-}
-
-export interface StreamV1OutputChatResponseMetadata {
-  created_at?: string;
-  extra?: StreamV1OutputMetadataMap;
-  id?: string;
-  model?: string;
-  usage?: StreamV1OutputChatUsage;
 }
 
 export interface StreamV1OutputChatToolCall {
@@ -751,27 +725,12 @@ export interface StreamV1OutputChatToolCall {
   name: string;
 }
 
-export interface StreamV1OutputChatToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: StreamV1OutputToolOutput;
-}
-
 export interface StreamV1OutputChatUsage {
   cache_read_input_tokens?: JSONNumber;
   cache_write_input_tokens?: JSONNumber;
   input_tokens?: JSONNumber;
   output_tokens?: JSONNumber;
   reasoning_tokens?: JSONNumber;
-}
-
-export interface StreamV1OutputContentBlock {
-  citations?: Array<StreamV1OutputContentCitation>;
-  kind: string;
-  media?: StreamV1OutputMediaMedia;
-  metadata?: StreamV1OutputMetadataMap;
-  text?: string;
 }
 
 export interface StreamV1OutputContentCitation {
@@ -785,26 +744,13 @@ export interface StreamV1OutputContentCitationSource {
   value: string;
 }
 
-export interface StreamV1OutputMediaMedia {
-  id?: string;
-  metadata?: StreamV1OutputMetadataMap;
-  mime?: string;
-  name?: string;
-  source: StreamV1OutputMediaSource;
-}
-
-export interface StreamV1OutputMediaSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
+export type StreamV1OutputInstantTimestamp = string;
 
 export type StreamV1OutputMetadataMap = null | Record<string, unknown>;
 
 export interface StreamV1OutputModelproviderChatResult {
   failure?: StreamV1OutputModelproviderFailure;
-  response?: StreamV1OutputChatResponse;
+  response?: StreamV1OutputScopewireResponse;
 }
 
 export interface StreamV1OutputModelproviderFailure {
@@ -813,9 +759,75 @@ export interface StreamV1OutputModelproviderFailure {
   retryAfterMillis?: JSONNumber;
 }
 
-export interface StreamV1OutputToolOutput {
-  content?: Array<StreamV1OutputContentBlock>;
+export interface StreamV1OutputScopewireBlockProjection {
+  citations?: Array<StreamV1OutputContentCitation>;
+  kind: string;
+  media?: StreamV1OutputScopewireMediaProjection;
+  metadata?: StreamV1OutputMetadataMap;
+  text?: string;
+}
+
+export interface StreamV1OutputScopewireMediaProjection {
+  id?: string;
+  metadata?: StreamV1OutputMetadataMap;
+  mime?: string;
+  name?: string;
+  source: StreamV1OutputScopewireMediaSourceProjection;
+}
+
+export interface StreamV1OutputScopewireMediaSourceProjection {
+  bytes?: string;
+  kind: string;
+  ref?: string;
+  uri?: string;
+}
+
+export interface StreamV1OutputScopewireMessageProjection {
+  metadata?: StreamV1OutputMetadataMap;
+  parts: Array<StreamV1OutputScopewirePartProjection>;
+  role: string;
+}
+
+export interface StreamV1OutputScopewireOutputProjection {
+  finish_reason?: string;
+  message?: StreamV1OutputScopewireMessageProjection;
+  metadata?: StreamV1OutputChatOutputMetadata;
+}
+
+export interface StreamV1OutputScopewirePartProjection {
+  citations?: Array<StreamV1OutputContentCitation>;
+  kind: string;
+  media?: StreamV1OutputScopewireMediaProjection;
+  metadata?: StreamV1OutputMetadataMap;
+  reasoning_state?: string;
+  text?: string;
+  tool_call?: StreamV1OutputChatToolCall;
+  tool_result?: StreamV1OutputScopewireToolResultProjection;
+}
+
+export interface StreamV1OutputScopewireResponse {
+  metadata?: StreamV1OutputScopewireResponseMetadataProjection;
+  output?: StreamV1OutputScopewireOutputProjection;
+}
+
+export interface StreamV1OutputScopewireResponseMetadataProjection {
+  created_at?: StreamV1OutputInstantTimestamp;
+  extra?: StreamV1OutputMetadataMap;
+  id?: string;
+  model?: string;
+  usage?: StreamV1OutputChatUsage;
+}
+
+export interface StreamV1OutputScopewireToolOutputProjection {
+  content?: Array<StreamV1OutputScopewireBlockProjection>;
   details?: unknown;
+}
+
+export interface StreamV1OutputScopewireToolResultProjection {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: StreamV1OutputScopewireToolOutputProjection;
 }
 
 export interface TokenCount {
@@ -881,5 +893,5 @@ export const METHODS = {
   ["flame.model-provider/stream.v1"]: { kind: "command", target: "installation", streaming: true },
   ["flame.model-provider/verify.v1"]: { kind: "query", target: "installation" },
 } as const;
-export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.model-provider.v1","composition":"selection","scope":"installation","contract":"eeda3819fbfc2633a0e47df4585cd51380add183ac8560203f67a26168627703"} as const;
-export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"chat.Message\":{\"$ref\":\"#/$defs/chat.wireMessage\"},\"chat.Options\":{\"$ref\":\"#/$defs/chat.wireOptions\"},\"chat.OutputFormat\":{\"$ref\":\"#/$defs/chat.wireOutputFormat\"},\"chat.Part\":{\"$ref\":\"#/$defs/chat.wirePart\"},\"chat.Request\":{\"$ref\":\"#/$defs/chat.wireRequest\"},\"chat.ToolCall\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.ToolChoice\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"chat.ToolResult\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/tool.Output\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"chat.wireMessage\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.Part\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"chat.wireOptions\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/metadata.Extensions\"},\"frequency_penalty\":{\"type\":\"number\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/chat.OutputFormat\"},\"presence_penalty\":{\"type\":\"number\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"type\":\"number\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"type\":\"number\"}},\"type\":\"object\"},\"chat.wireOutputFormat\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"chat.wirePart\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCall\"},\"tool_result\":{\"$ref\":\"#/$defs/chat.ToolResult\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireRequest\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/chat.Message\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/chat.Options\"},\"tool_choice\":{\"$ref\":\"#/$defs/chat.ToolChoice\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/tool.Definition\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"content.Block\":{\"$ref\":\"#/$defs/content.wireBlock\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"content.wireBlock\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Extensions\":{\"$ref\":\"#/$defs/metadata.Map\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"modelprovider.ChatRequest\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"modelprovider.Handle\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"tool.Definition\":{\"$ref\":\"#/$defs/tool.wireDefinition\"},\"tool.Output\":{\"$ref\":\"#/$defs/tool.wireOutput\"},\"tool.wireDefinition\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"},\"tool.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/content.Block\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/call.v1\",\"output\":{\"$defs\":{\"chat.Message\":{\"$ref\":\"#/$defs/chat.wireMessage\"},\"chat.Output\":{\"$ref\":\"#/$defs/chat.wireOutput\"},\"chat.OutputMetadata\":{\"$ref\":\"#/$defs/chat.wireOutputMetadata\"},\"chat.Part\":{\"$ref\":\"#/$defs/chat.wirePart\"},\"chat.Response\":{\"$ref\":\"#/$defs/chat.wireResponse\"},\"chat.ResponseMetadata\":{\"$ref\":\"#/$defs/chat.wireResponseMetadata\"},\"chat.ToolCall\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.ToolResult\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/tool.Output\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"chat.Usage\":{\"$ref\":\"#/$defs/chat.wireUsage\"},\"chat.wireMessage\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.Part\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"chat.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message\":{\"$ref\":\"#/$defs/chat.Message\"},\"metadata\":{\"$ref\":\"#/$defs/chat.OutputMetadata\"}},\"type\":\"object\"},\"chat.wireOutputMetadata\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"}},\"type\":\"object\"},\"chat.wirePart\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCall\"},\"tool_result\":{\"$ref\":\"#/$defs/chat.ToolResult\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireResponse\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/chat.ResponseMetadata\"},\"output\":{\"$ref\":\"#/$defs/chat.Output\"}},\"type\":\"object\"},\"chat.wireResponseMetadata\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"format\":\"date-time\",\"type\":\"string\"},\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/chat.Usage\"}},\"type\":\"object\"},\"chat.wireUsage\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"content.Block\":{\"$ref\":\"#/$defs/content.wireBlock\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"content.wireBlock\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"modelprovider.ChatResult\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":{\"$ref\":\"#/$defs/chat.Response\"}},\"type\":\"object\"},\"modelprovider.Failure\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"tool.Output\":{\"$ref\":\"#/$defs/tool.wireOutput\"},\"tool.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/content.Block\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":{\"$ref\":\"#/$defs/chat.Response\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Handle\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/close.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"chat.Message\":{\"$ref\":\"#/$defs/chat.wireMessage\"},\"chat.Options\":{\"$ref\":\"#/$defs/chat.wireOptions\"},\"chat.OutputFormat\":{\"$ref\":\"#/$defs/chat.wireOutputFormat\"},\"chat.Part\":{\"$ref\":\"#/$defs/chat.wirePart\"},\"chat.Request\":{\"$ref\":\"#/$defs/chat.wireRequest\"},\"chat.ToolCall\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.ToolChoice\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"chat.ToolResult\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/tool.Output\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"chat.wireMessage\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.Part\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"chat.wireOptions\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/metadata.Extensions\"},\"frequency_penalty\":{\"type\":\"number\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/chat.OutputFormat\"},\"presence_penalty\":{\"type\":\"number\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"type\":\"number\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"type\":\"number\"}},\"type\":\"object\"},\"chat.wireOutputFormat\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"chat.wirePart\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCall\"},\"tool_result\":{\"$ref\":\"#/$defs/chat.ToolResult\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireRequest\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/chat.Message\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/chat.Options\"},\"tool_choice\":{\"$ref\":\"#/$defs/chat.ToolChoice\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/tool.Definition\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"content.Block\":{\"$ref\":\"#/$defs/content.wireBlock\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"content.wireBlock\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Extensions\":{\"$ref\":\"#/$defs/metadata.Map\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"modelprovider.ChatRequest\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"modelprovider.Handle\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"tool.Definition\":{\"$ref\":\"#/$defs/tool.wireDefinition\"},\"tool.Output\":{\"$ref\":\"#/$defs/tool.wireOutput\"},\"tool.wireDefinition\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"},\"tool.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/content.Block\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/count.v1\",\"output\":{\"$defs\":{\"modelprovider.Failure\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"modelprovider.TokenCount\":{\"additionalProperties\":false,\"properties\":{\"count\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"count\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.EmbeddingRequest\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":true},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"modelprovider.Handle\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":true},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/embed.v1\",\"output\":{\"$defs\":{\"modelprovider.EmbeddingResult\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":true},\"type\":\"object\"},\"modelprovider.Failure\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":true},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Connection\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"modelprovider.Open\":{\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/modelprovider.Connection\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/modelprovider.Connection\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/open-chat.v1\",\"output\":{\"$defs\":{\"modelprovider.Chat\":{\"$ref\":\"#/$defs/modelprovider.chatProjection\"},\"modelprovider.chatProjection\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"}},\"$ref\":\"#/$defs/modelprovider.chatProjection\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Connection\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"modelprovider.Open\":{\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/modelprovider.Connection\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/modelprovider.Connection\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/open-embedding.v1\",\"output\":{\"$defs\":{\"modelprovider.Embedder\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"space\":{\"pattern\":\"\\\\S\",\"type\":\"string\"}},\"required\":[\"id\",\"provider\",\"model\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"space\":{\"pattern\":\"\\\\S\",\"type\":\"string\"}},\"required\":[\"id\",\"provider\",\"model\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/profiles.v1\",\"output\":{\"$defs\":{\"model.EndpointPolicy\":{\"additionalProperties\":false,\"properties\":{\"appendsPath\":{\"type\":\"string\"},\"example\":{\"type\":\"string\"},\"requiredSuffix\":{\"type\":\"string\"}},\"required\":[\"example\"],\"type\":\"object\"},\"modelprovider.EmbeddingProfile\":{\"additionalProperties\":false,\"properties\":{\"defaultModel\":{\"type\":\"string\"}},\"type\":\"object\"},\"modelprovider.Profile\":{\"$ref\":\"#/$defs/modelprovider.profileProjection\"},\"modelprovider.profileProjection\":{\"additionalProperties\":false,\"properties\":{\"authentication\":{\"allOf\":[{\"enum\":[\"keyRequired\",\"keyOptional\"]}],\"type\":\"string\"},\"defaultModel\":{\"type\":\"string\"},\"embedding\":{\"$ref\":\"#/$defs/modelprovider.EmbeddingProfile\"},\"endpoint\":{\"$ref\":\"#/$defs/model.EndpointPolicy\"},\"endpointRequired\":{\"type\":\"boolean\"},\"id\":{\"type\":\"string\"},\"modelSource\":{\"allOf\":[{\"enum\":[\"bundled\",\"endpoint\"]}],\"type\":\"string\"},\"models\":{\"items\":true,\"type\":\"array\"}},\"required\":[\"id\",\"authentication\",\"endpointRequired\",\"modelSource\",\"models\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/modelprovider.Profile\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Connection\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/remote-models.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Reopen\":{\"additionalProperties\":false,\"properties\":{\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"}},\"required\":[\"original\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"}},\"required\":[\"original\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/reopen-chat.v1\",\"output\":{\"$defs\":{\"modelprovider.Chat\":{\"$ref\":\"#/$defs/modelprovider.chatProjection\"},\"modelprovider.chatProjection\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"}},\"$ref\":\"#/$defs/modelprovider.chatProjection\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"chat.Message\":{\"$ref\":\"#/$defs/chat.wireMessage\"},\"chat.Options\":{\"$ref\":\"#/$defs/chat.wireOptions\"},\"chat.OutputFormat\":{\"$ref\":\"#/$defs/chat.wireOutputFormat\"},\"chat.Part\":{\"$ref\":\"#/$defs/chat.wirePart\"},\"chat.Request\":{\"$ref\":\"#/$defs/chat.wireRequest\"},\"chat.ToolCall\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.ToolChoice\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"chat.ToolResult\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/tool.Output\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"chat.wireMessage\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.Part\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"chat.wireOptions\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/metadata.Extensions\"},\"frequency_penalty\":{\"type\":\"number\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/chat.OutputFormat\"},\"presence_penalty\":{\"type\":\"number\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"type\":\"number\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"type\":\"number\"}},\"type\":\"object\"},\"chat.wireOutputFormat\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"chat.wirePart\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCall\"},\"tool_result\":{\"$ref\":\"#/$defs/chat.ToolResult\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireRequest\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/chat.Message\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/chat.Options\"},\"tool_choice\":{\"$ref\":\"#/$defs/chat.ToolChoice\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/tool.Definition\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"content.Block\":{\"$ref\":\"#/$defs/content.wireBlock\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"content.wireBlock\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Extensions\":{\"$ref\":\"#/$defs/metadata.Map\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"modelprovider.ChatRequest\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"modelprovider.Handle\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"tool.Definition\":{\"$ref\":\"#/$defs/tool.wireDefinition\"},\"tool.Output\":{\"$ref\":\"#/$defs/tool.wireOutput\"},\"tool.wireDefinition\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"},\"tool.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/content.Block\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/modelprovider.Handle\"},\"request\":{\"$ref\":\"#/$defs/chat.Request\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/stream.v1\",\"output\":{\"$defs\":{\"chat.Message\":{\"$ref\":\"#/$defs/chat.wireMessage\"},\"chat.Output\":{\"$ref\":\"#/$defs/chat.wireOutput\"},\"chat.OutputMetadata\":{\"$ref\":\"#/$defs/chat.wireOutputMetadata\"},\"chat.Part\":{\"$ref\":\"#/$defs/chat.wirePart\"},\"chat.Response\":{\"$ref\":\"#/$defs/chat.wireResponse\"},\"chat.ResponseMetadata\":{\"$ref\":\"#/$defs/chat.wireResponseMetadata\"},\"chat.ToolCall\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.ToolResult\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/tool.Output\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"chat.Usage\":{\"$ref\":\"#/$defs/chat.wireUsage\"},\"chat.wireMessage\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.Part\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"chat.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message\":{\"$ref\":\"#/$defs/chat.Message\"},\"metadata\":{\"$ref\":\"#/$defs/chat.OutputMetadata\"}},\"type\":\"object\"},\"chat.wireOutputMetadata\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"}},\"type\":\"object\"},\"chat.wirePart\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCall\"},\"tool_result\":{\"$ref\":\"#/$defs/chat.ToolResult\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireResponse\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/chat.ResponseMetadata\"},\"output\":{\"$ref\":\"#/$defs/chat.Output\"}},\"type\":\"object\"},\"chat.wireResponseMetadata\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"format\":\"date-time\",\"type\":\"string\"},\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/chat.Usage\"}},\"type\":\"object\"},\"chat.wireUsage\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"content.Block\":{\"$ref\":\"#/$defs/content.wireBlock\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"content.wireBlock\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/content.Citation\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"modelprovider.ChatResult\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":{\"$ref\":\"#/$defs/chat.Response\"}},\"type\":\"object\"},\"modelprovider.Failure\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"tool.Output\":{\"$ref\":\"#/$defs/tool.wireOutput\"},\"tool.wireOutput\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/content.Block\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/modelprovider.Failure\"},\"response\":{\"$ref\":\"#/$defs/chat.Response\"}},\"type\":\"object\"},\"stream\":{\"$defs\":{\"chat.OutputMetadata\":{\"$ref\":\"#/$defs/chat.wireOutputMetadata\"},\"chat.PartDelta\":{\"$ref\":\"#/$defs/chat.wirePartDelta\"},\"chat.ResponseDelta\":{\"$ref\":\"#/$defs/chat.wireResponseDelta\"},\"chat.ResponseMetadata\":{\"$ref\":\"#/$defs/chat.wireResponseMetadata\"},\"chat.ToolCallDelta\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"chat.Usage\":{\"$ref\":\"#/$defs/chat.wireUsage\"},\"chat.wireOutputMetadata\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"}},\"type\":\"object\"},\"chat.wirePartDelta\":{\"additionalProperties\":false,\"properties\":{\"citation\":{\"$ref\":\"#/$defs/content.Citation\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/media.Media\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"reasoning_state\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/chat.ToolCallDelta\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"chat.wireResponseDelta\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message_metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"metadata\":{\"$ref\":\"#/$defs/chat.ResponseMetadata\"},\"output_metadata\":{\"$ref\":\"#/$defs/chat.OutputMetadata\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/chat.PartDelta\"},\"type\":\"array\"}},\"type\":\"object\"},\"chat.wireResponseMetadata\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"format\":\"date-time\",\"type\":\"string\"},\"extra\":{\"$ref\":\"#/$defs/metadata.Map\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/chat.Usage\"}},\"type\":\"object\"},\"chat.wireUsage\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"content.Citation\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/content.CitationSource\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"content.CitationSource\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"media.Media\":{\"$ref\":\"#/$defs/media.wireMedia\"},\"media.Source\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"oneOf\":[{\"type\":\"null\"},{\"contentEncoding\":\"base64\",\"type\":\"string\"}]},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"media.wireMedia\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/metadata.Map\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/media.Source\"}},\"required\":[\"source\"],\"type\":\"object\"},\"metadata.Map\":{\"$ref\":\"#/$defs/metadata.wireMap\"},\"metadata.wireMap\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]}},\"$ref\":\"#/$defs/chat.wireResponseDelta\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"modelprovider.Connection\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/verify.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.model-provider.v1\",\"scope\":\"installation\"}";
+export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.model-provider.v1","composition":"selection","scope":"installation","contract":"230cf544e04879fdec39abc204d71ce63a4373dbaa18df46f350668ac97f797d"} as const;
+export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlcXVlc3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\"},\"frequency_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\"},\"presence_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\"},\"tool_result\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\"},\"tool_choice\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/call.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlc3VsdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\"},\"tool_result\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/close.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlcXVlc3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\"},\"frequency_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\"},\"presence_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\"},\"tool_result\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\"},\"tool_choice\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/count.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.VG9rZW5Db3VudA\":{\"additionalProperties\":false,\"properties\":{\"count\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"count\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RW1iZWRkaW5nUmVxdWVzdA\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":true},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":true},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/embed.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RW1iZWRkaW5nUmVzdWx0\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":true},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.T3Blbg\":{\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/open-chat.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.T3Blbg\":{\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"connection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\"},\"model\":{\"type\":\"string\"}},\"required\":[\"connection\",\"model\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/open-embedding.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RW1iZWRkZXI\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"space\":{\"pattern\":\"\\\\S\",\"type\":\"string\"}},\"required\":[\"id\",\"provider\",\"model\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"space\":{\"pattern\":\"\\\\S\",\"type\":\"string\"}},\"required\":[\"id\",\"provider\",\"model\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/profiles.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.RW5kcG9pbnRQb2xpY3k\":{\"additionalProperties\":false,\"properties\":{\"appendsPath\":{\"type\":\"string\"},\"example\":{\"type\":\"string\"},\"requiredSuffix\":{\"type\":\"string\"}},\"required\":[\"example\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RW1iZWRkaW5nUHJvZmlsZQ\":{\"additionalProperties\":false,\"properties\":{\"defaultModel\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.UHJvZmlsZQ\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.cHJvZmlsZVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.cHJvZmlsZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"authentication\":{\"allOf\":[{\"enum\":[\"keyRequired\",\"keyOptional\"]}],\"type\":\"string\"},\"defaultModel\":{\"type\":\"string\"},\"embedding\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RW1iZWRkaW5nUHJvZmlsZQ\"},\"endpoint\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.RW5kcG9pbnRQb2xpY3k\"},\"endpointRequired\":{\"type\":\"boolean\"},\"id\":{\"type\":\"string\"},\"modelSource\":{\"allOf\":[{\"enum\":[\"bundled\",\"endpoint\"]}],\"type\":\"string\"},\"models\":{\"items\":true,\"type\":\"array\"}},\"required\":[\"id\",\"authentication\",\"endpointRequired\",\"modelSource\",\"models\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.UHJvZmlsZQ\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/remote-models.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.UmVvcGVu\":{\"additionalProperties\":false,\"properties\":{\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"}},\"required\":[\"original\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"}},\"required\":[\"original\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/reopen-chat.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"},\"metadata\":true,\"model\":{\"type\":\"string\"},\"original\":{\"allOf\":[{\"maxLength\":256,\"minLength\":1}],\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"streaming\":{\"type\":\"boolean\"},\"tokenCounting\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"original\",\"provider\",\"model\",\"streaming\",\"tokenCounting\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlcXVlc3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"allOf\":[{\"pattern\":\"^[a-f0-9]{64}$\"}],\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlcXVlc3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"extensions\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\"},\"frequency_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"max_output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"model\":{\"type\":\"string\"},\"output_format\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\"},\"presence_penalty\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"reasoning_effort\":{\"type\":\"string\"},\"stop\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"temperature\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"top_k\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"top_p\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\"},\"tool_result\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVxdWVzdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"messages\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\"},\"type\":\"array\"},\"options\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3B0aW9uc1Byb2plY3Rpb24\"},\"tool_choice\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\"},\"tools\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\"},\"type\":\"array\"}},\"required\":[\"messages\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0Rm9ybWF0\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENob2ljZQ\":{\"additionalProperties\":false,\"properties\":{\"mode\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"parallelism\":{\"type\":\"string\"}},\"required\":[\"mode\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dEZvcm1hdA\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"schema\":true,\"type\":{\"type\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.RXh0ZW5zaW9ucw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.RGVmaW5pdGlvbg\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvdG9vbA.d2lyZURlZmluaXRpb24\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"effect\":{\"type\":\"string\"},\"input_schema\":true,\"name\":{\"type\":\"string\"},\"output_schema\":true},\"required\":[\"name\",\"input_schema\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"handle\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.SGFuZGxl\"},\"request\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVxdWVzdA\"}},\"required\":[\"handle\",\"request\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-provider/stream.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlc3VsdA\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\":{\"additionalProperties\":false,\"properties\":{\"execution\":{\"type\":\"string\"},\"kind\":{\"allOf\":[{\"enum\":[\"internal\",\"canceled\",\"timeout\",\"invalid_credentials\",\"rate_limited\",\"provider_rejected\",\"provider_unavailable\"]}],\"type\":\"string\"},\"retryAfterMillis\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"kind\",\"execution\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"text\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\"},\"type\":\"array\"},\"role\":{\"type\":\"string\"}},\"required\":[\"role\",\"parts\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"type\":\"array\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\"},\"tool_result\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u\"},\"type\":\"array\"},\"details\":true},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"is_error\":{\"type\":\"boolean\"},\"name\":{\"type\":\"string\"},\"output\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24\"}},\"required\":[\"id\",\"name\",\"output\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"failure\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ\"},\"response\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U\"}},\"type\":\"object\"},\"stream\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2VEZWx0YQ\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VEZWx0YVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"mime\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"bytes\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"uri\":{\"type\":\"string\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydERlbHRhUHJvamVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"citation\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\"},\"kind\":{\"type\":\"string\"},\"media\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"reasoning_state\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"tool_call\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGxEZWx0YQ\"}},\"required\":[\"kind\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VEZWx0YVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message_metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\"},\"output_metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydERlbHRhUHJvamVjdGlvbg\"},\"type\":\"array\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\":{\"additionalProperties\":false,\"properties\":{\"created_at\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"id\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"usage\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24\":{\"additionalProperties\":false,\"properties\":{\"quote\":{\"type\":\"string\"},\"source\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\"},\"title\":{\"type\":\"string\"}},\"required\":[\"source\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"kind\",\"value\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGxEZWx0YQ\":{\"additionalProperties\":false,\"properties\":{\"arguments\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZU91dHB1dE1ldGFkYXRh\":{\"additionalProperties\":false,\"properties\":{\"extra\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl\":{\"additionalProperties\":false,\"properties\":{\"cache_read_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cache_write_input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"input_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"output_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoning_tokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA\":{\"oneOf\":[{\"type\":\"null\"},{\"additionalProperties\":true,\"type\":\"object\"}]}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"finish_reason\":{\"type\":\"string\"},\"message_metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw\"},\"metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24\"},\"output_metadata\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.T3V0cHV0TWV0YWRhdGE\"},\"parts\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydERlbHRhUHJvamVjdGlvbg\"},\"type\":\"array\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q29ubmVjdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"apiKey\":{\"type\":\"string\"},\"baseURL\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"}},\"required\":[\"provider\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-provider/verify.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.model-provider.v1\",\"scope\":\"installation\"}";

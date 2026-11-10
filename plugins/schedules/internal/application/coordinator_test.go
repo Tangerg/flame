@@ -85,7 +85,7 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	})
 	c.now = func() time.Time { return now }
 
-	created, err := c.Create(t.Context(), schedule.Draft{
+	mutation, err := c.PrepareCreate(t.Context(), schedule.Draft{
 		Instructions: "review",
 		CWD:          "workspace",
 		Cron:         "0 13 * * *", TimeZone: "UTC",
@@ -93,6 +93,10 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	created := mutation.State()
+	if err := mutation.Apply(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 	if created.CWD() != "/canonical/workspace" || !created.Enabled() {
 		t.Fatalf("created = %+v", created)
@@ -126,7 +130,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 	provider, model, effort, cron := "provider", "model", "high", "0 15 * * *"
 	enabled := false
 
-	updated, err := c.Update(t.Context(), UpdateCommand{
+	mutation, err := c.PrepareUpdate(t.Context(), UpdateCommand{
 		ID: "sch_1", ExpectedRevision: 3,
 		Patch: Patch{
 			Title:        &title,
@@ -141,6 +145,10 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
+	}
+	updated := mutation.State()
+	if err := mutation.Apply(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 	if updated.ID() != "sch_1" || updated.Title() != title || updated.Instructions() != instructions ||
 		updated.CWD() != "/canonical/after" || updated.Recurrence().Cron() != cron || updated.Enabled() || updated.Revision() != 4 {
@@ -167,7 +175,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 
 func TestUpdateRequiresAnExplicitRevision(t *testing.T) {
 	c := mustCoordinator(t, Dependencies{Store: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"})}})
-	_, err := c.Update(t.Context(), UpdateCommand{ID: "sch_1"})
+	_, err := c.PrepareUpdate(t.Context(), UpdateCommand{ID: "sch_1"})
 	if !errors.Is(err, schedule.ErrRevisionRequired) {
 		t.Fatalf("Update error = %v, want ErrRevisionRequired", err)
 	}
@@ -183,7 +191,7 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 			return "", errors.New("unexpected resolution")
 		}),
 	})
-	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "0 0 * * *", TimeZone: "UTC", Enabled: true})
+	_, err := c.PrepareCreate(t.Context(), schedule.Draft{CWD: "missing", Cron: "0 0 * * *", TimeZone: "UTC", Enabled: true})
 	if !errors.Is(err, schedule.ErrInstructionsRequired) {
 		t.Fatalf("Create error = %v, want ErrInstructionsRequired", err)
 	}
@@ -202,6 +210,9 @@ func (r *runNowStore) ListPage(ctx context.Context, _ time.Time, _ string, _ int
 	return nil, nil
 }
 func (r *runNowStore) Get(context.Context, string) (schedule.Schedule, error) {
+	if r.schedule.ID() == "" {
+		return schedule.Schedule{}, schedule.ErrNotFound
+	}
 	return r.schedule, nil
 }
 func (r *runNowStore) Insert(_ context.Context, scheduled schedule.Schedule) error {

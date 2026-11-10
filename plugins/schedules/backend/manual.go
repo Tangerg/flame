@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
 	"time"
 
+	framesqlite "github.com/Tangerg/frame/sqlite"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -20,7 +22,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
+func runNow(ctx context.Context, db *framesqlite.Database, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
@@ -42,7 +44,7 @@ type manualCommand struct {
 
 // A logical caller and its private receipt command have distinct identities.
 // The queue retains both so recovery never guesses a Tool's command namespace.
-func captureManual(ctx context.Context, db *sql.DB, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
+func captureManual(ctx context.Context, db *framesqlite.Database, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
 	var input wire.ItemInput
 	if err := json.Unmarshal(command.admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return result, err
@@ -61,12 +63,18 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 	var captured schedule.RunRequest
 	var prepared *pluginstorage.PreparedCommand
 	var original []byte
-	err = pluginstorage.WithinTransaction(ctx, db, func(ctx context.Context) error {
+	err = framesqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		var err error
 		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, wire.RunNow, command.id, command.admitted, func(ctx context.Context) error {
 			_, err := pluginmcp.CallbackFromContext(ctx)
 			return err
 		})
+		if errors.Is(err, framemcp.ErrInvocationConflict) {
+			conflict, encodeErr := pluginmcp.EncodeReply(app.RunReference{}, framemcp.ErrInvocationConflict, nil)
+			original = conflict.Bytes()
+			prepared = nil
+			return encodeErr
+		}
 		if err != nil {
 			return err
 		}
@@ -96,7 +104,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 		return nil
 	})
 	if err != nil {
-		return result, err
+		return result, errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
 	}
 	if prepared == nil {
 		return pluginmcp.DecodeReply[app.RunReference](original)

@@ -25,8 +25,8 @@ type userMessageBlock struct {
 }
 
 var (
-	_ base.Block         = (*userMessageBlock)(nil)
-	_ base.TextProjector = (*userMessageBlock)(nil)
+	_ base.Block     = (*userMessageBlock)(nil)
+	_ text.Projector = (*userMessageBlock)(nil)
 )
 
 // selfSpeaker labels the operator's own turn. A block is styled as the
@@ -41,7 +41,6 @@ func newUserMessageBlock(theme kit.Theme, speaker, body string) *userMessageBloc
 	return &userMessageBlock{
 		box: kit.Box{
 			Theme:   theme,
-			Bare:    true,
 			Padding: layout.Symmetric(0, userMessageInset),
 		},
 		message: message,
@@ -164,7 +163,7 @@ func markdownLook(theme kit.Theme, glyphs kit.Glyphs, locale string, syntax high
 		Link: theme.Accent, Quote: theme.Muted, Rail: theme.Subtle,
 		Marker: theme.Accent, Rule: theme.Divider,
 		Glyphs: markdown.Glyphs{
-			Bullet: glyphs.Bullet, Bar: glyphs.Vertical, Divider: glyphs.Horizontal,
+			Bullet: glyphs.Bullet, Bar: glyphs.Vertical.String(), Divider: glyphs.Rule,
 			Checked: glyphs.Taken, Unchecked: glyphs.Free,
 		},
 	}

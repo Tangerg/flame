@@ -2,10 +2,11 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -21,12 +22,9 @@ func testInstallationID(t *testing.T, text string) identity.InstallationID {
 	return id
 }
 
-func insertRunState(t *testing.T, db *sql.DB, runID, sessionID, state string) {
+func insertRunState(t *testing.T, db *framesqlite.Database, runID, sessionID, state string) {
 	t.Helper()
-	if _, err := db.ExecContext(t.Context(),
-		`INSERT INTO runs(run_id, session_id, state, created_at, updated_at) VALUES (?, ?, ?, 0, 0)`,
-		runID, sessionID, state,
-	); err != nil {
+	if _, err := execFixture(t.Context(), db, `INSERT INTO runs(run_id, session_id, state, created_at, updated_at) VALUES (?, ?, ?, 0, 0)`, runID, sessionID, state); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -113,7 +111,7 @@ func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
 				t.Fatal(err)
 			}
 			insertRunState(t, db, "run_old", "ses_old", test.state)
-			if _, err := db.ExecContext(t.Context(), `DROP TABLE executor_checkpoint_resources`); err != nil {
+			if _, err := execFixture(t.Context(), db, `DROP TABLE executor_checkpoint_resources`); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {

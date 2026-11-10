@@ -1,7 +1,7 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { cloneJSON } from "@frame/sdk/json";
 import { RpcError, RpcCancellationError } from "./errors";
-import { checkRequest, requestRequiresIdempotency } from "./request";
+import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import type {
   MutationJournal,
@@ -159,11 +159,11 @@ export function createWireCallPath(
     let reservation: MutationReservation;
     try {
       if (!reserveOriginal && signal?.aborted) throw new RpcCancellationError();
-      preparedParams = cloneJSON(params);
+      preparedParams = checkRequest(method, cloneJSON(params));
       if (reserveOriginal) {
         reservation = reserveOriginal();
       } else {
-        const metadata = cloneJSON(
+        const metadata = captureRequestMeta(
           requestMeta === undefined ? (options.requestMeta?.() ?? null) : requestMeta,
         );
         checkRequest(method, preparedParams, metadata);
@@ -243,7 +243,7 @@ export function createWireCallPath(
     callOptions?: RpcCallOptions,
   ): WireCallResult<M> => {
     if (wireMethodIsPaginated(method)) {
-      const query = cloneJSON(params);
+      const query = checkRequest(method, cloneJSON(params));
       const initialCursor = (query as { cursor?: string }).cursor;
       return createAutoPagingPromise<CursorPage>(
         (cursor) => {

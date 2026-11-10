@@ -1,10 +1,11 @@
 package persistence
 
 import (
-	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -13,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func openStore(t *testing.T) *sql.DB {
+func openStore(t *testing.T) *framesqlite.Database {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -164,7 +165,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatalf("removing the user server changed installation exposure: %+v, %v", exposure, err)
 	}
 
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, installation.ID().String()); err != nil {
+	if _, err := execFixture(t.Context(), db, `DELETE FROM plugin_installations WHERE id=?`, installation.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"mcp_sources": 0, "approval_rules": 0, "mcp_tool_exposure": 0})
@@ -177,23 +178,23 @@ func TestMCPSourceSchemaRejectsMixedOrigins(t *testing.T) {
 		`INSERT INTO mcp_sources (origin, name) VALUES ('installation', 'files')`,
 		`INSERT INTO mcp_sources (origin, name) VALUES ('plugin', 'files')`,
 	} {
-		if _, err := db.ExecContext(t.Context(), statement); err == nil {
+		if _, err := execFixture(t.Context(), db, statement); err == nil {
 			t.Errorf("accepted %s", statement)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files')`); err != nil {
+	if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files')`); err == nil || !strings.Contains(err.Error(), "UNIQUE") {
+	if _, err := execFixture(t.Context(), db, `INSERT INTO mcp_sources (origin, name) VALUES ('user', 'files')`); err == nil || !strings.Contains(err.Error(), "UNIQUE") {
 		t.Fatalf("duplicate user source = %v", err)
 	}
 }
 
-func requireRows(t *testing.T, db *sql.DB, want map[string]int) {
+func requireRows(t *testing.T, db *framesqlite.Database, want map[string]int) {
 	t.Helper()
 	for table, count := range want {
 		var got int
-		if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM `+table).Scan(&got); err != nil {
+		if err := scanFixture(t.Context(), db, `SELECT count(*) FROM `+table, nil, &got); err != nil {
 			t.Fatal(err)
 		}
 		if got != count {

@@ -2,13 +2,14 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
@@ -23,7 +24,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func insertTrajectorySession(t testing.TB, ctx context.Context, db *sql.DB, id string) {
+func insertTrajectorySession(t testing.TB, ctx context.Context, db *framesqlite.Database, id string) {
 	t.Helper()
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: id, Workspace: testsupport.MustWorkspace("/work"),
@@ -207,7 +208,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 			}
 		}
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE model_invocations SET session_id = ? WHERE run_id = ?`, root.SessionID, other.RunID); err != nil {
+	if _, err := execFixture(ctx, db, `UPDATE model_invocations SET session_id = ? WHERE run_id = ?`, root.SessionID, other.RunID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := reader.Page(ctx, root.SessionID, true, nil, 100); err == nil {
@@ -232,12 +233,12 @@ func BenchmarkSessionTrajectoryPage(b *testing.B) {
 			if err := newTranscriptStore(databaseFor(db)).AppendItem(ctx, trajectoryItem("item_template", draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
 				b.Fatal(err)
 			}
-			if _, err := db.ExecContext(ctx, `WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < ?)
+			if _, err := execFixture(ctx, db, `WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < ?)
 				INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id)
 				SELECT session_id, run_id, printf('item_%06d', n), occurred_at + n, payload, '' FROM numbers CROSS JOIN history_items WHERE item_id = 'item_template'`, count/2); err != nil {
 				b.Fatal(err)
 			}
-			if _, err := db.ExecContext(ctx, `WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < ?)
+			if _, err := execFixture(ctx, db, `WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < ?)
 				INSERT INTO model_invocations(call_id, session_id, run_id, segment_id, state, started_at, finished_at)
 				SELECT printf('call_%06d', n), 'ses_bench', 'run_bench', 'seg_open', 'completed', 1000000000 + n, 1000000001 + n FROM numbers`, count/2); err != nil {
 				b.Fatal(err)

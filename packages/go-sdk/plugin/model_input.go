@@ -1,19 +1,18 @@
 package plugin
 
 import (
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 // ModelInputRequest carries one captured route and the current model-visible
@@ -29,8 +28,8 @@ func (r ModelInputRequest) Validate() error {
 	}
 	return r.Request.Validate()
 }
-func ModelInputMethod() (*pluginmcp.Method[ModelInputRequest, chat.Request], error) {
-	return pluginmcp.NewMethod[ModelInputRequest, chat.Request](portable.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
+func ModelInputMethod() (*pluginmcp.Method[ModelInputRequest, scopewire.Request], error) {
+	return pluginmcp.NewMethod[ModelInputRequest, scopewire.Request](portable.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
 func ModelInputContract() (*plugincontract.Capability, error) { return modelInputContract() }
 

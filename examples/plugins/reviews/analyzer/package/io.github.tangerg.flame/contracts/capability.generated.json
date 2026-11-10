@@ -11,7 +11,7 @@
       "description": "Analyze an inspected review snapshot and return findings without changing its records.",
       "input": {
         "$defs": {
-          "contract.Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.U25hcHNob3Q": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -90,7 +90,22 @@
       },
       "output": {
         "$defs": {
-          "contract.Finding": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZ3M": {
+            "additionalProperties": false,
+            "properties": {
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "findings"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw": {
             "additionalProperties": false,
             "properties": {
               "code": {
@@ -119,21 +134,6 @@
               "revision"
             ],
             "type": "object"
-          },
-          "contract.Findings": {
-            "additionalProperties": false,
-            "properties": {
-              "findings": {
-                "items": {
-                  "$ref": "#/$defs/contract.Finding"
-                },
-                "type": "array"
-              }
-            },
-            "required": [
-              "findings"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -141,7 +141,7 @@
         "properties": {
           "findings": {
             "items": {
-              "$ref": "#/$defs/contract.Finding"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0.RmluZGluZw"
             },
             "type": "array"
           }

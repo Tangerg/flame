@@ -84,6 +84,28 @@ type Selection =
   | { view: "files"; path: string | null }
   | { view: "file"; path: string; returnTo: "files" | "source" };
 
+function restoreFileOverview(
+  list: HTMLElement | null,
+  search: HTMLInputElement | null,
+  positions: readonly ScrollPosition[],
+  selectedPath: string | null,
+) {
+  for (const position of positions) position.element.scrollTop = position.top;
+  const row = Array.from(
+    list?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ?? [],
+  ).find((item) => item.dataset.diffFile === selectedPath);
+  (row ?? search)?.focus();
+}
+
+// A connected origin distinguishes deliberate blur from its removal.
+function focusMovedFromOrigin(
+  active: Element | null,
+  origin: Element | null,
+  body: HTMLElement,
+) {
+  return active !== origin && (active !== body || origin?.isConnected === true);
+}
+
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
   const workspace = useMemo(() => {
@@ -250,11 +272,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         search.current?.focus();
       return;
     }
-    // A connected origin distinguishes deliberate blur from its removal.
-    if (
-      active !== pending.active &&
-      (active !== document.body || pending.active?.isConnected === true)
-    ) {
+    if (focusMovedFromOrigin(active, pending.active, document.body)) {
       pendingFocus.current = null;
       return;
     }
@@ -278,13 +296,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         position.element.scrollTop = 0;
       heading.current?.focus();
     } else {
-      for (const position of overviewScroll.current)
-        position.element.scrollTop = position.top;
-      const row = Array.from(
-        list.current?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ??
-          [],
-      ).find((item) => item.dataset.diffFile === selection.path);
-      (row ?? search.current)?.focus();
+      restoreFileOverview(
+        list.current,
+        search.current,
+        overviewScroll.current,
+        selection.path,
+      );
     }
   }, [file, showingReader, accepted, selection, read.error]);
 

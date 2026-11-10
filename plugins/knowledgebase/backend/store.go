@@ -6,13 +6,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/frame/sqlite"
 )
 
-type store struct{ db *sql.DB }
+type store struct{ db *sqlite.Database }
 
 var errStoredDocument = errors.New("knowledge base: invalid stored document")
 
@@ -24,14 +23,16 @@ func openStore(ctx context.Context, path string) (*store, error) {
 		`CREATE TABLE IF NOT EXISTS retired_documents (id TEXT PRIMARY KEY)`,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, db.Close())
 	}
 	return &store{db: db}, nil
 }
 
 func (s *store) read(ctx context.Context, id string) (knowledge.Document, error) {
 	var raw string
-	err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM documents WHERE id=?`, id).Scan(&raw)
+	err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT snapshot FROM documents WHERE id=?`, id).Scan(&raw)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return knowledge.Document{}, nil
 	}
@@ -57,24 +58,27 @@ func decodeDocument(id, raw string) (knowledge.Document, error) {
 }
 
 func (s *store) documents(ctx context.Context) ([]knowledge.Document, error) {
-	rows, err := pluginstorage.Connection(ctx, s.db).QueryContext(ctx, `SELECT id,snapshot FROM documents ORDER BY id LIMIT ?`, knowledge.MaxDocuments+1)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 	documents := make([]knowledge.Document, 0)
-	for rows.Next() {
-		var id, raw string
-		if err := rows.Scan(&id, &raw); err != nil {
-			return nil, err
-		}
-		document, err := decodeDocument(id, raw)
+	err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		rows, err := reader.QueryContext(ctx, `SELECT id,snapshot FROM documents ORDER BY id LIMIT ?`, knowledge.MaxDocuments+1)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		documents = append(documents, document)
-	}
-	if err := rows.Err(); err != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var id, raw string
+			if err := rows.Scan(&id, &raw); err != nil {
+				return err
+			}
+			document, err := decodeDocument(id, raw)
+			if err != nil {
+				return err
+			}
+			documents = append(documents, document)
+		}
+		return rows.Err()
+	})
+	if err != nil {
 		return nil, err
 	}
 	if len(documents) > knowledge.MaxDocuments {
@@ -84,78 +88,72 @@ func (s *store) documents(ctx context.Context) ([]knowledge.Document, error) {
 }
 
 func (s *store) indexTarget(ctx context.Context, id string, expected int64) (knowledge.Document, error) {
-	var retired bool
-	if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM retired_documents WHERE id=?)`, id).Scan(&retired); err != nil {
-		return knowledge.Document{}, err
-	}
-	if retired {
-		return knowledge.Document{}, knowledge.ErrRetired
-	}
-	current, err := s.read(ctx, id)
-	if err != nil {
-		return knowledge.Document{}, err
-	}
-	if err := current.CheckReplacement(expected, id); err != nil {
-		return knowledge.Document{}, err
-	}
-	if current.Header().Revision == 0 {
-		var count int
-		if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM documents`).Scan(&count); err != nil {
-			return knowledge.Document{}, err
+	var current knowledge.Document
+	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+		var retired bool
+		connection := sqlite.Connection(ctx, s.db)
+		if err := connection.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM retired_documents WHERE id=?)`, id).Scan(&retired); err != nil {
+			return err
 		}
-		if count >= knowledge.MaxDocuments {
-			return knowledge.Document{}, knowledge.ErrCapacity
+		if retired {
+			return knowledge.ErrRetired
 		}
-	}
-	return current, nil
-}
-
-func (s *store) replace(ctx context.Context, id string, expected int64, indexed knowledge.IndexedDraft) (knowledge.Header, error) {
-	current, err := s.indexTarget(ctx, id, expected)
-	if err != nil {
-		return knowledge.Header{}, err
-	}
-	next, err := current.Replace(expected, indexed)
-	if err != nil {
-		return knowledge.Header{}, err
-	}
-	encoded, err := json.Marshal(next.Snapshot())
-	if err != nil {
-		return knowledge.Header{}, err
-	}
-	_, err = pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, id, string(encoded))
-	return next.Header(), err
-}
-
-func (s *store) delete(ctx context.Context, id string, expected int64) (bool, error) {
-	current, err := s.read(ctx, id)
-	if err != nil {
-		return false, err
-	}
-	if err := current.CheckDeletion(expected); err != nil {
-		return false, err
-	}
-	if _, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO retired_documents(id) VALUES(?)`, id); err != nil {
-		return false, err
-	}
-	_, err = pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)
-	return err == nil, err
-}
-
-func (s *store) completeIndex(ctx context.Context, prepared *pluginstorage.PreparedCommand, publish func(context.Context) (knowledge.Header, error)) (knowledge.Header, error) {
-	var result knowledge.Header
-	var outcomeErr error
-	err := pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
 		var err error
-		result, outcomeErr = publish(ctx)
-		reply, err := pluginmcp.EncodeReply(result, outcomeErr, classify)
+		current, err = s.read(ctx, id)
 		if err != nil {
 			return err
 		}
-		return prepared.Complete(ctx, reply.Bytes())
+		if err := current.CheckReplacement(expected, id); err != nil {
+			return err
+		}
+		if current.Header().Revision != 0 {
+			return nil
+		}
+		var count int
+		if err := connection.QueryRowContext(ctx, `SELECT COUNT(*) FROM documents`).Scan(&count); err != nil {
+			return err
+		}
+		if count >= knowledge.MaxDocuments {
+			return knowledge.ErrCapacity
+		}
+		return nil
 	})
+	return current, err
+}
+
+func (s *store) prepareReplacement(ctx context.Context, id string, expected int64, indexed knowledge.IndexedDraft) (pluginstorage.CommandPlan[knowledge.Header], error) {
+	current, err := s.indexTarget(ctx, id, expected)
 	if err != nil {
-		return knowledge.Header{}, err
+		return pluginstorage.CommandPlan[knowledge.Header]{}, err
 	}
-	return result, outcomeErr
+	next, err := current.Replace(expected, indexed)
+	if err != nil {
+		return pluginstorage.CommandPlan[knowledge.Header]{}, err
+	}
+	encoded, err := json.Marshal(next.Snapshot())
+	if err != nil {
+		return pluginstorage.CommandPlan[knowledge.Header]{}, err
+	}
+	return pluginstorage.NewCommandPlan(next.Header(), func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, id, string(encoded))
+		return err
+	})
+}
+
+func (s *store) prepareDeletion(ctx context.Context, id string, expected int64) (pluginstorage.CommandPlan[bool], error) {
+	current, err := s.read(ctx, id)
+	if err != nil {
+		return pluginstorage.CommandPlan[bool]{}, err
+	}
+	if err := current.CheckDeletion(expected); err != nil {
+		return pluginstorage.CommandPlan[bool]{}, err
+	}
+	return pluginstorage.NewCommandPlan(true, func(ctx context.Context) error {
+		connection := sqlite.Connection(ctx, s.db)
+		if _, err := connection.ExecContext(ctx, `INSERT INTO retired_documents(id) VALUES(?)`, id); err != nil {
+			return err
+		}
+		_, err := connection.ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)
+		return err
+	})
 }

@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -18,7 +19,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func toolReceipt(ctx context.Context, db *sql.DB, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func toolReceipt(ctx context.Context, db *framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
 	switch remote {
 	case createScheduleTool:
@@ -61,7 +62,9 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginmcp.ReceiptRequest
 			return pluginsdk.ToolReceipt{}, err
 		}
 		var original string
-		if err := pluginstorage.Connection(ctx, db).QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, input.ID).Scan(&original); err != nil {
+		if err := db.Read(ctx, func(reader framesqlite.Reader) error {
+			return reader.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, input.ID).Scan(&original)
+		}); err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
 		var arguments deleteScheduleArgs

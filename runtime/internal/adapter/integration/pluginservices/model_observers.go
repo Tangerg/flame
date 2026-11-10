@@ -10,15 +10,14 @@ import (
 	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/core/chat"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 type CallComposition struct {
@@ -158,7 +157,7 @@ type observationAdmission struct {
 	innerFailure error
 }
 
-func (a *observationAdmission) enter(command pluginmcp.Command[chat.Request]) error {
+func (a *observationAdmission) enter(command pluginmcp.Command[scopewire.Request]) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
@@ -220,7 +219,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	session := borrowed.Session()
 	invocation, _ := pluginmcp.InvocationFromContext(ctx)
 	admission := &observationAdmission{request: request.Clone(), id: invocation.ID}
-	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
+	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		if err := admission.enter(command); err != nil {
 			return nil, err
 		}
@@ -229,7 +228,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		if err := calling.Err(); err != nil {
 			return nil, errors.Join(err, context.Cause(calling))
 		}
-		response, err := o.next.Call(calling, command.Input.Clone())
+		response, err := o.next.Call(calling, (*chat.Request)(&command.Input).Clone())
 		admission.retain(response, err)
 		return response, err
 	})
@@ -278,7 +277,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 		session := borrowed.Session()
 		invocation, _ := pluginmcp.InvocationFromContext(ctx)
 		admission := &observationAdmission{request: frozen, id: invocation.ID}
-		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 			return func(yield func(*chat.ResponseDelta, error) bool) {
 				if err := admission.enter(command); err != nil {
 					yield(nil, err)
@@ -291,7 +290,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 					return
 				}
 				var accumulated chat.ResponseAccumulator
-				sequence := o.nextStream.Stream(continuation, command.Input.Clone())
+				sequence := o.nextStream.Stream(continuation, (*chat.Request)(&command.Input).Clone())
 				if sequence == nil {
 					yield(nil, errors.New("model observer continuation returned no stream"))
 					return

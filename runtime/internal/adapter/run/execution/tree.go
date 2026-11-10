@@ -214,7 +214,7 @@ func (i *interactionSession) pendingInputs(history scoperun.Log) ([]interaction.
 	}
 	var inputs []interaction.PendingToolInput
 	for _, program := range i.state.deployments.interactions {
-		inputs = append(inputs, interaction.PendingToolInputs(program, inspection)...)
+		inputs = append(inputs, interaction.PendingToolInputs(program.program, inspection)...)
 	}
 	return inputs, nil
 }

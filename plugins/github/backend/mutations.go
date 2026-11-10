@@ -11,17 +11,15 @@ import (
 	"net/http"
 
 	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/tool"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/tool"
 )
 
 func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
@@ -49,7 +47,7 @@ func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method
 		}
 		// Any dispatched write can affect several query pages. Invalidation joins
 		// admission so a lost acknowledgement cannot preserve a pre-write cache.
-		_, err := pluginstorage.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
+		_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
 		return err
 	})
 	if err != nil {

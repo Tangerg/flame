@@ -77,7 +77,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER refuse_session_delete BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT,'refused'); END`); err != nil {
+	if _, err := execFixture(t.Context(), db, `CREATE TRIGGER refuse_session_delete BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT,'refused'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if err := newSessionStore(databaseFor(db)).Delete(t.Context(), invocation.SessionID); err == nil {
@@ -86,7 +86,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	if rows, err := store.ListSessionEndpoints(t.Context(), invocation.SessionID); err != nil || len(rows) != 1 {
 		t.Fatalf("failed deletion lost evidence: %v %v", rows, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER refuse_session_delete`); err != nil {
+	if _, err := execFixture(t.Context(), db, `DROP TRIGGER refuse_session_delete`); err != nil {
 		t.Fatal(err)
 	}
 	if err := newSessionStore(databaseFor(db)).Delete(t.Context(), invocation.SessionID); err != nil {
@@ -128,7 +128,7 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, FinishedAt: invocation.StartedAt.Add(time.Second), Cost: testsupport.OptionalCost(new(0.0))}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET usage=json_set(usage,'$.inputTokens',13) WHERE call_id=?`, invocation.ID); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE model_invocations SET usage=json_set(usage,'$.inputTokens',13) WHERE call_id=?`, invocation.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := store.EndpointForCaller(t.Context(), invocation.Caller.ID); err == nil {
@@ -222,7 +222,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(after, before) {
 		t.Fatalf("restart changed recorded consumption: %v", err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET session_id='ses_other' WHERE call_id='endpoint_primary'`); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE model_invocations SET session_id='ses_other' WHERE call_id='endpoint_primary'`); err != nil {
 		t.Fatal(err)
 	}
 	if value, err := reporter.Summary(t.Context(), sessions.AllTimeUsage()); err == nil || value.Coverage.Calls != 0 {

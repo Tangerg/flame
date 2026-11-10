@@ -11,7 +11,7 @@
       "description": "Delete a document and its index at the inspected revision.",
       "input": {
         "$defs": {
-          "wire.DocumentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -90,7 +90,30 @@
       "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document.",
       "input": {
         "$defs": {
-          "domain.Content": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.SW1wb3J0SW5wdXQ": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.Q29udGVudA"
+              },
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "content",
+              "expectedRevision"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.Q29udGVudA": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -135,36 +158,13 @@
               "text"
             ],
             "type": "object"
-          },
-          "wire.ImportInput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "$ref": "#/$defs/domain.Content"
-              },
-              "expectedRevision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "content",
-              "expectedRevision"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "content": {
-            "$ref": "#/$defs/domain.Content"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.Q29udGVudA"
           },
           "expectedRevision": {
             "allOf": [
@@ -185,7 +185,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -288,7 +288,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -335,7 +335,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/domain.Header"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy"
         },
         "type": "array"
       }
@@ -347,7 +347,7 @@
       "description": "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O.",
       "input": {
         "$defs": {
-          "wire.ReadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVhZElucHV0": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -394,7 +394,23 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRSZWFk": {
+            "additionalProperties": false,
+            "properties": {
+              "document": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "document",
+              "text"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -437,29 +453,13 @@
               "space"
             ],
             "type": "object"
-          },
-          "wire.DocumentRead": {
-            "additionalProperties": false,
-            "properties": {
-              "document": {
-                "$ref": "#/$defs/domain.Header"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "document",
-              "text"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "document": {
-            "$ref": "#/$defs/domain.Header"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy"
           },
           "text": {
             "type": "string"
@@ -479,7 +479,7 @@
       "description": "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role.",
       "input": {
         "$defs": {
-          "wire.DocumentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -548,7 +548,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -645,7 +645,7 @@
       "description": "Retrieve cited chunks from indexed user documents through the configured embedding role.",
       "input": {
         "$defs": {
-          "wire.SearchInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.U2VhcmNoSW5wdXQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -720,7 +720,7 @@
       },
       "output": {
         "$defs": {
-          "domain.Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -764,10 +764,10 @@
             ],
             "type": "object"
           },
-          "domain.Match": {
-            "$ref": "#/$defs/domain.matchProjection"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.TWF0Y2g": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.bWF0Y2hQcm9qZWN0aW9u"
           },
-          "domain.matchProjection": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.bWF0Y2hQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
               "chunk": {
@@ -780,10 +780,10 @@
                 "type": "integer"
               },
               "document": {
-                "$ref": "#/$defs/domain.Header"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.SGVhZGVy"
               },
               "score": {
-                "$ref": "#/$defs/value.Number"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
               },
               "text": {
                 "type": "string"
@@ -797,13 +797,13 @@
             ],
             "type": "object"
           },
-          "value.Number": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
             "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/domain.Match"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4.TWF0Y2g"
         },
         "type": "array"
       }

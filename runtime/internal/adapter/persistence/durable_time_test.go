@@ -109,7 +109,7 @@ func TestExecutionRecordsRejectUnrepresentableTimesBeforeWriting(t *testing.T) {
 			}
 			for _, table := range []string{"model_invocations", "tool_invocations", "child_run_start_reservations"} {
 				var count int
-				if err := db.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil || count != 0 {
+				if err := scanFixture(t.Context(), db, "SELECT COUNT(*) FROM "+table, nil, &count); err != nil || count != 0 {
 					t.Errorf("%s rows = %d, %v; want no writes", table, count, err)
 				}
 			}

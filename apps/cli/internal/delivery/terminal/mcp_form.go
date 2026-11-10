@@ -353,7 +353,7 @@ func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]base.Field, []*base.Tex
 	secretFields := make([]*base.Text, 0, 3)
 	textField := func(label, placeholder string, value *string, check func(string) error) *base.Text {
 		field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
-		field.Clipboard = m.clipboard
+		field.SetClipboard(m.clipboard)
 		capture = append(capture, func() { *value = field.Text() })
 		fields = append(fields, field)
 		return field

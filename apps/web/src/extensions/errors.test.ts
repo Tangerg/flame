@@ -55,4 +55,17 @@ describe("reportPluginError", () => {
     reportPluginError("p", "render", new Error("x"), "at Foo.render");
     expect(usePluginErrorStore.getState().log[0]!.detail).toBe("at Foo.render");
   });
+
+  it("retains the original cause and every failed cleanup in terminal diagnostics", () => {
+    const failure = new Error("host quarantined", {
+      cause: new AggregateError(
+        [new Error("original operation failed"), new Error("resource release was unconfirmed")],
+        "retirement failed",
+      ),
+    });
+    reportPluginError("p", "events", failure);
+    const detail = usePluginErrorStore.getState().log[0]!.detail;
+    expect(detail).toContain("original operation failed");
+    expect(detail).toContain("resource release was unconfirmed");
+  });
 });

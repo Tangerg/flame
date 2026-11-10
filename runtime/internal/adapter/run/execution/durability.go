@@ -460,7 +460,7 @@ func (i *interactionSession) settledToolResults(history scoperun.Log) ([]interac
 		if !found {
 			continue
 		}
-		rounds, err := interaction.SettledResults(program, history)
+		rounds, err := program.history.SettledResults(history)
 		if err != nil {
 			return nil, err
 		}

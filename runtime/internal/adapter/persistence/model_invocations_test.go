@@ -51,7 +51,7 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				rows[0].Usage == nil || rows[0].FirstOutputLatencyMillis == nil || *rows[0].FirstOutputLatencyMillis != 0 {
 				t.Fatalf("valid evidence = %+v, %v", rows, err)
 			}
-			_, editErr := db.ExecContext(t.Context(), "UPDATE model_invocations SET "+test.edit)
+			_, editErr := execFixture(t.Context(), db, "UPDATE model_invocations SET "+test.edit)
 			if test.rejectWrite {
 				if editErr == nil {
 					t.Fatal("terminal attempt lost its required settlement time")

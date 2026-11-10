@@ -55,15 +55,19 @@ func runFeature(args []string) error {
 
 type featureArtifact struct{ source, target string }
 
-// Frame owns Schema and language projections. Flame adds only the composition
-// and target policy omitted from Frame's transport-neutral service identity.
+// Frame owns schema and language projections. Flame supplies readable definition
+// labels and restores the original contract with its composition and target policy.
 func generateFeature(capability *contract.Capability, directory, tsDirectory string, goOutput contractgen.GoOutput) error {
 	stage, err := os.MkdirTemp("", "flame-feature-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(stage)
-	neutral, err := value.EncodeJSON(capability.Service().Descriptor())
+	projection, err := projectFeatureNames(capability.Service().Descriptor())
+	if err != nil {
+		return err
+	}
+	neutral, err := value.EncodeJSON(projection)
 	if err != nil {
 		return err
 	}
@@ -110,7 +114,7 @@ func generateFeature(capability *contract.Capability, directory, tsDirectory str
 		}
 	}
 	if generatedGo.Path != "" {
-		if err := writeFeatureGo(capability, descriptor, generatedGo.Path); err != nil {
+		if err := writeFeatureGo(projection, descriptor, generatedGo.Path); err != nil {
 			return err
 		}
 	}
@@ -154,12 +158,12 @@ func writeFeatureTypeScript(capability *contract.Capability, file string) error 
 	return nil
 }
 
-func writeFeatureGo(capability *contract.Capability, descriptor value.JSON, file string) error {
+func writeFeatureGo(projection portable.CapabilityDescriptor, descriptor value.JSON, file string) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-	originalDescriptor, err := json.Marshal(capability.Service().Descriptor(), json.Deterministic(true))
+	originalDescriptor, err := json.Marshal(projection, json.Deterministic(true))
 	if err != nil {
 		return err
 	}

@@ -132,7 +132,7 @@ func TestPlanBoundaryAndSessionShareOneImmutableDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	var same bool
-	if err := rawFixtureDatabase(plans.db).QueryRowContext(ctx, `SELECT p.document = b.document FROM session_plans p, plan_boundaries b WHERE p.session_id = ? AND b.run_id = ?`, sessionID, runID).Scan(&same); err != nil || !same {
+	if err := scanFixture(ctx, fixtureDatabase(plans.db), `SELECT p.document = b.document FROM session_plans p, plan_boundaries b WHERE p.session_id = ? AND b.run_id = ?`, []any{sessionID, runID}, &same); err != nil || !same {
 		t.Fatalf("shared reference = %v, %v", same, err)
 	}
 	savePlan(t, ctx, plans, sessionID, []plan.Step{{Description: "review second", Status: plan.StatusPending}})
@@ -152,11 +152,7 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 	savePlan(t, t.Context(), store, "ses_plan_codec", []plan.Step{{
 		Description: "preserve exact plan meaning", Status: plan.StatusPending,
 	}})
-	if _, err := db.ExecContext(t.Context(),
-		`UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`,
-		`[{"description":"preserve exact plan meaning","status":"pending","futureOwner":"lost"}]`,
-		"ses_plan_codec",
-	); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`, `[{"description":"preserve exact plan meaning","status":"pending","futureOwner":"lost"}]`, "ses_plan_codec"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -184,7 +180,7 @@ func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
 			if err := terminalizeStoredRun(t, t.Context(), runs, finished); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), `UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`, encoded, sessionID); err != nil {
+			if _, err := execFixture(t.Context(), db, `UPDATE plan_documents SET steps = ? WHERE digest = (SELECT document FROM session_plans WHERE session_id = ?)`, encoded, sessionID); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := plans.State(t.Context(), sessionID); err == nil {

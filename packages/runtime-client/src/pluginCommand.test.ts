@@ -71,6 +71,26 @@ const binding = {
 const intent = `record-delete:${id}`;
 const journals: MutationJournal[] = [];
 
+it("keeps prepared routing authoritative over extra authored input properties", async () => {
+  const current = client(new Storage());
+  current.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  const unrelatedInstallation = "aaaaaaaa-1234-1234-1234-123456789abc";
+  const authored = {
+    ...input,
+    installationId: unrelatedInstallation,
+    target: { scope: "installation", reference: unrelatedInstallation },
+  };
+  await expect(
+    current.methods.plugins.command(
+      intent,
+      authored,
+      async () => binding,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(RpcTransportError);
+  expect(current.dispatch.mock.calls[0]?.[1]).toEqual({ ...binding, ...input });
+});
+
 it("matches original stable intents across client replacement without exposing input or mutating the journal", async () => {
   const storage = new Storage();
   const original = client(storage);

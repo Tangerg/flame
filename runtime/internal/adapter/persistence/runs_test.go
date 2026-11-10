@@ -345,7 +345,7 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 				"tool_invocations":  `SELECT count(*) FROM tool_invocations`,
 			} {
 				var rows int
-				if err := database.QueryRowContext(ctx, query).Scan(&rows); err != nil {
+				if err := scanFixture(ctx, database, query, nil, &rows); err != nil {
 					t.Fatalf("count %s: %v", table, err)
 				}
 				want := 0

@@ -11,14 +11,14 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t *testing.T) {
@@ -168,12 +168,12 @@ func installedObserverFixture(t *testing.T, mode string) (*CallComposition, []pl
 	}
 	observer, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginmcp.Backend) {
 		call, _ := pluginsdk.ModelMethod()
-		if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+		if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) (pluginsdk.ModelResult, error) {
 			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
 				return pluginsdk.ModelResult{}, err
 			}
-			request := command.Input.Clone()
+			request := (*chat.Request)(&command.Input).Clone()
 			if mode == "transform" {
 				request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("changed"))
 			}
@@ -192,16 +192,16 @@ func installedObserverFixture(t *testing.T, mode string) (*CallComposition, []pl
 			t.Fatal(err)
 		}
 		stream, _ := pluginsdk.ModelStreamMethod()
-		if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-			return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+		if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error] {
+			return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 				next, err := pluginmcp.CallbackFromContext(ctx)
 				if err != nil {
-					yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+					yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 					return
 				}
-				for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, command.Input.Clone()) {
+				for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, (*chat.Request)(&command.Input).Clone()) {
 					if value.Result != nil && mode == "outer-failure" {
-						yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, errors.New("observer failed after next"))
+						yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, errors.New("observer failed after next"))
 						return
 					}
 					if !yield(value, err) {

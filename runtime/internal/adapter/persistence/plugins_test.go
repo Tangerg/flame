@@ -69,7 +69,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 			t.Fatalf("standing deny lost: %+v, %v", visible, err)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
+	if _, err := execFixture(t.Context(), db, `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
@@ -158,7 +158,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	if values := i.Snapshot().Values; len(values) != 0 {
 		t.Fatalf("a changed endpoint kept its secret input: %v", values)
 	}
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
+	if _, err := execFixture(t.Context(), db, `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"mcp_oauth_sessions": 0})
@@ -219,11 +219,11 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 		`UPDATE plugin_installations SET staged_digest = selected_digest WHERE id = ?`,
 		`INSERT INTO plugin_installation_disabled(installation_id, kind, name) VALUES (?, 'theme', 'dark')`,
 	} {
-		if _, err := db.ExecContext(t.Context(), statement, i.ID().String()); err == nil {
+		if _, err := execFixture(t.Context(), db, statement, i.ID().String()); err == nil {
 			t.Fatalf("schema admitted an invalid installation state: %s", statement)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
+	if _, err := execFixture(t.Context(), db, `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"plugin_installation_values": 0, "plugin_installation_disabled": 0, "mcp_sources": 0})
@@ -282,7 +282,7 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 				t.Fatal(err)
 			}
 			args := append([]any{installation.ID().String()}, test.values...)
-			if _, err := db.ExecContext(t.Context(), test.statement, args...); err != nil {
+			if _, err := execFixture(t.Context(), db, test.statement, args...); err != nil {
 				t.Fatal(err)
 			}
 			if snapshot, found, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || found {
@@ -325,10 +325,10 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 	if err != nil || admitted.Declaration().Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Command != "original" {
 		t.Fatalf("catalog advanced an admitted declaration: %+v, %v", admitted, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_releases SET declaration='{}' WHERE digest=?`, release.Digest().String()); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plugin_releases SET declaration='{}' WHERE digest=?`, release.Digest().String()); err == nil {
 		t.Fatal("admitted declaration was mutable")
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_installations SET selected_digest=? WHERE id=?`, testsupport.Digest("2").String(), id.String()); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE plugin_installations SET selected_digest=? WHERE id=?`, testsupport.Digest("2").String(), id.String()); err == nil {
 		t.Fatal("installation selected an unadmitted release")
 	}
 }
@@ -343,7 +343,7 @@ func TestOpenRefusesFormerInstallationStateShapes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), `ALTER TABLE plugin_installations RENAME COLUMN enabled TO `+former); err != nil {
+			if _, err := execFixture(t.Context(), db, `ALTER TABLE plugin_installations RENAME COLUMN enabled TO `+former); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {

@@ -7,6 +7,7 @@ import { createMethods, type RunCommandRecovery } from "./methods";
 import type { RpcClient, RpcCallOptions } from "./client";
 import { RpcTransportError } from "./errors";
 import { createMutationJournal, type MutationJournalStorage } from "./mutationJournal";
+import { checkRequest } from "./request";
 import type {
   StartRunRequest,
   ResumeRunRequest,
@@ -112,7 +113,10 @@ function fixture() {
 }
 
 async function leaveUncertain(f: ReturnType<typeof fixture>, operation: "start" | "resume") {
-  const original = cloneJSON(operation === "start" ? start : resume);
+  const original =
+    operation === "start"
+      ? checkRequest("runs.start", cloneJSON(start))
+      : checkRequest("runs.resume", cloneJSON(resume));
   const first = f.open(
     vi.fn(async (method: string, _params: unknown, options?: RpcCallOptions) => {
       if (method === "runs.getAcceptance") return { type: "notRecorded" };
@@ -121,9 +125,9 @@ async function leaveUncertain(f: ReturnType<typeof fixture>, operation: "start" 
     }) as RpcClient["call"],
   );
   const submission =
-    operation === "start"
-      ? first.methods.runs.start(original as StartRunRequest)
-      : first.methods.runs.resume(original as ResumeRunRequest);
+    "responses" in original
+      ? first.methods.runs.resume(original)
+      : first.methods.runs.start(original);
   await expect(submission).rejects.toBeInstanceOf(RpcTransportError);
   original.input = [{ type: "text", text: "replacement draft" }];
   if ("responses" in original) original.responses = [];

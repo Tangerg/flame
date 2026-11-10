@@ -3,8 +3,8 @@ package terminal
 import (
 	"strings"
 
-	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/input"
+	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
@@ -233,11 +233,12 @@ func (t *transcriptView) copySelected() bool {
 	if !t.hasSelected {
 		return true
 	}
-	top, height, ok := t.content.Extent(t.entries[t.selected].nativeID)
+	layout := t.content.Layout()
+	top, height, ok := layout.Extent(t.entries[t.selected].nativeID)
 	if !ok {
 		return true
 	}
-	t.copy(copyableRowsText(t.content.Rows(top, height)))
+	t.copy(copyableRowsText(layout.Rows(top, height)))
 	return true
 }
 
@@ -295,11 +296,11 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	case *toolGroupBlock:
 		return readerTarget{document: tool.readerDocument(), source: tool}, true
 	}
-	copyable, ok := entry.content.(base.TextProjector)
+	copyable, ok := entry.content.(text.Projector)
 	if !ok {
 		return readerTarget{}, false
 	}
-	width := max(t.content.Width()-transcriptEntryInset, 40)
+	width := max(t.content.Layout().Width()-transcriptEntryInset, 40)
 	value := copyableRowsText(copyable.Rows(width))
 	if strings.TrimSpace(value) == "" {
 		return readerTarget{}, false

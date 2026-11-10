@@ -27,13 +27,26 @@ type interactionDeploymentSet struct {
 	delegatesByParent   map[scoperun.ProgramRef]map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]
 	managedChildren     map[scoperun.ProgramRef]struct{}
 	interactionChildren map[scoperun.ProgramRef]struct{}
-	interactions        map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]
+	interactions        map[scoperun.ProgramRef]compiledInteraction
 	// Immutable Scope Contracts are indexed by the exact Tool deployment so a
 	// checkpoint cannot borrow another layer's input schema.
 	toolContracts map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract
 	toolSets      map[scoperun.ProgramRef]interaction.ToolSet
 	observedTools map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool
 	treeLimits    scoperun.TreeLimits
+}
+
+type compiledInteraction struct {
+	program scoperun.Program[interaction.Input, interaction.Output]
+	history *interaction.HistoryProjection
+}
+
+func newCompiledInteraction(program scoperun.Program[interaction.Input, interaction.Output]) (compiledInteraction, error) {
+	history, err := interaction.NewHistoryProjection(program)
+	if err != nil {
+		return compiledInteraction{}, err
+	}
+	return compiledInteraction{program: program, history: history}, nil
 }
 
 func (i *interactionDeploymentSet) close() error {
@@ -142,7 +155,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 			delegateSource:      delegateSource,
 			manifests:           map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
 			interactionChildren: make(map[scoperun.ProgramRef]struct{}),
-			interactions:        make(map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]),
+			interactions:        make(map[scoperun.ProgramRef]compiledInteraction),
 			toolContracts:       make(map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract),
 			toolSets:            make(map[scoperun.ProgramRef]interaction.ToolSet),
 			observedTools:       make(map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool),
@@ -241,7 +254,11 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: compile Interaction at depth %d: %w", depth, err)
 	}
 	reference := program.ProgramRef()
-	i.deployments.interactions[reference] = program
+	compiled, err := newCompiledInteraction(program)
+	if err != nil {
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: bind Interaction history at depth %d: %w", depth, err)
+	}
+	i.deployments.interactions[reference] = compiled
 	i.deployments.toolContracts[reference] = contracts
 	i.deployments.toolSets[reference] = tools
 	i.deployments.observedTools[reference] = observed

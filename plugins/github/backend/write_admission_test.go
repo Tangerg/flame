@@ -10,12 +10,12 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	"github.com/Tangerg/frame/sqlite"
 )
 
 func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
@@ -38,7 +38,7 @@ func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
 		{"blank_comment", contracts.CreateComment.Name(), "invalid_input", contractwire.CreateCommentInput{IssueInput: issue, Body: "  "}},
 		{"blank_branch", contracts.CreatePull.Name(), "invalid_input", contractwire.CreatePullInput{Repository: "owner/repo", Title: "Title", Head: " ", Base: "main"}},
 		{"review_missing_body", contracts.SubmitReview.Name(), "invalid_input", contractwire.SubmitReviewInput{IssueInput: issue, CommitID: inspectedSHA, Event: contractwire.RequestChanges}},
-		{"incomplete_range", contracts.CreateReviewComment.Name(), "invalid_input", contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, InlineComment: contractwire.InlineComment{Path: "file.go", Body: "Comment", Line: 7, Side: contractwire.Right, StartLine: new(int64(5))}}},
+		{"incomplete_range", contracts.CreateReviewComment.Name(), "invalid_input", contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, Comment: contractwire.InlineComment{Path: "file.go", Body: "Comment", Line: 7, Side: contractwire.Right, StartLine: new(int64(5))}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls, token := 0, "private-write-fixture-token"
@@ -113,6 +113,46 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 	}
 }
 
+func TestGitHubMergeRequiresAnAffirmativeUpstreamAcknowledgement(t *testing.T) {
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, acknowledgement := range []string{
+		`{"sha":"` + inspectedSHA + `","merged":false,"message":"not merged"}`,
+		`{"sha":"` + inspectedSHA + `","message":"missing merge decision"}`,
+	} {
+		t.Run(acknowledgement, func(t *testing.T) {
+			calls, token := 0, "private-write-fixture-token"
+			_, session, _ := connectGitHubWrites(t, filepath.Join(t.TempDir(), "github.db"), roundTrip(func(*http.Request) (*http.Response, error) {
+				calls++
+				return upstream(http.StatusOK, acknowledgement, nil), nil
+			}), &token)
+			input, err := framevalue.EncodeJSON(contractwire.MergePullInput{
+				IssueInput:  contractwire.IssueInput{Repository: "owner/repo", Number: 42},
+				HeadSHA:     inspectedSHA,
+				MergeMethod: contractwire.Merge,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				_, err := invokeGitHub(t, session, contracts, contracts.MergePull.Name(), "unconfirmed-merge", input)
+				if err == nil || calls != 1 {
+					t.Fatalf("unconfirmed merge invented success or redispatched: calls=%d error=%v", calls, err)
+				}
+				if _, refused := errors.AsType[*framemcp.Refusal](err); refused {
+					t.Fatalf("incomplete acknowledgement established a definite refusal: %v", err)
+				}
+			}
+			_, found, err := githubBinding(t, session, contracts, contracts.MergePull.Name()).ReadReceipt(t.Context(), "unconfirmed-merge", input)
+			if err != nil || found || calls != 1 {
+				t.Fatalf("merge recovery invented an outcome: found=%v calls=%d error=%v", found, calls, err)
+			}
+		})
+	}
+}
+
 func TestGitHubCorruptToolReceiptCannotBecomeAnEmptySuccessfulWrite(t *testing.T) {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -122,7 +162,10 @@ func TestGitHubCorruptToolReceiptCannotBecomeAnEmptySuccessfulWrite(t *testing.T
 	c, session, _ := connectGitHubWrites(t, filepath.Join(t.TempDir(), "github.db"), roundTrip(func(*http.Request) (*http.Response, error) { calls++; return upstream(201, issueJSON, nil), nil }), &token)
 	input, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
 	for _, reply := range []string{`{"value":null}`, `{"value":{}}`} {
-		if _, err := c.store.db.ExecContext(t.Context(), `INSERT INTO commands(id,method,business_input_json,reply) VALUES('tool:corrupt',?,?,?) ON CONFLICT(id) DO UPDATE SET reply=excluded.reply`, contracts.CreateIssue.Name(), input.String(), reply); err != nil {
+		if err := sqlite.RunInTx(t.Context(), c.store.db, func(ctx context.Context) error {
+			_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES('tool:corrupt',?,?,?) ON CONFLICT(id) DO UPDATE SET reply=excluded.reply`, contracts.CreateIssue.Name(), input.String(), reply)
+			return err
+		}); err != nil {
 			t.Fatal(err)
 		}
 		output, err := pluginsdk.ReadToolReceipt(t.Context(), session, "corrupt", "create_issue", input)
@@ -139,7 +182,10 @@ func TestGitHubCacheOnlyDataIsRefusedWithoutAddingCommandTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO responses VALUES('original','etag','',X'7B7D',1)`); err != nil {
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO responses VALUES('original','etag','',X'7B7D',1)`)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -155,7 +201,9 @@ func TestGitHubCacheOnlyDataIsRefusedWithoutAddingCommandTables(t *testing.T) {
 	}
 	defer db.Close()
 	var count int
-	if err := db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM responses WHERE key='original'`).Scan(&count); err != nil || count != 1 {
+	if err := db.Read(t.Context(), func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM responses WHERE key='original'`).Scan(&count)
+	}); err != nil || count != 1 {
 		t.Fatalf("refused opening changed original data: %d %v", count, err)
 	}
 }

@@ -12,7 +12,7 @@
 29 plugins/github/backend/issue_writes.go:connector.updateIssue
 25 plugins/github/contractgen/main.go:define
 26 plugins/github/internal/contract/contracts.go:NewContracts
-28 plugins/memory/backend/server.go:registerServer
+27 plugins/memory/backend/server.go:registerServer
 22 plugins/providers/backend/server.go:newServer
 24 plugins/schedules/backend/server.go:registerServer
 22 plugins/schedules/backend/tool_receipts.go:toolReceipt
@@ -69,9 +69,8 @@
 30 runtime/internal/application/agent/runs/resume.go:Coordinator.Resume
 25 runtime/internal/application/agent/sessions/rollback_files.go:Coordinator.Rollback
 23 runtime/internal/application/goals/driver.go:Driver.Start
-21 runtime/internal/application/integration/plugins/framework.go:ProjectFrameworkDeclaration
 21 runtime/internal/application/integration/plugins/installations.go:Coordinator.change
-33 runtime/internal/application/integration/plugins/points.go:ResolvePoint
+31 runtime/internal/application/integration/plugins/points.go:ResolvePoint
 21 runtime/internal/application/integration/plugins/requirements.go:requirementCatalog.candidates
 33 runtime/internal/bootstrap/assemble.go:buildAssemblyCore
 22 runtime/internal/bootstrap/instance.go:OpenInstance

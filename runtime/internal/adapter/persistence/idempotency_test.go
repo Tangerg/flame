@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -32,7 +31,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if len(got.Payload) != 0 {
 		t.Fatalf("new claim payload = %q, want empty", got.Payload)
 	}
-	if _, execContextErr := db.ExecContext(ctx, `UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, first.Key); execContextErr != nil {
+	if _, execContextErr := execFixture(ctx, db, `UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, first.Key); execContextErr != nil {
 		t.Fatalf("age pending claim: %v", execContextErr)
 	}
 	got, claimed, err = store.Claim(ctx, first.Key, first.Fingerprint)
@@ -62,7 +61,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("claim conflicting record = %v, want ErrKeyConflict", claimErr)
 	}
 
-	if _, execContextErr := db.ExecContext(ctx, `UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, first.Key); execContextErr != nil {
+	if _, execContextErr := execFixture(ctx, db, `UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, first.Key); execContextErr != nil {
 		t.Fatalf("expire record: %v", execContextErr)
 	}
 	got, claimed, err = store.Claim(ctx, conflicting.Key, conflicting.Fingerprint)
@@ -82,9 +81,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 	if err != nil || !claimed {
 		t.Fatalf("initial claim = (%+v, %v, %v)", record, claimed, err)
 	}
-	if _, execContextErr := db.ExecContext(t.Context(),
-		`UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, record.Key,
-	); execContextErr != nil {
+	if _, execContextErr := execFixture(t.Context(), db, `UPDATE idempotency_records SET expires_at = 0 WHERE key = ?`, record.Key); execContextErr != nil {
 		t.Fatalf("age pending claim: %v", execContextErr)
 	}
 	if closeErr := db.Close(); closeErr != nil {
@@ -108,7 +105,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 
 func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	openNamespace := func() (*sql.DB, operation.ReplayNamespace) {
+	openNamespace := func() (*sqlite.Database, operation.ReplayNamespace) {
 		db, err := openDatabase(t.Context(), path)
 		if err != nil {
 			t.Fatalf("open: %v", err)
@@ -151,9 +148,7 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := db.ExecContext(t.Context(),
-		`UPDATE runtime_identity SET idempotency_namespace = 'not-an-opaque-identity' WHERE id = 1`,
-	); err != nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE runtime_identity SET idempotency_namespace = 'not-an-opaque-identity' WHERE id = 1`); err != nil {
 		t.Fatalf("corrupt namespace fixture: %v", err)
 	}
 	if _, err := idempotencyNamespace(t.Context(), databaseFor(db)); err == nil {
@@ -163,7 +158,7 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 
 func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "replay.db")
-	open := func() (*sql.DB, *operation.Replay) {
+	open := func() (*sqlite.Database, *operation.Replay) {
 		t.Helper()
 		db, err := openDatabase(t.Context(), path)
 		if err != nil {
@@ -218,7 +213,7 @@ VALUES ('atomic replay test','test','digest','contributor','contract','','','','
 		t.Fatalf("replay: %q, %v", body, err)
 	}
 	var count int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM session_annotations WHERE command_id='atomic replay test'`).Scan(&count); err != nil || count != 1 || published != 1 {
+	if err := scanFixture(ctx, db, `SELECT COUNT(*) FROM session_annotations WHERE command_id='atomic replay test'`, nil, &count); err != nil || count != 1 || published != 1 {
 		t.Fatalf("writes=%d publications=%d err=%v", count, published, err)
 	}
 }

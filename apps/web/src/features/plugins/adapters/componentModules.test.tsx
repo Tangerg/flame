@@ -1,4 +1,5 @@
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -110,7 +111,10 @@ function fixture(
   const globalName = `frameModule${crypto.randomUUID().replaceAll("-", "")}`;
   const source = { evaluations: 0, render: renderComponent };
   vi.stubGlobal(globalName, source);
-  const endpoint = `data:text/javascript,${encodeURIComponent(`globalThis["${globalName}"].evaluations++; export const Panel = globalThis["${globalName}"].render;`)}#`;
+  const endpoint = "https://runtime.test";
+  const moduleSource = `globalThis["${globalName}"].evaluations++; export const Panel = globalThis["${globalName}"].render;`;
+  const bytes = new TextEncoder().encode(moduleSource);
+  const digest = createHash("sha256").update(bytes).digest("hex");
   const session: PluginBrowserSession = {
     authority: { id: "authority", epoch: "1" },
     realm: { id: "window", epoch: "1" },
@@ -154,7 +158,7 @@ function fixture(
           sharedModules: [],
         }),
         profile: "browser-js",
-        module: { path: component.entry, digest: "d".repeat(64) },
+        module: { path: component.entry, digest },
         imports: [],
         exports: [{ name: componentExport, contract: session.componentContract }],
       },
@@ -180,6 +184,15 @@ function fixture(
       closed: ended.promise,
       close: closeResources,
     };
+  });
+  const readResource = vi.fn<FlameClient["plugins"]["readResource"]>(async (request) => {
+    expect(request).toEqual({
+      installationId: installation.id,
+      digest: installation.selected.digest,
+      componentId: component.id,
+      path: component.entry,
+    });
+    return { body: btoa(moduleSource), mediaType: "text/javascript" };
   });
   const openBrowserRealm = vi.fn<FlameClient["plugins"]["openBrowserRealm"]>(() =>
     mutation(async () => session),
@@ -217,7 +230,7 @@ function fixture(
     }),
   );
   const client = {
-    plugins: { openBrowserRealm, acquireComponent, closeBrowserRealm, openResources },
+    plugins: { openBrowserRealm, acquireComponent, closeBrowserRealm, openResources, readResource },
   } as unknown as FlameClient;
   const validatePlan = (input: unknown) => expect(input).toEqual(plan);
   const validateUse = (grant: UseGrant) => expect(grant).toEqual(grants.get(grant.id));
@@ -330,10 +343,12 @@ function fixture(
     source,
     proofs,
     openResources,
+    readResource,
     closeResources,
     openBrowserRealm,
     acquireComponent,
     closeBrowserRealm,
+    releaseResources: () => ended.resolve(),
     loseProof() {
       loseProof = true;
     },
@@ -369,6 +384,42 @@ it("uses one approved execution and evaluation for two independently owned compo
   expect(f.closeResources).toHaveBeenCalledOnce();
   await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true));
 });
+
+it.each(["mismatched bytes", "failed read"] as const)(
+  "rejects %s before component evaluation and joins every acquired resource",
+  async (failure) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const f = fixture();
+    const read = f.readResource.getMockImplementation()!;
+    f.readResource.mockImplementationOnce(async (...request) => {
+      if (failure === "failed read") throw new Error("original resource is unavailable");
+      const resource = await read(...request);
+      return { ...resource, body: btoa(`${atob(resource.body)}\nexport const changed = true;`) };
+    });
+    const Native = (await f.load()).component;
+    const client = createTestClient();
+    try {
+      const scene = client.render(
+        <ComponentBoundary
+          scope="verified component artifact"
+          fallback={<p>Component unavailable.</p>}
+          reload={async () => {}}
+        >
+          <Native context={f.context} />
+        </ComponentBoundary>,
+      );
+      await screen.findByRole("alert");
+      expect(f.source.evaluations).toBe(0);
+      expect(f.readResource).toHaveBeenCalledOnce();
+      const leases = failure === "mismatched bytes" ? 1 : 0;
+      expect(f.openResources).toHaveBeenCalledTimes(leases);
+      await waitFor(() => expect(f.closeResources).toHaveBeenCalledTimes(leases));
+      scene.unmount();
+    } finally {
+      await client.dispose();
+    }
+  },
+);
 
 it("constructs one explicit source owner across view closes and clears it when its resources close", async () => {
   let source!: ComponentSource;
@@ -839,6 +890,25 @@ it("retains the original exit proof after lost acknowledgement and does not seal
   expect(f.closeResources).toHaveBeenCalledOnce();
 });
 
+it("uses late completion of the original resource subscription as release evidence without retrying cleanup", async () => {
+  const f = fixture();
+  const Native = (await f.load()).component;
+  const scene = render(<Native context={f.context} />);
+  await screen.findByText("Native panel");
+  scene.unmount();
+  await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true));
+  f.closeResources.mockRejectedValueOnce(new Error("resource close acknowledgement lost"));
+  try {
+    await expect(f.modules.close()).rejects.toThrow("control pump shutdown did not complete");
+    expect(f.closeResources).toHaveBeenCalledOnce();
+  } finally {
+    f.releaseResources();
+  }
+  await waitFor(() => expect(f.modules.close()).resolves.toBeUndefined());
+  expect(f.closeResources).toHaveBeenCalledOnce();
+  expect(f.closeBrowserRealm).toHaveBeenCalledOnce();
+});
+
 it("reconnects the original Realm as cleanup-only after authority replacement", async () => {
   const f = fixture();
   const Native = (await f.load()).component;
@@ -859,7 +929,7 @@ it("reconnects the original Realm as cleanup-only after authority replacement", 
   await act(() => f.modules.close());
 });
 
-it("retains the artifact origin captured before a pending lease crosses reconnection", async () => {
+it("releases the original artifact lease without evaluation after its pending plan retires", async () => {
   const resourcesReady = Promise.withResolvers<void>();
   const f = fixture(undefined, resourcesReady.promise);
   const Native = (await f.load()).component;
@@ -872,7 +942,8 @@ it("retains the artifact origin captured before a pending lease crosses reconnec
   scene.unmount();
   resourcesReady.resolve();
   await replacement;
-  expect(f.source.evaluations).toBe(1);
-  expect(f.closeResources).toHaveBeenCalledOnce();
+  expect(f.readResource).toHaveBeenCalledOnce();
+  expect(f.source.evaluations).toBe(0);
+  await waitFor(() => expect(f.closeResources).toHaveBeenCalledOnce());
   await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true));
 });

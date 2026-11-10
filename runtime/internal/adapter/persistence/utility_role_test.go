@@ -56,7 +56,7 @@ func TestUtilityRoleStoreRejectsPartialPersistedSelection(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, execErr := db.Exec(`INSERT INTO utility_role (id, provider, model) VALUES (1, ?, ?)`, "anthropic", ""); execErr != nil {
+	if _, execErr := execFixture(t.Context(), db, `INSERT INTO utility_role (id, provider, model) VALUES (1, ?, ?)`, "anthropic", ""); execErr != nil {
 		t.Fatalf("seed corrupt role: %v", execErr)
 	}
 	_, _, err = newUtilityRoleStore(databaseFor(db)).LoadUtilityRole(context.Background())

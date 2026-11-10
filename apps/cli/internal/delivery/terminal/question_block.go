@@ -22,8 +22,8 @@ type questionBlock struct {
 }
 
 var (
-	_ base.Block         = (*questionBlock)(nil)
-	_ base.TextProjector = (*questionBlock)(nil)
+	_ base.Block     = (*questionBlock)(nil)
+	_ text.Projector = (*questionBlock)(nil)
 )
 
 func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question conversation.Question) *questionBlock {

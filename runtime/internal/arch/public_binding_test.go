@@ -139,10 +139,12 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil { t.Fatal(err) }
  calls := 0
  for range 2 {
-  value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", input, nil, func(ctx context.Context, _ struct{}) (bool, error) {
+  value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", input, nil, func(_ context.Context, _ struct{}) (pluginstorage.CommandPlan[bool], error) {
    calls++
-   _, err := pluginstorage.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
-   return err == nil, err
+   return pluginstorage.NewCommandPlan(true, func(ctx context.Context) error {
+    _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
+    return err
+   })
   })
   if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
  }
@@ -154,13 +156,15 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil || projected.Result == nil || projected.Result.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
  changed, err := framevalue.EncodeJSON(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
- _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", changed, nil, func(context.Context, map[string]bool) (bool, error) {
+ _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", changed, nil, func(context.Context, map[string]bool) (pluginstorage.CommandPlan[bool], error) {
    calls++
-   return false, nil
+   return pluginstorage.NewCommandPlan(false, nil)
  })
  if !errors.Is(err, framemcp.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
- if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
+ if err := db.Read(t.Context(), func(reader sqlitebase.Reader) error {
+  return reader.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count)
+ }); err != nil { t.Fatal(err) }
  if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }
 }
 
@@ -173,7 +177,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)), filepath.ToSlash(dependencyModuleRoot(t, frameModulePath)))
+	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory

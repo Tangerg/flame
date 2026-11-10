@@ -11,22 +11,7 @@
       "description": "Admit a complete checklist and issue its immutable version.",
       "input": {
         "$defs": {
-          "planworkflow.Proposal": {
-            "additionalProperties": false,
-            "properties": {
-              "steps": {
-                "items": {
-                  "$ref": "#/$defs/planworkflow.Step"
-                },
-                "type": "array"
-              }
-            },
-            "required": [
-              "steps"
-            ],
-            "type": "object"
-          },
-          "planworkflow.Step": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -41,6 +26,21 @@
               "status"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.UHJvcG9zYWw": {
+            "additionalProperties": false,
+            "properties": {
+              "steps": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "steps"
+            ],
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -48,7 +48,7 @@
         "properties": {
           "steps": {
             "items": {
-              "$ref": "#/$defs/planworkflow.Step"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA"
             },
             "type": "array"
           }
@@ -60,27 +60,15 @@
       },
       "output": {
         "$defs": {
-          "planworkflow.Decision": {
-            "additionalProperties": false,
-            "properties": {
-              "document": {
-                "$ref": "#/$defs/planworkflow.Document"
-              },
-              "refusal": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "planworkflow.Document": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.RG9jdW1lbnQ": {
             "additionalProperties": false,
             "properties": {
               "digest": {
-                "$ref": "#/$defs/value.Digest"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0"
               },
               "steps": {
                 "items": {
-                  "$ref": "#/$defs/planworkflow.Step"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA"
                 },
                 "type": "array"
               }
@@ -91,7 +79,19 @@
             ],
             "type": "object"
           },
-          "planworkflow.Step": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.RGVjaXNpb24": {
+            "additionalProperties": false,
+            "properties": {
+              "document": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.RG9jdW1lbnQ"
+              },
+              "refusal": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -107,7 +107,7 @@
             ],
             "type": "object"
           },
-          "value.Digest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -120,7 +120,7 @@
         "additionalProperties": false,
         "properties": {
           "document": {
-            "$ref": "#/$defs/planworkflow.Document"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.RG9jdW1lbnQ"
           },
           "refusal": {
             "type": "string"
@@ -136,15 +136,15 @@
       "description": "Prepare the human review of one exact immutable plan.",
       "input": {
         "$defs": {
-          "planworkflow.Document": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.RG9jdW1lbnQ": {
             "additionalProperties": false,
             "properties": {
               "digest": {
-                "$ref": "#/$defs/value.Digest"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0"
               },
               "steps": {
                 "items": {
-                  "$ref": "#/$defs/planworkflow.Step"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA"
                 },
                 "type": "array"
               }
@@ -155,7 +155,7 @@
             ],
             "type": "object"
           },
-          "planworkflow.Step": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA": {
             "additionalProperties": false,
             "properties": {
               "description": {
@@ -171,7 +171,7 @@
             ],
             "type": "object"
           },
-          "value.Digest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0": {
             "allOf": [
               {
                 "pattern": "^[0-9a-f]{64}$"
@@ -184,11 +184,11 @@
         "additionalProperties": false,
         "properties": {
           "digest": {
-            "$ref": "#/$defs/value.Digest"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0"
           },
           "steps": {
             "items": {
-              "$ref": "#/$defs/planworkflow.Step"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbGFud29ya2Zsb3c.U3RlcA"
             },
             "type": "array"
           }

@@ -89,7 +89,11 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		}
 		session.deployment = program.Erase()
 		session.state.deployments.root = session.deployment
-		session.state.deployments.interactions = map[scoperun.ProgramRef]scoperun.Program[interaction.Input, interaction.Output]{program.ProgramRef(): program}
+		compiled, err := newCompiledInteraction(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		session.state.deployments.interactions = map[scoperun.ProgramRef]compiledInteraction{program.ProgramRef(): compiled}
 		input, err := program.Descriptor().EncodeInput(interaction.Input{Messages: start.WorkingContext, Options: chat.Options{Model: "test-model"}})
 		if err != nil {
 			t.Fatal(err)

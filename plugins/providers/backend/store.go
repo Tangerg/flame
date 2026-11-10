@@ -9,16 +9,15 @@ import (
 	"sync"
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/models/catalog"
 	otelchat "github.com/Tangerg/scope/otel/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 )
 
 type inputTokenCounter interface {
@@ -39,14 +38,21 @@ type client struct {
 	stream  chat.Streamer
 	count   inputTokenCounter
 	embed   embedding.Model
-	closed  bool
 	active  sync.WaitGroup
 }
 
 type store struct {
-	db      *sql.DB
+	db      *sqlite.Database
 	mu      sync.Mutex
+	retired bool
 	clients map[modelprovider.HandleID]*client
+}
+
+type clientConstruction struct {
+	handle   modelprovider.Handle
+	kind     clientKind
+	snapshot []byte
+	client   *client
 }
 
 func openStore(ctx context.Context, path string) (*store, error) {
@@ -100,33 +106,36 @@ func openClient[R any](ctx context.Context, s *store, method string, kind client
 	if err != nil {
 		return zero, err
 	}
-	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Open) (R, error) {
-		handle, created, err := s.insertClient(ctx, kind, input)
+	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Open) (pluginstorage.CommandPlan[R], error) {
+		construction, err := prepareClient(ctx, kind, input)
 		if err != nil {
-			return zero, err
+			return pluginstorage.CommandPlan[R]{}, err
 		}
-		return project(handle, created, input), nil
+		return pluginstorage.NewCommandPlan(project(construction.handle, construction.client, input), func(ctx context.Context) error {
+			return construction.insert(ctx, s.db)
+		})
 	})
 }
 
-func (s *store) insertClient(ctx context.Context, kind clientKind, input modelprovider.Open) (modelprovider.Handle, *client, error) {
+func prepareClient(ctx context.Context, kind clientKind, input modelprovider.Open) (clientConstruction, error) {
 	created, err := constructClient(ctx, kind, input)
 	if err != nil {
-		return modelprovider.Handle{}, nil, &framemcp.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
+		return clientConstruction{}, &framemcp.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
 	}
 	id, err := modelprovider.NewHandleID()
 	if err != nil {
-		return modelprovider.Handle{}, nil, err
+		return clientConstruction{}, err
 	}
-	handle := modelprovider.Handle{ID: id}
 	encoded, err := json.Marshal(input)
 	if err != nil {
-		return modelprovider.Handle{}, nil, err
+		return clientConstruction{}, err
 	}
-	if _, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, handle.ID, string(kind), string(encoded)); err != nil {
-		return modelprovider.Handle{}, nil, err
-	}
-	return handle, created, nil
+	return clientConstruction{handle: modelprovider.Handle{ID: id}, kind: kind, snapshot: encoded, client: created}, nil
+}
+
+func (c clientConstruction) insert(ctx context.Context, db *sqlite.Database) error {
+	_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, c.handle.ID, string(c.kind), string(c.snapshot))
+	return err
 }
 
 func (s *store) reopenChat(ctx context.Context, method, originalMethod string, command pluginmcp.Command[modelprovider.Reopen]) (modelprovider.Chat, error) {
@@ -134,48 +143,50 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 	if err != nil {
 		return modelprovider.Chat{}, err
 	}
-	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Reopen) (modelprovider.Chat, error) {
+	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Reopen) (pluginstorage.CommandPlan[modelprovider.Chat], error) {
 		if err := input.Validate(); err != nil {
-			return modelprovider.Chat{}, err
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		var storedMethod, snapshot string
 		var reply []byte
-		if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.Original).Scan(&storedMethod, &snapshot, &reply); err != nil {
-			return modelprovider.Chat{}, err
+		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.Original).Scan(&storedMethod, &snapshot, &reply); err != nil {
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		if storedMethod != originalMethod || len(reply) == 0 {
-			return modelprovider.Chat{}, errors.New("model provider: original chat construction is unconfirmed")
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original chat construction is unconfirmed")
 		}
 		original, err := pluginmcp.DecodeReply[modelprovider.Chat](reply)
 		if err != nil || original.Original != input.Original {
-			return modelprovider.Chat{}, errors.New("model provider: original chat construction was refused")
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original chat construction was refused")
 		}
 		var specification modelprovider.Open
 		if err := json.Unmarshal([]byte(snapshot), &specification, json.RejectUnknownMembers(true)); err != nil {
-			return modelprovider.Chat{}, err
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		if err := original.Validate(); err != nil || original.Model != specification.Model || original.Provider != specification.Connection.Provider {
-			return modelprovider.Chat{}, errors.Join(err, errors.New("model provider: original construction identity changed"))
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.Join(err, errors.New("model provider: original construction identity changed"))
 		}
-		handle, created, err := s.insertClient(ctx, chatClient, specification)
+		construction, err := prepareClient(ctx, chatClient, specification)
 		if err != nil {
-			return modelprovider.Chat{}, err
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
-		restored := chatProjection(handle, created, specification, original.Original)
+		restored := chatProjection(construction.handle, construction.client, specification, original.Original)
 		expected := original
-		expected.Handle = handle
+		expected.Handle = construction.handle
 		expectedJSON, err := json.Marshal(expected)
 		if err != nil {
-			return modelprovider.Chat{}, err
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		restoredJSON, err := json.Marshal(restored)
 		if err != nil {
-			return modelprovider.Chat{}, err
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		if string(expectedJSON) != string(restoredJSON) {
-			return modelprovider.Chat{}, errors.New("model provider: original construction facts changed")
+			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original construction facts changed")
 		}
-		return restored, nil
+		return pluginstorage.NewCommandPlan(restored, func(ctx context.Context) error {
+			return construction.insert(ctx, s.db)
+		})
 	})
 }
 
@@ -188,16 +199,21 @@ func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind c
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.retired {
+		return nil, nil, errors.New("model provider: client store is retired")
+	}
+	var storedKind string
+	var snapshot sql.NullString
+	if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT kind,snapshot FROM clients WHERE id=?`, handle.ID).Scan(&storedKind, &snapshot)
+	}); err != nil {
+		return nil, nil, err
+	}
+	if !snapshot.Valid || clientKind(storedKind) != kind {
+		return nil, nil, errors.New("model provider: captured client is unavailable")
+	}
 	entry := s.clients[handle.ID]
 	if entry == nil {
-		var storedKind string
-		var snapshot sql.NullString
-		if err := s.db.QueryRowContext(ctx, `SELECT kind,snapshot FROM clients WHERE id=?`, handle.ID).Scan(&storedKind, &snapshot); err != nil {
-			return nil, nil, err
-		}
-		if !snapshot.Valid || clientKind(storedKind) != kind {
-			return nil, nil, errors.New("model provider: captured client is unavailable")
-		}
 		var input modelprovider.Open
 		if err := json.Unmarshal([]byte(snapshot.String), &input, json.RejectUnknownMembers(true)); err != nil {
 			return nil, nil, err
@@ -209,7 +225,7 @@ func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind c
 		}
 		s.clients[handle.ID] = entry
 	}
-	if entry.closed || (kind == chatClient && entry.chat == nil) || (kind == embeddingClient && entry.embed == nil) {
+	if (kind == chatClient && entry.chat == nil) || (kind == embeddingClient && entry.embed == nil) {
 		return nil, nil, errors.New("model provider: captured client is unavailable")
 	}
 	entry.active.Add(1)
@@ -224,10 +240,10 @@ func (s *store) closeClient(ctx context.Context, handle modelprovider.Handle) er
 	entry := s.clients[handle.ID]
 	// The durable tombstone fences lazy reconstruction before accepted calls
 	// join. Existing users hold the concrete client, rather than re-reading it.
-	_, err := s.db.ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
-	if err == nil && entry != nil {
-		entry.closed = true
-	}
+	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
+		return err
+	})
 	s.mu.Unlock()
 	if err != nil {
 		return err
@@ -243,9 +259,9 @@ func (s *store) closeClient(ctx context.Context, handle modelprovider.Handle) er
 
 func (s *store) Close() error {
 	s.mu.Lock()
+	s.retired = true
 	entries := make([]*client, 0, len(s.clients))
 	for _, entry := range s.clients {
-		entry.closed = true
 		entries = append(entries, entry)
 	}
 	s.mu.Unlock()

@@ -140,7 +140,7 @@ func (b *sessionBrowser) toggleSessionFavorite(session conversation.Session) {
 func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 	title := session.Title
 	field := base.NewText(base.TextConfig{Label: "Session title", Initial: title, Check: requiredText})
-	field.Clipboard = b.clipboard
+	field.SetClipboard(b.clipboard)
 	form := kit.FormConfig{Fields: []base.Field{field}, Theme: b.theme, Glyphs: b.glyphs,
 		Hints: []keymap.Action{base.Submit, base.Cancel}}
 	form.Keys = base.DefaultFormKeys()

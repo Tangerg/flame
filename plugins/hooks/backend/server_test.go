@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,22 +9,21 @@ import (
 	"sync"
 	"testing"
 
-	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/frame/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 )
 
-func connectHooks(t *testing.T, path string) (*sql.DB, *sdk.ClientSession, func()) {
+func connectHooks(t *testing.T, path string) (*sqlite.Database, *sdk.ClientSession, func()) {
 	t.Helper()
 	db, err := sqlite.OpenSchema(t.Context(), path, []string{pluginstorage.CommandsSchema})
 	if err != nil {
@@ -100,7 +98,10 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 		t.Fatalf("original=%+v, %v", first, err)
 	}
 	// Model a crash after the shell receipt commits but before the enclosing event reply.
-	if _, err := db.ExecContext(t.Context(), "UPDATE commands SET reply=NULL WHERE id=?", "original"); err != nil {
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, "UPDATE commands SET reply=NULL WHERE id=?", "original")
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 

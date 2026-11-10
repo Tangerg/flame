@@ -7,9 +7,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testing.T) {
@@ -22,16 +24,16 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
-		return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult], error) bool) {
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error] {
+		return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error) bool) {
 			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
-				yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 				return
 			}
-			request := command.Input.Clone()
+			request := (*chat.Request)(&command.Input).Clone()
 			request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("transformed by decorator"))
-			if !yield(pluginmcp.StreamValue[chat.ResponseDelta, ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("outer ")}}}, nil) {
+			if !yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{Chunk: &scopewire.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("outer ")}}}, nil) {
 				return
 			}
 			for value, err := range StreamModel(ctx, next, command.ID, request) {
@@ -53,7 +55,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 		t.Fatal(err)
 	}
 	var innerCalls atomic.Int32
-	next, err := NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	next, err := NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			innerCalls.Add(1)
 			if command.ID != "original-decorated-model" || command.Input.Messages[0].Text() != "transformed by decorator" {
@@ -85,7 +87,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 	}
 	var outer chat.ResponseAccumulator
 	var inner *ModelResult
-	sequence := method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-decorated-model", *request, metadata)
+	sequence := method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-decorated-model", scopewire.Request(*request), metadata)
 	for index := range metadata.Meta[pluginmcp.CallbackMetadataKey] {
 		metadata.Meta[pluginmcp.CallbackMetadataKey][index] = ' '
 	}
@@ -97,7 +99,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 			t.Fatal(err)
 		}
 		if value.Chunk != nil {
-			if err := outer.Add(value.Chunk); err != nil {
+			if err := outer.Add((*chat.ResponseDelta)(value.Chunk)); err != nil {
 				t.Fatal(err)
 			}
 		} else {

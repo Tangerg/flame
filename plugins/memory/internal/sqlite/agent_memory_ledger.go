@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
@@ -21,9 +21,9 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 		return nil, nil
 	}
 	var inserted []agentmemory.LedgerFact
-	err = pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
+	err = framesqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		for _, fact := range normalized.Facts {
-			result, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
+			result, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
 				`INSERT OR IGNORE INTO agent_memory_ledger(
 					project, day, session_id, fact, digest, captured_at
 				) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -64,69 +64,90 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 }
 
 func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]agentmemory.LedgerFact, error) {
-	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
-		return nil, err
-	}
-	if watermark < 0 {
-		return nil, errors.New("sqlite: agent memory watermark must not be negative")
-	}
-	if limit <= 0 || limit > agentmemory.MaxLedgerFoldFacts {
-		return nil, fmt.Errorf(
-			"sqlite: agent memory pending limit must be between 1 and %d",
-			agentmemory.MaxLedgerFoldFacts,
-		)
-	}
-	rows, err := pluginstorage.Connection(ctx, a.db).QueryContext(ctx,
-		`SELECT seq, day, fact, captured_at
+	var result []agentmemory.LedgerFact
+	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
+		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
+
+			return err
+		}
+		if watermark < 0 {
+
+			return errors.New("sqlite: agent memory watermark must not be negative")
+		}
+		if limit <= 0 || limit > agentmemory.MaxLedgerFoldFacts {
+
+			return fmt.Errorf(
+				"sqlite: agent memory pending limit must be between 1 and %d",
+				agentmemory.MaxLedgerFoldFacts,
+			)
+		}
+		rows, err := framesqlite.Connection(ctx, a.db).QueryContext(ctx,
+			`SELECT seq, day, fact, captured_at
 		 FROM agent_memory_ledger
 		 WHERE project = ? AND seq > ?
 		 ORDER BY seq
 		 LIMIT ?`, project, watermark, limit)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list pending agent memory: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var facts []agentmemory.LedgerFact
-	for rows.Next() {
-		var fact agentmemory.LedgerFact
-		var capturedAt int64
-		if err := rows.Scan(&fact.Sequence, &fact.Day, &fact.Content, &capturedAt); err != nil {
-			return nil, fmt.Errorf("sqlite: scan pending agent memory: %w", err)
+		if err != nil {
+
+			return fmt.Errorf("sqlite: list pending agent memory: %w", err)
 		}
-		fact.CapturedAt = time.Unix(0, capturedAt).UTC()
-		if err := fact.Validate(); err != nil {
-			return nil, fmt.Errorf("sqlite: decode invalid agent memory ledger fact %d: %w", fact.Sequence, err)
+		defer func() { _ = rows.Close() }()
+		var facts []agentmemory.LedgerFact
+		for rows.Next() {
+			var fact agentmemory.LedgerFact
+			var capturedAt int64
+			if err := rows.Scan(&fact.Sequence, &fact.Day, &fact.Content, &capturedAt); err != nil {
+
+				return fmt.Errorf("sqlite: scan pending agent memory: %w", err)
+			}
+			fact.CapturedAt = time.Unix(0, capturedAt).UTC()
+			if err := fact.Validate(); err != nil {
+
+				return fmt.Errorf("sqlite: decode invalid agent memory ledger fact %d: %w", fact.Sequence, err)
+			}
+			facts = append(facts, fact)
 		}
-		facts = append(facts, fact)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: iterate pending agent memory: %w", err)
-	}
-	return facts, nil
+		if err := rows.Err(); err != nil {
+
+			return fmt.Errorf("sqlite: iterate pending agent memory: %w", err)
+		}
+		result = facts
+		return nil
+	})
+	return result, err
 }
 
 func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemory.State, error) {
-	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
-		return agentmemory.State{}, err
-	}
-	var st agentmemory.State
-	var updatedAt int64
-	err := pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
-		`SELECT watermark, updated_at FROM agent_memory_state WHERE project = ?`, project).
-		Scan(&st.Watermark, &updatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return agentmemory.State{}, nil
-	}
-	if err != nil {
-		return agentmemory.State{}, fmt.Errorf("sqlite: load agent memory state: %w", err)
-	}
-	if st.Watermark != 0 || updatedAt != 0 {
-		st.UpdatedAt = time.Unix(0, updatedAt).UTC()
-	}
-	if err := st.Validate(); err != nil {
-		return agentmemory.State{}, fmt.Errorf("sqlite: decode invalid agent memory state: %w", err)
-	}
-	return st, nil
+	var result agentmemory.State
+	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
+		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
+
+			return err
+		}
+		var st agentmemory.State
+		var updatedAt int64
+		err := framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+			`SELECT watermark, updated_at FROM agent_memory_state WHERE project = ?`, project).
+			Scan(&st.Watermark, &updatedAt)
+		if errors.Is(err, sql.ErrNoRows) {
+
+			return nil
+		}
+		if err != nil {
+
+			return fmt.Errorf("sqlite: load agent memory state: %w", err)
+		}
+		if st.Watermark != 0 || updatedAt != 0 {
+			st.UpdatedAt = time.Unix(0, updatedAt).UTC()
+		}
+		if err := st.Validate(); err != nil {
+
+			return fmt.Errorf("sqlite: decode invalid agent memory state: %w", err)
+		}
+		result = st
+		return nil
+	})
+	return result, err
 }
 
 // Watermark CAS and item folding share a transaction so a losing publication cannot rewrite memory.
@@ -141,9 +162,9 @@ func (a *AgentMemoryStore) Reconcile(
 	expectedWatermark := publication.ExpectedState().Watermark
 	state := publication.State()
 	through := state.Watermark
-	err = pluginstorage.WithinTransaction(ctx, a.db, func(ctx context.Context) error {
+	err = framesqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		var one int
-		if scanErr := pluginstorage.Connection(ctx, a.db).QueryRowContext(ctx,
+		if scanErr := framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
 			`SELECT 1 FROM agent_memory_ledger WHERE project = ? AND seq = ?`,
 			project, through).Scan(&one); scanErr != nil {
 			if errors.Is(scanErr, sql.ErrNoRows) {
@@ -151,12 +172,12 @@ func (a *AgentMemoryStore) Reconcile(
 			}
 			return fmt.Errorf("sqlite: verify agent memory watermark: %w", scanErr)
 		}
-		if _, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
+		if _, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
 			`INSERT OR IGNORE INTO agent_memory_state(project, watermark, updated_at) VALUES (?, 0, 0)`,
 			project); execContextErr != nil {
 			return fmt.Errorf("sqlite: initialize agent memory state: %w", execContextErr)
 		}
-		result, execContextErr := pluginstorage.Connection(ctx, a.db).ExecContext(ctx,
+		result, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_state SET watermark = ?, updated_at = ?
 			 WHERE project = ? AND watermark = ?`,
 			through, state.UpdatedAt.UnixNano(), project, expectedWatermark)

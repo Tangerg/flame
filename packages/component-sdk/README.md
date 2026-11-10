@@ -311,9 +311,11 @@ The authored `runtime-profile.json` owns the shared module profile, component ex
 name, and module graph filename/version. Its generated TS, JSON and Go projections
 are rebuilt together by `make generate`.
 
-The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
+The SDK owns shared-module externalization and the prebuilt ESM
 format. The former implicit compiler lookup is removed; all in-repository build
-callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
+callers supply the compiler explicitly. Private dependencies and dynamic imports are
+bundled into one entry; PNG imports inline their bytes. Frame verifies the captured entry
+bytes against the approved digest before evaluating them. `HOST_MODULES` names shared React,
 React DOM, JSX runtimes, SDK, Runtime-client, Frame exact JSON and UI modules;
 UI subpath imports are also external. The workbench derives its import map from
 that same declaration and deduplicates the Runtime-client package. Both
@@ -324,7 +326,8 @@ Unresolved imports, including Node built-ins, fail the browser build instead of
 becoming undeclared runtime dependencies.
 The graphical client must map those imports to its actual shared instances before
 evaluating an entry. The workbench emits an import map to its actual shared ESM exports. Core resource
-subscriptions and exact-release asset queries provide package-relative URLs. The
+subscriptions own the original component resource lifetime; exact-release asset queries
+capture its entry bytes without a second module fetch. The
 component signal cancels observation; its explicit track boundary joins SDK calls
 through the original approved Use lifetime. Development uses this same format.
 

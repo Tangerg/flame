@@ -58,10 +58,10 @@ func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) 
 	if _, found, err := store.ToolCaller(t.Context(), failed.Invocation.ID); err != nil || found {
 		t.Fatalf("failed dispatch retained usable authority: %t, %v", found, err)
 	}
-	if _, err := db.ExecContext(t.Context(), `UPDATE installed_tool_callers SET caller_json='{}' WHERE call_id=?`, source.Invocation.ID); err == nil {
+	if _, err := execFixture(t.Context(), db, `UPDATE installed_tool_callers SET caller_json='{}' WHERE call_id=?`, source.Invocation.ID); err == nil {
 		t.Fatal("immutable caller was rewritten")
 	}
-	if _, err := db.ExecContext(t.Context(), `DELETE FROM runs WHERE run_id=?`, draft.RunID); err != nil {
+	if _, err := execFixture(t.Context(), db, `DELETE FROM runs WHERE run_id=?`, draft.RunID); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {

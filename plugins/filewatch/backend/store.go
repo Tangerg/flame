@@ -19,7 +19,7 @@ const (
 
 var errStored = errors.New("filewatch: invalid private data")
 
-type store struct{ db *sql.DB }
+type store struct{ db *sqlite.Database }
 
 func openStore(ctx context.Context, path string) (*store, error) {
 	initial, err := json.Marshal(filewatch.Initial().Snapshot())
@@ -36,7 +36,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 		`CREATE TRIGGER IF NOT EXISTS accepted_is_final BEFORE UPDATE OF accepted ON events WHEN OLD.accepted=1 AND NEW.accepted<>1 BEGIN SELECT RAISE(ABORT,'acceptance cannot be withdrawn'); END`,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, db.Close())
 	}
 	s := &store{db: db}
 	if _, err := s.configuration(ctx); err != nil {
@@ -47,7 +47,9 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) configuration(ctx context.Context) (filewatch.Configuration, error) {
 	var raw string
-	if err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw); err != nil {
+	if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw)
+	}); err != nil {
 		return filewatch.Configuration{}, err
 	}
 	var snapshot filewatch.Snapshot
@@ -61,21 +63,23 @@ func (s *store) configuration(ctx context.Context) (filewatch.Configuration, err
 	return value, nil
 }
 
-func (s *store) configure(ctx context.Context, expected int64, draft *filewatch.Draft) (filewatch.Snapshot, error) {
+func (s *store) prepareConfiguration(ctx context.Context, expected int64, draft *filewatch.Draft) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
 	current, err := s.configuration(ctx)
 	if err != nil {
-		return filewatch.Snapshot{}, err
+		return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
 	}
 	next, err := current.Replace(expected, draft)
 	if err != nil {
-		return filewatch.Snapshot{}, err
+		return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
 	}
 	encoded, err := json.Marshal(next.Snapshot())
 	if err != nil {
-		return filewatch.Snapshot{}, err
+		return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
 	}
-	_, err = pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
-	return next.Snapshot(), err
+	return pluginstorage.NewCommandPlan(next.Snapshot(), func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
+		return err
+	})
 }
 
 func (s *store) capture(ctx context.Context, observation filewatch.Observation) error {
@@ -84,8 +88,8 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 	if err != nil {
 		return err
 	}
-	return pluginstorage.WithinTransaction(ctx, s.db, func(ctx context.Context) error {
-		connection := pluginstorage.Connection(ctx, s.db)
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		connection := sqlite.Connection(ctx, s.db)
 		var previous string
 		err := connection.QueryRowContext(ctx, `SELECT capture FROM events WHERE generation=? AND sequence=?`, capture.Generation, capture.Sequence).Scan(&previous)
 		if err == nil {
@@ -147,7 +151,9 @@ func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	var generation, raw string
 	var sequence uint64
 	var accepted int
-	err := pluginstorage.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
+	err := s.db.Read(ctx, func(reader sqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return filewatch.Event{}, filewatch.ErrNotFound
 	}
@@ -162,33 +168,35 @@ func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(fi
 	if pendingOnly {
 		query, limit = `SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending
 	}
-	rows, err := pluginstorage.Connection(ctx, s.db).QueryContext(ctx, query, limit+1)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	count := 0
-	for rows.Next() {
-		var id, generation, raw string
-		var sequence uint64
-		var accepted int
-		if err := rows.Scan(&id, &generation, &sequence, &raw, &accepted); err != nil {
-			return err
-		}
-		event, err := decodeEvent(id, generation, sequence, raw, accepted)
+	return s.db.Read(ctx, func(reader sqlite.Reader) error {
+		rows, err := reader.QueryContext(ctx, query, limit+1)
 		if err != nil {
 			return err
 		}
-		count++
-		if count > limit {
-			return errStored
+		defer rows.Close()
+		count := 0
+		for rows.Next() {
+			var id, generation, raw string
+			var sequence uint64
+			var accepted int
+			if err := rows.Scan(&id, &generation, &sequence, &raw, &accepted); err != nil {
+				return err
+			}
+			event, err := decodeEvent(id, generation, sequence, raw, accepted)
+			if err != nil {
+				return err
+			}
+			count++
+			if count > limit {
+				return errStored
+			}
+			visit(event)
 		}
-		visit(event)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func decodeEvent(id, generation string, sequence uint64, raw string, accepted int) (filewatch.Event, error) {
@@ -204,13 +212,15 @@ func decodeEvent(id, generation string, sequence uint64, raw string, accepted in
 }
 
 func (s *store) acceptRun(ctx context.Context, id string) error {
-	result, err := pluginstorage.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
-	if err != nil {
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		if err == nil && count != 1 {
+			return errStored
+		}
 		return err
-	}
-	count, err := result.RowsAffected()
-	if err == nil && count != 1 {
-		return errStored
-	}
-	return err
+	})
 }

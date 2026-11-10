@@ -64,14 +64,14 @@ func (q *queueView) Draw(view grid.View) {
 		if index == 0 {
 			style, marker = q.theme.Accent, q.glyphs.Marker
 		}
-		view.Text(0, index+1, q.glyphs.Vertical, q.theme.Divider)
+		view.Text(0, index+1, q.glyphs.Vertical.String(), q.theme.Divider)
 		label := fmt.Sprintf("%s %d. %s", marker, index+1, queueEntryLabel(entry))
 		view.Text(2, index+1, text.Truncate(label, max(width-2, 1), q.glyphs.Ellipsis), style)
 	}
 	if visible < capacity && visible < len(q.snapshot.Entries) {
 		remaining := len(q.snapshot.Entries) - visible
 		row := visible + 1
-		view.Text(0, row, q.glyphs.Vertical, q.theme.Divider)
+		view.Text(0, row, q.glyphs.Vertical.String(), q.theme.Divider)
 		view.Text(2, row, fmt.Sprintf("%s %d more", q.glyphs.Ellipsis, remaining), q.theme.Subtle)
 	}
 }

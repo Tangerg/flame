@@ -150,6 +150,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     return { content: [], structuredContent: { value: 12 } };
   if (code === "invalid-structured-output")
     return { content: [], structuredContent: { value: "invalid" } };
+  if (code === "structured-tool-error")
+    return {
+      isError: true,
+      content: [{ type: "text", text: "known refusal" }],
+      structuredContent: { failure: "known refusal" },
+    };
   if (code === "media")
     return {
       content: [

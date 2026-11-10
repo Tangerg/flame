@@ -10,13 +10,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T) {
@@ -32,16 +32,16 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 		server := sdk.NewServer(&sdk.Implementation{Name: "public-executable-decorator"}, nil)
 		backend, err := pluginmcp.NewBackend(server)
 		if err == nil {
-			err = method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[chat.Request]) iter.Seq2[pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-				return func(yield func(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+			err = method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error] {
+				return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 					next, err := pluginmcp.CallbackFromContext(ctx)
 					if err != nil {
-						yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+						yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
 						return
 					}
-					request := command.Input.Clone()
+					request := (*chat.Request)(&command.Input).Clone()
 					request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("captured transformed input"))
-					if !yield(pluginmcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{Chunk: &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("decorated ")}}}, nil) {
+					if !yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{Chunk: &scopewire.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("decorated ")}}}, nil) {
 						return
 					}
 					for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, request) {
@@ -95,7 +95,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	next, err := pluginsdk.NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	next, err := pluginsdk.NewModelStreamCallback(func(_ context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			calls.Add(1)
 			if command.ID != "original-executable-model" || command.Input.Messages[0].Text() != "captured transformed input" {
@@ -131,12 +131,12 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 	}
 	var observed chat.ResponseAccumulator
 	var final *pluginsdk.ModelResult
-	for value, err := range method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-executable-model", *request, metadata) {
+	for value, err := range method.StreamWithMetadata(t.Context(), binding, callbacks, pluginmcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-executable-model", scopewire.Request(*request), metadata) {
 		if err != nil {
 			t.Fatal(err)
 		}
 		if value.Chunk != nil {
-			if err := observed.Add(value.Chunk); err != nil {
+			if err := observed.Add((*chat.ResponseDelta)(value.Chunk)); err != nil {
 				t.Fatal(err)
 			}
 		} else {

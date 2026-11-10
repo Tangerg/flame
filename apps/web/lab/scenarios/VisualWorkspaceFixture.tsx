@@ -91,6 +91,167 @@ function WorkspaceStateSidebar({
   );
 }
 
+interface FocusDeparture {
+  target: string | null;
+  related: string | null;
+  focused: boolean;
+}
+
+const layoutRect = (element: Element | null) => element?.getBoundingClientRect().toJSON() ?? null;
+
+function workspaceReadingTarget(
+  reader: HTMLElement | null,
+  active: Element | null,
+  previous: Element | null,
+) {
+  let target = previous;
+  if (
+    active &&
+    reader?.contains(active) &&
+    active.closest('[data-slot="panel-body"]') &&
+    (active.matches('button, a[href], input, select, textarea, [role="button"]') ||
+      active.hasAttribute("aria-label"))
+  ) {
+    target = active;
+  }
+  return target?.isConnected && reader?.contains(target) ? target : null;
+}
+
+function captureComposerLayout(view: Window, composer: HTMLElement | null) {
+  if (!composer) return null;
+  const scrollport = view.document.querySelector<HTMLElement>('[data-slot="composer-scrollport"]');
+  const footer = composer.querySelector<HTMLElement>('[data-slot="composer-footer"]');
+  return {
+    rect: layoutRect(composer),
+    width: view.getComputedStyle(composer).width,
+    clientWidth: composer.clientWidth,
+    total: composer.scrollWidth,
+    scrollport: scrollport
+      ? {
+          top: scrollport.scrollTop,
+          height: scrollport.clientHeight,
+          total: scrollport.scrollHeight,
+        }
+      : null,
+    footer: footer ? { rect: layoutRect(footer), total: footer.scrollWidth } : null,
+    actions: Array.from(footer?.querySelectorAll("button") ?? []).map((action) => {
+      const label = action.querySelector('[data-slot="composer-chip-label"]');
+      return {
+        rect: layoutRect(action),
+        label: label ? view.getComputedStyle(label).display : null,
+      };
+    }),
+  };
+}
+
+function captureWorkspaceLayout({
+  view,
+  scope,
+  reader,
+  reading,
+  controls,
+  composer,
+  active,
+  blur,
+}: {
+  view: Window;
+  scope: string | null;
+  reader: HTMLElement | null;
+  reading: Element | null;
+  controls: Element | null;
+  composer: HTMLElement | null;
+  active: Element | null;
+  blur: FocusDeparture | null;
+}) {
+  const document = view.document;
+  const dock = reader?.closest(".agent-context-dock") ?? null;
+  const row = dock?.closest(".agent-dock-row") ?? null;
+  return {
+    view: scope,
+    window: {
+      width: view.innerWidth,
+      height: view.innerHeight,
+      documentWidth: document.documentElement.clientWidth,
+      dpr: view.devicePixelRatio,
+      focused: document.hasFocus(),
+    },
+    visualViewport: view.visualViewport
+      ? {
+          width: view.visualViewport.width,
+          height: view.visualViewport.height,
+          scale: view.visualViewport.scale,
+        }
+      : null,
+    dock: {
+      state: row?.getAttribute("data-dock"),
+      presentation: row?.getAttribute("data-presentation"),
+      rect: layoutRect(dock),
+    },
+    viewport: reader
+      ? {
+          rect: layoutRect(reader),
+          width: reader.clientWidth,
+          height: reader.clientHeight,
+          top: reader.scrollTop,
+          total: reader.scrollHeight,
+          fontSize: view.getComputedStyle(reader).fontSize,
+        }
+      : null,
+    controls: layoutRect(controls),
+    focus: active ? { tag: active.localName, label: active.getAttribute("aria-label") } : null,
+    blur,
+    reading: reading ? { name: observationTargetName(reading), rect: layoutRect(reading) } : null,
+    composer: captureComposerLayout(view, composer),
+  };
+}
+
+function compactWorkspaceLayout(snapshot: ReturnType<typeof captureWorkspaceLayout>) {
+  return {
+    focused: snapshot.window.focused,
+    focus: snapshot.focus,
+    blur: snapshot.blur,
+    window: [snapshot.window.width, snapshot.window.height],
+    dock: snapshot.dock.state,
+    viewport: snapshot.viewport
+      ? [
+          snapshot.viewport.width,
+          snapshot.viewport.height,
+          snapshot.viewport.top,
+          snapshot.viewport.total,
+        ]
+      : null,
+    reading: snapshot.reading
+      ? {
+          name: snapshot.reading.name,
+          top: snapshot.reading.rect.top,
+          bottom: snapshot.reading.rect.bottom,
+        }
+      : null,
+    composer: snapshot.composer
+      ? {
+          width: snapshot.composer.rect?.width,
+          css: snapshot.composer.width,
+          total: snapshot.composer.total,
+          scrollport: snapshot.composer.scrollport
+            ? [
+                snapshot.composer.scrollport.top,
+                snapshot.composer.scrollport.height,
+                snapshot.composer.scrollport.total,
+              ]
+            : null,
+          footer: snapshot.composer.footer?.total,
+          actions: snapshot.composer.actions.map((action) => [
+            action.rect?.left,
+            action.rect?.top,
+            action.rect?.right,
+            action.rect?.bottom,
+            action.label,
+          ]),
+        }
+      : null,
+  };
+}
+
 function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
   const mainViewId = useActiveWorkspaceViewId();
   const dock = useWorkspaceDock();
@@ -114,9 +275,8 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       observedControls: null as Element | null,
       observedBody: null as Element | null,
       observedComposer: null as Element | null,
-      blur: null as { target: string | null; related: string | null; focused: boolean } | null,
+      blur: null as FocusDeparture | null,
     };
-    const rect = (element: Element | null) => element?.getBoundingClientRect().toJSON() ?? null;
     const capture = () => {
       state.frame = 0;
       const reader =
@@ -129,25 +289,12 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
         ) ?? (state.reader?.isConnected ? state.reader : null);
       state.reader = reader;
       const active = document.activeElement;
-      if (
-        active &&
-        reader?.contains(active) &&
-        active.closest('[data-slot="panel-body"]') &&
-        (active.matches('button, a[href], input, select, textarea, [role="button"]') ||
-          active.hasAttribute("aria-label"))
-      ) {
-        state.reading = active;
-      }
-      if (!state.reading?.isConnected || !reader?.contains(state.reading)) state.reading = null;
+      state.reading = workspaceReadingTarget(reader, active, state.reading);
       const reading = state.reading;
       const controls = reader?.querySelector('[data-slot="panel-controls"]') ?? null;
       // Content can reflow inside an unchanged viewport.
       const body = reader?.querySelector('[data-slot="panel-body"]') ?? null;
       const composer = document.querySelector<HTMLElement>('[data-slot="composer-root"]');
-      const composerScrollport = document.querySelector<HTMLElement>(
-        '[data-slot="composer-scrollport"]',
-      );
-      const footer = composer?.querySelector<HTMLElement>('[data-slot="composer-footer"]');
       for (const [before, next] of [
         [state.observedReader, reader],
         [state.observedControls, controls],
@@ -162,113 +309,19 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       state.observedControls = controls;
       state.observedBody = body;
       state.observedComposer = composer;
-      const dock = reader?.closest(".agent-context-dock") ?? null;
-      const row = dock?.closest(".agent-dock-row") ?? null;
-      const snapshot = {
-        view: scope,
-        window: {
-          width: view.innerWidth,
-          height: view.innerHeight,
-          documentWidth: document.documentElement.clientWidth,
-          dpr: view.devicePixelRatio,
-          focused: document.hasFocus(),
-        },
-        visualViewport: view.visualViewport
-          ? {
-              width: view.visualViewport.width,
-              height: view.visualViewport.height,
-              scale: view.visualViewport.scale,
-            }
-          : null,
-        dock: {
-          state: row?.getAttribute("data-dock"),
-          presentation: row?.getAttribute("data-presentation"),
-          rect: rect(dock),
-        },
-        viewport: reader
-          ? {
-              rect: rect(reader),
-              width: reader.clientWidth,
-              height: reader.clientHeight,
-              top: reader.scrollTop,
-              total: reader.scrollHeight,
-              fontSize: view.getComputedStyle(reader).fontSize,
-            }
-          : null,
-        controls: rect(controls),
-        focus: active ? { tag: active.localName, label: active.getAttribute("aria-label") } : null,
+      const snapshot = captureWorkspaceLayout({
+        view,
+        scope,
+        reader,
+        reading,
+        controls,
+        composer,
+        active,
         blur: state.blur,
-        reading: reading ? { name: observationTargetName(reading), rect: rect(reading) } : null,
-        composer: composer
-          ? {
-              rect: rect(composer),
-              width: view.getComputedStyle(composer).width,
-              clientWidth: composer.clientWidth,
-              total: composer.scrollWidth,
-              scrollport: composerScrollport
-                ? {
-                    top: composerScrollport.scrollTop,
-                    height: composerScrollport.clientHeight,
-                    total: composerScrollport.scrollHeight,
-                  }
-                : null,
-              footer: footer ? { rect: rect(footer), total: footer.scrollWidth } : null,
-              actions: Array.from(footer?.querySelectorAll("button") ?? []).map((action) => {
-                const label = action.querySelector('[data-slot="composer-chip-label"]');
-                return {
-                  rect: rect(action),
-                  label: label ? view.getComputedStyle(label).display : null,
-                };
-              }),
-            }
-          : null,
-      };
+      });
       node.textContent = JSON.stringify(snapshot);
       // Native accessibility snapshots bound each text node independently.
-      readingNode.textContent = JSON.stringify({
-        focused: snapshot.window.focused,
-        focus: snapshot.focus,
-        blur: snapshot.blur,
-        window: [snapshot.window.width, snapshot.window.height],
-        dock: snapshot.dock.state,
-        viewport: snapshot.viewport
-          ? [
-              snapshot.viewport.width,
-              snapshot.viewport.height,
-              snapshot.viewport.top,
-              snapshot.viewport.total,
-            ]
-          : null,
-        reading: snapshot.reading
-          ? {
-              name: snapshot.reading.name,
-              top: snapshot.reading.rect.top,
-              bottom: snapshot.reading.rect.bottom,
-            }
-          : null,
-        composer: snapshot.composer
-          ? {
-              width: snapshot.composer.rect?.width,
-              css: snapshot.composer.width,
-              total: snapshot.composer.total,
-              scrollport: snapshot.composer.scrollport
-                ? [
-                    snapshot.composer.scrollport.top,
-                    snapshot.composer.scrollport.height,
-                    snapshot.composer.scrollport.total,
-                  ]
-                : null,
-              footer: snapshot.composer.footer?.total,
-              actions: snapshot.composer.actions.map((action) => [
-                action.rect?.left,
-                action.rect?.top,
-                action.rect?.right,
-                action.rect?.bottom,
-                action.label,
-              ]),
-            }
-          : null,
-      });
+      readingNode.textContent = JSON.stringify(compactWorkspaceLayout(snapshot));
     };
     const schedule = () => {
       if (!state.frame) state.frame = view.requestAnimationFrame(capture);

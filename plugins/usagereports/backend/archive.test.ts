@@ -9,7 +9,6 @@ import {
   canonicalJSON,
   digestJSON,
   parseJSON,
-  type CapabilityDescriptor,
 } from "@flame/backend-sdk/mcp";
 import sample from "@flame/runtime-client/testing/samples/usageSummary.json";
 import { Archive } from "./archive";
@@ -21,7 +20,7 @@ const contract = new Capability(
       new URL("../contracts/capability.json", import.meta.url),
       "utf8",
     ),
-  ) as CapabilityDescriptor,
+  ),
 );
 const capture = contract.portable.method("flame.usage-reports/capture.v1")
   .descriptor.name;

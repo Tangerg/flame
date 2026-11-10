@@ -7,16 +7,16 @@ import (
 
 	"github.com/Tangerg/frame/portable"
 	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 type ModelResult struct {
-	Response *chat.Response `json:"response,omitzero" jsonschema:"anyof_required=response"`
-	Failure  *ModelFailure  `json:"failure,omitzero" jsonschema:"anyof_required=failure"`
+	Response *chat.Response `json:"response,omitzero"`
+	Failure  *ModelFailure  `json:"failure,omitzero"`
 }
 
 type ModelFailure struct {
@@ -43,8 +43,8 @@ func (f *ModelFailure) Is(target error) bool {
 }
 
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
-func ModelMethod() (*pluginmcp.Method[chat.Request, ModelResult], error) {
-	return pluginmcp.NewMethod[chat.Request, ModelResult](portable.MethodConfig{
+func ModelMethod() (*pluginmcp.Method[scopewire.Request, ModelResult], error) {
+	return pluginmcp.NewMethod[scopewire.Request, ModelResult](portable.MethodConfig{
 		Name: "flame.model/call.v1", Kind: portable.Command, Target: extension.ScopeCall,
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
@@ -58,7 +58,7 @@ func CallModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.Comm
 	if err != nil {
 		return nil, err
 	}
-	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), *request.Clone())
+	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), scopewire.Request(*request.Clone()))
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func CallModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.Comm
 
 // NewModelCallback leaves command admission and resource policy with its caller.
 // Each command projects a call-scoped child identity, preserving origin/parent.
-func NewModelCallback(call func(context.Context, pluginmcp.Command[chat.Request]) (*chat.Response, error)) (pluginmcp.Callback, error) {
+func NewModelCallback(call func(context.Context, pluginmcp.Command[scopewire.Request]) (*chat.Response, error)) (pluginmcp.Callback, error) {
 	if call == nil {
 		return pluginmcp.Callback{}, errors.New("plugin: model call owner is required")
 	}
@@ -75,11 +75,11 @@ func NewModelCallback(call func(context.Context, pluginmcp.Command[chat.Request]
 	if err != nil {
 		return pluginmcp.Callback{}, err
 	}
-	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[chat.Request]) (ModelResult, error) {
-		if err := command.Input.Validate(); err != nil {
+	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (ModelResult, error) {
+		if err := (*chat.Request)(&command.Input).Validate(); err != nil {
 			return ModelResult{}, err
 		}
-		command.Input = *command.Input.Clone()
+		command.Input = scopewire.Request(*(*chat.Request)(&command.Input).Clone())
 		ctx, err := modelCallContext(ctx, string(command.ID))
 		if err != nil {
 			return ModelResult{}, err

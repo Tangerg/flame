@@ -8,16 +8,15 @@ import (
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
+
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 )
 
 type memoryModelAdmission struct {
@@ -57,8 +56,8 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 		return pluginmcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
 	}
 	admission := &memoryModelAdmission{invocations: make(map[string]memoryModelInvocation)}
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[chat.Request]) (*chat.Response, error) {
-		request := command.Input
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
+		request := chat.Request(command.Input)
 		if lo.IsNil(model) || !memoryModelRequest(request) {
 			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
 		}
