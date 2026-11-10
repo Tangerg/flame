@@ -870,8 +870,7 @@ export const en: Record<string, string> = {
   "settings.font.codeSize": "Code size",
   "settings.font.followUi": "Follow UI",
   "dock.action.expand": "Open full width",
-  "dock.action.openFull":
-    "Open material full width — the window is too narrow to show it beside the conversation",
+  "dock.action.openFull": "Open material full width",
   "composer.add": "Add to message",
   "composer.add.file": "Reference a project file",
   "composer.add.command": "Run a command",

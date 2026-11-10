@@ -854,7 +854,7 @@
   "settings.font.codeSize": "Taille du code",
   "settings.font.followUi": "Comme l’interface",
   "dock.action.expand": "Ouvrir en pleine largeur",
-  "dock.action.openFull": "Ouvrir le document en pleine largeur — la fenêtre est trop étroite pour l’afficher à côté",
+  "dock.action.openFull": "Ouvrir le document en pleine largeur",
   "composer.add": "Ajouter au message",
   "composer.add.file": "Citer un fichier du projet",
   "composer.add.command": "Lancer une commande",

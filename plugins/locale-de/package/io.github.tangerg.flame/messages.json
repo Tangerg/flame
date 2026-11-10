@@ -833,7 +833,7 @@
   "settings.font.codeSize": "Codegröße",
   "settings.font.followUi": "Wie Oberfläche",
   "dock.action.expand": "In voller Breite öffnen",
-  "dock.action.openFull": "Material in voller Breite öffnen – das Fenster ist zu schmal für die Seitenansicht",
+  "dock.action.openFull": "Material in voller Breite öffnen",
   "composer.add": "Zur Nachricht hinzufügen",
   "composer.add.file": "Projektdatei referenzieren",
   "composer.add.command": "Befehl ausführen",

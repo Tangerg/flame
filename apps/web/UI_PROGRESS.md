@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The current unchanged-source Diff review qualifies native 200%/300% long-path reading, file/layout navigation, filtered-list return and exact continued drafts in English/light/14 px and Chinese/dark/18 px. The Subagent header repair remains qualified. Its preceding full Web check passes **433 files / 4,824 tests**, its existing Lab selection passes **21 tasks**, and supported native verification passes; this follow-up changes no product source. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to the inspected tasks; whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The narrow Material-toggle action is now concise across all eight existing locales; native English/light/14 px and Chinese/dark/18 px qualify its 200%/300% entry, material reading, Close and exact continued drafts. The focused workspace regression passes **113 tests** and the locale gate passes **25 tests / 919 keys / 8 locales**. The preceding full Web check (**433 files / 4,824 tests**), Subagent Lab selection (**21 tasks**) and supported native verification retain their earlier scope. The Lab remains the sole UI visual verification owner, with one Playwright configuration. The Chinese continued-draft capture supplies a separate lower-focus-perimeter lead for the existing Composer task. Whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20783,6 +20783,14 @@ verified in-memory retention. No storage, protocol or user-data migration is nee
 
 ### Composer reading across full-width material (2026-11-10)
 
+The Material-toggle follow-up retains both exact continued drafts. Its Chinese
+18 px / 300% capture after native Window Zoom/restore shows an incomplete lower
+Composer focus perimeter once the continued draft wraps to two visual lines.
+The input and footer actions remain visible, and Actual Size shows the complete
+frame. This is a new reproduction lead, not an established allocation defect;
+check that exact transition through the existing Lab Composer task before
+selecting a layout change. No Composer implementation changes in this copy batch.
+
 The preceding native task leaves the new internal Composer scroll offset
 unqualified. A fixed Lab task reproduces the defect: at 373 × 243 px, opening
 Schedules and closing it moves WebKit's offset from 61 to 10 px in English and
@@ -20983,7 +20991,53 @@ checks run. The reviewed batch is published to main; its captured qualification
 tree is retired after verified in-memory evidence retention. No storage, protocol
 or user-data migration is needed.
 
-### Full-width material identity and return (2026-11-10)
+### Full-width material identity and return (2026-11-11)
+
+The native Diff follow-through at `b77387277` exposes a separate copy-density
+issue: the narrow Material-toggle label repeats a window-width explanation in
+its Tooltip and accessible name. Better-writing guides the bounded repair.
+`dock.action.openFull` now names only the action, object and full-width result
+in English and all seven optional locale packages. The existing key and its
+ChatPanel consumer remain authoritative. Wide-workspace show/hide and the
+material's own expand action retain their separate names and behavior; no
+component, state, layout, event handler or translation key is added.
+
+A restricted Read/Edit-only Claude Code CLI candidate changes the eight copied
+catalog values in **36.594 s**. Primary review verifies each complete candidate
+against the exact permitted replacement, confirms **6,734 non-Markdown inputs**
+were unchanged before application, and applies only those eight values. Existing
+workspace tests pass **2 files / 113 tests** before and after, in **9.949 s** and
+**7.474 s**. The locale gate passes **25 tests**, with **919 keys** complete
+across **8 locales**; formatting passes. Initial direct typechecking encounters
+stale shared-package declarations. Normal `make stage-web` passes in **8.516 s**,
+and the unchanged typecheck then passes in **1.668 s**. Serial `lab:build` passes
+in **2.734 s** and the signed Wails **v3.1.0** qualification host in **20.321 s**.
+All **488 canonical Lab assets** match the served copy.
+
+Actual native English/light/14 px/Orange **#FB6E30**/full motion and
+Chinese/dark/18 px/**#5B8DEF**/motion off use the same existing `dock-review`
+scene, selected long-path comparison and padded drafts. Wide pointer collapse
+and keyboard reopen retain their original action names. Actual Size plus
+twenty/forty native Zoom In actions establishes **200% / 300%**. Both new narrow
+Tooltips fit one line with visible keyboard focus; Escape dismisses only the
+Tooltip. Keyboard and pointer entry open the same selected file full width.
+End and coordinate wheel reading reach line **24**; keyboard Close returns to
+Conversation. Native Window Zoom and restoration retain editing focus and the
+original draft, and native paste appends the exact continuation. Actual Size
+retains that text and the selected Dock file. No Send, Copy or Runtime mutation
+is activated.
+
+All **21 original JPEG captures** and **45 retained AX records** are inspected.
+Native image bounds are **2238 × 1508** and **3024 × 1898**, not CSS viewport
+claims. Both intended native processes exit **0**. The private registration is
+removed, six Library locations return to absence, and three pre-existing empty
+WebKit helper roots retain identity, mode and flags. All **12 output/cache roots**
+return to baseline bytes/mode or original absence before publication; functional
+checks end before restoration. The current-lock dependency installation and the
+user's clean primary checkout remain unchanged. Four original captures and the
+qualification evidence are retained outside the repository. Other native
+locales, VoiceOver, physical IME and live Runtime/Git behavior are not newly
+qualified. No additional browser visual suite or performance benchmark runs.
 
 The native header lead reproduces on the preceding `cfd4ca463` revision with
 **492 byte-identical canonical Lab assets**. At native English/light/14 px and
@@ -25267,11 +25321,10 @@ Evidence and four original task captures are retained outside the repository;
 disposable qualification resources are retired after publication.
 
 VoiceOver, physical IME, RTL, other native locales, live provider/Git behavior
-and whole-product acceptance remain unqualified. A separate observed follow-up
-is the English Material-toggle explanation, which grows to several lines at
-300% while the Composer remains usable. Review its copy density through the
-same Lab rather than adding a second visual verification path. No task-blocking
-layout or accessibility finding remains in the inspected Diff flows.
+and whole-product acceptance remain unqualified. The observed Material-toggle
+copy-density follow-up is resolved in the existing full-width material section
+through the same Lab. No task-blocking layout or accessibility finding remains
+in the inspected Diff flows.
 
 ### Bounded file-preview identity
 
