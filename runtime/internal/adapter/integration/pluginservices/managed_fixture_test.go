@@ -42,8 +42,9 @@ func TestManagedTransportHelper(t *testing.T) {
 }
 
 type managedPackages struct {
-	server mcpserver.Server
-	digest framevalue.Digest
+	server       mcpserver.Server
+	digest       framevalue.Digest
+	beforeLaunch func(context.Context) error
 }
 
 func (p managedPackages) Server(_ context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName, _ plugins.Reach) (mcpserver.Server, bool, error) {
@@ -66,6 +67,11 @@ func (p managedPackages) Definitions(ctx context.Context, installation plugin.In
 }
 
 func (p managedPackages) Connection(ctx context.Context, installation plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
+	if p.beforeLaunch != nil {
+		if err := p.beforeLaunch(ctx); err != nil {
+			return mcpapp.Launch{}, false, err
+		}
+	}
 	server, found, err := p.Server(ctx, installation, release, name, plugins.Dispatchable)
 	if err != nil || !found {
 		return mcpapp.Launch{}, found, err
@@ -139,7 +145,7 @@ func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpser
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := &managedFixture{directory: directory, store: store, packages: managedPackages{server, digest}, callbacks: callbacks, prepare: prepare, runner: client}
+	fixture := &managedFixture{directory: directory, store: store, packages: managedPackages{server: server, digest: digest}, callbacks: callbacks, prepare: prepare, runner: client}
 	t.Cleanup(func() { fixture.close(t) })
 	fixture.open(t, true)
 	return fixture

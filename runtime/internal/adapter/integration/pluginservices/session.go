@@ -32,8 +32,7 @@ func contributionSession(ctx context.Context, host *frame.Host, store plugins.St
 	if !found {
 		return binding, nil, fmt.Errorf("%w: %w: %s", plugin.ErrUnavailable, errInactive, required.Descriptor().Reference)
 	}
-	session, err := borrowContribution(ctx, pool, binding)
-	return binding, session, err
+	return awaitContributionSession(ctx, pool, binding)
 }
 
 func workflowSession(ctx context.Context, c *CommandCalls, contract *plugincontract.Capability, source extension.ContributionSource) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
@@ -54,7 +53,13 @@ func workflowSession(ctx context.Context, c *CommandCalls, contract *plugincontr
 	if !found {
 		return binding, nil, plugin.ErrUnavailable
 	}
-	activation, err := c.pool.AwaitInstallationActivation(ctx, binding.ServerID)
+	return awaitContributionSession(ctx, c.pool, binding)
+}
+
+// Declarations precede asynchronous backend startup. Join the selected source's
+// owned attempt outside Host admission before borrowing its original activation.
+func awaitContributionSession(ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
+	activation, err := pool.AwaitInstallationActivation(ctx, binding.ServerID)
 	if err != nil {
 		return binding, nil, err
 	}
@@ -63,7 +68,7 @@ func workflowSession(ctx context.Context, c *CommandCalls, contract *plugincontr
 		return binding, nil, errors.Join(plugin.ErrUnavailable, err)
 	}
 	binding.Activation = &original
-	borrow, err := borrowContribution(ctx, c.pool, binding)
+	borrow, err := borrowContribution(ctx, pool, binding)
 	if err != nil {
 		return binding, nil, err
 	}

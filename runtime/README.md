@@ -2002,6 +2002,10 @@ without waiting for configuration I/O, handshakes or tool discovery. Every sourc
 connects independently under the Runtime lifetime. Plugin management stays available
 while a source is connecting; disable cancels its attempt and shutdown joins it.
 A construction caller's cancellation after admission cannot retire accepted attempts.
+Selected provider queries join only their source's admitted connection attempt
+before borrowing its original activation. A caller's deadline ends that wait
+without canceling shared startup. Missing, disabled or failed sources remain
+unavailable, and a release change cannot redirect the query to another activation.
 Managed MCP catalogs retain only the original instance, session and binding
 observation. Discovery holds a short Frame Use and releases it before publication.
 Every Tool, callback and installed command borrows its exact approved Use;
