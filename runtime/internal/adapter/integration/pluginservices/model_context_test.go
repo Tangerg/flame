@@ -26,7 +26,7 @@ import (
 func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawnContributors(t *testing.T) {
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
-			composition, bindings, store := installedContextFixture(t, mode)
+			composition, bindings, store := installedContextFixture(t, mode, modelchoice.Interaction)
 			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
@@ -57,7 +57,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 }
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
-	composition, bindings, _ := installedContextFixture(t, "ordered")
+	composition, bindings, _ := installedContextFixture(t, "ordered", modelchoice.Interaction)
 	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	}
 }
 
-func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plugins.ContributionBinding, *toolInstallationStore) {
+func installedContextFixture(t *testing.T, mode string, use modelchoice.Use) (*CallComposition, []plugins.ContributionBinding, *toolInstallationStore) {
 	t.Helper()
 	contract, err := pluginsdk.ModelContextContract()
 	if err != nil {
@@ -97,7 +97,7 @@ func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plu
 			if err := command.Input.Validate(); err != nil {
 				return pluginsdk.ModelContextResult{}, err
 			}
-			if command.Input.Use != modelchoice.Interaction || len(command.Input.Request.Messages) < 2 ||
+			if command.Input.Use != use || len(command.Input.Request.Messages) < 2 ||
 				command.Input.Request.Messages[0].Text() != "original instructions" ||
 				command.Input.Request.Messages[1].Text() != "question" {
 				return pluginsdk.ModelContextResult{}, errors.New("context use or original request prefix changed")

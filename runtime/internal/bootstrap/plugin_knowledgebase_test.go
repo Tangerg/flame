@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
 	"net/http"
@@ -35,9 +36,9 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		if strings.HasSuffix(request.URL.Path, "/chat/completions") {
 			var input struct {
 				Messages []struct {
-					Role       string `json:"role"`
-					Content    string `json:"content"`
-					ToolCallID string `json:"tool_call_id"`
+					Role       string         `json:"role"`
+					Content    jsontext.Value `json:"content"`
+					ToolCallID string         `json:"tool_call_id"`
 				} `json:"messages"`
 				Tools []struct {
 					Function struct {
@@ -55,11 +56,20 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 			if len(input.Tools) > 0 {
 				name := toolName.Load().(string)
 				for _, message := range input.Messages {
-					if message.Role == "user" && strings.Contains(message.Content, "Runtime reference material") && strings.Contains(message.Content, "docs/fruit.md") {
+					if message.Role != "user" && message.Role != "tool" {
+						continue
+					}
+					content, err := knowledgeChatText(message.Content)
+					if err != nil {
+						t.Error(err)
+						http.Error(w, "invalid content", http.StatusBadRequest)
+						return
+					}
+					if message.Role == "user" && strings.Contains(content, "Runtime reference material") && strings.Contains(content, "docs/fruit.md") {
 						sawContext.Store(true)
 					}
 					if message.Role == "tool" && message.ToolCallID == "retrieve-knowledge" {
-						toolOutput.Store(message.Content)
+						toolOutput.Store(content)
 						text = "cited fruit guide"
 					}
 				}
@@ -210,4 +220,30 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if replay := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex"); replay.Output != rebuilt.Output || embeddings.Load() != beforeRead+1 {
 		t.Fatalf("installed reindex repeated embedding: %+v count=%d", replay, embeddings.Load())
 	}
+}
+
+func knowledgeChatText(value jsontext.Value) (string, error) {
+	if value.Kind() == '"' {
+		var text string
+		err := json.Unmarshal(value, &text)
+		return text, err
+	}
+	if value.Kind() != '[' {
+		return "", fmt.Errorf("unexpected chat content kind %q", value.Kind())
+	}
+	var parts []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(value, &parts); err != nil {
+		return "", err
+	}
+	var text strings.Builder
+	for _, part := range parts {
+		if part.Type != "text" {
+			return "", fmt.Errorf("unexpected chat content type %q", part.Type)
+		}
+		text.WriteString(part.Text)
+	}
+	return text.String(), nil
 }

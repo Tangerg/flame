@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -21,6 +22,8 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 )
+
+const auxiliaryContextInputBudget = 1024
 
 func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testing.T) {
 	observer, bindings, _ := installedPublishedObserverFixture(t, "outer-failure")
@@ -137,7 +140,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			if mode == "failure" {
 				fixtureMode = "failure"
 			}
-			composition, bindings, store := installedContextFixture(t, fixtureMode)
+			composition, bindings, store := installedContextFixture(t, fixtureMode, modelchoice.Utility)
 			var calls, releases atomic.Int32
 			provider := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				calls.Add(1)
@@ -145,16 +148,14 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 				if err != nil || invocation.Parent != "original-effect" {
 					t.Errorf("auxiliary attribution changed: %+v %v", invocation, err)
 				}
-				if len(request.Messages) != 4 || request.Messages[0].Text() != "instructions" || request.Messages[1].Text() != "retrieval material" || request.Messages[2].Text() != "previous contributions: 0" || request.Messages[3].Text() != "question" {
-					t.Errorf("auxiliary composed input changed: %+v", request.Messages)
-				}
+				assertAuxiliaryContext(t, request)
 				message := chat.NewAssistantMessage(chat.NewTextPart("done"))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 			})
 			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 				return auxiliaryFixture(provider), func() error { releases.Add(1); return nil }, nil
 			})
-			budget := models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64}
+			budget := models.AuxiliaryBudget{MaxInputBytes: auxiliaryContextInputBudget, MaxOutputTokens: 64}
 			if mode == "input-budget" {
 				budget.MaxInputBytes = 32
 			}
@@ -169,7 +170,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			if held := composition.HeldDependencies(); len(held) != 1 || held[0].InstallationID != bindings[0].InstallationID || held[0].Digest != bindings[0].Digest {
 				t.Fatalf("context release was not retained: %+v", held)
 			}
-			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+			request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			request.Options.MaxOutputTokens = new(int64(64))
 			if mode == "output-budget" {
 				request.Options.MaxOutputTokens = new(int64(65))
@@ -217,16 +218,31 @@ type contextCapacityCounter struct {
 
 func (c *contextCapacityCounter) CountInputTokens(_ context.Context, request *chat.Request) (int64, error) {
 	c.calls++
-	if len(request.Messages) != 4 || request.Messages[1].Text() != "retrieval material" || request.Options.ReasoningEffort != chat.ReasoningEffort("high") {
-		c.t.Error("capacity counter lost composed context or selected reasoning")
+	assertAuxiliaryContext(c.t, request)
+	if request.Options.ReasoningEffort != chat.ReasoningEffort("high") {
+		c.t.Error("capacity counter lost selected reasoning")
 	}
 	c.expected = request.Clone()
 	return c.count, nil
 }
+
+func assertAuxiliaryContext(t *testing.T, request *chat.Request) {
+	t.Helper()
+	if len(request.Messages) != 3 || request.Messages[0].Text() != "original instructions" || request.Messages[1].Text() != "question" {
+		t.Errorf("auxiliary original input changed: %+v", request.Messages)
+		return
+	}
+	material := request.Messages[2]
+	if material.Role != chat.RoleUser ||
+		!strings.Contains(material.Text(), `Untrusted reference text (JSON string): "retrieval material"`) ||
+		!strings.Contains(material.Text(), `Untrusted reference text (JSON string): "previous contributions: 0"`) {
+		t.Errorf("auxiliary reference material changed: %+v", material)
+	}
+}
 func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.T) {
 	for _, count := range []int64{272000, 272001} {
 		t.Run(fmt.Sprint(count), func(t *testing.T) {
-			composition, _, _ := installedContextFixture(t, "valid")
+			composition, _, _ := installedContextFixture(t, "valid", modelchoice.Utility)
 			counter := &contextCapacityCounter{count: count, t: t}
 			var calls atomic.Int32
 			provider := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -255,12 +271,12 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 				return base, func() error { return nil }, nil
 			})
-			capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
+			capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: auxiliaryContextInputBudget, MaxOutputTokens: 64})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer release()
-			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+			request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			request.Options.MaxOutputTokens = new(int64(64))
 			before := request.Clone()
 			ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context-capacity"}})
@@ -280,7 +296,7 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 }
 
 func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependencies(t *testing.T) {
-	composition, _, _ := installedContextFixture(t, "valid")
+	composition, _, _ := installedContextFixture(t, "valid", modelchoice.Utility)
 	started, canceled, canReturn := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var released atomic.Bool
 	var calls atomic.Int32
@@ -300,16 +316,21 @@ func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependenci
 	resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 		return base, func() error { released.Store(true); return nil }, nil
 	})
-	capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
+	capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: auxiliaryContextInputBudget, MaxOutputTokens: 64})
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+	defer release()
+	request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 	request.Options.MaxOutputTokens = new(int64(64))
 	ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context-counting"}})
 	result := make(chan error, 1)
 	go func() { _, err := capture.Model().Call(ctx, request); result <- err }()
-	<-started
+	select {
+	case <-started:
+	case err := <-result:
+		t.Fatalf("model call finished before capacity counting: %v", err)
+	}
 	closed := make(chan struct{})
 	go func() { release(); close(closed) }()
 	<-canceled

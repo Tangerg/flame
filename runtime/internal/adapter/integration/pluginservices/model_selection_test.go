@@ -84,7 +84,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 	}
 }
 func TestAbsentModelSelectionDoesNotDiscoverAnImplicitProvider(t *testing.T) {
-	composition, _, _ := installedContextFixture(t, "valid")
+	composition, _, _ := installedContextFixture(t, "valid", modelchoice.Interaction)
 	proposed := testsupport.DefaultModelSelection()
 	actual, err := composition.SelectModel(t.Context(), modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: proposed, Request: nil})
 	if err != nil || actual != proposed {
