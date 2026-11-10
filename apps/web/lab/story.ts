@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { CompositionFixtureState } from "./scenarios/compositionFixtureStates";
 import type { ComputerFixtureState } from "./scenarios/computerFixtureStates";
 import type { VisualAgentState } from "./scenarios/agentFixtureStates";
+import type { VisualFileListState } from "./scenarios/agentFixtureFacts";
 import type { VisualWorkIndexState } from "./scenarios/shellFixtureStates";
 import type { VisualSettingsPane, VisualWorkspaceState } from "./scenarios/workspaceFixtureStates";
 
@@ -31,7 +32,7 @@ export type LabFixtureTarget =
   | {
       readonly fixture: "agent";
       readonly state: VisualAgentState;
-      readonly fileList?: "error";
+      readonly fileList?: VisualFileListState;
     }
   | { readonly fixture: "shell"; readonly state: VisualWorkIndexState }
   | {

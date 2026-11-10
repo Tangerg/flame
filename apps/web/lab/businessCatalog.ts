@@ -204,6 +204,11 @@ export const businessStories: readonly LabStory[] = [
         title: { en: "File suggestions: failed listing", "zh-CN": "文件候选：列表加载失败" },
         target: { fixture: "agent", state: "idle", fileList: "error" },
       },
+      {
+        id: "file-list-loading",
+        title: { en: "File suggestions: loading", "zh-CN": "文件候选：正在加载列表" },
+        target: { fixture: "agent", state: "idle", fileList: "loading" },
+      },
     ],
   },
   {

@@ -202,6 +202,8 @@ selection event. Suggestion acceptance settles selection with the committed
 draft before following input, preserving the captured focus owner's eligibility.
 File-list failure exposes keyboard Retry and returns from its disappearing
 action only while that action still owns focus.
+File and command suggestions dismiss on Shift+Tab without accepting a value,
+letting the browser return to the preceding control with the draft intact.
 
 Regeneration keeps rollback and follow-up admission under one captured Agent
 command lease. Only a committed rollback with Runtime's original dropped input

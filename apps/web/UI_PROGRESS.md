@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. File-suggestion failure now exposes keyboard Retry, preserves the padded draft and returns to the original input. Programmatic file/command entry synchronizes the actual caret, and suggestion acceptance allows immediate continued input. The Lab owns the independent failed-list comparison and its interaction checks. The final selection passes **11 browser cases**; the complete Web check passes **433 files / 4,826 tests** and every module gate. Actual Wails qualification covers English/light/14 px/Orange and Chinese/dark/18 px/custom blue at 200% and 300%. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. File and command suggestions now preserve the draft when Shift+Tab returns to the preceding native control. The Lab includes independent failed and unfinished file-list reads, and covers every file-suggestion status through the real Composer. The final selection passes **31 browser cases**; the complete Web check passes **433 files / 4,829 tests** and every module gate. Actual Wails qualification covers all five file-suggestion statuses across English/light/14 px/Orange and Chinese/dark/18 px/custom blue, including 200% and 300%. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3897,7 +3897,68 @@ are checked: only the seventeen authored source paths change. Native inputs and
 the primary checkout remain unchanged. No functional checks run after output
 restoration. Four original desktop images are retained outside the repository;
 temporary evidence is archived before the private qualification root is retired.
-Next inspect the remaining suggestion states and migrated task paths from fresh
+Reverse navigation exposes a shared completion defect in those remaining states.
+All **20 baseline cases fail in 159.961 s**: ready lists accept the highlighted
+file on Shift+Tab; empty, loading, failed and projectless panels consume the key
+without returning to the preceding control. Native Chinese 200% confirms the
+unintended `store_test.go` insertion and reference chip. The shared
+`handleSuggestionKey` now dismisses and lets reverse Tab continue without
+acceptance. File and command suggestions use that same owner. Forward completion,
+Retry, arrows, Escape and Shift+Enter keep their established contracts. A bounded
+Claude Code CLI supplies the two-file candidate in **23.509 s**; primary review
+verifies its eight read-only inputs and owns integration and qualification.
+Better Accessibility/Layout and the
+[Radix previous-focus guidance](https://www.radix-ui.com/primitives/docs/components/popover#keyboard-interactions)
+inform this return behavior; Flame retains its existing Base UI and native focus
+owners.
+
+The Agent catalog now also owns `file-list-loading`. Its captured DataProvider
+read stays unsettled; production query state supplies the loading presentation.
+There is no timer race, alternate loading renderer or new Runtime transition.
+The existing seeded public-focus entry serves both file-list comparisons.
+Twenty new closure cases cover all five statuses in Chromium/WebKit and both
+language/theme/font profiles. They record the ordinary native predecessor before
+opening a popup, retain the exact padded draft, return through Tab and continue
+editing in the same input. The ready cases also use the real command toolbar,
+reverse out without accepting, then complete with forward Tab and type the exact
+`/goal Continue this review.` draft without Send.
+
+The first candidate invocation passes **21 cases** while ten WebKit continuations
+expose a test error: the native End key does not place this macOS caret at the
+line end after Tab entry. The return and original-draft assertions already pass.
+The new continuation uses the platform line-end shortcut and verifies both
+selection coordinates before typing. Production focus behavior is unchanged by
+that correction. The final invocation passes **31/31 in 96.670 s**, with zero
+skips, retries, flaky results or global errors. All **84 final PNGs** are reviewed
+at original size, including 36 byte-identical previously reviewed images.
+The focused owner/registry checks pass **17 tests / 2 files**; types pass. The
+complete Web check passes **433 files / 4829 tests** and all module gates in
+**332.352 s**; production staging passes in **7.127 s**. The complete gallery and
+migrated interaction suite are not rerun.
+
+The unchanged signed Wails host loads the same **488 canonical Lab assets**;
+all 46 native inputs retain their bytes. English/light/14 px/Orange/full motion
+and Chinese/dark/18 px/blue/no motion qualify ready and empty file return and
+command return/completion at the exercised 200%/300% frames. Chinese also covers
+loading and failure at both zoom levels, including Retry → input → preceding
+control. English projectless entry returns to Choose project at both levels and
+continues the original draft. Native row focus is visibly revealed; long Chinese
+300% drafts retain their existing inner scroll path to the complete toolbar and
+Send. Chinese Window Zoom at 300% and restoration to the ordinary 200% window
+retain the exact draft. All **27 native images / 27 AX records** are reviewed,
+including baseline evidence. No Goal is executed. Recorded reads do not qualify
+live filesystem discovery or successful recovery; physical IME and VoiceOver
+audio remain unverified.
+
+All six native processes exit 0, the owned HTTP server stops and the private app
+is unregistered. Six Library paths return to absence, three original empty WebKit
+helper roots retain their identity, and all twelve output/cache roots return to
+captured contents and modes or absence. All 6734 non-Markdown inputs are checked:
+only the ten authored source paths change. The primary checkout and native inputs
+remain unchanged. No functional checks run after output restoration. Four
+original desktop images are retained outside the repository; temporary evidence
+is archived before the private qualification root is retired. Next return to
+remaining content/Dock paths and unqualified migrated interactions from fresh
 evidence. Computer capacity and whole-product visual acceptance remain open.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)

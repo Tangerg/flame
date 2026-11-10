@@ -7,6 +7,7 @@ export const VISUAL_CONTEXT_TOKENS = 96_000;
 export const VISUAL_WORKSPACE_PATH = "/Users/visual/scope";
 
 export const VISUAL_FILE_MENTION_DRAFT = "@store";
+export type VisualFileListState = "error" | "loading";
 
 export const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
 

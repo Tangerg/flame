@@ -26,6 +26,8 @@ export function handleSuggestionKey<T>(
   // While the popup is open these keys belong to it, even with no items to
   // show (loading / error / "no matches"): otherwise they fall through to the
   // composer bindings and e.g. ArrowUp recalls history over the draft.
+  // Shift+Tab is the exception: it closes the popup but stays native backward
+  // focus navigation, so it must never accept.
   const count = list.items.length;
   switch (event.key) {
     case "ArrowDown":
@@ -35,6 +37,10 @@ export function handleSuggestionKey<T>(
       if (count > 0) list.setIndex((list.index - 1 + count) % count);
       return true;
     case "Tab":
+      if (event.shiftKey) {
+        list.dismiss();
+        return false;
+      }
       if (count > 0) list.accept(list.items[list.index] ?? list.items[0]!);
       else list.dismiss();
       return true;

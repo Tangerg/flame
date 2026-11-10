@@ -75,6 +75,15 @@ for (const story of catalog.stories) {
               page.getByRole("button", { name: chinese ? "重试" : "Retry", exact: true }),
             ).toBeVisible();
           }
+          if (
+            entry.storyId === "business-agent-scenarios" &&
+            entry.variantId === "file-list-loading"
+          ) {
+            await expect(page.getByRole("textbox")).toHaveValue("@store");
+            await expect(page.getByRole("status")).toHaveText(
+              chinese ? "正在加载项目文件…" : "Loading project files…",
+            );
+          }
           if (entry.storyId === "business-workspace-scenarios") {
             if (entry.variantId === "dock-usage-reports") {
               await expect(

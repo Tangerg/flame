@@ -1805,6 +1805,138 @@ for (const browserName of ["chromium", "webkit"] as const) {
     { locale: "en", theme: "light", fontSize: 14, messages: en },
     { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
   ]) {
+    for (const status of ["ready", "empty", "loading", "error", "no-workspace"] as const) {
+      mentionTest(
+        `${browserName} file suggestions preserve reverse Tab in ${status} for ${profile.locale}`,
+        async ({ page }, testInfo) => {
+          const messages: Record<string, string> = profile.messages;
+          await page.setViewportSize({ width: 560, height: 364 });
+          const story = catalog.story("business-agent-scenarios");
+          const selection = readSelection(
+            new URLSearchParams({
+              story: story.id,
+              variant:
+                status === "error" || status === "loading"
+                  ? `file-list-${status}`
+                  : status === "no-workspace"
+                    ? "empty"
+                    : "idle",
+              locale: profile.locale === "zh" ? "zh-CN" : "en",
+              theme: profile.theme,
+              "font-size": String(profile.fontSize),
+              motion: "off",
+            }).toString(),
+            catalog,
+          );
+          await page.goto(
+            previewURL(story, selection, `reverse-tab:${browserName}:${status}`) +
+              "&sidebar=collapsed",
+          );
+          await expectLabReady(page);
+          const input = page.getByRole("textbox", {
+            name: messages["composer.input.label"],
+            exact: true,
+          });
+          const originalInput = await input.elementHandle();
+          const prefix = "  Keep this draft. ";
+          const panel = page.getByRole("dialog", {
+            name: messages["composer.mention.heading"],
+            exact: true,
+          });
+          await input.fill(prefix);
+          await expect(panel).toBeHidden();
+          await input.press("Shift+Tab");
+          await expect(input).not.toBeFocused();
+          const previous = await page.locator(":focus").elementHandle();
+          expect(previous).not.toBeNull();
+          const draft = prefix + (status === "empty" ? "@no_captured_file_matches" : "@store");
+          await input.fill(draft);
+          if (status === "ready") {
+            const options = panel.getByRole("option");
+            await expect(options).toHaveCount(2);
+            await input.press("ArrowDown");
+            await expect(
+              panel.getByRole("option", { name: "runtime/session/store_test.go", exact: true }),
+            ).toHaveAttribute("aria-selected", "true");
+          } else {
+            await expect(panel.getByRole("status")).toContainText(
+              messages[`composer.mention.status.${status}`]!,
+            );
+          }
+          await testInfo.attach(`reverse-tab-${status}-before`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          await input.press("Shift+Tab");
+          const returned = () =>
+            previous!.evaluate((element) => ({
+              connected: element.isConnected,
+              focused: element.ownerDocument.activeElement === element,
+            }));
+          await testInfo.attach(`reverse-tab-${status}-result`, {
+            body: JSON.stringify({
+              draft: await input.inputValue(),
+              returnTarget: await returned(),
+            }),
+            contentType: "application/json",
+          });
+          await testInfo.attach(`reverse-tab-${status}-after`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          await expect(input).toHaveValue(draft);
+          await expect.poll(returned).toEqual({ connected: true, focused: true });
+          await expect(panel).toBeHidden();
+          await page.keyboard.press("Tab");
+          await expect(input).toBeFocused();
+          await input.press("ControlOrMeta+ArrowRight");
+          await expect(input).toHaveJSProperty("selectionStart", draft.length);
+          await expect(input).toHaveJSProperty("selectionEnd", draft.length);
+          await input.pressSequentially(" continued.");
+          await expect(input).toHaveValue(draft + " continued.");
+          expect(await input.evaluate((field, original) => field === original, originalInput)).toBe(
+            true,
+          );
+          expect(await page.locator("html").getAttribute("data-visual-sent-input")).toBeNull();
+          if (status === "ready") {
+            await input.fill("");
+            await page.getByRole("button", { name: messages["composer.add"], exact: true }).click();
+            await page
+              .getByRole("menuitem", { name: messages["composer.add.command"], exact: true })
+              .click();
+            const commands = page.getByRole("listbox", {
+              name: messages["composer.slash.heading"],
+              exact: true,
+            });
+            await expect(input).toHaveValue("/");
+            await expect(commands).toBeVisible();
+            await testInfo.attach("reverse-tab-command-before", {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+            await input.press("Shift+Tab");
+            await expect(input).toHaveValue("/");
+            await expect.poll(returned).toEqual({ connected: true, focused: true });
+            await expect(commands).toBeHidden();
+            await testInfo.attach("reverse-tab-command-after", {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+            await page.keyboard.press("Tab");
+            await expect(input).toBeFocused();
+            await input.press("ControlOrMeta+ArrowRight");
+            await expect(input).toHaveJSProperty("selectionStart", 1);
+            await expect(input).toHaveJSProperty("selectionEnd", 1);
+            await input.press("g");
+            await expect(commands).toBeVisible();
+            await input.press("Tab");
+            await input.pressSequentially("Continue this review.");
+            await expect(input).toHaveValue("/goal Continue this review.");
+            expect(await page.locator("html").getAttribute("data-visual-sent-input")).toBeNull();
+          }
+        },
+      );
+    }
     mentionTest(
       `${browserName} failed file suggestions keep keyboard retry and the draft in ${profile.locale}`,
       async ({ page }, testInfo) => {

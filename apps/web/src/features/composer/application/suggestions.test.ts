@@ -47,6 +47,14 @@ describe("handleSuggestionKey", () => {
       expect(l.dismiss).toHaveBeenCalledOnce();
     });
 
+    it("dismisses on Shift+Tab and lets it through for backward focus", () => {
+      const l = list({ items: [] });
+      expect(handleSuggestionKey(l, press("Tab", true))).toBe(false);
+      expect(l.dismiss).toHaveBeenCalledOnce();
+      expect(l.accept).not.toHaveBeenCalled();
+      expect(l.setIndex).not.toHaveBeenCalled();
+    });
+
     it("lets Shift+Enter through for a newline", () => {
       const l = list({ items: [] });
       expect(handleSuggestionKey(l, press("Enter", true))).toBe(false);
@@ -75,6 +83,14 @@ describe("handleSuggestionKey", () => {
       expect(l.accept).toHaveBeenCalledWith("b");
       expect(handleSuggestionKey(l, press("Tab"))).toBe(true);
       expect(l.accept).toHaveBeenCalledWith("b");
+    });
+
+    it("dismisses on Shift+Tab without accepting and lets it through for backward focus", () => {
+      const l = list({ items: ["a", "b"], index: 1 });
+      expect(handleSuggestionKey(l, press("Tab", true))).toBe(false);
+      expect(l.dismiss).toHaveBeenCalledOnce();
+      expect(l.accept).not.toHaveBeenCalled();
+      expect(l.setIndex).not.toHaveBeenCalled();
     });
   });
 });
