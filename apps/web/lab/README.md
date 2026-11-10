@@ -352,6 +352,14 @@ back to the original reference. It also checks the package source's identity,
 return focus, transcript position at an unchanged viewport and continued Composer
 draft. Captures accompany visible-row and scroll observations in that same case.
 
+The existing Subagent header scenario follows completed task 3 of 4 through
+short-window reflow, keyboard and pointer source inspection, list return and an
+exact continued Composer draft. It checks complete source fragments against the
+actual reading viewport and Jump affordance in WebKit, English and Chinese.
+The named title reader's Home/End path retains status, Back and result position;
+its focus stop also belongs to the existing navigation contract. Wails uses the
+same scene for actual native zoom, wheel and window-change qualification.
+
 File failure checks distinguish first entry into the tree from returning to a
 previously focused row. They retain reading focus after Retry, reference return and
 unsent drafts in both languages. Narrow ordinary material uses its existing full-width opener

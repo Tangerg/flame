@@ -52,15 +52,17 @@ import { SubagentStopButton } from "@/features/chat/message/ui/SubagentStopButto
 const styles = stylex.create({
   header: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
     flexShrink: 0,
     minWidth: 0,
     minHeight: "var(--surface-header-height)",
+    // Status and controls must still leave one complete line for the scrollable title.
+    maxHeight: "max(calc(100% / 3), calc(var(--surface-header-height) + 1lh))",
     paddingInline: "var(--layout-compact-gutter)",
     paddingBlock: space.s2,
   },
-  headLine: { minWidth: 0, flex: 1 },
+  headLine: { minWidth: 0, flex: 1, alignSelf: "center" },
   scroller: {
     paddingBlock: space.s3,
     scrollPaddingBlockEnd:
@@ -85,8 +87,23 @@ const styles = stylex.create({
     "--reading-gutter": "var(--layout-compact-gutter)",
   },
   evidence: { marginBottom: space.s6 },
-  summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
+  summary: {
+    display: "flex",
+    flexDirection: "column",
+    alignSelf: "stretch",
+    gap: space.s0_5,
+    minWidth: 0,
+    minHeight: 0,
+    flex: 1,
+  },
+  identity: {
+    flex: "0 1 auto",
+    minWidth: 0,
+    // Keep the scrollport's focus perimeter outside the name/status reading edge.
+    marginInline: `calc(-1 * ${space.s0_5})`,
+  },
   name: {
+    display: "block",
     overflowWrap: "anywhere",
     textWrap: "balance",
     fontWeight: weight.medium,
@@ -264,14 +281,21 @@ export function SubagentsPanel() {
         )}
         {summary ? (
           <div {...stylex.props(styles.summary)}>
-            <span
-              id={summaryId}
-              data-slot="subagent-identity"
-              {...stylex.props(styles.name, typeStep.uiSm)}
+            <ScrollArea
+              tabIndex={0}
+              role="group"
+              aria-label={summary.label}
+              className={stylex.props(styles.identity).className}
             >
-              {summary.label}
-            </span>
-            <span {...stylex.props(vocab.line, toneInk[summary.ink], typeStep.uiXs)}>
+              <span
+                id={summaryId}
+                data-slot="subagent-identity"
+                {...stylex.props(styles.name, typeStep.uiSm)}
+              >
+                {summary.label}
+              </span>
+            </ScrollArea>
+            <span {...stylex.props(vocab.line, vocab.hold, toneInk[summary.ink], typeStep.uiXs)}>
               <StatusDot tone={summary.dotTone} />
               {summary.statusLabel}
             </span>

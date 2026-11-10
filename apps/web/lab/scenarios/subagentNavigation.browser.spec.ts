@@ -40,8 +40,16 @@ test("subagent navigation keeps keyboard focus with its selected task and restor
   ).toBeGreaterThan(0);
   await back.press("Tab");
   await expect(
+    panel.locator("header").getByRole("group", {
+      name: "Audit Agent Framework ownership",
+      exact: true,
+    }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
     panel.locator("header").getByRole("button", { name: "Cancel this run" }),
   ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Shift+Tab");
   await expect(back).toBeFocused();
   await back.press("Enter");

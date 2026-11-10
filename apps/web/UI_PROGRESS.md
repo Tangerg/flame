@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. The current Tool-reading repair preserves usable source space, focus and exact drafts through continuous reflow, internal wheel reading and native window changes. The merged Web check passes **433 files / 4,824 tests**, the targeted existing Lab selection passes **34 tasks**, and supported native verification passes. Actual Wails English/light/14 px and Chinese/dark/18 px tasks qualify 200%/300% reading and return to editing. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Tool reading retains its qualified reflow behavior; the current Subagent repair also reserves usable source space beneath long titles. The Web check passes **433 files / 4,824 tests**, the targeted existing Lab selection passes **21 tasks**, and supported native verification passes. Actual Wails English/light/14 px and Chinese/dark/18 px tasks qualify 200%/300% reading, independent title scrolling, source return and exact continued drafts. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -41758,78 +41758,82 @@ After guarded main fast-forward, push and direct remote equality verification,
 the owned app/home/assets/diagnostic archives/overlays/CLI material/logs/npm-cache
 root is removed. Keep the worktree and goal active for continued polish.
 
-### Subagent native result and nested reading after main (2026-11-05)
+### Subagent result reading and source return (2026-11-11)
 
-This follow-up reviews the current `3380187b5` product through conversation
-draft → task overview → selected result or nested task → recorded source or
-Tool parameters → original conversation → continued draft. A fresh main fetch
-confirms identical heads. No product-source repair is selected: the current
-summary, result, nested inspection, shared transcript and return owners pass
-the inspected paths without another layout or focus mechanism.
+The existing seven Subagent checks pass on `be3e85410`, but actual Wails
+Chinese/dark/18 px reading at 300% exposes another defect: the long selected
+title consumes the short pane, and Jump covers the focused source's second
+line. Native Window Zoom temporarily clears it; restoring the window reproduces
+it. The matching WebKit regression passes English and fails Chinese, placing
+the source roughly **30 px** below its actual safe reading edge.
 
-Read-only ZCode's actual `v4/ConversationAgentToolCallRow.tsx` carries the
-root/parent/child identity and the same visible title into its pane action.
-ChatGPT's actual `open-local-conversation-subagents-panel-142bf1886339.js`
-checks captured selection after hydration. These supply UI navigation evidence,
-not exporter behavior or native acceptance. Better-layout and better-ui guide
-the shared-edge, wrapping and control-clearance review; earlier reference work
-retains its documented scope. Existing typography, whitespace, status tokens,
-Orange/custom themes and full-motion preferences remain unchanged.
+`SubagentsPanel.tsx` now bounds the header's share of the pane while retaining
+one complete title line. Its existing shared `ScrollArea` reads the single
+complete identity by wheel or keyboard. Status and Back/cancel remain outside
+that title scroller. The title's inset focus perimeter sits outside the shared
+name/status edge, preserving the original **1 px** alignment assertion.
+Overview centering remains intact. No new breakpoint, observer, scroll-follow
+state, focus manager or Runtime contract is introduced.
 
-Actual Wails **3.1.0** uses a private signed host and the unchanged production
-fixture composition, canonical delegated snapshot and installed Tool-results
-resources. All nine serial preparation/build/sign/register steps pass on the
-existing owned Node 24.22.1, npm 11.21.1 and Go 1.27.3 toolchain. All **331 Web
-files, 24 host files and four signed bundle files** retain their exact hashes.
+Read-only ZCode's actual `v4/ConversationAgentToolCallRow.tsx` informs retention
+of the visible title and root/parent/child identity. Existing HeroUI bounded-reader
+research, better-layout and better-accessibility guide control clearance and
+keyboard reading. Flame retains its shared components, Base UI, StyleX and tokens.
+A bounded Claude Code CLI candidate completes in **86.536 s** in copied scope;
+its overflow suggestion does not establish keyboard access to the complete title.
+Primary review instead implements and qualifies the existing named ScrollArea.
 
-- **English / light / 14 px / Orange #FB6E30:** confirmed keyboard splitter
-  focus and Home reach **320 px** from 363 px. The six-task overview retains
-  separate titles, status and actions. The failed task retains its complete
-  error; Return restores its list entry and Tab/Return enters finished task
-  **3 of 4**. Main-area entry, sidebar collapse and twenty native Zoom In actions
-  from Actual Size reach **200%**, **2238 × 1720**. Keyboard focus reveals the
-  source reference below the standing task header. Enter opens the complete
-  canonical file path and all eight recorded lines with line 4 selected; Escape
-  returns to the same visible reference and reading context. Actual Close,
-  Actual Size, Dock collapse and explicit Composer caret placement continue
-  `Keep the subagent review draft. Continue after reading the result and source.`.
-- **Chinese / dark / 18 px / #6C9EFF:** confirmed keyboard resizing reaches
-  **320 px**. The waiting parent retains its title, status and cancel affordance.
-  Main-area entry and twenty Zoom In actions from Actual Size reach **200%**.
-  Native Window → Move & Resize → Top Left settles at **2240 × 1456**. From
-  the current overview, explicit parent re-entry and its nested opener select
-  `Verify package dependencies`. Keyboard expansion reveals the recorded search
-  parameters. Confirmed Wrap and named parameter-reader focus, then End, reveal
-  both exact values and the closing JSON brace. Escape returns to the parent
-  with visible focus on the nested opener. Actual Close, Actual Size, Dock
-  collapse and explicit Composer caret placement continue
-  `子代理核对草稿。已读完嵌套任务的工具参数，继续对话。`.
+The existing Lab `subagentHeader` scenario adds English/light/14 px/full-motion
+and Chinese/dark/18 px/motion-off WebKit tasks. From an exact padded draft they
+open completed task **3 of 4**, focus its canonical source, reflow through
+560 × 377, 373 × 251, 504 × 316 and back, inspect the source by keyboard and
+pointer, return to the same task/list row, and continue the original draft.
+Eight consecutive frames check source bounds against actual scroll padding,
+zero Jump overlap and hit visibility of every text fragment. Home/End reveal
+the complete first/last title line without moving the result reader. Source
+and Composer DOM identity, exact draft bytes, status, Back and return focus
+remain asserted. Existing navigation coverage explicitly includes the new
+named title focus stop before cancellation.
 
-A guarded Chinese nested-entry action is excluded; the fresh AX state is the
-overview and the subsequent explicit re-entry supplies the qualified task.
-The initial **1458 px** resize transition and the **1306 × 850** rescaled final
-Chinese draft capture do not support geometry claims. The final draft's AX and
-visible text establish content continuity. Tab counts alone do not establish
-focus. Static fixture sidebar labels remain readouts. File content is the canned
-eight-line fixture independent of its selected path, so this does not qualify
-live filesystem accuracy. No Send, Steer, Stop, cancellation, approval, Copy or
-external-link command is activated. Live Runtime/provider execution, installed
-package upgrades, physical IME, VoiceOver, other native locales, RTL and
-whole-product acceptance remain outside this review. No new test suite, browser
-visual suite or performance benchmark runs; prior checks retain their scope.
+The final combined Lab selection passes **21/21** in **51.078 s**, without
+skips, retries, flaky cases or global errors. Its **25 PNG attachments** are
+inspected across five contact sheets. Original narrow-header alignment,
+selected identity, nested navigation, delegated transcript and Dock-tab contracts
+remain enabled. Targeted owner tests pass **2 files / 28 tests**. The complete
+Web check passes **433 files / 4,824 tests** in **388.609 s**, including its
+normal static and production-bundle checks. Then `make check-native` passes
+in **72.174 s**, retaining the existing macOS linker warnings. An initial Runtime
+preparation attempt stops on the missing prepared Node companion; the canonical
+artifact preparation succeeds, and normal `make build-runtime` passes in
+**77.223 s** before the final gates. No deadline or assertion is weakened.
 
-Both native processes are reaped with exit **0**, after **190.493 s** and
-**311.869 s**. All **6,630 tracked non-Markdown files** remain byte-identical.
-Evidence retains **81 UTF-8 records / 21 capture digests** with a verified gzip
-round trip of **844,898 bytes**, SHA-256
-`e995bc69baf625ccbd19cb601202ee428feb52d49805082e356a6bc8911ac927`.
-The exact app registration, two created UID stores and private root are retired;
-all six UID locations are absent, and the exact binary and port **50968** are
-inactive. Six output trees and two UI cache files match baseline after restoring
-only two generated UI files. Five originally absent output roots stay absent;
-the 58 real nested Web dependency files remain. The primary user checkout stays
-clean on `00c172c73`. No actionable layout findings remain in these inspected
-tasks. Approve for this scope; continue with other actual pages and task paths.
+Actual Wails **v3.1.0** loads the same **488 canonical Lab assets** used for the
+final presentation. Both profiles qualify native **200% and 300%** Zoom In,
+wheel reading inside the title with source focus retained, Window Zoom/restore,
+Home/End title reading, pointer and Enter source opening, Escape return,
+All subagents return to the original completed row, re-entry, Close and exact
+continued Composer drafts. All four baseline/final application processes exit
+**0**. The inspected **38 native PNGs** retain eleven baseline captures and
+27 final captures; **21 final captures** support acceptance. Four intermediate
+title-paint captures, one intermediate source-paint capture and one unpaired
+supporting duplicate remain diagnostic evidence, excluded from acceptance.
+The later complete edge/source-return captures establish the qualified result.
+
+All **6,734 non-Markdown inputs** are accounted for: only the component and
+two existing Lab specs change. All **46 production native inputs** remain
+unchanged. The exact private registration and six Library locations are removed;
+three pre-existing empty WebKit helper roots retain identity, mode and flags.
+All **12 output/cache roots** match baseline content/mode or original absence;
+no functional gate runs against restored old outputs. The current merged-lock
+dependency install remains. The user's primary checkout stays clean on
+`58a3995da`. Evidence and four original before/after/task screenshots are retained
+outside the repository while disposable qualification resources are retired.
+
+The file sample remains the canned eight-line fixture, independent of selected
+path. No Send, Steer, Stop, cancellation, approval, Copy or external-link command
+is activated. Live Runtime/provider behavior, physical IME, VoiceOver, other
+native locales, RTL and whole-product visual acceptance remain unqualified.
+Continue with other actual pages and task paths through the same Lab.
 
 ### Selected subagent results and empty readers (2026-11-03)
 
