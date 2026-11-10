@@ -408,7 +408,8 @@ The existing Workspace sidebar offers `Observe layout`, off by default. It reads
 window, Dock, viewport, Composer and focus geometry without changing the material
 or its draft. Composer observations include control bounds and secondary-label
 visibility. Named screen-reader outputs expose one snapshot in full and a compact
-reading projection for native accessibility tools with bounded text nodes.
+reading projection for native accessibility tools with bounded text nodes. The
+Composer projection includes its scrollport's offset, viewport and content height.
 Editable values never enter these outputs. Disabling the option clears them and
 disconnects its observers and event listeners; clean qualification keeps it off.
 The same ResizeObserver tracks the current Panel body and Composer, so filtering,
@@ -434,6 +435,16 @@ clipping ancestor and admit five pointer hit locations over eight consecutive
 frames, with another check after capture. Wheel reading settles before keyboard
 return. These checks exercise the production Composer scrollport; they add no
 alternate fixture, runner or layout measurement authority.
+
+The existing Workspace chrome suite checks Composer reading continuity through
+two full-width Schedules visits in Chromium/WebKit, English/light/14 px and
+Chinese/dark/18 px. The first starts at a keyboard-revealed footer control; the
+second follows deliberate wheel reading. At an unchanged 373 × 243 px viewport,
+eight return frames must preserve the saved native offset, exact padded draft,
+selection and input/scrollport identities, with focus on the conversation.
+Hidden content retains layout without exposing the conversation to interaction
+or accessibility. Evidence includes the Plan, Goal, editor and footer geometry;
+actual Wails page zoom qualifies the native host separately.
 
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and

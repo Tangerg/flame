@@ -577,12 +577,9 @@ describe("explicit Composer focus", () => {
     expect(draft.value).toBe("Keep this draft — 保留");
   });
 
-  it.each(["control", "conversation"])("keeps later focus on a %s", (target) => {
+  it("keeps later outside focus before Composer delivery", () => {
     const { panel } = settings();
-    const later =
-      target === "control"
-        ? screen.getByRole("button", { name: "Later control" })
-        : screen.getByLabelText("Conversation");
+    const later = screen.getByRole("button", { name: "Later control" });
 
     act(() => {
       panel.current!.focusComposer();
@@ -591,6 +588,17 @@ describe("explicit Composer focus", () => {
 
     expect(testClient.navigation.get().view).toBeNull();
     expect(document.activeElement).toBe(later);
+  });
+
+  it("keeps later focus on the revealed conversation", () => {
+    const { panel } = settings();
+
+    act(() => panel.current!.focusComposer());
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    act(() => conversation.focus());
+
+    expect(testClient.navigation.get().view).toBeNull();
+    expect(document.activeElement).toBe(conversation);
   });
 
   it("retires the request when the Session changes before delivery", () => {

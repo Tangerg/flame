@@ -144,6 +144,9 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
       // Content can reflow inside an unchanged viewport.
       const body = reader?.querySelector('[data-slot="panel-body"]') ?? null;
       const composer = document.querySelector<HTMLElement>('[data-slot="composer-root"]');
+      const composerScrollport = document.querySelector<HTMLElement>(
+        '[data-slot="composer-scrollport"]',
+      );
       const footer = composer?.querySelector<HTMLElement>('[data-slot="composer-footer"]');
       for (const [before, next] of [
         [state.observedReader, reader],
@@ -202,6 +205,13 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
               width: view.getComputedStyle(composer).width,
               clientWidth: composer.clientWidth,
               total: composer.scrollWidth,
+              scrollport: composerScrollport
+                ? {
+                    top: composerScrollport.scrollTop,
+                    height: composerScrollport.clientHeight,
+                    total: composerScrollport.scrollHeight,
+                  }
+                : null,
               footer: footer ? { rect: rect(footer), total: footer.scrollWidth } : null,
               actions: Array.from(footer?.querySelectorAll("button") ?? []).map((action) => {
                 const label = action.querySelector('[data-slot="composer-chip-label"]');
@@ -241,6 +251,13 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
               width: snapshot.composer.rect?.width,
               css: snapshot.composer.width,
               total: snapshot.composer.total,
+              scrollport: snapshot.composer.scrollport
+                ? [
+                    snapshot.composer.scrollport.top,
+                    snapshot.composer.scrollport.height,
+                    snapshot.composer.scrollport.total,
+                  ]
+                : null,
               footer: snapshot.composer.footer?.total,
               actions: snapshot.composer.actions.map((action) => [
                 action.rect?.left,

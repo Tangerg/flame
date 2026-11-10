@@ -390,12 +390,17 @@ export function ChatPanel({ onSend, ref }: Props) {
       >
         <div
           ref={conversationRef}
-          hidden={presentedMain}
+          inert={presentedMain}
+          aria-hidden={presentedMain || undefined}
           tabIndex={-1}
           role="region"
           aria-label={t("shell.region.conversation")}
           data-focus-inset=""
-          {...stylex.props(sh.paneNarrow, paneStyles.conversation)}
+          {...stylex.props(
+            sh.paneNarrow,
+            paneStyles.conversation,
+            presentedMain && paneStyles.inactiveView,
+          )}
         >
           <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
             {conversationReady ? (

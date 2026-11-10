@@ -20721,6 +20721,105 @@ No functional checks run after restoration. The final source batch uses ordinary
 commit hooks and publication to main; the captured evidence tree is retired after
 verified in-memory retention. No storage, protocol or user-data migration is needed.
 
+### Composer reading across full-width material (2026-11-10)
+
+The preceding native task leaves the new internal Composer scroll offset
+unqualified. A fixed Lab task reproduces the defect: at 373 × 243 px, opening
+Schedules and closing it moves WebKit's offset from 61 to 10 px in English and
+96 to 10 px in Chinese. Chromium preserves it. Exact draft, selection and DOM
+identity alone therefore cannot qualify reading continuity.
+
+`ChatPanel.tsx` now gives the conversation the existing retained-view treatment:
+`visibility: hidden`, `inert` and `aria-hidden` replace `hidden`'s layout removal.
+`ContentVisibility` still retires observers, focus witnesses and open popups.
+The first correction alone exposes another clamp: `ActivePlan.tsx` removes its
+32 px host whenever the conversation hides. It now keeps the current accepted
+Plan projection mounted. The shared Popover already owns hidden-reader
+retirement and explicit reopening; that contract stays in place. Neither
+component caches a scroll offset or advances another navigation/Plan fact.
+
+Better-layout's retained reading structure and better-accessibility's hidden
+interaction/focus rules guide the repair. Read-only ZCode
+`RootWorkspaceContent.tsx` demonstrates why retained workspace geometry and
+inert interaction are separate needs; its opacity strategy is not copied.
+Three bounded Claude Code CLI tasks edit disposable copies only. Review admits
+the conversation treatment and Plan guard removal. An intermediate material
+header move does not fix the Plan clamp and is fully removed; the existing
+header structure and CSS remain unchanged.
+
+The existing Workspace chrome spec owns four English/light/14 px and
+Chinese/dark/18 px tasks in Chromium/WebKit. They traverse every footer control,
+retain a padded draft and selection, search the full-width Schedules material
+and return twice. The second visit starts after deliberate wheel reading.
+Eight rendered return frames require the original native offset and conversation
+focus; input and scrollport identities remain, and editing continues. Hidden
+content retains a nonzero viewport and unchanged content height. Geometry
+evidence includes the Plan, Goal, editor and footer. The existing opt-in native
+readout also projects offset, viewport and content height without editable
+values or additional listeners. It remains off by default.
+
+The original four cases expose two genuine WebKit reading failures. Retaining
+conversation layout alone, and the intermediate header move, remain failed
+evidence. The final retained Plan/conversation selection passes **5 / 5** in
+**24.075 s**, including eight-frame readout agreement and refusal to focus an
+inactive conversation. There are no retries, skips or global errors. The broad
+existing Lab selection passes **199 / 200** in **462.133 s**; its sole failure
+captures an intermediate Composer width as a fixed resize expectation. The
+corrected readout case compares current geometry and projection over eight
+stable rendered frames and passes in the final selection. No valid geometry
+assertion or timeout is weakened. All **289 broad images / 49 contact sheets**
+and **16 final images / three sheets** are inspected.
+
+Shell, Composer, Goal and Plan units pass **55 files / 593 tests** in
+**12.372 s**. The first run exposes one old case trying to focus a still-inert
+conversation inside an uncommitted React update. Its before-delivery outside
+focus case remains unchanged in behavior; the conversation case now focuses
+the actually revealed region. Both keep their original final focus assertion.
+The existing hidden Plan reader, replacement and explicit-reopen cases pass.
+Web typecheck, lint, unused-code, style, shorthand and layer checks pass.
+`make check-native` passes in **74.283 s**, including Desktop test/vet/build
+and the pinned Wails v3 production build. The private native wrapper uses the
+same **492 byte-identical canonical assets**; all **46 Desktop source inputs**
+remain unchanged in the worktree.
+
+Native English/light/14 px and Chinese/dark/18 px tasks use the existing
+Workspace fixture with a padded four-line draft. At 200% page zoom, keyboard
+traversal reaches the footer controls. At 300%, the actual viewport is
+**480 × 300 px** at DPR 6. English retains **63 px**, then **54 px** after
+deliberate wheel reading, through two Schedules visits. Chinese retains
+**97 px**, then **86 px**. Both search Nightly, wheel through the material,
+return focus to Conversation and continue the exact original draft. The
+Chinese footer is refocused after zoom before recording its starting offset;
+the zoom operation alone does not qualify focused-control visibility. Hidden
+Composer viewport height changes from 194 to 148 px, while its content height
+and original offset remain intact. Neither task activates Send, Steer or Stop.
+
+Observation-off controls repeat material return and draft continuation. The
+native Window menu enlarges and restores the window, and actual-size zoom
+restores both profiles with the continued draft intact. Corner drags did not
+resize this window and are not counted as new minimum-window qualification.
+**25 unique native views, 80 zoom-step AX states and 14 footer-traversal states**
+retain the evidence; two original native images are kept for delivery. OS IME,
+VoiceOver speech, RTL, live Runtime execution and exact Schedules reader-offset
+retention are not newly qualified. This is focused coverage, not a full-product
+visual certification.
+
+The fresh main fetch has no incoming commits at `906e97f23`. Both private native
+processes exit normally, the app is unregistered and the captured server stops.
+Six private Library paths return to absence and three preexisting helper roots
+retain their identities and flags. Output restoration compares all 6,716
+non-Markdown source inputs, admitting only the five owned modifications. All
+12 output/cache roots return to their baseline contents and modes, and the
+primary checkout is unchanged. Functional checks finish before restoration;
+ordinary commit hooks and read-only integrity checks follow. The batch is
+published to main and its captured evidence tree is retired after verified
+in-memory retention. No storage, protocol or user-data migration is needed.
+
+The next observed candidate is Conversation header pressure at the existing
+373 × 243 px Chinese Lab size: Diff statistics crowd the full-width material
+opener. The 480 px native view fits. Reproduce and trace that narrower geometry
+before deciding whether another production change is justified.
+
 ### Model catalog reading and recovery
 
 The original native application reproduced two connected task breaks. With the

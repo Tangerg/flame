@@ -271,6 +271,15 @@ positions such as a code source's. Reveal measures current geometry normally.
 An empty conversation removes the Composer overlay, and the shared shell's
 notification insets still clear while hidden.
 
+The conversation keeps its layout while a full-width material makes it inert,
+inaccessible and unpainted. Its compact Plan projection also remains mounted;
+the shared Popover retires an open checklist through `ContentVisibility` and
+requires an explicit reopen. Removing either layout would let WebKit reset or
+clamp the Composer's native scroll offset. With unchanged content and viewport,
+closing material retains the draft, selection and reading position while the
+existing navigation owner returns focus to the conversation. No second
+scroll-position cache is introduced.
+
 Inline Markdown tables consume the same safe height, with their actions and
 reader forming one fitting reading unit. Each table measures only its intrinsic
 minimum: actions, header and one padded body line. When that minimum exceeds the
