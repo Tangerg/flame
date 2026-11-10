@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **paused at the user's request**. The component lab remains the sole UI visual verification owner: **97** browser, capture and measurement spec files, one Playwright configuration, **44 stories** and **26 Workspace variants**. This checkpoint follows the published `cfd4ca463` baseline; its material-header candidate preserves the name with the existing compact return arrow. Its Workspace/content selection passes **64 / 64** cases, short Composer reachability passes **4 / 4**, and Shell units pass **204 tests**. Baseline native review confirms that keyboard focus reveals the bounded Goal/Composer controls; the earlier screenshot alone did not establish another allocation defect. Final native qualification of the new return presentation and remaining image review are pending. The user explicitly requests committing and pushing this pause checkpoint to main. Resume UI work from the full-width material section below only when requested; whole-product visual acceptance remains unfinished.
+UI polishing is **active again at the user's request**. The worktree fast-forwards from the published `2182073f9` pause checkpoint to main `58a3995da`, incorporating three commits across 449 files without conflicts. The material-header change now passes the complete merged Web check, 70 existing Lab browser tasks and actual Wails English/light/14 px and Chinese/dark/18 px checks at 200%/300%. The only new source change makes syntax-foreground assertions follow source characters rather than incidental span boundaries. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Qualification is scoped to these inspected tasks; whole-product visual acceptance remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20971,40 +20971,108 @@ its clipped off-screen portions alone do not establish another allocation
 defect. The seven focused captures and complete Goal/Stop views are inspected.
 No Send, Steer, Stop, Pause or Clear command is activated.
 
-The full Workspace chrome/content selection passes **64 / 64** in **154.174 s**,
-with all **82 images** inspected. The existing short Composer scenarios pass
-**4 / 4** in **32.538 s** without skips, retries, flaky cases or global errors;
-**48 of 72 images** are inspected, with the remaining **24** pending at pause.
-The first Shell run passes 202 tests and fails two assertions requiring visible
-return-button text. That presentation expectation is superseded by this deliberate
-compact-arrow change and its Lab regressions. The redundant text-content assertion
-is removed; the test still finds the exact accessible destination and verifies
-return navigation, retained evidence, focus and draft. The next run passes all
-**14 files / 204 tests** in **12.605 s**.
+The published `2182073f9` pause checkpoint had passed the original **64 / 64**
+Workspace checks and **4 / 4** short Composer tasks, but only 48 of their 72
+images had been inspected and the native gate was interrupted. That checkpoint
+was published at the user's request without claiming final native qualification.
+The resumed work fast-forwards to main `58a3995da` without conflicts: three
+commits change 449 files, including dependency upgrades and the ChatPanel/Lab
+contract graph. A normal root `npm ci` installs the merged lock with Node
+**24.22.1** and npm **11.21.1**; the current-lock installation remains available.
 
-Web typecheck, lint, unused-code, circular-dependency, layer, design-system,
-token, style, shorthand, chrome, locale and bundle checks pass. The user requests
-a milestone pause while `make check-native` is running; its owned process tree
-is stopped, and the final Lab build is not started. The candidate has no final
-native qualification. The user subsequently requests committing and pushing this
-pause checkpoint to main; this publication does not resume UI polishing. The
-preceding published native result does not qualify this changed presentation.
+The first complete merged Web run exposes a syntax-test assumption: the light
+case expects 17 authored spans but receives 28 themed spans. Its unchanged
+focused run then passes **4 / 4**. Shiki, its selected core/themes/languages and
+culori versions did not change, so the dependency upgrade is not established as
+the cause. `paletteSyntax.test.ts` now resolves the inherited foreground of every
+non-whitespace source character instead of matching incidental span boundaries.
+Exact source including whitespace, escaping, the exact palette variable and hex
+fallback, authored emphasis and the original **4.5** contrast requirement remain
+asserted. Renderer, palette, dependencies, configuration and deadlines are
+unchanged. The bounded Claude Code CLI attempt exits **1** with an expired OAuth
+token (**401**); it changes no candidate or protected context. Primary completes
+and reviews this one test change.
 
-Resume with the remaining image review, interrupted native gate, final Lab build
-and actual Wails English/light/14 px and Chinese/dark/18 px checks at 200%/300%.
-Confirm complete material identity, keyboard and pointer return descriptions,
-return focus and exact continued drafts, with observation both enabled and
-disabled. The reviewed checkpoint includes four source/test changes and these three documentation
-changes. No new visual entrypoint, runner, fixture catalog or progress file is added.
+The complete final `npm run check --workspace @flame/web` passes in **342.730 s**:
+**433 files / 4,816 tests**, including all 52 Runtime fixture integration cases,
+plus every type, lint, format, boundary, resource, design-system, style, locale
+and bundle gate in that command. The first run's missing offline Node companion
+is supplied through its existing immutable artifact owner; those cases are not
+skipped in the final run. Production Web staging passes in **10.730 s**.
 
-Pause cleanup stops the verifier and static server with observed exit **143**,
-unregisters the closed private app, restores six private Library paths to absence
-and preserves three preexisting WebKit helper roots. All **12 output/cache roots**
-return to their captured contents and modes: **2,596 captured nodes** are removed
-and **316 files** restored. Source comparison covers **6,716 non-Markdown inputs**,
-admitting only the four owned changes and no added sources. All **46 native inputs**
-and the primary checkout remain unchanged. No functional checks run after this
-restoration; resumption must rebuild the candidate before native qualification.
+The existing Workspace chrome/content selection passes **64 / 64** in
+**178.755 s**. Existing short Composer and long code-reading cases pass **6 / 6**
+in **58.346 s**. There are no skipped, retried or flaky cases, or global errors,
+in either final browser run. All **156 PNGs** are actually inspected across
+**27 contact sheets**. The new complete 72-image short Composer review supersedes
+the pause checkpoint's partially inspected set. The initial browser attempt
+fails only because the upgraded Playwright executables are missing; installing
+the exact Chromium **1254** and WebKit **2388** into the private qualification
+root resolves that prerequisite without changing assertions or retry policy.
+
+`make check-native` passes in **92.641 s**, including Desktop test/vet/build and
+the pinned **Wails v3.1.0** production build. The final Lab build passes in
+**5.040 s** and its **488 canonical assets** match the private HTTP-served copy
+byte-for-byte. The private native wrapper builds in **4.646 s**; all **46**
+production native inputs and its protected source copies remain unchanged. It
+uses the same Lab workspace fixture and production components, an isolated
+`FLAME_HOME` and an unused loopback Runtime endpoint. An initial custom-scheme
+admission shows a blank document and is excluded from qualification. The following
+two native runs use the proven local HTTP Lab URL, not another visual entry.
+
+Actual Wails English/light/14 px and Chinese/dark/18 px both retain the full
+`Workspace diff` title and distinct arrow/Browse actions at **200%** and **300%**.
+The measured viewports are **1120 × 755** native points, **560 × 377.5** CSS px
+at 200% and **373.33 × 251.67** at 300%. Real Shift+Tab, the full destination
+Tooltip and Enter return to Conversation; a separate pointer visit and return
+retain the exact padded draft. At 300%, actual Tab reaches all seven Composer
+footer controls through the existing bounded scrollport; Shift+Tab reveals the
+complete Goal focus frame. No Send, Steer, Stop, Pause or Clear command is
+activated. The header menu exposes the full running status and Escape restores
+its opener. Wheel reading advances the Diff reader to **206 px** while the
+material title and return remain visible.
+
+After Actual Size, ordinary Dock expansion retains **Close**, while an inspected
+material retains **Back to conversation** / **返回对话**. Native Window Zoom grows
+both profiles to **1513 × 950** and restores **1120 × 755**. With layout observation
+disabled, each profile repeats menu/Escape, pointer Diff entry, expansion,
+keyboard return and exact draft continuation; wheel and resize are not claimed
+again in this control. Final raw drafts are
+`  Keep this native draft while identifying the material.   Continue. Observation off.`
+and `  保留这份原始草稿，核对材料身份与返回路径。   继续。 关闭观察后继续。`.
+
+All **37 qualified PNG/AX pairs**, the one excluded blank admission and all
+**80 zoom-step AX states** are retained in the qualification evidence. All 38
+native PNGs are inspected across seven complete contact sheets. A bounded
+backward-Tab exploration did not reach Diff before its step limit; continuing
+from the observed Tool action reaches the real Diff control and completes the
+keyboard task. This exploration is not reported as a passing assertion. Physical
+IME composition, VoiceOver speech, RTL, full-motion behavior and live provider or
+Runtime execution are not newly qualified. Chinese pasted input and the offline
+Runtime integration suite do not establish those separate native behaviors.
+The scoped Layout/Accessibility review finds no remaining material-title,
+return-target or bounded-footer finding in the inspected paths; this is not
+whole-product or award-level certification.
+
+All three private native processes, including the excluded admission, quit with
+actual exit **0**; the final application inventory is empty. The exact private
+app is unregistered and the captured static-server process exits **143** after
+identity-checked TERM. Six private Library paths return to absence; the three
+preexisting protected WebKit helper roots keep their identities, modes and
+flags. This resumed batch changes only the syntax test and this progress file;
+it adds no UI implementation, visual entrypoint, runner or catalog. Frozen-source
+comparison covers **6,734 non-Markdown inputs**, admitting the one owned test
+change, and proves all 46 production native inputs and the primary checkout
+unchanged. All **12 output/cache roots** match their captured contents and
+modes after restoration; the normal merged-lock dependency install is retained.
+Only document formatting, normal static commit hooks and read-only integrity
+checks follow that restoration. The publication fetch finds no incoming main
+commits beyond `58a3995da`. The verified test and progress changes are published
+to remote main, with original native images retained outside the repository and
+the captured qualification tree retired after in-memory evidence retention. No
+storage, protocol or user-data migration is needed. Further work should follow a
+new observed content/Dock task, retaining this now-qualified material identity
+and return behavior.
 
 ### Model catalog reading and recovery
 

@@ -21,6 +21,24 @@ const source = [
   "",
 ].join("\n");
 
+function foregroundCharacters(root: HTMLElement) {
+  const characters: { character: string; foreground: string }[] = [];
+  const text = document.createTreeWalker(root.querySelector("code")!, NodeFilter.SHOW_TEXT);
+  while (text.nextNode()) {
+    let parent = text.currentNode.parentElement;
+    let foreground: string | undefined;
+    while (parent && !foreground) {
+      foreground = parent.getAttribute("style")?.match(/(?:^|;)\s*color:\s*([^;]+)/i)?.[1];
+      parent = parent.parentElement;
+    }
+    if (!foreground) throw new Error("syntax text has no foreground");
+    for (const character of text.currentNode.textContent ?? "") {
+      if (character.trim()) characters.push({ character, foreground: foreground.toLowerCase() });
+    }
+  }
+  return characters;
+}
+
 describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Scheme) => {
   it("retains source, escaping and authored syntax roles through palette references", async () => {
     const highlighter = await getHighlighter("typescript");
@@ -32,10 +50,10 @@ describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Sche
 
     expect(themed.querySelector("code")?.textContent).toBe(source);
     expect(themed.querySelector("script")).toBeNull();
-    const spans = [...themed.querySelectorAll("span[style]")];
-    const authored = [...original.querySelectorAll("span[style]")];
-    expect(spans.length).toBeGreaterThan(1);
-    expect(spans).toHaveLength(authored.length);
+    const painted = foregroundCharacters(themed);
+    const authored = foregroundCharacters(original);
+    expect(painted.length).toBeGreaterThan(1);
+    expect(painted).toHaveLength(authored.length);
 
     const palette = paletteThemeContribution(
       {
@@ -50,11 +68,12 @@ describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Sche
       "#0485f7",
       25,
     ).tokens!;
-    for (const [index, span] of spans.entries()) {
-      const rawColor = authored[index]!.getAttribute("style")!.match(/color:\s*(#[\da-f]+)/i)![1]!;
+    for (const [index, paint] of painted.entries()) {
+      const rawColor = authored[index]!.foreground;
+      expect(rawColor).toMatch(/^#[\da-f]+$/);
       const property = syntaxColorToken(rawColor);
-      expect(span.textContent).toBe(authored[index]!.textContent);
-      expect(span.getAttribute("style")).toContain(`var(--${property}, ${rawColor})`);
+      expect(paint.character).toBe(authored[index]!.character);
+      expect(paint.foreground).toBe(`var(--${property}, ${rawColor})`);
       expect(contrastRatio(palette[property]!, palette["color-bg"]!)).toBeGreaterThanOrEqual(4.5);
     }
   });
