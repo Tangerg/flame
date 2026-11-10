@@ -767,6 +767,18 @@ Agent file suggestions select literal, case-insensitive path fragments from the
 same five captured files and honor the requested limit. This keeps attachment
 inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
+The existing Code reading scenario follows the same highlighted source and padded
+multiline draft through short reading frames in Chromium and WebKit, English and
+Chinese. After recording layout delivery, eight consecutive settled frames check
+the complete focused reader, a readable line, pointer access and clearance from
+Jump. The initial eight delivery frames remain in the same geometry attachment;
+this does not qualify the first paint of an abrupt resize. A consumed internal wheel retains
+that context through another resize. The same task opens its captured trajectory
+evidence, closes the hovered Close tooltip with Escape while retaining reader
+focus, then returns with Escape and continues the original draft at its verified
+caret endpoint. These CSS viewport changes complement separate native page-zoom
+qualification; the bounded reader does not show all 48 source lines at once.
+
 Code wrapping uses the shared `data-wrap` preference. Schedule dialogs and
 alertdialogs remain portaled and named, with background controls outside modal
 interaction. The fixture transport owns controlled Schedule removal and sends

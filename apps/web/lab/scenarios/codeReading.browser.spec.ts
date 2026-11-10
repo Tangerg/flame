@@ -1,6 +1,8 @@
 import { CODE_READING_SOURCE } from "./agentSessionSnapshots";
 import { expect, test } from "./test";
 import { expectLabReady } from "../readiness";
+import { en } from "@/lib/i18n/locales/en";
+import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 for (const [theme, width, fontSize, accent] of [
   ["light", 1440, 14, ""],
   ["dark", 1120, 18, "&accent=%238b5cf6"],
@@ -97,4 +99,244 @@ for (const [theme, width, fontSize, accent] of [
       release();
     }
   });
+}
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      motion: "full",
+      accent: "#FB6E30",
+      messages: en,
+      evidence: "Recorded evidence",
+      draft: "  Keep this exact review draft.\nRead the captured boundary.  ",
+      continuation: " Continue reviewing.",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      motion: "off",
+      accent: "#3674E8",
+      messages: zh,
+      evidence: "已记录的证据",
+      draft: "  保留这份核对草稿。\n继续阅读原始记录。  ",
+      continuation: "再核对一次。",
+    },
+  ] as const) {
+    const reading = test.extend({
+      browserName,
+      reducedMotion: profile.motion === "full" ? "no-preference" : "reduce",
+    });
+    reading(
+      `${browserName} code reading retains its settled frame and material return in ${profile.locale}`,
+      async ({ page }, testInfo) => {
+        const messages: Record<string, string> = profile.messages;
+        const name = (key: string) => ({ name: messages[key]!, exact: true });
+        const capture = async (label: string) =>
+          testInfo.attach(`code-reading-${label}`, {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        await page.setViewportSize({ width: 1120, height: 755 });
+        const query = new URLSearchParams({
+          fixture: "workspace",
+          state: "dock-trajectory",
+          "agent-state": "code-reading",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: profile.motion,
+          accent: profile.accent,
+        });
+        await page.goto(`/lab/fixture.html?${query}`);
+        await expectLabReady(page);
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+        const composer = page.getByRole("textbox", name("composer.input.label"));
+        await composer.fill(profile.draft);
+        const input = (await composer.elementHandle())!;
+        const transcript = page.locator(".msg-scroll-viewport");
+        const frame = transcript.locator('[data-markdown-copy="code-block"]');
+        const source = frame.getByRole("region", name("message.code.content"));
+        await expect(source.locator("code .line")).toHaveCount(48);
+        expect(await source.textContent()).toBe(CODE_READING_SOURCE);
+        const reader = (await source.elementHandle())!;
+        await frame.getByRole("button", name("message.code.copy")).focus();
+        await page.keyboard.press("Tab");
+        await expect(source).toBeFocused();
+
+        const expectReading = async (label: string) => {
+          const geometry = await source.evaluate(async (node, jumpLabel) => {
+            const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+            const frames = [];
+            // ResizeObserver publishes dependent heights and queues focus reveal after layout.
+            for (let index = 0; index < 16; index++) {
+              await new Promise(requestAnimationFrame);
+              const bounds = node.getBoundingClientRect();
+              const outside = viewport.getBoundingClientRect();
+              const style = getComputedStyle(viewport);
+              const text = getComputedStyle(node);
+              const jump = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+                (button) =>
+                  button.getAttribute("aria-label") === jumpLabel &&
+                  button.getClientRects().length > 0 &&
+                  getComputedStyle(button).visibility !== "hidden",
+              );
+              const action = jump?.getBoundingClientRect();
+              const overlap = action
+                ? Math.max(
+                    0,
+                    Math.min(bounds.right, action.right) - Math.max(bounds.left, action.left),
+                  ) *
+                  Math.max(
+                    0,
+                    Math.min(bounds.bottom, action.bottom) - Math.max(bounds.top, action.top),
+                  )
+                : 0;
+              const hit = document.elementFromPoint(
+                bounds.left + bounds.width / 2,
+                bounds.top + bounds.height / 2,
+              );
+              frames.push({
+                bounds: bounds.toJSON(),
+                top: outside.top + parseFloat(style.scrollPaddingTop),
+                bottom: outside.bottom - parseFloat(style.scrollPaddingBottom),
+                textHeight:
+                  node.clientHeight - parseFloat(text.paddingTop) - parseFloat(text.paddingBottom),
+                lineHeight: parseFloat(text.lineHeight),
+                overlap,
+                hit: hit !== null && node.contains(hit),
+              });
+            }
+            return { delivery: frames.slice(0, 8), settled: frames.slice(8) };
+          }, messages["chat.jumpToBottom"]!);
+          await testInfo.attach(`code-reading-${label}-geometry`, {
+            body: JSON.stringify(geometry),
+            contentType: "application/json",
+          });
+          for (const sample of geometry.settled) {
+            expect(sample.bounds.top).toBeGreaterThanOrEqual(sample.top - 1);
+            expect(sample.bounds.bottom).toBeLessThanOrEqual(sample.bottom + 1);
+            expect(sample.textHeight).toBeGreaterThanOrEqual(sample.lineHeight);
+            expect(sample.overlap).toBe(0);
+            expect(sample.hit).toBe(true);
+          }
+          expect(
+            await reader.evaluate((node) => node.isConnected && node === document.activeElement),
+          ).toBe(true);
+          expect(await source.evaluate((node, held) => node === held, reader)).toBe(true);
+          expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+          expect(await source.textContent()).toBe(CODE_READING_SOURCE);
+          await expect(composer).toHaveValue(profile.draft);
+          expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(
+            0,
+          );
+        };
+
+        for (const size of [
+          { width: 560, height: 377 },
+          { width: 373, height: 251 },
+        ]) {
+          await page.setViewportSize(size);
+          await expectReading(String(size.width));
+        }
+        await capture("short");
+        await source.press("End");
+        await expect
+          .poll(() =>
+            source.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
+          )
+          .toBeLessThanOrEqual(1);
+        await source.hover();
+        const beforeWheel = await source.evaluate((node) => node.scrollTop);
+        const outerTop = await transcript.evaluate((node) => node.scrollTop);
+        await page.mouse.wheel(0, -60);
+        await expect
+          .poll(() => source.evaluate((node) => node.scrollTop))
+          .toBeLessThan(beforeWheel);
+        expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
+        for (const size of [
+          { width: 504, height: 316 },
+          { width: 373, height: 251 },
+        ]) {
+          await page.setViewportSize(size);
+          await expectReading(`wheel-${size.width}`);
+        }
+        await capture("wheel-reflow");
+
+        await page.getByRole("button", name("dock.action.openFull")).click();
+        const material = page.locator('[data-slot="workspace-view-body"]:visible');
+        await expect(material).toBeFocused();
+        const record = material.locator('[data-trajectory-record="item:item_code_reading"]');
+        const disclosure = record.getByRole("button").first();
+        await disclosure.focus();
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Tab");
+        const evidence = record.getByRole("button", { name: profile.evidence, exact: true });
+        await expect(evidence).toBeFocused();
+        await page.keyboard.press("Enter");
+        const raw = record.getByRole("region", { name: profile.evidence, exact: true });
+        for (const stop of [
+          raw.locator("..").getByRole("button", name("message.code.wrap.enable")),
+          raw.locator("..").getByRole("button", name("message.code.copy")),
+          raw,
+        ]) {
+          await page.keyboard.press("Tab");
+          await expect(stop).toBeFocused();
+        }
+        await expect(raw).toBeInViewport({ ratio: 1 });
+        expect(
+          await raw.evaluate((node) => {
+            const bounds = node.getBoundingClientRect();
+            return node.contains(
+              document.elementFromPoint(
+                bounds.left + bounds.width / 2,
+                bounds.top + bounds.height / 2,
+              ),
+            );
+          }),
+        ).toBe(true);
+        const captured: unknown = JSON.parse(await raw.innerText());
+        expect(captured).toMatchObject({ type: "item", item: { id: "item_code_reading" } });
+        expect(captured).toHaveProperty(
+          "item.content.0.text",
+          expect.stringContaining(CODE_READING_SOURCE),
+        );
+        await capture("recorded-evidence");
+        await raw.hover();
+        await page.getByRole("button", name("common.close")).hover();
+        const tooltip = page.getByRole("tooltip");
+        await expect(tooltip).toHaveText(messages["common.close"]!);
+        await capture("material-tooltip");
+        await page.keyboard.press("Escape");
+        await expect(tooltip).toHaveCount(0);
+        await expect(raw).toBeFocused();
+        await expect(material).toBeVisible();
+        expect(await input.evaluate((node) => (node as HTMLTextAreaElement).value)).toBe(
+          profile.draft,
+        );
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("region", name("shell.region.conversation"))).toBeFocused();
+        expect(
+          await source.evaluate((node, held) => node === held && node.isConnected, reader),
+        ).toBe(true);
+        expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+        expect(await source.textContent()).toBe(CODE_READING_SOURCE);
+        await expect(composer).toHaveValue(profile.draft);
+        await composer.focus();
+        await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+        expect(
+          await composer.evaluate((node) => {
+            const input = node as HTMLTextAreaElement;
+            return [input.selectionStart, input.selectionEnd];
+          }),
+        ).toEqual([profile.draft.length, profile.draft.length]);
+        await page.keyboard.type(profile.continuation);
+        await expect(composer).toHaveValue(profile.draft + profile.continuation);
+        await capture("returned-draft");
+      },
+    );
+  }
 }
