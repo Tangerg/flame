@@ -29,8 +29,7 @@ import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { ScrollRegion, vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
-import { useAgentShellElement } from "@/ui/agent/index";
-import { useViewportFocus } from "@/features/shell/workbench/panel/useViewportFocus";
+import { useAgentShellElement, useViewportFocus } from "@/ui/agent/index";
 import {
   NOTIFICATION_BOTTOM_PROPERTY,
   NOTIFICATION_TOP_PROPERTY,
@@ -43,7 +42,8 @@ const cst = stylex.create({
     containerType: "inline-size",
     "--transcript-jump-gap": space.s2,
   },
-  emptyQuery: { containerType: "size", containerName: "empty-conversation" },
+  layoutFrame: { containerType: "size" },
+  emptyQuery: { containerName: "empty-conversation" },
   rail: {
     position: "absolute",
     top: 0,
@@ -189,6 +189,9 @@ export function ChatStream({ onSend }: Props) {
     const jump = jumpRef.current;
 
     const publish = () => {
+      const layoutRect = layout.getBoundingClientRect();
+      // Native hidden reflow can clamp scrolling before cleanup; retain this published frame.
+      pane.style.setProperty("--composer-frame-height", `${layoutRect.height}px`);
       const overlayRect = overlay.getBoundingClientRect();
       if (started) pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${overlayRect.height}px`);
       else pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
@@ -201,7 +204,7 @@ export function ChatStream({ onSend }: Props) {
           }
         : overlayRect;
       const insets = notificationInsets(
-        layout.getBoundingClientRect(),
+        layoutRect,
         footprint,
         document.documentElement.clientHeight,
       );
@@ -266,7 +269,10 @@ export function ChatStream({ onSend }: Props) {
       {...stylex.props(sh.paneAnchored, cst.queryable)}
     >
       <ChatBanners sessionId={sessionId} />
-      <div ref={layoutRef} {...stylex.props(sh.paneAnchored, !started && cst.emptyQuery)}>
+      <div
+        ref={layoutRef}
+        {...stylex.props(sh.paneAnchored, cst.layoutFrame, !started && cst.emptyQuery)}
+      >
         <div
           ref={emptyViewportRef}
           data-slot={!started ? "empty-conversation-layout" : undefined}

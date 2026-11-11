@@ -391,7 +391,17 @@ export function ChatPanel({ onSend, ref }: Props) {
   const catalogView = { title: "dock.catalog.title", icon: "panel-r", dock: "workspace" } as const;
 
   return (
-    <AgentContentCard label={t("shell.region.workspace")}>
+    <AgentContentCard
+      label={t("shell.region.workspace")}
+      onFocusCapture={({ currentTarget, target }) => {
+        // Portaled menus keep their opener's reading context through native focus handoffs.
+        if (!currentTarget.contains(target)) return;
+        currentTarget.style.setProperty(
+          "--composer-reading-limit",
+          target.closest('[data-slot="composer-scrollport"]') ? "100%" : "calc(100% / 3)",
+        );
+      }}
+    >
       {presentedMain && (
         <WorkspaceWindowHeader
           view={
@@ -550,10 +560,6 @@ const paneStyles = stylex.create({
   conversation: {
     containerType: "inline-size",
     containerName: "conversation",
-    "--composer-reading-limit": {
-      default: "100%",
-      ":focus-within:not(:has([data-slot=composer-scrollport]:focus-within))": "calc(100% / 3)",
-    },
   },
   pendingConnection: { paddingBlock: space.s4 },
   // Removing layout makes WebKit reset the retained scrollport's reading position.

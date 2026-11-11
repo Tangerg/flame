@@ -111,6 +111,9 @@ export function registerComposerPasteContracts() {
         `/lab/fixture.html?fixture=workspace&state=dock-trajectory&agent-state=code-reading&locale=${profile.locale}&theme=${profile.theme}&font-size=18&motion=off`,
       );
       await expectLabReady(page);
+      await page
+        .getByRole("button", { name: "Collapse the workspace fixture sidebar", exact: true })
+        .click();
       const input = page.getByRole("textbox", { name: profile.composer, exact: true });
       const originalInput = (await input.elementHandle())!;
       await page.setViewportSize({ width: 560, height: 364 });
@@ -123,16 +126,19 @@ export function registerComposerPasteContracts() {
       const review = page.getByRole("button", { name: profile.review, exact: true });
       const chip = page.locator('[data-slot="chip"]').filter({ has: review });
       await expect(chip).toHaveCount(1);
+      const expectCompleteAttachment = (frame: Awaited<ReturnType<typeof attachmentFrame>>) => {
+        for (const target of [frame.attachment, ...frame.buttons.map((button) => button.box)]) {
+          expect(target.left).toBeGreaterThanOrEqual(frame.visible.left - 0.5);
+          expect(target.right).toBeLessThanOrEqual(frame.visible.right + 0.5);
+          expect(target.top).toBeGreaterThanOrEqual(frame.visible.top - 0.5);
+          expect(target.bottom).toBeLessThanOrEqual(frame.visible.bottom + 0.5);
+        }
+      };
       const checkAttachment = async (step: string, expectedDraft = prefix) => {
         await expect(async () => {
           const frame = await attachmentFrame(chip);
           samples.push({ step, ...frame });
-          for (const target of [frame.attachment, ...frame.buttons.map((button) => button.box)]) {
-            expect(target.left).toBeGreaterThanOrEqual(frame.visible.left - 0.5);
-            expect(target.right).toBeLessThanOrEqual(frame.visible.right + 0.5);
-            expect(target.top).toBeGreaterThanOrEqual(frame.visible.top - 0.5);
-            expect(target.bottom).toBeLessThanOrEqual(frame.visible.bottom + 0.5);
-          }
+          expectCompleteAttachment(frame);
           expect(frame.input.box.top).toBeGreaterThanOrEqual(frame.input.visible.top - 0.5);
           expect(frame.input.box.bottom).toBeLessThanOrEqual(
             Math.min(frame.input.visible.bottom, frame.footerTop) + 0.5,
@@ -155,6 +161,33 @@ export function registerComposerPasteContracts() {
         await page.setViewportSize({ width: 560, height: 364 });
         await review.focus();
         await checkAttachment("focused-paste");
+        await page.setViewportSize({ width: 373, height: 243 });
+        await expect(async () => {
+          const frame = await attachmentFrame(chip);
+          samples.push({ step: "narrow-paste-review", ...frame });
+          expectCompleteAttachment(frame);
+        }).toPass({ timeout: 3_000 });
+        await testInfo.attach("narrow-paste-review.png", {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+        await input.focus();
+        await expect(async () => {
+          const frame = await attachmentFrame(chip);
+          samples.push({ step: "narrow-paste-input", ...frame });
+          expect(frame.input.box.top).toBeGreaterThanOrEqual(frame.input.visible.top - 0.5);
+          expect(frame.input.box.bottom).toBeLessThanOrEqual(
+            Math.min(frame.input.visible.bottom, frame.footerTop) + 0.5,
+          );
+          expect(frame.documentOverflow).toBe(0);
+        }).toPass({ timeout: 3_000 });
+        await expect(input).toHaveValue(prefix);
+        await testInfo.attach("narrow-paste-input.png", {
+          body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+          contentType: "image/png",
+        });
+        await page.setViewportSize({ width: 560, height: 364 });
+        await review.focus();
         await review.press("Enter");
         const dialog = page.getByRole("dialog", { name: profile.title, exact: true });
         const editor = dialog.getByRole("textbox", { name: profile.title, exact: true });

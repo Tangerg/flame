@@ -3,7 +3,7 @@ import { type ReactNode, type Ref, type RefObject, useRef } from "react";
 import { Slot } from "@/extensions/host/Slot";
 import { JumpToBottomButton } from "@/features/shell/workbench/panel/JumpToBottomButton";
 import { RuntimeConnectionNotice } from "@/features/shell/workbench/panel/RuntimeConnectionNotice";
-import { useViewportFocus } from "@/features/shell/workbench/panel/useViewportFocus";
+import { useViewportFocus } from "@/ui/agent/index";
 import { space } from "@flame/ui/tokens.stylex";
 import { useContentVisible } from "@/ui/index";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
@@ -17,6 +17,8 @@ const fc = stylex.create({
     paddingTop: { default: null, ":has([data-slot=composer-top-tray-surface])": "1px" },
   },
   overlay: {
+    "--composer-available-height":
+      "calc(var(--composer-frame-height, 100cqh) - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
     pointerEvents: "none",
     position: "absolute",
     insetInline: 0,
@@ -24,8 +26,7 @@ const fc = stylex.create({
     zIndex: 2,
     display: "flex",
     // Reading focus reserves history space; editing retains the existing jump clearance.
-    maxHeight:
-      "min(var(--composer-reading-limit, 100%), calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px)))",
+    maxHeight: "min(var(--composer-reading-limit, 100%), var(--composer-available-height))",
     flexDirection: "column",
   },
   bounded: {
@@ -58,7 +59,14 @@ const fc = stylex.create({
     flexDirection: "column",
   },
   floatingFloor: {
-    paddingBottom: { default: space.s3, "@container conversation (min-width: 640px)": space.s4 },
+    "--composer-floor-padding": {
+      default: space.s3,
+      "@container conversation (min-width: 640px)": space.s4,
+    },
+    // The surface keeps its editing budget when reading focus shortens the outer scrollport.
+    "--composer-surface-limit":
+      "max(0px, calc(var(--composer-available-height) - var(--composer-floor-padding)))",
+    paddingBottom: "var(--composer-floor-padding)",
   },
 });
 

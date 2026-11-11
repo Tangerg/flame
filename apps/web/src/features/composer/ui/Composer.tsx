@@ -8,7 +8,8 @@ import {
   SUGGESTION_LISTBOX_ID,
   suggestionOptionId,
 } from "@/features/composer/application/suggestions";
-import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent/index";
+import { AgentComposerFooter, AgentComposerSurface, useViewportFocus } from "@/ui/agent/index";
+import { useContentVisible } from "@/ui/index";
 import { FileMentionPopup } from "@/features/composer/ui/FileMentionPopup";
 import { SlashSuggestions } from "@/features/composer/ui/SlashSuggestions";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
@@ -53,6 +54,9 @@ export function Composer({
 }: Props) {
   const t = useT();
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const visible = useContentVisible();
+  useViewportFocus(editorRef, visible);
   const {
     inputRef,
     retryRef,
@@ -88,6 +92,7 @@ export function Composer({
       ref={surfaceRef}
       data-slot="composer-root"
       data-dropping={dropping ? "" : undefined}
+      className={stylex.props(composerStyles.surface).className}
     >
       {dropping && <ComposerDropCue acceptsImages={acceptsImages} />}
       <FileMentionPopup
@@ -97,7 +102,7 @@ export function Composer({
         onReturnFocus={returnFocusToInput}
       />
       <SlashSuggestions slash={slash} anchor={surfaceRef} />
-      <div {...stylex.props(composerStyles.editorInset)}>
+      <div ref={editorRef} {...stylex.props(composerStyles.editorInset)}>
         <ComposerAttachments
           images={images}
           pastes={pastes}

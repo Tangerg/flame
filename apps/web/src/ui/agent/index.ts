@@ -2,6 +2,7 @@ export { AgentAppShell, useAgentShellElement } from "@/ui/agent/app-shell";
 export { AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
 export { AgentComposerChip } from "@/ui/agent/composer-chip";
 export { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent/composer-surface";
+export { useViewportFocus } from "@/ui/agent/useViewportFocus";
 export { AgentComposerTopTraySurface } from "@/ui/agent/composer-top-tray-surface";
 export { AgentContentCard } from "@/ui/agent/content-card";
 export { AgentDockCatalog } from "@/ui/agent/dock-catalog";

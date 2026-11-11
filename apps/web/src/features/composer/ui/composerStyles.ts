@@ -1,12 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, weight } from "@flame/ui/tokens.stylex";
 export const composerStyles = stylex.create({
+  surface: { maxHeight: "var(--composer-surface-limit, none)" },
   editorInset: {
     display: "flex",
     minHeight: 0,
     flexDirection: "column",
     overflowY: "auto",
     overscrollBehavior: "contain",
+    scrollPaddingBlock: space.s0_5,
     paddingTop: "var(--composer-editor-top)",
     paddingRight: "var(--composer-editor-end)",
     paddingBottom: "var(--composer-editor-bottom)",

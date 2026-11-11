@@ -21461,6 +21461,80 @@ No functional checks run after restoration. The final source batch uses ordinary
 commit hooks and publication to main; the captured evidence tree is retired after
 verified in-memory retention. No storage, protocol or user-data migration is needed.
 
+The subsequent long-draft follow-up on `367b64701` exposes a separate allocation
+defect: a **252.296875 px** editing card occupies a **141 px** scrollport at
+373 × 243 px. The footer falls outside the window while the draft itself remains
+focused. The normal block stack remains intentional; replacing it with flex
+compresses the running editor behind its standing Goal. Two bounded Claude Code
+CLI candidates are rejected after real checks: the flex candidate clips the
+editor, while generic ancestor reveal fails nine focus checks.
+A percentage-only card cap remains indefinite and does not fix the overflow.
+
+`FloatingComposer.tsx` now derives one editing budget from the externally sized
+frame and its existing jump clearance and floor padding. The Composer surface
+caps its editor while preserving the footer; supporting material keeps normal
+block flow. The existing `ChatStream` layout observer publishes that frame
+before reading the overlay and retains its last visible value while hidden.
+Publishing only during cleanup is too late for Chromium's native scroll clamp.
+This reuses the notification measurement rather than another observer for the
+frame or a scroll-position cache.
+
+`useViewportFocus` moves to the shared Agent UI boundary for the empty layout,
+floating stack and inner editing region. A fitting Composer reveals as one
+unit; oversized content retains focused-control reveal. Image review and input
+each remain reachable inside the smaller editor. A consumed inner wheel keeps
+outer following, including WebKit delivery after the inner scroll has completed;
+actual outer reading retires it. Resize delivery also acknowledges an already
+applied native scroll clamp, so enlargement followed by shrinking does not retire
+the visible footer's witness. Draft, selection and command ownership remain intact.
+
+The Workspace card now owns its last contained reading focus instead of deriving
+the budget from transient `:focus-within`. Portaled menus retain their opener's
+context. The existing material task adds a third visit from the outer scroll end:
+its four baseline profiles lose **83 px**, and cleanup-only frame retention still
+loses **14 / 30 px** in Chromium. The final model retains the English **149 px**
+and Chinese **178 px** offsets through hidden layout and return in both engines.
+The original upward-wheel visit, eight-frame checks and deadlines remain.
+
+The existing Lab long-draft task covers eight locale, engine and idle/running
+combinations. The image task covers both themes and engines through 560 × 364
+and 373 × 243, including preview return, removal and continued input. Closing the
+fixture control drawer exposes a real **5.3 px** thumbnail clip; the shared inner
+viewport repair resolves it. The existing English/Chinese paste task separately
+visits its complete attachment action and input at the smaller frame before
+continuing cancel, save and restoration. No catalog, fixture or visual runner is
+added. Read-only ZCode's actual conversation composer/toolbar and ChatGPT's
+composer host/utility-bar modules inform the host and inner-group boundary;
+Flame retains its existing components and tokens.
+
+Related units pass **48 files / 632 tests** in **41.212 s**. The final complete
+Lab selection passes **212 / 212** in **486.491 s**, without failures, skips,
+retries or global errors. Its focused selection passes **24 / 24** in
+**87.897 s**. The preceding full attempt's four resize failures are retained;
+a failing-then-passing native-clamp unit and the final complete run supersede
+that candidate. **`make check-native` passes in 74.311 s**, with all **46 native
+source inputs** unchanged. Its linker reports macOS deployment-target warnings
+(27.2 objects with an 11.0 link target); distribution on older macOS versions is
+not qualified. All **25 Web checks outside the test script pass**, including
+typechecking, lint, formatting, dependency/layer guards and bundle checks. The previous
+full Web test run's non-green result remains open; this
+frontend selection does not newly qualify Runtime or live provider execution.
+
+Actual Wails interaction is not qualified for this candidate: the current session
+does not expose the native desktop control tool. The earlier `6e8de2b9f` native
+evidence retains its original source boundary. The candidate is maintained on
+`codex/flame-ui-polish`; promotion to main awaits actual native acceptance.
+Evidence is retained outside the repository under `flame-composer-frame-0s08o_vz`.
+All **13 output/cache roots** match their baseline contents and modes, including
+eight original absences. Source comparison protects **6,842 baseline inputs**
+and admits only the **16 owned paths**, including the shared hook move and three
+maintained documents. The two original Runtime fixture roots retain their
+identities and children; both Lab ports are closed. No native qualification app
+is launched, and no functional checks run after output restoration. The final
+QA-root retirement receipt is retained with the evidence after publication.
+The user's primary checkout remains read-only. No data or protocol migration
+is needed.
+
 ### Composer reading across full-width material (2026-11-11)
 
 The Material-toggle follow-up's lower-perimeter lead reproduces on `3929e055b`

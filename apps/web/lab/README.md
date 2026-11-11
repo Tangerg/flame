@@ -159,7 +159,11 @@ review, cancel, save, restoration and continued editing in English and Chinese
 through Chromium and WebKit. At the small-window frame, attachment and action
 bounds are checked against fractional clipping edges. The image-intake scenario
 checks a complete focused thumbnail, preview return, readable input and removal
-at that same frame. These scenarios use the production draft and attachment
+through 560 × 364 and 373 × 243 frames in both themes and browser engines.
+The paste task also switches between its complete review action and input in
+the smaller frame before continuing review, restoration and editing. These
+small-window tasks collapse the fixture's control sidebar before measuring the
+production area. These scenarios use the production draft and attachment
 owners rather than adding a second implementation to the fixed component story.
 
 `environment.tsx` composes Flame's actual appearance plugins, locale packages,
@@ -417,8 +421,10 @@ success continues to the selected row or filter. Later outside focus and deliber
 blur retire that continuation. The fixed failure scene retains its business error
 and unsent draft through narrow full-width reading and conversation return.
 
-Long Composer checks retain the same input, literal draft and native selection
-through constrained reading, wheel input, resizing and material return. Visibility
+Long Composer checks cover idle and running conversations in Chromium and WebKit,
+English/light and Chinese/dark at 18 px. They retain the same input, literal draft
+and native selection through constrained reading, wheel input, resizing and
+material return. Send or Steer/Stop must remain complete and hittable. Visibility
 requires the complete first or last line's em box inside every clipping ancestor
 and above the footer. A positive text fragment or retained value alone cannot
 admit a capture. Earlier wheel reading remains independent of the retained caret.
@@ -486,9 +492,10 @@ return. These checks exercise the production Composer scrollport; they add no
 alternate fixture, runner or layout measurement authority.
 
 The existing Workspace chrome suite checks Composer reading continuity through
-two full-width Schedules visits in Chromium/WebKit, English/light/14 px and
+three full-width Schedules visits in Chromium/WebKit, English/light/14 px and
 Chinese/dark/18 px. The first starts at a keyboard-revealed footer control; the
-second follows deliberate wheel reading. At an unchanged 373 × 243 px viewport,
+second follows deliberate upward wheel reading, and the third starts at the
+outer scroll end. At an unchanged 373 × 243 px viewport,
 eight return frames must preserve the saved native offset, exact padded draft,
 selection and input/scrollport identities, with focus on the conversation.
 Hidden content retains layout without exposing the conversation to interaction

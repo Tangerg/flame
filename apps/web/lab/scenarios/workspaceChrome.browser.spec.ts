@@ -86,12 +86,12 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await expect(
           page.getByRole("button", { name: messages["composer.action.stop"], exact: true }),
         ).toBeFocused();
-        for (let visit = 0; visit < 2; visit++) {
-          if (visit === 1) {
+        for (let visit = 0; visit < 3; visit++) {
+          if (visit > 0) {
             const previousTop = await scrollport.evaluate((node) => node.scrollTop);
             const bounds = (await scrollport.boundingBox())!;
             await page.mouse.move(bounds.x + bounds.width - 1, bounds.y + bounds.height / 2);
-            await page.mouse.wheel(0, -12);
+            await page.mouse.wheel(0, visit === 1 ? -12 : 2000);
             await expect
               .poll(async () => {
                 const positions = (await composerReturnFrames(scrollport)).map(
@@ -100,7 +100,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
                 return (
                   Math.max(...positions) - Math.min(...positions) < 1 &&
                   positions.at(-1)! > 0 &&
-                  positions.at(-1)! < previousTop
+                  (visit === 1 ? positions.at(-1)! < previousTop : positions.at(-1)! > previousTop)
                 );
               })
               .toBe(true);

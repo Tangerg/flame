@@ -282,9 +282,10 @@ describe("ChatStream notification space", () => {
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
     const outside = screen.getByRole("button", { name: "Later control" });
     const reader = view.container.querySelector<HTMLElement>(".msg-scroll-viewport")!;
-    const { observer, overlay, observers } = measured(draft);
+    const { observer, layout, overlay, observers } = measured(draft);
     const readerObserver = observers.find((entry) => entry.active && entry.nodes.has(reader))!;
     const readerRect = measuredRect(reader, 46, 600);
+    const layoutRect = measuredRect(layout, 46, 600);
     const overlayRect = measuredRect(overlay, 460, 600);
     observer.notify();
     readerObserver.notify();
@@ -300,10 +301,12 @@ describe("ChatStream notification space", () => {
 
     view.showRows([userRow()], false);
     readerRect.mockReturnValue(new DOMRect(0, 46, 600, 500));
+    layoutRect.mockReturnValue(new DOMRect(0, 92, 600, 508));
     overlayRect.mockReturnValue(new DOMRect(0, 480, 600, 120));
     expect([observer.active, readerObserver.active]).toEqual([false, false]);
     expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("140px");
     expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("554px");
+    expect(pane.style.getPropertyValue("--composer-frame-height")).toBe("554px");
 
     view.showRows([userRow()]);
 
@@ -311,6 +314,7 @@ describe("ChatStream notification space", () => {
     expect(reader.scrollTop).toBe(2275);
     expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("120px");
     expect(reader.style.getPropertyValue("--reading-frame-height")).toBe("");
+    expect(pane.style.getPropertyValue("--composer-frame-height")).toBe("508px");
     expect(document.activeElement).toBe(outside);
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(draft.value).toBe("Keep this authored draft");
@@ -494,6 +498,206 @@ describe("empty conversation focus during reflow", () => {
     s.resize();
     expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(271);
     expect(document.activeElement).toBe(s.draft);
+  });
+});
+
+describe("floating Composer focus below supporting material", () => {
+  // A 140px scrollport with 2px scroll padding shows 102..238; 96px of material precedes the Composer.
+  function scenario({ surfaceHeight = 136, draftOffset = 12 } = {}) {
+    const measured = measureStream();
+    mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const viewport = draft.closest<HTMLElement>('[data-slot="composer-scrollport"]')!;
+    const surface = draft.closest<HTMLElement>('[data-slot="composer-root"]')!;
+    const { observers } = measured(draft);
+    viewport.style.scrollPaddingTop = "2px";
+    viewport.style.scrollPaddingBottom = "2px";
+    vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 600, 140));
+    vi.spyOn(viewport, "scrollHeight", "get").mockReturnValue(96 + surfaceHeight + 4);
+    const place = (node: Element, offset: number, height: number) => {
+      vi.spyOn(node, "getBoundingClientRect").mockImplementation(
+        () => new DOMRect(0, 198 + offset - viewport.scrollTop, 600, height),
+      );
+      vi.spyOn(node, "getClientRects").mockImplementation(
+        () => [node.getBoundingClientRect()] as unknown as DOMRectList,
+      );
+    };
+    place(surface, 0, surfaceHeight);
+    place(draft, draftOffset, 24);
+    const scrollTo = vi.fn((options: ScrollToOptions) => {
+      viewport.scrollTop = Math.max(0, Math.trunc(options.top ?? viewport.scrollTop));
+    });
+    Object.defineProperty(viewport, "scrollTo", { configurable: true, value: scrollTo });
+    const resize = () => {
+      for (const observer of observers) {
+        if (observer.active && observer.nodes.has(viewport)) observer.notify();
+      }
+    };
+    const outside = screen.getByRole("button", { name: "Later control" });
+    const shown = (node: Element) => {
+      const rect = node.getBoundingClientRect();
+      return rect.top >= 102 && rect.bottom <= 238;
+    };
+    return { draft, surface, viewport, scrollTo, resize, outside, shown };
+  }
+
+  it("reveals the complete Composer, not only its visible draft, when it fits", () => {
+    const s = scenario();
+    expect(s.shown(s.draft)).toBe(true);
+    expect(s.shown(s.surface)).toBe(false);
+    act(() => {
+      s.draft.focus({ preventScroll: true });
+      s.draft.setSelectionRange(5, 10, "backward");
+    });
+
+    expect(s.shown(s.surface)).toBe(true);
+    expect(s.shown(s.draft)).toBe(true);
+    s.resize();
+    expect(s.scrollTo).toHaveBeenCalledOnce();
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(s.draft);
+    expect(document.activeElement).toBe(s.draft);
+    expect(s.draft.value).toBe("Keep this authored draft");
+    expect([s.draft.selectionStart, s.draft.selectionEnd, s.draft.selectionDirection]).toEqual([
+      5,
+      10,
+      "backward",
+    ]);
+  });
+
+  it("reveals the composing unit only after a pointer press finishes", () => {
+    const s = scenario();
+    fireEvent.pointerDown(s.draft);
+    act(() => {
+      s.draft.focus({ preventScroll: true });
+      s.draft.setSelectionRange(5, 10, "backward");
+    });
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    expect(s.shown(s.draft)).toBe(true);
+    fireEvent.pointerUp(s.draft);
+    expect(s.shown(s.surface)).toBe(true);
+    expect(s.scrollTo).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(s.draft);
+    expect([s.draft.selectionStart, s.draft.selectionEnd, s.draft.selectionDirection]).toEqual([
+      5,
+      10,
+      "backward",
+    ]);
+  });
+
+  it("leaves material a reader scrolls back to in place until focus returns", () => {
+    const s = scenario();
+    act(() => s.draft.focus({ preventScroll: true }));
+    expect(s.shown(s.surface)).toBe(true);
+
+    fireEvent.wheel(s.viewport);
+    s.viewport.scrollTop = 0;
+    fireEvent.scroll(s.viewport);
+    s.resize();
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(s.scrollTo).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(s.draft);
+
+    act(() => s.outside.focus());
+    s.resize();
+    expect(s.viewport.scrollTop).toBe(0);
+    act(() => s.draft.focus({ preventScroll: true }));
+    expect(s.shown(s.surface)).toBe(true);
+    expect(s.draft.value).toBe("Keep this authored draft");
+  });
+
+  it.each([
+    { name: "consumed input scrolling", top: 60, delta: -2000, outer: false },
+    { name: "input scrolling delivered before its wheel", top: 0, delta: -2000, outer: false },
+    { name: "scrolling beyond the input start", top: 0, delta: -12, outer: true },
+    { name: "scrolling beyond the input end", top: 376, delta: 12, outer: true },
+  ])("keeps the correct outer focus policy during $name", ({ top, delta, outer }) => {
+    const s = scenario();
+    s.draft.style.overflowY = "auto";
+    vi.spyOn(s.draft, "clientHeight", "get").mockReturnValue(24);
+    vi.spyOn(s.draft, "scrollHeight", "get").mockReturnValue(400);
+    act(() => {
+      s.draft.focus({ preventScroll: true });
+      s.draft.setSelectionRange(5, 10, "backward");
+    });
+    fireEvent.scroll(s.viewport);
+    s.draft.scrollTop = top;
+    fireEvent.wheel(s.draft, { deltaY: delta });
+    s.draft.scrollTop = delta < 0 ? 0 : 376;
+    fireEvent.scroll(s.draft);
+    if (outer) {
+      s.viewport.scrollTop = 80;
+      fireEvent.scroll(s.viewport);
+    }
+
+    vi.spyOn(s.viewport, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 600, 262));
+    vi.spyOn(s.viewport, "scrollHeight", "get").mockReturnValue(352);
+    vi.spyOn(s.surface, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 198 - s.viewport.scrollTop, 600, 252),
+    );
+    s.viewport.scrollTop = 55;
+    s.resize();
+
+    expect(s.surface.getBoundingClientRect().bottom <= 360).toBe(!outer);
+    expect(s.scrollTo).toHaveBeenCalledTimes(outer ? 1 : 2);
+    expect(s.draft.scrollTop).toBe(delta < 0 ? 0 : 376);
+    expect(document.activeElement).toBe(s.draft);
+    expect(s.draft.value).toBe("Keep this authored draft");
+    expect([s.draft.selectionStart, s.draft.selectionEnd, s.draft.selectionDirection]).toEqual([
+      5,
+      10,
+      "backward",
+    ]);
+  });
+
+  it("keeps exposing the focused draft when the whole Composer cannot fit", () => {
+    const s = scenario({ surfaceHeight: 300, draftOffset: 200 });
+    act(() => s.draft.focus({ preventScroll: true }));
+    expect(s.shown(s.draft)).toBe(true);
+    expect(s.surface.getBoundingClientRect().top).toBeLessThan(102);
+    expect(document.activeElement).toBe(s.draft);
+  });
+
+  it("retires following after actual outer reading even while the Composer still fits", () => {
+    const s = scenario({ surfaceHeight: 100 });
+    act(() => s.draft.focus({ preventScroll: true }));
+    fireEvent.scroll(s.viewport);
+    s.viewport.scrollTop = 80;
+    fireEvent.scroll(s.viewport);
+    expect(s.shown(s.surface)).toBe(true);
+
+    vi.spyOn(s.viewport, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 600, 262));
+    vi.spyOn(s.viewport, "scrollHeight", "get").mockReturnValue(352);
+    vi.spyOn(s.surface, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 198 - s.viewport.scrollTop, 600, 252),
+    );
+    s.viewport.scrollTop = 55;
+    s.resize();
+
+    expect(s.viewport.scrollTop).toBe(55);
+    expect(s.scrollTo).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(s.draft);
+    expect(s.draft.value).toBe("Keep this authored draft");
+  });
+
+  it("keeps a visible Composer through a native resize clamp before shrinking again", () => {
+    const s = scenario({ surfaceHeight: 100 });
+    act(() => s.draft.focus({ preventScroll: true }));
+    expect(s.viewport.scrollTop).toBeGreaterThan(0);
+
+    const bounds = vi.spyOn(s.viewport, "getBoundingClientRect");
+    bounds.mockReturnValue(new DOMRect(0, 100, 600, 262));
+    s.viewport.scrollTop = 0;
+    s.resize();
+    fireEvent.scroll(s.viewport);
+    expect(s.surface.getBoundingClientRect().bottom).toBeLessThanOrEqual(360);
+
+    bounds.mockReturnValue(new DOMRect(0, 100, 600, 140));
+    s.resize();
+
+    expect(s.shown(s.surface)).toBe(true);
+    expect(s.scrollTo).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(s.draft);
+    expect(s.draft.value).toBe("Keep this authored draft");
   });
 });
 

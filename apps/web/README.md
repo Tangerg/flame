@@ -267,9 +267,14 @@ separate owners.
 The started conversation bounds its complete Composer stack with a normal-flow
 scrollport, so a standing Goal or connection notice cannot compress the editor
 and actions away in a short window. The jump control stays outside that clipping
-boundary. The containing Conversation region owns the Composer reading limit:
-focus anywhere in that region outside its Composer scrollport caps the Composer
-at one-third of the pane, while editing controls retain their existing height.
+boundary. The floating editing surface caps its height against the externally
+sized conversation frame, leaving room for its footer while the editor shrinks.
+Its full editing budget is independent of the outer scrollport's reading limit.
+The Workspace card owns the Composer reading limit through its last contained
+focus. Reading outside the Composer scrollport caps the Composer at one-third
+of the conversation pane; editing retains its full budget. Portaled menus keep
+their opener's context, and material navigation shares that context with the
+conversation. Native blur and focus handoffs do not independently resize it.
 Reading navigation such as Jump therefore keeps its position through pointer
 focus and the first activation. The existing reading-focus
 owner retires pending follow for region focus, including a content resize that
@@ -278,10 +283,15 @@ source readable without moving focus away from its logical Conversation region.
 `MessageStream` excludes native scroll anchoring from this controlled outer
 viewport, so hidden reflow cannot move its reading position independently of
 application follow. Nested code and table scrollports keep their own scrolling.
-This scrollport and the empty conversation reuse `useViewportFocus`
-for focused-control visibility; only the applicable visible viewport observes
-reflow. Wheel reading, pointer presses, outside focus and hidden content retain
-their existing retirement rules. Neither viewport advances commands or drafts.
+This scrollport, the empty conversation and the Composer's inner editing region
+reuse `ui/agent/useViewportFocus` for focused-control visibility. A fitting
+Composer surface is revealed as one unit; an oversized surface retains the
+focused control's own visibility. The inner region reveals its image or paste
+action and input independently. Only applicable visible viewports observe reflow.
+An inner text control can consume a wheel before WebKit dispatches its event;
+actual outer scrolling retires outer following. Pointer presses, outside focus
+and hidden content retain their retirement rules. These viewports do not advance
+commands, drafts or selections.
 
 The externally sized transcript viewport owns the live reading height through
 CSS size containment. Its `--reading-frame-height` uses the current container
@@ -304,7 +314,11 @@ witnesses retire. The reading-focus owner freezes the last visible height on the
 retained viewport until attachment releases it back to CSS. This prevents hidden
 window changes from expanding a reader and clamping its native source position.
 The started conversation likewise retains `--composer-overlay` on its existing
-node. An empty conversation removes the Composer overlay, and the shared shell's
+node. The same layout observer publishes the externally sized frame through
+`--composer-frame-height` before measuring the overlay. Its last visible value
+remains while hidden, preventing native layout from clamping the Composer before
+effect cleanup. Visible layout delivery resumes that same publication.
+An empty conversation removes the Composer overlay, and the shared shell's
 notification insets still clear while hidden.
 
 The conversation keeps its layout while a full-width material makes it inert,
