@@ -21550,6 +21550,10 @@ original before the successful paste. OS IME composition, VoiceOver speech,
 RTL, live Runtime execution and shipping packaging are not newly qualified.
 The native evidence retains **139 original JPEG captures and 155 AX records**,
 including the rejected attempts. Footer contact sheets support the final review.
+One earlier `zh-material-0-before` image was overwritten by a repeated capture
+name and is unavailable. Its original index and SHA remain explicit; the later
+image and AX record verify the qualified **95 px** starting offset. Retention
+records this missing original separately rather than substituting the later image.
 
 Serial shared-icon/UI builds, canonical Lab build and all four accepted native
 host builds pass. The initial Lab build encounters a stale shared-UI output;
