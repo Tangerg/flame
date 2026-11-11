@@ -75,6 +75,9 @@ const ENGLISH_CODE_ACTIONS: CodeActionLabels = {
   unwrap: "Disable word wrap",
 };
 
+// The border keeps scrolling glyphs outside the inset focus perimeter.
+const SOURCE_EDGE = "2px";
+
 const styles = stylex.create({
   frame: {
     display: "flex",
@@ -84,7 +87,7 @@ const styles = stylex.create({
     overflow: "hidden",
   },
   literalFrame: {
-    minHeight: `calc(var(--code-caption-height, 0px) + 1lh + ${space.s0_5} + ${space.s3} + var(--control-edge-width) * 2)`,
+    minHeight: `calc(var(--code-caption-height, 0px) + 1lh + ${space.s0_5} + ${space.s3} + ${SOURCE_EDGE} * 2 + var(--control-edge-width) * 2)`,
     maxHeight: `calc(var(--reading-frame-height, 100dvh) - var(--panel-controls-height, 0px) - var(--disclosure-header-height, 0px) - ${layout.controlGap})`,
     fontFamily: "var(--font-mono)",
     lineHeight: leading.relaxed,
@@ -128,8 +131,11 @@ const styles = stylex.create({
     maxHeight: "min(28rem,60vh)",
     overflow: "auto",
     overscrollBehavior: "contain auto",
+    borderWidth: SOURCE_EDGE,
+    borderStyle: "solid",
+    borderColor: "transparent",
     whiteSpace: "pre",
-    paddingInline: space.s3,
+    paddingInline: `calc(${space.s3} - ${SOURCE_EDGE})`,
     paddingBlockStart: space.s0_5,
     paddingBlockEnd: space.s3,
     fontFamily: "var(--font-mono)",

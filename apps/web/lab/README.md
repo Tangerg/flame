@@ -790,6 +790,12 @@ geometry check requires the reader inside its safe frame, a readable line,
 pointer access and no Jump overlap while Conversation itself retains focus.
 The geometry attachments also record the outer scroll position, scroll range and
 computed scroll-anchoring policy to distinguish hidden reflow from reader scrolling.
+The same task samples the source's lower focus perimeter at four offsets within
+one line. Each actual PNG strip is compared with a control capture that hides only
+the source glyphs, preserving the focused scrollport and its layout. Source glyphs
+must not change any perimeter pixel. The original child style and native scroll
+offset are restored; exact source, focus, draft and material-return assertions remain.
+The highlighted first line and its language caption must share the same leading edge.
 The returned-reader task also captures the actual Jump band. Outside the button
 and its shadow, the PNG must contain only the canvas color; side pointer probes
 must exclude history while the button itself stays hittable. The first pointer

@@ -166,6 +166,18 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await frame.getByRole("button", name("message.code.copy")).focus();
         await page.keyboard.press("Tab");
         await expect(source).toBeFocused();
+        const alignment = await source.evaluate((node) => ({
+          source: node.querySelector("code .line")!.getBoundingClientRect().left,
+          caption: node
+            .closest('[data-slot="code-block"]')!
+            .querySelector('[data-slot="code-caption"] > span')!
+            .getBoundingClientRect().left,
+        }));
+        await testInfo.attach("code-reading-leading-alignment", {
+          body: JSON.stringify(alignment),
+          contentType: "application/json",
+        });
+        expect(Math.abs(alignment.source - alignment.caption)).toBeLessThan(0.5);
 
         const expectReading = async (label: string, focusTarget = source) => {
           const geometry = await source.evaluate(async (node, jumpLabel) => {
@@ -320,6 +332,114 @@ for (const browserName of ["chromium", "webkit"] as const) {
           expect(geometry.jumpHit).toBe(true);
         };
 
+        const expectSourcePerimeter = async () => {
+          await page.mouse.move(4, 4);
+          await expect(source).toBeFocused();
+          const code = source.locator("code");
+          const originalStyle = await code.getAttribute("style");
+          const originalTop = await source.evaluate((node) => node.scrollTop);
+          const samples = [];
+          try {
+            for (let phase = 0; phase < 4; phase++) {
+              const geometry = await source.evaluate(
+                async (node, { originalTop, phase }) => {
+                  node.scrollTop =
+                    originalTop + (parseFloat(getComputedStyle(node).lineHeight) * phase) / 4;
+                  await new Promise(requestAnimationFrame);
+                  const bounds = node.getBoundingClientRect();
+                  return {
+                    scrollTop: node.scrollTop,
+                    clip: {
+                      x: Math.ceil(bounds.left + 24),
+                      y: Math.ceil(bounds.bottom) - 2,
+                      width: Math.floor(bounds.right - 24) - Math.ceil(bounds.left + 24),
+                      height: 2,
+                    },
+                  };
+                },
+                { originalTop, phase },
+              );
+              const visible = await page.screenshot({
+                clip: geometry.clip,
+                scale: "css",
+                animations: "disabled",
+                caret: "hide",
+              });
+              let empty: Buffer;
+              try {
+                await code.evaluate(async (node) => {
+                  node.style.visibility = "hidden";
+                  await new Promise(requestAnimationFrame);
+                  await new Promise(requestAnimationFrame);
+                });
+                empty = await page.screenshot({
+                  clip: geometry.clip,
+                  scale: "css",
+                  animations: "disabled",
+                  caret: "hide",
+                });
+              } finally {
+                await code.evaluate((node, style) => {
+                  if (style === null) node.removeAttribute("style");
+                  else node.setAttribute("style", style);
+                }, originalStyle);
+              }
+              const paint = await page.evaluate(
+                async (encoded) => {
+                  const images = await Promise.all(
+                    encoded.map(async (value) => {
+                      const image = new Image();
+                      image.src = `data:image/png;base64,${value}`;
+                      await image.decode();
+                      const canvas = document.createElement("canvas");
+                      canvas.width = image.naturalWidth;
+                      canvas.height = image.naturalHeight;
+                      const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+                      ctx.drawImage(image, 0, 0);
+                      return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                    }),
+                  );
+                  let ink = 0;
+                  let maxDelta = 0;
+                  for (let offset = 0; offset < images[0]!.length; offset += 4) {
+                    const delta = Math.max(
+                      ...[0, 1, 2].map((channel) =>
+                        Math.abs(images[0]![offset + channel]! - images[1]![offset + channel]!),
+                      ),
+                    );
+                    if (delta > 2) ink++;
+                    maxDelta = Math.max(maxDelta, delta);
+                  }
+                  return { pixels: images[0]!.length / 4, ink, maxDelta };
+                },
+                [visible.toString("base64"), empty.toString("base64")],
+              );
+              for (const [name, body] of [
+                ["source", visible],
+                ["empty", empty],
+              ] as const)
+                await testInfo.attach(`code-reading-perimeter-${phase}-${name}`, {
+                  body,
+                  contentType: "image/png",
+                });
+              samples.push({ phase, ...geometry, paint });
+            }
+          } finally {
+            await source.evaluate((node, top) => (node.scrollTop = top), originalTop);
+          }
+          await testInfo.attach("code-reading-perimeter-paint", {
+            body: JSON.stringify(samples),
+            contentType: "application/json",
+          });
+          for (const sample of samples) {
+            expect(sample.paint.pixels).toBeGreaterThan(0);
+            expect(sample.paint.ink).toBe(0);
+          }
+          expect(await source.evaluate((node) => node.scrollTop)).toBe(originalTop);
+          await expect(source).toBeFocused();
+          expect(await source.textContent()).toBe(CODE_READING_SOURCE);
+        };
+
         await expectReading("entry");
         // Screencast frames are what the browser presented; sampling is throttled (WebKit ≤ 25fps).
         const captureResize = async (size: { width: number; height: number }, label: string) => {
@@ -407,6 +527,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await captureResize(size, `wheel-${size.width}`);
         }
         await capture("wheel-reflow");
+        await expectSourcePerimeter();
         const readingPosition = await source.evaluate((node) => node.scrollTop);
 
         await page.getByRole("button", name("dock.action.openFull")).click();

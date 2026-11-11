@@ -352,6 +352,10 @@ bounded keyboard scroll region. An optional `caption` keeps a captured source's
 identity visible in its header without changing the `language` used for highlighting.
 `CodeBody` owns that stable literal source region,
 its code typography, shared wrap preference and host-supplied highlighting. It
+reserves a transparent 2 px edge outside the content clip, so scrolled glyphs
+cannot cross its inset keyboard focus perimeter. The edge stays within the existing
+inline inset, preserving the caption and source's leading alignment. The literal frame minimum
+includes those source edges as well as its caption, padded line and outer edges. It
 limits long code to the smaller of 28rem and 60vh, keeping the caption outside
 the scrolling source. A complete `CodeBlock` is one Panel focus unit so its caption
 stays visible with the focused reader when the block fits the available space.
