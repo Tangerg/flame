@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Computer Lab capacity, history and recovery now project complete original evidence using the backend's shared accounting rule. The final Lab selection passes **15 cases**, all **72 captured images** are reviewed, and actual Wails English/Chinese flows qualify reservation, settlement, Stop recovery, 200%/300% reading and return to the original draft. Complete plugin, Web and Desktop checks pass; the first Web attempt's Runtime SIGKILL cutpoint timeout is retained alongside the unchanged successful rerun. Shared code-reader alignment and focus work remain intact. The Lab remains the sole UI visual verification owner; live engine qualification and whole-product visual acceptance remain open. The earlier Reload-needed native blank is not causally resolved.
+UI polishing is **active again at the user's request**. Latest published main is incorporated. Settings categories with and without icons now share one label axis, including filtering and RTL. The same rail preserves a complete selected row in short windows and native 300% zoom. The existing Lab Settings selection passes **19 cases**, and **40 affected material-return cases** pass after migrating obsolete opener locators. All ten Settings panes are inspected in actual Wails in English and Chinese. Complete Web (**433 files / 4,833 tests**), Desktop and authored JavaScript/TypeScript complexity checks pass. The broad interaction sweep remains partial, with four Workspace chrome ResizeObserver errors requiring investigation. Computer capacity and shared code-reader repairs remain intact. Live engine, whole-product visual acceptance and the earlier native startup blank remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9945,7 +9945,107 @@ Verdict: **Approve for the inspected command-focus, pane-perimeter and return
 paths**. Pause after the requested main delivery; do not start another polishing
 batch. Remaining whole-product qualifications retain their existing bounds.
 
-### Basic settings native alignment review (2026-11-05)
+### Basic settings native alignment review
+
+#### Stable category labels and short-window navigation (2026-11-11)
+
+Actual Wails review finds a shared Settings rail defect: built-in category
+labels begin after an icon while iconless contributed categories begin at the
+row gutter. The existing Lab reproduces **22 CSS px English / 26 CSS px Chinese**
+axis drift in all four narrow/wide baseline cases. `ui/atoms/vertical-tabs.tsx`
+now reserves the existing `--icon-sm` column and density gap, with labels in the
+second logical grid column. No substitute glyph, spacer, token or category
+state is added. Filtering down to an iconless category and mirroring direction
+retain that same label axis.
+
+Native Chinese 18 px at 300% also exposes a selected row clipped by the stacked
+rail's 40% height cap. The existing geometry observer now publishes the actual
+header height to the frame. The same cap accommodates that header, one density
+row and its existing bottom padding. It still yields unused space after
+filtering. No header dimensions are duplicated from SettingsPage; no second
+observer, React state, focus policy or renderer is introduced.
+
+The final existing Settings spec passes **19 / 19** in **57.594 s**, without
+retries, skipped cases or escaped console errors. Four axis cases measure zero
+drift across all ten labels, filtered results and the RTL mirror. Four short-window
+cases prove actual Chromium/WebKit engine selection, English/Chinese Home/End,
+360 → 240 → 360 CSS px height, complete selected-row containment through every
+clipping ancestor, centre hit testing, no rail/pane overlap and usable pane space.
+The remaining cases retain search, current choice names, filtering and pane
+availability. All **54 attachments**, including **26 viewport images**, are
+retained. Rejected intrinsic-size and list-only candidates retain their negative
+reports: early Chromium-only assertions were insufficient to catch native
+WebKit overflow and rail/pane overlap. Assertions and timeouts are not weakened.
+
+The initial broad interaction sweep stops at its configured twelve-failure
+limit: **56 pass, 12 fail, 1,283 are not reached**. Eight failures target the
+retired long full-width opener text, including four flows whose failure capture
+masks the earlier missing-locator timeout. Thirteen obsolete locators across
+five existing Lab specs now name the current production opener. The affected
+Skills selection/personal-library, archive, Usage, schedule-cancellation, file,
+Diff and long-catalog return selections pass **40 / 40** in three serial runs
+(**104.016 s**, **50.314 s**, **67.348 s**). Their evidence, draft, focus and reading
+assertions remain intact. This does not qualify the unrun remainder of the broad
+sweep. Four Chromium Workspace chrome cases still report a ResizeObserver
+undelivered-notification error; their cause and relationship to concurrent native
+activity are unproven. Preserve that failure for the next bounded investigation.
+
+Final production components in the sole Lab run in the pinned **Wails v3.1.0**
+host. Both English/light/14 px/Flame Orange and Chinese/dark/18 px/custom
+`#3B82F6`, full motion, enter through the registered Cmd+Comma command and visit
+all ten Settings panes at 100%. The twenty full native viewport originals are
+reviewed. Native 300% Home/End and filtering retain complete selected rows and
+separate pane bounds; native Window → Zoom and restore at 200% retain the
+selection. English Appearance wheel reading exposes the lower controls. Close
+and explicit Cmd+L return to the original Composer; native paste continues exactly
+`Keep the final aligned Settings draft. Continue after the review.` and
+`最终中文设置草稿。 复查后继续。` without Send. Smaller native capture rasters are kept
+as diagnostics; accepted full-size replacements are retained after the exposed
+window Raise action. One earlier blank native entry is excluded and does not
+establish a cause or recovery fix for the separate startup investigation.
+
+Read-only ZCode provider navigation and HeroUI Tabs source inform the distinction
+between optional glyphs and caller-owned row layout. Better-layout supplies the
+shared-edge, translated-content and logical-direction criteria. The
+[CSS Grid sizing definition](https://www.w3.org/TR/css-grid-2/#valdef-grid-template-columns-fit-content)
+is an implementation reference; Flame's measured and native results qualify the
+chosen cap. The bounded Claude CLI implementation candidate changes one allowed
+source, preserving seven context files. A later read-only CLI review preserves
+all three inputs. Its unexecuted engine-fixture and intrinsic-layout claims are
+not acceptance evidence; primary-owned engine assertions and failing geometry
+reports decide those points. Physical OS IME, VoiceOver speech, live provider or
+Runtime writes, other-platform GUI and whole-product visual acceptance remain
+unverified. No protocol or persisted-data migration is required.
+
+Final full Web verification passes all **433 files / 4,833 tests** and every
+following module gate in **432.482 s**. `make check-native` passes in **110.333 s**;
+authored TypeScript/JavaScript complexity passes in **2.268 s**. The repository's
+normal formatter and lint hooks remain required for publication. Expected local
+fixture connection-refused stderr and native deployment-linker warnings remain
+visible alongside successful terminal receipts. No optional performance project
+or unrelated full-repository check is run.
+
+All **6,735 non-Markdown source inputs** are checked; only the seven owned source
+files differ, and all **46 production native inputs** remain exact. The original
+primary-checkout guard detects concurrent edits rather than assuming that the
+primary stayed clean. A read-only observation preserves **22 changed primary
+files**, their bytes and identities, with its original baseline retained; its
+HEAD and lock hashes remain unchanged at that observation. These independent
+edits are outside this publication.
+
+All six private native runs exit **0**. The exact temporary application is
+unregistered, its six UID Library paths are absent, and three original empty
+protected helper roots retain their identities. The owned static server ends
+with **143** after its identity-checked SIGTERM. All **13 checkout output/cache
+roots** are restored, and the two pre-existing Runtime temporary roots retain
+their original identities and children. Functional checks finish before output
+restoration. Six byte-exact native originals, including the two defects and their
+accepted results, are retained with their hashes in the
+[native evidence directory](/Users/tangerg/.codex/visualizations/2026/11/01/01a1987c-86ad-7b01-a852-211552953a55/flame-settings-navigation-w_8alqqu/manifest.json).
+Publication is followed by fenced retirement of the remaining private tools and
+evidence tree, with zero-open-file and remote-equality checks before delivery.
+
+#### Earlier native review (2026-11-05)
 
 On published main `a6a26524e04d49bc75516cbddad90b61e5db03c4`, actual
 Wails v3.0.0 review finds no new alignment defect in the inspected Appearance,

@@ -40,7 +40,7 @@ const styles = stylex.create({
     },
     gridTemplateRows: {
       default: "minmax(0, 1fr)",
-      "@container (max-width: 40rem)": "fit-content(40%) minmax(0, 1fr)",
+      "@container (max-width: 40rem)": `fit-content(max(40%, calc(var(--vertical-tabs-header-height, 0px) + var(--density-row-height) + ${space.s6}))) minmax(0, 1fr)`,
     },
     overflow: "hidden",
     backgroundColor: surface.canvas,
@@ -66,10 +66,11 @@ const styles = stylex.create({
   },
   group: { display: "flex", flexDirection: "column", gap: "1px" },
   tab: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "var(--icon-sm) minmax(0, 1fr)",
     height: "var(--density-row-height)",
     alignItems: "center",
-    gap: "var(--density-row-gap)",
+    columnGap: "var(--density-row-gap)",
     borderRadius: radius.row,
     borderWidth: 0,
     position: "relative",
@@ -91,7 +92,8 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   highlight: { borderRadius: radius.row },
-  glyph: { flexShrink: 0 },
+  glyph: { gridColumn: 1 },
+  label: { gridColumn: 2 },
   page: {
     gridColumn: { default: 2, "@container (max-width: 40rem)": 1 },
     gridRow: { default: 1, "@container (max-width: 40rem)": 2 },
@@ -121,7 +123,7 @@ function RailTab({ item }: { item: VerticalTabItem }) {
     >
       {track?.hovered && <ItemHighlight layoutId={track.layoutId} styles={styles.highlight} />}
       {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
-      <span {...stylex.props(vocab.truncate)}>{item.label}</span>
+      <span {...stylex.props(vocab.truncate, styles.label)}>{item.label}</span>
     </TabsPrimitive.Tab>
   );
 }
@@ -166,13 +168,21 @@ export function VerticalTabs({
         .map((group) => ({ ...group, items: group.items.filter(railFilter) }))
         .filter((group) => group.items.length > 0)
     : groups;
+  const frameRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
+    const frame = frameRef.current;
     const list = listRef.current;
-    if (!list) return;
+    const rail = list?.parentElement;
+    if (!frame || !list || !rail) return;
     const liveState = { value: true };
     const revealSelected = () => {
-      if (!liveState.value || !list.isConnected || list.clientHeight === 0) return;
+      if (!liveState.value || !list.isConnected) return;
+      // The stacked cap must fit the actual header and one complete category.
+      const headerHeight = `${list.getBoundingClientRect().top - rail.getBoundingClientRect().top}px`;
+      if (frame.style.getPropertyValue("--vertical-tabs-header-height") !== headerHeight)
+        frame.style.setProperty("--vertical-tabs-header-height", headerHeight);
+      if (list.clientHeight === 0) return;
       const tab = list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
       if (!tab?.isConnected) return;
       const target = tab.getBoundingClientRect();
@@ -188,6 +198,7 @@ export function VerticalTabs({
     revealSelected();
     const observer = new ResizeObserver(revealSelected);
     observer.observe(list);
+    observer.observe(rail);
     // Groups sit inside HoverTrack's boxless wrapper, so find them through their tabs.
     for (const tab of list.querySelectorAll('[role="tab"]')) {
       if (tab.parentElement) observer.observe(tab.parentElement);
@@ -201,6 +212,7 @@ export function VerticalTabs({
   return (
     <div {...stylex.props(styles.container)}>
       <TabsPrimitive.Root
+        ref={frameRef}
         orientation="vertical"
         value={value ?? null}
         onValueChange={(next) => onValueChange(next ? String(next) : undefined)}

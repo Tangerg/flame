@@ -401,6 +401,16 @@ without text and that the admitted header, controls, Back and Copy path bounds
 remain stable across settlement. Full layout-shift rectangles are retained in the
 existing layout-shift spec; neither check changes query retry or document readiness.
 
+The existing Settings navigation scenario measures actual text ranges for mixed
+icon and iconless categories in English and Chinese, at narrow and wide sizes,
+after filtering and with logical direction mirrored. Short-window checks resize
+through 360, 240 and 360 CSS pixels of height, retaining keyboard Home/End
+activation, the complete selected row within both its list and rail, centre hit
+testing, clipping ancestors, separate pane bounds and usable pane space in both
+browser engines. Its viewport captures and geometry use the same
+Lab runner. Workspace, Skills, file and Diff scenarios target the current
+full-width material opener while preserving their original task-return assertions.
+
 Diff failure checks follow the first rejected scoped read into a pending overview.
 The surviving Refresh control receives focus while its filter is unavailable;
 success continues to the selected row or filter. Later outside focus and deliberate

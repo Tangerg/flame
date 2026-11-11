@@ -7,21 +7,21 @@ import { expectLabReady } from "../readiness";
 const providerTitle = providersDeclaration.components[0]!.title;
 async function openSettings(
   page: Page,
-  { width = 1120, height = 720, theme = "light", locale = "en" } = {},
+  { width = 1120, height = 720, theme = "light", locale = "en", fontSize = 18 } = {},
 ) {
   await page.setViewportSize({ width, height });
   const query = new URLSearchParams({
     fixture: "workspace",
     state: "settings",
     pane: "appearance",
-    "font-size": "18",
+    "font-size": String(fontSize),
     theme,
     locale,
   });
   await page.goto(`/lab/fixture.html?${query}`);
   await expectLabReady(page);
   await page.evaluate(() => document.fonts.ready);
-  const catalog = locale === "de" ? de : en;
+  const catalog = locale === "de" ? de : locale === "zh" ? zh : en;
   return {
     catalog,
     list: page.getByRole("tablist", { name: catalog["settings.title"]!, exact: true }),
@@ -39,15 +39,115 @@ async function geometry(list: Locator) {
     const panel = document.querySelector('[role="tabpanel"]:not([aria-hidden="true"])')!;
     const content = panel.getBoundingClientRect();
     return {
+      listHeight: node.clientHeight,
+      listTotal: node.scrollHeight,
+      frameRows: getComputedStyle(node.parentElement!.parentElement!).gridTemplateRows,
+      railRows: getComputedStyle(node.parentElement!).gridTemplateRows,
       railHeight: rail.height,
+      railBottom: rail.bottom,
       railRight: rail.right,
       frameHeight: frame.height,
       contentHeight: content.height,
+      contentTop: content.top,
       contentLeft: content.left,
       contentOverflow: panel.scrollWidth - panel.clientWidth,
       pageOverflow: document.documentElement.scrollWidth - innerWidth,
     };
   });
+}
+
+async function navigationLabels(list: Locator) {
+  return list.evaluate((list) => {
+    const bounds = list.getBoundingClientRect();
+    const rtl = getComputedStyle(list).direction === "rtl";
+    return [...list.querySelectorAll('[role="tab"]')].map((tab) => {
+      const walker = document.createTreeWalker(tab, NodeFilter.SHOW_TEXT);
+      let text = walker.nextNode();
+      while (text && !text.textContent?.trim()) text = walker.nextNode();
+      if (!text) throw new Error("Settings tab has no label");
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const label = range.getBoundingClientRect();
+      return {
+        name: tab.textContent!.trim(),
+        icon: tab.querySelector("svg") !== null,
+        inset: rtl ? bounds.right - label.right : label.left - bounds.left,
+        width: label.width,
+      };
+    });
+  });
+}
+
+for (const environment of [
+  { locale: "en", theme: "light", fontSize: 14 },
+  { locale: "zh", theme: "dark", fontSize: 18 },
+]) {
+  for (const width of [320, 1120]) {
+    test(`settings navigation keeps one label axis with optional icons in ${environment.locale} at ${width}px`, async ({
+      page,
+    }) => {
+      const { list, search } = await openSettings(page, {
+        ...environment,
+        width,
+        height: 900,
+      });
+      const labels = await navigationLabels(list);
+      expect(labels.some((label) => label.icon)).toBe(true);
+      expect(labels.some((label) => !label.icon)).toBe(true);
+      expect(labels.every((label) => label.width > 0)).toBe(true);
+      const axis = labels.find((label) => label.icon)!.inset;
+      for (const label of labels) expect(Math.abs(label.inset - axis)).toBeLessThanOrEqual(0.5);
+      await test.info().attach("settings-navigation-label-axis", {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+
+      const last = list.getByRole("tab").last();
+      await list.getByRole("tab").first().focus();
+      await page.keyboard.press("End");
+      await expect(last).toBeFocused();
+      await expect(last).toHaveAttribute("aria-selected", "true");
+      await expect(last).toBeInViewport({ ratio: 1 });
+
+      const plain = labels.find((label) => !label.icon)!.name;
+      await search.fill(plain);
+      await search.press("Enter");
+      await expect(list.getByRole("tab", { name: plain, exact: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      const filtered = await navigationLabels(list);
+      for (const label of filtered) expect(Math.abs(label.inset - axis)).toBeLessThanOrEqual(0.5);
+      await expect(search).toBeFocused();
+      await test.info().attach("settings-filtered-label-axis", {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+      await search.press("Escape");
+      await expect(search).toHaveValue("");
+      await expect(list.getByRole("tab", { name: plain, exact: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await page.evaluate(() => {
+        document.documentElement.dir = "rtl";
+      });
+      await expect(list).toHaveCSS("direction", "rtl");
+      const mirrored = await navigationLabels(list);
+      const mirroredAxis = mirrored.find((label) => label.icon)!.inset;
+      for (const label of mirrored)
+        expect(Math.abs(label.inset - mirroredAxis)).toBeLessThanOrEqual(0.5);
+      await test.info().attach("settings-navigation-label-measurements", {
+        body: JSON.stringify({ labels, filtered, mirrored }, null, 2),
+        contentType: "application/json",
+      });
+      await test.info().attach("settings-mirrored-label-axis", {
+        body: await page.screenshot({ animations: "disabled" }),
+        contentType: "image/png",
+      });
+    });
+  }
 }
 
 for (const environment of [
@@ -169,37 +269,86 @@ for (const theme of ["light", "dark"]) {
   });
 }
 
-test("a short zoomed viewport scrolls the rail with keyboard navigation and keeps the pane usable", async ({
-  page,
-}) => {
-  const { catalog, list } = await openSettings(page, { width: 560, height: 360, theme: "dark" });
-  const first = list.getByRole("tab").first();
-  const last = list.getByRole("tab").last();
-  expect(await list.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-  const bounds = await geometry(list);
-  expect(bounds.contentHeight).toBeGreaterThan(bounds.railHeight);
-  await first.focus();
-  await first.press("End");
-  await expect(last).toBeFocused();
-  await expect(last).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByRole("tabpanel", { name: await last.innerText(), exact: true }),
-  ).toBeVisible();
-  const position = await last.evaluate((node) => {
-    const tab = node.getBoundingClientRect();
-    const list = node.closest('[role="tablist"]')!.getBoundingClientRect();
-    return { top: tab.top, bottom: tab.bottom, listTop: list.top, listBottom: list.bottom };
-  });
-  expect(position.top).toBeGreaterThanOrEqual(position.listTop);
-  expect(position.bottom).toBeLessThanOrEqual(position.listBottom);
-  await last.press("Home");
-  await expect(first).toBeFocused();
-  await expect(first).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByRole("tabpanel", { name: catalog["settings.pane.appearance"]!, exact: true }),
-  ).toBeVisible();
-  expect((await geometry(list)).pageOverflow).toBe(0);
-});
+for (const browserName of ["chromium", "webkit"] as const) {
+  const shortTest = test.extend({ browserName });
+  for (const environment of [
+    { locale: "en", theme: "light", fontSize: 14 },
+    { locale: "zh", theme: "dark", fontSize: 18 },
+  ]) {
+    shortTest(
+      `a short zoomed viewport scrolls the rail with keyboard navigation and keeps the pane usable in ${environment.locale} ${browserName}`,
+      async ({ page, browser }, testInfo) => {
+        expect(browser.browserType().name()).toBe(browserName);
+        const { catalog, list } = await openSettings(page, {
+          width: 373,
+          height: 360,
+          ...environment,
+        });
+        const first = list.getByRole("tab").first();
+        const last = list.getByRole("tab").last();
+        for (const height of [360, 240, 360]) {
+          await page.setViewportSize({ width: 373, height });
+          const bounds = await geometry(list);
+          await testInfo.attach(`settings-short-rail-${environment.locale}-${height}-frame`, {
+            body: JSON.stringify(bounds),
+            contentType: "application/json",
+          });
+          expect(bounds.listTotal).toBeGreaterThan(bounds.listHeight);
+          expect(bounds.contentTop).toBeGreaterThanOrEqual(bounds.railBottom);
+          if (height === 360) expect(bounds.contentHeight).toBeGreaterThan(bounds.railHeight);
+          expect(bounds.contentHeight).toBeGreaterThanOrEqual((await last.boundingBox())!.height);
+          await first.focus();
+          await first.press("End");
+          await expect(last).toBeFocused();
+          await expect(last).toHaveAttribute("aria-selected", "true");
+          await expect(
+            page.getByRole("tabpanel", { name: await last.innerText(), exact: true }),
+          ).toBeVisible();
+          const position = await last.evaluate((node) => {
+            const tab = node.getBoundingClientRect();
+            const list = node.closest('[role="tablist"]')!.getBoundingClientRect();
+            const rail = node.closest('[role="tablist"]')!.parentElement!.getBoundingClientRect();
+            const hit = document.elementFromPoint(tab.x + tab.width / 2, tab.y + tab.height / 2);
+            let top = Math.max(list.top, rail.top, 0);
+            let bottom = Math.min(list.bottom, rail.bottom, innerHeight);
+            for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+              if (!/(auto|scroll|hidden|clip)/.test(getComputedStyle(ancestor).overflowY)) continue;
+              const bounds = ancestor.getBoundingClientRect();
+              top = Math.max(top, bounds.top + ancestor.clientTop);
+              bottom = Math.min(bottom, bounds.top + ancestor.clientTop + ancestor.clientHeight);
+            }
+            return {
+              top: tab.top,
+              bottom: tab.bottom,
+              listTop: top,
+              listBottom: bottom,
+              reachable: hit !== null && node.contains(hit),
+            };
+          });
+          await testInfo.attach(`settings-short-rail-${environment.locale}-${height}-geometry`, {
+            body: JSON.stringify({ bounds, position }),
+            contentType: "application/json",
+          });
+          expect(position.top).toBeGreaterThanOrEqual(position.listTop);
+          expect(position.bottom).toBeLessThanOrEqual(position.listBottom);
+          expect(position.reachable).toBe(true);
+          await testInfo.attach(`settings-short-rail-${environment.locale}-${height}`, {
+            body: await page.screenshot({ animations: "disabled" }),
+            contentType: "image/png",
+          });
+          await last.press("Home");
+          await expect(first).toBeFocused();
+          await expect(first).toHaveAttribute("aria-selected", "true");
+          await expect(first).toBeInViewport({ ratio: 1 });
+          await expect(
+            page.getByRole("tabpanel", { name: catalog["settings.pane.appearance"]!, exact: true }),
+          ).toBeVisible();
+          expect((await geometry(list)).pageOverflow).toBe(0);
+        }
+      },
+    );
+  }
+}
 
 test("both clear actions return focus to search without changing the open pane", async ({
   page,

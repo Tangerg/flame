@@ -161,8 +161,7 @@ for (const profile of [
     back: "Back to conversation",
     close: "Close",
     conversation: "Conversation",
-    openFull:
-      "Open material full width — the window is too narrow to show it beside the conversation",
+    openFull: "Open material full width",
     backToFiles: "Back to files",
     retry: "Retry",
     goToLine: "Go to line",
@@ -181,7 +180,7 @@ for (const profile of [
     back: "返回对话",
     close: "关闭",
     conversation: "对话",
-    openFull: "全宽打开材料——窗口太窄，无法与对话并排显示",
+    openFull: "全宽打开材料",
     backToFiles: "返回文件列表",
     retry: "重试",
     goToLine: "跳转到行",

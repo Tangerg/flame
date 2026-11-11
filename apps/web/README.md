@@ -61,6 +61,12 @@ Settings navigation reveals its currently selected category inside its own
 scrollport after a resize or selection change, moving only as far as needed.
 A visible or search-hidden selection leaves the rail where the user scrolled it.
 Editing focus and the retained page position remain owned by that page.
+Optional category icons occupy a stable column using the shared icon size and
+row gap, so built-in and contributed labels share one logical leading edge.
+The rail reserves one complete navigation row and its existing bottom padding;
+at short stacked sizes the open pane yields enough space to keep that row usable.
+The existing geometry observer supplies the header's actual height to that cap,
+so the navigation does not duplicate the header's control or spacing dimensions.
 
 `src/app` composes product policy. `src/features` contains actual feature owners
 and their formal public capabilities. `src/extensions` contains generic host,

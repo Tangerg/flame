@@ -90,8 +90,7 @@ for (const profile of [
     composer: "Message composer",
     close: "Close",
     conversation: "Conversation",
-    openFull:
-      "Open material full width — the window is too narrow to show it beside the conversation",
+    openFull: "Open material full width",
     showFiles: "Show changed files",
     refresh: "Refresh",
     filter: "Filter files",
@@ -110,7 +109,7 @@ for (const profile of [
     composer: "消息输入框",
     close: "关闭",
     conversation: "对话",
-    openFull: "全宽打开材料——窗口太窄，无法与对话并排显示",
+    openFull: "全宽打开材料",
     showFiles: "显示已更改文件",
     refresh: "刷新",
     filter: "筛选文件",

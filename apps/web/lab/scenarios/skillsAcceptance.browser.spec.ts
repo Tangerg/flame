@@ -146,8 +146,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       active: "Active",
       archived: "Archived",
       total: "2 user-managed Skills",
-      material:
-        "Open material full width — the window is too narrow to show it beside the conversation",
+      material: "Open material full width",
       close: "Close",
       composer: "Message composer",
       conversation: "Conversation",
@@ -168,7 +167,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       active: "活跃",
       archived: "已归档",
       total: "2 个用户管理的技能",
-      material: "全宽打开材料——窗口太窄，无法与对话并排显示",
+      material: "全宽打开材料",
       close: "关闭",
       composer: "消息输入框",
       conversation: "对话",

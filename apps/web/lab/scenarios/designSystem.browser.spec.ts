@@ -237,7 +237,7 @@ for (const [engine, engineTest] of [
                 await new Promise(requestAnimationFrame);
               });
             }
-            await page.getByRole("button", { name: /窗口太窄/ }).click();
+            await page.getByRole("button", { name: "全宽打开材料", exact: true }).click();
             await panel
               .getByRole("group", { name: "risk-first-review 的提议操作", exact: true })
               .getByRole("button", { name: "拒绝", exact: true })
