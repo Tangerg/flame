@@ -56,6 +56,18 @@ npm run lab:build --workspace @flame/web
 
 This writes `out/web/lab`. It does not replace the production Web bundle.
 
+Native visual qualification uses this same Lab over loopback HTTP in the current
+Wails host. Its observation bridge accepts HTTP/HTTPS origins only; embedding a
+Lab document under `wails://` is unsupported. Use the development URL above, or
+serve the unmodified `out/web/lab` build through a loopback HTTP server for static
+qualification.
+
+Use a disposable host with the selected Lab URL and isolated application identity
+and data. Retain the production host, bindings and native zoom behavior. Qualify
+production startup separately with its original `/` entry and normal staged Web
+assets. A working HTTP Lab does not establish embedded product startup or live
+Runtime execution. Keep all visual scenarios and checks in this Lab.
+
 ## Use
 
 Gallery pages mount at most six interactive previews. Components use their real

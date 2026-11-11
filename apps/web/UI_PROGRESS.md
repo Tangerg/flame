@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**. The Lab now takes nine captured package-view names and four Settings contribution names from their public declarations, retaining localization and authored search terms. English/Chinese Wails tasks qualify panel/material/Settings return and the independent gallery entry at actual 200%/300% zoom. Earlier shared Panel, Composer and reading repairs retain their accepted source bytes. Whole-product visual acceptance, live Runtime execution and the embedded native startup blank remain open.
+UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge. The original Wails production entry renders successfully; the rejected embedded Lab entry violates its HTTP-only observation contract. English/Chinese native Lab tasks cover actual 200%/300% zoom, detail return, exact draft continuation and all five footer targets at 300%. The Lab retains authored contribution names and all accepted Panel, Composer and reading repairs. Whole-product visual acceptance and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35,6 +35,61 @@ project. The [lab README](lab/README.md) documents filtering, extension and
 isolation. No production router or Runtime debug route is added. The migrated
 `scenarios/` files retain normal authored-code complexity coverage; the three
 existing complexity entries only change paths, without changing thresholds.
+
+The **2026-11-12** native-control follow-up distinguishes the supported entries.
+The bundled `@oai/sky` bridge through `node_repl` supplies screenshots, AX and real
+mouse, keyboard, wheel and window actions. No Codex configuration, plugin or OS
+permission change is required. The original production Wails **v3.1.0** host,
+with its unmodified `/` entry and **287 normally staged Web assets**, renders at
+`wails://localhost/`. Its isolated unavailable-Runtime state, Appearance and
+Connection navigation, native URL editing/Undo, 200% zoom, minimum-window resize
+and conversation return work. The private Runtime URL is deliberately unavailable;
+this does not qualify a live connection or provider execution.
+
+The source trace identifies a distinct Lab admission boundary:
+`observations.ts` rejects non-HTTP(S) protocols, and `fixture.ts` installs it before
+its error-page `try`. An embedded Lab control repeats the empty document at the
+correct `wails://localhost/lab/fixture.html` URL. The same **488 canonical Lab
+assets**, unchanged byte for byte, render through loopback HTTP in the same native
+host. The Web Inspector console is not captured; this evidence establishes the
+unsupported entry and its source failure path rather than every historical blank
+window's cause. Claude Code CLI supplies a bounded read-only trace with no tool
+denials; primary review checks its locations against source and native behavior.
+Keep the HTTP-only observation boundary and use the existing Lab preview for native
+visual qualification. The production entry has no reproduced startup defect.
+
+English/light/14 px/Flame Orange/full motion and Chinese/dark/18 px/**#3B82F6**/
+motion off qualify real code and recorded-evidence wheel reading, native 200%/300%
+zoom, minimum-frame and enlarged-window operation. Both tasks filter and expand a
+captured model record, visit full-width material twice, retain its query/disclosure,
+return and exactly continue a padded six-line unsent draft. All **five footer
+controls** receive visible native keyboard focus at 300%; Chinese policy-menu
+keyboard entry, Escape and onward Tab also work without selecting a policy.
+No Send or Runtime mutation is activated. The Chinese 18 px main code reader with
+that long Composer has too little visible source after minimum-window reflow at
+200%; complete reader visibility in that combination remains unqualified and is
+the next bounded layout investigation. The full-width evidence reader and Composer
+tasks pass independently. Physical IME, VoiceOver speech, RTL, older-macOS
+distribution and whole-product visual acceptance are not established here.
+
+`make stage-web`, the canonical Lab build and all five private native builds pass.
+`make check-native` passes in **57.342 s**; its ordinary linker emits the existing
+deployment-target warnings, so older-macOS distribution is not qualified. The
+existing observation and Browser/Desktop host selection passes **3 files / 54
+tests** in **1.515 s**; no additional
+browser visual suite, runner, story or performance benchmark is introduced. All
+**71 original JPEGs and 76 AX records** are retained, with every indexed image
+verified and reviewed. Formal startup and both HTTP tasks are accepted; the embedded
+control is excluded. Four launched processes exit after native Quit, with exact
+instance absence verified rather than an unobserved exit-code claim. The fifth
+built app is not launched. All five private registrations and twelve private
+Library paths are absent. The HTTP server exits **130** on its verified SIGINT,
+and its port closes. All **13 output/cache roots** match their original bytes and
+modes or absence. The primary checkout, preexisting Runtime roots and Node
+toolchain remain untouched. No functional checks run after output restoration;
+only document formatting, ordinary static hooks and integrity checks follow.
+Publication and fenced cleanup retain their receipts outside the repository under
+`flame-startup-ceytolkm`.
 
 ### Linked icon loading in Lab development (2026-11-09)
 
