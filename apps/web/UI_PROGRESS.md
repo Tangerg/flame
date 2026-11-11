@@ -21520,20 +21520,58 @@ typechecking, lint, formatting, dependency/layer guards and bundle checks. The p
 full Web test run's non-green result remains open; this
 frontend selection does not newly qualify Runtime or live provider execution.
 
-Actual Wails interaction is not qualified for this candidate: the current session
-does not expose the native desktop control tool. The earlier `6e8de2b9f` native
-evidence retains its original source boundary. The candidate is maintained on
-`codex/flame-ui-polish`; promotion to main awaits actual native acceptance.
-Evidence is retained outside the repository under `flame-composer-frame-0s08o_vz`.
-All **13 output/cache roots** match their baseline contents and modes, including
-eight original absences. Source comparison protects **6,842 baseline inputs**
-and admits only the **16 owned paths**, including the shared hook move and three
-maintained documents. The two original Runtime fixture roots retain their
-identities and children; both Lab ports are closed. No native qualification app
-is launched, and no functional checks run after output restoration. The final
-QA-root retirement receipt is retained with the evidence after publication.
-The user's primary checkout remains read-only. No data or protocol migration
-is needed.
+The **2026-11-12** native follow-up qualifies this candidate's Wails interaction.
+The bundled `@oai/sky` bridge works through `node_repl`; the prior tool-name
+lookup had missed this bridge. No Codex configuration, plugin installation or
+OS permission change is required. Four private
+production **Wails v3.1.0** hosts open the existing Lab through a loopback static
+server, with **488 byte-identical canonical Lab assets**, all **46 native inputs**
+and all **6,842 source inputs** unchanged from `9f0ba0a82`. Rejected embedded-URL
+bootstrap attempts are retained separately from the accepted HTTP profiles.
+
+English/light/14 px/Flame Orange and Chinese/dark/18 px/**#3B82F6** each cover
+idle and running states at actual **200% and 300%** page zoom. The native minimum
+frame reports **373 × 243 px** through the existing Lab readout. Padded ten-line
+drafts retain their exact contents while the beginning and end remain reachable.
+Native Tab reaches all **seven running / five idle footer controls**. Native
+Window menu enlargement and shrinking preserve visible Stop or Send focus.
+Running model/policy cancellation, inner-wheel reading, image intake through
+the native picker, preview return, removal, and twelve-line paste review with
+cancel/save/restoration pass without sending or executing Runtime commands.
+
+Full-width Schedules search, wheel reading and conversation return retain the
+draft and continued input in all four profiles. The running readout verifies
+three independent outer offsets through hidden layout and return: English
+**70 / 46 / 154 px**, Chinese **95 / 70 / 178 px**. Each visit retains the
+original offset and total content extent; its viewport changes with the reading
+context. Native Unicode paste continues Chinese text exactly. Direct Unicode
+`type_text` does not reproduce that continuation; native Undo restores the
+original before the successful paste. OS IME composition, VoiceOver speech,
+RTL, live Runtime execution and shipping packaging are not newly qualified.
+The native evidence retains **139 original JPEG captures and 155 AX records**,
+including the rejected attempts. Footer contact sheets support the final review.
+
+Serial shared-icon/UI builds, canonical Lab build and all four accepted native
+host builds pass. The initial Lab build encounters a stale shared-UI output;
+building its documented prerequisites resolves the missing export without a
+source change. The earlier automated gate results above are not rerun in this
+native-only follow-up; the full Web suite's non-green result remains open.
+
+The earlier `6e8de2b9f` native evidence retains its original source boundary.
+Automated candidate evidence remains under `flame-composer-frame-0s08o_vz`;
+this follow-up is retained under `flame-composer-native-mmycqgvu`, both outside
+the repository. The fresh main fetch remains `367b64701`, already included in
+the candidate. The user's primary checkout remains read-only. No data or
+protocol migration is needed.
+
+All six launched native instances exit, the four private app registrations are
+removed, and the static Lab port closes. All **24 profile Library paths** return
+to absence; six unused base-identity paths remain absent. All **13 output/cache
+roots** match their original contents and modes, including eight absences.
+The two preexisting Runtime fixture roots retain their identities and children.
+No functional checks run after restoration. Ordinary commit hooks and
+fast-forward publication to main finish this batch; the retained evidence
+includes final resource verification and the QA-root retirement receipt.
 
 ### Composer reading across full-width material (2026-11-11)
 
