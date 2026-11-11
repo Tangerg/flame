@@ -9954,8 +9954,9 @@ ResizeObserver's undelivered-notification error in both languages. Temporary
 forwarding diagnostics in the existing spec identify two shallow effects of
 ChatPanel's synchronous capacity commit: an open body Tooltip changes width
 (191.40625 to 204.0625 px in English), and a newly visible Panel starts observing
-html/body ancestors during the deeper row's delivery. The diagnostics and their
-original source are retained; the tracing code is removed from the candidate.
+html/body ancestors during the deeper row's delivery. The tracing code is removed
+from the candidate. Its temporary source was archived before cleanup; see the
+retention limitation below.
 
 ChatPanel now samples actual row width from one row-lifetime animation-frame
 callback. Only a changed width publishes; capacity changes retain synchronous
@@ -9977,8 +9978,9 @@ English/Chinese, repeated sidebar Home/End with zero window resize events,
 delivery-time layouts at 600/880 px, retained material/Composer nodes, exact draft,
 separator focus, retired-source fallback and continued drafting. Their read-only
 probe retires in finally. Eight original transition images are inspected. All
-323 integration attachments, including 228 images, are retained without claiming
-that every image received a visual review.
+323 integration attachments, including 228 images, were archived before cleanup;
+not every image received a visual review. That full archive is no longer
+accessible after the tool reset described below.
 
 The two remaining cases expose Send/发送 outside the viewport for a ten-line draft
 at 373 × 243. Restoring the original published ChatPanel reproduces both failures
@@ -10026,7 +10028,7 @@ The native 300% captures also expose Composer footer controls below the short
 viewport, including with a wrapped draft. This remains unfinished layout work;
 material-header acceptance does not qualify that footer. Preserve the existing
 Send visibility assertion and repair the Composer/frame height contract next.
-Sixteen original native images and AX texts are retained, including an invalid
+Sixteen original native images and AX texts were captured, including an invalid
 motion=on startup and an unfocused-pointer attempt, both excluded from acceptance.
 A post-quit CUA observation relaunches the private wrapper without its environment;
 that extra process is closed and excluded. The accepted URLs use motion=full.
@@ -10042,17 +10044,28 @@ the review bundle is unregistered, six private Library paths return to absence,
 and three existing helper roots retain their identities, modes and flags. The
 primary checkout remains read-only; its concurrent work is not restored. Both
 pre-existing Runtime fixture roots retain their exact identities and children.
-Eight selected original images and AX texts are copied to the existing
-visualization space. Review receipts and source evidence are retained separately
-from disposable build/browser/cache payloads. The next bounded task is the
-existing short-window Composer footer failure. Full Web unit failures require
-separate causal investigation; they are neither waived nor represented as passes.
+Eight selected original images and their AX texts remain on disk in the existing
+visualization space, with a source and file-hash manifest. A 945-entry, checksum-
+verified in-memory archive was prepared before the private review tree was
+retired. The subsequent tool reset discarded that memory; full browser
+attachments, temporary diagnostic sources and raw receipts cannot now be reread
+from it. The reported outcomes remain recorded here and in the conversation;
+fresh diagnosis must use a new run in the same Lab. Post-interruption checks
+confirm that the private tree is absent, all seven delivered sources match the
+disk manifest, all 46 native sources remain unchanged, the worktree is clean,
+and local HEAD and remote main equal `6e8de2b9f`. The eight originally absent
+output roots remain absent, and a representative file in each of the five
+restored roots matches its captured hash. Private application storage, helper
+roots and the two pre-existing Runtime roots pass their scoped checks. No owned
+process or unlinked open file remains. The next bounded task is the existing
+short-window Composer footer failure. Full Web unit failures require separate
+causal investigation; they are neither waived nor represented as passes.
 
 Read-only ZCode side-pane sizing and overflow code inform the separation of the
 width budget from its rendered effects. Better-layout supplies the complete-task,
 shared-edge and constrained-frame criteria. The bounded CLI's viewport-only
-proposal is retained but not qualified; its later frame-phase implementation is
-reviewed against actual browser evidence. It changes only its allowed source and
+proposal is not qualified; its later frame-phase implementation is reviewed
+against actual browser evidence. It changes only its allowed source and
 preserves eight context files. No new visual route, runner configuration, fixture
 application, theme token, protocol or persisted-data contract is introduced.
 
