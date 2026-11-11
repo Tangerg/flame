@@ -1044,3 +1044,165 @@ for (const theme of ["light", "dark"]) {
     });
   }
 }
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  const capacityTest = test.extend({ browserName });
+  for (const profile of [
+    { locale: "en", theme: "light", messages: en },
+    { locale: "zh", theme: "dark", messages: zh },
+  ]) {
+    capacityTest(
+      browserName +
+        " sidebar-only capacity changes preserve the inspected material in " +
+        profile.locale,
+      async ({ page, browser }, testInfo) => {
+        expect(browser.browserType().name()).toBe(browserName);
+        const messages: Record<string, string> = profile.messages;
+        await page.setViewportSize({ width: 1120, height: 728 });
+        await page.goto(
+          "/lab/fixture.html?" +
+            new URLSearchParams({
+              fixture: "workspace",
+              state: "dock-schedules",
+              "agent-state": "running",
+              locale: profile.locale,
+              theme: profile.theme,
+              "font-size": "18",
+              motion: "off",
+            }),
+        );
+        await expectLabReady(page);
+        const composer = page.getByRole("textbox", {
+          name: messages["composer.input.label"],
+          exact: true,
+        });
+        const draft = "  Keep the inspected material and this draft. 保留原文。  ";
+        await composer.fill(draft);
+        const originalComposer = await composer.elementHandle();
+        const changes = page.getByRole("button", {
+          name: profile.locale === "zh" ? /^查看工作区差异/ : /^Review working tree changes/,
+        });
+        const origin = await changes.elementHandle();
+        await changes.click();
+        const row = page.locator(".agent-dock-row");
+        await expect(row).toHaveAttribute("data-dock", "open");
+        const material = row.locator(
+          '[data-dock-view-id="package:visual:diff"] [data-slot="workspace-view-body"]',
+        );
+        await expect(material).toBeVisible();
+        const originalMaterial = await material.elementHandle();
+        const samples = await row.evaluateHandle((node) => {
+          const frames: unknown[] = [];
+          let windowResizes = 0;
+          const resized = () => {
+            windowResizes++;
+          };
+          window.addEventListener("resize", resized);
+          const observer = new ResizeObserver(() => {
+            const dock = node.querySelector<HTMLElement>(".agent-context-dock")!;
+            const conversation = node.querySelector<HTMLElement>('[aria-label][role="region"]');
+            frames.push({
+              width: node.clientWidth,
+              height: node.clientHeight,
+              open: node.getAttribute("data-dock"),
+              available: node.hasAttribute("data-dock-available"),
+              presentation: node.getAttribute("data-presentation"),
+              dock: dock.getBoundingClientRect().toJSON(),
+              conversation: conversation?.getBoundingClientRect().toJSON(),
+              window: [innerWidth, innerHeight],
+            });
+          });
+          observer.observe(node);
+          return {
+            frames,
+            get windowResizes() {
+              return windowResizes;
+            },
+            close() {
+              observer.disconnect();
+              window.removeEventListener("resize", resized);
+            },
+          };
+        });
+        const rail = page.getByRole("separator", {
+          name: "Resize the workspace fixture sidebar",
+          exact: true,
+        });
+        try {
+          await rail.focus();
+          for (const key of ["End", "Home", "End", "Home"]) {
+            await page.keyboard.press(key);
+            await expect(rail).toBeFocused();
+            await expect(row).toHaveAttribute("data-presentation", key === "End" ? "main" : "dock");
+            await expect(row).toHaveAttribute("data-dock", key === "End" ? "collapsed" : "open");
+            await expect(material).toBeVisible();
+            if (key === "End")
+              expect(await origin!.evaluate((node) => node.isConnected)).toBe(false);
+            expect(
+              await material.evaluate((node, original) => node === original, originalMaterial),
+            ).toBe(true);
+            expect(
+              await originalComposer!.evaluate((node: HTMLTextAreaElement) => ({
+                connected: node.isConnected,
+                value: node.value,
+              })),
+            ).toEqual({ connected: true, value: draft });
+            if (key === "Home") {
+              await expect(composer).toHaveValue(draft);
+              expect(
+                await composer.evaluate((node, original) => node === original, originalComposer),
+              ).toBe(true);
+            }
+            await testInfo.attach("sidebar-capacity-" + key + "-view", {
+              body: await page.screenshot({ animations: "disabled" }),
+              contentType: "image/png",
+            });
+          }
+          const evidence = await samples.evaluate((sample) => ({
+            frames: sample.frames,
+            windowResizes: sample.windowResizes,
+          }));
+          await testInfo.attach("sidebar-capacity-delivery-frames", {
+            body: JSON.stringify(evidence),
+            contentType: "application/json",
+          });
+          expect(evidence.windowResizes).toBe(0);
+          expect(evidence.frames.length).toBeGreaterThanOrEqual(4);
+          expect(evidence.frames.map((frame) => (frame as { width: number }).width)).toEqual(
+            expect.arrayContaining([600, 880]),
+          );
+          for (const frame of evidence.frames as Array<{
+            width: number;
+            available: boolean;
+            presentation: string;
+            open: string;
+            window: number[];
+          }>) {
+            expect(frame.window).toEqual([1120, 728]);
+            if (frame.width === 600) {
+              expect(frame.available).toBe(false);
+              expect(frame.presentation).toBe("main");
+            } else if (frame.width === 880) {
+              expect(frame.available).toBe(true);
+              expect(frame.presentation).toBe("dock");
+              expect(frame.open).toBe("open");
+            }
+          }
+        } finally {
+          await samples.evaluate((sample) => sample.close());
+          await samples.dispose();
+        }
+        await page
+          .getByRole("button", { name: messages["dock.action.returnToConversation"], exact: true })
+          .click();
+        await expect(
+          page.getByRole("region", { name: messages["shell.region.conversation"], exact: true }),
+        ).toBeFocused();
+        await composer.focus();
+        await page.keyboard.press("ControlOrMeta+ArrowDown");
+        await page.keyboard.insertText(" Continue.");
+        await expect(composer).toHaveValue(draft + " Continue.");
+      },
+    );
+  }
+}

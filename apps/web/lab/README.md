@@ -511,6 +511,14 @@ full width, retaining its source. At 18 px, both engines and languages check
 pointer return tips preserve the full destination. Both returns retain the
 literal padded Composer draft for continued input after enlargement.
 
+The same chrome spec also crosses the Dock's capacity through sidebar Home/End,
+without a window resize. Both engines and languages retain the material and
+Composer nodes, exact draft and separator focus through repeated transitions.
+A read-only ResizeObserver records the actual delivery-time layout at 600 and
+880 px row widths, so a settled screenshot cannot conceal a stale capacity.
+The probe retires in `finally`; the existing console/error guard stays unchanged.
+Unit checks cover the frame publication phase, saved ratio and sampling retirement.
+
 Use `expectLabReady` from `readiness.ts` for document admission, including frames.
 It waits for visible readiness or the observation owner's terminal failure and
 reports the failing document URL and first bounded cause. Existing caller action

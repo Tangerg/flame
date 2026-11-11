@@ -242,6 +242,7 @@ async function openPreview(scope: HTMLElement) {
 
 async function settle() {
   await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
@@ -253,22 +254,9 @@ function windowHeader() {
 function observeRowWidth(initial: number) {
   let width = initial;
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
-  const observers: ResizeObserverCallback[] = [];
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(callback: ResizeObserverCallback) {
-        observers.push(callback);
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
   return async (next: number) => {
     width = next;
     await act(async () => {
-      observers.forEach((observe) => observe([], {} as ResizeObserver));
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
   };
@@ -336,9 +324,11 @@ describe("full-width material picker", () => {
 
     expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
     expect(testClient.navigation.get().view).toBe("file");
-    await act(async () => drainBrowserTasks());
-    expect(screen.getByRole("region", { name: "Files" }).contains(document.activeElement)).toBe(
-      true,
+    await settle();
+    await vi.waitFor(() =>
+      expect(screen.getByRole("region", { name: "Files" }).contains(document.activeElement)).toBe(
+        true,
+      ),
     );
     fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
     expect(await screen.findByRole("combobox", { name: "Find a panel…" })).toHaveProperty(
@@ -351,8 +341,8 @@ describe("full-width material picker", () => {
     openWorkspaceView(testClient.workspace.access, "file");
     const view = testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
-    await screen.findByRole("combobox", { name: "Find a panel…" });
-    fireEvent.click(screen.getByRole("option", { name: "Subagents" }));
+    const search = await screen.findByRole("combobox", { name: "Find a panel…" });
+    fireEvent.click(await screen.findByRole("option", { name: "Subagents" }));
 
     act(() => {
       model.sessionId = "ses_second";
@@ -360,7 +350,8 @@ describe("full-width material picker", () => {
       activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
     });
     view.rerender(<ChatPanel onSend={() => true} />);
-    await act(async () => drainBrowserTasks());
+    await vi.waitFor(() => expect(search.isConnected).toBe(false));
+    await settle();
 
     expect(testClient.navigation.get()).toMatchObject({ session: "ses_second", view: "file" });
     expect(screen.queryByRole("button", { name: "Back to Files" })).toBeNull();
@@ -430,7 +421,7 @@ describe("full-width material picker", () => {
     await vi.waitFor(() =>
       expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull(),
     );
-    await drainBrowserTasks();
+    await settle();
     expect(document.activeElement).toBe(later);
     expect(testClient.navigation.get().view).toBe("file");
   });
@@ -681,13 +672,17 @@ describe("draft intents in workspace presentations", () => {
 
   async function openMessageMenu(text: string) {
     fireEvent.contextMenu(await screen.findByText(text));
-    await act(async () => drainBrowserTasks());
-    return screen.getByRole("menu", { name: "You" });
+    await settle();
+    const menu = await screen.findByRole("menu", { name: "You" });
+    await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+    return menu;
   }
 
   async function chooseMessageAction(label: string) {
+    const menu = screen.getByRole("menu", { name: "You" });
     fireEvent.click(screen.getByRole("menuitem", { name: label }));
-    await act(async () => drainBrowserTasks());
+    await vi.waitFor(() => expect(menu.isConnected).toBe(false));
+    await settle();
   }
 
   function visibleDraft(original: HTMLTextAreaElement, value: string) {
@@ -752,11 +747,12 @@ describe("draft intents in workspace presentations", () => {
 
       if (action === "Escape") {
         fireEvent.keyDown(menu, { key: "Escape" });
-        await act(async () => drainBrowserTasks());
+        await settle();
       } else {
         await chooseMessageAction(action);
       }
 
+      await vi.waitFor(() => expect(menu.isConnected).toBe(false));
       expect(testClient.navigation.get()).toBe(previous);
       expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
       expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
@@ -1266,47 +1262,61 @@ describe("Dock collapse focus handoff", () => {
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
   });
 
-  it("collapses and reopens the Dock inside the row's resize delivery", () => {
+  it("collapses and reopens the Dock before the frame's resize delivery", () => {
     let width = 1200;
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
-    const rowCallbacks = new Set<() => void>();
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        deliver: () => void;
-        constructor(callback: ResizeObserverCallback) {
-          this.deliver = () => callback([], this as unknown as ResizeObserver);
-        }
-        observe(target: Element) {
-          if (!target.classList.contains("agent-dock-row")) return;
-          rowCallbacks.add(this.deliver);
-        }
-        unobserve() {
-          rowCallbacks.delete(this.deliver);
-        }
-        disconnect() {
-          rowCallbacks.delete(this.deliver);
-        }
-      },
-    );
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((frame) => {
+      frames.delete(frame);
+    });
     const { dock, child, draft } = retainedDock();
     const row = document.querySelector<HTMLElement>(".agent-dock-row")!;
-    const deliver = (next: number) => {
+    const advanceFrame = (next: number) => {
       width = next;
-      rowCallbacks.forEach((callback) => callback());
+      const callbacks = [...frames.values()];
+      frames.clear();
+      for (const callback of callbacks) callback(performance.now());
     };
-    act(() => deliver(1200));
+    act(() => advanceFrame(1200));
 
     act(() => {
-      deliver(560);
+      advanceFrame(560);
       expect(row.dataset.dock).toBe("collapsed");
       expect(row.hasAttribute("data-dock-available")).toBe(false);
-      deliver(1200);
+      advanceFrame(1200);
       expect(row.dataset.dock).toBe("open");
       expect(row.hasAttribute("data-dock-available")).toBe(true);
     });
 
     expectRetainedDock(dock, child, draft);
+  });
+
+  it("stops sampling the retired row after unmount", async () => {
+    let rowReads = 0;
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("agent-dock-row")) rowReads++;
+      return 1200;
+    });
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
+    const initialReads = rowReads;
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(rowReads).toBeGreaterThan(initialReads);
+    view.unmount();
+    rowReads = 0;
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(rowReads).toBe(0);
   });
 
   async function settleCleanup() {

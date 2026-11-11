@@ -570,10 +570,13 @@ Session changes and view retirement retain their existing lifetime boundaries.
 Collapsing clips the Dock while its contents retain their measured width through
 the motion. When a parallel Dock no longer fits, retained contents use the full
 row width before material opens there, avoiding a hidden zero-width or minimum-Dock
-reflow. Capacity changes commit during resize delivery, so an unavailable Dock
-releases its width before paint. Ordinary width changes coalesce outside that
-observer delivery to avoid reflowing its descendants inside the same resize cycle.
-The saved Dock ratio remains unchanged.
+reflow. The mounted row samples its actual width once per animation frame.
+Changed capacity commits before ResizeObserver delivery, allowing changed portals
+and newly visible readers to join that delivery before paint. Ordinary changed
+widths retain their coalesced update; an unchanged width publishes nothing.
+Ref cleanup cancels sampling, including retirement during a synchronous commit.
+The saved Dock ratio remains unchanged. One layout-width read per active animation
+frame preserves this capacity timing under both viewport and sidebar changes.
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.

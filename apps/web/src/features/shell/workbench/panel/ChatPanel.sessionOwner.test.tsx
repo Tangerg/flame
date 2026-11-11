@@ -236,23 +236,11 @@ it("switches one mounted view between dock and full-width density under host ide
   }
 });
 
-it("keeps measuring dock availability while a promoted main view is presented", () => {
+it("keeps measuring dock availability while a promoted main view is presented", async () => {
   let rowWidth = 600;
   const width = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockImplementation(() => rowWidth);
-  const observers: ResizeObserverCallback[] = [];
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(callback: ResizeObserverCallback) {
-        observers.push(callback);
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
   try {
     model.width = null;
     model.sessionId = "ses_first";
@@ -273,7 +261,7 @@ it("keeps measuring dock availability while a promoted main view is presented", 
     model.activeMainView = "stateful";
     view.rerender(<ChatPanel onSend={() => true} />);
     rowWidth = 1440;
-    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     model.activeMainView = null;
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(
@@ -282,7 +270,6 @@ it("keeps measuring dock availability while a promoted main view is presented", 
     expect(model.setWidth).not.toHaveBeenCalled();
   } finally {
     cleanup();
-    vi.unstubAllGlobals();
     width.mockRestore();
   }
 });
@@ -292,18 +279,6 @@ it("projects the saved ratio onto the observed row width without saving a new ra
   const width = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockImplementation(() => rowWidth);
-  const observers: ResizeObserverCallback[] = [];
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(callback: ResizeObserverCallback) {
-        observers.push(callback);
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
   try {
     nextInstance = 0;
     model.width = 0.5;
@@ -320,7 +295,6 @@ it("projects the saved ratio onto the observed row width without saving a new ra
     expect(measure()).toBe("660px");
 
     rowWidth = 1000;
-    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
     expect(measure()).toBe("660px");
     await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     expect(measure()).toBe("440px");
@@ -329,17 +303,13 @@ it("projects the saved ratio onto the observed row width without saving a new ra
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(measure()).toBe("480px");
 
-    rowWidth = 1100;
-    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
     rowWidth = 700;
-    observers.forEach((observe) => observe([], {} as ResizeObserver));
     await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     expect(row.dataset.dock).toBe("collapsed");
     expect(screen.getByText("workspace-instance:1")).toBeTruthy();
     expect(model.setWidth).not.toHaveBeenCalled();
   } finally {
     cleanup();
-    vi.unstubAllGlobals();
     width.mockRestore();
   }
 });

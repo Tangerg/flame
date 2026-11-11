@@ -310,33 +310,34 @@ export function ChatPanel({ onSend, ref }: Props) {
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
+    const view = row.ownerDocument.defaultView!;
     let width = row.clientWidth;
     let capacity = canPresentDock(width);
     let frame = 0;
+    let retired = false;
     setRowWidth(width);
-    // Delivery runs after layout but before paint. Only a capacity change commits here, so an
-    // unavailable Dock never paints at its old width; committing every intermediate width would
-    // reflow the row inside delivery and trip WebKit's undelivered-notification loop guard.
-    const observer = new ResizeObserver(() => {
-      width = row.clientWidth;
-      const nextCapacity = canPresentDock(width);
-      if (nextCapacity !== capacity) {
-        capacity = nextCapacity;
-        cancelAnimationFrame(frame);
-        frame = 0;
-        flushSync(() => setRowWidth(width));
-        return;
+    // Capacity commits can resize body portals and start ancestor observers. Publish before
+    // ResizeObserver delivery so those effects can settle before the same paint.
+    const sample = () => {
+      if (retired) return;
+      frame = 0;
+      const next = row.clientWidth;
+      if (next !== width) {
+        width = next;
+        const nextCapacity = canPresentDock(width);
+        if (nextCapacity !== capacity) {
+          capacity = nextCapacity;
+          flushSync(() => setRowWidth(width));
+        } else {
+          setRowWidth(width);
+        }
       }
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        setRowWidth(width);
-      });
-    });
-    observer.observe(row);
+      if (!retired) frame = view.requestAnimationFrame(sample);
+    };
+    frame = view.requestAnimationFrame(sample);
     return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
+      retired = true;
+      view.cancelAnimationFrame(frame);
     };
   }, []);
 

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest published main is incorporated. Settings categories with and without icons now share one label axis, including filtering and RTL. The same rail preserves a complete selected row in short windows and native 300% zoom. The existing Lab Settings selection passes **19 cases**, and **40 affected material-return cases** pass after migrating obsolete opener locators. All ten Settings panes are inspected in actual Wails in English and Chinese. Complete Web (**433 files / 4,833 tests**), Desktop and authored JavaScript/TypeScript complexity checks pass. The broad interaction sweep remains partial, with four Workspace chrome ResizeObserver errors requiring investigation. Computer capacity and shared code-reader repairs remain intact. Live engine, whole-product visual acceptance and the earlier native startup blank remain open.
+UI polishing is **active again at the user's request**. Latest published main is incorporated. This batch resolves four Workspace chrome resize-notification failures; all 41 chrome and 126 Workspace cases pass, and actual Wails English/Chinese qualification covers sidebar transitions, 200%/300% zoom, material return and retained drafting. The full Web unit gate remains non-green; its failures and the existing short-window Composer footer defect are recorded below. The other 25 Web checks and Desktop gate pass. Previous Settings alignment, Computer capacity and shared code-reader repairs remain intact. Live engine, whole-product visual acceptance and the earlier native startup blank remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9945,6 +9945,117 @@ Verdict: **Approve for the inspected command-focus, pane-perimeter and return
 paths**. Pause after the requested main delivery; do not start another polishing
 batch. Remaining whole-product qualifications retain their existing bounds.
 
+### Workspace resize delivery and retained material (2026-11-11)
+
+The four Workspace chrome failures from the preceding partial interaction sweep
+reproduce serially in the sole Lab, with no native application running. All
+interaction assertions complete, but the unchanged console guard captures
+ResizeObserver's undelivered-notification error in both languages. Temporary
+forwarding diagnostics in the existing spec identify two shallow effects of
+ChatPanel's synchronous capacity commit: an open body Tooltip changes width
+(191.40625 to 204.0625 px in English), and a newly visible Panel starts observing
+html/body ancestors during the deeper row's delivery. The diagnostics and their
+original source are retained; the tracing code is removed from the candidate.
+
+ChatPanel now samples actual row width from one row-lifetime animation-frame
+callback. Only a changed width publishes; capacity changes retain synchronous
+settlement before resize delivery, while other changed widths retain their
+coalesced update. Ref retirement cancels the frame and guards a callback retired
+during its own synchronous commit. The measured width, ratio, navigation,
+inspection, reader identity, focus and draft owners are retained. The
+[HTML rendering order](https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering)
+and [ResizeObserver depth algorithm](https://drafts.csswg.org/resize-observer/#gather-active-observations-h)
+explain the phase boundary. One width read per active animation frame is an
+explicit resource tradeoff; no performance benchmark is run.
+
+The selected 12-case browser confirmation passes in **64.637 s**, without retries,
+skips or global errors. The complete three-spec integration run finishes all
+**173 cases: 171 pass and two fail**, in **447.651 s**. All **41 Workspace chrome**
+and **126 Workspace** cases pass, plus four of the six material-presentation
+cases. Four new existing-spec cases verify actual Chromium/WebKit engine choice,
+English/Chinese, repeated sidebar Home/End with zero window resize events,
+delivery-time layouts at 600/880 px, retained material/Composer nodes, exact draft,
+separator focus, retired-source fallback and continued drafting. Their read-only
+probe retires in finally. Eight original transition images are inspected. All
+323 integration attachments, including 228 images, are retained without claiming
+that every image received a visual review.
+
+The two remaining cases expose Send/发送 outside the viewport for a ten-line draft
+at 373 × 243. Restoring the original published ChatPanel reproduces both failures
+at the same viewport-ratio assertion in **20.960 s**; every other production input
+is unchanged. The candidate is restored byte-for-byte afterward. This is existing
+unfinished Composer work, not a passed interaction or a repaired layout. Preserve
+the assertion and its geometry for the next bounded batch.
+
+The first selected unit run reports **118 pass / 8 fail** because mounted
+window-idle waits cannot finish while the frame owner is active. The affected
+waits now follow actual menu closure, focus and the next frame, preserving the
+original business assertions and deadlines. Unmount still drains browser tasks.
+The selected four files then pass **126 / 126** in **11.829 s**, without console
+warnings. The saved-ratio, promoted-view and pre-delivery timing regressions remain;
+a new retirement check proves active sampling and no reads after unmount.
+
+The normal Web check first stops at a new conditional assertion's lint error;
+its common menu-close assertion is corrected. The next complete run reports
+**4,776 pass, 6 fail and 52 Runtime cases not reached**, with seven failed files
+in **656.382 s**. Failures include five test deadlines, one syntax-foreground
+mismatch and a 60-second Runtime setup deadline. Concurrent load observations
+reach 34 on ten CPUs; this does not prove a common cause. A one-worker confirmation
+repeats the foreground mismatch and Runtime setup failure, plus a different
+Deliverables deadline. It is intentionally interrupted after **995.981 s** once
+those failures recur; it is a partial failed confirmation, not a completed pass.
+The four syntax tests pass separately in **3.876 s**, without changing their source,
+assertions or deadlines. The full Web unit gate remains non-green and its failure
+causes are not resolved or attributed to this change. All **25 non-test steps**
+from the unchanged Web check script pass separately, including the production
+bundle. No repository check is removed, suppressed or relaxed.
+
+The serial **make check-native** gate passes in **183.148 s**, the final Lab build
+in **6.075 s**, and the private Wails **v3.1.0** application build in **13.129 s**.
+All 46 native source inputs remain exact. Actual Wails qualification uses that
+same Lab build, full motion and 18 px type: English/light/default Orange and
+Chinese/dark/custom **#3B82F6**. Both profiles complete two sidebar Home/End
+cycles at 240/520 px, preserve the unsent draft, present the material in the
+remaining 600 px and restore it to the Dock. The separator retains keyboard
+focus. Native 200%/300% zoom, open entry hints, material scrolling, keyboard
+return and continued drafting are inspected. Chinese layout observations confirm
+560 × 377 at 200% and 373 × 251 at 300%. Native Window → Zoom and restore at
+200% preserve the draft and entry state. Both accepted processes exit normally.
+
+The native 300% captures also expose Composer footer controls below the short
+viewport, including with a wrapped draft. This remains unfinished layout work;
+material-header acceptance does not qualify that footer. Preserve the existing
+Send visibility assertion and repair the Composer/frame height contract next.
+Sixteen original native images and AX texts are retained, including an invalid
+motion=on startup and an unfocused-pointer attempt, both excluded from acceptance.
+A post-quit CUA observation relaunches the private wrapper without its environment;
+that extra process is closed and excluded. The accepted URLs use motion=full.
+No provider command, Send/Steer, trust change or real Runtime mutation is issued.
+Live providers, VoiceOver, physical IME and whole-product visual acceptance remain
+outside this batch.
+
+The final source review covers all **6,842 tracked/nonignored inputs**: exactly
+seven files change, with no source additions or removals. All **13 output/cache
+roots** return to their captured baselines before publication, with no later
+functional check. The private native processes and loopback server are stopped,
+the review bundle is unregistered, six private Library paths return to absence,
+and three existing helper roots retain their identities, modes and flags. The
+primary checkout remains read-only; its concurrent work is not restored. Both
+pre-existing Runtime fixture roots retain their exact identities and children.
+Eight selected original images and AX texts are copied to the existing
+visualization space. Review receipts and source evidence are retained separately
+from disposable build/browser/cache payloads. The next bounded task is the
+existing short-window Composer footer failure. Full Web unit failures require
+separate causal investigation; they are neither waived nor represented as passes.
+
+Read-only ZCode side-pane sizing and overflow code inform the separation of the
+width budget from its rendered effects. Better-layout supplies the complete-task,
+shared-edge and constrained-frame criteria. The bounded CLI's viewport-only
+proposal is retained but not qualified; its later frame-phase implementation is
+reviewed against actual browser evidence. It changes only its allowed source and
+preserves eight context files. No new visual route, runner configuration, fixture
+application, theme token, protocol or persisted-data contract is introduced.
+
 ### Basic settings native alignment review
 
 #### Stable category labels and short-window navigation (2026-11-11)
@@ -9987,8 +10098,9 @@ Diff and long-catalog return selections pass **40 / 40** in three serial runs
 (**104.016 s**, **50.314 s**, **67.348 s**). Their evidence, draft, focus and reading
 assertions remain intact. This does not qualify the unrun remainder of the broad
 sweep. Four Chromium Workspace chrome cases still report a ResizeObserver
-undelivered-notification error; their cause and relationship to concurrent native
-activity are unproven. Preserve that failure for the next bounded investigation.
+undelivered-notification error at this point in the review. The later independent
+qualification under Workspace resize delivery and retained material reproduces
+and resolves all four, without concurrent native activity.
 
 Final production components in the sole Lab run in the pinned **Wails v3.1.0**
 host. Both English/light/14 px/Flame Orange and Chinese/dark/18 px/custom
@@ -14831,7 +14943,7 @@ keeps its existing focus and scroll behavior. The selected-reader focus effect
 recognizes an inspection return and leaves focus settlement to the shared owner;
 otherwise it could override the restored source with the index command.
 
-`ChatPanel` derives `fullPaneViewId` from the explicit main route or a matching active inspection when `canPresentDock` is false. An unmeasured row, merely remembered tabs and background updates do not establish a new full-pane destination. Existing ResizeObserver, width ratio, retained-view and content-visibility owners remain in use. The catalog renders its same component in either presentation, rather than becoming an unavailable workspace renderer.
+`ChatPanel` derives `fullPaneViewId` from the explicit main route or a matching active inspection when `canPresentDock` is false. An unmeasured row, merely remembered tabs and background updates do not establish a new full-pane destination. Existing width-ratio, retained-view and content-visibility owners remain in use. Row-width publication now precedes resize delivery, as qualified under Workspace resize delivery and retained material. The catalog renders its same component in either presentation, rather than becoming an unavailable workspace renderer.
 
 `WorkspaceWindowHeader` receives one close-or-return exit. A matching full-pane inspection uses the same translated source label and handler as the Dock; unrelated main views keep Close. Open in context dock is available only when it fits. `useInspectionFocus` consumes the actual presented id as well as the explicit route: entry and return settle in a visible region, and a Dock container losing its focus role hands its own focus to the full pane. Later controls, local Escape and IME retain priority. No retry, frame loop or duplicate focus state was introduced.
 
