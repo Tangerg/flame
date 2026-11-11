@@ -151,6 +151,8 @@ function captureTranscriptLayout(view: Window, active: Element | null) {
   const style = view.getComputedStyle(viewport);
   const focus = active instanceof HTMLElement && viewport.contains(active) ? active : null;
   const bounds = focus?.getBoundingClientRect();
+  const focusStyle = focus ? view.getComputedStyle(focus) : null;
+  const declaredContext = focus?.closest("[data-focus-unit]")?.getBoundingClientRect();
   return {
     frame: [
       rect.top + (parseFloat(style.scrollPaddingTop) || 0),
@@ -160,12 +162,20 @@ function captureTranscriptLayout(view: Window, active: Element | null) {
       viewport.scrollHeight,
     ],
     focus:
-      focus && bounds
+      focus && bounds && focusStyle
         ? {
             tag: focus.localName,
             label: focus.getAttribute("aria-label"),
             bounds: [bounds.top, bounds.bottom],
             scroll: [focus.scrollTop, focus.clientHeight, focus.scrollHeight],
+            lineHeight: parseFloat(focusStyle.lineHeight),
+            contentHeight:
+              bounds.height -
+              parseFloat(focusStyle.borderTopWidth) -
+              parseFloat(focusStyle.borderBottomWidth) -
+              parseFloat(focusStyle.paddingTop) -
+              parseFloat(focusStyle.paddingBottom),
+            declaredContext: declaredContext ? [declaredContext.top, declaredContext.bottom] : null,
           }
         : null,
   };

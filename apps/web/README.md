@@ -301,6 +301,11 @@ height feeding back into observed content. The existing resize observer reveals
 the retained focused reader during delivery. Native scroll notifications in that
 rendering update retain the witness; a later focus or deliberate wheel still
 retires it.
+Pointer entry retains its visible control while the press is active, even when
+the fitting reading unit extends slightly beyond the safe edge. Reflow keeps the
+pressed target stationary. Release reveals that unit and retains it through
+subsequent resizing; cancellation, outside focus, manual departure or hidden
+content cannot reclaim a retired witness.
 
 The transcript's bottom paint edge and end spacer use that same reading clearance. Its short
 fade ends before the reserved Jump area, and clipping excludes hidden history

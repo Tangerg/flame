@@ -493,6 +493,11 @@ reading projection for native accessibility tools with bounded text nodes. The
 Composer projection includes its scrollport's offset, viewport and content height.
 The transcript projection exposes its safe reading edges, measured capacity,
 scroll position and focused reader bounds and offsets in a separate bounded output.
+It also reports the focused reader's computed line height, fractional content
+height and nearest declared reading-unit bounds, so native qualification can
+check a complete line and a fitting unit without rounding away clipped content.
+Computed line-height is not a rendered line-box measurement; inspect the paint
+when the engine's layout precision differs from that computed decimal.
 Editable values never enter these outputs. Disabling the option clears them and
 disconnects its observers and event listeners; clean qualification keeps it off.
 The same ResizeObserver tracks the current Panel body and Composer, so filtering,
@@ -825,8 +830,12 @@ same five captured files and honor the requested limit. This keeps attachment
 inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
 The existing Code reading scenario follows the same highlighted source and padded
-multiline draft through short reading frames in Chromium and WebKit, English and
-Chinese. The first delivery sample can precede layout delivery; the following
+six-line draft through short reading frames in Chromium and WebKit, English and
+Chinese. Its nested-evidence task repeats that draft to eighteen lines. After
+keyboard entry, the source is aligned just inside the safe edge while its fitting
+reading unit extends beyond it. A real pointer click must reveal the complete
+unit before the existing resize, wheel and material-return workflow continues.
+The first delivery sample can precede layout delivery; the following
 seven delivery samples and all eight settled samples require the complete focused
 reader, a readable line, pointer access and clearance from Jump. All sixteen samples
 remain in the same geometry attachment; those callbacks alone do not establish

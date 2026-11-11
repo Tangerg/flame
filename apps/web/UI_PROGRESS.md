@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge. The original Wails production entry renders successfully; the rejected embedded Lab entry violates its HTTP-only observation contract. English/Chinese native Lab tasks cover actual 200%/300% zoom, detail return, exact draft continuation and all five footer targets at 300%. The Lab retains authored contribution names and all accepted Panel, Composer and reading repairs. Whole-product visual acceptance and live Runtime execution remain open.
+UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge. The original Wails production entry renders successfully; the rejected embedded Lab entry violates its HTTP-only observation contract. Pointer-entered source reading now retains its fitting context through native zoom and minimum-window reflow. English/Chinese native Lab tasks cover actual 200%/300% zoom, detail return, exact draft continuation and all five footer targets at 300%. The Lab remains the sole visual verification owner. Whole-product visual acceptance and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -58,38 +58,30 @@ denials; primary review checks its locations against source and native behavior.
 Keep the HTTP-only observation boundary and use the existing Lab preview for native
 visual qualification. The production entry has no reproduced startup defect.
 
+The subsequent pointer-entry investigation below resolves the Chinese 18 px
+six-line-draft reading failure at native 200% and minimum window size. Composer
+capacity was already correct; an almost-visible fitting CodeFrame lost its reading
+witness after pointer entry. The original native capture remains rejected evidence.
+The existing Code reading Lab task now includes this pointer boundary and longer
+drafts; no additional visual suite, runner, story or performance benchmark is added.
+
 English/light/14 px/Flame Orange/full motion and Chinese/dark/18 px/**#3B82F6**/
 motion off qualify real code and recorded-evidence wheel reading, native 200%/300%
-zoom, minimum-frame and enlarged-window operation. Both tasks filter and expand a
-captured model record, visit full-width material twice, retain its query/disclosure,
+zoom, minimum-frame and enlarged-window operation. Both tasks filter and expand
+`call_visual_inspect`, visit full-width material twice, retain query/disclosure,
 return and exactly continue a padded six-line unsent draft. All **five footer
-controls** receive visible native keyboard focus at 300%; Chinese policy-menu
-keyboard entry, Escape and onward Tab also work without selecting a policy.
-No Send or Runtime mutation is activated. The Chinese 18 px main code reader with
-that long Composer has too little visible source after minimum-window reflow at
-200%; complete reader visibility in that combination remains unqualified and is
-the next bounded layout investigation. The full-width evidence reader and Composer
-tasks pass independently. Physical IME, VoiceOver speech, RTL, older-macOS
-distribution and whole-product visual acceptance are not established here.
-
-`make stage-web`, the canonical Lab build and all five private native builds pass.
-`make check-native` passes in **57.342 s**; its ordinary linker emits the existing
-deployment-target warnings, so older-macOS distribution is not qualified. The
-existing observation and Browser/Desktop host selection passes **3 files / 54
-tests** in **1.515 s**; no additional
-browser visual suite, runner, story or performance benchmark is introduced. All
-**71 original JPEGs and 76 AX records** are retained, with every indexed image
-verified and reviewed. Formal startup and both HTTP tasks are accepted; the embedded
-control is excluded. Four launched processes exit after native Quit, with exact
-instance absence verified rather than an unobserved exit-code claim. The fifth
-built app is not launched. All five private registrations and twelve private
-Library paths are absent. The HTTP server exits **130** on its verified SIGINT,
-and its port closes. All **13 output/cache roots** match their original bytes and
-modes or absence. The primary checkout, preexisting Runtime roots and Node
-toolchain remain untouched. No functional checks run after output restoration;
-only document formatting, ordinary static hooks and integrity checks follow.
-Publication and fenced cleanup retain their receipts outside the repository under
-`flame-startup-ceytolkm`.
+controls** receive visible native keyboard focus at 300%. English completes the
+whole task with observation off; Chinese repeats 200%/300% pointer reading with
+observation off after its diagnostic task. No Send or Runtime mutation is activated.
+The current batch retains **100 original JPEGs and 109 AX records**, including its
+original baseline and two explicitly assessed diagnostic exceptions. Every indexed
+image is verified and reviewed. All three launched native instances are absent
+after native Quit, all three private registrations and twelve private Library
+paths are absent, and the owned HTTP server exits **130** after verified SIGINT.
+The prior production-entry investigation and its `flame-startup-ceytolkm` evidence
+remain applicable; current evidence and publication receipts use `flame-reader-rbips9p7`.
+Physical IME, VoiceOver speech, RTL, older-macOS distribution and whole-product
+visual acceptance remain unqualified.
 
 ### Linked icon loading in Lab development (2026-11-09)
 
@@ -4249,11 +4241,35 @@ contents from leaving its visible frame. A consumed internal wheel retains the
 reading witness; a wheel at either edge or outside that reader still retires
 following. The owner's own reveal records its resulting offset immediately, so
 a delayed native scroll event after another reflow cannot erase that witness.
-Seven regression cases cover these event orders and manual-scroll boundaries.
+The existing regressions cover these event orders and manual-scroll boundaries.
 Continuous full-motion reflow also exposes an Activity Disclosure ResizeObserver
 loop: publishing clearance changes observed content. Its existing observer now
 coalesces that publication into the next animation frame and cancels it on
 teardown, with one new regression. No console guard or deadline is weakened.
+
+The **2026-11-12** follow-up traces the remaining Chinese 18 px failure to pointer
+completion. At native 200% and minimum window size, the original source extends
+to **296.72 px** past the **208.17 px** safe edge. Keyboard re-entry restores it,
+proving that the existing Composer reading cap and available capacity work.
+A visible pressed reader can have a fitting declared CodeFrame only one pixel
+outside the safe edge. The old strict context check drops its witness, and release
+only clears the press. `readingFollow.ts` now retains that existing pressed
+witness while its control is visible, keeps it stationary through press-time
+reflow, then reveals its complete fitting unit on pointer release. Cancellation
+does not activate reveal; outside focus, manual departure and hidden content
+cannot revive a retired witness. The existing pressed target remains the sole
+press state; no second focus snapshot, observer or event family is introduced.
+
+Seven added regressions include an already-focused press and four retirement
+boundaries. The complete focused file passes **68 tests** in **1.671 s**. The
+existing Lab task retains its keyboard entry, then exercises a real pointer click
+at the source-visible/context-clipped boundary before its original resize, wheel,
+source, node, selection, material-return and continued-draft assertions. Main and
+nested-evidence tasks use padded six-line and eighteen-line drafts respectively.
+Chromium/WebKit and English/Chinese pass **8 tasks** in **50.181 s**, with no skips,
+retries, flaky results or global errors. An original-source control fails **3 of
+68 unit tests** and **all four main reading tasks**; its four nested-evidence tasks
+pass. Candidate source is restored byte for byte before final verification.
 
 The existing Tool Inspector WebKit tasks retain exact source, draft, focus and
 node identity through 200%–300% effective viewport sizes, then wheel inside the
@@ -4265,35 +4281,56 @@ observation adds bounded transcript edges, capacity and focused-reader offsets;
 it captures no editable values and disconnects when disabled. There is no second
 fixture, visual runner, production observer or competing scroll state.
 
-The final existing-Lab selection passes **34 tasks** without skips, retries or
-flaky results. All **103 final PNGs** are reviewed: 100 exactly match previously
-inspected bytes, and the three new images receive direct inspection. Focused
-owner checks pass **101 tests**. The complete Web check passes **433 files /
-4,824 tests** in **338.562 s**, including Runtime integration and the production
-build; `make check-native` passes in **53.922 s**. Existing macOS linker-version
-warnings remain. An earlier cold Web invocation times out in Runtime setup;
-building its normal prerequisites resolves that setup failure. Earlier failing
-layout, delayed-scroll, wheel and resize-loop candidates remain diagnostic
-evidence rather than accepted results.
+The complete Web check passes **433 files / 4,853 tests** and its remaining
+guards/build in **255.754 s**; `make check-native` passes in **49.981 s**. Existing
+macOS linker warnings remain. The first Web check passes 4,801 frontend tests but
+cannot start its 52 Runtime tests because the prepared offline Node archive is
+absent. The existing checksum-verifying Node companion preparation supplies that
+normal prerequisite; the complete rerun has no skipped tests. Its failed setup's
+recreated plugin output is independently fenced and retired. No check is disabled
+or given a longer deadline. Browser JSON reporters retain original inline bodies:
+**210 baseline, 216 candidate and 44 original-control attachments** are extracted,
+hashed and preserved. All **157 unique images** across the baseline and candidate
+are reviewed; the control's twenty images match those already reviewed.
 
-The final private Wails **v3.1.0** host serves the exact **488 canonical Lab
-assets**. English/light/14 px/full motion and Chinese/dark/18 px/motion off
-qualify actual 200%/300% source reading, wheel input, Window Zoom/restore with
-reader focus retained, keyboard return and exact continued padded drafts. The
-Composer footer remains keyboard-reachable at 300%; Send is focused but never
-activated. All **14 final native captures** are inspected and both processes
-quit normally. VoiceOver, physical IME composition, live Runtime and the rest
-of the product are outside this bounded acceptance.
+The final private Wails **v3.1.0** hosts load the exact **488 canonical Lab assets**
+over loopback HTTP with only their original native window URL overlaid. English/
+light/14 px/full motion and Chinese/dark/18 px/motion off qualify pointer-first
+200%/300% source reading without keyboard re-entry, internal wheel, Window Zoom/
+restore, two material visits and exact continued drafts. The Chinese minimum-window
+reader settles inside **[70, 210.34] px** at **[110.80, 208.38] px**, with its fitting
+CodeFrame visible. At 300%, a unit taller than the safe frame correctly yields to
+the focused source. All five footer controls receive visible keyboard focus without
+activating Send. The English complete task runs with observation off; Chinese
+pointer reading also passes a subsequent observation-off repeat.
 
-Read-only ZCode Tool Parameters/Output and HeroUI bounded-reader contracts,
-together with better-layout and better-accessibility guidance, inform this
-repair. Claude Code CLI returns an expired OAuth error; primary implementation,
-review and qualification continue as authorized. All **46 production native
-inputs** and the primary checkout remain unchanged. The private host is
-unregistered, its server stops, six private Library paths return to absence,
-and three pre-existing empty WebKit helper roots retain their identities and
-flags. All twelve captured output/cache roots return to their original contents
-and modes or absence. No functional checks run against restored outputs.
+All **100 original native JPEGs and 109 AX records** are retained and every image
+reviewed, including nineteen original-baseline images. Two diagnostic failures
+remain explicit. One immediate window-restore AX projection precedes settled
+geometry; the next snapshot passes without a focus or input workaround. English
+300% reports **19.796875 px** fractional content against **19.800001 px** computed
+line-height, rejecting a strict decimal comparator. The existing CSS owns a `1lh`
+minimum; native Home reaches source offset zero and its original screenshot shows
+a complete first visual line. These values match the public WebKit
+[1/64 px layout representation](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/platform/LayoutUnit.h).
+This is an inference about quantization, not an installed-engine revision check.
+Neither product sizing nor a browser assertion is changed to conceal the mismatch.
+These captures do not qualify every native compositor frame. VoiceOver, physical
+IME composition, live Runtime and the rest of the product remain outside scope.
+
+Read-only ZCode focus ownership and Tool Parameters/Output, HeroUI bounded-reader
+contracts, and better-layout/better-accessibility guidance inform the repair.
+Two bounded Claude Code CLI calls complete without permission denials; primary
+review removes a redundant focus snapshot and adds the already-focused regression.
+Production native sources and the primary checkout remain unchanged. All three
+owned app instances are absent after native Quit, their registrations are removed,
+twelve private Library paths return to absence, and the verified HTTP server exits
+130 with its port closed. The preexisting Runtime roots and Node toolchain are
+preserved. All thirteen captured output/cache roots return to their original
+contents and modes or absence before publication. No functional checks run against
+restored outputs. Evidence and publication receipts are retained under
+`flame-reader-rbips9p7`; future work requires another observed task failure rather
+than changing Composer sizing or wheel policy speculatively.
 
 The earlier action-alignment qualification remains applicable:
 

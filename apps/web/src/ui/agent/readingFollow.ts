@@ -104,14 +104,24 @@ export function useReadingFocusVisibility(
     const window = content.ownerDocument.defaultView!;
     // The named region containing the reader can hold focus itself, without a descendant witness.
     const region = viewport.closest('[role="region"]');
+    const pressedFocus = (target: Element) =>
+      pressedTargetState.value &&
+      (target.contains(pressedTargetState.value) ||
+        pressedTargetState.value.closest("label, [data-focus-proxy]")?.contains(target));
     const remember = () => {
       frameState.value = safeReadingBounds(viewport);
       observedScrollTopState.value = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
+      const witness = witnessState.value;
       witnessState.value = null;
       if (active && active !== content && content.contains(active)) {
+        // Until release reveals its context, a pressed witness only needs its control visible.
+        const pressed = witness === active && pressedFocus(active);
         const { unit, bounds } = readingFocusContext(active, viewport);
-        if (withinSafeReading(active, viewport) && withinSafeReading(unit, viewport, bounds))
+        if (
+          withinSafeReading(active, viewport) &&
+          (pressed || withinSafeReading(unit, viewport, bounds))
+        )
           witnessState.value = active;
       }
     };
@@ -162,6 +172,8 @@ export function useReadingFocusVisibility(
         retire();
         return;
       }
+      // The pressed control stays under the pointer until its activation completes.
+      if (pressedFocus(target)) return;
       const { unit, bounds } = readingFocusContext(target, viewport);
       if (withinSafeReading(target, viewport) && withinSafeReading(unit, viewport, bounds)) {
         // Visible focus can still be carried away by the resize-follow tick this reflow queued.
@@ -196,6 +208,16 @@ export function useReadingFocusVisibility(
     const clearPress = () => {
       pressedTargetState.value = null;
     };
+    const endPress = (event: PointerEvent) => {
+      const witness = witnessState.value;
+      const retainedPress = witness && pressedFocus(witness);
+      clearPress();
+      // A retired witness was departed during the press; release must not reclaim it.
+      if (!retainedPress) return;
+      // Only a completed activation earns its whole reading context.
+      if (event.type === "pointerup") reveal();
+      remember();
+    };
     const onWheel = (event: WheelEvent) => {
       const reader = content.ownerDocument.activeElement;
       if (
@@ -217,21 +239,18 @@ export function useReadingFocusVisibility(
     };
     const onFocus = () => {
       const active = content.ownerDocument.activeElement;
-      const pressed = pressedTargetState.value;
-      clearPress();
       if (!active || active === content || !content.contains(active)) {
+        clearPress();
         retire();
         if (region && active === region) reveal();
         return;
       }
-      const pointerFocus =
-        pressed &&
-        (active.contains(pressed) ||
-          pressed.closest("label, [data-focus-proxy]")?.contains(active));
+      const pointerFocus = pressedFocus(active);
+      witnessState.value = active;
       // Modal return focus suppresses native scrolling. The reader owns its reserved clearance,
       // but must not move a pointer target before the activating press completes.
       if (!pointerFocus) {
-        witnessState.value = active;
+        clearPress();
         reveal();
       }
       remember();
@@ -243,8 +262,8 @@ export function useReadingFocusVisibility(
     resize.observe(content);
     content.ownerDocument.addEventListener("focusin", onFocus);
     content.addEventListener("pointerdown", onPointerDown, true);
-    content.ownerDocument.addEventListener("pointerup", clearPress, true);
-    content.ownerDocument.addEventListener("pointercancel", clearPress, true);
+    content.ownerDocument.addEventListener("pointerup", endPress, true);
+    content.ownerDocument.addEventListener("pointercancel", endPress, true);
     viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
     viewport.addEventListener("wheel", onWheel, { passive: true, capture: true });
     return () => {
@@ -255,8 +274,8 @@ export function useReadingFocusVisibility(
       viewport.style.setProperty(FRAME_HEIGHT_PROPERTY, `${Math.max(0, bottom - top)}px`);
       content.ownerDocument.removeEventListener("focusin", onFocus);
       content.removeEventListener("pointerdown", onPointerDown, true);
-      content.ownerDocument.removeEventListener("pointerup", clearPress, true);
-      content.ownerDocument.removeEventListener("pointercancel", clearPress, true);
+      content.ownerDocument.removeEventListener("pointerup", endPress, true);
+      content.ownerDocument.removeEventListener("pointercancel", endPress, true);
       viewport.removeEventListener("scroll", onScroll, true);
       viewport.removeEventListener("wheel", onWheel, true);
     };

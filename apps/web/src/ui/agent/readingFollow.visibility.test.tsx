@@ -620,6 +620,77 @@ describe("reading focus geometry", () => {
   });
 
   it.each([
+    { pressedHeight: 329, released: 249 },
+    { pressedHeight: 300, released: 220 },
+  ])(
+    "holds a pressed control until release, then keeps its whole reading unit ($pressedHeight px frame)",
+    ({ pressedHeight, released }) => {
+      const s = scenario();
+      s.nested.dataset.focusUnit = "";
+      act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+      s.shape.height = 329;
+
+      fireEvent.pointerDown(s.target);
+      act(() => s.target.focus());
+      s.shape.height = pressedHeight;
+      s.resize();
+      expect(s.viewport.scrollTop).toBe(0);
+      expect(s.order).toEqual([]);
+
+      fireEvent.pointerUp(s.target);
+      expect(s.nested.getBoundingClientRect().bottom).toBe(released);
+      expect(s.order).toEqual(["target revealed"]);
+
+      s.shape.height = 280;
+      s.resize();
+      expect(s.nested.getBoundingClientRect().bottom).toBe(200);
+      expect(document.activeElement).toBe(s.target);
+    },
+  );
+
+  it.each(["cancelled", "focus", "wheel", "hidden"] as const)(
+    "does not reclaim a pressed control's unit after a %s ending",
+    (ending) => {
+      const s = scenario();
+      s.nested.dataset.focusUnit = "";
+      const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+      act(() => draft.focus());
+      s.shape.height = 329;
+      fireEvent.pointerDown(s.target);
+      act(() => s.target.focus());
+
+      if (ending === "cancelled") fireEvent.pointerCancel(s.target);
+      if (ending === "focus") act(() => draft.focus());
+      if (ending === "wheel") fireEvent.wheel(s.viewport, { deltaY: 10 });
+      if (ending === "hidden") s.rerender(<s.Harness attached={false} />);
+      fireEvent.pointerUp(s.target);
+      if (ending === "hidden") s.rerender(<s.Harness />);
+      s.shape.height = 300;
+      s.resize();
+
+      expect(s.viewport.scrollTop).toBe(0);
+      expect(s.order).toEqual([]);
+      expect(document.activeElement).toBe(ending === "focus" ? draft : s.target);
+      expect(draft.value).toBe("Keep this draft");
+    },
+  );
+
+  it("holds an already focused reader during a press and reveals it after release", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    fireEvent.pointerDown(s.target);
+    s.shape.height = 240;
+    s.resize();
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(s.order).toEqual([]);
+
+    fireEvent.pointerUp(s.target);
+    expect(s.nested.getBoundingClientRect().bottom).toBe(160);
+    expect(document.activeElement).toBe(s.target);
+    expect(s.order).toEqual(["target revealed"]);
+  });
+
+  it.each([
     { scroll: 250, top: 700, height: 330 },
     { scroll: 600, top: 500, height: 24 },
   ])(

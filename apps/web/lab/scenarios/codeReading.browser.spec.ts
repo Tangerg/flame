@@ -111,7 +111,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
       accent: "#FB6E30",
       messages: en,
       evidence: "Recorded evidence",
-      draft: "  Keep this exact review draft.\nRead the captured boundary.  ",
+      draft:
+        "  Keep this exact review draft.\nRead the captured boundary.\n\nInspect the evidence and return.\nKeep this draft unsent.\n  End  ",
       continuation: " Continue reviewing.",
     },
     {
@@ -122,7 +123,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
       accent: "#3674E8",
       messages: zh,
       evidence: "已记录的证据",
-      draft: "  保留这份核对草稿。\n继续阅读原始记录。  ",
+      draft:
+        "  保留这份核对草稿。\n继续阅读原始记录。\n\n查看证据后返回。\n保留这份未发送草稿。\n  结束  ",
       continuation: "再核对一次。",
     },
   ] as const) {
@@ -441,6 +443,43 @@ for (const browserName of ["chromium", "webkit"] as const) {
         };
 
         await expectReading("entry");
+        await page.getByRole("region", name("shell.region.conversation")).focus();
+        const pointerEntry = await source.evaluate(async (node) => {
+          const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+          const safeBottom = () =>
+            viewport.getBoundingClientRect().bottom -
+            parseFloat(getComputedStyle(viewport).scrollPaddingBottom);
+          viewport.scrollTo({
+            top: viewport.scrollTop + node.getBoundingClientRect().bottom - safeBottom(),
+            behavior: "instant",
+          });
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          return {
+            sourceBottom: node.getBoundingClientRect().bottom,
+            contextBottom: node.closest("[data-focus-unit]")!.getBoundingClientRect().bottom,
+            safeBottom: safeBottom(),
+          };
+        });
+        await testInfo.attach("code-reading-pointer-entry", {
+          body: JSON.stringify(pointerEntry),
+          contentType: "application/json",
+        });
+        expect(pointerEntry.sourceBottom).toBeLessThanOrEqual(pointerEntry.safeBottom + 0.5);
+        expect(pointerEntry.contextBottom).toBeGreaterThan(pointerEntry.safeBottom + 0.5);
+        await source.click();
+        await expectReading("pointer-entry");
+        await expect
+          .poll(() =>
+            source.evaluate((node) => {
+              const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+              const bottom =
+                viewport.getBoundingClientRect().bottom -
+                parseFloat(getComputedStyle(viewport).scrollPaddingBottom);
+              return node.closest("[data-focus-unit]")!.getBoundingClientRect().bottom - bottom;
+            }),
+          )
+          .toBeLessThanOrEqual(0.5);
         // Screencast frames are what the browser presented; sampling is throttled (WebKit ≤ 25fps).
         const captureResize = async (size: { width: number; height: number }, label: string) => {
           const originals: Buffer[] = [];
