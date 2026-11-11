@@ -1,5 +1,20 @@
 import { expect, test, type Locator } from "./test";
 import { en } from "@/lib/i18n/locales/en";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
+import brandDeclaration from "../../../../plugins/brand/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import diagnosticsDeclaration from "../../../../plugins/diagnostics/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import galleryDeclaration from "../../../../plugins/icon-gallery/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import diffDeclaration from "../../../../plugins/diff/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import usageDeclaration from "../../../../plugins/usage/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import reportsDeclaration from "../../../../plugins/usagereports/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import memoryDeclaration from "../../../../plugins/memory/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import schedulesDeclaration from "../../../../plugins/schedules/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+import skillsDeclaration from "../../../../plugins/skills/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+
 import { expectLabReady } from "../readiness";
 import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 
@@ -366,7 +381,10 @@ for (const browserName of ["chromium", "webkit"] as const) {
           .click();
         const header = page.locator('[data-slot="workspace-window-header"]');
         const title = header.locator(":scope > span[title]");
-        await expect(title).toHaveText("Workspace diff");
+        const diff = diffDeclaration.components.find((entry) => entry.id === "diff")!;
+        await expect(title).toHaveText(
+          presentationTitle(diff.title, diff.localizedTitles, profile.locale),
+        );
         const frames = [];
         for (const width of [373, 320, 480, 1120]) {
           await page.setViewportSize({ width, height: 568 });
@@ -1202,6 +1220,266 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await page.keyboard.press("ControlOrMeta+ArrowDown");
         await page.keyboard.insertText(" Continue.");
         await expect(composer).toHaveValue(draft + " Continue.");
+      },
+    );
+  }
+}
+
+const authoredDockViews = [
+  trajectoryDeclaration.components.find((entry) => entry.id === "trajectory")!,
+  diffDeclaration.components.find((entry) => entry.id === "diff")!,
+  diagnosticsDeclaration.components.find((entry) => entry.id === "diagnostics")!,
+  usageDeclaration.components.find((entry) => entry.id === "usage")!,
+  reportsDeclaration.components.find((entry) => entry.id === "usage-reports")!,
+  memoryDeclaration.components.find((entry) => entry.id === "memory")!,
+  schedulesDeclaration.components.find((entry) => entry.id === "schedules")!,
+  skillsDeclaration.components.find((entry) => entry.id === "skills")!,
+];
+const authoredSettingsPanes = [
+  brandDeclaration.components.find((entry) => entry.id === "brand")!,
+  providersDeclaration.components.find((entry) => entry.id === "settings")!,
+  mcpDeclaration.components.find((entry) => entry.id === "settings")!,
+  hooksDeclaration.components.find((entry) => entry.id === "settings")!,
+];
+for (const browserName of ["chromium", "webkit"] as const) {
+  const authored = test.extend({ browserName });
+  for (const profile of [
+    { locale: "en", theme: "light", fontSize: 14, messages: en },
+    { locale: "zh", theme: "dark", fontSize: 18, messages: zh },
+  ]) {
+    authored(
+      `${browserName} Lab contribution names follow their declarations in ${profile.locale}`,
+      async ({ page, browserName: actualBrowserName }, testInfo) => {
+        expect(actualBrowserName).toBe(browserName);
+        const messages: Record<string, string> = profile.messages;
+        const name = (key: string) => ({ name: messages[key]!, exact: true });
+        const titleFor = (entry: {
+          title: string;
+          localizedTitles?: Readonly<Record<string, string>>;
+        }) => presentationTitle(entry.title, entry.localizedTitles, profile.locale);
+        const capture = async (label: string) =>
+          testInfo.attach(label, {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        try {
+          await page.setViewportSize({ width: 1472, height: 900 });
+          await page.goto(
+            `/lab/fixture.html?${new URLSearchParams({
+              fixture: "workspace",
+              state: "dock-trajectory",
+              "agent-state": "code-reading",
+              locale: profile.locale,
+              theme: profile.theme,
+              "font-size": String(profile.fontSize),
+              motion: "off",
+              sidebar: "collapsed",
+            })}`,
+          );
+          await expectLabReady(page);
+          await page
+            .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
+            .click();
+          const composer = page.getByRole("textbox", name("composer.input.label"));
+          const draft = "  Keep the authored names.\nPreserve this conversation — 保留原文。  ";
+          await composer.fill(draft);
+          const input = (await composer.elementHandle())!;
+          const dock = page.locator(".agent-context-dock");
+          await dock.getByRole("button", name("dock.action.browse")).click();
+          const query = page.getByRole("combobox", name("dock.picker.placeholder"));
+          for (const entry of authoredDockViews) {
+            const title = titleFor(entry);
+            await query.fill(title);
+            const option = page.getByRole("option", { name: title, exact: true });
+            const geometry = await option.evaluate((node) => {
+              const clips = [];
+              for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+                const style = getComputedStyle(parent);
+                if (style.overflowX !== "visible" || style.overflowY !== "visible")
+                  clips.push({
+                    slot: parent.getAttribute("data-slot"),
+                    overflowX: style.overflowX,
+                    overflowY: style.overflowY,
+                    bounds: parent.getBoundingClientRect().toJSON(),
+                    clientWidth: parent.clientWidth,
+                    clientHeight: parent.clientHeight,
+                    scrollWidth: parent.scrollWidth,
+                    scrollHeight: parent.scrollHeight,
+                    padding: [
+                      style.paddingTop,
+                      style.paddingRight,
+                      style.paddingBottom,
+                      style.paddingLeft,
+                    ],
+                    border: [
+                      style.borderTopWidth,
+                      style.borderRightWidth,
+                      style.borderBottomWidth,
+                      style.borderLeftWidth,
+                    ],
+                  });
+              }
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              const bounds = node.getBoundingClientRect();
+              const inset = Math.min(3, bounds.width / 4, bounds.height / 4);
+              const hits = [
+                [bounds.left + inset, bounds.top + bounds.height / 2],
+                [bounds.right - inset, bounds.top + bounds.height / 2],
+                [bounds.left + bounds.width / 2, bounds.top + bounds.height / 2],
+                [bounds.left + bounds.width / 2, bounds.top + inset],
+                [bounds.left + bounds.width / 2, bounds.bottom - inset],
+              ].map(([x, y]) => {
+                const hit = document.elementFromPoint(x!, y!);
+                return {
+                  inside: node.contains(hit),
+                  x,
+                  y,
+                  target: { tag: hit?.tagName, role: hit?.getAttribute("role") },
+                };
+              });
+              const style = getComputedStyle(node);
+              return {
+                bounds: bounds.toJSON(),
+                shape: {
+                  radius: style.borderRadius,
+                  corners: style.getPropertyValue("corner-shape"),
+                  clip: style.clipPath,
+                  transform: style.transform,
+                  scale: style.scale,
+                  pointerEvents: style.pointerEvents,
+                },
+                clips,
+                hits,
+                text: Array.from(range.getClientRects(), (rect) => rect.toJSON()),
+                viewport: [innerWidth, innerHeight],
+              };
+            });
+            await testInfo.attach(`authored-catalog-${entry.id}-geometry`, {
+              body: JSON.stringify(geometry),
+              contentType: "application/json",
+            });
+            try {
+              const frame = {
+                left: 0,
+                top: 0,
+                right: geometry.viewport[0]!,
+                bottom: geometry.viewport[1]!,
+              };
+              for (const clip of geometry.clips) {
+                if (clip.overflowX !== "visible") {
+                  frame.left = Math.max(frame.left, clip.bounds.left + parseFloat(clip.border[3]!));
+                  frame.right = Math.min(
+                    frame.right,
+                    clip.bounds.right - parseFloat(clip.border[1]!),
+                  );
+                }
+                if (clip.overflowY !== "visible") {
+                  frame.top = Math.max(frame.top, clip.bounds.top + parseFloat(clip.border[0]!));
+                  frame.bottom = Math.min(
+                    frame.bottom,
+                    clip.bounds.bottom - parseFloat(clip.border[2]!),
+                  );
+                }
+              }
+              for (const rect of [geometry.bounds, ...geometry.text]) {
+                expect(rect.left).toBeGreaterThanOrEqual(frame.left);
+                expect(rect.right).toBeLessThanOrEqual(frame.right);
+                expect(rect.top).toBeGreaterThanOrEqual(frame.top);
+                expect(rect.bottom).toBeLessThanOrEqual(frame.bottom);
+              }
+              expect(geometry.text.length).toBeGreaterThan(0);
+              expect(geometry.hits.map((hit) => hit.inside)).toEqual([
+                true,
+                true,
+                true,
+                true,
+                true,
+              ]);
+            } finally {
+              await capture(`authored-catalog-${entry.id}`);
+            }
+          }
+          const trajectory = titleFor(authoredDockViews[0]!);
+          await query.fill(trajectory);
+          await page.keyboard.press("Enter");
+          await expect(dock.getByRole("tab", { name: trajectory, exact: true })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
+          const filter = dock
+            .locator('[data-slot="workspace-view-body"]:visible')
+            .getByRole("searchbox");
+          await filter.fill("item_code_reading");
+          const response = dock.getByRole("button", {
+            name: profile.locale === "zh" ? /^智能体回复/ : /^Agent response/,
+          });
+          await response.focus();
+          await page.keyboard.press("Enter");
+          await expect(response).toHaveAttribute("aria-expanded", "true");
+          await dock.getByRole("button", name("dock.action.expand")).click();
+          const header = page.locator('[data-slot="workspace-window-header"]');
+          await expect(header.locator(":scope > span[title]")).toHaveText(trajectory);
+          await page.setViewportSize({ width: 373, height: 364 });
+          await expect(header.locator(":scope > span[title]")).toBeInViewport({ ratio: 1 });
+          await capture("authored-material-header");
+          await header.getByRole("button", name("common.close")).focus();
+          await page.keyboard.press("Enter");
+          await page.setViewportSize({ width: 1472, height: 900 });
+          await page.keyboard.press("ControlOrMeta+l");
+          await expect(composer).toBeFocused();
+          await expect(composer).toHaveValue(draft);
+          await page.keyboard.press("ControlOrMeta+,");
+          const settings = page.getByRole("tablist", name("settings.title"));
+          for (const entry of authoredSettingsPanes) {
+            await expect(
+              settings.getByRole("tab", { name: titleFor(entry), exact: true }),
+            ).toBeInViewport({ ratio: 1 });
+          }
+          await capture("authored-settings-navigation");
+          await page.keyboard.press("ControlOrMeta+l");
+          await expect(composer).toBeFocused();
+          await expect(composer).toHaveValue(draft);
+          expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+          expect(
+            await composer.evaluate((node) => [
+              (node as HTMLTextAreaElement).selectionStart,
+              (node as HTMLTextAreaElement).selectionEnd,
+            ]),
+          ).toEqual([draft.length, draft.length]);
+          await expect(filter).toHaveValue("item_code_reading");
+          await expect(response).toHaveAttribute("aria-expanded", "true");
+          const continuation = profile.locale === "zh" ? " 继续核对。" : " Continue reviewing.";
+          await page.keyboard.type(continuation);
+          await expect(composer).toHaveValue(draft + continuation);
+          await capture("authored-returned-draft");
+
+          const gallery = galleryDeclaration.components.find(
+            (entry) => entry.id === "icon-gallery",
+          )!;
+          await page.goto(
+            `/lab/fixture.html?${new URLSearchParams({
+              fixture: "workspace",
+              state: "full-view",
+              "full-view": "package:visual:icon-gallery",
+              locale: profile.locale,
+              theme: profile.theme,
+              "font-size": String(profile.fontSize),
+              motion: "off",
+              sidebar: "collapsed",
+            })}`,
+          );
+          await expectLabReady(page);
+          await page
+            .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
+            .click();
+          await expect(
+            page.locator('[data-slot="workspace-window-header"] > span[title]'),
+          ).toHaveText(titleFor(gallery));
+          await capture("authored-gallery-header");
+        } finally {
+          await capture("authored-final-state");
+        }
       },
     );
   }

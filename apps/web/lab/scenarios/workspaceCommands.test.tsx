@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished } from "vitest";
 import { executeCommand } from "@/features/command/public/commands";
 import commandMenu from "@/features/command/menu/index";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
@@ -15,6 +15,13 @@ import {
   visualWorkspaceRuntime,
 } from "./installVisualWorkspaceFixture";
 import { VisualWorkspaceFixture } from "./VisualWorkspaceFixture";
+import { activeLocale, setLocale, t } from "@/lib/i18n/index";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
+import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json";
+import brandDeclaration from "../../../../plugins/brand/package/io.github.tangerg.flame/declaration.json";
+import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
+import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json";
+import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json";
 
 let visual: VisualClient;
 let client: FlameClient;
@@ -158,5 +165,60 @@ it.each(["sidebar", "settings"])(
     expect(draft.selectionStart).toBe(5);
     expect(draft.selectionEnd).toBe(5);
     expect(visual.navigation.get().view).toBeNull();
+  },
+);
+
+it.each(["zh", "de"])(
+  "keeps declared contribution names and the same draft through %s navigation",
+  async (locale) => {
+    const originalLocale = activeLocale();
+    onTestFinished(() => setLocale(originalLocale));
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const value = "  Keep the authored titles and this draft. 保留原文。  ";
+    fireEvent.change(draft, { target: { value } });
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(7, 7);
+    });
+    try {
+      await act(() => setLocale(locale));
+      await act(() => loadPluginsForTest(commandMenu));
+      await act(() => executeCommand("command.menu"));
+      const titleFor = (entry: {
+        title: string;
+        localizedTitles?: Readonly<Record<string, string>>;
+      }) => presentationTitle(entry.title, entry.localizedTitles, locale);
+      const trajectory = trajectoryDeclaration.components.find(
+        (entry) => entry.id === "trajectory",
+      )!;
+      const title = titleFor(trajectory);
+      const query = await screen.findByRole("combobox");
+      fireEvent.change(query, { target: { value: title } });
+      expect(
+        await screen.findByRole("option", {
+          name: t("commandMenu.view", { title }),
+        }),
+      ).toBeTruthy();
+      await act(async () => fireEvent.keyDown(query, { key: "Enter" }));
+      await screen.findAllByRole("region", { name: title });
+
+      await act(() => executeCommand("settings.open"));
+      for (const [declaration, id] of [
+        [brandDeclaration, "brand"],
+        [providersDeclaration, "settings"],
+        [mcpDeclaration, "settings"],
+        [hooksDeclaration, "settings"],
+      ] as const) {
+        const entry = declaration.components.find((component) => component.id === id)!;
+        expect(screen.getByRole("tab", { name: titleFor(entry) })).toBeTruthy();
+      }
+      await act(() => executeCommand("composer.focus"));
+      expect(document.activeElement).toBe(draft);
+      expect(draft.value).toBe(value);
+      expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+    } finally {
+      if (screen.queryByRole("combobox", { name: t("commandMenu.placeholder") }))
+        await act(() => executeCommand("command.menu"));
+    }
   },
 );

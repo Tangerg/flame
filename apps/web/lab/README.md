@@ -130,6 +130,15 @@ canonical scene IDs. Structural fixture controls keep their existing names.
 Dock containment checks run independently for each registered state, retaining
 the existing assertions and per-test deadline with a specific failure name.
 
+Installed contribution names have a separate author: each package's public
+`declaration.json` component entry. `installVisualWorkspaceFixture.ts` selects
+that entry by component ID and forwards its fallback title and `localizedTitles`
+to the existing Workspace and Settings contributions. Settings also retain the
+authored fallback title and ID as search keywords. The normal locale projection
+chooses the visible name; the Lab does not maintain a second translation map.
+Fixture IDs, scopes and captured transport bindings remain fixture-owned. Icon
+gallery is a full-view contribution and is not added to the Dock picker.
+
 Each component example owns only its local input, selection or disclosure state.
 Its variant vocabulary is checked against the production public API. Examples
 compare one dimension at a time instead of generating every props combination.
@@ -354,6 +363,13 @@ GenUI sandbox and Computer console tests use their existing isolated transports.
 Both servers use `vite.lab.config.ts`, the same catalog, documents, providers and
 fixture owners. There is no separate visual app, browser configuration or
 compatibility route. Stop a manually running lab before starting verification.
+
+The Workspace chrome scenario compares all eight dockable contribution names,
+four Settings names and the independent icon-gallery header with their public
+declarations in Chromium and WebKit. It checks complete row/text clipping bounds
+and hit targets inside rounded option edges, then retains the same draft,
+trajectory filter and expanded response through material and Settings return.
+The command scenario also checks the declared names in Chinese and German.
 
 Lab development prebundles the linked `@flame/icons/react` entry. Otherwise each
 isolated preview loads the icon barrel's hundreds of modules independently.

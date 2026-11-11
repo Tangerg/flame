@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**, with latest published main incorporated. The shared Panel now retains a focused inner reader through consumed wheel input and native window reflow. English/light/14 px and Chinese/dark/18 px Wails tasks pass at actual 200%/300% zoom, including material return and continued drafts. Shared UI, all 4,792 frontend tests, 29 related Lab cases, 25 Web non-test checks and the Desktop gate pass. The default complete Web entry and live Runtime execution are not newly qualified. Earlier accepted Composer and reading repairs remain intact; whole-product visual acceptance and the embedded native startup blank remain open.
+UI polishing is **active at the user's request**. The Lab now takes nine captured package-view names and four Settings contribution names from their public declarations, retaining localization and authored search terms. English/Chinese Wails tasks qualify panel/material/Settings return and the independent gallery entry at actual 200%/300% zoom. Earlier shared Panel, Composer and reading repairs retain their accepted source bytes. Whole-product visual acceptance, live Runtime execution and the embedded native startup blank remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1218,6 +1218,94 @@ outside this qualification. Continue inspecting long Workspace fixture-state
 names at 18 px from the current native view before choosing another change.
 
 ### Workspace fixture-state reading (2026-11-09)
+
+The subsequent native title audit on **2026-11-12** establishes a Lab projection
+defect. Public component declarations already own fallback and localized titles,
+and production contribution admission forwards both. The captured Workspace
+fixture omitted the translations from nine views and four Settings panes. It now
+selects each public declaration by component ID and forwards that metadata,
+including the existing Settings search keywords. The authored English Hooks
+name is **Lifecycle hooks**. Fixture IDs, scopes, transports and component
+lifetimes retain their original owners; no dictionary, locale state, registry,
+visual entry or production API is added. Icon gallery remains full-view only.
+
+Better Writing and Layout guide consistent object names and complete reading.
+A bounded edit-only Claude Code CLI candidate completes in **89.233 seconds**;
+all **19 protected context files** remain unchanged. Primary review verifies the
+13 declaration selections, integrates the candidate and owns verification.
+The correctly isolated old-source unit baseline fails both Chinese and German
+name checks while six existing cases pass. The final eight cases pass, including
+the same Composer node, padded draft and selection through command/Settings
+navigation. The related Lab, locale and production-contribution group passes
+**44 files / 900 tests**. An unsupported Testing Library `exact` option is removed
+from the new unit queries; the final focused tests and typecheck pass afterward.
+
+Four new tasks in the existing Workspace chrome scenario pass in **24.581
+seconds** across Chromium/WebKit and English/Chinese. They inspect all eight
+dockable authored names, four Settings names, narrow material reading, retained
+draft/filter/disclosure and the independent gallery header. The old fixture
+fails all four correctly scoped name checks. An initial Gallery-in-Dock
+assumption is corrected because its declaration has no Dock capability.
+The new visibility oracle also measures actual fractional clipping edges: a
+WebKit intersection ratio of 0.996081829 corresponds to a 0.140625 px integer
+client-height discrepancy, while the row's painted edge matches its scrollport.
+Rounded 16 px corners intentionally do not hit the option at square-corner
+probes. Final checks require complete row and text-range containment without a
+tolerance, plus five hits at the center and inside edge midpoints. Existing
+assertions, deadlines and application shapes are unchanged. All **52 focused
+browser images** are retained and reviewed.
+
+The eight-file related audit records **248 passed / 250 cases** in **675.607
+seconds**, with no skips, flaky results or global errors. Its only failures wait
+for the former English **Hooks** heading. The existing Readability consumer now
+derives that exact name from the same public declaration; all long-text, row
+containment and refresh assertions remain. Its complete follow-up passes
+**10 / 10** in **23.108 seconds**, qualifying all 250 selected cases across the
+two runs. All **443 related images** are accounted for: 52 match the reviewed
+focused captures byte for byte, and 391 are reviewed in their contact sheets.
+Both follow-up images also match those reviewed bytes. The initial failures and
+their source contexts remain in the evidence rather than being reported as a
+single green run.
+
+The existing `node_repl`/`@oai/sky` bridge supplies actual native control without
+changing Codex configuration or OS permissions. Four private production
+**Wails v3.1.0** hosts use the same **488 canonical Lab assets**, verified against
+the subsequent Lab build; all **46 native production inputs** are unchanged.
+English/light/14 px/Orange/full motion and Chinese/dark/18 px/custom blue/motion
+off qualify authored labels at actual **200% and 300%** zoom and native minimum
+window sizing. Mouse searches, wheel reading, keyboard Close, Settings navigation
+and continued drafts pass. English Settings arrow navigation and Chinese
+English-fallback search retain the declared visible names. Both exact six-line
+padded drafts and the trajectory filter/expanded response survive material and
+Settings return. At 300%, responsive Dock hiding removes its subtree from AX;
+restoring Actual Size confirms the unchanged context rather than treating that
+temporary absence as data loss.
+
+Gallery uses its independent existing full-view document in both locales.
+Native filtering, high-zoom header reading, wheel input, keyboard Close and
+subsequent conversation access pass; this does not claim cross-document draft
+continuity. All **97 original native JPEGs / 102 AX records** are retained,
+original-image hashes verify, and contact sheets plus critical full frames are
+reviewed. Four native Quit requests are followed by exact-process absence
+checks, without claiming unobserved exit codes. Their four app paths are
+unregistered, the private server closes and twelve private Library paths return
+to absence. The two preexisting Runtime roots remain preserved.
+
+All **25 Web non-test checks** pass after the unit API correction; the initial
+typecheck failure is retained separately. The complete default Web/Runtime and
+Desktop gates are not repeated for this Lab-only projection change; their
+preceding results retain their stated source scopes. Live installed-package
+admission, provider execution, OS IME, VoiceOver, shipping startup and the known
+embedded native URL blank remain unqualified.
+
+All **13 output/cache roots** return to their original bytes, modes or absence
+after functional verification. No functional check runs afterward. The source
+guard covers **6,842 tracked/nonignored inputs** and admits only six existing
+Lab/test/documentation files; the primary checkout remains read-only. A final
+fetch finds zero incoming main commits. Original images, logs, failed attempts,
+source hashes and publication/retirement receipts are retained outside the
+repository under `flame-presentation-nnnmwazi`. The goal remains active, and the
+following earlier sidebar qualification remains intact.
 
 Native inspection finds that `Schedules · model choices` fades its final letters
 at 18 px without offering a complete-name Tooltip. The label fits its 215 px
@@ -32692,9 +32780,9 @@ Chinese native paste append the verified continuations. At the native minimum
 300% frame, all five footer controls receive keyboard focus and remain visible.
 No Send or Runtime mutation is activated. OS IME composition, VoiceOver speech,
 RTL, other-platform GUI, shipping distribution and whole-product acceptance remain
-unqualified. The next observed lead is whether a captured contribution title or
-its host should own the English material title in a Chinese document; no title
-translation change is made without establishing that contract.
+unqualified. The subsequent title trace under **Workspace fixture-state reading**
+establishes that the public declaration owns its localized presentation and
+repairs the captured Lab registration that omitted it.
 
 All **60 final native images** are reviewed with their AX records and contact
 sheets. The archive preserves **149 indexed original JPEGs / 170 AX records**,

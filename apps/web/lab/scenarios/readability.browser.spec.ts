@@ -1,4 +1,5 @@
 import { en as mcpEn } from "../../../../plugins/mcp/component/locales/en";
+import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
 import { expect, test, type Locator, type Page } from "./test";
 import { expectLabReady } from "../readiness";
 async function open(page: Page, query: string, width = 320, height = 720) {
@@ -206,7 +207,12 @@ for (const theme of ["light", "dark"]) {
     await textFitsRow(page.getByText(server, { exact: true }));
     await textFitsRow(page.getByText(detail, { exact: true }));
     await open(page, `fixture=workspace&state=settings&pane=hooks&theme=${theme}`, 320, 900);
-    await page.getByRole("heading", { name: "Hooks", exact: true }).waitFor();
+    await page
+      .getByRole("heading", {
+        name: hooksDeclaration.components.find((entry) => entry.id === "settings")!.title,
+        exact: true,
+      })
+      .waitFor();
     await page.evaluate(
       async ({ matcher, command }) => {
         const moduleUrl = "/lab/scenarios/hookSnapshot.ts";

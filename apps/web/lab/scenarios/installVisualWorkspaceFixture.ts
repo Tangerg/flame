@@ -7,8 +7,19 @@ import { WorkspaceChangesAction } from "@/features/plugins/ui/WorkspaceChangesAc
 import { Schedules } from "../../../../plugins/schedules/component/component";
 import { Hooks } from "../../../../plugins/hooks/component/component";
 import { type ComponentDefinition, type PluginComponent } from "@flame/component-sdk";
+import brandDeclaration from "../../../../plugins/brand/package/io.github.tangerg.flame/declaration.json";
 import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json";
 import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
+import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json";
+import diagnosticsDeclaration from "../../../../plugins/diagnostics/package/io.github.tangerg.flame/declaration.json";
+import galleryDeclaration from "../../../../plugins/icon-gallery/package/io.github.tangerg.flame/declaration.json";
+import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json";
+import diffDeclaration from "../../../../plugins/diff/package/io.github.tangerg.flame/declaration.json";
+import usageDeclaration from "../../../../plugins/usage/package/io.github.tangerg.flame/declaration.json";
+import usageReportsDeclaration from "../../../../plugins/usagereports/package/io.github.tangerg.flame/declaration.json";
+import memoryDeclaration from "../../../../plugins/memory/package/io.github.tangerg.flame/declaration.json";
+import schedulesDeclaration from "../../../../plugins/schedules/package/io.github.tangerg.flame/declaration.json";
+import skillsDeclaration from "../../../../plugins/skills/package/io.github.tangerg.flame/declaration.json";
 import { visualComponentProps } from "./installedComponentProps";
 import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../../plugins/icon-gallery/component/component";
@@ -189,6 +200,21 @@ const READING_CALLOUTS_SOURCE: WorkspaceFileContent = {
   endLine: CALLOUT_MARKDOWN.split("\n").length,
 };
 
+function publishedComponent(
+  declaration: {
+    readonly components: readonly {
+      readonly id: string;
+      readonly title: string;
+      readonly localizedTitles?: Readonly<Record<string, string>>;
+    }[];
+  },
+  id: string,
+) {
+  const entry = declaration.components.find((component) => component.id === id);
+  if (!entry) throw new Error(`published declaration has no component "${id}"`);
+  return { id: entry.id, title: entry.title, localizedTitles: entry.localizedTitles };
+}
+
 function pending<T>(signal?: AbortSignal): Promise<T> {
   signal?.throwIfAborted();
   return new Promise<T>((_, reject) => {
@@ -207,9 +233,12 @@ function workspaceDataPlugin(
       const brandLifetime = ctx.contributions.child("visual-brand");
       const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
       const saveBrandFile = createBrowserHost().saveFile;
+      const brandPane = publishedComponent(brandDeclaration, "brand");
       brandLifetime.add(SETTINGS_PANE, {
         id: "brand",
-        label: "Brand identity",
+        label: brandPane.title,
+        localizedTitles: brandPane.localizedTitles,
+        keywords: [brandPane.title, brandPane.id],
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, {
@@ -230,9 +259,12 @@ function workspaceDataPlugin(
         component: providersSources.component,
         signal: providersLifetime.lifetime.signal,
       });
+      const providersPane = publishedComponent(providersDeclaration, "settings");
       providersLifetime.add(SETTINGS_PANE, {
         id: "providers",
-        label: providersDeclaration.components[0]!.title,
+        label: providersPane.title,
+        localizedTitles: providersPane.localizedTitles,
+        keywords: [providersPane.title, providersPane.id],
         material: "providers",
         intent: "model-providers",
         group: "extensions",
@@ -250,9 +282,12 @@ function workspaceDataPlugin(
         component: mcpSources.component,
         signal: mcpLifetime.lifetime.signal,
       });
+      const mcpPane = publishedComponent(mcpDeclaration, "settings");
       mcpLifetime.add(SETTINGS_PANE, {
         id: "mcp-servers",
-        label: mcpDeclaration.components[0]!.title,
+        label: mcpPane.title,
+        localizedTitles: mcpPane.localizedTitles,
+        keywords: [mcpPane.title, mcpPane.id],
         intent: "mcp-servers",
         group: "extensions",
         component: () =>
@@ -264,9 +299,12 @@ function workspaceDataPlugin(
       });
       const hooksLifetime = ctx.contributions.child("visual-hooks");
       const hooksSources = visualComponentProps(runtimeClient(), hooksLifetime, "hooks");
+      const hooksPane = publishedComponent(hooksDeclaration, "settings");
       hooksLifetime.add(SETTINGS_PANE, {
         id: "hooks",
-        label: "Hooks",
+        label: hooksPane.title,
+        localizedTitles: hooksPane.localizedTitles,
+        keywords: [hooksPane.title, hooksPane.id],
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
@@ -277,9 +315,11 @@ function workspaceDataPlugin(
         diagnosticsLifetime,
         "diagnostics",
       );
+      const diagnosticsView = publishedComponent(diagnosticsDeclaration, "diagnostics");
       diagnosticsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diagnostics",
-        title: "Diagnostics",
+        title: diagnosticsView.title,
+        localizedTitles: diagnosticsView.localizedTitles,
         icon: "activity",
         dock: "workspace",
         material: "diagnostics",
@@ -292,9 +332,11 @@ function workspaceDataPlugin(
       });
       const galleryLifetime = ctx.contributions.child("visual-icon-gallery");
       const gallerySources = visualComponentProps(runtimeClient(), galleryLifetime, "icon-gallery");
+      const galleryView = publishedComponent(galleryDeclaration, "icon-gallery");
       galleryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
-        title: "Icon gallery",
+        title: galleryView.title,
+        localizedTitles: galleryView.localizedTitles,
         component: () =>
           createElement(InstalledComponent, {
             ...gallerySources,
@@ -304,9 +346,11 @@ function workspaceDataPlugin(
       });
       const lifetime = ctx.contributions.child("visual-trajectory");
       const trajectorySources = visualComponentProps(runtimeClient(), lifetime, "trajectory");
+      const trajectoryView = publishedComponent(trajectoryDeclaration, "trajectory");
       lifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:trajectory",
-        title: "Session trajectory",
+        title: trajectoryView.title,
+        localizedTitles: trajectoryView.localizedTitles,
         dock: "session",
         component: () =>
           createElement(InstalledComponent, {
@@ -317,9 +361,11 @@ function workspaceDataPlugin(
       });
       const diffLifetime = ctx.contributions.child("visual-diff");
       const diffSources = visualComponentProps(runtimeClient(), diffLifetime, "diff");
+      const diffView = publishedComponent(diffDeclaration, "diff");
       diffLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diff",
-        title: "Workspace diff",
+        title: diffView.title,
+        localizedTitles: diffView.localizedTitles,
         icon: "diff",
         dock: "workspace",
         material: "diff",
@@ -347,9 +393,11 @@ function workspaceDataPlugin(
       });
       const usageLifetime = ctx.contributions.child("visual-usage");
       const usageSources = visualComponentProps(runtimeClient(), usageLifetime, "usage");
+      const usageView = publishedComponent(usageDeclaration, "usage");
       usageLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:usage",
-        title: "Usage",
+        title: usageView.title,
+        localizedTitles: usageView.localizedTitles,
         icon: "chart",
         dock: "workspace",
         component: () =>
@@ -362,9 +410,11 @@ function workspaceDataPlugin(
         "usage-reports",
         VISUAL_USAGE_REPORTS_BINDING,
       );
+      const usageReportsView = publishedComponent(usageReportsDeclaration, "usage-reports");
       usageReportsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:usage-reports",
-        title: "Saved usage reports",
+        title: usageReportsView.title,
+        localizedTitles: usageReportsView.localizedTitles,
         icon: "chart",
         dock: "workspace",
         material: "usage",
@@ -382,9 +432,11 @@ function workspaceDataPlugin(
         "memory",
         VISUAL_MEMORY_BINDING,
       );
+      const memoryView = publishedComponent(memoryDeclaration, "memory");
       memoryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:memory",
-        title: "Agent memory",
+        title: memoryView.title,
+        localizedTitles: memoryView.localizedTitles,
         icon: "brain",
         dock: "workspace",
         component: () =>
@@ -402,9 +454,11 @@ function workspaceDataPlugin(
         "schedules",
         VISUAL_SCHEDULES_BINDING,
       );
+      const schedulesView = publishedComponent(schedulesDeclaration, "schedules");
       schedulesLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:schedules",
-        title: "Schedules",
+        title: schedulesView.title,
+        localizedTitles: schedulesView.localizedTitles,
         icon: "calendar",
         dock: "workspace",
         component: () =>
@@ -417,9 +471,11 @@ function workspaceDataPlugin(
 
       const skillsLifetime = ctx.contributions.child("visual-skills");
       const skillsSources = visualComponentProps(runtimeClient(), skillsLifetime, "skills");
+      const skillsView = publishedComponent(skillsDeclaration, "skills");
       skillsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:skills",
-        title: "Skills",
+        title: skillsView.title,
+        localizedTitles: skillsView.localizedTitles,
         icon: "book",
         dock: "workspace",
         component: () =>
