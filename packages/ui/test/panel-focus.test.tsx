@@ -788,6 +788,71 @@ it("retires focus follow when a moved scrollbar leaves the field behind", () => 
   expect(revealed).toEqual([]);
 });
 
+function readerScene() {
+  const view = render(
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+      <Panel label="Recorded evidence" controls={<button>Filter</button>}>
+        <CodeBlock label="Original source">Complete original source</CodeBlock>
+      </Panel>
+    </div>,
+  );
+  const viewport = screen.getByTestId("viewport");
+  const reader = screen.getByRole("region", { name: "Original source" });
+  const block = view.container.querySelector('[data-slot="code-block"]')!;
+  const controls = view.container.querySelector(
+    '[data-slot="panel-controls"]',
+  )!;
+  // Package tests import compiled JavaScript without its stylesheet.
+  reader.style.overflowY = "auto";
+  Object.defineProperty(reader, "scrollHeight", { value: 900 });
+  Object.defineProperty(reader, "clientHeight", { value: 160 });
+  rectangles.set(viewport, new DOMRect(0, 200, 800, 300));
+  rectangles.set(controls, new DOMRect(0, 200, 800, 50));
+  rectangles.set(block, new DOMRect(0, 260, 800, 200));
+  rectangles.set(reader, new DOMRect(0, 300, 800, 160));
+  act(() => reader.focus());
+  expect(revealed).toEqual([]);
+  return { viewport, reader, block, controls };
+}
+
+it.each([
+  { delivery: "before", innerOffset: 0, settledOffset: 80 },
+  { delivery: "after", innerOffset: 740, settledOffset: 740 },
+])(
+  "keeps a visible focused reader through reflow after its own wheel (dispatch $delivery the inner offset changed)",
+  ({ innerOffset, settledOffset }) => {
+    const { viewport, reader, block, controls } = readerScene();
+    reader.scrollTop = innerOffset;
+    fireEvent.wheel(reader.querySelector("code")!, { deltaY: 80 });
+    reader.scrollTop = settledOffset;
+    fireEvent.scroll(reader, { bubbles: false });
+
+    // A larger window lets the sticky controls cover the still-focused source.
+    rectangles.set(viewport, new DOMRect(0, 200, 800, 380));
+    rectangles.set(controls, new DOMRect(0, 200, 800, 120));
+    rectangles.set(block, new DOMRect(0, 140, 800, 180));
+    rectangles.set(reader, new DOMRect(0, 180, 800, 140));
+    resize(viewport);
+    expect(revealed).toEqual([block]);
+    expect(document.activeElement).toBe(reader);
+    expect(reader.scrollTop).toBe(settledOffset);
+  },
+);
+
+it("retires a focused reader's follow when outer scrolling leaves it behind after its own wheel", () => {
+  const { viewport, reader, block } = readerScene();
+  fireEvent.wheel(reader.querySelector("code")!, { deltaY: 80 });
+  viewport.scrollTop = 300;
+  rectangles.set(block, new DOMRect(0, -40, 800, 200));
+  rectangles.set(reader, new DOMRect(0, 0, 800, 160));
+  fireEvent.scroll(viewport);
+
+  rectangles.set(viewport, new DOMRect(0, 200, 800, 380));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(reader);
+});
+
 it("preserves a later outside focus during host reflow", () => {
   const { unit, field, viewport } = scene();
   rectangles.set(unit, new DOMRect(0, 220, 300, 100));

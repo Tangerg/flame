@@ -704,5 +704,148 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await capture("returned-draft");
       },
     );
+    reading(
+      `${browserName} nested evidence keeps its focused reader after inner-wheel reflow in ${profile.locale}`,
+      async ({ page, browserName: actualBrowserName }, testInfo) => {
+        expect(actualBrowserName).toBe(browserName);
+        const messages: Record<string, string> = profile.messages;
+        const name = (key: string) => ({ name: messages[key]!, exact: true });
+        await page.setViewportSize({ width: 373, height: 243 });
+        const query = new URLSearchParams({
+          fixture: "workspace",
+          state: "dock-trajectory",
+          "agent-state": "code-reading",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+          motion: profile.motion,
+          accent: profile.accent,
+          "custom-bg": profile.theme === "dark" ? "#505967" : "#afa996",
+          "custom-fg": profile.theme === "dark" ? "#f0f4fb" : "#111111",
+        });
+        await page.goto(`/lab/fixture.html?${query}`);
+        await expectLabReady(page);
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+        const composer = page.getByRole("textbox", name("composer.input.label"));
+        const draft = [profile.draft, profile.draft, profile.draft].join("\n");
+        await composer.fill(draft);
+        const input = (await composer.elementHandle())!;
+        await page.getByRole("button", name("dock.action.openFull")).click();
+        const material = page.locator('[data-slot="workspace-view-body"]:visible');
+        await material.getByRole("searchbox").fill("item_code_reading");
+        const record = material.locator('[data-trajectory-record="item:item_code_reading"]');
+        await record.getByRole("button").first().focus();
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Tab");
+        const evidence = record.getByRole("button", { name: profile.evidence, exact: true });
+        await expect(evidence).toBeFocused();
+        await page.keyboard.press("Enter");
+        const raw = record.getByRole("region", { name: profile.evidence, exact: true });
+        const original = await raw.innerText();
+        expect(JSON.parse(original)).toHaveProperty(
+          "item.content.0.text",
+          expect.stringContaining(CODE_READING_SOURCE),
+        );
+        await page.keyboard.press("Tab");
+        await expect(
+          raw.locator("..").getByRole("button", name("message.code.wrap.enable")),
+        ).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(raw).toHaveAttribute("data-wrap", "true");
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Tab");
+        await expect(raw).toBeFocused();
+        const reader = (await raw.elementHandle())!;
+        const samples: unknown[] = [];
+        const expectRevealed = async (label: string) => {
+          await expect
+            .poll(async () => {
+              const frames = await raw.evaluate(async (node) => {
+                const result = [];
+                for (let index = 0; index < 8; index++) {
+                  await new Promise(requestAnimationFrame);
+                  const bounds = node.getBoundingClientRect();
+                  let top = 0;
+                  let bottom = innerHeight;
+                  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+                    if (getComputedStyle(parent).overflowY === "visible") continue;
+                    const clip = parent.getBoundingClientRect();
+                    top = Math.max(top, clip.top);
+                    bottom = Math.min(bottom, clip.bottom);
+                  }
+                  const style = getComputedStyle(node);
+                  const textHeight =
+                    node.clientHeight -
+                    parseFloat(style.paddingTop) -
+                    parseFloat(style.paddingBottom);
+                  const inset = Math.min(3, bounds.width / 4, bounds.height / 4);
+                  const hits = [
+                    [bounds.left + inset, bounds.top + inset],
+                    [bounds.right - inset, bounds.top + inset],
+                    [bounds.left + bounds.width / 2, bounds.top + bounds.height / 2],
+                    [bounds.left + inset, bounds.bottom - inset],
+                    [bounds.right - inset, bounds.bottom - inset],
+                  ].map(([x, y]) => node.contains(document.elementFromPoint(x!, y!)));
+                  result.push({
+                    bounds: bounds.toJSON(),
+                    top,
+                    bottom,
+                    textHeight,
+                    lineHeight: parseFloat(style.lineHeight),
+                    hits,
+                  });
+                }
+                return result;
+              });
+              samples.push({ label, frames });
+              return frames.every(
+                (frame) =>
+                  frame.bounds.top >= frame.top - 0.5 &&
+                  frame.bounds.bottom <= frame.bottom + 0.5 &&
+                  frame.textHeight >= frame.lineHeight &&
+                  frame.hits.every(Boolean),
+              );
+            })
+            .toBe(true);
+          await expect(raw).toBeFocused();
+          expect(await raw.evaluate((node, held) => node === held, reader)).toBe(true);
+          expect(await raw.innerText()).toBe(original);
+          await testInfo.attach(`nested-evidence-${label}.png`, {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        };
+        try {
+          await expectRevealed("entry");
+          await raw.hover();
+          const outerTop = await material.evaluate((node) => node.scrollTop);
+          const innerTop = await raw.evaluate((node) => node.scrollTop);
+          await page.mouse.wheel(0, 40);
+          await expect.poll(() => raw.evaluate((node) => node.scrollTop)).toBeGreaterThan(innerTop);
+          await expectRevealed("inner-wheel");
+          expect(await material.evaluate((node) => node.scrollTop)).toBe(outerTop);
+          for (const size of [
+            { width: 504, height: 316 },
+            { width: 373, height: 243 },
+          ]) {
+            await page.setViewportSize(size);
+            await expectRevealed(`reflow-${size.width}`);
+          }
+          await page.keyboard.press("Escape");
+          await expect(page.getByRole("region", name("shell.region.conversation"))).toBeFocused();
+          await expect(composer).toHaveValue(draft);
+          expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+        } finally {
+          await testInfo.attach("nested-evidence-wheel-geometry", {
+            body: JSON.stringify(samples),
+            contentType: "application/json",
+          });
+          await testInfo.attach("nested-evidence-wheel.png", {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        }
+      },
+    );
   }
 }

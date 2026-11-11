@@ -464,6 +464,26 @@ export function Panel({
     const retire = () => {
       readingFocus.current = null;
     };
+    const onWheel = (event: WheelEvent) => {
+      const reader = readingFocus.current?.target;
+      // WebKit can dispatch a wheel the focused reader consumed after moving its
+      // offset, so remaining distance is no witness; chained outer scrolling
+      // still retires through onScroll.
+      if (
+        reader instanceof HTMLElement &&
+        reader === document.activeElement &&
+        event.target instanceof Node &&
+        reader.contains(event.target) &&
+        event.deltaY !== 0 &&
+        ["auto", "scroll"].includes(getComputedStyle(reader).overflowY) &&
+        reader.scrollHeight > reader.clientHeight
+      ) {
+        const frame = bodyFocusFrame(reader);
+        if (frame && withinPanelFrame(reader.getBoundingClientRect(), frame))
+          return;
+      }
+      retire();
+    };
     const clearPress = () => {
       pressedTarget.current = null;
     };
@@ -507,7 +527,7 @@ export function Panel({
       viewport.addEventListener("scroll", onScroll, { passive: true });
     }
     const wheelScope = scrollPositions.keys().next().value ?? panel;
-    wheelScope.addEventListener("wheel", retire, {
+    wheelScope.addEventListener("wheel", onWheel, {
       passive: true,
       capture: true,
     });
@@ -519,7 +539,7 @@ export function Panel({
       if (queuedReveal) window.cancelAnimationFrame(queuedReveal);
       for (const viewport of scrollPositions.keys())
         viewport.removeEventListener("scroll", onScroll);
-      wheelScope.removeEventListener("wheel", retire, true);
+      wheelScope.removeEventListener("wheel", onWheel, true);
       document.removeEventListener("pointerup", clearPress, true);
       document.removeEventListener("pointercancel", clearPress, true);
       window.removeEventListener("resize", revealAfterLayout);

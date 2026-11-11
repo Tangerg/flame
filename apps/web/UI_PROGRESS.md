@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest published main is incorporated. This batch resolves four Workspace chrome resize-notification failures; all 41 chrome and 126 Workspace cases pass, and actual Wails English/Chinese qualification covers sidebar transitions, 200%/300% zoom, material return and retained drafting. The full Web unit gate remains non-green; its failures and the existing short-window Composer footer defect are recorded below. The other 25 Web checks and Desktop gate pass. Previous Settings alignment, Computer capacity and shared code-reader repairs remain intact. Live engine, whole-product visual acceptance and the earlier native startup blank remain open.
+UI polishing is **active at the user's request**, with latest published main incorporated. The shared Panel now retains a focused inner reader through consumed wheel input and native window reflow. English/light/14 px and Chinese/dark/18 px Wails tasks pass at actual 200%/300% zoom, including material return and continued drafts. Shared UI, all 4,792 frontend tests, 29 related Lab cases, 25 Web non-test checks and the Desktop gate pass. The default complete Web entry and live Runtime execution are not newly qualified. Earlier accepted Composer and reading repairs remain intact; whole-product visual acceptance and the embedded native startup blank remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -32606,6 +32606,111 @@ pass. Post-hook preservation repeats the same source/resource/reference and
 retirement checks above. This in-place delivery receipt changes no product input.
 
 ### Panel reader budget and owned reflow scroll (2026-10-30)
+
+#### Consumed inner wheel during native reflow (2026-11-12)
+
+The original production Wails host reproduces a separate regression at Chinese,
+18 px, dark custom palette and native 300% page zoom. A focused, wrapped
+Recorded evidence reader remains visible after consuming its own wheel. Native
+Window Zoom then hides it completely behind the sticky trajectory filters while
+AX still reports that reader focused. Waiting 1.5 seconds before resizing and
+one second afterward retains the failure. The resize-only control without the
+inner wheel passes; the six-line padded conversation draft survives both paths.
+
+`Panel` previously retired its reading witness on every captured wheel. It now
+retains the existing witness for a visible, focused vertical scrollport receiving
+its own wheel. The existing outer-scroll handler still retires it when actual
+outer movement leaves it behind. Testing remaining inner distance would miss
+WebKit delivery after the native offset has already moved. No additional
+observer, timer, focus manager, scroll state, app override or public API is added.
+Hidden content, outside focus, zero reading frames, pointer activation and outer
+wheel/scrollbar retirement retain their existing contracts.
+
+Better-accessibility's visible focus and better-layout's sticky reading clearance
+guide the repair. The existing transcript focus owner supplies the local WebKit
+precedent. The recorded read-only ZCode/ChatGPT reader research above remains
+scoped to source identity, progressive detail and return continuity; reference
+repositories and current palette/literal-source owners are unchanged.
+
+A bounded edit-only Claude Code CLI candidate completes in 102.394 seconds,
+with all seven protected context files unchanged. Primary review integrates only
+the shared owner and regression candidates. Two unit cases fail on the original
+product, with 64 existing/counter cases passing. They cover wheel delivery before
+and after the inner offset changes; an actual outer scroll still cancels follow.
+The final owner passes all 66 focused tests. Full shared UI checks pass build,
+types, lint, formatting, 15 files / 283 tests and the independent offline packed
+UI/icons consumer. A private prerequisite install primes exact frozen dependency
+selections before that offline check; the check itself keeps its normal contract.
+
+The existing Lab Code reading file gains four Chromium/WebKit and English/Chinese
+tasks using its current Workspace fixture and six-line draft. Eight settled frames
+require a readable source line, complete clipping containment, five pointer hits,
+exact source and reader identity through an inner wheel and 373 × 243 ↔ 504 × 316
+reflow. The old product fails the English WebKit enlarged-frame hit check while
+three other cases pass. Its geometry confirms the source's upper points behind
+sticky controls despite viewport containment. The initial missing-browser attempt
+is a prerequisite failure, retained separately. Matching browsers install only
+inside the private QA root; the user's existing browser cache remains unchanged.
+
+All four repaired tasks pass. The related Code reading, Panel focus and Panel
+presentation selection passes 29/29 in 93.977 seconds, without retries, skips or
+global errors. The final capture follow-up passes 4/4 in 18.275 seconds; all 20
+original images are inspected, including the evidence before/after reflow and
+conversation return. The same Lab configuration, console guard and arrival
+limits remain. No visual entry, fixture catalog, golden or benchmark is added.
+
+The complete serial frontend project passes **432 files / 4,792 tests** in
+325.450 seconds, including installed-component lifecycle and portable composition.
+All **25 Web non-test checks** pass, including portable resource rebuild checks,
+production bundling and public module linkage. **`make check-native` passes in
+53.006 seconds**, including normal Web staging and Desktop test/vet/build/Wails
+compilation. The earlier default complete Web entry is not rerun; its Runtime
+project and live execution remain outside this frontend result. The four focused
+syntax/palette files also pass 184 tests before the repair; that result does not
+establish a cause for the earlier intermittent syntax failure.
+
+The bundled `@oai/sky` bridge through `node_repl` supplies working native control,
+without changing Codex configuration, plugins or OS permissions. Two private
+production **Wails v3.1.0** hosts load **488 canonical Lab assets** through their
+loopback static server. All **46 native production inputs** remain unchanged.
+Final English and Chinese host builds pass in 3.284 and 2.766 seconds. Private
+identities, isolated homes and the captured offline Workspace fixture bound this
+presentation acceptance; the embedded-URL startup blank is not repaired here.
+
+English/light/14 px/Orange/full motion and Chinese/dark/18 px/custom blue/motion
+off both qualify actual **200% and 300%** page zoom. Keyboard entry opens the
+filtered response and recorded JSON, enables wrapping and focuses its source.
+An internal wheel settles before native Window Zoom enlarges the window; the
+whole code frame remains visible after enlargement and minimum-frame restoration,
+with reader focus intact. The Chinese outer-wheel departure control still permits
+the reader to remain partly outside after reflow. It is an intentional manual
+reading departure, separate from the focused-reader visibility qualification.
+
+Both tasks retain the query and expanded disclosures across two material-return
+cycles. Their exact padded six-line drafts survive; English native typing and
+Chinese native paste append the verified continuations. At the native minimum
+300% frame, all five footer controls receive keyboard focus and remain visible.
+No Send or Runtime mutation is activated. OS IME composition, VoiceOver speech,
+RTL, other-platform GUI, shipping distribution and whole-product acceptance remain
+unqualified. The next observed lead is whether a captured contribution title or
+its host should own the English material title in a Chinese document; no title
+translation change is made without establishing that contract.
+
+All **60 final native images** are reviewed with their AX records and contact
+sheets. The archive preserves **149 indexed original JPEGs / 170 AX records**,
+including the original Chinese failure and its no-wheel control. Every indexed
+original verifies against its SHA-256; none is overwritten or unavailable.
+Evidence remains outside the repository under `flame-code-reading-sbk_d5lc`.
+Both final application processes exit after native Quit; exact-instance checks
+confirm absence, without claiming an unobserved process exit code. All four private
+baseline/final app paths are unregistered, both static ports close and all twelve
+private Library paths return to absence. All **13 output/cache roots** match their
+original bytes and modes, including eight absences. The two preexisting Runtime
+roots retain their original identities and children. No functional check runs
+after restoration. Publication and QA-root retirement retain separate receipts
+beside the archived evidence.
+
+#### Earlier sizing and owned-scroll qualification
 
 Scope: inspect captured trajectory evidence in the Dock and main reading area,
 resize the native window, read a related Markdown file, return and continue the
