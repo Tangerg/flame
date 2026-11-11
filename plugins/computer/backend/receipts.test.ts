@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { canonicalJSON, digestJSON } from "@flame/backend-sdk/mcp";
 import { Receipts, type OriginalCommand, type ReceiptLimits } from "./receipts";
+import { receiptCapacity } from "./receiptEvidence";
 
 const limits: ReceiptLimits = {
   maxRecords: 100,
@@ -108,6 +109,69 @@ describe("original computer receipts", () => {
     expect(restarted.capacity()).toEqual(settled);
     expect(restarted.admit(command).fresh).toBe(false);
     expect(restarted.capacity()).toEqual(settled);
+  });
+
+  it("projects identical capacity from encoded originals and SQLite through settlement and restart", () => {
+    const databaseOwner = database();
+    let store = databaseOwner.store;
+    const expectCapacity = () => {
+      const evidence = store
+        .list({ limit: limits.maxRecords })
+        .records.map(({ id }) => {
+          const receipt = store.read(id)!;
+          return {
+            ...receipt,
+            invocation: canonicalJSON(receipt.invocation),
+            outcome:
+              receipt.state === "settled"
+                ? canonicalJSON(receipt.outcome)
+                : undefined,
+          };
+        });
+      expect(receiptCapacity(evidence, limits)).toEqual(store.capacity());
+    };
+    expectCapacity();
+    const pending = original("retained-unconfirmed", "command", {
+      text: "保留原始证据🙂",
+    });
+    store.admit(pending);
+    store.markDispatched(pending.id);
+    expectCapacity();
+    const reserved = store.capacity();
+    expect(store.admit(pending).fresh).toBe(false);
+    expect(store.capacity()).toEqual(reserved);
+    expectCapacity();
+    const media = original("retained-media", "tool");
+    store.admit(media);
+    store.markDispatched(media.id);
+    expectCapacity();
+    store.settleTool(media.id, {
+      content: [
+        {
+          type: "image",
+          mimeType: "image/png",
+          data: Buffer.from("原始图像🙂".repeat(100)).toString("base64"),
+        },
+      ],
+    });
+    expectCapacity();
+    const refusal = original("retained-refusal");
+    store.admit(refusal);
+    store.settleCommand(refusal.id, {
+      failure: { code: "permission_retired", message: "原始许可已结束🙂" },
+    });
+    expectCapacity();
+    const revocation = original("retained-revocation");
+    store.admit(revocation, "reserved");
+    expectCapacity();
+    store.settleCommand(revocation.id, { value: true });
+    expectCapacity();
+    const settled = store.capacity();
+    expect(settled.pending).toBe(1);
+    store.close();
+    store = databaseOwner.open();
+    expect(store.capacity()).toEqual(settled);
+    expectCapacity();
   });
 
   it("durably admits before dispatch and never readmits an original action", () => {

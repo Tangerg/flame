@@ -318,6 +318,10 @@ second usage ledger or a retention job. The reserved revocation capacity and eac
 new operation's result reservation can refuse work before the displayed global
 limit is reached. Capacity visibility does not imply that archiving or deleting
 original identities is safe. No automatic archival subsystem is introduced.
+`backend/receiptEvidence.ts` defines the retained evidence fields once for UTF-8
+accounting and the SQLite aggregate expression. SQLite still reads column lengths
+without materializing media. The isolated Lab projects its complete captured
+originals through that same accounting owner.
 
 `PLUGIN_DATA/engine-ownership.json` is a durable process ownership marker,
 created before spawning the external engine. On POSIX the engine owns a distinct

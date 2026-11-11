@@ -13,6 +13,7 @@ import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import type { ToolReceipt } from "@flame/backend-sdk";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { admitToolResult, projectToolOutput } from "./tool-result";
+import { evidenceBytes, receiptUsageSQL } from "./receiptEvidence";
 
 export interface ReceiptLimits {
   readonly maxRecords: number;
@@ -127,15 +128,7 @@ function admitted(
   )
     throw new Error("computer: original command evidence is invalid");
   const owner = canonicalJSON(original.invocation);
-  const bytes = [
-    original.id,
-    original.kind,
-    original.method,
-    original.input,
-    original.inputDigest,
-    owner,
-    original.admittedAt,
-  ].reduce((size, value) => size + Buffer.byteLength(value), 0);
+  const bytes = evidenceBytes({ ...original, invocation: owner });
   if (bytes > limits.maxInputBytes)
     throw new Refusal(
       "input_capacity",
@@ -329,9 +322,7 @@ export class Receipts {
     // SQLite reads a column's octet length from its record metadata, including
     // large media results, without materializing another payload in the UI path.
     return this.#db
-      .prepare(
-        "SELECT count(*) AS count, coalesce(sum(CASE WHEN outcome IS NULL THEN 1 ELSE 0 END),0) AS pending, coalesce(sum(octet_length(id)+octet_length(kind)+octet_length(method)+octet_length(input)+octet_length(digest)+octet_length(invocation)+octet_length(admitted_at)+CASE WHEN outcome IS NULL THEN ? ELSE octet_length(outcome) END),0) AS bytes FROM commands",
-      )
+      .prepare(`SELECT ${receiptUsageSQL} FROM commands`)
       .get(this.#limits.maxResultBytes)!;
   }
 

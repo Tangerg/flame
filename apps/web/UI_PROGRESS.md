@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Shared code readers now reserve their inset focus perimeter while keeping the caption and source on one leading edge and retaining one complete padded line. The final Lab selection passes **32 cases**, shared UI checking passes **280 tests plus its independent packed consumer**, complete Web checking passes **433 files / 4,833 tests**, and the supported Desktop gate passes. Both actual Wails profiles pass 200%/300% reading, hidden-source Window Zoom/restore, immediate return, first Jump activation and exact draft continuation. Ordinary and Lab native entries complete without Reload; the earlier Reload-needed blank is not causally resolved. The Lab remains the sole UI visual verification owner; Computer capacity and whole-product visual acceptance remain open.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Computer Lab capacity, history and recovery now project complete original evidence using the backend's shared accounting rule. The final Lab selection passes **15 cases**, all **72 captured images** are reviewed, and actual Wails English/Chinese flows qualify reservation, settlement, Stop recovery, 200%/300% reading and return to the original draft. Complete plugin, Web and Desktop checks pass; the first Web attempt's Runtime SIGKILL cutpoint timeout is retained alongside the unchanged successful rerun. Shared code-reader alignment and focus work remain intact. The Lab remains the sole UI visual verification owner; live engine qualification and whole-product visual acceptance remain open. The earlier Reload-needed native blank is not causally resolved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3153,8 +3153,7 @@ and better-layout / better-accessibility guidance inform the fixes. Two bounded,
 read-only Claude Code CLI tasks supply analysis and patch proposals; primary
 review applies and verifies the final changes. Runtime/command semantics,
 production native sources, approved Orange and custom themes are preserved.
-Computer capacity still lacks complete captured metadata and reservations; no
-substitute accounting is invented. The sections below qualify the inspected
+Computer evidence accounting is qualified in the Computer section below. The sections below qualify the inspected
 native horizontal readers through this same Lab. Continue the remaining migrated
 cases; live Runtime, VoiceOver, physical IME and whole-product visual acceptance
 remain unfinished.
@@ -3622,8 +3621,7 @@ The current shared Facts contract and better-layout / better-accessibility
 guidance inform these checks. Two bounded, read-only Claude Code CLI tasks
 supply source analysis and a patch proposal; primary review applies and verifies
 the final changes. Production UI, Runtime contracts and native sources are
-unchanged. Computer capacity still lacks complete captured metadata and
-reservations for its recorded operations; no substitute accounting is invented.
+unchanged. Computer evidence accounting is qualified in the Computer section below.
 Remaining migrated interactions, live Runtime tasks, VoiceOver and whole-product
 visual acceptance remain unfinished. Continue in this same Lab.
 
@@ -3722,11 +3720,9 @@ better-accessibility guidance inform the checks. A bounded Claude Code CLI
 supplies proposals and part of the detail edits; its partial pass ends at its
 turn limit, and primary review completes and verifies the final changes.
 
-Computer capacity remains an explicit gap. Its fixture reports zero usage
-despite recorded operations, but lacks the complete original metadata and
-reservations needed by backend accounting. No substitute count or byte model is
-invented. Capacity coverage, remaining migrated interactions and whole-product
-visual acceptance remain unfinished; continue qualification in this same Lab.
+Computer evidence accounting is qualified in the Computer section below.
+Remaining migrated interactions and whole-product visual acceptance remain
+unfinished; continue qualification in this same Lab.
 
 The **2026-11-11 filename follow-up** reproduces `store_test.go` as `store_t…`
 in the selected Chinese/dark/18 px suggestion at native 300%. One outer ellipsis
@@ -4093,7 +4089,8 @@ inputs** are checked: only the code reader and its existing Lab spec change. All
 fixture roots remain unchanged. Functional checks stop before output restoration.
 Six original final native images are retained outside the repository. After
 publication, temporary evidence is archived before guarded qualification-root
-retirement. Computer capacity and whole-product visual acceptance remain open.
+retirement. The Computer section now qualifies fixture capacity; whole-product
+visual acceptance remains open.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 
@@ -4258,8 +4255,7 @@ unchanged.
 
 Whole-product visual acceptance, the remaining migrated interactions, VoiceOver,
 physical IME and optional performance measurements remain unfinished. The
-Computer fixture capacity inconsistency is source-traced but not repaired here;
-do not fabricate a count or duplicate backend byte reservation policy. Continue
+Computer evidence accounting is qualified in the Computer section below. Continue
 triage and qualification in this same Lab, without another visual runner.
 
 ### Representative Computer images and original-source reading (2026-11-07)
@@ -4352,9 +4348,101 @@ The whole migrated interaction suite and whole-product visual acceptance remain
 unfinished. This batch qualifies synthetic image geometry and original-source
 reading, rather than photographs, live engine execution/acquisition, audio
 playback, VoiceOver, native IME or optional performance measurements. The next
-observed fixture gap is a zero capacity summary alongside seeded/history records;
-trace its accounting owner before changing the fixture and do not duplicate the
-backend's byte-reservation policy in presentation code.
+observed fixture capacity gap is repaired and qualified below.
+
+#### Captured capacity and unconfirmed recovery (2026-11-11)
+
+The isolated Computer fixture previously displayed zero capacity beside its
+recorded images and after opening or executing commands. Four English/Chinese
+image cases fail before the repair at 320 and 1280 px. The backend's retained
+evidence policy is correct; the fixture held a fixed zero snapshot and lacked
+complete original metadata for its other command kinds.
+
+`plugins/computer/backend/receiptEvidence.ts` now owns the encoded field list,
+UTF-8 accounting and pending-result reservation. The production receipt store
+uses that same field list for admission and SQLite's metadata-only octet-length
+aggregate. Its schema, limits, durable settlement, human revocation reserve and
+admission behavior are preserved. One regression compares actual SQLite capacity
+with the pure projection through Unicode input, pending dispatch, duplicate
+admission, image settlement, refusal, reserved revocation and reopening with an
+unconfirmed original. All **28 receipt tests** pass, including the independent
+byte-formula assertion.
+
+The Lab retains one map of complete canonical originals with their invocation,
+SHA-256 input digest, admission time and optional settled outcome. Read/watch
+snapshots, history pages, result inspection and replay project that same owner.
+All five existing command kinds now retain their evidence. Pending outcomes
+reserve their complete result bound; settlement replaces that reservation with
+the captured outcome bytes. Repeated recovery queries neither admit a new record
+nor re-execute the original action. No presentation counter, second outcome map,
+new visual entry or live engine is introduced.
+
+Actual native Stop qualification also exposes an existing fixture protocol
+defect: its `internal_error` envelope placed human detail in the message field,
+which the public client correctly rejects. A stronger assertion in the existing
+Stop task fails before the repair. Both error returns now use the declared type
+as the message and preserve human detail in `data.detail`. The unchanged client
+validation now displays the unconfirmed result normally before and after two
+queries. The final existing Lab selection passes **15 cases** without skips,
+retries, flaky cases or global errors. All **72 original image attachments** are
+reviewed through eight contact sheets; the six Computer catalog states remain
+within the same 43-story catalog.
+
+The final private Wails **v3.1.0** host loads the complete **488-asset** Lab build
+without Reload. English/light/18 px at native 200% starts with three recorded
+images and **173,635 bytes**. Opening retains four records; pending execution
+retains five and **16,951,965 bytes / one unconfirmed outcome**. Permission
+settlement retains six and **256,717 bytes / zero unconfirmed outcomes**. Reading
+the exact execution's original image, keyboard zoom/pan and Escape return retain
+the expanded operation and original trigger focus. Continuing the same JSON draft
+does not change capacity. Ending the lease retains seven records and **257,328
+bytes**, including that original result.
+
+Chinese/dark/18 px/Blue with application motion off starts empty. Pending
+execution retains two records and **16,778,325 bytes**; Stop retains three and
+**16,778,988 bytes / one unconfirmed outcome**. Two original-result queries
+preserve those exact values and execution identity without a protocol error.
+The original Chinese/emoji input remains captured. Native 200% reading and 300%
+Window Zoom/restore keep capacity values readable: the wider 300% view contains
+all fields together, while the restored narrow view reads the single column
+sequentially. The final English run also uses Blue retained in the private
+appearance state; the preceding Orange run qualifies the same happy path before
+the bounded error-envelope repair. Both final native processes exit normally.
+
+Read-only ZCode's actual usage panel and ChatGPT's actual webview usage breakdown
+support projecting captured facts and preserving unavailable values. Existing
+better-layout and better-accessibility guidance informs reading and return
+checks. A bounded Claude Code CLI supplies the three-file implementation
+candidate; primary review owns the SQLite parity regression, history/replay
+responsibility split, protocol fix, final diff and native qualification.
+
+Complete plugin checking passes **47 script tests** and **640 source tests**;
+its two existing Linux-only files account for **17 skipped tests** on macOS.
+Complete Web checking passes **433 files / 4,833 tests**, its structural guards
+and production build. The first complete attempt passes 4,832 tests and times out
+waiting for the Runtime's post-compaction SIGKILL cutpoint. The unchanged full
+rerun passes every test and remaining guard; no deadline, assertion or Runtime
+source is changed, and the timeout's cause remains unproven. Root complexity
+checking and supported **make check-native** pass, retaining the existing macOS
+deployment-target linker warnings. The **287 production Web assets** remain
+byte-identical to the starting product build.
+
+The owned server is stopped and the private app is unregistered. Six private
+Library paths and the ordinary native temp root return to absence; three
+pre-existing empty WebKit helper roots retain their identities, modes and flags.
+All **thirteen output/cache roots** return to captured contents and modes or
+absence, including the older UI build. The additional plugin test cache was
+absent before this batch and originates in the focused receipt test. All
+**6,735 non-Markdown inputs** are checked: only the five owned source paths
+change, including the new pure accounting module. All **46 production native
+inputs**, the primary checkout and both pre-existing Runtime fixture roots remain
+unchanged. No functional checks run after output restoration. Six original final
+native images are retained outside the repository. Temporary evidence is archived
+after publication before guarded qualification-root retirement.
+
+This qualifies isolated capacity presentation and the shared accounting contract.
+It does not qualify live engine execution/acquisition, capacity exhaustion,
+fixture persistence, VoiceOver, physical IME or whole-product visual acceptance.
 
 ### Coherent fixture calendar and visible outcome evidence (2026-11-07)
 

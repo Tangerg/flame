@@ -1,6 +1,33 @@
-import { expect, test } from "./test";
+import { expect, test, type Locator } from "./test";
 import { COMPUTER_IMAGE_SAMPLES } from "./computerFixtureImages";
 import { expectLabReady } from "../readiness";
+import { LIMITS } from "../../../../plugins/computer/contracts/limits";
+
+async function expectCapacity(
+  panel: Locator,
+  records: number,
+  pending: number,
+  locale: "en" | "zh" = "en",
+) {
+  const labels =
+    locale === "zh"
+      ? ["已保留记录 / 上限", "计入容量的字节 / 上限", "未确认结果"]
+      : ["Retained records / limit", "Accounted bytes / limit", "Unconfirmed outcomes"];
+  const value = (label: string) =>
+    panel.getByText(label, { exact: true }).locator("..").locator("dd");
+  const number = new Intl.NumberFormat(locale);
+  await expect(value(labels[0]!)).toHaveText(
+    `${number.format(records)} / ${number.format(LIMITS.maxRecords)}`,
+  );
+  await expect(value(labels[2]!)).toHaveText(number.format(pending));
+  const [used, maximum] = (await value(labels[1]!).innerText()).split(" / ");
+  expect(maximum).toBe(number.format(LIMITS.maxBytes));
+  const bytes = Number(used!.replaceAll(",", ""));
+  expect(Number.isSafeInteger(bytes)).toBe(true);
+  if (records === 0) expect(bytes).toBe(0);
+  else expect(bytes).toBeGreaterThan(0);
+  return bytes;
+}
 
 for (const theme of ["light", "dark"] as const) {
   for (const width of [360, 1280]) {
@@ -15,6 +42,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(`/lab/fixture.html?fixture=computer&theme=${theme}&font-size=18`);
       await expectLabReady(page);
       const panel = page.getByRole("region", { name: "Computer use", exact: true });
+      await expectCapacity(panel, 0, 0);
       await expect(panel.getByText("isolated-desktop.example", { exact: true })).toBeVisible();
       await expect(
         panel.getByText(/operator console outside the controlled desktop/),
@@ -26,6 +54,7 @@ for (const theme of ["light", "dark"] as const) {
       await panel.getByRole("button", { name: "Authorize and open control" }).click();
       const editor = panel.getByRole("textbox", { name: "Tool arguments (JSON)" });
       await expect(editor).toBeEnabled();
+      await expectCapacity(panel, 1, 0);
       await editor.fill('{"code":"await fixture.inspect();"}');
       await panel.getByRole("button", { name: "Review operation", exact: true }).click();
       await expect(panel.getByRole("button", { name: "Back to editor" })).toBeFocused();
@@ -36,6 +65,25 @@ for (const theme of ["light", "dark"] as const) {
       await expect(panel.getByRole("button", { name: "Always allow" })).toHaveCount(0);
       await expect(panel.getByRole("button", { name: "Stop current operation" })).toBeEnabled();
       await expect(panel.getByRole("button", { name: "End control lease" })).toBeEnabled();
+      const reservedBytes = await expectCapacity(panel, 2, 1);
+      expect(reservedBytes).toBeGreaterThan(LIMITS.maxResultBytes);
+      const operationId = (
+        await panel
+          .getByText("Operation identity", { exact: true })
+          .locator("..")
+          .locator("dd")
+          .innerText()
+      ).trim();
+      expect(operationId).toMatch(/^[a-f0-9-]{36}$/);
+      const capacity = panel
+        .getByRole("heading", { name: "Original evidence capacity", exact: true })
+        .locator("../../..");
+      await capacity.scrollIntoViewIfNeeded();
+      await expect(capacity).toBeInViewport({ ratio: 1 });
+      await test.info().attach("computer-capacity-reserved", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
       await panel.getByRole("button", { name: "Allow once", exact: true }).focus();
       const approval = test.info().outputPath(`computer-${theme}-${width}-approval.png`);
       const permissionHeading = panel.getByRole("heading", {
@@ -62,11 +110,19 @@ for (const theme of ["light", "dark"] as const) {
       await expect(
         panel.getByText("Allow control of the isolated example editor?", { exact: true }),
       ).toHaveCount(0);
+      const settledBytes = await expectCapacity(panel, 3, 0);
+      expect(settledBytes).toBeLessThan(reservedBytes);
+      await capacity.scrollIntoViewIfNeeded();
+      await expect(capacity).toBeInViewport({ ratio: 1 });
+      await test.info().attach("computer-capacity-settled", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
       const history = panel
         .getByRole("heading", { name: "Original outcomes", exact: true })
         .locator("../../..");
-      const record = history.getByRole("button", { name: /^[a-f0-9-]{36}$/ });
-      await expect(record).toHaveCount(1);
+      await expect(history.getByRole("button", { name: /^[a-f0-9-]{36}$/ })).toHaveCount(3);
+      const record = history.getByRole("button", { name: operationId, exact: true });
       await record.click();
       const original = panel.getByText("The original isolated fixture operation completed.", {
         exact: true,
@@ -91,6 +147,7 @@ for (const theme of ["light", "dark"] as const) {
       expect(remoteRequests.filter((url) => !url.startsWith("data:"))).toEqual([]);
       await panel.getByRole("button", { name: "End control lease" }).click();
       await expect(panel.getByText("Closed", { exact: true })).toBeVisible();
+      await expectCapacity(panel, 4, 0);
     });
   }
 }
@@ -100,6 +157,7 @@ test("published console stops an outstanding permission without replaying its ac
 }) => {
   await page.goto("/lab/fixture.html?fixture=computer&theme=light");
   await expectLabReady(page);
+  const panel = page.getByRole("region", { name: "Computer use", exact: true });
   await page.getByRole("button", { name: "Authorize and open control" }).click();
   await page
     .getByRole("textbox", { name: "Tool arguments (JSON)" })
@@ -109,11 +167,30 @@ test("published console stops an outstanding permission without replaying its ac
   await expect(
     page.getByText("Allow control of the isolated example editor?", { exact: true }),
   ).toBeVisible();
+  await expectCapacity(panel, 2, 1);
   await page.getByRole("button", { name: "Stop current operation" }).click();
   await expect(page.getByText("Closed", { exact: true })).toBeVisible();
+  const retainedBytes = await expectCapacity(panel, 3, 1);
+  expect(retainedBytes).toBeGreaterThan(LIMITS.maxResultBytes);
+  await expect(
+    panel.getByText("original execution outcome unconfirmed", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText(/invalid plugins\.call error/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Check original outcome" })).toBeVisible();
   await page.getByRole("button", { name: "Check original outcome" }).click();
   await expect(page.getByRole("button", { name: "Check original outcome" })).toBeVisible();
+  expect(await expectCapacity(panel, 3, 1)).toBe(retainedBytes);
+  await expect(
+    panel.getByText("the original result is unconfirmed", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText(/invalid plugins\.call error/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Check original outcome" }).click();
+  await expect(page.getByRole("button", { name: "Check original outcome" })).toBeVisible();
+  expect(await expectCapacity(panel, 3, 1)).toBe(retainedBytes);
+  await expect(
+    panel.getByText("the original result is unconfirmed", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText(/invalid plugins\.call error/)).toHaveCount(0);
   await expect(
     page.getByText("Allow control of the isolated example editor?", { exact: true }),
   ).toHaveCount(0);
@@ -151,6 +228,7 @@ for (const profile of [
       );
       await expectLabReady(page);
       const panel = page.getByRole("region", { name: profile.panel, exact: true });
+      await expectCapacity(panel, COMPUTER_IMAGE_SAMPLES.length, 0, profile.locale);
       await panel.getByRole("button", { name: profile.open, exact: true }).click();
       const editor = panel.getByRole("textbox", { name: profile.editor, exact: true });
       const draft = '{"code":"keep the original image draft 保留"}';

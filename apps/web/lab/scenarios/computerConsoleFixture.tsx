@@ -4,15 +4,20 @@ import * as stylex from "@stylexjs/stylex";
 import { ScrollArea } from "@/ui/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { createFlameClient, createHttpTransport } from "@flame/runtime-client";
-import { stringifyJSON } from "@frame/sdk/json";
+import { canonicalJSON, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
 import { CAPABILITY_JSON } from "../../../../plugins/computer/component/methods.generated";
 import type {
+  HistoryPage,
   OperationRecord,
   Snapshot,
   Surface,
 } from "../../../../plugins/computer/component/types";
 import { LIMITS } from "../../../../plugins/computer/contracts/limits";
+import {
+  receiptCapacity,
+  type ReceiptEvidence,
+} from "../../../../plugins/computer/backend/receiptEvidence";
 import { COMPUTER_FIXTURE_VARIANTS } from "./computerFixtureStates";
 import { COMPUTER_IMAGE_SAMPLES, createComputerFixtureImage } from "./computerFixtureImages";
 
@@ -22,13 +27,95 @@ const digest = "c".repeat(64);
 const host = { hostname: "isolated-desktop.example", platform: "linux", arch: "x64" };
 const capturedAudio =
   "UklGRkQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+const encoder = new TextEncoder();
 
 const styles = stylex.create({
   frame: { display: "flex", height: "100dvh", minHeight: 0, minWidth: 0 },
 });
 
+type Receipt = ReceiptEvidence & {
+  readonly kind: "tool" | "command";
+  dispatched: boolean;
+  outcome?: string;
+};
+
 function frame(value: unknown) {
   return `event: message\ndata: ${JSON.stringify(value)}\n\n`;
+}
+
+async function digestJSON(value: unknown) {
+  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(canonicalJSON(value)));
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function original(
+  id: string,
+  kind: Receipt["kind"],
+  method: string,
+  input: unknown,
+  origin: "human" | "model",
+  target: CallPluginRequest["target"],
+  admittedAt = new Date(Date.now()).toISOString(),
+): Promise<Receipt> {
+  return {
+    id,
+    kind,
+    method,
+    input: canonicalJSON(input),
+    inputDigest: await digestJSON(input),
+    invocation: canonicalJSON({ id, origin, target }),
+    admittedAt,
+    dispatched: false,
+  };
+}
+
+async function recorded(id: string, code: string, result: unknown): Promise<Receipt> {
+  return {
+    ...(await original(
+      id,
+      "tool",
+      "js",
+      { code },
+      "model",
+      { scope: "installation", reference: installationId },
+      "2026-10-29T00:00:00.000Z",
+    )),
+    dispatched: true,
+    outcome: canonicalJSON(result),
+  };
+}
+
+function record(receipt: Receipt): OperationRecord {
+  return {
+    id: receipt.id,
+    kind: receipt.kind,
+    method: receipt.method,
+    admittedAt: receipt.admittedAt,
+    dispatched: receipt.dispatched,
+    settled: receipt.outcome !== undefined,
+    inputJSON: receipt.input,
+    invocationJSON: receipt.invocation,
+    ...(receipt.outcome !== undefined ? { outcomeJSON: receipt.outcome } : {}),
+  };
+}
+
+function replay(receipt: Receipt, requestId: string | number): Response {
+  if (receipt.outcome === undefined)
+    return Response.json({
+      jsonrpc: "2.0",
+      id: requestId,
+      error: {
+        code: -32603,
+        message: "internal_error",
+        data: { type: "internal_error", detail: "the original result is unconfirmed" },
+      },
+    });
+  const reply = parseJSON(receipt.outcome) as { value: unknown } | { failure: unknown };
+  return Response.json({
+    jsonrpc: "2.0",
+    id: requestId,
+    result: "value" in reply ? { output: stringifyJSON(reply.value) } : reply,
+  });
 }
 
 export async function createComputerConsoleFixture(locale: string, requestedState: string | null) {
@@ -41,68 +128,33 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
   const Computer = published.Computer;
   const owner = new AbortController();
   const subscribers = new Set<ReadableStreamDefaultController<Uint8Array>>();
-  const encoder = new TextEncoder();
-  let snapshot: Snapshot = {
-    host,
-    configured: true,
-    receipts: {
-      records: 0,
-      bytes: 0,
-      pending: 0,
-      maxRecords: LIMITS.maxRecords,
-      maxBytes: LIMITS.maxBytes,
-    },
-  };
-  const records = new Map<string, OperationRecord>();
+  let current: Omit<Snapshot, "receipts"> = { host, configured: true };
+  const seeded: Promise<Receipt>[] = [];
   const capturedImage = createComputerFixtureImage(COMPUTER_IMAGE_SAMPLES[0]);
   if (state === "images") {
     for (const sample of COMPUTER_IMAGE_SAMPLES) {
-      records.set(sample.id, {
-        id: sample.id,
-        kind: "tool",
-        method: "computer_js",
-        admittedAt: "2026-10-29T00:00:00.000Z",
-        dispatched: true,
-        settled: true,
-        inputJSON: '{"code":"recorded capture"}',
-        invocationJSON: '{"origin":"model"}',
-        outcomeJSON: JSON.stringify({
+      seeded.push(
+        recorded(sample.id, "recorded capture", {
           content: [
             { type: "image", mimeType: "image/png", data: createComputerFixtureImage(sample) },
           ],
         }),
-      });
+      );
     }
   } else if (state === "unreadable") {
     for (const [id, data] of [
       ["recorded-unreadable-image", "aW52YWxpZCBQTkc="],
       ["recorded-valid-image", capturedImage],
     ] as const) {
-      records.set(id, {
-        id,
-        kind: "tool",
-        method: "computer_js",
-        admittedAt: "2026-10-29T00:00:00.000Z",
-        dispatched: true,
-        settled: true,
-        inputJSON: '{"code":"recorded capture"}',
-        invocationJSON: '{"origin":"model"}',
-        outcomeJSON: JSON.stringify({
+      seeded.push(
+        recorded(id, "recorded capture", {
           content: [{ type: "image", mimeType: "image/png", data }],
         }),
-      });
+      );
     }
   } else if (state === "links") {
-    records.set("recorded-resource-links", {
-      id: "recorded-resource-links",
-      kind: "tool",
-      method: "computer_js",
-      admittedAt: "2026-10-29T00:00:00.000Z",
-      dispatched: true,
-      settled: true,
-      inputJSON: '{"code":"recorded resource links"}',
-      invocationJSON: '{"origin":"model"}',
-      outcomeJSON: JSON.stringify({
+    seeded.push(
+      recorded("recorded-resource-links", "recorded resource links", {
         content: [
           {
             type: "resource_link",
@@ -118,18 +170,10 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           },
         ],
       }),
-    });
+    );
   } else if (state === "unreadable-audio") {
-    records.set("recorded-unreadable-audio", {
-      id: "recorded-unreadable-audio",
-      kind: "tool",
-      method: "computer_js",
-      admittedAt: "2026-10-29T00:00:00.000Z",
-      dispatched: true,
-      settled: true,
-      inputJSON: '{"code":"recorded audio"}',
-      invocationJSON: '{"origin":"model"}',
-      outcomeJSON: JSON.stringify({
+    seeded.push(
+      recorded("recorded-unreadable-audio", "recorded audio", {
         content: [
           {
             type: "resource",
@@ -142,18 +186,10 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           { type: "audio", mimeType: "audio/wav", data: capturedAudio },
         ],
       }),
-    });
+    );
   } else if (state === "resources") {
-    records.set("recorded-resources", {
-      id: "recorded-resources",
-      kind: "tool",
-      method: "computer_js",
-      admittedAt: "2026-10-29T00:00:00.000Z",
-      dispatched: true,
-      settled: true,
-      inputJSON: '{"code":"recorded resources"}',
-      invocationJSON: '{"origin":"model"}',
-      outcomeJSON: JSON.stringify({
+    seeded.push(
+      recorded("recorded-resources", "recorded resources", {
         content: [
           {
             type: "resource",
@@ -181,24 +217,52 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           },
         ],
       }),
-    });
+    );
   }
+  // Retained original evidence is the only receipt owner; capacity, history and
+  // results are projected from it.
+  const evidence = new Map(
+    (await Promise.all(seeded)).map((receipt) => [receipt.id, receipt] as const),
+  );
   const commands = new Map<string, CallPluginRequest>();
-  const outcomes = new Map<string, unknown>();
   let pending:
     { key: string; settle(response: Response): void; requestId: string | number } | undefined;
 
-  function publish(next: Snapshot) {
-    snapshot = next;
+  function snapshot(): Snapshot {
+    return { ...current, receipts: receiptCapacity(evidence.values(), LIMITS) };
+  }
+  function settle(id: string, outcome: unknown) {
+    evidence.get(id)!.outcome = canonicalJSON(outcome);
+  }
+  function history(input: Record<string, unknown>): HistoryPage {
+    const receipts = [...evidence.values()].reverse();
+    const start = input.before ? receipts.findIndex(({ id }) => id === input.before) + 1 : 0;
+    if (start === 0 && input.before) throw new Error("computer fixture cursor is unknown");
+    const page = receipts.slice(start, start + Number(input.limit));
+    return {
+      entries: page.map((receipt) => {
+        const {
+          inputJSON: _input,
+          invocationJSON: _invocation,
+          outcomeJSON: _outcome,
+          ...entry
+        } = record(receipt);
+        return entry;
+      }),
+      ...(start + page.length < receipts.length ? { next: page.at(-1)!.id } : {}),
+    };
+  }
+  function publish(next: Omit<Snapshot, "receipts">) {
+    current = next;
     const notification = frame({
       jsonrpc: "2.0",
       method: "notifications.plugin.stream",
-      params: { kind: "chunk", value: stringifyJSON(snapshot) },
+      params: { kind: "chunk", value: stringifyJSON(snapshot()) },
     });
     for (const subscriber of subscribers) subscriber.enqueue(encoder.encode(notification));
   }
   function surface(): Surface {
-    const session = snapshot.session;
+    const session = current.session;
     if (!session) throw new Error("computer fixture has no session");
     return {
       host,
@@ -242,7 +306,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
               controller.enqueue(
                 encoder.encode(frame({ jsonrpc: "2.0", id: request.id, result: {} })),
               );
-              publish(snapshot);
+              publish(current);
               init?.signal?.addEventListener("abort", remove, { once: true });
             },
             cancel() {
@@ -257,36 +321,32 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
         throw new Error("unsupported computer fixture request");
       const method = params.method;
       const input = JSON.parse(params.input) as Record<string, unknown>;
-      if (method === "flame.computer/read.v1") return output(snapshot);
+      if (method === "flame.computer/read.v1") return output(snapshot());
       if (method === "flame.computer/context.v1") return output(surface());
-      if (method === "flame.computer/history.v1")
-        return output({
-          entries: [...records.values()].map(
-            ({ inputJSON: _input, invocationJSON: _invocation, outcomeJSON: _outcome, ...entry }) =>
-              entry,
-          ),
-        });
-      if (method === "flame.computer/result.v1") return output(records.get(input.id as string));
-      if (!key) throw new Error("fixture command omitted its identity");
-      if (commands.has(key)) {
-        if (outcomes.has(key)) return output(outcomes.get(key));
-        return Response.json({
-          jsonrpc: "2.0",
-          id: request.id,
-          error: {
-            code: -32603,
-            message: "the original result is unconfirmed",
-            data: { type: "internal_error" },
-          },
-        });
+      if (method === "flame.computer/history.v1") return output(history(input));
+      if (method === "flame.computer/result.v1") {
+        const receipt = evidence.get(input.id as string);
+        return output(receipt && record(receipt));
       }
+      if (!key) throw new Error("fixture command omitted its identity");
+      const admitted = await original(
+        key,
+        "command",
+        method,
+        parseJSON(params.input),
+        "human",
+        params.target,
+      );
+      const previous = evidence.get(key);
+      if (previous) return replay(previous, request.id);
+      evidence.set(key, admitted);
       commands.set(key, params);
       let result: unknown;
       if (method === "flame.computer/open.v1") {
+        admitted.dispatched = true;
         publish({
           host,
           configured: true,
-          receipts: snapshot.receipts,
           session: {
             id: "control-browser-fixture",
             workerId: "worker-browser-fixture",
@@ -296,28 +356,19 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
             expiresAt: new Date(Date.now() + Number(input.leaseSeconds) * 1000).toISOString(),
           },
         });
-        result = snapshot.session;
+        result = current.session;
       } else if (method === "flame.computer/execute.v1") {
-        records.set(key, {
-          id: key,
-          kind: "command",
-          method,
-          inputJSON: params.input,
-          invocationJSON: '{"origin":"human"}',
-          admittedAt: new Date(Date.now()).toISOString(),
-          dispatched: true,
-          settled: false,
-        });
+        admitted.dispatched = true;
         publish({
-          ...snapshot,
+          ...current,
           session: {
-            ...snapshot.session!,
+            ...current.session!,
             state: "executing",
             operation: { id: key, tool: "js", startedAt: new Date(Date.now()).toISOString() },
             approval: {
               id: "permission-browser-fixture",
               operationId: key,
-              sessionId: snapshot.session!.id,
+              sessionId: current.session!.id,
               requestJSON: JSON.stringify({
                 mode: "form",
                 message: "Allow control of the isolated example editor?",
@@ -341,13 +392,18 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           });
         });
       } else if (method === "flame.computer/reply.v1") {
-        if (!pending || input.requestId !== snapshot.session?.approval?.id)
-          return success({
+        if (!pending || input.requestId !== current.session?.approval?.id) {
+          const refusal = {
             failure: {
               code: "permission_retired",
               message: "the original permission request ended",
             },
-          });
+          };
+          settle(key, refusal);
+          publish(current);
+          return success(refusal);
+        }
+        admitted.dispatched = true;
         const original = pending;
         pending = undefined;
         const outcome = {
@@ -360,21 +416,9 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           },
           cleanup: "ended",
         };
-        outcomes.set(original.key, outcome);
-        records.set(original.key, {
-          ...records.get(original.key)!,
-          settled: true,
-          outcomeJSON: JSON.stringify({ value: outcome }),
-        });
-        publish({
-          ...snapshot,
-          session: {
-            ...snapshot.session!,
-            state: "ready",
-            operation: undefined,
-            approval: undefined,
-          },
-        });
+        settle(original.key, { value: outcome });
+        const { operation: _operation, approval: _approval, ...session } = current.session!;
+        publish({ ...current, session: { ...session, state: "ready" } });
         original.settle(
           Response.json({
             jsonrpc: "2.0",
@@ -384,16 +428,10 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
         );
         result = true;
       } else if (method === "flame.computer/close.v1" || method === "flame.computer/stop.v1") {
-        publish({
-          ...snapshot,
-          session: {
-            ...snapshot.session!,
-            state: "closed",
-            reason: "user",
-            operation: undefined,
-            approval: undefined,
-          },
-        });
+        admitted.dispatched = true;
+        const { operation: _operation, approval: _approval, ...session } = current.session!;
+        publish({ ...current, session: { ...session, state: "closed", reason: "user" } });
+        // An interrupted execution keeps its pending original evidence.
         if (pending) {
           pending.settle(
             Response.json({
@@ -401,16 +439,17 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
               id: pending.requestId,
               error: {
                 code: -32603,
-                message: "original execution outcome unconfirmed",
-                data: { type: "internal_error" },
+                message: "internal_error",
+                data: { type: "internal_error", detail: "original execution outcome unconfirmed" },
               },
             }),
           );
           pending = undefined;
         }
-        result = snapshot.session;
+        result = current.session;
       } else throw new Error("unsupported computer fixture method");
-      outcomes.set(key, result);
+      settle(key, { value: result });
+      publish(current);
       return output(result);
     },
   });

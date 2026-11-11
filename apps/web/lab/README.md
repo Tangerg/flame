@@ -757,11 +757,15 @@ its thumbnail to inspect the shared image reader. Canvas-authored synthetic PNGs
 replace the old 1-by-1 carrier without capturing a desktop or fetching assets.
 These variants use the same `state` links projected by the catalog.
 
-Computer capacity remains unqualified: the fixture's zero usage does not account
-for its recorded operations. The backend owns byte accounting, including command
-metadata, pending result reservations and lifecycle commands; the visual records
-do not retain all those facts. Do not derive substitute totals from image sizes
-or displayed history, or treat these variants as capacity coverage.
+Computer capacity derives from the same retained originals as history and result
+reads. Seeded evidence includes canonical input, a real SHA-256 digest and complete
+invocation metadata. Open, execute, permission reply, stop and close retain their
+own originals and outcomes. The Node-free backend evidence owner supplies the
+same fields and pending-result reservation rule as its SQLite metadata query;
+there is no separate running usage total. Settled results replace their reservation
+with exact canonical outcome bytes, while an interrupted execution stays pending.
+Original-command recovery cannot readmit or replay it. These isolated tasks do not
+simulate capacity exhaustion, live engine control or backend persistence.
 
 Agent file suggestions select literal, case-insensitive path fragments from the
 same five captured files and honor the requested limit. This keeps attachment
