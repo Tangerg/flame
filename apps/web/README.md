@@ -261,7 +261,16 @@ separate owners.
 The started conversation bounds its complete Composer stack with a normal-flow
 scrollport, so a standing Goal or connection notice cannot compress the editor
 and actions away in a short window. The jump control stays outside that clipping
-boundary. This scrollport and the empty conversation reuse `useViewportFocus`
+boundary. The containing Conversation region owns the Composer reading limit:
+focus on that region or inside its transcript caps the Composer at one-third of the pane,
+while editing controls retain their existing height. The existing reading-focus
+owner retires pending follow for region focus, including a content resize that
+would otherwise rearm it. Returning from material therefore leaves the retained
+source readable without moving focus away from its logical Conversation region.
+`MessageStream` excludes native scroll anchoring from this controlled outer
+viewport, so hidden reflow cannot move its reading position independently of
+application follow. Nested code and table scrollports keep their own scrolling.
+This scrollport and the empty conversation reuse `useViewportFocus`
 for focused-control visibility; only the applicable visible viewport observes
 reflow. Wheel reading, pointer presses, outside focus and hidden content retain
 their existing retirement rules. Neither viewport advances commands or drafts.

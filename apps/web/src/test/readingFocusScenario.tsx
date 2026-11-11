@@ -70,7 +70,7 @@ export function readingFocusScenario(
   function Harness({ attached = true }: { attached?: boolean }) {
     useReadingFocusVisibility(follow, attached);
     return (
-      <>
+      <div role="region" aria-label="Conversation" tabIndex={-1}>
         <TextField aria-label={draftLabel} defaultValue={draftValue} />
         <div ref={attached ? follow.scrollRef : undefined}>
           <div
@@ -82,7 +82,7 @@ export function readingFocusScenario(
             </div>
           </div>
         </div>
-      </>
+      </div>
     );
   }
   const view = testClient.render(<Harness />);

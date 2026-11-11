@@ -27,6 +27,8 @@ const ms = stylex.create({
     overflowY: "auto",
     overscrollBehavior: "contain",
     scrollbarGutter: "stable both-edges",
+    // Follow and retained reading own scrolling, including while material hides this viewport.
+    overflowAnchor: "none",
   },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
   afterBlock: { marginTop: space.s4 },

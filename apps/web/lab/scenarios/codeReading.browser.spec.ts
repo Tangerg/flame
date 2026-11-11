@@ -167,11 +167,11 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await page.keyboard.press("Tab");
         await expect(source).toBeFocused();
 
-        const expectReading = async (label: string) => {
+        const expectReading = async (label: string, focusTarget = source) => {
           const geometry = await source.evaluate(async (node, jumpLabel) => {
             const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
             const frames = [];
-            // ResizeObserver publishes dependent heights and queues focus reveal after layout.
+            // The first callback can precede layout delivery; keep it beside the settled samples.
             for (let index = 0; index < 16; index++) {
               await new Promise(requestAnimationFrame);
               const bounds = node.getBoundingClientRect();
@@ -201,6 +201,9 @@ for (const browserName of ["chromium", "webkit"] as const) {
               );
               frames.push({
                 bounds: bounds.toJSON(),
+                viewportScrollTop: viewport.scrollTop,
+                viewportScrollRange: viewport.scrollHeight - viewport.clientHeight,
+                overflowAnchor: style.overflowAnchor,
                 top: outside.top + parseFloat(style.scrollPaddingTop),
                 bottom: outside.bottom - parseFloat(style.scrollPaddingBottom),
                 textHeight:
@@ -223,9 +226,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
             expect(sample.overlap).toBe(0);
             expect(sample.hit).toBe(true);
           }
-          expect(
-            await reader.evaluate((node) => node.isConnected && node === document.activeElement),
-          ).toBe(true);
+          expect(await reader.evaluate((node) => node.isConnected)).toBe(true);
+          await expect(focusTarget).toBeFocused();
           expect(await source.evaluate((node, held) => node === held, reader)).toBe(true);
           expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
           expect(await source.textContent()).toBe(CODE_READING_SOURCE);
@@ -389,6 +391,11 @@ for (const browserName of ["chromium", "webkit"] as const) {
         expect(await source.textContent()).toBe(CODE_READING_SOURCE);
         expect(await source.evaluate((node) => node.scrollTop)).toBeCloseTo(readingPosition, 0);
         await expect(composer).toHaveValue(profile.draft);
+        await capture("returned-reader");
+        await expectReading(
+          "returned-reader",
+          page.getByRole("region", name("shell.region.conversation")),
+        );
         await composer.focus();
         await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
         expect(

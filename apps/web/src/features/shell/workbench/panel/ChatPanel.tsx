@@ -546,7 +546,14 @@ export function ChatPanel({ onSend, ref }: Props) {
 }
 
 const paneStyles = stylex.create({
-  conversation: { containerType: "inline-size", containerName: "conversation" },
+  conversation: {
+    containerType: "inline-size",
+    containerName: "conversation",
+    "--composer-reading-limit": {
+      default: "100%",
+      ":is(:focus, :has(.msg-scroll-viewport:focus-within))": "calc(100% / 3)",
+    },
+  },
   pendingConnection: { paddingBlock: space.s4 },
   // Removing layout makes WebKit reset the retained scrollport's reading position.
   inactiveView: { visibility: "hidden" },

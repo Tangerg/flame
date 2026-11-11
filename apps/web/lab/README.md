@@ -785,7 +785,12 @@ that context through another resize. The same task opens its captured trajectory
 evidence and resizes that material while its source remains hidden. The first
 Escape closes the hovered Close tooltip while retaining reader focus; the next
 returns to the same literal source at its original scroll position and the
-unchanged draft. That draft continues at its verified caret endpoint. These CSS
+unchanged draft. Before another focus or scroll action, the same sixteen-sample
+geometry check requires the reader inside its safe frame, a readable line,
+pointer access and no Jump overlap while Conversation itself retains focus.
+The geometry attachments also record the outer scroll position, scroll range and
+computed scroll-anchoring policy to distinguish hidden reflow from reader scrolling.
+That draft then continues at its verified caret endpoint. These CSS
 viewport changes complement separate native page-zoom qualification; the bounded
 reader does not show all 48 source lines at once.
 

@@ -35,6 +35,31 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
+  it("retires follow for returned region focus and a later resize without moving that focus", () => {
+    const s = scenario();
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    s.follow.state.isAtBottom = true;
+
+    act(() => conversation.focus());
+
+    expect(s.follow.state.isAtBottom).toBe(false);
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(conversation);
+    s.follow.state.isAtBottom = true;
+    s.shape.height = 240;
+    s.resize();
+    expect(s.follow.state.isAtBottom).toBe(false);
+    expect(s.order).toEqual(["follow retired", "follow retired"]);
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(conversation);
+
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.follow.state.isAtBottom = true;
+    s.resize();
+    expect(s.follow.state.isAtBottom).toBe(true);
+    expect(s.order).toEqual(["follow retired", "follow retired"]);
+  });
+
   it("reveals the retained reader during resize delivery before the next frame", () => {
     const s = scenario();
     s.shape.height = 240;

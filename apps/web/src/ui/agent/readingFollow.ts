@@ -102,6 +102,8 @@ export function useReadingFocusVisibility(
     const pressedTargetState: { value: Element | null } = { value: null };
     const resizeScrollFrameState = { value: 0 };
     const window = content.ownerDocument.defaultView!;
+    // The named region containing the reader can hold focus itself, without a descendant witness.
+    const region = viewport.closest('[role="region"]');
     const remember = () => {
       frameState.value = safeReadingBounds(viewport);
       observedScrollTopState.value = viewport.scrollTop;
@@ -128,7 +130,8 @@ export function useReadingFocusVisibility(
       }
       // Native layout can scroll after resize observation; keep its existing reading witness.
       if (resizeScrollFrameState.value) {
-        if (witnessState.value) reveal();
+        if (witnessState.value || (region && region === content.ownerDocument.activeElement))
+          reveal();
         return;
       }
       // Re-witness only once resize has observed the changed frame.
@@ -142,6 +145,11 @@ export function useReadingFocusVisibility(
     };
     const reveal = () => {
       frameState.value = safeReadingBounds(viewport);
+      // A content shrink can rearm follow after the region took focus; keep its visible source.
+      if (region && region === content.ownerDocument.activeElement) {
+        if (state.isAtBottom) stopScroll();
+        return;
+      }
       const target = witnessState.value;
       if (!target) return;
       if (
@@ -213,6 +221,7 @@ export function useReadingFocusVisibility(
       clearPress();
       if (!active || active === content || !content.contains(active)) {
         retire();
+        if (region && active === region) reveal();
         return;
       }
       const pointerFocus =
