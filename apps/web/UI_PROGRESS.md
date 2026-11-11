@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Returning from material now keeps the code reader visible while logical focus remains on Conversation: the pane owns the Composer reading limit, the existing focus owner retires rearmed follow, and the controlled transcript excludes independent native scroll anchoring. The final selection passes **32 browser cases** and the complete Web check passes **433 files / 4,833 tests** with every module gate. Actual Wails qualification covers both 200%/300% profiles, hidden-source Window Zoom/restore, immediate return and exact continued drafts. All 18 retained native images are reviewed, including ten from the final profiles. The Lab remains the sole UI visual verification owner, with one Playwright configuration. Ordinary reply text around Jump and whole-product visual acceptance remain open.
+UI polishing is **active again at the user's request**. Latest main is incorporated without conflicts. Conversation reading now shares one bottom clearance for its reader budget, paint, pointer clipping and end spacer. Focus outside the Composer scrollport retains reading space, so the first Jump activation works while editing keeps its existing height. The final Lab selection passes **32 cases** and complete Web checking passes **433 files / 4,833 tests** with every gate. Both actual Wails profiles pass 200%/300% reading, hidden-source Window Zoom/restore, immediate return, first Jump activation, paragraph reading, complete final actions and exact continued drafts. The Lab remains the sole UI visual verification owner. Cold startup and whole-product visual acceptance remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3974,106 +3974,124 @@ reveal. Detachment freezes the last observed reading budget, including a valid
 zero frame, until attachment releases it to CSS. Code and table scrollports keep
 their native internal positions. No second source-scroll cache is added.
 
-The containing Conversation region now owns the Composer reading limit. Region
-focus and transcript focus both cap the Composer at one-third of the pane;
-editing controls retain their existing height. Material return therefore keeps
+The containing Conversation region owns the Composer reading limit. Focus within
+that region outside its existing Composer scrollport caps the Composer at
+one-third of the pane; editing controls retain their existing height. Material return therefore keeps
 reading space while focus stays on its named Conversation region. The existing
 reading-focus owner also retires follow for that region, including a content
 shrink that would otherwise rearm the library's near-bottom follow. It does not
 redirect focus, restore an extra offset or keep another animation loop. Later
 draft focus and explicit Jump keep their existing behavior.
 
-The stricter return baseline passes two cases and fails all four complete tasks
-in **41.444 s**. Moving the CSS owner passes five of six cases in **32.404 s**;
-a temporary Chromium trace identifies the remaining negative-resize rearm.
-The root-focus owner regression fails with follow still armed. The related
-owner selection then passes **221 tests / 5 files in 9.516 s**. All original
-source identity, exact internal offset, draft and focus assertions remain.
+The controlled outer viewport still excludes native scroll anchoring. The prior
+actual Wails trace measured an English offset of 276 before material, 395 after
+hidden Window Zoom/restore and 365 on return while application follow remained
+detached. `MessageStream` uses `overflow-anchor: none` so that independent native
+adjustment cannot move application-owned reading. Nested code and table readers
+keep their own scrolling. The [CSS Scroll Anchoring exclusion contract](https://www.w3.org/TR/css-scroll-anchoring-1/#exclusion-api)
+and [WebKit's Safari 27 release](https://webkit.org/blog/18325/webkit-features-for-safari-27-0/#scroll-anchoring)
+explain this boundary.
 
-After a subsequent 32-case browser pass, actual Wails qualification still fails at 300%.
-The existing Lab layout readout measures the English outer offset at **276**
-before material, **395** after hidden Window Zoom/restore and **365** on return.
-A temporary native follow trace shows `bottom:false` and `escaped:true` at both
-detachment and reattachment: browser layout moves the hidden scrollport while
-application follow is detached. The trace is removed from the final source.
+Actual short-window Wails captures then expose ordinary reply text painted behind
+Jump. The safe reader budget already reserves that control, but the mask ends
+only at the Composer. `globals.css` now derives its bottom paint edge from the
+existing `--transcript-bottom-clearance`, fading over the existing control gap.
+Clipping excludes hidden history from pointer input while Jump remains outside
+that clip. [CSS Masking](https://www.w3.org/TR/css-masking-1/) distinguishes clipping
+from masking: transparent masked pixels can still receive input. The reading
+height, DOM nodes, source offsets and draft owners are unchanged.
 
-[WebKit's Safari 27 release](https://webkit.org/blog/18325/webkit-features-for-safari-27-0/#scroll-anchoring)
-describes newly enabled native scroll anchoring and its opt-out. The controlled
-`MessageStream` viewport now uses `overflow-anchor: none`, following the
-[CSS Scroll Anchoring exclusion contract](https://www.w3.org/TR/css-scroll-anchoring-1/#exclusion-api).
-This removes the independent browser adjustment from application-owned scrolling;
-nested code and table scrollports keep their own scrolling. In the same native
-English task, the outer offset now remains **276** through hidden resize and
-immediate return, with source line 04 visible and Conversation still focused.
-No extra position cache, observer, event handler or compatibility path is added.
+Native acceptance also exposes incomplete final Copy and Regenerate controls.
+The existing end spacer still uses Composer height plus 1 rem, so maximum scrolling
+cannot move those controls above the new paint edge. `composerOverlay.clearance`
+now uses the same complete reading clearance. A further actual pointer check
+reveals that focusing Jump uncaps the Composer and moves the button before
+mouse-up, swallowing its first activation. `ChatPanel` now keeps its reading
+budget for all Conversation focus outside the existing `composer-scrollport`.
+That editing boundary already contains notices, authoring controls, editor and
+footer; Jump is its sibling. No extra state, observer, token or scroll cache is
+introduced.
 
-An exploratory exact outer-offset probe rejects an otherwise readable 11 px
-reposition in both browser engines. Raw outer offsets may change with layout;
-they are now diagnostic position/range/anchoring fields in the existing geometry
-attachments. The valid contract remains strict: the same internal source offset,
-a readable line and the complete reader inside its safe frame before another
-focus or scroll action. All sixteen samples stay attached; the next seven delivery
-samples and eight settled samples retain hit testing and zero Jump overlap.
+The existing Code reading task now checks actual PNG pixels around Jump, history
+exclusion from side hit tests and the button's center hit. The corrected paint
+baseline passes two cases and fails all four full tasks in **32.214 s**, with
+**1,168–1,567 non-canvas pixels** in their control bands and both side probes
+hitting history. Final bands contain zero such pixels and exclude both history
+hits. All sixteen reader-geometry samples, literal 48-line source, source and
+Composer identity, exact internal reading offset, hidden material and draft
+assertions remain. The first pointer activation must hide Jump, reach the outer
+scroll end and return focus inside the transcript. The following paragraph must
+fit its safe frame with line-center hits across eight samples. At maximum outer
+scroll, complete Copy and Regenerate controls must fit and remain hittable.
 
-Dock capacity still commits during ResizeObserver delivery while ordinary widths
-coalesce outside it. The saved-ratio and synchronous collapse/reopening contracts
-remain covered. Better Accessibility/Layout and the actual ZCode timeline
-scroll-offset guard inform the reading boundary. Three bounded Claude Code CLI
-candidates complete in **19.761 s**, **39.088 s** and **19.598 s**; their four,
-three and three protected input copies retain their bytes. Primary review owns
-the source changes, trace interpretation and qualification. No navigation, theme,
-shared UI package, Runtime or native host contract changes.
+The end-action baseline fails all four full tasks in **33.718 s**: control bottoms
+near 150 px exceed the safe bottom near 135 px. The first-activation baseline also
+fails all four in **54.163 s**. An earlier broader selection passes 31 of 32 cases:
+the narrow table task stops after a fixed 240 px wheel while its paragraph remains
+at 602–671 px below the 515 px safe edge. That former viewport-intersection check
+did not prove painted readability. The same table task now continues outer wheel
+reading after consuming the inner reader and checks every complete paragraph line
+and its pointer target. No assertion, console guard or deadline is weakened.
 
-The final eight-file Lab selection passes **32 / 32 in 114.209 s**, without skips,
-retries, flaky results or global errors. It includes code and table readers,
-expanded tables, dynamic tool groups, trajectory reading, reading expansion, Dock
-geometry and keyboard paths. All **90 final image attachments** are reviewed:
-15 directly and 75 against reviewed identical bytes, including duplicates of
-those direct inspections. They include **34 PNGs / 56 JPEGs** from **68 callbacks /
-16 resizes**. Original public Playwright Screencast timestamps, dimensions and
-resize request/acknowledgement times remain available. The gallery and unfiltered
-migrated suite are not rerun; no second visual runner is introduced.
+Better Layout's reserved-control principle and the actual ZCode timeline mask
+boundary inform the change. Three bounded Claude Code CLI candidates complete in
+**18.644 s**, **11.998 s** and **11.620 s**. Their five, five and six protected
+reference copies retain their bytes; primary review owns every applied diff,
+regression interpretation and final qualification. Runtime, native host and
+shared UI component contracts retain their existing owners.
 
-The private signed Wails **v3.1.0** host builds in **24.445 s** and loads the same
-**488 canonical Lab assets** as the final browser build. Their full inventory and
-bytes match after complete Web checking and staging, including the successful
-native anchoring candidate. All **46 production native inputs** retain their bytes.
-The final English and Chinese profiles use real keyboard reader entry, internal
-wheel scrolling, 200%/300% native page zoom, captured evidence and Window Zoom/
-restore while the source is hidden. Escape returns to Conversation with source
-line **04 / 03** already visible, before reader re-entry. The outer offsets remain
-**276 / 338**, respectively. Exact padded drafts continue and complete Send controls
-remain keyboard reachable without submission. Chinese continuation uses native
-paste. Physical IME, VoiceOver, native system motion preference and live Runtime
-tasks remain unverified.
+The final eight-file Lab selection passes **32 / 32 in 121.255 s**, with no skipped,
+retried or flaky cases and no global errors. It covers code and table reading,
+expanded tables, tool-group reflow, trajectory reading, reading expansion, Dock
+geometry and keyboard paths. All **103 final image attachments** are reviewed:
+**28 new images** in four contact sheets and **75 against inspected identical
+bytes**. They include **52 PNGs / 51 original Screencast JPEGs**. Existing original
+presentation timestamps, dimensions and resize request/acknowledgement records
+remain attached. Sampling, WebKit's 25 fps limit and inherited/cropped buffers do
+not qualify every native compositor frame. The gallery and unfiltered migrated
+suite are not rerun, and there remains one Lab Playwright configuration.
 
-All **18 retained native images / 33 AX records** are reviewed, including ten
-images from the final profiles. The complete Web check passes **433 files /
-4,833 tests** and every module gate in **255.221 s**; final production staging
-passes in **6.596 s**. All eight owned native processes exit 0, both diagnostic
-servers and the final identity-verified server exit 143, and the exact private
-app is unregistered. Six Library paths return to absence and three original empty
-WebKit helper roots retain their identities. All twelve output/cache roots return
-to captured contents and modes or absence before publication. All **6,734**
-non-Markdown inputs are checked: only seven scoped authored paths change. The
+The private signed Wails **v3.1.0** host builds in **19.560 s** and loads the same
+**488 canonical Lab assets** as the final browser build. All **46 production
+native inputs** and 45 unchanged private copies retain their bytes. English/light/
+14 px/Orange/full motion and Chinese/dark/18 px/blue/application motion off use
+actual 200%/300% page zoom, internal wheel reading and Window Zoom/restore while
+the source is hidden. Escape returns to the scrolled source before any extra
+focus or scroll action, with Conversation focused and outer offsets still
+**276 / 338**. One real Jump click then reveals complete final actions; deliberate
+wheel reading reveals the complete following paragraph. The exact padded drafts
+continue, and Send is keyboard-focused without submission. Chinese input uses
+native paste; physical IME, VoiceOver, native system motion and live Runtime
+execution remain unverified.
+
+All **33 retained native images / 33 AX records** are inspected; **16 images**
+qualify the final accepted profiles. Earlier footer and first-activation failures,
+one English wheel overshoot and a transient expanded-window capture remain
+diagnostic evidence. An initial clipboard-admission mismatch is rejected before
+qualification; final English input uses the native keyboard. The Chinese private
+host initially presents a blank window, recovered by ordinary Reload before any
+draft entry. Cold startup is not qualified. Its next investigation needs a control
+against the ordinary native entry before assigning that isolated event to product
+startup. Computer capacity and whole-product visual acceptance remain open.
+
+The complete final Web check passes **433 files / 4,833 tests** and every module
+gate in **278.219 s**; final production staging passes in **10.963 s**. All four
+owned native processes exit 0, all three identity-verified static servers exit 143
+and the exact private app is unregistered. Six Library paths return to absence;
+three original empty WebKit helper roots retain their identities. All twelve
+output/cache roots return to captured contents and modes or absence. All **6,734**
+non-Markdown inputs are checked: only five scoped authored sources change. The
 primary checkout and two pre-existing Runtime fixture roots remain unchanged.
-Functional checks stop before output restoration. Four original native images
-are retained outside the repository; evidence is preserved before guarded
+Functional checks stop before output restoration. Six original final native
+images are retained outside the repository; evidence is preserved before guarded
 qualification-root retirement after publication.
-
-Original presented-frame records still include inherited/cropped buffers.
-Sampling, including WebKit's 25 fps limit, does not qualify every native compositor
-frame. Immediate code-reader return is now qualified in both native profiles.
-The same short-window captures still show Jump crossing ordinary reply text;
-continue that observed reading boundary within the Lab after this publication.
-Computer capacity and whole-product visual acceptance remain open.
 
 ### Tool reading, action alignment and current interaction contracts (2026-11-10)
 
 Actual Wails inspection exposes a source reader reduced to a strip and covered
 by the floating Jump action at 300%. The frozen original fails both existing
 English/Chinese short-viewport regressions. `ChatPanel` now reserves history
-space while focus is on Conversation or in its transcript: its existing floating
+space while Conversation focus is outside its Composer scrollport: its existing floating
 Composer is capped at one-third of the pane. Returning to editing restores its existing height
 limit. The same DOM readers, draft and Composer scrollport remain mounted.
 

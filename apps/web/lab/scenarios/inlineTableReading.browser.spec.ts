@@ -6,7 +6,7 @@ for (const [width, fontSize, theme] of [
 ] as const) {
   test(`long inline tables keep their controls, headings and full reading path ${width}`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 720 });
     await page.goto(
       `/lab/fixture.html?fixture=workspace&state=dock-light&agent-state=table-reading&theme=${theme}&font-size=${fontSize}`,
@@ -70,9 +70,44 @@ for (const [width, fontSize, theme] of [
     await page.mouse.move(visible.x + visible.width / 2, visible.y + 80);
     await page.mouse.wheel(0, 240);
     await expect.poll(() => transcript.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-    await expect(
-      page.getByText("The explanation continues after the recorded evidence.", { exact: true }),
-    ).toBeInViewport();
+    const explanation = page.getByText("The explanation continues after the recorded evidence.", {
+      exact: true,
+    });
+    await page.mouse.wheel(0, visible.height);
+    await expect(explanation).toBeInViewport({ ratio: 1 });
+    const paragraph = await explanation.evaluate((node) => {
+      const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+      const frame = viewport.getBoundingClientRect();
+      const style = getComputedStyle(viewport);
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return {
+        top: frame.top + parseFloat(style.scrollPaddingTop),
+        bottom: frame.bottom - parseFloat(style.scrollPaddingBottom),
+        scrollTop: viewport.scrollTop,
+        lines: [...range.getClientRects()].map((line) => ({
+          top: line.top,
+          bottom: line.bottom,
+          hit: node.contains(
+            document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2),
+          ),
+        })),
+      };
+    });
+    await testInfo.attach("table-following-paragraph-geometry", {
+      body: JSON.stringify(paragraph),
+      contentType: "application/json",
+    });
+    await testInfo.attach("table-following-paragraph", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+    expect(paragraph.lines.length).toBeGreaterThan(0);
+    for (const line of paragraph.lines) {
+      expect(line.top).toBeGreaterThanOrEqual(paragraph.top - 1);
+      expect(line.bottom).toBeLessThanOrEqual(paragraph.bottom + 1);
+      expect(line.hit).toBe(true);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }

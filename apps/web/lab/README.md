@@ -790,6 +790,19 @@ geometry check requires the reader inside its safe frame, a readable line,
 pointer access and no Jump overlap while Conversation itself retains focus.
 The geometry attachments also record the outer scroll position, scroll range and
 computed scroll-anchoring policy to distinguish hidden reflow from reader scrolling.
+The returned-reader task also captures the actual Jump band. Outside the button
+and its shadow, the PNG must contain only the canvas color; side pointer probes
+must exclude history while the button itself stays hittable. The first pointer
+activation of Jump must reach the outer scroll end and return focus inside the
+transcript. The following paragraph
+is then scrolled into the existing readable frame: all its line boxes and pointer
+targets must remain inside that frame across eight samples, with the same internal
+source offset and exact draft. These attachments use the existing task and fixture,
+without a second visual runner or golden-image inventory.
+At maximum outer scroll, the final Copy and Regenerate controls must fit completely
+inside the same safe frame and remain hittable. The table-reading task also follows
+its consumed inner wheel with continued outer reading and checks every line of
+the following paragraph against the actual safe frame.
 That draft then continues at its verified caret endpoint. These CSS
 viewport changes complement separate native page-zoom qualification; the bounded
 reader does not show all 48 source lines at once.

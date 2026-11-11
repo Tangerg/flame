@@ -849,21 +849,26 @@ html.theme-dark {
      content visibility without changing the canvas colour. */
   background: var(--app-content-surface);
   --transcript-fade: 24px;
-  --transcript-bottom-edge: calc(100% - var(--composer-overlay, 0px));
+  --transcript-bottom-edge: calc(
+    100% - var(--transcript-bottom-clearance) + var(--layout-control-gap)
+  );
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
     #000 var(--transcript-fade),
-    #000 calc(var(--transcript-bottom-edge) - var(--transcript-fade)),
+    #000 calc(var(--transcript-bottom-edge) - var(--layout-control-gap)),
     transparent var(--transcript-bottom-edge)
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
     #000 var(--transcript-fade),
-    #000 calc(var(--transcript-bottom-edge) - var(--transcript-fade)),
+    #000 calc(var(--transcript-bottom-edge) - var(--layout-control-gap)),
     transparent var(--transcript-bottom-edge)
   );
+  /* Masking does not exclude hit testing; paint and hit testing must share
+     the reserved control boundary so hidden history cannot take Jump-band input. */
+  clip-path: inset(0 0 calc(100% - var(--transcript-bottom-edge)) 0);
   --transcript-bottom-clearance: calc(
     var(--composer-overlay, 0px) +
       max(

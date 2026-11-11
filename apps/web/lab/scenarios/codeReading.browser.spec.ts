@@ -237,6 +237,89 @@ for (const browserName of ["chromium", "webkit"] as const) {
           );
         };
 
+        const expectJumpClearance = async (label: string) => {
+          await page.mouse.move(4, 4);
+          const jump = page.getByRole("button", name("chat.jumpToBottom"));
+          await expect(jump).toBeVisible();
+          const geometry = await jump.evaluate((node) => {
+            const viewport = document.querySelector<HTMLElement>(".msg-scroll-viewport")!;
+            const frame = viewport.getBoundingClientRect();
+            const bounds = node.getBoundingClientRect();
+            const style = getComputedStyle(viewport);
+            const inset = parseFloat(style.getPropertyValue("--transcript-fade"));
+            const clip = {
+              x: Math.ceil(frame.left + inset),
+              y: Math.ceil(bounds.top) + 1,
+              width: Math.floor(frame.width - inset * 2),
+              height: Math.floor(bounds.height) - 2,
+            };
+            const y = bounds.top + bounds.height / 2;
+            return {
+              clip,
+              background: style.backgroundColor,
+              exclude: [bounds.left - clip.x - inset, bounds.right - clip.x + inset],
+              historyHits: [clip.x + clip.width / 5, clip.x + (clip.width * 4) / 5].map((x) =>
+                viewport.contains(document.elementFromPoint(x, y)),
+              ),
+              jumpHit: node.contains(document.elementFromPoint(bounds.left + bounds.width / 2, y)),
+            };
+          });
+          const image = await page.screenshot({
+            clip: geometry.clip,
+            scale: "css",
+            animations: "disabled",
+            caret: "hide",
+          });
+          const paint = await page.evaluate(
+            async ({ encoded, background, exclude }) => {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+              canvas.width = canvas.height = 1;
+              ctx.fillStyle = background;
+              ctx.fillRect(0, 0, 1, 1);
+              const expected = [...ctx.getImageData(0, 0, 1, 1).data];
+              const image = new Image();
+              image.src = `data:image/png;base64,${encoded}`;
+              await image.decode();
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              ctx.drawImage(image, 0, 0);
+              const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+              let samples = 0;
+              let ink = 0;
+              let maxDelta = 0;
+              for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                  if (x >= exclude[0]! && x <= exclude[1]!) continue;
+                  const offset = (y * canvas.width + x) * 4;
+                  const delta = Math.max(
+                    ...expected
+                      .slice(0, 3)
+                      .map((value, channel) => Math.abs(pixels[offset + channel]! - value)),
+                  );
+                  samples++;
+                  if (delta > 2) ink++;
+                  maxDelta = Math.max(maxDelta, delta);
+                }
+              }
+              return { samples, ink, maxDelta, expected };
+            },
+            { encoded: image.toString("base64"), ...geometry },
+          );
+          await testInfo.attach(`code-reading-${label}-jump-band`, {
+            body: image,
+            contentType: "image/png",
+          });
+          await testInfo.attach(`code-reading-${label}-jump-paint`, {
+            body: JSON.stringify({ ...geometry, paint }),
+            contentType: "application/json",
+          });
+          expect(paint.samples).toBeGreaterThan(0);
+          expect(paint.ink).toBe(0);
+          expect(geometry.historyHits).toEqual([false, false]);
+          expect(geometry.jumpHit).toBe(true);
+        };
+
         await expectReading("entry");
         // Screencast frames are what the browser presented; sampling is throttled (WebKit ≤ 25fps).
         const captureResize = async (size: { width: number; height: number }, label: string) => {
@@ -396,6 +479,97 @@ for (const browserName of ["chromium", "webkit"] as const) {
           "returned-reader",
           page.getByRole("region", name("shell.region.conversation")),
         );
+        await expectJumpClearance("returned-reader");
+        const jump = page.getByRole("button", name("chat.jumpToBottom"));
+        await jump.click();
+        await expect(jump).toBeHidden();
+        await expect
+          .poll(() =>
+            transcript.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
+          )
+          .toBeLessThanOrEqual(1);
+        expect(await transcript.evaluate((node) => node.contains(document.activeElement))).toBe(
+          true,
+        );
+        await capture("jumped-reader");
+        const explanation = transcript.getByText(
+          "The explanation continues with the same reading rhythm.",
+          { exact: true },
+        );
+        await explanation.evaluate((node) => node.scrollIntoView({ block: "start" }));
+        const lines = await explanation.evaluate(async (node) => {
+          const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+          const samples = [];
+          for (let index = 0; index < 8; index++) {
+            await new Promise(requestAnimationFrame);
+            const frame = viewport.getBoundingClientRect();
+            const style = getComputedStyle(viewport);
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            samples.push({
+              top: frame.top + parseFloat(style.scrollPaddingTop),
+              bottom: frame.bottom - parseFloat(style.scrollPaddingBottom),
+              lines: [...range.getClientRects()].map((line) => ({
+                top: line.top,
+                bottom: line.bottom,
+                hit: node.contains(
+                  document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2),
+                ),
+              })),
+            });
+          }
+          return samples;
+        });
+        await testInfo.attach("code-reading-explanation-lines", {
+          body: JSON.stringify(lines),
+          contentType: "application/json",
+        });
+        await capture("explanation");
+        for (const sample of lines) {
+          expect(sample.lines.length).toBeGreaterThan(0);
+          for (const line of sample.lines) {
+            expect(line.top).toBeGreaterThanOrEqual(sample.top - 1);
+            expect(line.bottom).toBeLessThanOrEqual(sample.bottom + 1);
+            expect(line.hit).toBe(true);
+          }
+        }
+        await transcript.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+        const footer = [];
+        for (const action of [
+          transcript.getByRole("button", name("msgActions.copy")).last(),
+          transcript.getByRole("button", name("msgActions.regenerate")),
+        ]) {
+          footer.push(
+            await action.evaluate(async (node) => {
+              await new Promise(requestAnimationFrame);
+              const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+              const frame = viewport.getBoundingClientRect();
+              const style = getComputedStyle(viewport);
+              const box = node.getBoundingClientRect();
+              return {
+                label: node.getAttribute("aria-label"),
+                top: frame.top + parseFloat(style.scrollPaddingTop),
+                bottom: frame.bottom - parseFloat(style.scrollPaddingBottom),
+                bounds: { top: box.top, bottom: box.bottom },
+                hit: node.contains(
+                  document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2),
+                ),
+              };
+            }),
+          );
+        }
+        await testInfo.attach("code-reading-end-actions-geometry", {
+          body: JSON.stringify(footer),
+          contentType: "application/json",
+        });
+        await capture("end-actions");
+        for (const action of footer) {
+          expect(action.bounds.top).toBeGreaterThanOrEqual(action.top - 1);
+          expect(action.bounds.bottom).toBeLessThanOrEqual(action.bottom + 1);
+          expect(action.hit).toBe(true);
+        }
+        expect(await source.evaluate((node) => node.scrollTop)).toBeCloseTo(readingPosition, 0);
+        await expect(composer).toHaveValue(profile.draft);
         await composer.focus();
         await composer.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
         expect(

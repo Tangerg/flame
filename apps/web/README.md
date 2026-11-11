@@ -262,8 +262,10 @@ The started conversation bounds its complete Composer stack with a normal-flow
 scrollport, so a standing Goal or connection notice cannot compress the editor
 and actions away in a short window. The jump control stays outside that clipping
 boundary. The containing Conversation region owns the Composer reading limit:
-focus on that region or inside its transcript caps the Composer at one-third of the pane,
-while editing controls retain their existing height. The existing reading-focus
+focus anywhere in that region outside its Composer scrollport caps the Composer
+at one-third of the pane, while editing controls retain their existing height.
+Reading navigation such as Jump therefore keeps its position through pointer
+focus and the first activation. The existing reading-focus
 owner retires pending follow for region focus, including a content resize that
 would otherwise rearm it. Returning from material therefore leaves the retained
 source readable without moving focus away from its logical Conversation region.
@@ -283,6 +285,13 @@ height feeding back into observed content. The existing resize observer reveals
 the retained focused reader during delivery. Native scroll notifications in that
 rendering update retain the witness; a later focus or deliberate wheel still
 retires it.
+
+The transcript's bottom paint edge and end spacer use that same reading clearance. Its short
+fade ends before the reserved Jump area, and clipping excludes hidden history
+from pointer input there. Masking alone would keep transparent content hittable.
+Jump remains outside this boundary; ordinary paragraphs can still scroll into
+the unchanged readable frame. The complete final message actions can also scroll
+above that edge.
 
 When a Workspace material hides the conversation, observers, listeners and focus
 witnesses retire. The reading-focus owner freezes the last visible height on the
