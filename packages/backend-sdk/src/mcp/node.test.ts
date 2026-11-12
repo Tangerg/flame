@@ -73,10 +73,13 @@ function expectFailure(phase: string) {
 }
 
 it("locates an import failure without logging its message or rejected payload", async () => {
-  const failure = new SyntaxError("private author source", {
-    cause: Object.assign(new Error("credential=private"), {
+  const sourceMessage = "sensitive-author-source-message";
+  const causeMessage = "sensitive-import-credential";
+  const authorization = "sensitive-import-authorization";
+  const failure = new SyntaxError(sourceMessage, {
+    cause: Object.assign(new Error(causeMessage), {
       code: "ERR_MODULE_NOT_FOUND",
-      request: { authorization: "private" },
+      request: { authorization },
     }),
   });
   await startBackend({
@@ -86,9 +89,12 @@ it("locates an import failure without logging its message or rejected payload", 
     },
   });
   expectFailure("startup");
-  expect(stderr.join("")).toContain("error: SyntaxError");
-  expect(stderr.join("")).toContain("caused by: Error [ERR_MODULE_NOT_FOUND]");
-  expect(stderr.join("")).not.toContain("private");
+  const diagnostic = stderr.join("");
+  expect(diagnostic).toContain("error: SyntaxError");
+  expect(diagnostic).toContain("caused by: Error [ERR_MODULE_NOT_FOUND]");
+  expect(diagnostic).toMatch(/^\s+at .*:\d+:\d+$/m);
+  for (const secret of [sourceMessage, causeMessage, authorization])
+    expect(diagnostic).not.toContain(secret);
 });
 
 it("retains service aggregate causes and delegates cleanup to Backend", async () => {
