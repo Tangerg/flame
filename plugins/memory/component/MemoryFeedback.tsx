@@ -1,6 +1,6 @@
 import { type RefObject, useRef } from "react";
 import { Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
-import { type Translate } from "@flame/component-sdk";
+import { failureText, type Translate } from "@flame/component-sdk";
 import { MemoryAction } from "./MemoryAction";
 import { type Command, type Feedback } from "./types";
 export function MemoryFeedback({
@@ -21,6 +21,12 @@ export function MemoryFeedback({
   const own = useRef<HTMLElement>(null);
   const result = destination ?? own;
   if (!feedback && !original) return null;
+  const detail =
+    feedback?.failure &&
+    failureText(
+      feedback.failure.cause,
+      t(`error.${feedback.failure.fallback}`),
+    );
   const key = original && (
     <Metadata>
       {t("feedback.original", { key: original.promise.idempotencyKey })}
@@ -36,9 +42,16 @@ export function MemoryFeedback({
       >
         <RecordBody>
           {feedback &&
-            t(`feedback.${feedback.state}`, { label: feedback.label })}
+            t(`feedback.${feedback.state}`, {
+              label:
+                feedback.intent.action === "add"
+                  ? t(`command.add.${feedback.intent.scope}`)
+                  : t(`command.${feedback.intent.action}`, {
+                      id: feedback.intent.id,
+                    }),
+            })}
         </RecordBody>
-        {feedback?.detail && <RecordBody>{feedback.detail}</RecordBody>}
+        {detail && <RecordBody>{detail}</RecordBody>}
       </RecordGroup>
       {original?.source === "record" ? (
         <Toolbar label={t("feedback.original.label")}>

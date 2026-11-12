@@ -25,6 +25,7 @@ import {
   type Read,
   type Edit,
   type Command,
+  type CommandIntent,
   type Feedback,
 } from "./types";
 import { en } from "./locales/en";
@@ -133,9 +134,19 @@ export function useMemory(context: ComponentContext) {
   useEffect(() => {
     const owner = new AbortController();
     lifetime.current = owner;
-    const signal = AbortSignal.any([context.signal, owner.signal]);
-    refreshAccepted(signal);
     return () => owner.abort();
+  }, [
+    context.runtime,
+    context.binding,
+    context.track,
+    context.signal,
+    scope,
+    cwd,
+  ]);
+  useEffect(() => {
+    // Revalidating a display context must not retire an accepted command's observer.
+    const owner = lifetime.current;
+    if (owner) refreshAccepted(AbortSignal.any([context.signal, owner.signal]));
   }, [context.signal, load]);
   useEffect(() => {
     const controller = new AbortController();
@@ -190,11 +201,11 @@ export function useMemory(context: ComponentContext) {
   function report(
     original: Command,
     state: Feedback["state"],
-    detail?: string,
+    failure?: Feedback["failure"],
   ) {
     const update =
       original.source === "editor" ? setEditorFeedback : setRecordFeedback;
-    update({ label: original.label, state, detail });
+    update({ intent: original.intent, state, failure });
   }
   function observerSignal(): AbortSignal | undefined {
     const owner = lifetime.current;
@@ -223,7 +234,7 @@ export function useMemory(context: ComponentContext) {
         setEdit(undefined);
         setEditorFeedback(undefined);
       }
-      setRecordFeedback({ label: original.label, state: "confirmed" });
+      setRecordFeedback({ intent: original.intent, state: "confirmed" });
       void load(owner);
     } catch (error) {
       if (owner.aborted) return;
@@ -234,7 +245,7 @@ export function useMemory(context: ComponentContext) {
       } else {
         command.current = undefined;
         setUnknown(undefined);
-        report(original, "refused", failureText(error, t("error.refused")));
+        report(original, "refused", { cause: error, fallback: "refused" });
       }
     } finally {
       observing.current = false;
@@ -244,7 +255,7 @@ export function useMemory(context: ComponentContext) {
   function change<K extends MutationName>(
     method: K,
     input: MethodInputs[K],
-    label: string,
+    intent: CommandIntent,
     source: Command["source"] = "record",
     control?: HTMLElement,
   ) {
@@ -255,7 +266,7 @@ export function useMemory(context: ComponentContext) {
       const original = {
         promise: operations.command(method, input),
         source,
-        label,
+        intent,
       };
       command.current = original;
       initiator.current = control;
@@ -264,9 +275,9 @@ export function useMemory(context: ComponentContext) {
       const update =
         source === "editor" ? setEditorFeedback : setRecordFeedback;
       update({
-        label,
+        intent,
         state: "refused",
-        detail: failureText(error, t("error.submit")),
+        failure: { cause: error, fallback: "submit" },
       });
     }
   }
@@ -281,7 +292,7 @@ export function useMemory(context: ComponentContext) {
       command.current = attempt;
       void observe(attempt, owner);
     } catch (error) {
-      report(unknown, "unknown", failureText(error, t("error.check")));
+      report(unknown, "unknown", { cause: error, fallback: "check" });
     }
   }
   return {

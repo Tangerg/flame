@@ -17,11 +17,16 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { MemoryAction } from "./MemoryAction";
-import { type MemoryItem, type MemoryPage, type MutationName } from "./types";
+import {
+  type CommandIntent,
+  type MemoryItem,
+  type MemoryPage,
+  type MutationName,
+} from "./types";
 type RecordCommand = <K extends MutationName>(
   method: K,
   input: MethodInputs[K],
-  label: string,
+  intent: CommandIntent,
   control?: HTMLElement,
 ) => void;
 export function MemoryReport({
@@ -160,7 +165,7 @@ export function MemoryReport({
                                   ExpectedRevision: item.Revision,
                                   Decision: "approve",
                                 },
-                                t("command.approve", { id: item.ID }),
+                                { action: "approve", id: item.ID },
                                 event.currentTarget,
                               )
                             }
@@ -183,7 +188,7 @@ export function MemoryReport({
                                   ExpectedRevision: item.Revision,
                                   Decision: "reject",
                                 },
-                                t("command.reject", { id: item.ID }),
+                                { action: "reject", id: item.ID },
                                 event.currentTarget,
                               )
                             }
@@ -282,9 +287,7 @@ function MemoryMenu({
                 ExpectedRevision: item.Revision,
                 Pinned: !item.Pinned,
               },
-              item.Pinned
-                ? t("command.unpin", { id: item.ID })
-                : t("command.pin", { id: item.ID }),
+              { action: item.Pinned ? "unpin" : "pin", id: item.ID },
             );
           },
         },

@@ -224,6 +224,8 @@ The resource is ordinary prebuilt ESM from `component/component.tsx`, using shar
 public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
 and use `node plugins/scripts/build-components.mjs` (or `--check` for exact reproduction).
 The former HTML guest/channel and separate static control build are removed.
+Presentation changes use the ordinary Memory resource rebuild and exact-digest
+publication; they do not require a Runtime or SDK contract change.
 
 The ordinary Memory component consumes the generated CAPABILITY_JSON and typed
 method maps through the public SDK. Its exact own installation/contribution binds
@@ -262,6 +264,14 @@ A command retains its action, target and editor/record origin for feedback and
 reconciliation. Refusal names the request, an unknown result retains original
 recovery, and completion means the original command has a known successful reply.
 Rejecting a record and refusal of that request therefore have distinct wording.
+Action names, outcome guidance and failure fallbacks render in the current display
+language from the captured action and scope or ID. Original Error/RPC refusal
+details remain literal, including after a pending or settled language change.
+Replacing only the display locale preserves the original command promise, key,
+observation and recovery. Its observer retires on component removal or replacement
+of the Runtime, binding, tracking owner, component signal or scope/workspace path.
+Same-target context revalidation still rereads the accepted cursor and reestablishes
+the subscription without retiring that command observation.
 Draft feedback stays beside the form actions; independent record
 feedback stays with the catalog. An acknowledged form closes before the subsequent
 catalog read, whose loading or failure cannot revoke the known result. Changing

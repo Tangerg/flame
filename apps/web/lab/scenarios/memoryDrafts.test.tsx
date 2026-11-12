@@ -12,7 +12,11 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi, type Mock } from "vitest";
-import { createFlameClient, MutationLookupError } from "@flame/runtime-client";
+import {
+  createFlameClient,
+  MutationLookupError,
+  type MutationPromise,
+} from "@flame/runtime-client";
 
 import { type CallPluginRequest, type CallPluginResponse } from "@flame/runtime-client/wire";
 import { type ComponentContext } from "@flame/component-sdk";
@@ -72,7 +76,7 @@ async function openMemory(
     const key = `memory-command-${++count}`;
     return mutationResult((key) => settle(request, key), key);
   });
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: { ...VISUAL_MEMORY_BINDING, componentId: "memory" },
     binding: VISUAL_MEMORY_BINDING,
     runtime,
@@ -94,7 +98,11 @@ async function openMemory(
   const rendered = testClient.render(<Memory context={context} />);
   await screen.findByText(VISUAL_MEMORY_PAGE.Rows[1]!.Content, { exact: true });
   await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
-  return { settle, call, transport, context, rerender: rendered.rerender };
+  function changeLocale(locale: string) {
+    context = Object.freeze({ ...context, locale });
+    rendered.rerender(<Memory context={context} />);
+  }
+  return { settle, call, transport, context, rerender: rendered.rerender, changeLocale };
 }
 
 const secondPage: MemoryOutputs["flame.memory/list.v2"] = {
@@ -541,6 +549,214 @@ it("returns a known refusal to the same focused Save for resubmission", async ()
   expect(JSON.parse(settle.mock.calls[1]![0].input)).toMatchObject({
     Content: "Keep my unsaved memory draft.",
   });
+});
+
+it("settles the original editor Save after a display-locale change with success", async () => {
+  const { settle, call, context, changeLocale } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const submitted = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => submitted.promise);
+  const { editor, content } = startDraft();
+  const save = within(editor).getByRole<HTMLButtonElement>("button", { name: "Save" });
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  const commandIndex = call.mock.calls.length;
+  act(() => save.focus());
+  fireEvent.click(save);
+  const original = call.mock.results[commandIndex]!.value as MutationPromise<CallPluginResponse>;
+  const retry = vi.spyOn(original, "retry");
+  try {
+    await within(editor).findByText("Add project memory · submitting…");
+    expect(original.idempotencyKey).toBe("memory-command-1");
+    expect(commands(call)).toHaveLength(1);
+    const [request, options] = commands(call)[0]!;
+    expect(request).toMatchObject({
+      ...VISUAL_MEMORY_BINDING,
+      method: "flame.memory/add.v2",
+      target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+    });
+    expect(JSON.parse(request.input)).toEqual({
+      Scope: "project",
+      CWD: "/Users/visual/scope",
+      Content: "Keep my unsaved memory draft.",
+    });
+    expect(options?.signal).toBe(context.signal);
+    fireEvent.change(search, { target: { value: "retained query 保留" } });
+    act(() => search.focus());
+    await act(async () => changeLocale("zh"));
+    expect(screen.getByRole("region", { name: "添加记忆" })).toBe(editor);
+    expect(within(editor).getByRole("textbox", { name: "记忆内容" })).toBe(content);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(context.signal.aborted).toBe(false);
+    await act(async () => submitted.resolve(await reply(...settle.mock.calls[0]!)));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "添加记忆" })).toBeNull());
+    await screen.findByText("添加项目记忆 · 已完成。");
+    expect(document.activeElement).toBe(search);
+    expect(search.value).toBe("retained query 保留");
+    await act(async () => changeLocale("en"));
+    await screen.findByText("Add project memory · completed.");
+    expect(document.activeElement).toBe(search);
+    expect(commands(call)).toHaveLength(1);
+    expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1"]);
+    expect(retry).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => submitted.resolve(await reply(...settle.mock.calls[0]!)));
+  }
+});
+
+const memoryRefusalDetail = "  Memory capacity is full.\n拒绝详情 · 保留  ";
+
+it.each([
+  {
+    outcome: "literal refusal",
+    cause: new Error(memoryRefusalDetail),
+    detailZh: memoryRefusalDetail,
+    detailEn: memoryRefusalDetail,
+  },
+  {
+    outcome: "fallback refusal",
+    cause: undefined,
+    detailZh: "请求被拒绝。",
+    detailEn: "The request was refused.",
+  },
+])("settles the original editor Save after a display-locale change with $outcome", async (copy) => {
+  const { settle, call, context, changeLocale } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const submitted = Promise.withResolvers<CallPluginResponse>();
+  settle.mockImplementationOnce(() => submitted.promise);
+  const { editor, content } = startDraft();
+  const save = within(editor).getByRole<HTMLButtonElement>("button", { name: "Save" });
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  const commandIndex = call.mock.calls.length;
+  act(() => save.focus());
+  fireEvent.click(save);
+  const original = call.mock.results[commandIndex]!.value as MutationPromise<CallPluginResponse>;
+  const retry = vi.spyOn(original, "retry");
+  try {
+    await within(editor).findByText("Add project memory · submitting…");
+    expect(original.idempotencyKey).toBe("memory-command-1");
+    expect(commands(call)).toHaveLength(1);
+    const [request, options] = commands(call)[0]!;
+    expect(request).toMatchObject({
+      ...VISUAL_MEMORY_BINDING,
+      method: "flame.memory/add.v2",
+      target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+    });
+    expect(JSON.parse(request.input)).toEqual({
+      Scope: "project",
+      CWD: "/Users/visual/scope",
+      Content: "Keep my unsaved memory draft.",
+    });
+    expect(options?.signal).toBe(context.signal);
+    fireEvent.change(search, { target: { value: "retained query 保留" } });
+    act(() => search.focus());
+    await act(async () => changeLocale("zh"));
+    expect(screen.getByRole("region", { name: "添加记忆" })).toBe(editor);
+    expect(within(editor).getByRole("textbox", { name: "记忆内容" })).toBe(content);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(context.signal.aborted).toBe(false);
+    await act(async () => submitted.reject(copy.cause));
+    const refusal = await within(editor).findByRole("alert");
+    expect(refusal.textContent).toContain(copy.detailZh);
+    expect(within(refusal).getByText(copy.detailZh, { normalizer: (text) => text })).toBeTruthy();
+    expect(within(editor).getByRole("button", { name: "保存" })).toBe(save);
+    expect(save.disabled).toBe(false);
+    expect(save.getAttribute("aria-disabled")).not.toBe("true");
+    expect(
+      within(editor).getByRole("button", { name: "取消" }).getAttribute("aria-disabled"),
+    ).not.toBe("true");
+    expect(within(editor).getByRole<HTMLButtonElement>("button", { name: "取消" }).disabled).toBe(
+      false,
+    );
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    await screen.findByText("添加项目记忆 · 请求被拒绝。");
+    expect(document.activeElement).toBe(search);
+    expect(search.value).toBe("retained query 保留");
+    await act(async () => changeLocale("en"));
+    await screen.findByText("Add project memory · request refused.");
+    expect(within(editor).getByRole("alert").textContent).toContain(copy.detailEn);
+    expect(within(editor).getByText(copy.detailEn, { normalizer: (text) => text })).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    expect(commands(call)).toHaveLength(1);
+    expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1"]);
+    expect(retry).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => submitted.resolve(await reply(...settle.mock.calls[0]!)));
+  }
+});
+
+it("reconciles the same original editor Save after a display-locale change", async () => {
+  const { settle, call, context, changeLocale } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const submitted = Promise.withResolvers<CallPluginResponse>();
+  const recovered = Promise.withResolvers<CallPluginResponse>();
+  settle
+    .mockImplementationOnce(() => submitted.promise)
+    .mockImplementationOnce(() => recovered.promise);
+  const { editor, content } = startDraft();
+  const save = within(editor).getByRole<HTMLButtonElement>("button", { name: "Save" });
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  const commandIndex = call.mock.calls.length;
+  act(() => save.focus());
+  fireEvent.click(save);
+  const original = call.mock.results[commandIndex]!.value as MutationPromise<CallPluginResponse>;
+  const retry = vi.spyOn(original, "retry");
+  try {
+    await within(editor).findByText("Add project memory · submitting…");
+    expect(original.idempotencyKey).toBe("memory-command-1");
+    const [request, options] = commands(call)[0]!;
+    expect(request).toMatchObject({
+      ...VISUAL_MEMORY_BINDING,
+      method: "flame.memory/add.v2",
+      target: { scope: "installation", reference: VISUAL_MEMORY_BINDING.installationId },
+    });
+    expect(JSON.parse(request.input)).toEqual({
+      Scope: "project",
+      CWD: "/Users/visual/scope",
+      Content: "Keep my unsaved memory draft.",
+    });
+    expect(options?.signal).toBe(context.signal);
+    fireEvent.change(search, { target: { value: "retained query 保留" } });
+    act(() => search.focus());
+    await act(async () => changeLocale("zh"));
+    await act(async () =>
+      submitted.reject(new MutationLookupError(new Error("receipt unavailable"))),
+    );
+    const check = await within(editor).findByRole("button", { name: "查看原始结果" });
+    expect(check).toBe(save);
+    expect(within(editor).getByText("添加项目记忆 · 结果未知。")).toBeTruthy();
+    expect(within(editor).getByText("原始命令：memory-command-1")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "查看原始结果" })).toHaveLength(1);
+    expect(save.getAttribute("aria-disabled")).not.toBe("true");
+    clickBlocked(within(editor).getByRole("button", { name: "取消" }));
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(document.activeElement).toBe(search);
+    act(() => save.focus());
+    fireEvent.click(save);
+    await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(retry.mock.calls[0]![0]?.signal?.aborted).toBe(false);
+    expect(context.signal.aborted).toBe(false);
+    clickBlocked(save);
+    expect(commands(call)).toHaveLength(1);
+    act(() => search.focus());
+    await act(async () => recovered.resolve(await reply(...settle.mock.calls[1]!)));
+    await screen.findByText("添加项目记忆 · 已完成。");
+    expect(screen.queryByRole("region", { name: "添加记忆" })).toBeNull();
+    expect(document.activeElement).toBe(search);
+    expect(search.value).toBe("retained query 保留");
+    expect(commands(call)).toHaveLength(1);
+    expect(settle.mock.calls.map(([request]) => request)).toEqual([request, request]);
+    expect(settle.mock.calls.map(([, key]) => key)).toEqual([
+      "memory-command-1",
+      "memory-command-1",
+    ]);
+  } finally {
+    await act(async () => {
+      const response = await reply(commands(call)[0]![0], "memory-command-1");
+      submitted.resolve(response);
+      recovered.resolve(response);
+    });
+  }
 });
 
 it("names the captured target and keeps editor and record feedback apart", async () => {

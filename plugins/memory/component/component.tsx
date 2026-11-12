@@ -257,7 +257,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                   change(
                     "flame.memory/delete.v2",
                     { ID: edit.item.ID, ExpectedRevision: edit.item.Revision },
-                    t("command.delete", { id: edit.item.ID }),
+                    { action: "delete", id: edit.item.ID },
                     "editor",
                   )
           }
@@ -328,7 +328,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                               CWD: cwd!,
                               Content: edit.content.trim(),
                             },
-                            t(`command.add.${scope}`),
+                            { action: "add", scope },
                             "editor",
                           )
                         : change(
@@ -338,7 +338,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                               ExpectedRevision: edit.item.Revision,
                               Content: edit.content.trim(),
                             },
-                            t("command.edit", { id: edit.item.ID }),
+                            { action: "edit", id: edit.item.ID },
                             "editor",
                           )
               }
@@ -391,8 +391,8 @@ export function Memory({ context }: { context: ComponentContext }) {
                 opener,
               });
             }}
-            command={(method, input, label, control) =>
-              change(method, input, label, "record", control)
+            command={(method, input, intent, control) =>
+              change(method, input, intent, "record", control)
             }
             t={t}
           />

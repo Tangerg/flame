@@ -22,14 +22,20 @@ export type Edit = (
 ) & {
   opener: HTMLElement;
 };
+export type CommandIntent =
+  | { action: "add"; scope: Scope }
+  | {
+      action: "edit" | "delete" | "approve" | "reject" | "pin" | "unpin";
+      id: string;
+    };
 export type Command = {
   promise: MutationPromise<unknown>;
   // Updates also pin independent records, so the method cannot identify the submitting form.
   source: "editor" | "record";
-  label: string;
+  intent: CommandIntent;
 };
 export type Feedback = {
-  label: string;
+  intent: CommandIntent;
   state: "submitting" | "unknown" | "refused" | "confirmed";
-  detail?: string;
+  failure?: { cause: unknown; fallback: "refused" | "submit" | "check" };
 };

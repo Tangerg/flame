@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -12191,6 +12191,132 @@ return to their original snapshots, retiring **505 captured nodes** and restorin
 document formatting, normal static hooks and read-only integrity. Continue
 whole-product visual qualification in this same Lab; require independently
 observed native menu input before claiming physical Escape acceptance.
+
+### Memory original command observation across display languages (2026-11-12)
+
+Scope: retain the original conversation draft → filter Project memory → submit
+one Add task → change the display language while its result is pending → receive
+the original result → cancel or recover within that task → return to the same
+record and continue the conversation. The existing non-modal form, accepted-page
+revalidation and independent catalog actions remain the interaction model.
+
+The original `useMemory.ts` lifetime effect depended on the translated `load`
+callback. Locale replacement rebuilt that callback and aborted the command's
+observation owner. A valid later success, refusal or unknown settlement then
+returned before clearing pending state or exposing original-result recovery.
+Action labels and fallback failures also captured the previous language.
+
+The existing lifetime controller now retires on its actual Runtime, binding,
+tracking owner, component signal, scope or workspace-path replacement. A separate
+existing-read effect preserves same-target revalidation and the accepted cursor;
+it does not retire a command merely because display context changed. No new
+controller, store, counter, command key or recovery mechanism is introduced.
+`CommandIntent` retains action and captured scope/ID. `MemoryFeedback` renders
+that intent and fallback guidance with the current translator while preserving
+literal Error/RPC causes. Editor/record origin, exact method inputs, original
+MutationPromise, retry/key, locks, focus rules and unknown-result behavior retain
+their owners. Runtime, SDK, telemetry, themes and shared UI have no source changes.
+
+Read-only reference review inspected ZCode's actual
+`MemorySettingsSection.tsx` and `MemorySettingsViewer.tsx`: device-scoped service
+collaborators and raw catalog data remain distinct from current display labels.
+This supports the boundary decision; it does not establish ZCode command replay
+or observer guarantees. Better-writing/accessibility/layout review keeps captured
+request identity, current-language guidance, literal causes and reachable form
+actions in the existing shared components. No new explanatory labels or styling
+system is added. Bounded subagent implementation was reviewed against callers,
+source, tests and actual native behavior by the primary agent.
+
+Verification completed before cleanup:
+
+- The original implementation fails all **4** new deferred-command cases while
+  its **70** existing cases pass (**13.48 s**). Final Memory coverage passes
+  **74 / 74** (**7.48 s**), including success, literal and fallback refusal,
+  unknown settlement and retry of the original key after locale replacement.
+  It checks exact captured request/input/signal, one new dispatch, retained query
+  and draft, later focus choice, current-language feedback and restored Save/
+  Cancel semantics. The existing accepted second-page revalidation case passes.
+  These tests use the existing scripted MutationPromise fixture; they do not
+  independently qualify the durable journal or idempotency namespace.
+- Memory plus installed-view continuity pass **82** tests (**9.14 s**); the
+  actual component-module consumer file separately passes **33** (**2.66 s**),
+  giving **115** relevant integration tests. An initial command named a nonexistent
+  module-test path and ran only the first two files; the actual third path was
+  then verified separately. No missing file is counted as tested.
+- `make setup`, `make stage-web`, the normal plugin resource build and full
+  plugin check pass: **47** script tests and **648** source tests across **44**
+  passed files (**43.24 s**), with the existing **17** skips in **2** files.
+  All 20 resources and eight locales validate; exact resource reproduction passes.
+  An initial Web lint rejects conditional assertions in the new parameterized
+  test. Separate success/refusal structure retains all four cases and assertions;
+  final lint, formatting, typecheck, layers and the **827-file** design-system
+  boundary check pass without disabling a rule.
+- `make check-native` passes the supported Wails **v3.1.0**, Go **1.27.3**,
+  macOS **13.0** production build and desktop Go tests through the prepared local
+  candidate-module proxy. Normal final Lab build passes in **2.34 s**. Baseline,
+  candidate and both private native builds each contain **484** assets with the
+  exact same shared stylesheet. No browser visual suite or performance benchmark
+  runs. Unchanged shared UI/SDK/Runtime full suites are not repeated.
+
+Native acceptance consumes the exact published Memory ESM through the real
+InstalledComponent presentation and SDK. The canonical Memory Lab entry imports
+TSX. Only the private acceptance build temporarily points that import at published
+ESM and holds one acknowledgement at the existing public transport boundary.
+The guarded request requires the original installation/digest/contribution,
+Project path, exact content, idempotency key and namespace. The next ordinary
+Memory revalidation releases the same recorded RPC refusal. Baseline and candidate
+use the byte-identical acknowledgement seam; both temporary source files restore
+byte for byte. No canonical rows, business store, production transport or desktop
+source changes. This is presentation/observation qualification over an isolated
+known refusal, not a live Memory write, Runtime installation or receipt-recovery
+qualification. The old resource digest begins `573568883adc`; the accepted
+ordinary rebuilt resource begins `48512961fe73`. Existing installations need the
+normal explicit exact-digest package publication/selection; none is changed here.
+
+The old ESM in actual Wails reproduces the defect: English Add is submitting,
+EN → ZH leaves Save/Cancel disabled, the old English action label remains and the
+original refusal never appears. The candidate qualifies these complete tasks:
+
+- English/light/**14 px**/Flame Orange: one Save is pending before EN → ZH;
+  the original result becomes localized request refusal, with unchanged
+  `Recorded isolated memory save refusal.` and the recorded indented Chinese
+  cause. The exact input and `compaction` query survive; Save/Cancel unlock.
+  Keyboard resizing reaches **320 px**. Native Window → Zoom/restore and ZH → EN
+  retain the same task and reproject its feedback. Tab/Return Cancel restores
+  Add memory focus; the same filtered record expands to its original ID/scope/
+  source. Cmd+L continues the saved middle caret to exactly
+  `Keep verified this Memory decision draft.`
+- Chinese/dark/**18 px**/**#3B82F6**/motion off: Appearance confirms those values
+  from the ordinary Lab color parameter. One pending Save survives ZH → EN to
+  the same known refusal and literal cause. The **320 px** Dock wraps input,
+  request, error and actions; an AX-targeted native wheel moves only its reading
+  area while conversation and divider focus stay put. Tab/Return Cancel restores
+  Add focus and the retained query. Native Move & Resize → Left yields a normal
+  **1120-point** window; the original record's ID, scope and `ses_visual` remain
+  readable. Cmd+L yields exactly `Keep verified this dark Memory draft.`
+
+One pointer-entered textarea Escape in the first English settled-refusal task
+leaves the editor open. It is not counted as a cancellation pass or called fixed.
+Matched old/candidate unsubmitted forms both cancel on their first Escape before
+and after EN → ZH → EN. A fresh candidate repeats the original known-refusal,
+query/draft, 320 px, window Zoom/restore and language-return conditions; its first
+Escape cancels and restores Add focus. Source review finds no handler change or
+proven event guard. The initial one-off remains unclassified and unreproduced;
+repeat it with native event-delivery evidence if it recurs, without adding blind
+retries or a second key owner. The native custom-color popover's Show Colors
+probe also does not open an observable editor; it is excluded from color-picker
+qualification. A clean relaunch with the existing Lab accent parameter supplies
+the qualified blue task. Physical IME, clipboard behavior, VoiceOver, quantitative
+contrast and whole-product acceptance remain outside this batch.
+
+All **6** native launches and **3** owned loopback servers exit **0**. Three app
+registrations, **7** created Library stores, all **18** private Library paths,
+**12** owned ignored output/cache roots and the private apps/assets/helpers/logs
+return to absence. Cleanup preserves **8** accepted source/resource/test hashes,
+all **20** current resources (**19** unaffected), **8** captured owners and **46**
+native inputs. Dependencies/hooks and unrelated primary work remain intact. No
+functional suite runs after cleanup. Continue with a reproduced reading or return
+problem; keep the one-off Escape observation conditional on fresh evidence.
 
 ### Memory Lab target identity and User reading (2026-11-09)
 
@@ -27102,9 +27228,9 @@ output/cache roots and the private apps/data/assets/helpers/logs return to absen
 Cleanup preserves **4** accepted source/resource hashes, **19** other resources,
 **7** captured owners, **2** clock owners and **46** native inputs; ordinary
 dependencies/hooks and unrelated primary work remain intact. No functional suite
-runs after cleanup. The next strong read-only finding is Memory's command observer
-being coupled to a translated load callback; establish deferred-command regression
-and native evidence before changing that separate owner.
+runs after cleanup. The separate Memory command-observer finding is now resolved
+and qualified in its product section above; preserve the distinct read and command
+owners when continuing task-specific inspection.
 
 ### File and Diff native reading (2026-11-11)
 
