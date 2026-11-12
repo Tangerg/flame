@@ -1,8 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { selectCurrentRootAttention } from "@/features/agent/application/view/runTree";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
-import { useChatSend } from "@/features/agent/public/input";
-import { ChatPanel } from "@/features/shell/workbench/panel/ChatPanel";
 import { useSidebarDrawer, useSidebarWidth } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
 import { AgentAppShell } from "@/ui/agent/index";
@@ -96,7 +94,6 @@ export function VisualAgentStateFixture({
   view: AgentSessionView;
 }) {
   const attention = selectCurrentRootAttention(view);
-  const send = useChatSend();
   const drawer = useSidebarDrawer();
   const { width, setWidth } = useSidebarWidth();
 
@@ -118,7 +115,7 @@ export function VisualAgentStateFixture({
           data-state={state}
           data-attention={attention.status}
         >
-          <ChatPanel onSend={send} />
+          <Slot name="app.main" />
         </div>
       }
       overlay={<Slot name="app.overlay" />}

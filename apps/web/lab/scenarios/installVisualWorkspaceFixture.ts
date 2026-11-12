@@ -33,10 +33,7 @@ import { createBrowserHost } from "@/platform/browserHost";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { splitFilePath } from "@/lib/path";
-import shortcutsSettings from "@/features/command/shortcuts/index";
 import chatSearch from "@/features/chat/search/index";
-import { workspaceKeymap } from "@/features/workspace/keymap";
-import { workbenchSettings } from "@/features/shell/workbench/index";
 import appearanceSettings from "@/features/settings/appearance";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
@@ -763,12 +760,9 @@ export async function installVisualWorkspaceFixture(
 
   await loadVisualPlugins([
     fileView,
-    workbenchSettings(visual.workspace.access),
     appearanceSettings,
     createProviderCatalogPlugin(runtimeClient),
-    shortcutsSettings(visual.workspace.access),
     chatSearch,
-    workspaceKeymap(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
     personalizationSettings,

@@ -222,7 +222,8 @@ closure scenarios exercise both Go matches at narrow widths, dismissal, retained
 selection, keyboard acceptance and continued input in the original Composer.
 Opening or resizing at short heights reveals the current selection; explicit
 scrolling can still browse the remaining options without being pulled back.
-This recorded list does not qualify Runtime search ranking.
+This recorded list does not qualify Runtime search ranking. Files reading uses
+the Workspace fixture and its separate captured file providers.
 
 The same Agent catalog offers `file-list-error` and `file-list-loading`. The
 former rejects every file-list request with one captured error; the latter holds
@@ -759,11 +760,12 @@ interaction is the subject of the test.
 
 `scenarios/client.tsx` composes explicit feature instances. Runtime-backed reads
 use production adapters over an in-memory transport; unmodelled operations fail
-immediately. The workspace mounts the installed `app.main` contribution, so focus
-commands address the on-screen Composer even when Settings hides it. Its recorded
-Session port uses the snapshot installer's actions and does not start live Run
-recovery. These scenarios qualify presentation and command routing, not live
-Runtime execution.
+immediately. Agent and Workspace mount the installed `app.main` contribution, so
+focus commands address the on-screen Composer even when Settings hides it. Their
+shared Agent installer registers the existing Settings, shortcut and Workspace
+Escape plugins once. The recorded default-Session port uses the snapshot
+installer's actions and does not start live Run recovery. These scenarios qualify
+presentation and command routing, not live Runtime execution.
 
 Workspace scenarios mount the production working-tree action through its host
 adapter in the conversation header. Its change counts and Diff reads project the

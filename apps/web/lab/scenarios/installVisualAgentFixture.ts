@@ -40,7 +40,9 @@ import { defaultAccents } from "@/features/theme/defaultAccents";
 import { createGoalPlugin } from "@/features/goal/index";
 import { type GoalState } from "@/features/goal/application/goalReadModel";
 import planProgress from "@/features/chat/plan-progress/index";
-import { workbenchChat } from "@/features/shell/workbench/index";
+import { workbenchChat, workbenchSettings } from "@/features/shell/workbench/index";
+import shortcutsSettings from "@/features/command/shortcuts/index";
+import { workspaceKeymap } from "@/features/workspace/keymap";
 import { MODELS_KEY } from "@/features/providers/public/queries";
 import { SelectableModel } from "@/features/providers/public/queries";
 import { queryClient } from "@/lib/queryClient";
@@ -315,6 +317,9 @@ export async function installVisualAgentFixture(
     composerSend,
     narrativeRails,
     workbenchChat,
+    workbenchSettings(visual.workspace.access),
+    shortcutsSettings(visual.workspace.access),
+    workspaceKeymap(visual.workspace.access),
     messageCopy,
     messageEdit,
     messageRegenerate,

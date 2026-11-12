@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries and saved-report locale behavior are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -85,6 +85,81 @@ Its paste-based tasks do not qualify OS IME. The later
 production plugin to the existing Lab and qualifies real macOS composition.
 VoiceOver speech, RTL, older-macOS distribution and whole-product visual acceptance
 remain unqualified.
+
+### Agent fixture command continuity (2026-11-12)
+
+The preceding HTTP task exposed a Lab assembly gap, not a demonstrated production
+command defect. `VisualAgentStateFixture.tsx` rendered `ChatPanel` directly while
+the installed workbench's `composer.focus` command held a different, unmounted
+ref. Its installer also omitted the global shortcut provider and Workspace Escape
+owner. A strengthened baseline reproduces all three missing routes: **3 failed /
+8 passed**, including unchanged captured-state and recovery controls.
+
+Agent now mounts the existing `app.main` contribution. The shared Agent installer
+registers the existing Settings, shortcut and Workspace Escape plugins; Workspace
+inherits them and removes its duplicate registrations. The recorded default-Session
+port and original send hook remain authoritative. No second ref, key listener,
+production API, command transition, fixture variant or business simulator is added.
+Files reading retains the full Workspace fixture's captured providers. The prior
+native textarea/ZCode input trace and better-accessibility's focus-continuity and
+nested-dismissal criteria remain the reference basis.
+
+The new command regressions preserve the same input, padded Unicode draft and
+caret through sidebar, catalogue and Settings routes. Seven captured states retain
+their selected Session, Run status and interrupt presentation without Session or
+Run dispatch; recovery Retry uses its original input once. An initial Settings
+expectation incorrectly skipped the focused sidebar Tooltip's local Escape layer.
+Event tracing proves Base UI consumes that first key. The corrected case explicitly
+opens the Tooltip, preserves Settings/draft on its dismissal, then closes Settings
+with the next Escape. Two invalid role-query options are removed. One corrected
+trial times out without assertion evidence; the subsequent serial **19 tests /
+2 files pass in 9.37 s**, with no timeout or valid assertion weakened. The initial
+native staging attempt stops on those two test type errors; the final build passes.
+
+Verification passes **41 Lab files / 873 tests in 75.92 s**, retaining the existing
+blocked-iframe diagnostic. After incorporating independent main changes through
+`26148f2b6`, the affected command and recorded-result regressions pass **4 files /
+136 tests in 15.53 s**. Web typecheck, lint, complete format check, layer checks
+and the **827-file** design-system check pass. Final `make check-native` passes
+production Web staging, Wails build and Desktop test/vet/build; the canonical Lab
+build passes with **484 assets**. All 20 published component resources are unchanged
+by this batch. A later main backend-test-only fast-forward through `db80e2d93`
+preserves every accepted source, resource and native hash.
+
+Actual Wails **v3.1.0** uses two unique bundles and private data homes. Only the
+private host copy's initial URL points to the loopback Lab; all **46** tracked
+native inputs and four captured-data/transport owners remain unchanged.
+
+- EN/light/14 px/Orange/full motion: sidebar collapse → Cmd+L retains the middle
+  caret; Mod+/ opens shortcut Settings, and Cmd+L returns from its search field.
+  Local result Find Escape retains the expanded HTTP result and focuses its
+  reader. Auxiliary catalogue → full-width catalogue → global Escape restores
+  that result and the same draft. Native Window Zoom/restore and wheel reading
+  preserve context; middle insertions produce exactly
+  `Keep native settings catalogue return this Agent draft.`
+- ZH/dark/18 px/**#3B82F6**/motion off: Mod+, opens Settings. Escape in its filter
+  leaves that field and Settings active; Escape from the selected tab returns to
+  conversation. Cmd+L resumes at the original caret. Six forward Tabs reach the
+  Dock divider; End reaches its current **725 px** limit with the sidebar open,
+  and Home restores **320 px**. Expanded response/Arguments, wheel reading and
+  repeated Cmd+L retain exactly
+  `Keep verified dock return this Chinese scene draft.`
+
+Acceptance uses default page zoom, ordinary native window resizing and ASCII
+typing in the two localized interfaces. No message, replay, approval, Stop,
+question response or live Runtime command is submitted natively. Captured-state
+and recovery-action controls are unit evidence; physical IME, native clipboard,
+VoiceOver and full-product visual acceptance remain outside this receipt. No
+browser visual suite or performance benchmark runs. Future UI work should use
+these installed Agent commands, and the full Workspace scene for Files, instead
+of reopening the resolved fixture routing gap.
+
+Both native processes and the single loopback server exit **0**. Both registrations,
+all **12** unique Library paths and **11** owned ignored output/cache roots are
+absent. The private apps, data, assets, helpers and logs are removed with their
+root. Cleanup preserves five accepted source/document hashes, all 20 resources,
+all 46 native inputs, ordinary dependencies and hooks. No functional suite runs
+after cleanup.
 
 ### Linked icon loading in Lab development (2026-11-09)
 
@@ -36322,7 +36397,7 @@ Verification:
   Arguments remain open. Both drafts continue as
   `Continue after checking the HTTP response. Ready.`; no message is sent.
 
-Current Agent-fixture assembly limits this native scope. It directly renders
+That batch's Agent-fixture assembly limits its native scope. It directly renders
 `ChatPanel` in `VisualAgentStateFixture.tsx` and omits global shortcuts,
 `workspaceKeymap` and Files from `installVisualAgentFixture.ts`. Its installed
 workbench command therefore lacks the ref-owned main entry, and its catalogue
@@ -36331,8 +36406,10 @@ excluded; visible Close, local Find Escape and Tab return are accepted. The
 Workspace fixture and production mount `app.main` and include those owners.
 This identifies an Agent-fixture coverage gap, without establishing a production
 command defect. The earlier Files/native records retain their stated historical
-scope; this batch does not requalify that path. The next fixture review should
-trace its custom send contract before aligning its assembly with production.
+scope; this batch does not requalify that path. The later
+[Agent fixture command continuity](#agent-fixture-command-continuity-2026-11-12)
+follow-up traces the send contract, aligns the installed entry and qualifies the
+shared command owners. Files reading still uses the full Workspace fixture.
 
 Live HTTP, provider/Runtime execution, replay, native clipboard bytes, physical
 IME and VoiceOver remain untested. Base64 and no-header cases are unit-qualified.
