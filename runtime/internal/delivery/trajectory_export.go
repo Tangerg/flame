@@ -62,10 +62,10 @@ func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportT
 
 func wireTrajectoryExportError(err error) error {
 	if errors.Is(err, rundomain.ErrSessionBusy) {
-		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), "finish or cancel the Session's active or waiting Run before exporting its trajectory")
+		return protocol.NewFailure(protocol.ErrSessionBusy, "finish or cancel the Session's active or waiting Run before exporting its trajectory", err)
 	}
 	if errors.Is(err, sessions.ErrExportTooLarge) {
-		return protocol.NewFailure(errors.Join(protocol.ErrExportTooLarge, err), "trajectory export exceeds 64 MiB or 100000 stored records; no partial trajectory was exported")
+		return protocol.NewFailure(protocol.ErrExportTooLarge, "trajectory export exceeds 64 MiB or 100000 stored records; no partial trajectory was exported", err)
 	}
 	return wireSessionErr(err)
 }

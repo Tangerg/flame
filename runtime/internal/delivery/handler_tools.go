@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -38,7 +37,7 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
 	args, err := toolsvc.ArgumentsFromMap(in.Arguments)
 	if err != nil {
-		return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	result, err := s.tools.Invoke(ctx, workspaceapp.DiagnosticToolInvocation{
 		Name: in.Name, Arguments: args, CWD: workspaceRefPath(in.Workspace),

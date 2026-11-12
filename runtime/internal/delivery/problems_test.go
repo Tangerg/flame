@@ -37,7 +37,7 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 
 func TestExplicitFailuresPreserveStructuredDetails(t *testing.T) {
 	constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{Field: "input[0].text", Detail: "must not be empty"}}}
-	failure := projectError(protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), "invalid run input"))
+	failure := projectError(protocol.NewFailure(protocol.ErrInvalidParams, "invalid run input", constraint))
 	problem := failure.Problem()
 	if problem.Type != protocol.ErrInvalidParams.Error() || len(problem.Errors) != 1 || problem.Errors[0] != constraint.Fields[0] || !errors.Is(failure, constraint) {
 		t.Fatalf("lost field error or cause: %+v", problem)
@@ -48,7 +48,7 @@ func TestExplicitFailuresPreserveStructuredDetails(t *testing.T) {
 		t.Fatal("projected failure retained mutable field details")
 	}
 	gap := NewCapabilityGapError(protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "skills"})
-	capability := projectError(protocol.NewFailure(gap, "declare the skills capability")).Problem()
+	capability := projectError(protocol.NewFailure(protocol.ErrCapabilityNotNeg, "declare the skills capability", gap)).Problem()
 	if capability.Type != protocol.ErrCapabilityNotNeg.Error() || len(capability.RequiredCapabilities) != 1 {
 		t.Fatalf("lost capability detail: %+v", capability)
 	}

@@ -190,7 +190,7 @@ func wireInterruptPageError(err error) error {
 	}
 	switch {
 	case errors.Is(err, transcript.ErrNotRoot):
-		return protocol.NewFailure(errors.Join(protocol.ErrRunNotRoot, err), err.Error())
+		return protocol.NewFailure(protocol.ErrRunNotRoot, err.Error(), err)
 	default:
 		return err
 	}
@@ -257,17 +257,17 @@ func wireLiveSegmentError(err error) error {
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return protocol.NewFailure(errors.Join(protocol.ErrRunNotRoot, err), err.Error())
+		return protocol.NewFailure(protocol.ErrRunNotRoot, err.Error(), err)
 	case errors.Is(err, runs.ErrRunWaiting):
-		return protocol.NewFailure(errors.Join(protocol.ErrRunWaiting, err), err.Error())
+		return protocol.NewFailure(protocol.ErrRunWaiting, err.Error(), err)
 	case errors.Is(err, runs.ErrRunFinished):
-		return protocol.NewFailure(errors.Join(protocol.ErrRunFinished, err), err.Error())
+		return protocol.NewFailure(protocol.ErrRunFinished, err.Error(), err)
 	case errors.Is(err, runs.ErrStaleSegment):
-		return protocol.NewFailure(errors.Join(protocol.ErrStaleSegment, err), err.Error())
+		return protocol.NewFailure(protocol.ErrStaleSegment, err.Error(), err)
 	case errors.Is(err, runs.ErrReplayCursorInvalid):
-		return protocol.NewFailure(errors.Join(protocol.ErrReplayCursorInvalid, err), err.Error())
+		return protocol.NewFailure(protocol.ErrReplayCursorInvalid, err.Error(), err)
 	case errors.Is(err, runs.ErrReplayUnavailable):
-		return protocol.NewFailure(errors.Join(protocol.ErrReplayUnavailable, err), err.Error())
+		return protocol.NewFailure(protocol.ErrReplayUnavailable, err.Error(), err)
 	default:
 		return err
 	}

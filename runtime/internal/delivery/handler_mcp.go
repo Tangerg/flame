@@ -173,21 +173,21 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 func wireMCPError(err error) error {
 	switch {
 	case errors.Is(err, plugin.ErrUnavailable):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginUnavailable, err), "select an enabled external MCP connector")
+		return protocol.NewFailure(protocol.ErrPluginUnavailable, "select an enabled external MCP connector", err)
 	case errors.Is(err, mcpapp.ErrOwnedByInstallation):
-		return protocol.NewFailure(errors.Join(protocol.ErrMCPOwnedByInstallation, err), err.Error())
+		return protocol.NewFailure(protocol.ErrMCPOwnedByInstallation, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrUnknownServer):
-		return protocol.NewFailure(errors.Join(protocol.ErrMCPServerNotFound, err), err.Error())
+		return protocol.NewFailure(protocol.ErrMCPServerNotFound, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrServerAlreadyExists):
-		return protocol.NewFailure(errors.Join(protocol.ErrMCPServerAlreadyExists, err), err.Error())
+		return protocol.NewFailure(protocol.ErrMCPServerAlreadyExists, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrServerDisabled):
-		return protocol.NewFailure(errors.Join(protocol.ErrMCPServerDisabled, err), err.Error())
+		return protocol.NewFailure(protocol.ErrMCPServerDisabled, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrAuthorizationAttemptNotFound):
-		return protocol.NewFailure(errors.Join(protocol.ErrMCPAuthorizationAttemptNotFound, err), err.Error())
+		return protocol.NewFailure(protocol.ErrMCPAuthorizationAttemptNotFound, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrAuthorizationUnsupported):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrInvalidServerConfiguration):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return err
 }
@@ -211,7 +211,7 @@ func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerR
 func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
 	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &in.Server, Name: in.Name})
 	if err != nil {
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return wireMCPError(s.mcp.SetToolExposure(ctx, ref, in.Disabled))
 }

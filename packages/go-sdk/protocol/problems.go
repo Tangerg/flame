@@ -106,17 +106,18 @@ func (f *Failure) Problem() ProblemData {
 	return cloneProblemData(f.data)
 }
 
-// NewFailure separates a client-safe explanation from the cause chain, which
-// must identify a registered problem. Structured details remain owner-provided.
-func NewFailure(cause error, detail string) *Failure {
-	spec, ok := problemSpecForError(cause)
+// NewFailure gives the boundary's explicit registered kind authority over its
+// diagnostic causes. A nested problem must not reclassify that boundary's result.
+func NewFailure(kind error, detail string, causes ...error) *Failure {
+	spec, ok := problemSpecForSentinel(kind)
 	if !ok {
 		return internalFailure()
 	}
+	cause := errors.Join(append([]error{kind}, causes...)...)
 	failure := newFailure(spec, cause, detail)
 	// Internal output defects retain their diagnostic cause without projecting
 	// that cause's input fields onto the internal-error wire shape.
-	if detailed, ok := errors.AsType[problemDetailed](cause); ok && spec.sentinel != ErrInternalError {
+	if detailed, ok := errors.AsType[problemDetailed](cause); ok && spec.sentinel != ErrInternalError && errors.Is(detailed, kind) {
 		detailed.Enrich(&failure.data)
 	}
 	if spec.sentinel == ErrInvalidParams {
@@ -136,41 +137,38 @@ func ProjectError(err error) *Failure {
 	if err == nil {
 		return nil
 	}
+	projected := internalFailure()
 	if failure, ok := errors.AsType[*Failure](err); ok {
-		if ValidateWireTree(failure.data) != nil {
-			return internalFailure()
+		if ValidateWireTree(failure.data) == nil {
+			projected = &Failure{cause: failure.cause, data: cloneProblemData(failure.data)}
 		}
-		return &Failure{cause: failure.cause, data: cloneProblemData(failure.data)}
+	} else {
+		for _, spec := range problemSpecs {
+			if !errors.Is(err, spec.sentinel) {
+				continue
+			}
+			detail := ""
+			if err != spec.sentinel {
+				detail = err.Error()
+			}
+			projected = NewFailure(spec.sentinel, detail, err)
+			break
+		}
 	}
-	for _, spec := range problemSpecs {
-		if !errors.Is(err, spec.sentinel) {
-			continue
-		}
-		detail := ""
-		if err != spec.sentinel {
-			detail = err.Error()
-		}
-		failure := NewFailure(err, detail)
-		if ValidateWireTree(failure.data) != nil {
-			return internalFailure()
-		}
-		return failure
-	}
-	failure := internalFailure()
 	// Keep cancellation actionable for in-process callers without retaining
 	// arbitrary endpoint details or adding request lifetime to the wire problem.
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
-		if errors.Is(err, cause) {
-			failure.cause = errors.Join(failure.cause, cause)
+		if errors.Is(err, cause) && !errors.Is(projected, cause) {
+			projected.cause = errors.Join(projected.cause, cause)
 		}
 	}
-	return failure
+	return projected
 }
 
 // InvalidParameters projects strict wire-constraint failures with their field
 // locations intact.
 func InvalidParameters(err error) *Failure {
-	return ProjectError(NewFailure(errors.Join(ErrInvalidParams, err), err.Error()))
+	return ProjectError(NewFailure(ErrInvalidParams, err.Error(), err))
 }
 
 func newFailure(spec problemSpec, cause error, detail string) *Failure {
@@ -237,9 +235,9 @@ func RetryAfterFor(problemType string) int {
 	return spec.retryAfterSeconds
 }
 
-func problemSpecForError(err error) (problemSpec, bool) {
+func problemSpecForSentinel(kind error) (problemSpec, bool) {
 	for _, spec := range problemSpecs {
-		if errors.Is(err, spec.sentinel) {
+		if kind == spec.sentinel {
 			return spec, true
 		}
 	}

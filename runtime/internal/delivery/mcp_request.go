@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -36,7 +35,7 @@ func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerI
 func parseMCPServerName(raw string) (mcpserver.ServerName, error) {
 	name, err := mcpserver.ParseServerName(raw)
 	if err != nil {
-		return mcpserver.ServerName{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return mcpserver.ServerName{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return name, nil
 }
@@ -53,10 +52,10 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	case protocol.MCPOriginInstallation:
 		installation, err := identity.ParseInstallation(in.Origin.InstallationID)
 		if err != nil {
-			return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
 		if origin, err = mcpserver.InstallationOrigin(installation); err != nil {
-			return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
 	default:
 		return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP origin %q", in.Origin.Type))
@@ -67,7 +66,7 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	}
 	id, err := mcpserver.NewID(origin, name)
 	if err != nil {
-		return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return id, nil
 }
@@ -107,7 +106,7 @@ func mcpHandshakeTimeoutFromWire(in protocol.MCPHandshakeTimeout) (mcpserver.Han
 		}
 		timeout, err := mcpserver.NewHandshakeTimeout(time.Duration(*in.Seconds) * time.Second)
 		if err != nil {
-			return mcpserver.HandshakeTimeout{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.HandshakeTimeout{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
 		return timeout, nil
 	default:

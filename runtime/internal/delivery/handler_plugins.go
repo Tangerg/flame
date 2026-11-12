@@ -100,26 +100,26 @@ func parseInstallationRelease(id, digest string) (identity.InstallationID, frame
 func wirePluginError(err error) error {
 	switch {
 	case errors.Is(err, plugin.ErrCommandRetired):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginCommandRetired, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginCommandRetired, err.Error(), err)
 	case errors.Is(err, plugin.ErrCommandUnconfirmed):
 		// A lost acknowledgement leaves the command's outcome unknown: it must not be
 		// resubmitted or retargeted, so the category stays the non-retryable internal
 		// failure. The generic command path projects through protocol.ProjectError, which has
 		// no plugin spec and would otherwise mint a fresh internal error that drops
 		// the cause; join it so the unconfirmed cause stays reachable.
-		return protocol.NewFailure(errors.Join(protocol.ErrInternalError, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInternalError, err.Error(), err)
 	case errors.Is(err, plugin.ErrInvalid):
 		return protocol.InvalidParameters(err)
 	case errors.Is(err, plugin.ErrUnavailable):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginUnavailable, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginUnavailable, err.Error(), err)
 	case errors.Is(err, plugin.ErrNotFound):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginNotFound, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginNotFound, err.Error(), err)
 	case errors.Is(err, plugin.ErrInUse):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginInUse, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginInUse, err.Error(), err)
 	case errors.Is(err, plugin.ErrDisabled):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginDisabled, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginDisabled, err.Error(), err)
 	case errors.Is(err, plugin.ErrStale):
-		return protocol.NewFailure(errors.Join(protocol.ErrPluginStale, err), err.Error())
+		return protocol.NewFailure(protocol.ErrPluginStale, err.Error(), err)
 	default:
 		return err
 	}

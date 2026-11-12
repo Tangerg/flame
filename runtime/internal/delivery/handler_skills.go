@@ -108,7 +108,7 @@ func mapSkillError(err error) error {
 	default:
 		return wireWorkspaceError(err)
 	}
-	return protocol.NewFailure(errors.Join(kind, err), detail)
+	return protocol.NewFailure(kind, detail, err)
 }
 
 // ListSkillProposals returns the one current proposal per scoped Skill name,
@@ -163,7 +163,7 @@ func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProp
 func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) {
 	ref := skills.ProposalRef{Scope: proposalScopeDomain(in.Scope), Name: in.Name, Revision: in.Revision}
 	if err := ref.Validate(); err != nil {
-		return skills.ProposalRef{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return skills.ProposalRef{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return ref, nil
 }
@@ -223,7 +223,7 @@ func mapSkillProposalErr(err error) error {
 	case errors.Is(err, skills.ErrPublicationUnconfirmed):
 		return wirePluginError(errors.Join(plugin.ErrCommandUnconfirmed, err))
 	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
-		return protocol.NewFailure(errors.Join(protocol.ErrRevisionConflict, err), fmt.Sprintf("proposal review is stale: %v", err))
+		return protocol.NewFailure(protocol.ErrRevisionConflict, fmt.Sprintf("proposal review is stale: %v", err), err)
 	default:
 		return wireWorkspaceError(err)
 	}

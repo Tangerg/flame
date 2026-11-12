@@ -70,11 +70,11 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 func wireRunResumeErr(err error) error {
 	switch {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
-		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation", err)
 	case errors.Is(err, runs.ErrInterruptNotOpen):
 		return protocol.ErrInterruptNotOpen
 	case errors.Is(err, runs.ErrInvalidInterruptResponse):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, run.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
@@ -191,5 +191,5 @@ func questionAnswerParamsError(
 		Shape:  "ResumeRunRequest",
 		Fields: []protocol.FieldError{{Field: field, Detail: answerError.Detail}},
 	}
-	return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
+	return protocol.NewFailure(protocol.ErrInvalidParams, constraint.Error(), constraint)
 }

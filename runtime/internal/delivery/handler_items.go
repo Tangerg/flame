@@ -21,7 +21,7 @@ func wirePageError(err error) error {
 		errors.Is(err, pagination.ErrInvalidCursorMaterial) ||
 		errors.Is(err, pagination.ErrCursorTooLarge) ||
 		errors.Is(err, pagination.ErrInvalidLimit) {
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return err
 }

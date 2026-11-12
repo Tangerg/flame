@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -26,7 +25,7 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	if in.SinceDays != nil {
 		recent, periodErr := sessions.RecentUsageDays(*in.SinceDays)
 		if periodErr != nil {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, periodErr), periodErr.Error())
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, periodErr.Error(), periodErr)
 		}
 		period = recent
 	}

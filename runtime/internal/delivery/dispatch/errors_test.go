@@ -12,7 +12,7 @@ import (
 )
 
 func TestBackendTransportErrorCannotBypassCoreProblemProjection(t *testing.T) {
-	failure := protocol.NewFailure(errors.Join(protocol.ErrInternalError, protocol.NewRPCError(0, "private downstream failure", nil)), "the runtime could not complete the request")
+	failure := protocol.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request", protocol.NewRPCError(0, "private downstream failure", nil))
 	rpcErr := errorToRPC(failure)
 	if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
 		t.Fatalf("backend transport replaced the Core error contract: %+v", rpcErr)
