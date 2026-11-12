@@ -16,6 +16,9 @@ its refusal. Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
 HTTP transport captures its endpoint, credentials and resource limits on creation;
 later edits to the supplied configuration cannot change an admitted connection.
+Every received message completes transport consumption, including a response
+rejected for a mismatched RPC identity. The original request is refused without
+settling another request or requiring cancellation to release stream backpressure.
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
 header normalization must never replace a captured command key or replay cursor.

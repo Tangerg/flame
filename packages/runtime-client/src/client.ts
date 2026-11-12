@@ -42,7 +42,7 @@ import {
   type WireNotificationName,
   type WireNotificationParams,
 } from "./generated/wire.validate.generated";
-import type { RpcId, RpcMessage } from "./types";
+import type { RpcId, RpcMessage, RpcResponse } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 
 export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
@@ -159,31 +159,125 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       for (const handler of streamEndHandlers) handler(event);
       return;
     }
-    if (isResponse(event.message) && event.message.id !== event.requestRpcId) {
-      const entry = pending.get(event.requestRpcId);
-      if (entry) {
-        pending.delete(event.requestRpcId);
-        entry.reject(
-          new RpcProtocolError(
-            `${entry.method} response`,
-            [
-              {
-                path: `${entry.method}.response.id`,
-                detail: `must match request id ${event.requestRpcId}`,
-              },
-            ],
-            event.metadata?.requestId,
-          ),
-        );
-      }
-      return;
+    let delivery: Promise<void> | undefined;
+    try {
+      delivery = dispatchMessage(event.message, event.requestRpcId, event.metadata);
+    } catch (cause) {
+      event.consumed?.(Promise.reject(cause));
+      throw cause;
     }
-    const delivery = dispatchMessage(event.message, event.requestRpcId, event.metadata);
     if (event.consumed) event.consumed(delivery ?? Promise.resolve());
     else if (delivery)
       void delivery.catch((cause: unknown) =>
         failConnection(new RpcConnectionError(errorMessage(cause))),
       );
+  }
+
+  function dispatchResponse(
+    msg: RpcResponse,
+    requestRpcId: RpcId,
+    metadata?: TransportResponseMetadata,
+  ): void {
+    const entry = pending.get(requestRpcId);
+    if (!entry) return;
+    pending.delete(requestRpcId);
+    const requestId = metadata?.requestId;
+    if (msg.id !== requestRpcId) {
+      entry.reject(
+        new RpcProtocolError(
+          `${entry.method} response`,
+          [
+            {
+              path: `${entry.method}.response.id`,
+              detail: `must match request id ${requestRpcId}`,
+            },
+          ],
+          requestId,
+        ),
+      );
+      return;
+    }
+    if (isErrorResponse(msg)) {
+      const payload = msg.error;
+      const violations = validateWire("ProblemData", payload.data);
+      if (violations.length === 0) {
+        const problem = payload.data as ProblemData;
+        const expectedCode = PROBLEM_CODES[problem.type as keyof typeof PROBLEM_CODES];
+        if (
+          expectedCode === undefined ||
+          payload.code !== expectedCode ||
+          payload.message !== problem.type
+        ) {
+          violations.push({
+            path: `${entry.method}.error`,
+            detail: "code and message must identify the declared problem type",
+          });
+        }
+      }
+      if (violations.length > 0) {
+        entry.reject(new RpcProtocolError(`${entry.method} error`, violations, requestId));
+        return;
+      }
+      let problem: ProblemData;
+      try {
+        problem = projectWire("ProblemData", payload.data) as ProblemData;
+      } catch (cause) {
+        const error = new RpcProtocolError(
+          `${entry.method} error`,
+          [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
+          requestId,
+        );
+        error.cause = cause;
+        entry.reject(error);
+        return;
+      }
+      entry.reject(
+        new RpcError(
+          {
+            code: payload.code,
+            message: payload.message,
+            data: problem,
+          },
+          requestId,
+        ),
+      );
+    } else {
+      const result = msg.result;
+      let violations;
+      try {
+        violations = validateMethodResult(entry.method, result);
+      } catch (cause) {
+        const error = new RpcProtocolError(
+          `${entry.method} result`,
+          [{ path: "$", detail: "numeric evidence cannot be validated" }],
+          requestId,
+        );
+        error.cause = cause;
+        entry.reject(error);
+        return;
+      }
+      if (violations.length > 0) {
+        entry.reject(new RpcProtocolError(`${entry.method} result`, violations, requestId));
+        return;
+      }
+      try {
+        entry.resolve(
+          entry.exactJSON
+            ? canonicalJSON(result)
+            : wireMethodReturnsValue(entry.method)
+              ? projectMethodResult(entry.method, result)
+              : undefined,
+        );
+      } catch (cause) {
+        const error = new RpcProtocolError(
+          `${entry.method} result`,
+          [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
+          requestId,
+        );
+        error.cause = cause;
+        entry.reject(error);
+      }
+    }
   }
 
   function dispatchMessage(
@@ -192,94 +286,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     metadata?: TransportResponseMetadata,
   ): Promise<void> | undefined {
     if (isResponse(msg)) {
-      const entry = pending.get(msg.id);
-      if (!entry) return;
-      pending.delete(msg.id);
-      if (isErrorResponse(msg)) {
-        const payload = msg.error;
-        const violations = validateWire("ProblemData", payload.data);
-        if (violations.length === 0) {
-          const problem = payload.data as ProblemData;
-          const expectedCode = PROBLEM_CODES[problem.type as keyof typeof PROBLEM_CODES];
-          if (
-            expectedCode === undefined ||
-            payload.code !== expectedCode ||
-            payload.message !== problem.type
-          ) {
-            violations.push({
-              path: `${entry.method}.error`,
-              detail: "code and message must identify the declared problem type",
-            });
-          }
-        }
-        if (violations.length > 0) {
-          entry.reject(
-            new RpcProtocolError(`${entry.method} error`, violations, metadata?.requestId),
-          );
-          return;
-        }
-        let problem: ProblemData;
-        try {
-          problem = projectWire("ProblemData", payload.data) as ProblemData;
-        } catch (cause) {
-          const error = new RpcProtocolError(
-            `${entry.method} error`,
-            [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
-            metadata?.requestId,
-          );
-          error.cause = cause;
-          entry.reject(error);
-          return;
-        }
-        entry.reject(
-          new RpcError(
-            {
-              code: payload.code,
-              message: payload.message,
-              data: problem,
-            },
-            metadata?.requestId,
-          ),
-        );
-      } else {
-        const result = msg.result;
-        let violations;
-        try {
-          violations = validateMethodResult(entry.method, result);
-        } catch (cause) {
-          const error = new RpcProtocolError(
-            `${entry.method} result`,
-            [{ path: "$", detail: "numeric evidence cannot be validated" }],
-            metadata?.requestId,
-          );
-          error.cause = cause;
-          entry.reject(error);
-          return;
-        }
-        if (violations.length > 0) {
-          entry.reject(
-            new RpcProtocolError(`${entry.method} result`, violations, metadata?.requestId),
-          );
-          return;
-        }
-        try {
-          entry.resolve(
-            entry.exactJSON
-              ? canonicalJSON(result)
-              : wireMethodReturnsValue(entry.method)
-                ? projectMethodResult(entry.method, result)
-                : undefined,
-          );
-        } catch (cause) {
-          const error = new RpcProtocolError(
-            `${entry.method} result`,
-            [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
-            metadata?.requestId,
-          );
-          error.cause = cause;
-          entry.reject(error);
-        }
-      }
+      dispatchResponse(msg, requestRpcId, metadata);
       return;
     }
     if (isNotification(msg)) {

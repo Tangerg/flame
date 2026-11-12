@@ -184,6 +184,67 @@ describe("RpcClient", () => {
     await client.close();
   });
 
+  it("acknowledges consumption of a rejected response without waiting for cancellation", async () => {
+    const memory = createMemoryTransport();
+    const consumed = vi.fn<(delivery: Promise<void>) => void>();
+    const client = createRpcClient({
+      ...memory,
+      async *recv() {
+        for await (const event of memory.recv()) {
+          yield event.type === "message" ? { ...event, consumed } : event;
+        }
+      },
+    });
+    try {
+      const response = client.call("sessions.get", { sessionId: "ses_01" });
+      const request = await waitForRequest(memory, "sessions.get");
+      memory.inject(
+        { jsonrpc: JSONRPC_VERSION, id: `${request.id}-other`, result: session },
+        undefined,
+        request.id,
+      );
+      await expect(response).rejects.toBeInstanceOf(RpcProtocolError);
+      expect(consumed).toHaveBeenCalledOnce();
+      await expect(consumed.mock.calls[0]![0]).resolves.toBeUndefined();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("reports synchronous dispatch failure through transport consumption", async () => {
+    const memory = createMemoryTransport();
+    const consumed = vi.fn((delivery: Promise<void>) => {
+      void delivery.catch(() => undefined);
+    });
+    const client = createRpcClient({
+      ...memory,
+      async *recv() {
+        for await (const event of memory.recv()) {
+          yield event.type === "message" ? { ...event, consumed } : event;
+        }
+      },
+    });
+    const failure = new Error("notification observer failed");
+    client.subscribe("notifications.runtime.event", {
+      next: vi.fn(),
+      error: () => {
+        throw failure;
+      },
+    });
+    try {
+      memory.inject(
+        { jsonrpc: JSONRPC_VERSION, method: "notifications.runtime.event", params: {} },
+        undefined,
+        "subscription",
+      );
+      await vi.waitFor(() => expect(client.closedSignal.aborted).toBe(true));
+      expect(consumed).toHaveBeenCalledOnce();
+      await expect(consumed.mock.calls[0]![0]).rejects.toBe(failure);
+    } finally {
+      await expect(client.close()).rejects.toBe(failure);
+    }
+  });
+
   it("validates an ack result and exposes it as void", async () => {
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);

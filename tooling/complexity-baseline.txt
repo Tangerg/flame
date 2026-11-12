@@ -28,7 +28,6 @@
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
 21 apps/web/vite.config.ts:name
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
-34 packages/runtime-client/src/client.ts:dispatchMessage
 22 packages/runtime-client/src/client.ts:request
 24 packages/runtime-client/src/transports/http.ts:drainStream
 29 packages/runtime-client/src/transports/http.ts:sendRequest
