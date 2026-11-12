@@ -113,7 +113,7 @@ func TestEnsureOpenBoundsTheSynchronizedDocumentSet(t *testing.T) {
 		diags:   map[string]diagSet{},
 		updated: make(chan struct{}),
 	}
-	c.conn = jsonrpc2.NewConn(
+	c.conn = newConnection(
 		t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c),
 	)
 	t.Cleanup(func() { _ = c.conn.Close() })

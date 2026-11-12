@@ -4,8 +4,6 @@ import (
 	"context"
 	"os"
 	"sync"
-
-	"github.com/sourcegraph/jsonrpc2"
 )
 
 // client is one live connection to one language-server process, scoped to one
@@ -18,7 +16,7 @@ type client struct {
 	workspace  *os.Root
 	syncPolicy documentSynchronization
 
-	conn        *jsonrpc2.Conn
+	conn        *connection
 	cancel      context.CancelFunc
 	wait        <-chan processEnd
 	stopProcess func() error

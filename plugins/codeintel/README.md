@@ -39,6 +39,9 @@ child-process retirement and retains any connection-close failure.
 Request cancellation interrupts a blocked document notification or query dispatch
 and retires that connection because an incomplete frame cannot be reused. Connection
 cleanup finishes before the request returns, retaining cancellation and close failures.
+The stdio stream owns that completion exactly once, including when the read loop
+and request cancellation close the same connection concurrently.
+Process reaping does not close the RPC pipe ends or truncate a final reply.
 Canceling only the response wait keeps the synchronized connection available.
 
 The optional installation input `lsp-servers` is a JSON array of server

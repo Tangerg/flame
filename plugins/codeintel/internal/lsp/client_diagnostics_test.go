@@ -19,7 +19,7 @@ func TestDiagnosticsRequireTheExactPublishedVersion(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "source.go")
 		uri := pathToURI(path)
 		c := &client{open: map[string]openDoc{uri: {version: 2}}, diags: map[string]diagSet{uri: {version: published, diagnostics: []Diagnostic{{Message: "original problem"}}}}, updated: make(chan struct{})}
-		c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+		c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 		t.Cleanup(func() { _ = c.conn.Close() })
 		result, err := c.diagnosticsVersion(t.Context(), path, 2, 0)
 		if published == 2 {
@@ -45,7 +45,7 @@ func TestSnapshotSynchronizationDoesNotReadThePath(t *testing.T) {
 		}
 	}()
 	c := &client{syncPolicy: documentSynchronization{OpenClose: true, Change: changeFull}, spec: ServerSpec{Languages: map[string]string{".go": "go"}}, open: map[string]openDoc{}, diags: map[string]diagSet{}, updated: make(chan struct{})}
-	c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+	c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 	t.Cleanup(func() { _ = c.conn.Close() })
 	if _, err := c.ensureContent(t.Context(), filepath.Join(t.TempDir(), "does-not-exist.go"), []byte("captured source")); err != nil {
 		t.Fatal(err)

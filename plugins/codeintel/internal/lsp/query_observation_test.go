@@ -33,7 +33,7 @@ func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.C
 		open: make(map[string]openDoc), diags: make(map[string]diagSet), updated: make(chan struct{}),
 	}
 	remote := jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(server, lspObjectCodec{}), handler)
-	c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+	c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 	t.Cleanup(func() { _ = c.close(); _ = c.conn.Close(); _ = remote.Close() })
 	return c, remote
 }

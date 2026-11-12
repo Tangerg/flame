@@ -39,7 +39,7 @@ func TestCloseDeadlineInterruptsBlockedNotification(t *testing.T) {
 					return nil
 				},
 			}
-			c.conn = jsonrpc2.NewConn(lifetime, jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+			c.conn = newConnection(lifetime, jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 			written := make(chan error, 1)
 			go func() { written <- c.conn.Notify(lifetime, "textDocument/didOpen", struct{}{}) }()
 			<-writer.started

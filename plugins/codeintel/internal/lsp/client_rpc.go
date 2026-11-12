@@ -47,8 +47,5 @@ func (c *client) send(ctx context.Context, send func() error) error {
 		return err
 	}
 	<-closed
-	if errors.Is(closeErr, jsonrpc2.ErrClosed) {
-		closeErr = nil
-	}
 	return errors.Join(err, ctx.Err(), context.Cause(ctx), closeErr)
 }

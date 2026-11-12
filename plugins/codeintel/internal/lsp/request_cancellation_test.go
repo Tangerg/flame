@@ -45,7 +45,7 @@ func TestRequestCancellationInterruptsLSPWrites(t *testing.T) {
 							syncPolicy: documentSynchronization{OpenClose: true, Change: changeFull},
 							open:       map[string]openDoc{},
 						}
-						c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+						c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 						defer c.conn.Close()
 						cause := errors.New("query abandoned")
 						ctx, cancel := context.WithCancelCause(t.Context())
@@ -97,7 +97,7 @@ func TestResponseCancellationKeepsLSPConnectionUsable(t *testing.T) {
 		defer agent.Close()
 		defer server.Close()
 		c := &client{}
-		c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+		c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 		defer c.conn.Close()
 		stream := jsonrpc2.NewBufferedStream(server, lspObjectCodec{})
 		received := make(chan struct{})
@@ -162,7 +162,7 @@ func TestAlreadyCanceledRequestDoesNotWriteOrCloseLSPConnection(t *testing.T) {
 		defer server.Close()
 		writer := &blockedNotificationConn{Conn: agent, started: make(chan struct{})}
 		c := &client{}
-		c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+		c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
 		defer c.conn.Close()
 		ctx, cancel := context.WithCancelCause(t.Context())
 		cause := errors.New("query canceled before dispatch")
@@ -178,4 +178,60 @@ func TestAlreadyCanceledRequestDoesNotWriteOrCloseLSPConnection(t *testing.T) {
 		default:
 		}
 	})
+}
+
+func TestCanceledDispatchJoinsConcurrentConnectionCleanup(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		agent, server := net.Pipe()
+		closeFailure := errors.New("stdio cleanup failed")
+		writer := &stagedCloseConn{
+			blockedNotificationConn: &blockedNotificationConn{Conn: agent, started: make(chan struct{}), closeErr: closeFailure},
+			closing:                 make(chan struct{}),
+			releaseIO:               make(chan struct{}),
+			releaseCleanup:          make(chan struct{}),
+		}
+		unblockIO := sync.OnceFunc(func() { close(writer.releaseIO) })
+		finishCleanup := sync.OnceFunc(func() { close(writer.releaseCleanup) })
+		c := &client{}
+		c.conn = newConnection(t.Context(), jsonrpc2.NewBufferedStream(writer, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
+		defer func() {
+			unblockIO()
+			finishCleanup()
+			c.conn.Close()
+			server.Close()
+		}()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		result := make(chan error, 1)
+		go func() { _, err := c.workspaceSymbols(ctx, "Widget"); result <- err }()
+		<-writer.started
+		closing := make(chan error, 1)
+		go func() { closing <- c.conn.Close() }()
+		<-writer.closing
+		cancel()
+		unblockIO()
+		finishCleanup()
+		requestErr := <-result
+		if !errors.Is(requestErr, context.Canceled) || !errors.Is(requestErr, closeFailure) {
+			t.Errorf("request lost cancellation or physical cleanup failure: %v", requestErr)
+		}
+		if err := <-closing; !errors.Is(err, closeFailure) {
+			t.Fatalf("concurrent close lost its physical cleanup failure: %v", err)
+		}
+	})
+}
+
+type stagedCloseConn struct {
+	*blockedNotificationConn
+	closing        chan struct{}
+	releaseIO      chan struct{}
+	releaseCleanup chan struct{}
+}
+
+func (c *stagedCloseConn) Close() error {
+	close(c.closing)
+	<-c.releaseIO
+	err := c.blockedNotificationConn.Close()
+	<-c.releaseCleanup
+	return err
 }

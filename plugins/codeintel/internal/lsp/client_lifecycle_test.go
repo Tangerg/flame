@@ -24,16 +24,17 @@ func TestPipeRWCCloseJoinsBothPipeErrors(t *testing.T) {
 	}
 }
 
-func TestCloseUnstartedPipesClosesPartialSetupAndPreservesErrors(t *testing.T) {
+func TestCloseUnstartedPipesPreservesLaunchAndCleanupErrors(t *testing.T) {
 	cause := errors.New("start failed")
+	writeErr := errors.New("close stdin")
 	readErr := errors.New("close stdout")
 	stdout := &trackedReadCloser{err: readErr}
 
-	err := closeUnstartedPipes("test-lsp", &pipeRWC{out: stdout}, cause)
+	err := closeUnstartedPipes("test-lsp", &pipeRWC{in: failingWriteCloser{err: writeErr}, out: stdout}, cause)
 	if !stdout.closed {
 		t.Fatal("stdout pipe was not closed")
 	}
-	if !errors.Is(err, cause) || !errors.Is(err, readErr) {
+	if !errors.Is(err, cause) || !errors.Is(err, readErr) || !errors.Is(err, writeErr) {
 		t.Fatalf("closeUnstartedPipes error = %v, want launch and cleanup errors", err)
 	}
 }

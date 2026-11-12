@@ -22,7 +22,7 @@ func TestDocumentAdmissionRequiresConfirmedCapacity(t *testing.T) {
 				open:       map[string]openDoc{},
 				diags:      map[string]diagSet{},
 			}
-			c.conn = jsonrpc2.NewConn(t.Context(), stream, jsonrpc2.AsyncHandler(c))
+			c.conn = newConnection(t.Context(), stream, jsonrpc2.AsyncHandler(c))
 			t.Cleanup(func() { _ = c.conn.Close() })
 			directory := t.TempDir()
 			for index := range maxOpenDocuments {
