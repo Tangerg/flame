@@ -473,12 +473,20 @@ describe("mutation journal", () => {
         "fixed-key",
       ),
     ).toThrow(MutationJournalOwnershipError);
+    // Retained storage owns capacity, including records without active claims.
     for (let index = 1; index < 256; index++) {
-      current.reserve(`runs.command.${index}`, { index });
+      const prepared = new MemoryStorage();
+      const producer = journal(prepared);
+      producer.reserve(`runs.command.${index}`, { index });
+      producer.dispose();
+      for (const key of prepared.keys()) storage.set(key, prepared.get(key));
     }
+    expect(storage.keys()).toHaveLength(256);
+    const retained = storage.keys().map((key) => [key, storage.get(key)]);
     expect(() => current.reserve("runs.command.overflow", {})).toThrow(
       MutationJournalCapacityError,
     );
+    expect(storage.keys().map((key) => [key, storage.get(key)])).toEqual(retained);
   });
 
   it("surfaces cleanup failure without losing the retryable durable identity", async () => {
