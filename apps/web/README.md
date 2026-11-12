@@ -215,6 +215,10 @@ action only while that action still owns focus.
 File and command suggestions dismiss on Shift+Tab without accepting a value,
 letting the browser return to the preceding control with the draft intact.
 
+File suggestions show the filename above its complete wrapping parent directory
+before insertion. Literal path text keeps directory then filename in DOM order,
+with the exact path in the accessible name, hover title and accepted reference.
+
 Regeneration keeps rollback and follow-up admission under one captured Agent
 command lease. Only a committed rollback with Runtime's original dropped input
 can submit another Run in that Session. Missing targets, unavailable checkpoints,

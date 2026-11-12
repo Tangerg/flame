@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, weight } from "@flame/ui/tokens.stylex";
+import { color, leading, space, weight } from "@flame/ui/tokens.stylex";
 export const suggestionStyles = stylex.create({
   panel: {
     display: "flex",
@@ -38,7 +38,12 @@ export const suggestionStyles = stylex.create({
     fontWeight: weight.medium,
     color: color.accentText,
   },
-  path: { display: "flex" },
-  directory: { color: color.fgFaint },
+  path: {
+    display: "flex",
+    flexDirection: "column-reverse",
+    gap: space.s0_5,
+    lineHeight: leading.snug,
+  },
+  directory: { color: color.fgFaint, whiteSpace: "normal", overflowWrap: "anywhere" },
   name: { maxWidth: "100%", fontWeight: weight.medium, color: color.fg },
 });

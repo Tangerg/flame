@@ -98,9 +98,7 @@ export function FileMentionPopup({ mentions, anchor, retryRef, onReturnFocus }: 
               className={stylex.props(vocab.hold, vocab.muted).className}
             />
             <span {...stylex.props(vocab.min, face.mono, suggestionStyles.path)}>
-              <span {...stylex.props(vocab.min, vocab.truncate, suggestionStyles.directory)}>
-                {dir}
-              </span>
+              <span {...stylex.props(vocab.min, suggestionStyles.directory)}>{dir}</span>
               <span {...stylex.props(vocab.truncate, vocab.hold, suggestionStyles.name)}>
                 {name}
               </span>

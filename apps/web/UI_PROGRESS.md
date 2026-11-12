@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; the subsequent Session-search display change passes 6 files / 40 focused tests and both native profiles. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. The latest native pointer-acceptance focus observation requires a separate baseline comparison; keyboard acceptance and continuation pass. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -4367,6 +4367,75 @@ only the ten authored source paths change. The primary checkout and native input
 remain unchanged. No functional checks run after output restoration. Four
 original desktop images are retained outside the repository; temporary evidence
 is archived before the private qualification root is retired.
+
+#### Complete same-basename file directories (2026-11-13)
+
+The earlier basename repair remains intact. A new default-zoom native baseline
+shows a separate identity gap: two `store.go` candidates with the same long
+directory prefix render identically, including after Down selects the second.
+The differing `Alpha/` and `Beta/` parents are hidden by the directory ellipsis;
+the full paths already remain in data and the accessible name.
+
+`FileMentionPopup.tsx` now presents the basename above its complete wrapping
+parent directory through the existing `suggestionStyles.ts`. Literal DOM text
+retains directory then basename order. The ordinary basename stays complete and
+an oversized basename remains bounded. Every row reserves its own full directory
+before selection, avoiding selection-dependent reflow. The local `leading.snug`
+token keeps a short two-line row at a source-derived **58.6 px** at 18 px,
+including its gap and padding, within the existing 60 px short-list contract;
+this is a source calculation, not a new browser measurement. Existing query,
+selection, list-resize reveal, acceptance and focus owners are unchanged.
+Read-only ZCode file identity and Better Layout, Typography and Accessibility
+inform the hierarchy. A bounded subagent implements the display candidate;
+primary review adds the compact existing line-height token and owns qualification.
+
+Verification passes **7 files / 98 focused tests in 8.90 s** for file mentions,
+suggestions, draft context, Composer state, input controller and installed Agent
+commands. Web typecheck, lint, complete formatting, layers, design-system,
+chrome and staged plugin-module checks pass. `make check-native` passes in
+**20.14 s**, including production staging and Desktop test/vet/build. The normal
+Lab build passes with **484 assets**. No tests are added for this display-only
+change. The latest complete frontend baseline remains **434 files / 4,900 tests**
+from the message-menu batch; it is not rerun here. Browser visual suites,
+performance benchmarks and additional zoom tests are not run.
+
+The private comparison changes only the first two existing Agent file facts to
+the same basename beneath a long shared mixed-language directory, ending in
+`Alpha/` and `Beta/`. Both old and new hosts use that identical captured input
+(SHA-256 `ec506bf932fdafa43089374cccd33e07f734a1f3c6d31320c30360083e8e2fd5`).
+The exact two literal replacements affect no event, provider, transport, observer
+or controller. Each private 484-asset build retains its corresponding normal CSS;
+the changed CSS is expected. The copied host changes only its initial loopback
+Lab URL. All **46 native inputs**, **20 published resources** and the original
+fixture installer remain unchanged.
+
+Actual signed Wails **v3.1.0** qualifies English/light/14 px/Orange/full motion
+and Chinese/dark/18 px/**#3B82F6**/motion off at default zoom in an ordinary
+**1120 pt** native Left window. Both complete directories and basenames are
+visible before insertion. Escape preserves the exact padded Unicode draft and
+Composer focus; immediate typing appends ` verified`. Reopening, selecting Beta
+and Tab insert the exact Beta path and a trailing space, close the picker and
+allow immediate `continued` in the same Composer. The AX tree exposes the first
+Alpha row only; Beta's visual highlight and exact accepted text qualify its
+selection without claiming an exposed second AX option.
+
+Chinese native clicking of the first path inserts the correct Alpha reference
+and chip, but leaves HTML focused and the picker open with three candidates.
+Cmd+L closes it and permits exact continuation. Automatic pointer focus return
+is **not passed**. The unchanged focus/caret owner can explain the observation,
+but its cause and physical-pointer equivalence are not established. Next compare
+an unmodified native baseline and actual coordinate pointer before changing that
+owner; do not classify this single observation as a new layout regression or a
+CUA defect. No Send, live filesystem lookup, Runtime mutation, OS IME or VoiceOver
+speech is qualified.
+
+All three native processes and both owned servers join with exit **0**; both
+ports close. Three private registrations are removed, six created Library trees
+are removed and all eighteen private Library paths are absent. Eleven created
+output/cache roots are removed, returning all thirteen output/cache targets
+to their initially absent state. All **6,876 tracked files** match the qualified
+source map before documentation updates. The owned QA root is deleted last after
+retaining the proof in session memory. No functional check runs after cleanup.
 
 The content/Dock qualification uses the existing Code reading task. Chromium and
 WebKit follow English/light/14 px/Orange with full application and system motion,
