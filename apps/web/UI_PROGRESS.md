@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -25404,6 +25404,140 @@ is required. Delivery integrates only the qualified owned paths into main.
 Next inspect a fresh content/Dock task gap from current native evidence; do not
 repeat the resolved literal-body, identity-order or keyboard-resize investigation.
 
+### Trajectory page and failure continuity across display languages (2026-11-13)
+
+Changing the display language now keeps the accepted page, captured descendant
+scope, local type/Run/text filters and expanded records. A pending page read uses
+its original signal and accepts into the current language without taking a later
+focus choice. Failure guidance and the missing-cause fallback follow the current
+language; original error text preserves its hard line breaks and indentation.
+Explicit Refresh still reads the accepted cursor and captured scope.
+
+The actual Wails baseline exposed two defects. After reading the second private
+page and expanding `run_root`, ordinary Settings/Appearance entry and return
+preserved the page and failure. Changing English to Chinese instead returned to
+page 1, removed failed-read feedback and lost the opened record. The existing
+paragraph also collapsed the two-line cause into ordinary whitespace.
+
+The component's `load` depended on the complete context wrapper and translator.
+The installed host legitimately replaces that wrapper for a locale projection
+while retaining the same Runtime, tracking function, target and signal; the SDK
+README already documents that contract. `load` now captures those actual read
+dependencies. A tagged cause distinguishes a missing error cause from no error,
+and the current render supplies translated guidance/fallback through shared
+`RecordBody` inside the existing alert boundary. Controllers, capability discovery,
+accepted cursor state, arrival-focus checks, filters and explicit-read-start
+feedback clearing retain their existing behavior. `RenameSession` and the command
+tail remain byte-identical. No SDK, Host, token, locale catalog or shared primitive
+change is needed.
+
+The README now describes that existing read-start behavior precisely. Its earlier
+"until success" wording came from the Clear filters change, which did not alter
+read-start clearing; local filtering and display changes must retain failure
+feedback, while starting an explicit read clears it and retains the accepted page.
+This batch introduces no additional pending-error policy.
+
+The existing navigation contract that treated a context clone as a new lifetime
+now retires the original owner and supplies a real successor signal/tracking
+function. All its cancellation, rediscovery, cursor, late-result and focus checks
+remain. Four added cases cover accepted-page identity/filter/disclosure retention,
+a held navigation's original signal and later focus, literal multiline failure,
+and a missing cause localized after display change. Deferred replies are released
+and owners aborted in `finally`.
+
+The frozen original fails **4** cases while **17** pass (**21 total, 5.48 seconds**).
+Two failing error cases also emit unsuppressed Tooltip `act` warnings. The final
+four-file frontend check passes without those warnings; no warning is hidden and
+no check is weakened. The component, exact-evidence, recorded-presentation and
+installed-module boundary retain their existing assertions.
+
+Read-only reference findings above remain applicable: ZCode's trajectory panes
+keep captured object identity beside explicit refresh, ChatGPT's actual details
+code supports progressive evidence, and controlled HeroUI pagination supplies
+position without inventing opaque-cursor totals. Better-series accessibility,
+layout, writing and typography guidance supports retained reading and literal
+causes. Flame keeps its existing Base UI/StyleX components, semantic tokens,
+default Orange and custom-color ownership.
+
+Serial checks pass before integration: plugin publisher reproduction; the four
+frontend files (**150 tests, 9.39 seconds**); full plugin check (**47 script
+checks, 652 source tests in 44 files, 17 skipped in 2 files**); Web type, lint,
+format, layers and design checks; `make check-native` (**19.39 seconds**) and
+normal Lab build (**484 assets**). The regenerated published Trajectory ESM is
+`371c0e5d97478a1045c1022a6e679713163714ef4a5854cb13a21e48055407f1`.
+The other 19 publisher resources, eight Trajectory catalogs, ten captured fixture
+and host facts, and 46 native inputs remain unchanged. Shared CSS remains
+`35737aae9b45da21f75fc4bcd6a7ff33c764b9c49fe41781bd57a00d4e78cd89`.
+
+Main advanced with independent CodeIntel cancellation and Runtime client response
+consumption commits (`575e54d88`, `ee7db3704`). The first integration guard stops
+before mutation when that captured tip changes. Both incoming commits are then
+fast-forwarded into the isolated branch without touching the primary checkout.
+Because the client enters the Web bundle, all preceding gates are rerun on the
+integrated tree. Runtime client check additionally passes **476 tests / 36 files**
+and its type/lint/format/unused checks (**8.26 seconds**); frontend again passes
+**150 / 4**, without `act` warnings (**8.69 seconds**). Full plugin check passes
+again (**52.39 seconds**), every Web gate passes, native passes (**26.42 seconds**),
+and the normal Lab still builds **484 assets**. Source/resource/CSS fences hold.
+
+Native baseline and candidate use the same private, read-only transport seam:
+the existing captured trajectory is divided into two records, two records, then
+the remainder; only the third recognized Session page read receives the fixed
+multiline refusal. The baseline, candidate and integrated seam hash is
+`45a77ab7fa7090679701adbc15523af8d42dc4eeb8c17b518391cb36e4c2c3e9`.
+The canonical fixture installer already imports the published ESM, so it requires
+no import replacement. The temporary transport is restored byte-for-byte before
+checks/publication. Every private 484-asset capture and copied native host input
+is fenced. The Wails 3.1.0/Go 1.27.3 production host uses the current frozen SDK,
+read-only module manifests and the repository's macOS 13.0 policy.
+
+- English/light/14 px/Flame `#FB6E30`/default motion and Chinese/dark/18 px/custom
+  `#3B82F6`/motion off are verified through actual Appearance controls. Both use
+  default zoom, native Left-half resizing (**1120 pt** minimum) and the keyboard
+  Dock divider's **320 px** minimum.
+- Both read page 2, choose Runs and `run_root`, enter query `run_root`, expand the
+  original Run and encounter the third-read refusal. Full language round trips
+  preserve **1 of 2** on page 2, type/Run/text filters, the same expanded record,
+  stale-page guidance and exact raw cause. App guidance updates with language.
+  Screenshots and AX preserve the hard newline and two-space indentation before
+  `source: captured cursor read` in the existing readable body.
+- Native wheel moves the long recorded evidence while the Dock's controls,
+  workspace navigation and conversation remain available. Search → Tab Clear
+  filter → Tab Refresh → Enter accepts the same second page, removes only the
+  failed-read feedback/stale guidance and retains filters/disclosure; Refresh
+  keeps focus. Cmd+L then inserts at the retained middle Composer caret, yielding
+  `Keep verified this Trajectory reading draft.` and
+  `Keep verified this dark Trajectory draft.`. Neither draft is sent.
+- After integrating the new Runtime client, a separately rebuilt signed native
+  host repeats the Chinese/dark/18 px/custom-blue/off language round trip,
+  second-page failure, open Run, query, ordinary resize and keyboard recovery.
+  It retains both page records and finishes with exact middle-caret draft
+  `Keep verified this integrated Trajectory draft.`.
+
+Held-read signal/focus and captured descendant/cursor equality are regression
+contracts above. Native acceptance qualifies the isolated presentation and read
+recovery; it does not qualify live server pagination, chronological cursor
+creation, Runtime execution, package installation, export, credentials or Send.
+No browser visual suite, performance benchmark, extra zoom, physical IME,
+clipboard or VoiceOver claim is added. **Approve** the inspected page, literal
+failure and reading-return scope; no HIGH finding remains in that scope.
+
+Cleanup removes the four exact app registrations, eight created Library trees,
+and all **24** identity paths. Four native processes and three owned servers exit
+**0**. Thirteen created output/cache roots are removed; all **13** baseline roots
+are absent. The private QA root is removed after final source/resource/native,
+captured-fixture and asset fencing. Dependencies, commit hooks, user data and
+read-only references remain. No protocol or persisted-data migration is needed;
+installed packages still require their normal resource rebuild/reinstall to use
+new publisher bytes. Whole-product visual acceptance remains open.
+
+A bounded source follow-up confirms that installation drafts already retain
+category/search navigation and intentionally reset when Settings closes or its
+Runtime operation generation changes. Their existing source and native receipts
+remain valid. Next native-check the remaining same-open Settings language-change
+coverage before proposing any installation repair. Previously qualified Trajectory
+identity/provenance, cursor, evidence and keyboard-resize work remains complete.
+
 ### Run and Trajectory native reading review after main (2026-11-05)
 
 The task is an existing conversation draft → page-local recorded observations →
@@ -39439,11 +39573,11 @@ absent. The private Hooks QA root is removed after source/resource/asset fencing
 All **20** accepted publisher resources, eight Hooks locales, ten captured/host
 facts and 46 native inputs retain their qualified hashes. No migration is needed.
 
-Next trace Trajectory page/cursor continuity across display changes. Its broad
-read dependencies and a context-clone reset expectation need a native comparison
-against the current captured-source contract. Preserve accepted ranges, captured
-descendant scope, details and real source retirement. Recorded identity/provenance
-work is already complete; whole-product visual acceptance remains open.
+The Trajectory display-change follow-up is resolved in “Trajectory page and
+failure continuity across display languages (2026-11-13).” Accepted ranges,
+captured descendant scope, details and real source retirement are qualified.
+Recorded identity/provenance work remains complete; whole-product visual
+acceptance remains open.
 
 ### Project trust context during keyboard reading (2026-11-05)
 
@@ -47657,9 +47791,12 @@ and cleanup evidence. It is **1,751,354 bytes**, SHA-256:
 `c03f56c4b6ceefc62a343556c1ea54626741e555e677bf8df658a47f0b14b80a`.
 
 **Approve** the inspected paired reading and return flow. No HIGH finding remains
-in that scope. This is not a whole-product award-tier claim. Next trace the
-supplied review's plugin installation draft retention and Run receipt navigation
-against current owners before selecting a repair.
+in that scope. This is not a whole-product award-tier claim. The installation
+draft follow-up is reconciled with the completed “Unfinished settings tasks and
+native return continuity” qualification; current source preserves the same
+ownership. Only same-open Settings language-change coverage needs a new native
+check. Inspect Run receipt navigation against current owners before selecting a
+repair.
 
 ## Working and maintenance practice
 

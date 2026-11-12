@@ -153,7 +153,22 @@ async function mountTrajectory() {
   await waitFor(() => expect(trajectory).toHaveBeenCalledOnce());
   await act(async () => initial.resolve(FIRST));
   await screen.findByText("Page 1 · 2 records");
-  return { ...view, context, discover, trajectory, hold };
+  return {
+    ...view,
+    context,
+    discover,
+    trajectory,
+    hold,
+    retire: () => owner.abort(),
+    changeLocale(locale: string) {
+      view.rerender(
+        <>
+          <button>Outside action</button>
+          <Trajectory context={Object.freeze({ ...context, locale })} />
+        </>,
+      );
+    },
+  };
 }
 
 function query(trajectory: { mock: { calls: unknown[][] } }, call: number) {
@@ -281,6 +296,184 @@ it("refreshes the accepted older page with its own cursor, scope, filters and co
   expect(newer().matches(":disabled")).toBe(false);
 });
 
+it("keeps the accepted older page, filters and open details across display locales", async () => {
+  const { discover, trajectory, hold, changeLocale, retire } = await mountTrajectory();
+  const toSecond = hold();
+  const reread = hold();
+  try {
+    await activate(older(), trajectory, 2);
+    await act(async () => toSecond.resolve(SECOND));
+    fireEvent.click(screen.getByRole("combobox", { name: "Observation type" }));
+    const runs = await screen.findByRole("option", { name: "Runs" });
+    fireEvent.pointerDown(runs, { pointerType: "mouse" });
+    fireEvent.click(runs);
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    await chooseRun(RUN_ID);
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+    fireEvent.change(search, { target: { value: RUN_ID } });
+    const accepted = records();
+    expect(accepted).toHaveLength(1);
+    const acceptedSummary = summary();
+    const opened = screen.getByRole("button", { name: /^Run · / });
+    fireEvent.click(opened);
+    act(() => search.focus());
+
+    await act(async () => changeLocale("zh"));
+
+    expect(trajectory).toHaveBeenCalledTimes(2);
+    expect(discover).toHaveBeenCalledOnce();
+    expect(within(acceptedSummary).getByText("第 2 页 · 1 / 2 条记录")).toBeTruthy();
+    expect(records()).toEqual(accepted);
+    expect(screen.getByRole("searchbox", { name: "筛选此页" })).toBe(search);
+    expect(search.value).toBe(RUN_ID);
+    expect(screen.getByRole("combobox", { name: "观测类型" }).textContent).toBe("运行");
+    expect(screen.getByRole("combobox", { name: "运行筛选器" }).textContent).toBe(RUN_ID);
+    expect(screen.getByRole("button", { name: /^运行 · / })).toBe(opened);
+    expect(opened.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(search);
+
+    const control = screen.getByRole<HTMLButtonElement>("button", { name: "刷新" });
+    act(() => control.focus());
+    await act(async () => fireEvent.click(control));
+    expect(trajectory).toHaveBeenCalledTimes(3);
+    expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
+    expect(query(trajectory, 3)).toEqual({
+      sessionId: VISUAL_SESSION_ID,
+      includeDescendants: true,
+      cursor: FIRST.nextCursor,
+      limit: 100,
+    });
+    expect(discover).toHaveBeenCalledOnce();
+    await act(async () => reread.resolve(SECOND));
+    expect(within(acceptedSummary).getByText("第 2 页 · 1 / 2 条记录")).toBeTruthy();
+    expect(records()).toEqual(accepted);
+    expect(opened.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(control);
+  } finally {
+    await act(async () => {
+      retire();
+      toSecond.resolve(SECOND);
+      reread.resolve(SECOND);
+    });
+  }
+});
+
+it("accepts a held navigation in the current locale without replacing its signal or later focus", async () => {
+  const { discover, trajectory, hold, changeLocale, retire } = await mountTrajectory();
+  const toSecond = hold();
+  try {
+    await activate(older(), trajectory, 2);
+    const originalSignal = signalOf(trajectory, 2);
+    const acceptedSummary = summary();
+    const outside = screen.getByRole("button", { name: "Outside action" });
+    act(() => outside.focus());
+
+    await act(async () => changeLocale("zh"));
+
+    expect(originalSignal.aborted).toBe(false);
+    expect(trajectory).toHaveBeenCalledTimes(2);
+    expect(discover).toHaveBeenCalledOnce();
+    expect(screen.getByText("正在读取已记录的观测…")).toBeTruthy();
+    expect(within(acceptedSummary).getByText("第 1 页 · 2 条记录")).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+    await act(async () => toSecond.resolve(SECOND));
+    expect(within(acceptedSummary).getByText("第 2 页 · 2 条记录")).toBeTruthy();
+    expect(records()).toHaveLength(2);
+    expect(query(trajectory, 2)).toEqual({
+      sessionId: VISUAL_SESSION_ID,
+      includeDescendants: true,
+      cursor: FIRST.nextCursor,
+      limit: 100,
+    });
+    expect(trajectory).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("正在读取已记录的观测…")).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  } finally {
+    await act(async () => {
+      retire();
+      toSecond.resolve(SECOND);
+    });
+  }
+});
+
+it.each([
+  {
+    name: "literal multiline cause",
+    cause: new Error("trajectory read refused\n  原始原因: store unavailable"),
+    english: "trajectory read refused\n  原始原因: store unavailable",
+    chinese: "trajectory read refused\n  原始原因: store unavailable",
+  },
+  {
+    name: "current-language fallback",
+    cause: undefined,
+    english: "Recorded observations could not be read.",
+    chinese: "无法读取已记录的观测。",
+  },
+])(
+  "retains the failed accepted page across display locales with $name",
+  async ({ cause, english, chinese }) => {
+    const { discover, trajectory, hold, changeLocale, retire } = await mountTrajectory();
+    const toSecond = hold();
+    const failed = hold();
+    const reread = hold();
+    try {
+      await activate(older(), trajectory, 2);
+      await act(async () => toSecond.resolve(SECOND));
+      await chooseRun(RUN_ID);
+      const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+      fireEvent.change(search, { target: { value: RUN_ID } });
+      const accepted = records();
+      const acceptedSummary = summary();
+      const opened = screen.getByRole("button", { name: /^Run · / });
+      fireEvent.click(opened);
+      await activate(refresh(), trajectory, 3);
+      await act(async () => failed.reject(cause));
+      expect(screen.getByRole("alert").textContent).toBe(
+        `The requested page could not be read: ${english}`,
+      );
+      expect(within(acceptedSummary).getByText("Showing the last accepted page.")).toBeTruthy();
+      const outside = screen.getByRole("button", { name: "Outside action" });
+      act(() => outside.focus());
+
+      await act(async () => changeLocale("zh"));
+
+      expect(trajectory).toHaveBeenCalledTimes(3);
+      expect(discover).toHaveBeenCalledOnce();
+      expect(screen.getByRole("alert").textContent).toBe(`无法读取请求的页面：${chinese}`);
+      expect(within(acceptedSummary).getByText("第 2 页 · 2 条记录")).toBeTruthy();
+      expect(within(acceptedSummary).getByText("显示上次接受的页面。")).toBeTruthy();
+      expect(records()).toEqual(accepted);
+      expect(screen.getByRole("searchbox", { name: "筛选此页" })).toBe(search);
+      expect(search.value).toBe(RUN_ID);
+      expect(screen.getByRole("combobox", { name: "运行筛选器" }).textContent).toBe(RUN_ID);
+      expect(screen.getByRole("button", { name: /^运行 · / })).toBe(opened);
+      expect(opened.getAttribute("aria-expanded")).toBe("true");
+      expect(document.activeElement).toBe(outside);
+
+      const control = screen.getByRole<HTMLButtonElement>("button", { name: "刷新" });
+      act(() => control.focus());
+      await act(async () => fireEvent.click(control));
+      expect(query(trajectory, 4)).toEqual(query(trajectory, 2));
+      expect(discover).toHaveBeenCalledOnce();
+      await act(async () => reread.resolve(SECOND));
+      expect(trajectory).toHaveBeenCalledTimes(4);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(within(acceptedSummary).queryByText("显示上次接受的页面。")).toBeNull();
+      expect(within(acceptedSummary).getByText("第 2 页 · 2 条记录")).toBeTruthy();
+      expect(records()).toEqual(accepted);
+      expect(opened.getAttribute("aria-expanded")).toBe("true");
+      expect(document.activeElement).toBe(control);
+    } finally {
+      await act(async () => {
+        retire();
+        toSecond.resolve(SECOND);
+        failed.resolve(SECOND);
+        reread.resolve(SECOND);
+      });
+    }
+  },
+);
+
 it("retains the previous accepted page on failure and retries from the proper controls", async () => {
   const { trajectory, hold } = await mountTrajectory();
   const firstRecords = records();
@@ -371,27 +564,41 @@ it("leaves a later outside or filter focus choice when navigation completes", as
   expect(document.activeElement).toBe(outside);
 });
 
-it("retires a navigation superseded by a new context without taking the page or focus", async () => {
-  const { context, discover, trajectory, hold, rerender } = await mountTrajectory();
+it("retires a navigation superseded by a new captured lifetime without taking the page or focus", async () => {
+  const { context, discover, trajectory, hold, rerender, retire } = await mountTrajectory();
   const toSecond = hold();
-  await activate(older(), trajectory, 2);
   const restarted = hold();
-  rerender(
-    <>
-      <button>Outside action</button>
-      <Trajectory context={{ ...context }} />
-    </>,
-  );
-  await waitFor(() => expect(trajectory).toHaveBeenCalledTimes(3));
-  expect(signalOf(trajectory, 2).aborted).toBe(true);
-  expect(discover).toHaveBeenCalledTimes(2);
-  expect(query(trajectory, 3)).toEqual(query(trajectory, 1));
-  await act(async () => toSecond.resolve(SECOND));
-  expect(pageScope().textContent).toBe("Page 1 · 2 records");
-  await act(async () => restarted.resolve(FIRST));
-  await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
-  expect(pageScope().textContent).toBe("Page 1 · 2 records");
-  expect(document.activeElement).toBe(older());
+  const successor = new AbortController();
+  const track: ComponentContext["track"] = (operation) => operation(successor.signal);
+  try {
+    await activate(older(), trajectory, 2);
+    await act(async () => {
+      retire();
+      rerender(
+        <>
+          <button>Outside action</button>
+          <Trajectory context={Object.freeze({ ...context, signal: successor.signal, track })} />
+        </>,
+      );
+    });
+    await waitFor(() => expect(trajectory).toHaveBeenCalledTimes(3));
+    expect(signalOf(trajectory, 2).aborted).toBe(true);
+    expect(discover).toHaveBeenCalledTimes(2);
+    expect(query(trajectory, 3)).toEqual(query(trajectory, 1));
+    await act(async () => toSecond.resolve(SECOND));
+    expect(pageScope().textContent).toBe("Page 1 · 2 records");
+    await act(async () => restarted.resolve(FIRST));
+    await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
+    expect(pageScope().textContent).toBe("Page 1 · 2 records");
+    expect(document.activeElement).toBe(older());
+  } finally {
+    await act(async () => {
+      retire();
+      successor.abort();
+      toSecond.resolve(SECOND);
+      restarted.resolve(FIRST);
+    });
+  }
 });
 
 it("aborts a pending read on unmount and ignores its late result", async () => {

@@ -99,11 +99,20 @@ updates the summary only after acceptance and moves reading focus there while
 the initiating action still owns it. Failed reads retain the accepted page and
 leave their action available for retry; later focus choices remain authoritative.
 Filters and counts apply to that page, without implying a total page count.
+Display-language changes preserve accepted and pending reads, their captured
+scope, filters and expanded records. Actual Runtime, tracking function,
+cancellation signal or Session replacement retires the previous read. App-owned
+failure guidance and the missing-cause fallback follow the current language;
+original causes retain their literal line breaks and indentation through the
+shared RecordBody.
+
 An empty result offers Clear filters for the active text, type and Run selection.
 That local action restores the search field's focus and keeps the accepted page,
-cursor and descendant scope without rereading. A failed read and accepted-page
-warning remain until the existing read owner succeeds. Empty pages are described
-as pages rather than implying that the whole Session has no records.
+cursor and descendant scope without rereading. Local filter and display-language
+changes leave failed-read feedback and its accepted-page warning intact. Starting
+an explicit read clears that previous feedback while retaining the accepted page.
+Empty pages are described as pages rather than implying that the whole Session
+has no records.
 An explicit Run filter survives page changes and refreshes, including pages
 without that Run. Its current selection stays available in the control; an
 empty match does not silently widen the scope to All Runs.

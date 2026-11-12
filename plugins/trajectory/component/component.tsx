@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -33,6 +32,7 @@ import {
   FormSection,
   FormActions,
   Metadata,
+  RecordBody,
   SearchField,
   FilterBar,
   Select,
@@ -51,19 +51,17 @@ type AcceptedPage = {
 type Read = {
   loading: boolean;
   accepted?: AcceptedPage;
-  error?: string;
+  error?: { cause: unknown };
 };
 
 export function Trajectory({ context }: { context: ComponentContext }) {
+  const { runtime, track, signal: componentSignal, sessionId } = context;
+  if (!sessionId)
+    throw new Error("Session trajectory requires a Session context");
   const t = useTranslator(catalogs, context.locale);
   const [kind, setKind] = useState("all");
   const [run, setRun] = useState("all");
   const [search, setSearch] = useState("");
-  const sessionId = useMemo(() => {
-    if (!context.sessionId)
-      throw new Error("Session trajectory requires a Session context");
-    return context.sessionId;
-  }, [context]);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const arrival = useRef<HTMLElement>(undefined);
@@ -79,21 +77,18 @@ export function Trajectory({ context }: { context: ComponentContext }) {
       arrival.current = undefined;
       const controller = new AbortController();
       reading.current = controller;
-      const signal = AbortSignal.any([context.signal, controller.signal]);
+      const signal = AbortSignal.any([componentSignal, controller.signal]);
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const includeDescendants =
           capturedDescendants ??
           Boolean(
-            (
-              await context.track(() =>
-                context.runtime.runtime.discover(signal),
-              )
-            ).capabilities.features?.childRuns?.enabled,
+            (await track(() => runtime.runtime.discover(signal))).capabilities
+              .features?.childRuns?.enabled,
           );
         signal.throwIfAborted();
-        const page = await context.track(() =>
-          context.runtime.sessions.trajectory(
+        const page = await track(() =>
+          runtime.sessions.trajectory(
             {
               sessionId,
               ...(includeDescendants ? { includeDescendants: true } : {}),
@@ -115,11 +110,11 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           setRead((previous) => ({
             ...previous,
             loading: false,
-            error: failureText(error, t("read.failed")),
+            error: { cause: error },
           }));
       }
     },
-    [context, sessionId, t],
+    [runtime, track, componentSignal, sessionId],
   );
   useEffect(() => {
     void load();
@@ -217,7 +212,13 @@ export function Trajectory({ context }: { context: ComponentContext }) {
     >
       {read.loading && <p role="status">{t("status.reading")}</p>}
       {read.error && (
-        <p role="alert">{t("status.error", { error: read.error })}</p>
+        <div role="alert">
+          <RecordBody>
+            {t("status.error", {
+              error: failureText(read.error.cause, t("read.failed")),
+            })}
+          </RecordBody>
+        </div>
       )}
       {accepted && (
         <>
