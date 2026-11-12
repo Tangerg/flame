@@ -33063,6 +33063,77 @@ flags are unchanged.
 
 ### Native footnote reading and return
 
+#### Delegated readers in Dock and main (2026-11-13)
+
+The delegated-host exclusion below is now qualified on `034311a2b`. This is an
+acceptance-only follow-up: the real Subagents reader, Markdown renderer, local
+anchors, inspection return owners and theme styles need no change. A bounded
+read-only subagent identifies the gap; the primary agent checks source, native
+behavior and publication. Better-accessibility/layout favor the existing native
+link path. Reinspection of ZCode's actual
+`packages/ui/src/v4/ConversationAgentToolCallRow.tsx` confirms its explicit
+root/parent/child and visible-title handoff; it supplies identity context, not
+evidence of footnote navigation. The earlier ChatGPT parser limitation remains.
+
+The private Lab build replaces only `item_child_response`'s text in the existing
+`delegated` snapshot with the existing `REFERENCE_NOTES_MARKDOWN`. Session, Run,
+Item and nested-task identities, status and transport remain canonical. No
+permanent fixture, observer, link handler or business record is added. The
+snapshot is restored to
+`2731be83b6c0960c4f9ca4ba9d58953be3f1eb9d03fd0617087ed222a7893239`;
+the private text seam is
+`eeade4440abe105a03e0c64baa613897675c54b2cd20ffe6b00a278533dac108`.
+All **4,304 non-Markdown inputs**, **46 native inputs** and **20 component
+resources** remain exact. Normal and private Lab builds both have **484 assets**
+and unchanged shared CSS. The host changes only its private initial Lab URL,
+retains the current Wails v3 bindings and uses an isolated application identity.
+
+Actual English/light/14 px/Orange/full-motion and Chinese/dark/18 px/custom
+`#3B82F6`/motion-off tasks use default zoom, ordinary native 1120 pt sizing and
+the keyboard-set **320 px Dock**. Both open the captured child from its original
+conversation row, read its note by pointer, and use macOS Option-Tab to reach
+both distinct localized return links. Enter restores the corresponding first
+and second references with their original encoded non-Latin fragment identities.
+The reference line stays visible; surrounding prose remains readable by wheel.
+Native fragment focus can become BODY before Option-Tab enters the note links;
+this does not break sequential navigation and receives no speculative repair.
+
+Both tasks enter the nested child and Escape back to the retained parent and
+its original nested-task opener. All subagents returns focus to the original
+task row. English returns to the original conversation opener; Chinese also
+opens the same reader in main, retains its footnote identities, follows the note
+and second keyboard return there, then returns to the original conversation
+opener. The original middle Composer caret continues exactly to
+`Keep verified this delegated footnote draft.` and
+`Keep verified this dark delegated note draft.`; Dock width remains 320.
+Pointer, keyboard, wheel, fixed headers, returned context and visible focus are
+inspected in the actual Wails host. No send, steer, cancellation, external-link
+activation or other Runtime command is invoked.
+
+Existing footnote, Subagents and captured-snapshot tests pass **3 files / 54
+tests**, 4.91 s Vitest / 6.00 s wall, without act warnings. Serial `make setup`
+(22.37 s), `make stage-web` (8.56 s), normal/private Lab builds (2.69 s each) and
+the actual native build (3.68 s) pass; both app bundles are signed and verified.
+The preceding unchanged native
+module gate remains valid; no aggregate/browser suite, performance benchmark,
+new test or zoom matrix is run. An initial preparation attempt wrongly applied
+the isolated host's `GOWORK=off` to root setup and failed before setup work;
+root setup then uses the actual workspace. Two diagnostic result-binding errors
+after native actions are recovered by fresh observation without replay; one
+ambiguous AX target is rejected before input. None is a product failure.
+
+Both native launches and the loopback server exit 0. The listener, two private
+registrations, four created Library paths and nine created output/cache roots
+are removed; all twelve Library and thirteen output absence targets are checked.
+The unique `/tmp/flame-ui-subagent-notes-mu7ng55x` tree, profiles, apps, private
+assets and logs are removed after freezing the source/asset and cleanup proof.
+Dependencies, hooks, global caches, references and unrelated work are preserved.
+VoiceOver speech, OS IME, RTL and live Runtime streaming remain unqualified.
+There is no migration. Continue from a newly supported visible problem rather
+than reopening the now-qualified delegated footnote gap.
+
+#### Main-conversation baseline
+
 The earlier unchanged-navigation qualification used the `reference-notes`
 canonical fixture: two answers, each with
 two references to the same non-Latin footnote label and two corresponding return
@@ -33100,8 +33171,9 @@ Earlier unchanged owner checks are reused; no full-suite, browser suite,
 benchmark, fetch or merge was run. Native builds run serially. Better-accessibility
 and layout guidance favor the native navigation path and existing clearances.
 The inspected ChatGPT footnote code is a parser utility, not product interaction
-evidence. VoiceOver, OS IME, RTL, delegated-host footnotes and live Runtime
-streaming are not freshly qualified here.
+evidence. That main-conversation comparison did not qualify VoiceOver, OS IME,
+RTL, delegated-host footnotes or live Runtime streaming. The delegated follow-up
+above now covers its named Dock/main tasks.
 
 One long CUA zoom call times out and resets its kernel. Re-observation confirms
 the same live app at 195%; one further native Zoom In establishes the final
