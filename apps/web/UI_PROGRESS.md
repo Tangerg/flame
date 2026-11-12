@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,888 tests on the native-qualified inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,888 tests; subsequent Computer changes have focused qualification below. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -4901,6 +4901,98 @@ after publication before guarded qualification-root retirement.
 This qualifies isolated capacity presentation and the shared accounting contract.
 It does not qualify live engine execution/acquisition, capacity exhaustion,
 fixture persistence, VoiceOver, physical IME or whole-product visual acceptance.
+
+#### Computer captured I/O and reviewed-draft language continuity (2026-11-13)
+
+Changing display language recreated `useComputer`'s local read/watch lifetime
+because the hook received the new display-context wrapper. Its accepted snapshot,
+surface and selected detail became unavailable while fresh reads started,
+unmounting the manual and permission forms. An actual old-resource Wails
+counterexample retains all six source identities through English → Chinese but
+loses Review, resets the JSON draft to `{}` and collapses the selected result.
+The private control changes the actual Appearance pane's language without
+closing the installed Computer view; navigation away and back is not used as a
+language-only counterexample.
+
+`plugins/computer/component/component.tsx` now keys a console by its captured
+Runtime, component identity, callable binding, tracking boundary and signal.
+That console captures its I/O context once; current locale separately projects
+labels, dates and capacity formatting. Manual/permission drafts, reviewed raw
+input, accepted results and original command completion observations remain with
+their existing owners. Genuine source replacement retires local observations
+and resets local input. It neither ends an independently authorized lease nor
+replays a command. The hook, permission form, result renderer, contracts, eight
+dictionaries, SDK/client and backend remain unchanged. The README records the
+boundary; normal generation changes only Computer's ESM resource to SHA-256
+`721b58343216dfff0f86d244fb61a203f61b0f5bb720da15529f113c57dd5522`.
+
+Four added component regressions preserve the original **56 test bodies**:
+reviewed `js_reset` input and selected result across locale; a permission draft
+and held original result read; the same held execution/key/request through
+original completion without replay or newly created recovery; and real lifetime
+replacement aborting old reads and fencing late evidence from the new draft.
+They also check current translated chrome/date, unchanged authored schema labels,
+exact whitespace and later user focus. Against original production source,
+**3 fail / 57 pass** in **4.58 s Vitest / 6.11 s wall**. The restored candidate
+passes all **60** in **3.90 / 4.86 s**. One initial new assertion incorrectly
+expected a live, claimed command in `pendingCommands()`; the journal explicitly
+excludes active claims. It now checks that the original public recovery
+projection stays unchanged while retaining exact promise/key/request/completion
+and no-replay assertions. The final old-source counterexample still fails.
+
+Serial final verification passes **93 tests / two files**, including installed
+component source handling; the full plugin check passes **47 script tests** and
+**652 tests / 44 files**, with the existing **17 Linux-only skips / two files**.
+All **20 plugin catalogs / eight locales**, Web typecheck, lint, full formatting,
+layer/design-system guards and supported **make check-native** pass. Setup takes
+22.42 s, final native checking 15.71 s and the normal **484-asset** Lab build
+3.16 s. The earlier complete frontend baseline remains **434 files / 4,888
+tests**; it precedes these four added cases and is not claimed as a new complete
+run. No Runtime test, browser visual suite or performance benchmark is added.
+
+Actual Wails **v3.1.0**, pinned Go **1.27.3** and macOS 13.0 deployment use the
+same private, read-only Computer projection for old and new resources. It seeds
+the canonical ready snapshot in memory, uses the real installed component and
+Appearance controls, and refuses every mutation. The two temporary Lab source
+inputs restore exact bytes/modes in `finally`; their private hashes, ready-snapshot
+literal, **46 native inputs**, other **19 published resources** and shared CSS
+match old/new. Candidate source checks cover **4,304 inputs**. Each private build
+has **486 assets**; native copies alter only the local host URL import/value.
+Two early helper preflight failures and an incomplete private projection syntax
+failure occur before native acceptance and are excluded. No production harness,
+alternate story registry, engine admission, permission grant or OS action is
+introduced.
+
+English/light/**14 px/Orange/full motion** and Chinese/dark/**18 px/custom
+Blue/motion off** both use default zoom, native ordinary-window resizing to
+**1120 pt** and a keyboard-set **320 px Dock**. English → Chinese → English and
+Chinese → English → Chinese retain the same captured identities, Review, exact
+manual JSON including outer spaces, `recorded-resource-links` and its expanded
+original input. Authored result text stays literal while dates and controls
+follow the current language. Wheel reading, pointer controls, Tab/Return Review,
+language-menu Escape return and Back-to-editor focus work. Synthetic Chinese
+typing drops characters in a setup attempt; full clipboard paste establishes
+the final exact Unicode draft before language acceptance, without an IME claim.
+One strict AX target guard rejects the menu's selected-option variant before
+action; observed keyboard Return completes the selection. English additionally
+closes/reopens the actual view: new source identities reset `{}` and selection,
+while the original sample session remains Ready. Returning to conversation
+inserts at the retained caret and yields exactly `Keep verified this Computer
+reading draft.` and `Keep verified this dark Computer draft.`.
+
+The SDK locale contract and repository ownership rules supply the boundary;
+existing better-accessibility/layout guidance supplies keyboard, reading and
+return checks. Bounded subagents provide implementation, harness preparation and
+read-only review; primary review corrects the journal expectation and private
+setup, owns serial gates, native acceptance and publication. All three native
+processes and both servers exit normally, both ports close, three registrations
+are absent, six created Library paths are removed and all **18 targets** are
+absent. Twelve created outputs are removed and all **13 output/cache roots**
+return to absence. Evidence is retained before the owned QA root is deleted.
+No functional check runs after cleanup. Live engine/permission settlement,
+physical IME, VoiceOver, other GUI locales/platforms and whole-product visual
+acceptance remain outside this qualification. Continue from another observed
+task gap; do not reopen this locale boundary without new evidence.
 
 ### Coherent fixture calendar and visible outcome evidence (2026-11-07)
 

@@ -262,8 +262,15 @@ function ReceiptCapacity({
   );
 }
 
-export function Computer({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
+function Console({
+  context: initialContext,
+  locale,
+}: {
+  context: ComponentContext;
+  locale: string;
+}) {
+  const [context] = useState(initialContext);
+  const t = useTranslator(CATALOGS, locale);
   const state = useComputer(context);
   const [lease, setLease] = useState(String(LIMITS.defaultLeaseSeconds));
   const [leaseError, setLeaseError] = useState(false);
@@ -286,11 +293,11 @@ export function Computer({ context }: { context: ComponentContext }) {
   const ready = currentRead && session?.state === "ready";
   const dateTime = useMemo(
     () =>
-      new Intl.DateTimeFormat(context.locale, {
+      new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "medium",
       }),
-    [context.locale],
+    [locale],
   );
 
   function open() {
@@ -433,7 +440,7 @@ export function Computer({ context }: { context: ComponentContext }) {
           </PanelSection>
           <ReceiptCapacity
             value={state.snapshot.receipts}
-            locale={context.locale}
+            locale={locale}
             t={t}
           />
         </>
@@ -655,4 +662,14 @@ export function Computer({ context }: { context: ComponentContext }) {
       </PanelSection>
     </Panel>
   );
+}
+
+export function Computer({ context }: { context: ComponentContext }) {
+  // Display wrappers do not retire captured observations or unsubmitted drafts.
+  const { runtime, component, binding, track, signal } = context;
+  const instance = useMemo(
+    () => crypto.randomUUID(),
+    [runtime, component, binding, track, signal],
+  );
+  return <Console key={instance} context={context} locale={context.locale} />;
 }

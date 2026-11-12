@@ -81,6 +81,14 @@ available, only while that form still owns focus. Pending permission actions sta
 focusable without admitting another response. Captured targets, original command
 identity and permission authority remain with their existing owners.
 
+Display-language changes update labels, dates and capacity formatting while
+preserving the same captured I/O, manual and permission drafts, reviewed input,
+history selection and detail, and original command completion observations.
+Replacing the captured Runtime, component identity, callable binding, tracking
+boundary or component signal retires the old console and resets its local state.
+Retirement only stops local observations; it neither closes an independently
+authorized control lease nor replays an original command.
+
 Captured instructions, schemas, arguments and original evidence use the shared
 literal-source reader. Its header names the source; Ctrl/Cmd+A stays within that
 reader, wrapping follows the shared page preference, and Copy receives the exact

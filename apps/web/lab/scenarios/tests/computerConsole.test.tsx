@@ -6,9 +6,14 @@ import {
   createFlameClient,
   createHttpTransport,
   type MutationJournalStorage,
+  type MutationPromise,
 } from "@flame/runtime-client";
 import { stringifyJSON } from "@frame/sdk/json";
-import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
+import type {
+  CallPluginRequest,
+  CallPluginResponse,
+  ServerCapabilities,
+} from "@flame/runtime-client/wire";
 import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
 import { Computer } from "../../../../../plugins/computer/component/component";
@@ -66,7 +71,12 @@ function fixture(value = initial) {
   let snapshot = structuredClone(value);
   const subscribers = new Set<ReadableStreamDefaultController<Uint8Array>>();
   const encoder = new TextEncoder();
-  const calls: Array<{ method: string; params: CallPluginRequest; key: string | null }> = [];
+  const calls: Array<{
+    method: string;
+    params: CallPluginRequest;
+    key: string | null;
+    signal: AbortSignal | null | undefined;
+  }> = [];
   const originals = new Map<string, CallPluginRequest>();
   const outcomes = new Map<string, unknown>();
   const records = new Map<string, OperationRecord>();
@@ -120,7 +130,7 @@ function fixture(value = initial) {
     };
     const params = request.params;
     const key = new Headers(init!.headers).get("Idempotency-Key");
-    calls.push({ method: request.method, params, key });
+    calls.push({ method: request.method, params, key, signal: init?.signal });
     const success = (result: unknown) => Response.json({ jsonrpc: "2.0", id: request.id, result });
     const output = (result: unknown) => success({ output: stringifyJSON(result) });
     const unknown = () =>
@@ -416,7 +426,7 @@ function rig(server = fixture()) {
     mount(locale = "en") {
       const controller = new AbortController();
       controllers.push(controller);
-      const context: ComponentContext = {
+      let context: ComponentContext = Object.freeze<ComponentContext>({
         component: { installationId, digest, componentId: "computer" },
         binding: {
           installationId,
@@ -440,8 +450,28 @@ function rig(server = fixture()) {
         compose: () => {
           throw new Error("computer console must not compose other plugins");
         },
+      });
+      const mounted = ui.render(<Computer context={context} />);
+      return {
+        ...mounted,
+        controller,
+        get context() {
+          return context;
+        },
+        changeLocale(locale: string) {
+          const captured = context;
+          context = Object.freeze<ComponentContext>({
+            ...captured,
+            locale,
+            compose: (composition) => captured.compose(composition),
+          });
+          mounted.rerender(<Computer context={context} />);
+        },
+        rerenderContext(next: ComponentContext) {
+          context = next;
+          mounted.rerender(<Computer context={context} />);
+        },
       };
-      return { ...ui.render(<Computer context={context} />), controller };
     },
   };
 }
@@ -452,6 +482,273 @@ async function review(code = "await fixture.perform();") {
   fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
   return screen.findByRole("button", { name: "Execute reviewed operation" });
 }
+
+it("keeps the captured selection and reviewed draft through a display-only locale change", async () => {
+  mockSelectLayout();
+  const setup = rig();
+  const record = recordedTool("locale-operation");
+  setup.server.records.set(record.id, record);
+  const mounted = setup.mount();
+  const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+  fireEvent.click(screen.getByRole("combobox", { name: "Tool" }));
+  const reset = await screen.findByRole("option", { name: "js_reset" });
+  fireEvent.pointerDown(reset, { pointerType: "mouse" });
+  fireEvent.click(reset);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  const draft = ' {"reason":"Unsubmitted reset 保留"} ';
+  fireEvent.change(editor, { target: { value: draft } });
+  fireEvent.click(await screen.findByRole("button", { name: record.id }));
+  const evidence = await screen.findByText("Recorded locale-operation.");
+  const detail = screen.getByRole("region", { name: "Inspected original operation" });
+  const dateOptions = { dateStyle: "medium", timeStyle: "medium" } as const;
+  const englishDate = new Intl.DateTimeFormat("en", dateOptions).format(
+    new Date(record.admittedAt),
+  );
+  expect(
+    screen.getByText(`computer_js · ${englishDate}`, { normalizer: (value) => value }),
+  ).not.toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
+  await screen.findByRole("button", { name: "Back to editor" });
+  const later = screen.getByRole("button", { name: "Refresh status" });
+  act(() => later.focus());
+  const captured = mounted.context;
+  const watch = setup.server.calls.find((call) => call.params.method === METHODS.watch)!;
+  const calls = setup.server.calls.length;
+
+  await act(async () => mounted.changeLocale("zh"));
+
+  expect(mounted.context.signal).toBe(captured.signal);
+  expect(mounted.context.runtime).toBe(captured.runtime);
+  expect(mounted.context.binding).toBe(captured.binding);
+  expect(mounted.context.track).toBe(captured.track);
+  expect(captured.signal.aborted).toBe(false);
+  expect(watch.signal?.aborted).toBe(false);
+  expect(setup.server.calls).toHaveLength(calls);
+  expect(screen.getByRole("region", { name: "已检查的原始操作" })).toBe(detail);
+  expect(screen.getByText("Recorded locale-operation.")).toBe(evidence);
+  expect(screen.getByRole("button", { name: record.id }).getAttribute("aria-expanded")).toBe(
+    "true",
+  );
+  const chineseDate = new Intl.DateTimeFormat("zh", dateOptions).format(
+    new Date(record.admittedAt),
+  );
+  expect(
+    screen.getByText(`computer_js · ${chineseDate}`, { normalizer: (value) => value }),
+  ).not.toBeNull();
+  expect(
+    screen.queryByText(`computer_js · ${englishDate}`, { normalizer: (value) => value }),
+  ).toBeNull();
+  const review = screen.getByRole("region", { name: "检查待执行操作" });
+  expect(within(review).getByText("js_reset", { exact: true })).not.toBeNull();
+  expect(within(review).getByRole("region", { name: "工具参数（JSON）" }).textContent).toBe(draft);
+  expect(document.activeElement).toBe(later);
+  fireEvent.click(within(review).getByRole("button", { name: "返回编辑" }));
+  const restored = (await screen.findByRole("textbox", {
+    name: "工具参数（JSON）",
+  })) as HTMLTextAreaElement;
+  expect(restored.value).toBe(draft);
+  expect(screen.getByRole("combobox", { name: "工具" }).textContent).toContain("js_reset");
+  expect(screen.getByText("Recorded locale-operation.")).toBe(evidence);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("preserves a permission draft and its original held evidence read across display locales", async () => {
+  const approval: Approval = {
+    id: "locale-permission",
+    sessionId: "control-1",
+    operationId: "operation-1",
+    requestJSON: JSON.stringify({
+      mode: "form",
+      message: "Provide an operator note.",
+      requestedSchema: {
+        type: "object",
+        properties: { note: { type: "string", title: "Operator note" } },
+      },
+    }),
+  };
+  const setup = rig(
+    fixture({
+      ...initial,
+      session: {
+        ...initial.session!,
+        state: "executing",
+        operation: { id: "operation-1", tool: "js", startedAt: initial.session!.openedAt },
+        approval,
+      },
+    }),
+  );
+  setup.server.records.set("held-locale-operation", recordedTool("held-locale-operation"));
+  const mounted = setup.mount();
+  const note = (await screen.findByRole("textbox", {
+    name: "Operator note",
+  })) as HTMLInputElement;
+  fireEvent.change(note, { target: { value: "Unsubmitted operator note 保留" } });
+  const held = setup.server.holdResult();
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: "held-locale-operation" }));
+    await held.arrived;
+    const original = setup.server.calls.find((call) => call.params.method === METHODS.result)!;
+    const watch = setup.server.calls.find((call) => call.params.method === METHODS.watch)!;
+    const calls = setup.server.calls.length;
+    act(() => note.focus());
+
+    await act(async () => mounted.changeLocale("zh"));
+
+    expect(original.signal?.aborted).toBe(false);
+    expect(watch.signal?.aborted).toBe(false);
+    expect(mounted.context.signal.aborted).toBe(false);
+    expect(setup.server.calls).toHaveLength(calls);
+    expect(screen.getByRole("textbox", { name: "Operator note" })).toBe(note);
+    expect(note.value).toBe("Unsubmitted operator note 保留");
+    expect(screen.getByRole("button", { name: "提交同意" }).hasAttribute("disabled")).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "held-locale-operation" }).getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(document.activeElement).toBe(note);
+  } finally {
+    await act(async () => held.release());
+  }
+  expect(await screen.findByText("Recorded held-locale-operation.")).not.toBeNull();
+  expect(screen.getByRole("region", { name: "已检查的原始操作" })).not.toBeNull();
+  expect(note.value).toBe("Unsubmitted operator note 保留");
+  expect(document.activeElement).toBe(note);
+  expect(setup.server.calls.filter((call) => call.params.method === METHODS.result)).toHaveLength(
+    1,
+  );
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("observes the same held execution through a display locale change without recreating recovery", async () => {
+  const setup = rig();
+  setup.server.setExecuteMode("held");
+  const rpc = vi.spyOn(setup.client.plugins, "call");
+  const mounted = setup.mount();
+  const draft = JSON.stringify({ code: "await fixture.perform();" });
+  fireEvent.click(await review());
+  await screen.findByRole("button", { name: "Stop current operation" });
+  const editor = screen.getByRole("textbox", {
+    name: "Tool arguments (JSON)",
+  }) as HTMLTextAreaElement;
+  const [key, request] = [...setup.server.originals.entries()][0]!;
+  const index = rpc.mock.calls.findIndex(([call]) => call.method === METHODS.execute);
+  const original = rpc.mock.results[index]!.value as MutationPromise<CallPluginResponse>;
+  const execution = setup.server.calls.find((call) => call.params.method === METHODS.execute)!;
+  const later = screen.getByRole("button", { name: "End control lease" });
+  act(() => later.focus());
+  const pendingBeforeLocale = setup.client.plugins
+    .pendingCommands()
+    .map((command) => command.idempotencyKey);
+  try {
+    expect(original.idempotencyKey).toBe(key);
+    expect(JSON.parse(request.input)).toEqual({
+      sessionId: initial.session!.id,
+      workerId: initial.session!.workerId,
+      surfaceDigest: initial.session!.surfaceDigest,
+      tool: "js",
+      argumentsJSON: draft,
+    });
+    expect(screen.getByText("Waiting for the original command outcome…")).not.toBeNull();
+    const calls = setup.server.calls.length;
+
+    await act(async () => mounted.changeLocale("zh"));
+
+    expect(execution.signal?.aborted).toBe(false);
+    expect(mounted.context.signal.aborted).toBe(false);
+    expect(setup.server.calls).toHaveLength(calls);
+    expect(screen.getByText("正在等待原始命令结果…")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "查询原始结果" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "工具参数（JSON）" })).toBe(editor);
+    expect(editor.value).toBe(draft);
+    expect(editor.readOnly).toBe(true);
+    expect(screen.getByRole("button", { name: "检查待执行操作" }).hasAttribute("disabled")).toBe(
+      true,
+    );
+    expect(document.activeElement).toBe(later);
+    expect(setup.client.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual(
+      pendingBeforeLocale,
+    );
+  } finally {
+    await act(async () => {
+      setup.server.finishExecution();
+      await original;
+    });
+  }
+  await waitFor(() => expect(editor.readOnly).toBe(false));
+  expect(await screen.findByText("执行电脑操作：原始命令已完成。")).not.toBeNull();
+  expect(screen.queryByRole("button", { name: "查询原始结果" })).toBeNull();
+  expect(screen.getByRole("button", { name: "检查待执行操作" }).hasAttribute("disabled")).toBe(
+    false,
+  );
+  expect(document.activeElement).toBe(later);
+  expect(editor.value).toBe(draft);
+  expect(setup.server.originals.size).toBe(1);
+  expect(setup.server.originals.get(key)).toEqual(request);
+  const executions = setup.server.calls.filter((call) => call.params.method === METHODS.execute);
+  expect(executions).toHaveLength(1);
+  expect(executions[0]!.key).toBe(key);
+  expect(executions[0]!.params).toEqual(request);
+  expect(setup.client.plugins.pendingCommands()).toHaveLength(0);
+});
+
+it("retires a real captured lifetime and fences its late evidence from the new source", async () => {
+  const setup = rig();
+  setup.server.records.set("retired-source", recordedTool("retired-source"));
+  setup.server.records.set("current-source", recordedTool("current-source"));
+  const mounted = setup.mount();
+  const oldEditor = (await screen.findByRole("textbox", {
+    name: "Tool arguments (JSON)",
+  })) as HTMLTextAreaElement;
+  fireEvent.change(oldEditor, { target: { value: '{"code":"retired draft"}' } });
+  const replacement = new AbortController();
+  onTestFinished(() => replacement.abort());
+  const held = setup.server.holdResult();
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: "retired-source" }));
+    await held.arrived;
+    const oldRead = setup.server.calls.find((call) => call.params.method === METHODS.result)!;
+    const oldWatch = setup.server.calls.find((call) => call.params.method === METHODS.watch)!;
+    const context: ComponentContext = Object.freeze<ComponentContext>({
+      ...mounted.context,
+      signal: replacement.signal,
+      track: (operation) => operation(replacement.signal),
+    });
+    await act(async () => {
+      mounted.controller.abort();
+      mounted.rerenderContext(context);
+    });
+    const editor = (await screen.findByRole("textbox", {
+      name: "Tool arguments (JSON)",
+    })) as HTMLTextAreaElement;
+    expect(oldRead.signal?.aborted).toBe(true);
+    expect(oldWatch.signal?.aborted).toBe(true);
+    expect(editor).not.toBe(oldEditor);
+    expect(editor.value).toBe("{}");
+    expect(
+      screen.getByRole("button", { name: "retired-source" }).getAttribute("aria-expanded"),
+    ).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "current-source" }));
+    await screen.findByText("Recorded current-source.");
+    fireEvent.change(editor, { target: { value: '{"code":"new source draft"}' } });
+    act(() => editor.focus());
+  } finally {
+    await act(async () => held.release());
+  }
+  expect(screen.queryByText("Recorded retired-source.")).toBeNull();
+  expect(screen.getByText("Recorded current-source.")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "current-source" }).getAttribute("aria-expanded")).toBe(
+    "true",
+  );
+  const editor = screen.getByRole("textbox", {
+    name: "Tool arguments (JSON)",
+  }) as HTMLTextAreaElement;
+  expect(editor.value).toBe('{"code":"new source draft"}');
+  expect(document.activeElement).toBe(editor);
+  expect(replacement.signal.aborted).toBe(false);
+  const watches = setup.server.calls.filter((call) => call.params.method === METHODS.watch);
+  expect(watches).toHaveLength(2);
+  expect(watches[1]!.signal?.aborted).toBe(false);
+  expect(setup.server.originals.size).toBe(0);
+});
 
 it.each(["[]", "null", "{"])(
   "identifies invalid arguments %s at the editable field and retains the corrected draft",
