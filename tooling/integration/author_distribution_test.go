@@ -93,7 +93,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if _, err := host.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	wait := func() {
+	waitForAuthorBackend := func() {
 		t.Helper()
 		deadline := time.Now().Add(10 * time.Second)
 		for {
@@ -107,12 +107,22 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 				}
 			}
 			if time.Now().After(deadline) {
-				t.Fatal("author backend did not connect")
+				for _, server := range servers.Data {
+					if server.ID.Origin.InstallationID != installed.ID {
+						continue
+					}
+					status, err := json.Marshal(server.Status)
+					if err != nil {
+						t.Fatalf("encode author connection status: %v", err)
+					}
+					t.Logf("author connection status: %s", status)
+				}
+				t.Fatalf("author backend did not connect for installation %s", installed.ID)
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
-	wait()
+	waitForAuthorBackend()
 	contract := ""
 	for _, contribution := range installed.Selected.Contributions {
 		if contribution.ID == name+"-policy" || contribution.ID == name+"-provider" || name == "usagereports" && contribution.ID == "usage-reports" {
@@ -164,7 +174,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wait()
+	waitForAuthorBackend()
 	recovered, err := host.CallPlugin(t.Context(), request, options)
 	if err != nil || recovered.Failure != nil || recovered.Output != original.Output {
 		t.Fatalf("original command changed after restart: %+v, %v", recovered, err)
