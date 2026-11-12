@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -197,16 +198,20 @@ function Archive({ context }: { context: BoundContext }) {
     [operations],
   );
 
+  const refreshFromEffect = useEffectEvent((owner: AbortSignal) => {
+    void refresh(owner);
+  });
+
   useEffect(() => {
     const owner = new AbortController();
     lifetime.current = owner;
-    void refresh(AbortSignal.any([owner.signal, context.signal]));
+    refreshFromEffect(AbortSignal.any([owner.signal, context.signal]));
     return () => {
       owner.abort();
       inspecting.current?.abort();
       listing.current?.abort();
     };
-  }, [context.signal, refresh]);
+  }, [context.signal]);
 
   useLayoutEffect(() => {
     shown.current = opened;

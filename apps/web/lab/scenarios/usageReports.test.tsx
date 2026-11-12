@@ -140,10 +140,14 @@ function mount(
     },
     compose: () => null,
   };
-  testClient.render(<UsageReports context={context} />);
+  const view = testClient.render(<UsageReports context={context} />);
   const calls = (method: string) =>
     call.mock.calls.filter(([request]) => request.method === `flame.usage-reports/${method}.v1`);
-  return { calls };
+  return {
+    calls,
+    changeLocale: (nextLocale: string) =>
+      view.rerender(<UsageReports context={{ ...context, locale: nextLocale }} />),
+  };
 }
 
 it("recovers the original capture and preserves exact numbers, zero prices and missing totals", async () => {
@@ -297,14 +301,14 @@ it("reads a named report at the pane top and returns to the same archive row", a
 
 function heldReads() {
   const reads: Array<ReturnType<typeof deferred<CallPluginResponse>>> = [];
-  const { calls } = mount((request) => {
+  const { calls, changeLocale } = mount((request) => {
     if (request.method === "flame.usage-reports/list.v2")
       return reply({ reports: [daily, weekly] });
     const read = deferred<CallPluginResponse>();
     reads.push(read);
     return read.promise;
   });
-  return { reads, calls };
+  return { reads, calls, changeLocale };
 }
 
 const exact = (header: Header): Report => {
@@ -324,6 +328,61 @@ function activateRepeatedly(button: HTMLElement) {
     fireEvent.click(button);
   }
 }
+
+it.each(["initial read", "report refresh"])(
+  "keeps the original %s and later focus through a locale-only change",
+  async (phase) => {
+    const { reads, calls, changeLocale } = heldReads();
+    const opener = await screen.findByRole("button", { name: /^View report: Weekly report · / });
+    act(() => opener.focus());
+    fireEvent.click(opener);
+    const heading = screen.getByRole("heading", { name: /^Weekly report · / });
+    const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh report" });
+    let index = 0;
+    if (phase === "report refresh") {
+      reads[0]!.resolve({ output: stringifyJSON(exact(weekly)) });
+      await screen.findByText("9,007,199,254,740,993");
+      act(() => refresh.focus());
+      fireEvent.click(refresh);
+      index = 1;
+    }
+    const signal = calls("get")[index]![1]!.signal!;
+    const back = screen.getByRole("button", { name: "Back to archive" });
+    act(() => back.focus());
+    act(() => changeLocale("zh"));
+
+    expect(screen.getByRole("heading", { name: /^每周报告 · / })).toBe(heading);
+    expect(screen.getByRole("button", { name: "返回归档" })).toBe(back);
+    expect(document.activeElement).toBe(back);
+    expect(signal.aborted).toBe(false);
+    expect(calls("get")).toHaveLength(index + 1);
+    expect(calls("capture")).toHaveLength(0);
+
+    reads[index]!.resolve({ output: stringifyJSON(exact(weekly)) });
+    await waitFor(() => expect(screen.queryByText("正在读取已保存的报告…")).toBeNull());
+    expect(screen.getByText("已知输入标记")).toBeTruthy();
+    expect(screen.getByText("9,007,199,254,740,993")).toBeTruthy();
+    expect(document.activeElement).toBe(back);
+    expect(screen.getByRole("button", { name: "刷新报告" })).toBe(refresh);
+    expect(refresh.getAttribute("aria-disabled")).toBeNull();
+    expect(refresh.disabled).toBe(false);
+    expect(calls("get").map(([request]) => reportId(request))).toEqual(
+      Array(index + 1).fill(weekly.id),
+    );
+
+    act(() => refresh.focus());
+    fireEvent.click(refresh);
+    expect(calls("get")).toHaveLength(index + 2);
+    reads[index + 1]!.resolve({ output: stringifyJSON(exact(weekly)) });
+    await waitFor(() => expect(screen.queryByText("正在读取已保存的报告…")).toBeNull());
+    expect(document.activeElement).toBe(refresh);
+    act(() => back.focus());
+    fireEvent.click(back);
+    expect(screen.getByRole("button", { name: /^查看报告：每周报告 · / })).toBe(opener);
+    expect(document.activeElement).toBe(opener);
+    expect(calls("capture")).toHaveLength(0);
+  },
+);
 
 it("keeps a held report refresh focusable, single and on the accepted report", async () => {
   const { reads, calls } = heldReads();
@@ -957,6 +1016,57 @@ it("keeps a held save focused and single, restores it after refusal and opens an
   fireEvent.click(screen.getByRole("button", { name: "Back to archive" }));
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh archive" }));
   expect(screen.getByRole("button", { name: /^View report: Daily report · / })).toBeTruthy();
+});
+
+it("settles the original held capture after a locale-only change without claiming later focus", async () => {
+  let members: Header[] = [];
+  const capture = deferred<CallPluginResponse>();
+  const { calls, changeLocale } = mount((request) => {
+    switch (request.method) {
+      case "flame.usage-reports/list.v2":
+        return reply({ reports: members });
+      case "flame.usage-reports/get.v1":
+        return reply(exact(daily));
+      default:
+        return mutationResult<CallPluginResponse>(() => capture.promise, "locale-capture");
+    }
+  });
+  await screen.findByText("No saved reports");
+  const save = screen.getByRole<HTMLButtonElement>("button", { name: "Save report" });
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  act(() => save.focus());
+  fireEvent.click(save);
+  const signal = calls("capture")[0]![1]!.signal!;
+  act(() => {
+    refresh.focus();
+    changeLocale("zh");
+  });
+
+  expect(screen.getByRole("button", { name: "正在保存报告…" })).toBe(save);
+  expect(save.getAttribute("aria-busy")).toBe("true");
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(screen.getByRole("button", { name: "刷新归档" })).toBe(refresh);
+  expect(document.activeElement).toBe(refresh);
+  expect(signal.aborted).toBe(false);
+  expect(calls("capture")).toHaveLength(1);
+  expect(calls("get")).toHaveLength(0);
+
+  await act(async () => {
+    members = [daily];
+    capture.resolve({ output: stringifyJSON(daily) });
+    await capture.promise;
+  });
+  await waitFor(() => expect(save.getAttribute("aria-busy")).toBe("false"));
+  expect(screen.getByRole("button", { name: "保存报告" })).toBe(save);
+  expect(save.getAttribute("aria-disabled")).toBe("false");
+  expect(save.disabled).toBe(false);
+  expect(screen.getByRole("button", { name: /^查看报告：每日报告 · / })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: /^每日报告 · / })).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+  expect(signal.aborted).toBe(false);
+  expect(calls("capture")).toHaveLength(1);
+  expect(JSON.parse(calls("capture")[0]![0].input)).toEqual({ period: "daily" });
+  expect(calls("get")).toHaveLength(0);
 });
 
 function unsettledCapture() {

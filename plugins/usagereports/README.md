@@ -38,6 +38,12 @@ Daily attempt copy selects its locale plural form from the saved count, which is
 still displayed exactly. The daily breakdown is offered only when the saved
 report has daily rows.
 
+A display-locale change preserves the mounted component's pending reads and
+action observations. Back and a replacement read retire the previous report
+read; unmounting or retirement of the captured component signal ends local
+observation. Accepted commands keep their original Runtime identity and recovery
+path.
+
 One archive action waits at a time. Only its initiating control names the
 waiting action and is busy; it keeps keyboard focus and refuses repeated
 activation. Save stays unavailable while any original command outcome is

@@ -27,7 +27,6 @@ import { Diagnostics } from "../../../../plugins/diagnostics/component/component
 import { WorkspaceDiff } from "../../../../plugins/diff/component/component";
 import { type Diff, type GetDiffRequest } from "@flame/runtime-client/wire";
 import { Usage } from "../../../../plugins/usage/component/component";
-import { UsageReports } from "../../../../plugins/usagereports/component/component";
 import { Memory } from "../../../../plugins/memory/component/component";
 import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
@@ -121,6 +120,12 @@ const Trajectory = Object.values(
     { eager: true },
   ),
 )[0]!.Trajectory;
+const UsageReports = Object.values(
+  import.meta.glob<{ UsageReports: PluginComponent }>(
+    "../../../../plugins/usagereports/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.UsageReports;
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock, and both the recorded-identity and web-search provenance batches are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance and saved-report locale continuity are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -588,6 +588,110 @@ and provider execution remain outside this visual fixture; the existing unit
 tests retain their own lifecycle scope. Whole-product interaction coverage still
 requires further evidence-backed batches. The next review should check another
 production reader against the same catalog before adding a named variant.
+
+#### Saved-report locale continuity (2026-11-12)
+
+Changing only the display language during an initial report read or explicit
+report refresh previously retired the mounted archive's local observation
+owner. The original response was then ignored, leaving the reader waiting and
+Refresh unavailable. The actual Wails baseline reproduces this with a held
+Daily read: English changes to Chinese, the original response is released, and
+the reading state remains. Back and reopening the same record reads the exact
+saved values, establishing that the abandoned observation, rather than missing
+archive data, owns the failure.
+
+`InstalledComponent` captures the binding, Runtime, command tracking and signal
+for the component instance. Its locale update replaces display context without
+retiring that instance. The SDK explicitly preserves accepted work and its
+original cancellation signal across that update. `Archive` had instead coupled
+its lifetime effect to `refresh`, which changes with the display context.
+`plugins/usagereports/component/component.tsx` now gives the effect an Effect
+Event for initial refresh and keys lifetime to the captured signal. Cleanup
+still retires local listing, inspection and observation when the component
+actually ends. Back and replacement reads retain their own cancellation owner.
+The original command identity, inputs and recovery path remain unchanged.
+
+The [React Effect Event contract](https://react.dev/reference/react/useEffectEvent)
+supports reading current committed display-dependent callbacks from the effect
+without making them lifetime dependencies. The captured signal remains reactive;
+the change does not suppress a resource dependency. This follows existing
+provider/MCP and shared lightbox usage in Flame. Better Accessibility guides
+later-focus retention and original-opener return; Better Writing and Typography
+retain localized controls, exact values and complete report identity. No new
+state owner, theme override, component system or Runtime API is introduced.
+
+The Workspace fixture now loads the normal published UsageReports ESM through
+its existing installation, matching the established Trajectory registration.
+The publisher regenerates only that installed report resource. Captured reports,
+the SDK binding and production transport remain unchanged.
+
+Verification:
+
+- The strengthened old-source regression has **3 failures / 20 passes** in
+  **3.57 s**: initial read and explicit refresh abort across locale change, and
+  a held capture's busy observation never settles. The accepted source passes
+  **31 tests / 2 files** in **3.03 s**, comprising all **23 report tests** and
+  eight installed-continuity tests. Eight Workspace command tests separately
+  pass in **6.42 s**. The new cases preserve the same controls, later focus,
+  original signal, exact report ID, single capture and original daily input;
+  they also exercise another explicit refresh and original archive-opener return.
+- Full plugin checks pass: **47 script tests**, **644 source tests**, and the
+  existing **17 skipped tests / 2 files**; plugin source tests take **45.21 s**.
+  Typecheck, lint, formatting, resource reproducibility and all **20 catalogs /
+  eight locales** pass. Web typecheck, lint, full formatting and design-system
+  boundaries pass. `make check-native` passes production Web staging, Wails
+  macOS build, Desktop tests, vet and build. The final canonical `lab:build`
+  passes. No browser visual suite or performance benchmark runs.
+- Native comparison uses private Wails **v3.1.0** applications, macOS 13 build
+  policy and **487** frozen Lab assets in each build. A temporary,
+  reversible Lab transport seam holds only delivery of `get.v1` on a private
+  loopback gate; it changes no report payload, response or component state.
+  Baseline and candidate use the identical seam and report captures, with
+  byte-identical CSS. The seam source is restored byte for byte after each
+  normal Lab build and is absent from the diff. All **46 production native
+  inputs** remain unchanged; the private host changes only its startup URL
+  through a private environment variable.
+- English/light/**14 px**/Flame Orange/full-motion starts with a held first
+  read, switches to Chinese in real Settings and moves keyboard focus to
+  Back. Releasing the original response completes the same reader, enables
+  Refresh and retains Back focus. A subsequent explicit refresh succeeds.
+  Chinese/dark/**18 px**/custom blue/motion-off first accepts the Daily copy,
+  then holds its explicit refresh, switches to English and continues typing.
+  Releasing that original response retains Composer focus and its exact draft;
+  another explicit refresh succeeds. Gate receipts remain at two and three
+  requests respectively, including those deliberate refreshes; presentation
+  changes do not issue another read.
+- Both profiles use Actual Size and keyboard **320 px** Dock width, wheel
+  reading, exact ID/UTC disclosure, full-width reading and Escape return to
+  the same Dock, followed by Back to the original Daily archive opener.
+  **9,007,199,254,740,993**, recorded zero values, absent total price and
+  **6/6 / 5/6** retain their meanings. Ordinary native Window Zoom/restore
+  also preserves the English-start archive and draft. Final draft values are
+  `Continue after the saved report. Ready.` and
+  `Continue after the saved report. Still writing. Ready.`. Unicode input
+  through the automation helper did not enter text; the accepted drafts use
+  its reliable ASCII typing path. No physical IME behavior is claimed.
+
+This qualifies fixed report reading and local observation in the actual native
+host with an isolated timing gate. Native capture, removal, live accounting,
+provider execution and durable original-command recovery are not exercised.
+The held-capture contract is unit-qualified only. Mutation feedback captured as
+translated text can still retain the starting language after a delayed result;
+that separate presentation issue is not qualified or repaired here. Revisit it
+with a concrete mutation-feedback task rather than broadening this lifetime fix.
+Existing installed digests require explicit selection/reload of the newly
+published component; no archive or protocol migration is required.
+
+All three native parent processes and three private loopback servers exit **0**.
+Both private application registrations are removed; all **12** unique Library
+paths are absent after cleanup. The private proof root, apps, data, helper
+scripts, frozen assets and logs are removed. Eleven ignored output/cache roots
+created in the isolated worktree are removed only after checking they contain
+no tracked files. Ordinary dependencies and hooks remain. Cleanup preserves all
+46 native inputs and the five accepted source/resource hashes. No functional
+suite runs after output cleanup. The next review continues existing task paths
+from current evidence; the separate Skills lifetime audit found no actionable
+reader abandonment and does not justify a mechanical locale refactor.
 
 ### Reconciled Usage groupings in the Lab (2026-11-09)
 
