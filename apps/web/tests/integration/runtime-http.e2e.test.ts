@@ -20,7 +20,17 @@ import { createConnection, createServer as createNetServer } from "node:net";
 import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, beforeEach, describe, expect, inject, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  inject,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { RpcError } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
@@ -69,7 +79,14 @@ const unconfirmedModelOutcome = {
   ],
 };
 
-const compactionContextPressure = "context ".repeat(4_200);
+const compactionContextBytes = 256 * 1024;
+
+const compactionContextUnit = "context ";
+
+// Large results exercise the token boundary without timing a long chain of Tool round trips.
+const compactionContextPressure = compactionContextUnit.repeat(
+  compactionContextBytes / compactionContextUnit.length,
+);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
@@ -115,11 +132,15 @@ interface Deferred {
   resolve: () => void;
 }
 
-interface ProviderGate {
-  arrived: Deferred;
-  claimed: boolean;
-  closed: Deferred;
+interface ProviderGateOptions {
   failureStatus?: number;
+  minimumToolResults?: number;
+  requiredTool?: string;
+}
+
+interface ProviderGate extends ProviderGateOptions {
+  arrived: Deferred;
+  closed: Deferred;
   marker: string;
   minimumToolResults: number;
   request?: FakeChatRequest;
@@ -134,18 +155,13 @@ function deferred(): Deferred {
   return { promise, resolve };
 }
 
-function createProviderGate(
-  marker: string,
-  minimumToolResults = 0,
-  failureStatus?: number,
-): ProviderGate {
+function createProviderGate(marker: string, options: ProviderGateOptions = {}): ProviderGate {
   return {
+    ...options,
     arrived: deferred(),
-    claimed: false,
     closed: deferred(),
-    failureStatus,
     marker,
-    minimumToolResults,
+    minimumToolResults: options.minimumToolResults ?? 0,
     release: deferred(),
   };
 }
@@ -349,7 +365,10 @@ function scriptedReply(body: FakeChatRequest): {
       },
     };
   }
-  if (transcript.includes(compactionCutpointMarker) && availableTools.size === 0) {
+  if (
+    availableTools.size === 0 &&
+    (transcript.includes(compactionCutpointMarker) || transcript.includes(compactionSummaryMarker))
+  ) {
     return { text: `${compactionSummaryMarker}: preserve only the durable progress boundary.` };
   }
 
@@ -1118,12 +1137,13 @@ for await (const line of lines) {
         const gate = providerGate;
         if (
           gate !== undefined &&
-          !gate.claimed &&
+          gate.request === undefined &&
           JSON.stringify(body.messages ?? []).includes(gate.marker) &&
+          (gate.requiredTool === undefined ||
+            body.tools?.some((tool) => tool.function?.name === gate.requiredTool)) &&
           (body.messages ?? []).filter((message) => message.role === "tool").length >=
             gate.minimumToolResults
         ) {
-          gate.claimed = true;
           gate.request = body;
           response.once("close", gate.closed.resolve);
           gate.arrived.resolve();
@@ -1136,7 +1156,7 @@ for await (const line of lines) {
           }
         }
         if (
-          gate?.claimed &&
+          gate?.request !== undefined &&
           gate.failureStatus !== undefined &&
           providerTranscript.includes(gate.marker)
         ) {
@@ -3486,7 +3506,7 @@ for await (const line of lines) {
   it("publishes a readable completing goal while final Run settlement is pending", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
-    const gate = createProviderGate("E2E_GOAL_SETTLEMENT", 1);
+    const gate = createProviderGate("E2E_GOAL_SETTLEMENT", { minimumToolResults: 1 });
     providerGate = gate;
     const streamController = new AbortController();
     let runtimeEvents: AsyncIterator<RuntimeEvent> | undefined;
@@ -4852,8 +4872,11 @@ for await (const line of lines) {
   it("keeps the durable compaction winner when the following provider call fails", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
-    const openingCall = createProviderGate(compactionCutpointMarker);
-    const failedCall = createProviderGate(compactionSummaryMarker, 0, unavailableProviderStatus);
+    const openingCall = createProviderGate(compactionCutpointMarker, { requiredTool: "get_goal" });
+    const failedCall = createProviderGate(compactionSummaryMarker, {
+      failureStatus: unavailableProviderStatus,
+      requiredTool: "get_goal",
+    });
     let recoveryCall: ProviderGate | undefined;
     providerGate = openingCall;
     try {
@@ -4872,6 +4895,9 @@ for await (const line of lines) {
         ],
       });
       const failedEvents = collectRunEvents(originalOpeningEvents(started));
+      onTestFinished(async () => {
+        await failedEvents;
+      }, compactionCutpointDeadlineMilliseconds);
       await within(openingCall.arrived.promise, "the opening model call");
       providerGate = failedCall;
       openingCall.release.resolve();
@@ -4902,7 +4928,7 @@ for await (const line of lines) {
         run: { status: "finished", outcome: { type: "failed" } },
       });
 
-      recoveryCall = createProviderGate(compactionRecoveryMarker);
+      recoveryCall = createProviderGate(compactionRecoveryMarker, { requiredTool: "get_goal" });
       providerGate = recoveryCall;
       const recovered = await client.runs.start({
         sessionId,
@@ -4914,6 +4940,9 @@ for await (const line of lines) {
         ],
       });
       const recoveredEvents = collectRunEvents(originalOpeningEvents(recovered));
+      onTestFinished(async () => {
+        await recoveredEvents;
+      }, compactionCutpointDeadlineMilliseconds);
       await within(recoveryCall.arrived.promise, "the provider-failure recovery model call");
       if (!recoveryCall.request) throw new Error("recovery gate did not capture its request");
       const recoveryTranscript = JSON.stringify(recoveryCall.request.messages ?? []);
@@ -4939,8 +4968,8 @@ for await (const line of lines) {
   it("keeps the durable compaction winner after SIGKILL before Strategy settlement", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
-    const openingCall = createProviderGate(compactionCutpointMarker);
-    const cutpoint = createProviderGate(compactionSummaryMarker);
+    const openingCall = createProviderGate(compactionCutpointMarker, { requiredTool: "get_goal" });
+    const cutpoint = createProviderGate(compactionSummaryMarker, { requiredTool: "get_goal" });
     let recoveryCall: ProviderGate | undefined;
     providerGate = openingCall;
     try {
@@ -4959,15 +4988,24 @@ for await (const line of lines) {
         ],
       });
       const runId = asRunId(started.result.runId);
-      const killedStream = collectRunEvents(originalOpeningEvents(started)).then(
+      const runEvents = collectRunEvents(originalOpeningEvents(started));
+      const killedStream = runEvents.then(
         () => undefined,
         () => undefined,
       );
+      onTestFinished(() => killedStream, compactionCutpointDeadlineMilliseconds);
       await within(openingCall.arrived.promise, "the SIGKILL opening model call");
       providerGate = cutpoint;
       openingCall.release.resolve();
       await within(
-        cutpoint.arrived.promise,
+        Promise.race([
+          cutpoint.arrived.promise,
+          runEvents.then((events) => {
+            throw new Error(
+              `Run ended before the crash cutpoint: ${JSON.stringify(events.at(-1)?.event)}`,
+            );
+          }),
+        ]),
         "the post-compaction SIGKILL cutpoint",
         compactionCutpointDeadlineMilliseconds,
       );
@@ -4997,7 +5035,7 @@ for await (const line of lines) {
         outcome: { type: "lost", loss: expect.objectContaining({ reason: expect.any(String) }) },
       });
 
-      recoveryCall = createProviderGate(compactionRecoveryMarker);
+      recoveryCall = createProviderGate(compactionRecoveryMarker, { requiredTool: "get_goal" });
       providerGate = recoveryCall;
       const recovered = await client.runs.start({
         sessionId,
@@ -5009,6 +5047,9 @@ for await (const line of lines) {
         ],
       });
       const recoveredEvents = collectRunEvents(originalOpeningEvents(recovered));
+      onTestFinished(async () => {
+        await recoveredEvents;
+      }, compactionCutpointDeadlineMilliseconds);
       await within(recoveryCall.arrived.promise, "the SIGKILL compaction recovery model call");
       if (!recoveryCall.request) throw new Error("SIGKILL recovery gate omitted its request");
       const recoveryTranscript = JSON.stringify(recoveryCall.request.messages ?? []);
@@ -5196,7 +5237,7 @@ for await (const line of lines) {
     const server = "http-e2e-kill";
     const serverId = { origin: { type: "user" as const }, name: server };
     const toolCallMarker = join(environmentRoot, "sigkill-tool-call-arrived");
-    const gate = createProviderGate("E2E_FORCE_KILL_TOOL", 1);
+    const gate = createProviderGate("E2E_FORCE_KILL_TOOL", { minimumToolResults: 1 });
     let serverCreated = false;
     providerGate = gate;
     try {

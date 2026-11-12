@@ -952,6 +952,9 @@ Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 The Runtime test project prepares disposable binaries and packages before suite
 startup deadlines begin. Project setup owns those artifacts and their final
 removal; the suite joins every process before project teardown reclaims the files.
+Compaction cases use bounded long results and join their Run streams before the next
+case can claim a provider cutpoint. Their gates require a main-model Tool so auxiliary
+summary reduction cannot impersonate the post-commit model call.
 Use `npm run lab` for inspection and `npm run lab:verify` for verification; new
 visual coverage extends this catalog and configuration. The full check includes
 compiler-resolved dependency/contract guards, lifecycle tests, resource drift,
