@@ -2,12 +2,12 @@ codeberg.org/go-fonts/dejavu v0.4.0 h1:2yn58Vkh4CFK3ipacWUAIE3XVBGNa0y1bc95Bmfx9
 codeberg.org/go-fonts/dejavu v0.4.0/go.mod h1:abni088lmhQJvso2Lsb7azCKzwkfcnttl6tL1UTWKzg=
 codeberg.org/go-latex/latex v0.3.0 h1:LKTaDHFbEC2PH1sh0sYv6PZ1pzs/g2aoeV1HItWj/bg=
 codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZfQBj+Lk4=
-github.com/Tangerg/flame/packages/go-sdk v0.1.9-dev.20261112.tc460770651b2 h1:+fB60/eDDt9HnoPTkSDTl29qvwVuoKpgeg4RvX+TQgQ=
-github.com/Tangerg/flame/packages/go-sdk v0.1.9-dev.20261112.tc460770651b2/go.mod h1:CGQD3bnZe7dZb/DvZ9E5g1Wk2ThmZlgxZt62uh5BCgA=
+github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255 h1:yaEZVbMcIBcbPrlmCc4rH2FXDlMYOvW1VbtIM8/zSGY=
+github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255/go.mod h1:ifLlVnTVMuBR6pb68alYZb6jTZ1al0FaRWPQEJ2i2U4=
 github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11 h1:yk0PE32KQP6ua3zmHba/2zYHX1xKYmysalnkQf8X9eQ=
 github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
-github.com/Tangerg/flame/runtime v0.1.19-dev.20261112.t68563a07127e h1:FCE51rJ6IeWOnClgUwIkRl29J5uihp8ByTpzR6be0sE=
-github.com/Tangerg/flame/runtime v0.1.19-dev.20261112.t68563a07127e/go.mod h1:Gj1Tun9HbmyETep3iu/U8ILRNWSmbsgB3KzC7PZMJf8=
+github.com/Tangerg/flame/runtime v0.1.21-dev.20261112.t0762762fa5c5 h1:TF2Fd2b9XlhB/IIKRPg46FZ4TeJXV50gKee13fcqqFM=
+github.com/Tangerg/flame/runtime v0.1.21-dev.20261112.t0762762fa5c5/go.mod h1:4bMqwJzGLbqi9DvBMznjFthG+sE+WaoYpKvHWmrIIaQ=
 github.com/Tangerg/frame v0.2.0 h1:r5gwfbgBah8jhHZaD9mP4shKi/hIl9ct/GlSXRvRO4k=
 github.com/Tangerg/frame v0.2.0/go.mod h1:M1KsiI3rBmb9iWEva0zOj1lnwOS102iruibglwwvdpM=
 github.com/Tangerg/go-sdk v1.9.0-scope.1 h1:2cV13pDEdGqNGfunLoeFxHw9Fb2IFk5x9d4EwxSmVjs=

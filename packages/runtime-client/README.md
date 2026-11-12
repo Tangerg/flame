@@ -16,6 +16,10 @@ its refusal. Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
 HTTP transport captures its endpoint, credentials and resource limits on creation;
 later edits to the supplied configuration cannot change an admitted connection.
+HTTP credentials and metadata must be ASCII field values without surrounding
+whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
+header normalization must never replace a captured command key or replay cursor.
+Unrepresentable values are refused before opening Fetch.
 
 Consumers use explicit public entries: the main API, `json`, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths

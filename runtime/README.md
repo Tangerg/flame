@@ -2,6 +2,10 @@
 
 Local HTTP requests in token-free mode must use the loopback listener authority. Browser origins must be the listener origin or an explicitly allowed UI origin. OAuth token forms may follow redirects only within the original issuer endpoint origin. If a system browser cannot open, configure its launcher and start a new sign-in attempt.
 
+HTTP RPC scalar metadata occurs at most once. Repeated credentials, content type,
+method hints, command identities and replay cursors are refused before dispatch;
+transport order cannot select an authority from competing values.
+
 Run accounting retains unreported model identities until the first reported usage. Missing cache partitions yield an unknown price when the catalog could charge different amounts. Existing data directories must be retained separately; the private Run accounting representation requires a fresh directory. A connecting MCP source fences its original crash-uncertain Run while other Sessions remain available.
 
 Read-only Git status, diff and file listing compare the workspace against an isolated metadata view. It retains the original HEAD, index (including linked worktrees and split indexes), object store, path attributes and ignore rules. Repository hooks, external clean filters, lazy remote fetches and recursive submodule worktree scans cannot run as part of a query. Changed submodule commits remain visible. Set the process temporary directory outside the worktree so inspection cannot enumerate its own metadata.

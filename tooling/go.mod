@@ -52,6 +52,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	go.yaml.in/yaml/v4 v4.0.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
@@ -64,9 +65,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.9-dev.20261112.tc460770651b2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255
 	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
-	github.com/Tangerg/flame/runtime v0.1.19-dev.20261112.t68563a07127e
+	github.com/Tangerg/flame/runtime v0.1.21-dev.20261112.t0762762fa5c5
 	github.com/Tangerg/frame v0.2.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	golang.org/x/mod v0.43.0

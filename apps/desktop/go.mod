@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/apps/desktop
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.9-dev.20261112.tc460770651b2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255
 	github.com/Tangerg/flame/packages/local-runtime v0.1.2-dev.20261104.t47cf6bbc2f11
 	github.com/wailsapp/wails/v3 v3.1.0
 	golang.org/x/tools v0.52.1-0.20261106145633-d407941a339a

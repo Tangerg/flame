@@ -26,8 +26,8 @@ const (
 	headerMethod               = "X-Method"
 )
 
-// requestHeaders is every header this transport reads, in one list so the
-// allowlist cannot fall behind the readers.
+// Browser preflight and scalar admission share this catalog. Selecting the
+// first repeated value would let transport order choose command authority.
 func requestHeaders() []string {
 	return []string{
 		headerAuthorization,

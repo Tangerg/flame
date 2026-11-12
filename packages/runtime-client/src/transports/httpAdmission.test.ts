@@ -3,14 +3,53 @@ import { HTTP_ENDPOINTS } from "@flame/runtime-client/wire";
 import { RpcConnectionError } from "../errors";
 import { createHttpTransport, type HttpTransportConfig } from "./http";
 
-it.each(["token\rnext", "token\nnext"])(
-  "refuses line breaks in credentials before creating a transport",
-  (localToken) => {
+it.each([
+  "token\rnext",
+  "token\nnext",
+  "token\0next",
+  "token\x01next",
+  "token\x7f",
+  "token ",
+  " token",
+  "é",
+  "键",
+])("refuses credentials that cannot retain their exact HTTP identity", (localToken) => {
+  const fetchStub = vi.fn<typeof fetch>();
+  expect(() =>
+    createHttpTransport({ baseUrl: "https://runtime.example", localToken, fetch: fetchStub }),
+  ).toThrow(TypeError);
+  expect(fetchStub).not.toHaveBeenCalled();
+});
+
+it.each(["idempotencyKey", "idempotencyNamespace", "lastEventId"] as const)(
+  "refuses lossy or invalid %s values before dispatch",
+  async (field) => {
     const fetchStub = vi.fn<typeof fetch>();
-    expect(() =>
-      createHttpTransport({ baseUrl: "https://runtime.example", localToken, fetch: fetchStub }),
-    ).toThrow("Bearer credentials must not contain line breaks");
-    expect(fetchStub).not.toHaveBeenCalled();
+    const transport = createHttpTransport({ baseUrl: "http://runtime.example", fetch: fetchStub });
+    try {
+      for (const value of [
+        " original",
+        "original ",
+        "\toriginal",
+        "original\t",
+        "original\0",
+        "original\x01",
+        "original\x7f",
+        "é",
+        "键",
+      ]) {
+        await expect(
+          transport.send(
+            { jsonrpc: "2.0", id: "1", method: "sessions.create", params: {} },
+            undefined,
+            { [field]: value },
+          ),
+        ).rejects.toBeInstanceOf(TypeError);
+        expect(fetchStub).not.toHaveBeenCalled();
+      }
+    } finally {
+      await transport.close();
+    }
   },
 );
 

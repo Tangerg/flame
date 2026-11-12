@@ -12314,9 +12314,28 @@ registrations, **7** created Library stores, all **18** private Library paths,
 **12** owned ignored output/cache roots and the private apps/assets/helpers/logs
 return to absence. Cleanup preserves **8** accepted source/resource/test hashes,
 all **20** current resources (**19** unaffected), **8** captured owners and **46**
-native inputs. Dependencies/hooks and unrelated primary work remain intact. No
-functional suite runs after cleanup. Continue with a reproduced reading or return
-problem; keep the one-off Escape observation conditional on fresh evidence.
+native inputs. Dependencies/hooks and unrelated primary work remain intact.
+
+Before publication, independent main commits `cbf8eb11e` and `5a87dbb2e` advance
+**29** paths for Go-client response cleanup and exact HTTP command metadata,
+including two desktop dependency manifests. They are merged without rewriting
+history. All **8** accepted Memory hashes, **20** component resources and **8**
+captured owners remain identical. **44** native inputs remain identical; only the
+incoming `go.mod`/`go.sum` pins advance. The native Memory task uses the existing
+memory transport, not the changed HTTP adapter; the earlier matched native
+interaction evidence retains that scope.
+
+The integrated tree repeats setup/staging, full Runtime-client checks (**474**
+tests in **36** files, **4.61 s**, plus type/lint/format/unused-code), all **115**
+relevant Web integration tests together (**13.80 s**), and the normal production
+native build/desktop Go tests. All pass. This explicitly follows the earlier
+cleanup because dependencies changed before publication. Its final cleanup
+returns **13** owned output/cache roots to absence, including the newly created
+Runtime-client Vitest cache, and removes the second private logs root. All **29**
+incoming hashes, **46** integrated native hashes and qualified Memory inputs are
+preserved. No functional suite runs after this final cleanup. Continue with a
+reproduced reading or return problem; keep the one-off Escape observation
+conditional on fresh evidence.
 
 ### Memory Lab target identity and User reading (2026-11-09)
 

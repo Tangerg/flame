@@ -88,6 +88,14 @@ interface EventStreamTextParser {
   feed(chunk: string): void;
 }
 
+function requireExactHeaderValues(headers: Record<string, string>): void {
+  // Fetch's byte strings cannot retain the UTF-8 identity Runtime reads from non-ASCII text.
+  for (const value of Object.values(headers)) {
+    if (!/^[\t\x20-\x7e]*$/u.test(value) || value.trim() !== value)
+      throw new TypeError("HTTP request headers must contain exact ASCII field values");
+  }
+}
+
 async function feedEventStreamText(
   parser: EventStreamTextParser,
   text: string,
@@ -119,8 +127,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
   if (localToken && !endpointAcceptsBearer(baseUrl))
     throw new TypeError("Bearer credentials require HTTPS outside loopback");
-  if (localToken && /[\r\n]/.test(localToken))
-    throw new TypeError("Bearer credentials must not contain line breaks");
+  if (localToken) requireExactHeaderValues({ [HTTP_HEADERS.authorization]: localToken });
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
   const maximumEventStreamFrameCharacters =
     config.maximumEventStreamFrameCharacters ?? MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS;
@@ -353,10 +360,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       ? AbortSignal.any([signal, closeController.signal])
       : closeController.signal;
 
-    const span = tracer.startSpan(`rpc ${method}`, {
-      kind: SpanKind.CLIENT,
-      attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
-    });
     const headers = requestHeaders({
       [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
       [HTTP_HEADERS.method]: method,
@@ -367,6 +370,11 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
     }
     if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;
+    requireExactHeaderValues(headers);
+    const span = tracer.startSpan(`rpc ${method}`, {
+      kind: SpanKind.CLIENT,
+      attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
+    });
     propagation.inject(trace.setSpan(context.active(), span), headers);
 
     let res: Response;
