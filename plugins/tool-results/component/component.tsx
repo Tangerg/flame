@@ -210,7 +210,10 @@ function httpContent(value: unknown): string | undefined {
   return undefined;
 }
 
-function httpResponse(response: Record<string, unknown>) {
+function httpResponseRow(
+  response: Record<string, unknown>,
+  t: Translate,
+): Row | undefined {
   const { status, duration, truncated } = response;
   if (
     Object.keys(response).some(
@@ -242,7 +245,11 @@ function httpResponse(response: Record<string, unknown>) {
       }
     }
   }
-  return { status, duration, truncated, headers: headers.join("\n"), body };
+  return {
+    kind: "located",
+    location: `${status} ${duration}${truncated ? ` · ${t("http.truncated")}` : ""}`,
+    body: headers.length ? `${headers.join("\n")}\n\n${body}` : body,
+  };
 }
 
 function resultContent(
@@ -321,20 +328,12 @@ function resultContent(
   }
   const result = parsed(source);
   if (renderer === "http-request") {
-    const response = httpResponse(result);
+    const response = httpResponseRow(result, t);
     return response
       ? {
           kind: "rows",
           label: t("caption.response"),
-          rows: [
-            {
-              kind: "located",
-              location: `${response.status} ${response.duration}${response.truncated ? ` · ${t("http.truncated")}` : ""}`,
-              body: response.headers
-                ? `${response.headers}\n\n${response.body}`
-                : response.body,
-            },
-          ],
+          rows: [response],
         }
       : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
   }

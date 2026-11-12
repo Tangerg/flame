@@ -78,7 +78,7 @@
 24 plugins/scripts/build.mjs:buildPlugin
 36 plugins/skills/component/component.tsx:Skills
 27 plugins/tool-results/component/component.tsx:<anonymous>
-41 plugins/tool-results/component/component.tsx:resultContent
+40 plugins/tool-results/component/component.tsx:resultContent
 23 plugins/tool-results/component/component.tsx:webPage
 46 plugins/trajectory/component/report.tsx:Observation
 31 plugins/trajectory/component/report.tsx:statusTone
