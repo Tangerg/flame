@@ -19,6 +19,10 @@ caller's Capability cannot retarget a bound method or its delayed stream.
 Point resolution retains that same captured schema across the remote call,
 including validation of the returned values.
 
+Closing the client withdraws admission before canceling calls. Concurrent close
+callers join the same completion, including response cleanup already started by
+request cancellation. A closing response remains owned until its body closes.
+
 Backend implementations use `packages/go-sdk/plugin`. Add this client only when
 they need a Runtime callback; the backend SDK does not depend on the client.
 Run `go test ./packages/go-sdk/client` and the root boundary checks.

@@ -16,18 +16,18 @@ import (
 // A call remains owned until its body is consumed, its context ends, or its
 // Client closes. A returned but unconsumed iterator must not retain a socket.
 type remoteCall struct {
-	client   *Client
-	ctx      context.Context
-	cancel   context.CancelCauseFunc
-	mu       sync.Mutex
-	body     io.ReadCloser
-	stop     func() bool
-	finished bool
+	client    *Client
+	ctx       context.Context
+	cancel    context.CancelCauseFunc
+	mu        sync.Mutex
+	body      io.ReadCloser
+	stop      func() bool
+	closeDone chan struct{}
 }
 
 func (r *Client) begin(parent context.Context) (*remoteCall, error) {
 	r.mu.Lock()
-	if r.closed {
+	if r.closeDone != nil {
 		r.mu.Unlock()
 		return nil, ErrClosed
 	}
@@ -37,7 +37,7 @@ func (r *Client) begin(parent context.Context) (*remoteCall, error) {
 	r.mu.Unlock()
 	stop := context.AfterFunc(ctx, func() { call.finish(context.Cause(ctx)) })
 	call.mu.Lock()
-	if call.finished {
+	if call.closeDone != nil {
 		stop()
 	} else {
 		call.stop = stop
@@ -49,7 +49,7 @@ func (r *Client) begin(parent context.Context) (*remoteCall, error) {
 func (c *remoteCall) attach(body io.ReadCloser) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.finished {
+	if c.closeDone != nil {
 		_ = body.Close()
 		return context.Cause(c.ctx)
 	}
@@ -59,11 +59,13 @@ func (c *remoteCall) attach(body io.ReadCloser) error {
 
 func (c *remoteCall) finish(cause error) {
 	c.mu.Lock()
-	if c.finished {
+	if done := c.closeDone; done != nil {
 		c.mu.Unlock()
+		<-done
 		return
 	}
-	c.finished = true
+	done := make(chan struct{})
+	c.closeDone = done
 	body, stop := c.body, c.stop
 	c.cancel(cause)
 	c.mu.Unlock()
@@ -75,6 +77,7 @@ func (c *remoteCall) finish(cause error) {
 	}
 	c.client.mu.Lock()
 	delete(c.client.calls, c)
+	close(done)
 	c.client.mu.Unlock()
 }
 

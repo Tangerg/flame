@@ -45,7 +45,7 @@ type Client struct {
 	http            *http.Client
 	maxMessageBytes int
 	mu              sync.Mutex
-	closed          bool
+	closeDone       chan struct{}
 	calls           map[*remoteCall]struct{}
 }
 
@@ -115,14 +115,20 @@ func ConnectCallback(ctx context.Context, ref pluginmcp.CallbackRef) (*Client, e
 	return client, nil
 }
 
-// Close rejects new calls and detaches every outstanding request or stream.
+// Close rejects new calls and joins cleanup of every outstanding request or stream.
 // Run cancellation remains the explicit CancelRun operation.
 func (r *Client) Close() error {
 	if r == nil {
 		return nil
 	}
 	r.mu.Lock()
-	r.closed = true
+	if done := r.closeDone; done != nil {
+		r.mu.Unlock()
+		<-done
+		return nil
+	}
+	done := make(chan struct{})
+	r.closeDone = done
 	calls := make([]*remoteCall, 0, len(r.calls))
 	for call := range r.calls {
 		calls = append(calls, call)
@@ -134,5 +140,6 @@ func (r *Client) Close() error {
 	if r.http != nil {
 		r.http.CloseIdleConnections()
 	}
+	close(done)
 	return nil
 }
