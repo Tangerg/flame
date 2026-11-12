@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,888 tests on the native-qualified inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33131,6 +33131,22 @@ Dependencies, hooks, global caches, references and unrelated work are preserved.
 VoiceOver speech, OS IME, RTL and live Runtime streaming remain unqualified.
 There is no migration. Continue from a newly supported visible problem rather
 than reopening the now-qualified delegated footnote gap.
+
+The complete frontend integration supplement on `2143f183f` then passes
+**434 files / 4,888 tests**, exit 0, **354.56 s Vitest / 356.59 s wall** after
+normal setup (22.17 s). It uses the existing serial `frontend` project, whose
+DOM setup excludes the Runtime lifecycle project. The existing GenUI iframe
+attribute case prints the DOM environment's disabled-page-loading diagnostic;
+the complete run passes without filtering that output or changing any test,
+deadline, retry or assertion. The same **4,304-input** map is exact, SHA-256
+`bd70af26c071ef1102c378525f6f0777c3d08ec28a70c90f9f0e30bc37b47c41`;
+all **46 native inputs** and **20 resources** are rechecked against the native
+qualification above. This extends unit integration evidence on those accepted
+bytes, with no additional native coverage claim. Seven new output/cache roots
+are removed and all thirteen absence targets hold. The unique
+`/tmp/flame-ui-frontend-baseline-7us_o25w` test tree and logs are removed after
+freezing its result; the test process tree is reaped. Historical Runtime
+aggregate failures keep their original failed results and separate scope.
 
 #### Main-conversation baseline
 
