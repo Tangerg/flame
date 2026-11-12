@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -6854,6 +6854,87 @@ main commits. The primary checkout stays clean at `00c172c73`, read only.
 Continue inspecting actual remaining page tasks; whole-product acceptance remains
 open. The separate Runtime setup qualification is completed under
 **Runtime integration qualification after main (2026-11-05)**.
+
+### Brand failure feedback in the current locale (2026-11-12)
+
+`plugins/brand/component/component.tsx` stored translated save/copy failures in
+state. A pending callback retained its initiating translator, and an already
+displayed failure never retranslated. The SDK's display-only locale contract and
+the installed component's retained signal require the same action and cause to
+remain current while application guidance follows the current language.
+Better-writing's localized guidance and better-accessibility's focus continuity
+inform this repair; the preceding Brand/HeroUI card research remains applicable.
+
+The original implementation fails **2 new regressions / 2 existing passes** in
+**2.09 s**. Actual baseline Wails reproduces the settled path: one English save
+refusal → Appearance Language → Chinese → Brand retains the English error beside
+Chinese headings and controls. No second download is needed to expose the defect.
+
+The local failure state now records only copy refusal or download refusal with
+the original `failureText(error)`. Rendering derives guidance from the current
+translator. Exact PNG requests, HEX, shared copy feedback, saving exclusion,
+signal/retirement checks, focus, alert placement and existing eight catalogs remain
+unchanged. There is no new command, effect, API or locale owner. Normal generation
+updates only the published Brand ESM; all **3 embedded PNG payload hashes** and the
+other **19** component resources remain unchanged.
+
+All **4 Brand tests pass in 9.32 s**. New cases defer each refusal across EN→ZH,
+then switch its settled feedback back to EN; the exact PNG filename/MIME/bytes and
+HEX are submitted once. Download detail retains padded spaces, newline, indentation
+and CJK. The clicked control identity and later focus survive. Complete plugin
+checks pass typecheck, lint, format, **47 script tests**, **646 source tests /
+44 files (51.89 s)**, the complete **20 catalogs / 8 locales** and resource reproducibility.
+The existing **17 skipped tests / 2 files** remain skipped and unchanged. Web
+typecheck, lint, complete format, layer and **827-file** design-system checks pass;
+the **8 Workspace command tests** pass in **12.06 s**. `make check-native` passes
+normal Web staging, Wails build and Desktop test/vet/build. The ordinary Lab build
+passes with **484 assets**, without the private refusal seam.
+
+Native qualification uses published ESM in the existing Workspace Brand settings
+scene. A temporary compilation substitutes only its public `saveFile` collaborator:
+valid Brand PNG requests receive `Recorded isolated save refusal.`. Baseline and
+candidate use that same refusal. The fixture source is restored byte-for-byte
+after each build; no permanent fixture, variant or production branch is added.
+Both private artifacts also contain **484 assets**. Their stylesheet matches the
+normal clean build exactly, and four captured data/transport owners remain intact.
+The copied Wails **v3.1.0** host changes only its initial URL; all **46** tracked
+native inputs remain intact. Independent main test-only commit `71524b139` is
+preserved before final Lab/native acceptance, without changing accepted UI inputs.
+
+- EN/light/14 px/Orange/full motion: one Primary logo refusal → Chinese → return
+  shows Chinese guidance with the same original cause. Ordinary native Window
+  Zoom/restore retains that feedback and selection. The small post-restore overview
+  is excluded from typography/contrast conclusions; the initial full-resolution
+  view qualifies the text. Wheel reading and Cmd+L preserve the middle caret;
+  continued typing yields `Keep continued this Brand review draft.`
+- ZH/dark/18 px/**#3B82F6**/motion off: one Plush character refusal → English →
+  return shows English guidance with the same cause. The complete cards, aligned
+  download controls, fixed **#FB6E30** / **251, 110, 48**, and guideline tail remain
+  readable through wheel scrolling. Cmd+L continues the original middle caret as
+  `Keep continued this dark Brand draft.`
+
+These are controlled Host-refusal presentation tasks, not actual OS save failures
+or successful filesystem exports. Native copy and clipboard bytes are not tested;
+copy refusal and pending completion are unit-qualified. No message or live Runtime
+command is submitted. Physical IME, VoiceOver, fresh contrast measurements and
+whole-product visual acceptance remain outside this receipt. No browser visual
+suite or performance benchmark runs. Installed consumers need the updated Brand
+component digest through the ordinary release/reload path; no stored-data migration
+is required.
+
+All three native processes and both loopback servers exit **0**. Three bundle
+registrations, **18** private Library paths and **12** owned output/cache roots
+return to absence. The private apps, data, assets, helpers and logs are removed.
+Cleanup preserves all four accepted inputs, the three original PNGs, nineteen
+other resources, four captured owners and all 46 native inputs; ordinary
+dependencies and hooks remain. No functional suite runs after cleanup.
+
+The next bounded investigation concerns overlapping successful copy acknowledgements:
+the shared hook suppresses an older result's feedback by returning `false`, which
+Brand interprets as refusal. Source tracing predicts a false failure when two
+successful copies finish in reverse order. This predates the locale repair and
+is not native-qualified here; reproduce that return-value contract before editing
+the shared owner.
 
 ### New-conversation brand identity
 

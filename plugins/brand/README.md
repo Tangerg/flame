@@ -9,3 +9,8 @@ The host owns the destination, transfer result and cancellation lifetime.
 Disablement withdraws the settings entry through the ordinary installation
 lifecycle. The product's application icon and empty-conversation companion remain
 ordinary consumers of the shared asset owner.
+
+Failure guidance follows the current display locale, including when a pending
+copy or save fails after a language change. Download failures retain the original
+host error text beside that guidance. Changing language does not repeat a copy or
+save.
