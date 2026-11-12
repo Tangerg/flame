@@ -85,6 +85,9 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	}
 	version := c.version + 1
 	if !isOpen {
+		if err := c.evictColdestDocumentLocked(ctx); err != nil {
+			return 0, err
+		}
 		err = c.conn.Notify(ctx, "textDocument/didOpen", didOpenParams{
 			TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.Languages[strings.ToLower(filepath.Ext(abs))], Version: version, Text: string(text)},
 		})
@@ -110,18 +113,14 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 		doc.end = documentEnd(text)
 	}
 	c.open[uri] = doc
-	c.evictColdestDocumentLocked(ctx)
 	return version, nil
 }
 
-// evictColdestDocumentLocked keeps the synchronized set within
-// [maxOpenDocuments] by closing the least recently synced document. The didClose
-// releases the server's copy too, which is the larger of the two; a failed
-// notify leaves the document recorded so the next sync retries rather than
-// desynchronizing the two views.
-func (c *client) evictColdestDocumentLocked(ctx context.Context) {
-	if len(c.open) <= maxOpenDocuments {
-		return
+// Capacity must be released at both ends before another document is admitted.
+// Failed delivery retains the previous document and refuses the new one.
+func (c *client) evictColdestDocumentLocked(ctx context.Context) error {
+	if len(c.open) < maxOpenDocuments {
+		return nil
 	}
 	coldest, oldestVersion := "", 0
 	for uri, doc := range c.open {
@@ -132,10 +131,11 @@ func (c *client) evictColdestDocumentLocked(ctx context.Context) {
 	if err := c.conn.Notify(ctx, "textDocument/didClose", didCloseParams{
 		TextDocument: textDocumentIdentifier{URI: coldest},
 	}); err != nil {
-		return
+		return fmt.Errorf("lsp: close %s before document admission: %w", coldest, err)
 	}
 	delete(c.open, coldest)
 	delete(c.diags, coldest)
+	return nil
 }
 
 func documentEnd(text []byte) Position {

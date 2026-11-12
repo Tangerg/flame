@@ -42,6 +42,10 @@ already be available to the installed backend. Diagnostic results must identify
 the requested open-document version; missing, stale or unversioned results are
 reported as unavailable, never as a successful empty analysis.
 
+Each language-server connection admits at most 128 synchronized documents.
+At capacity, it must deliver the oldest document's close before opening another;
+failed release refuses admission and retains the original synchronization record.
+
 Model-facing LSP positions use 1-based lines and 1-based UTF-16 code-unit
 offsets, matching the language server's units after subtracting one. For
 `a😀b`, the `b` starts at model character `4` and LSP character `3`; visual
