@@ -95,12 +95,11 @@ function ErrorMessage({ children }: { children: string }) {
         display: "flex",
         alignItems: "flex-start",
         gap: "var(--layout-content-gap)",
-        whiteSpace: "normal",
         overflowWrap: "anywhere",
       }}
     >
       <Icon glyph={Alert} size="sm" />
-      <span>{children}</span>
+      <RecordBody>{children}</RecordBody>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP command-error reading, Schedule model-catalog continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -42470,6 +42470,101 @@ platform GUIs. Runtime integration and CLI/backend suites are not rerun; browser
 visual suites and performance benchmarks remain excluded. No migration is needed.
 Whole-product and award-level acceptance remain open. Continue selecting the
 next batch from fresh native evidence in remaining task paths.
+
+### Literal Provider command-error reading (2026-11-13)
+
+Qualified from `7ee40983b`. Actual Wails reproduced a known Utility role refusal
+whose raw cause was `provider settings refused the change` followed by a hard
+newline and two spaces before `publisher: policy store unavailable`. The accepted
+OpenAI/GPT-5.6 Sol role and trigger focus were already correct. The command-error
+wrapper's `whiteSpace: normal` and ordinary span collapsed the cause into running
+text, leaving only incidental wrapping at the current window width.
+
+`plugins/providers/component/feedback.tsx` now renders that text through its
+already imported shared `RecordBody` and removes the local whitespace override.
+The existing alert, icon, alignment, string contract and role/source ownership
+remain intact. Known errors keep their exact cause; the five typed probe outcomes
+keep their current translation and alert/status classification. No command,
+credential, recovery, Runtime, locale, theme or shared-component behavior changes.
+Both role and credential feedback callers provide ordinary div containers, so
+the existing paragraph primitive composes without nested paragraphs.
+
+The better typography/readability reference is the current shared record body,
+which already owns literal whitespace, selectable text and wrapping for read
+failures and unknown outcomes. Read-only ZCode
+`settings/model-provider-section/ProviderDetailFeedback.tsx` supplies actual
+result-specific status/alert evidence. Its timed feedback overlay has a different
+lifetime; Flame retains its existing inline feedback and command boundary.
+
+Three existing refusal branches are strengthened without increasing the **43**
+Provider component cases: Utility, Embedding and focused original-Save recovery.
+All original exact-command, single-retry, focus, accepted-role and independent
+draft assertions remain. Only their final reading checks load the actual public
+`@flame/ui/styles.css`, assert the exact two-line text and computed `pre-wrap`,
+and remove that stylesheet after the case. The inspected old-source run has
+**3 failed / 40 passed** in **2.13 s**, exclusively `normal` versus `pre-wrap`
+after the existing assertions. An earlier CSS-before-mocked-popup probe changed
+two harness interaction paths and is excluded; the final assertions measure the
+real stylesheet after those original interactions. No class, tag or generated
+hash is frozen in the tests.
+
+Serial verification passes **47** publisher script tests and **648** source tests
+across **44** files, with the existing **17** skipped tests in **2** files
+(**42.58 s** source suite). Published host module coverage passes **33** tests in
+**3.84 s**. Web typecheck, lint, formatting, layers and design-system checks pass;
+`make check-native` exits **0**, and the normal Lab build has **484** assets with
+the unchanged shared stylesheet. The initial plugin format check identified the
+new test statement; the repository formatter corrected it before the passing
+complete check. No checks or assertions were disabled.
+
+Native acceptance consumes the exact published Provider ESM, SHA-256
+`4b326bd13ba5341fa85f4f4f1f82afeaa52b2c93fad8eced7d2ae345a158db62`,
+through the canonical Settings pane's existing eager import, source and
+`InstalledComponent`. No installer change is needed. The old and new private
+builds use one identical transport seam: only defined empty parameters for
+`models.setUtilityRole` receive the known multiline refusal through the original
+transport send. Other reads stay canonical. Both the installer and transport are
+byte-restored, all **46** tracked native inputs stay unchanged, and each private
+host/served Lab copy matches all **484** accepted private assets. This is isolated
+published presentation qualification, not provider configuration or execution.
+
+- English **14 px / light / Flame Orange #FB6E30 / full motion** is verified in
+  Appearance. The native default-role choice retains the original accepted model,
+  focused trigger, raw newline/indent and an independent endpoint draft. Actual
+  EN→ZH→EN navigation and Settings close/reopen retain all three facts. Native
+  Left resizing remains readable at **1120 pt**; Escape closes the role popup to
+  its trigger. A **320 px** Dock and the original middle Composer caret survive
+  the return, producing exactly `Keep verified this Provider reading draft.`
+- Chinese **18 px / dark / custom #3B82F6 / motion off** is verified in Appearance.
+  Keyboard replacement supplies the complete endpoint, and later typing produces
+  `https://dark-role.example.test/v1-continued`. ZH→EN, native Left resizing and
+  Settings close/reopen retain that draft, the raw cause and accepted role.
+  Actual wheel movement scrolls the body while Settings navigation stays fixed.
+  Return through the **320 px** Dock produces exactly
+  `Keep verified this dark Provider draft.` at the retained middle caret.
+
+An English batched click/Cmd+A/typeText probe supplied only a suffix; it is
+unclassified and excluded from typing qualification. Native setValue supplied
+its complete intended draft before retention checks. The Chinese replacement
+uses distinct selection/AX/typeText steps and passes completely. No input fix,
+physical IME, clipboard, VoiceOver, numeric contrast, real credentials,
+Save/probe/backend execution, new native unknown-command recovery or installation
+resource lifetime is claimed. Existing typed probe and recovery unit coverage
+remains passing. No browser visual suite or performance benchmark is run.
+
+All three native processes and both servers exit **0**. Three exact app
+registrations are removed; six created Library trees are removed and all **18**
+identity paths are absent. Twelve created output/cache roots are removed and all
+**13** baseline roots are absent. The private Provider QA root is removed after
+source/resource/asset fencing. All **20** publisher resources, the **17** unchanged
+Provider source owners, eight locale files, nine captured/installation facts and
+46 tracked native inputs retain their accepted hashes. No migration is needed.
+
+Next inspect Hooks read continuity across display language changes. Source shows
+whole-context read/watch dependencies; establish a native no-language tab-return
+control and compare a locale-only return before deciding on a change. Preserve
+legitimate subscription-gap refreshes, data events, trust commands and actual
+source/target replacement. Whole-product visual acceptance remains open.
 
 ### Provider role selection and retained editing (2026-11-06)
 

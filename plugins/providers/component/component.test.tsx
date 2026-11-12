@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import {
   act,
   cleanup,
@@ -8,7 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import type {
   Provider,
@@ -47,6 +49,15 @@ afterEach(() => {
   for (const f of fixtures.splice(0)) f.dispose();
   vi.restoreAllMocks();
 });
+function loadUiStyles() {
+  const style = document.createElement("style");
+  style.textContent = readFileSync(
+    createRequire(import.meta.url).resolve("@flame/ui/styles.css"),
+    "utf8",
+  );
+  document.head.append(style);
+  onTestFinished(() => style.remove());
+}
 const keyLabel = `${provider.id} API key`;
 const endpointLabel = `${provider.id} base URL`;
 const keyInput = () => screen.getByLabelText<HTMLInputElement>(keyLabel);
@@ -60,6 +71,9 @@ async function mount(f = create()) {
 }
 const reconcileName = "Reconcile original command";
 const confirmedName = "Original outcome confirmed";
+const refusalReason =
+  "provider settings refused the change\n  publisher: policy store unavailable";
+const literal = { normalizer: (text: string) => text };
 function attempt(button: HTMLElement) {
   fireEvent.pointerDown(button, { pointerType: "mouse" });
   fireEvent.click(button);
@@ -297,7 +311,7 @@ async function focusReconcile() {
 
 it.each([
   { outcome: "accepted", message: "Saved", key: "" },
-  { outcome: "refused", message: "save refused", key: "original-secret" },
+  { outcome: "refused", message: refusalReason, key: "original-secret" },
 ])(
   "keeps a focused reconciliation through its $outcome outcome",
   async ({ outcome, message, key }) => {
@@ -309,7 +323,7 @@ it.each([
         settled.promise.then(() =>
           outcome === "accepted"
             ? lost.accept()
-            : Promise.reject(new Error("save refused")),
+            : Promise.reject(new Error(refusalReason)),
         ),
       ),
     );
@@ -321,7 +335,9 @@ it.each([
     expect(lost.retry).toHaveBeenCalledOnce();
 
     await act(async () => settled.resolve());
-    await screen.findByText(message, { exact: true });
+    const textOptions =
+      outcome === "refused" ? { exact: true, ...literal } : { exact: true };
+    await screen.findByText(message, textOptions);
     expect(screen.getByRole("button", { name: confirmedName })).toBe(reconcile);
     expect(document.activeElement).toBe(reconcile);
     expect(reconcile.getAttribute("aria-disabled")).toBe("true");
@@ -333,7 +349,13 @@ it.each([
 
     act(() => keyInput().focus());
     expect(screen.queryByRole("button", { name: confirmedName })).toBeNull();
-    expect(screen.getByText(message, { exact: true })).toBeTruthy();
+    expect(screen.getByText(message, textOptions)).toBeTruthy();
+    if (outcome === "refused") {
+      loadUiStyles();
+      const failure = screen.getByText(refusalReason, literal);
+      expect(failure.textContent).toBe(refusalReason);
+      expect(getComputedStyle(failure).whiteSpace).toBe("pre-wrap");
+    }
   },
 );
 
@@ -662,7 +684,7 @@ it.each(
     setter.mockImplementationOnce((input) =>
       mutation(
         response.promise.then(() => {
-          if (outcome === "refused") throw new Error("role choice refused");
+          if (outcome === "refused") throw new Error(refusalReason);
           if (outcome === "unknown")
             throw new RpcTransportError("role choice response lost");
           return original(input);
@@ -690,7 +712,8 @@ it.each(
     if (outcome === "accepted") {
       await waitFor(() => expect(trigger.textContent).toContain(option));
     } else {
-      if (outcome === "refused") await screen.findByText("role choice refused");
+      if (outcome === "refused")
+        await screen.findByText(refusalReason, literal);
       else await screen.findByRole("button", { name: reconcileName });
       expect(trigger.textContent).toBe(acceptedText);
     }
@@ -706,6 +729,12 @@ it.each(
     expect(f.update).not.toHaveBeenCalled();
     expect(endpointInput().value).toBe(endpoint);
     expect(keyInput().value).toBe("independent-key-draft");
+    if (outcome === "refused") {
+      loadUiStyles();
+      const failure = screen.getByText(refusalReason, literal);
+      expect(failure.textContent).toBe(refusalReason);
+      expect(getComputedStyle(failure).whiteSpace).toBe("pre-wrap");
+    }
   },
 );
 

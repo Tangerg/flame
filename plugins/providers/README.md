@@ -40,6 +40,8 @@ outcome until focus leaves. The confirmed label means the original outcome is
 known, including a refusal shown beside it; another unknown result keeps recovery
 available. This local DOM-focus projection changes neither command ownership nor
 the original retry identity and never reclaims later focus or submits later edits.
+Shared `RecordBody` retains raw line breaks and indentation in known refusals;
+typed probe outcomes keep their current translated labels and status semantics.
 
 Runtime supplies an immutable credential snapshot when opening a model. One
 private handle retains the actual client and its supported capabilities. A
