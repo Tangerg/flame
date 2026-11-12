@@ -154,14 +154,26 @@ func (c *client) close() error {
 		ctx, cancel := context.WithTimeout(c.shutdownBase, clientShutdownTimeout)
 		defer cancel()
 
+		closeConnection := sync.OnceValue(func() error {
+			err := c.conn.Close()
+			c.cancel()
+			if errors.Is(err, jsonrpc2.ErrClosed) {
+				return nil
+			}
+			return err
+		})
+		// jsonrpc2 serializes writes without observing Call's context. Closing
+		// stdio at the deadline releases a blocked write before shutdown can join.
+		stopClose := context.AfterFunc(ctx, func() { closeConnection() })
+		defer stopClose()
+
 		// Protocol shutdown is advisory: a crashed or wedged server still needs
 		// its local resources reclaimed below.
 		_ = c.conn.Call(ctx, "shutdown", nil, nil)
 		_ = c.conn.Notify(ctx, "exit", nil)
-		c.cancel()
 
 		var errs []error
-		if err := c.conn.Close(); err != nil && !errors.Is(err, jsonrpc2.ErrClosed) {
+		if err := closeConnection(); err != nil {
 			errs = append(errs, fmt.Errorf("lsp: close %s connection: %w", c.spec.Name, err))
 		}
 

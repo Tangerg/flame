@@ -34,6 +34,8 @@ version-bound transformation. External formatters and
 language servers own process groups and retire descendants on cancellation or
 shutdown. Missing optional formatters are unsupported operations; other failures
 remain visible alongside a successful edit.
+The graceful-shutdown deadline also interrupts pending LSP stdio writes before
+child-process retirement and retains any connection-close failure.
 
 The optional installation input `lsp-servers` is a JSON array of server
 specifications (`name`, `command`, `args`, `languages` (extension-to-language-ID object), `rootMarkers`). Omit it to use the built-in
