@@ -43296,7 +43296,49 @@ material/logs/npm-cache root is removed. Keep the worktree and goal active.
 
 ### Palette-owned code contrast and status reading (2026-11-03)
 
-This batch starts from synchronized main `5f85b9a6a`. The final publication fetch
+The **2026-11-12 syntax-test follow-up** repairs the oracle in
+`features/theme/kit/paletteSyntax.test.ts`. Independent authored/transformed
+Shiki passes can disagree: the installed tokenizer has a 500 ms per-line budget.
+A controlled-clock reproduction preserves the exact source while producing one
+expired token versus 27 ordinary tokens, with 59 differing foreground characters.
+This demonstrates the failure mechanism; it does not attribute every earlier
+aggregate failure to this budget. Production highlighting and its budget stay
+unchanged.
+
+A test-local call-through observer captures the original tokens of the actual
+`highlightCode` pass before its palette transformer runs. The oracle retains
+exact per-character property/fallback matching, source/escaping, 4.5:1 palette
+contrast and exact emphasis styles. Both light/dark time-limit cases use a clock
+scoped to the synchronous call; both spies restore in `finally`. Wrong-role and
+wrong-fallback controls each fail all four foreground cases, including both
+expired cases, and restore the exact production source. Baseline passes **21**
+tests; final focused verification passes **23 tests in three files** (**15.638 s**
+command). Web typecheck, lint and format pass. Claude's bounded implementation
+call exits 0 without tool denials; primary review and verification own acceptance.
+No whole-Web, Runtime or native aggregate rerun is claimed; the earlier aggregate
+failures remain recorded in [Conversation Find](#conversation-find-and-reading-return).
+
+Actual Wails **v3.1.0** uses the same **488 unmodified canonical HTTP Lab assets**
+in separate private EN/light/14 px/Orange and ZH/dark/18 px/blue hosts. Default
+zoom and an ordinary window qualify code wheel/keyboard reading, mouse/keyboard
+wrap, recorded JSON evidence, shared wrapping, keyboard disclosure close and
+exact draft continuation. Chinese `type_text` initially leaves the field empty;
+explicit native plain-text paste supplies the confirmed draft and continuation.
+This supplies no new physical-IME or live Runtime evidence. No zoom command,
+window stress matrix, browser visual suite, fixture or visual entry is added.
+Rendered contrast is not newly measured.
+
+Evidence uses `flame-lab-syntax-pk6mbfnu`: **43 original JPEG/AX pairs**, with
+**12 scoped acceptance images** reviewed inline; warm-up, intermediate and the
+empty input attempt remain separate observations. Both applications quit and
+are unregistered, all twelve private Library paths are absent, and the verified
+HTTP process exits 130 after SIGINT. All thirteen output/cache roots are restored;
+unrelated primary-checkout work stays untouched. There is no data migration.
+The ordinary task also exposes a long raw Markdown message in trajectory details
+before its evidence action; trace that summary/detail owner before choosing the
+next UI change. Whole-product visual acceptance remains open.
+
+The original palette batch starts from synchronized main `5f85b9a6a`. The final publication fetch
 is checked separately before the guarded main fast-forward and push. The task is
 reply reading, a selected subagent, its captured file, return to the source and
 continued drafting, with ordinary status text and syntax foregrounds measured
