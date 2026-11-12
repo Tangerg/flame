@@ -48,7 +48,8 @@ changes never rewrite captured work. The private store is bound to one Runtime
 idempotency namespace and refuses another store.
 
 Dispatch always queries `runs.getAcceptance` with that exact original opening and
-key before `runs.start`. A lost response or private commit leaves the intent pending;
+key before `runs.start`. The start carries that same captured namespace, allowing
+Runtime to atomically refuse a replaced replay store. A lost response or private commit leaves the intent pending;
 the activation reconciles it through the same public owner after restart. Accepted
 or retired core acceptance settles the private intent, including after Run deletion.
 Detaching the returned execution stream does not cancel the independently accepted

@@ -61,7 +61,7 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	}
 	observation, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ack, _, err := h.client.StartRun(observation, start, protocol.RunCommandOptions{IdempotencyKey: key})
+	ack, _, err := h.client.StartRun(observation, start, protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace})
 	if err != nil {
 		return err
 	}

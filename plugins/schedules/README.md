@@ -92,7 +92,8 @@ installed operation entrances retain that same original business owner.
 The backend executable connects through the public `ConnectCallback` and ordinary
 Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;
 `runs.getAcceptance` checks that same original request before submission or
-reconciliation. A retired acceptance still proves the original opening. Core
+reconciliation. Dispatch carries that lookup's Runtime namespace so the receiving
+owner atomically refuses a replaced replay store. A retired acceptance still proves the original opening. Core
 observation detachment does not cancel an accepted Run. Each admission owns a
 child observation context and releases it on return, including invalid or lost
 acknowledgements, while retaining the original request for acceptance recovery.

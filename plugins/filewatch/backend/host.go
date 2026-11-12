@@ -72,7 +72,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 	default:
 		return protocol.ErrInvalidResponse
 	}
-	ack, _, err := h.client.StartRun(ctx, start, protocol.RunCommandOptions{IdempotencyKey: key})
+	ack, _, err := h.client.StartRun(ctx, start, protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace})
 	if err != nil {
 		return err
 	}

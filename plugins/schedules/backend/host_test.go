@@ -31,6 +31,11 @@ import (
 var discoveryFixture []byte
 
 func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T) {
+	var discovery protocol.DiscoverResponse
+	if err := json.Unmarshal(discoveryFixture, &discovery); err != nil {
+		t.Fatal(err)
+	}
+	namespace := discovery.Capabilities.Limits.Idempotency.Namespace
 	for _, outcome := range []string{"accepted", "wrong acknowledgement", "lost acknowledgement"} {
 		t.Run(outcome, func(t *testing.T) {
 			var starts atomic.Int32
@@ -57,6 +62,9 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 						t.Error(err)
 						return
 					}
+					if query.Namespace != namespace {
+						t.Error("acceptance lookup lost the captured Runtime namespace")
+					}
 					mu.Lock()
 					original, found := accepted[query.Key]
 					mu.Unlock()
@@ -69,6 +77,9 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 					}
 					fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":{"type":"retired","sessionId":%q,"runId":%q,"segmentId":"seg_original","userItemId":"item_original"}}`, request.ID, original.NewSession.SessionID, original.NewSession.RunID)
 				case "runs.start":
+					if r.Header.Get("Idempotency-Namespace") != namespace {
+						t.Error("Run dispatch lost the acceptance lookup's Runtime namespace")
+					}
 					var start protocol.StartRunRequest
 					if err := json.Unmarshal(request.Params, &start); err != nil || start.NewSession == nil {
 						t.Errorf("missing captured opening: %v", err)
