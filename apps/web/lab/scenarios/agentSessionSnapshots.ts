@@ -327,11 +327,15 @@ const WEB_SEARCH_CALL = settledTool(
   "web_web_search",
   { query: "sqlite wal checkpoint starvation" },
   JSON.stringify({
+    query: "sqlite wal checkpoint starvation",
     results: [
       {
         url: "https://www.sqlite.org/wal.html",
         title: "Write-Ahead Logging",
         snippet: "A checkpoint runs automatically when the WAL passes a threshold.",
+        source: "Recorded author · 保留",
+        published_time: "2026-07-30T09:30:00Z",
+        favicon_url: "https://example.test/recorded-favicon.png",
       },
       {
         url: "https://sqlite.org/forum/forumpost/2c7b9f",

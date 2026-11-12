@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock, and the recorded-identity batch is qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock, and both the recorded-identity and web-search provenance batches are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -35958,6 +35958,103 @@ device/inode/birth/UID and no-symlink checks. The in-memory archive round-trips
 `877841da694cbc09ce64c51ab915bce880528a9da19cbb8e5183a218dac90b8b`.
 Post-retirement checks again validate source/resource/reference hashes, all
 **16** absences, preserved caches and the protected draft.
+
+#### Recorded web-search provenance (2026-11-12)
+
+The earlier remote-evidence task qualified titles, URLs and excerpts. Its captures
+did not exercise the producer's optional `source` and `published_time`. A current
+native baseline confirms that accepted Trajectory JSON retains both fields while
+the installed result omits them and Find by source returns no matching rows.
+`plugins/web/backend/research.go` and its wire contract already preserve these
+facts. Scope can project an author's name as `source`; the UI must not infer a
+publisher or substitute a crawl or modification date for publication.
+
+The web-search branch in `plugins/tool-results/component/component.tsx` now derives
+one supporting context from the nonduplicated URL, recorded source and original
+publication timestamp, on separate lines. The existing `RecordSummary`, Find and
+selected-reader copy consume that same context. Either optional field may be
+absent independently. Strings remain literal; Copy result retains the complete
+original JSON, and favicon URLs remain inert. No new state, date formatter,
+navigation, request or shared styling is introduced.
+
+The actual local ChatGPT Sources panel implementation
+`deob/webview/assets/chatgpt-sources-side-panel-tab-4a8e2437448c.js` places provenance
+and publication details with the result identity. ZCode's actual
+`ToolCallBlocks/ToolSummaryRow.tsx` separates primary and supporting identity.
+These and better-layout/writing inform the hierarchy; Flame retains its shared
+record typography and literal evidence rather than their truncation, formatted
+dates or external navigation. The normal Lab `tool-remote` capture now includes
+both optional fields on one hit and neither on the other. `visualToolResults.tsx`
+selects the normally published ESM through the established typed eager glob.
+No story, route, visual runner or performance benchmark is added.
+
+Verification retains unsuccessful attempts as well as accepted checks:
+
+- The old implementation fails the three new provenance cases with **86 passes**,
+  **10.08 s**. The candidate's initial five-file run has **126 passes / three
+  5-second timeouts** in workspace command/continuity cases, **85.94 s**. With
+  unchanged assertions and deadlines, independent runs pass **89 result cases**,
+  **eight command cases** and **eight continuity cases**. After fast-forwarding
+  the independent main updates through `b70613ec9`, final result/ToolPreview
+  coverage passes **three files / 113 cases**, **17.63 s**, and the command file
+  passes **eight cases**, **23.69 s**. The initial timeouts do not reproduce in
+  those accepted runs; no cause is inferred from timing alone.
+- The first plugin check passes its 47 script tests, then stops because the
+  preceding cleanup removed the required prepared Node artifact. Normal
+  `make setup` restores that prerequisite. The complete plugin check then passes
+  **47 script tests**, **644 source tests**, all **20 catalogs / eight locales**
+  and exact resource reproduction. The existing **17 skipped tests / two skipped
+  files** retain their platform or opt-in scope. Web typecheck, lint, full format
+  check and design-system boundaries pass.
+- `make check-native` passes normal production staging, the Wails build and
+  Desktop test/vet/build. The final Lab build passes its three-document stylesheet
+  check. Baseline and candidate each contain **487 canonical assets**; their CSS
+  bytes are identical. Full Web and browser visual suites and performance
+  benchmarks are not run for this bounded projection change.
+
+Three isolated Wails **v3.1.0** launches run serially: original English, candidate
+English/light/14 px/Flame Orange/full motion, and candidate Chinese/dark/18 px/
+**#3B82F6**/motion off. All use default page zoom and ordinary windows. All finish
+with native Cmd+Q and terminal **exit 0**. The private host changes only its
+initial URL to the existing loopback Lab; all **46 production native inputs**
+retain their bytes.
+
+Both candidate tasks read the full source and timestamp, find by source and exact
+time with query focus retained, and preserve query plus open Arguments through
+README Preview → full width → return. English uses Close; Chinese uses the
+installed Escape command. Clear keeps query focus and Escape restores the result
+reader. Six Tabs from the authored Composer reach the splitter; End sets the Dock
+to **1000 px**, leaving complete provenance and wrapping excerpts readable.
+English also retains the task through native Window Zoom/restore. Its fitting
+result lets the wheel continue through the transcript; the Chinese bounded
+reader scrolls to the complete final excerpt and back without moving focus.
+The clean drafts continue as
+`Continue after checking recorded source evidence. Ready.` and
+`检查网页来源后继续。已核对。`; native caret navigation also reveals the complete
+Chinese draft. No Send, replay or external URL activation occurs.
+
+An initial multiline CUA paste unexpectedly creates a 98-line attachment and is
+excluded from accepted authoring evidence. Its content is neither inspected nor
+sent; keyboard removal restores a clean Composer before the accepted task.
+AX clicks on its unrevealed close target do not establish a new defect: the
+existing attachment qualification already records that hit-testing limitation.
+The synchronous paste owner retains captured text and derives its line count
+from that same text. Clipboard payload provenance is not newly qualified.
+
+Verdict: **Approve for the inspected captured-provenance reading flow**.
+Typography, grouping, supporting-text hierarchy, both theme profiles and the
+stated focus/scroll/return paths are inspected; no new contrast sampling or
+animation-timing claim is made. Live Runtime/provider execution, native clipboard
+bytes, physical IME, VoiceOver, RTL and whole-product/award-level acceptance remain
+open. Manual related-file navigation does not requalify Tool-origin focus return.
+
+Cleanup verifies both owned HTTP servers exit **0** after SIGINT, both private
+registrations and **12 private Library paths** are absent, and no native process
+remains. The exact temporary root `/tmp/flame-ui-content-uyLybU5m`, its logs/data
+and **11 owned build/cache roots** are removed. All six changed source/resource
+files and the 46 native inputs retain their pre-cleanup bytes; normal dependencies
+and hooks remain. Continue with fresh content/Dock observations rather than
+reopening the resolved provenance or unrevealed-close cases as new findings.
 
 #### Captured Web-page scope and literal request summaries (2026-11-04)
 

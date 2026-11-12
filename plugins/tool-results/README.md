@@ -68,7 +68,11 @@ and code-role paths rank below the Tool row. Source lines share a continuous num
 layout; located source results keep their context above each snippet. Web results
 and skill summaries separate the primary title, supporting URL and readable body
 using the shared record typography. An absent or repeated web title shows its URL
-once. The host Tool disclosure owns identity, status and failure details.
+once. Recorded web-search source and publication time follow that URL as literal
+supporting text. Either may be absent independently; no author, publisher or date
+is inferred. Find and selected-reader copy include this evidence, while Copy result
+retains the complete original JSON. Favicon URLs never load an image.
+The host Tool disclosure owns identity, status and failure details.
 Missing snippets add no body row; recorded empty snippets and source lines retain
 their blank line.
 An empty recorded hit or result array states that no results were returned, before,

@@ -5,11 +5,16 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { InstalledToolResultComponent } from "@/features/plugins/ui/InstalledComponent";
 import { RecordedToolComponent } from "@/features/plugins/ui/RecordedToolComponent";
-import { RecordedResult } from "../../../../plugins/tool-results/component/component";
 import declaration from "../../../../plugins/tool-results/package/io.github.tangerg.flame/declaration.json";
 import genuiDeclaration from "../../../../plugins/genui/package/io.github.tangerg.flame/declaration.json";
 import { type PluginClientComponent } from "@flame/runtime-client/wire";
 import { visualComponentProps } from "./installedComponentProps";
+const RecordedResult = Object.values(
+  import.meta.glob<{ RecordedResult: PluginComponent }>(
+    "../../../../plugins/tool-results/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.RecordedResult;
 const releasedGenUI = import.meta.glob<Record<string, PluginComponent>>(
   "../../../../plugins/genui/package/**/components/component.js",
 );
@@ -18,7 +23,7 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
   const renderers = (declaration.components as PluginClientComponent[]).map((entry) => ({
     key: entry.id,
     declaration: entry,
-    component: RecordedResult as PluginComponent,
+    component: RecordedResult,
   }));
   if (genui) {
     for (const entry of genuiDeclaration.components as PluginClientComponent[]) {

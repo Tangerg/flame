@@ -373,10 +373,19 @@ function resultContent(
         const value = record(hit);
         const title = text(value.title).trim();
         const url = text(value.url);
+        const context = [
+          title && title !== url ? url : undefined,
+          typeof value.source === "string" ? value.source : undefined,
+          typeof value.published_time === "string"
+            ? value.published_time
+            : undefined,
+        ]
+          .filter((part) => part !== undefined)
+          .join("\n");
         return {
           kind: "entry",
           title: title || url,
-          context: title && title !== url ? url : undefined,
+          context: context || undefined,
           body: value.snippet === undefined ? undefined : text(value.snippet),
         };
       }),

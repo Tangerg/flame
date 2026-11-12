@@ -258,11 +258,20 @@ function expectInert(result: HTMLElement) {
   expect(result.getElementsByTagName("skill")).toHaveLength(0);
 }
 
-it("keeps web titles, URLs and excerpts distinct, complete and inert while filtering", () => {
+it("keeps recorded web provenance readable, searchable and copyable without changing the captured result", async () => {
   const title = 'Review <img src=x onerror="alert(1)">';
   const snippet = "Recorded excerpt <script>alert(1)</script> & literal <b>markup</b>.";
+  const author = "Recorded author · 保留";
+  const published = "2026-07-30T09:30:00Z";
   const results = [
-    { title, url: "https://example.test/review", snippet },
+    {
+      title,
+      url: "https://example.test/review",
+      snippet,
+      source: author,
+      published_time: published,
+      favicon_url: "https://example.test/recorded-favicon.png",
+    },
     { url: "https://example.test/untitled", snippet: "No recorded title." },
     { title: "   ", url: "https://example.test/blank", snippet: "Blank recorded title." },
     {
@@ -271,25 +280,78 @@ it("keeps web titles, URLs and excerpts distinct, complete and inert while filte
       snippet: "The title is already the URL.",
     },
   ];
-  testClient.render(
-    <RecordedResult context={capturedContext("web_web_search", JSON.stringify({ results }))} />,
-  );
-  const result = screen.getByRole("region", { name: "Result" });
-  expect(within(result).getByText(title, { exact: true })).toBeTruthy();
-  expect(within(result).getByText(snippet, { exact: true }).tagName).toBe("P");
-  for (const entry of results) {
-    expect(result.textContent?.split(entry.url)).toHaveLength(2);
-  }
-  expectInert(result);
+  const source = JSON.stringify({ results }, null, 2) + "\n";
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  try {
+    testClient.render(<RecordedResult context={capturedContext("web_web_search", source)} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    expect(within(result).getByText(title, { exact: true })).toBeTruthy();
+    expect(within(result).getByText(snippet, { exact: true }).tagName).toBe("P");
+    expect(result.textContent).toContain(author);
+    expect(result.textContent).toContain(published);
+    for (const entry of results) {
+      expect(result.textContent?.split(entry.url)).toHaveLength(2);
+    }
+    expectInert(result);
 
-  fireEvent.click(screen.getByRole("button", { name: "Find" }));
-  fireEvent.change(screen.getByRole("searchbox", { name: "Filter result" }), {
-    target: { value: "Recorded excerpt" },
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    const field = screen.getByRole("searchbox", { name: "Filter result" });
+    for (const query of ["Recorded excerpt", author, published]) {
+      fireEvent.change(field, { target: { value: query } });
+      expect(document.activeElement).toBe(field);
+      expect(within(result).getByText(title, { exact: true })).toBeTruthy();
+      expect(result.textContent).toContain(results[0]!.url);
+      expect(result.textContent).toContain(author);
+      expect(result.textContent).toContain(published);
+      expect(within(result).getByText(snippet, { exact: true }).textContent).toBe(snippet);
+      expect(result.textContent).not.toContain("No recorded title.");
+    }
+    expect(selectAll(result)).toBe(false);
+    const copied = copyFrom(result);
+    expect(copied.proceeded).toBe(false);
+    expect(copied.setData).toHaveBeenCalledExactlyOnceWith(
+      "text/plain",
+      [title, results[0]!.url, author, published, snippet].join("\n"),
+    );
+    document.getSelection()?.removeAllRanges();
+
+    fireEvent.change(field, { target: { value: "No recorded title." } });
+    expect(result.textContent).toBe(results[1]!.url + results[1]!.snippet);
+    expectInert(result);
+    fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(source));
+  } finally {
+    document.getSelection()?.removeAllRanges();
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each([
+  { field: "source", value: "Recorded author · 保留" },
+  { field: "published_time", value: "2026-07-30T09:30:00Z" },
+])("reads and finds independently recorded web $field", ({ field, value }) => {
+  const title = "Independent recorded metadata";
+  const source = JSON.stringify({
+    query: "captured publication",
+    results: [
+      {
+        title,
+        url: "https://example.test/publication",
+        snippet: "A captured excerpt.",
+        [field]: value,
+      },
+    ],
   });
+  testClient.render(<RecordedResult context={capturedContext("web_web_search", source)} />);
+  const result = screen.getByRole("region", { name: "Result" });
+  expect(result.textContent).toContain(value);
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const search = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(search, { target: { value } });
+  expect(document.activeElement).toBe(search);
   expect(within(result).getByText(title, { exact: true })).toBeTruthy();
-  expect(within(result).getByText(results[0]!.url, { exact: true })).toBeTruthy();
-  expect(within(result).getByText(snippet, { exact: true }).textContent).toBe(snippet);
-  expect(result.textContent).not.toContain("No recorded title.");
+  expect(result.textContent).toContain(value);
   expectInert(result);
 });
 
