@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge, and the Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for future acceptance; the user explicitly stopped zoom stress testing.** Conversation Find now shares its own stream's follow controller, preserves visible reading during normal reflow, and leaves deliberate reading and later focus with their owners. Whole-product visual acceptance and live Runtime execution remain open.
+UI polishing is **paused at a milestone at the user's explicit request (2026-11-12)**. The current syntax-test reliability batch is verified and published before this pause; do not start another polishing batch until the user resumes it. Native control works through the bundled Sky bridge, and the Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for future acceptance; the user explicitly stopped zoom stress testing.** Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests now observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
