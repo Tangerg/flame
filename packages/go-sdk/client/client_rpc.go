@@ -94,7 +94,7 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 	request.Header.Set("Content-Type", protocol.RPCDocumentMediaType)
 	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
 	if r.callbackCall != "" {
-		request.Header.Set("Authorization", r.token)
+		request.Header.Set(headerAuthorization, r.token)
 		request.Header.Set(pluginmcp.CallHeader, r.callbackCall)
 		if invocation, invocationErr := pluginmcp.InvocationFromContext(ctx); invocationErr == nil {
 			value, encodeErr := json.Marshal(invocation)
@@ -104,11 +104,18 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 			request.Header.Set(pluginmcp.InvocationHeader, string(value))
 		}
 	} else if r.token != "" {
-		request.Header.Set("Authorization", "Bearer "+r.token)
+		request.Header.Set(headerAuthorization, "Bearer "+r.token)
 	}
 	setOptionalHeader(request.Header, headerIdempotencyKey, options.IdempotencyKey)
 	setOptionalHeader(request.Header, headerIdempotencyNamespace, options.IdempotencyNamespace)
 	setOptionalHeader(request.Header, headerLastEventID, options.AfterEventID)
+	for name, values := range request.Header {
+		for _, value := range values {
+			if err := validateHeaderValue(name, value); err != nil {
+				return nil, protocol.InvalidParameters(err)
+			}
+		}
+	}
 	return request, nil
 }
 

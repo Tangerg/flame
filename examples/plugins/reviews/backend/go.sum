@@ -1,5 +1,5 @@
-github.com/Tangerg/flame/packages/go-sdk v0.1.10-dev.20261112.t01fb8cf381ea h1:+bAApPf7RR68hl9OTMr9NoODZ+gFG5ZuhzaXSW+8aX0=
-github.com/Tangerg/flame/packages/go-sdk v0.1.10-dev.20261112.t01fb8cf381ea/go.mod h1:CGQD3bnZe7dZb/DvZ9E5g1Wk2ThmZlgxZt62uh5BCgA=
+github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255 h1:yaEZVbMcIBcbPrlmCc4rH2FXDlMYOvW1VbtIM8/zSGY=
+github.com/Tangerg/flame/packages/go-sdk v0.1.11-dev.20261112.t639ebaae4255/go.mod h1:ifLlVnTVMuBR6pb68alYZb6jTZ1al0FaRWPQEJ2i2U4=
 github.com/Tangerg/frame v0.2.0 h1:r5gwfbgBah8jhHZaD9mP4shKi/hIl9ct/GlSXRvRO4k=
 github.com/Tangerg/frame v0.2.0/go.mod h1:M1KsiI3rBmb9iWEva0zOj1lnwOS102iruibglwwvdpM=
 github.com/Tangerg/go-sdk v1.9.0-scope.1 h1:2cV13pDEdGqNGfunLoeFxHw9Fb2IFk5x9d4EwxSmVjs=
@@ -79,6 +79,8 @@ go.yaml.in/yaml/v3 v3.0.6 h1:zcDfvjXEqTQmpjniUBLc91xYJMB2c4QOFxEF/LCEckM=
 go.yaml.in/yaml/v3 v3.0.6/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=
 golang.org/x/mod v0.42.0/go.mod h1:u5fzIrRInkL8MaO1cbRkUHT64v303YIT5KEqpNr7jRs=
+golang.org/x/net v0.62.0 h1:18ELalfM5+XNRwzM2nYqXsZQ9ByS1uhj2O/U7+5jqRY=
+golang.org/x/net v0.62.0/go.mod h1:WgDCOTH8iwtB66T4/GfI94AHo/hhdb7Hah9NDseQfiI=
 golang.org/x/oauth2 v0.38.0 h1:uW7XQbcu1eoiQS7uMJvLOjPMl04bTbmY1VeRPxvbspI=
 golang.org/x/oauth2 v0.38.0/go.mod h1:IxwZNxUULJmpBFf9K/9NTMSIfZZuvuTy1gGxhigP/58=
 golang.org/x/sync v0.25.0 h1:dJnifr0nMV8/SBnBvdo4eSGGnrc3O4FFx6IqvtLcmRs=

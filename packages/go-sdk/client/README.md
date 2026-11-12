@@ -23,6 +23,10 @@ Closing the client withdraws admission before canceling calls. Concurrent close
 callers join the same completion, including response cleanup already started by
 request cancellation. A closing response remains owned until its body closes.
 
+HTTP metadata must retain its exact value. Invalid field bytes and surrounding
+HTTP whitespace are refused before dispatch, rather than changing a command's
+identity or reporting an unknown acknowledgement for a local encoding failure.
+
 Backend implementations use `packages/go-sdk/plugin`. Add this client only when
 they need a Runtime callback; the backend SDK does not depend on the client.
 Run `go test ./packages/go-sdk/client` and the root boundary checks.

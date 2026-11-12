@@ -12,6 +12,7 @@ require (
 	github.com/Tangerg/sse v0.0.6
 	github.com/google/uuid v1.6.0
 	github.com/samber/lo v1.53.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sys v0.50.0
 	golang.org/x/text v0.44.0
 )

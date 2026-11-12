@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -63,8 +62,8 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	if cfg.Token != "" && !endpoint.Secure() && !endpoint.Loopback() {
 		return nil, errors.New("runtime: bearer credentials require HTTPS outside loopback")
 	}
-	if strings.ContainsAny(cfg.Token, "\r\n") {
-		return nil, errors.New("runtime: token must not contain line breaks")
+	if err := validateHeaderValue(headerAuthorization, cfg.Token); err != nil {
+		return nil, err
 	}
 	if cfg.MaxMessageBytes < 0 {
 		return nil, errors.New("runtime: max message bytes must not be negative")

@@ -34,11 +34,13 @@ func NewRPCHandler(endpoint *delivery.Endpoint) (http.Handler, error) {
 // histories without trimming.
 const maxRPCBodyBytes = 4 << 20
 
-// serveRPC reads, dispatches, and serializes one JSON-RPC message.
-// Wire encode/decode goes through transport.DecodeMessage /
-// EncodeMessage — those wrap the MCP SDK's jsonrpc package, which
-// owns the conformant JSON-RPC 2.0 implementation.
 func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	for _, name := range requestHeaders() {
+		if len(r.Header.Values(name)) > 1 {
+			writeProblem(w, problemInvalidRequest, name+" header must occur at most once", false)
+			return
+		}
+	}
 	lifetime, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	r = r.WithContext(lifetime)
