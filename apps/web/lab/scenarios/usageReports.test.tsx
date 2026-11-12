@@ -1060,12 +1060,44 @@ it("settles the original held capture after a locale-only change without claimin
   expect(screen.getByRole("button", { name: "保存报告" })).toBe(save);
   expect(save.getAttribute("aria-disabled")).toBe("false");
   expect(save.disabled).toBe(false);
-  expect(screen.getByRole("button", { name: /^查看报告：每日报告 · / })).toBeTruthy();
+  const title = `每日报告 · ${new Date(daily.observedAt).toLocaleString("zh")}`;
+  expect(screen.getByRole("button", { name: `查看报告：${title}` })).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toBe(`核心报告已保存：${title}。它已列入归档。`);
   expect(screen.queryByRole("heading", { name: /^每日报告 · / })).toBeNull();
   expect(document.activeElement).toBe(refresh);
   expect(signal.aborted).toBe(false);
   expect(calls("capture")).toHaveLength(1);
   expect(JSON.parse(calls("capture")[0]![0].input)).toEqual({ period: "daily" });
+  expect(calls("get")).toHaveLength(0);
+});
+
+it("updates settled archive feedback with the current locale and preserves the provider error", async () => {
+  const raw = "Provider refused: quota_exceeded\n  request=E-17 · 保留  x2";
+  const capture = deferred<CallPluginResponse>();
+  const { calls, changeLocale } = mount((request) =>
+    request.method === "flame.usage-reports/list.v2"
+      ? reply({ reports: [] })
+      : mutationResult<CallPluginResponse>(() => capture.promise, "locale-refusal"),
+  );
+  await screen.findByText("No saved reports");
+  const save = screen.getByRole("button", { name: "Save report" });
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  act(() => save.focus());
+  fireEvent.click(save);
+  act(() => refresh.focus());
+  await act(async () => capture.reject(new Error(raw)));
+  expect(screen.getByRole("status").textContent).toBe(`The archive change failed: ${raw}`);
+
+  act(() => changeLocale("zh"));
+  expect(screen.getByRole("status").textContent).toBe(`归档更改失败：${raw}`);
+  expect(screen.getByRole("button", { name: "保存报告" })).toBe(save);
+  expect(save.getAttribute("aria-busy")).toBe("false");
+  expect(save.getAttribute("aria-disabled")).toBe("false");
+  expect(document.activeElement).toBe(refresh);
+  act(() => changeLocale("en"));
+  expect(screen.getByRole("status").textContent).toBe(`The archive change failed: ${raw}`);
+  expect(document.activeElement).toBe(refresh);
+  expect(calls("capture")).toHaveLength(1);
   expect(calls("get")).toHaveLength(0);
 });
 

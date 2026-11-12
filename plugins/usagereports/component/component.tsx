@@ -76,6 +76,19 @@ type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
 // The one waiting archive action; recovery actions name their original command.
 type Action =
   { kind: "capture" | "removal" } | { kind: "check" | "retire"; key: string };
+type Outcome =
+  | {
+      kind: "saved" | "removed" | "removalConfirmed" | "unknown" | "retired";
+    }
+  | { kind: "savedArchived"; header: Header }
+  | {
+      kind:
+        | "archiveFailed"
+        | "captureRejected"
+        | "removalRejected"
+        | "retireFailed";
+      error: string;
+    };
 const PERIODS = ["daily", "weekly"] as const satisfies readonly Period[];
 type Formatters = {
   count: (value?: JSONNumber) => string;
@@ -144,7 +157,7 @@ function Archive({ context }: { context: BoundContext }) {
   const [period, setPeriod] = useState<Period>("daily");
   const [action, setAction] = useState<Action>();
   const busy = action !== undefined;
-  const [message, setMessage] = useState<string>();
+  const [outcome, setOutcome] = useState<Outcome>();
   const lifetime = useRef<AbortController>(undefined);
   const inspecting = useRef<AbortController>(undefined);
   const listing = useRef<AbortController>(undefined);
@@ -311,7 +324,7 @@ function Archive({ context }: { context: BoundContext }) {
     const signal = ownerSignal();
     const active = activeElement();
     setAction(started);
-    setMessage(undefined);
+    setOutcome(undefined);
     try {
       const result = await command;
       if (signal.aborted) return;
@@ -321,18 +334,13 @@ function Archive({ context }: { context: BoundContext }) {
         // A later completion opens the saved report only while the user
         // remains where the command started.
         if (current === active || current === current?.ownerDocument.body) {
-          setMessage(t("message.saved"));
+          setOutcome({ kind: "saved" });
           open(result, undefined, active);
-        } else
-          setMessage(
-            t("message.savedArchived", {
-              title: reportTitle(result, t, locale),
-            }),
-          );
+        } else setOutcome({ kind: "savedArchived", header: result });
         void refresh(signal);
         return;
       }
-      setMessage(t(removed ? "message.removed" : "message.removalConfirmed"));
+      setOutcome({ kind: removed ? "removed" : "removalConfirmed" });
       const accepted = await refresh(signal);
       if (signal.aborted) return;
       // A recovered removal reports success without its original target. Only
@@ -347,10 +355,10 @@ function Archive({ context }: { context: BoundContext }) {
         leave(active, false);
     } catch (error) {
       if (!signal.aborted)
-        setMessage(
+        setOutcome(
           mutationSettlementIsUnknown(error)
-            ? t("message.unknown")
-            : t("message.archiveFailed", { error: failure(error) }),
+            ? { kind: "unknown" }
+            : { kind: "archiveFailed", error: failure(error) },
         );
     } finally {
       if (!signal.aborted) {
@@ -368,13 +376,13 @@ function Archive({ context }: { context: BoundContext }) {
         operations.command(captureMethod, { period }),
       );
     } catch (error) {
-      setMessage(t("message.captureRejected", { error: failure(error) }));
+      setOutcome({ kind: "captureRejected", error: failure(error) });
     }
   }
 
   function requestRemoval() {
     if (!opened || busy || unknown.length) return;
-    setMessage(undefined);
+    setOutcome(undefined);
     setRemoving(structuredClone(opened.header));
   }
 
@@ -388,7 +396,7 @@ function Archive({ context }: { context: BoundContext }) {
       );
     } catch (error) {
       setRemoving(undefined);
-      setMessage(t("message.removalRejected", { error: failure(error) }));
+      setOutcome({ kind: "removalRejected", error: failure(error) });
     }
   }
 
@@ -431,10 +439,10 @@ function Archive({ context }: { context: BoundContext }) {
       await command.retire(signal);
       if (signal.aborted) return;
       recoveryReturn.current = active;
-      setMessage(t("message.retired"));
+      setOutcome({ kind: "retired" });
     } catch (error) {
       if (!signal.aborted)
-        setMessage(t("message.retireFailed", { error: failure(error) }));
+        setOutcome({ kind: "retireFailed", error: failure(error) });
     } finally {
       if (!signal.aborted) setAction(undefined);
     }
@@ -517,7 +525,17 @@ function Archive({ context }: { context: BoundContext }) {
         )
       }
     >
-      {message && <Metadata role="status">{message}</Metadata>}
+      {outcome && (
+        <Metadata role="status">
+          {outcome.kind === "savedArchived"
+            ? t("message.savedArchived", {
+                title: reportTitle(outcome.header, t, locale),
+              })
+            : "error" in outcome
+              ? t(`message.${outcome.kind}`, { error: outcome.error })
+              : t(`message.${outcome.kind}`)}
+        </Metadata>
+      )}
       {unknown.map((command) => {
         const key = command.idempotencyKey;
         const checking = action?.kind === "check" && action.key === key;
@@ -561,7 +579,7 @@ function Archive({ context }: { context: BoundContext }) {
           t={t}
           locale={locale}
           onOpen={(header, opener) => {
-            setMessage(undefined);
+            setOutcome(undefined);
             open(header, opener, activeElement());
           }}
         />

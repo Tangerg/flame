@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance and saved-report locale continuity are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, saved-report reads and action feedback through locale changes are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -675,10 +675,9 @@ Verification:
 This qualifies fixed report reading and local observation in the actual native
 host with an isolated timing gate. Native capture, removal, live accounting,
 provider execution and durable original-command recovery are not exercised.
-The held-capture contract is unit-qualified only. Mutation feedback captured as
-translated text can still retain the starting language after a delayed result;
-that separate presentation issue is not qualified or repaired here. Revisit it
-with a concrete mutation-feedback task rather than broadening this lifetime fix.
+The held-capture contract is unit-qualified only. The separate limitation in
+already-translated mutation feedback is now qualified and repaired by the
+action-feedback task below; it does not change this lifetime repair's scope.
 Existing installed digests require explicit selection/reload of the newly
 published component; no archive or protocol migration is required.
 
@@ -692,6 +691,103 @@ no tracked files. Ordinary dependencies and hooks remain. Cleanup preserves all
 suite runs after output cleanup. The next review continues existing task paths
 from current evidence; the separate Skills lifetime audit found no actionable
 reader abandonment and does not justify a mechanical locale refactor.
+
+#### Report action feedback in the current locale (2026-11-12)
+
+Report controls and archive rows already follow a display-locale change, but
+action feedback previously stored complete translated sentences. A capture
+started in English could finish beside Chinese controls with an English saved
+title/time or failure prefix. A later locale change also left an already
+displayed result in its earlier language. The actual Wails baseline confirms
+the mismatch with the Lab's existing unmodelled-capture refusal: after a held
+request and English-to-Chinese Settings change, the returned prefix remains
+`The archive change failed:` while Save and the archive are Chinese.
+
+`Archive` now stores one local `Outcome`: a simple result kind, the original
+saved header when the result must name a report, or the captured failure detail.
+The existing status node derives its sentence, report period and observation
+time from the current translator and locale. All ten existing feedback kinds
+use this representation, including admission rejection, unknown outcome,
+removal confirmation and command retirement. Captured error text remains
+unchanged. The state replaces the former string; it adds no command state,
+message framework, SDK contract, catalog entry or Runtime transition. Existing
+clear points, signal ownership, recovery, busy controls and focus/opening
+predicates retain their original behavior.
+
+The SDK's locale-as-display contract and repository one-fact/one-owner rule
+guide this boundary: an observed result owns meaning; current locale projects
+its application copy. Better Writing guides consistent feedback and faithful
+error detail; Better Accessibility preserves later focus, explicit inspection
+and original-opener return. Existing Panel, Metadata and Toolbar owners retain
+wrapping, spacing, focus, themes and motion. The ordinary publisher updates only
+the installed report ESM; its normal Lab registration remains unchanged.
+
+Verification:
+
+- The old source has **2 failures / 22 passes** in **8.03 s**. The strengthened
+  held-capture case requires the current Chinese saved-report title/time while
+  retaining the single original command, later Refresh focus and no implicit
+  report opening. The new settled-refusal case switches English to Chinese
+  and back, requiring the application prefix to update while multiline error
+  text, indentation, Chinese characters and double spaces remain exact.
+  Final report/installed-continuity verification passes **32 tests / 2 files**
+  in **15.41 s**; eight Workspace command tests pass in **21.60 s**. No assertion,
+  timeout or existing command-recovery expectation is weakened.
+- Full plugin checks pass **47 script tests**; **644 source tests** pass in
+  **86.89 s**, with the existing **17 skips / 2 files** retained. Plugin
+  typecheck, lint, formatting, resource reproducibility and **20 catalogs /
+  eight locales** pass. Web typecheck, lint, full formatting and design-system
+  boundaries pass. `make check-native` passes staged production Web, the Wails
+  macOS build, Desktop test/vet/build; canonical `lab:build` passes in **4.00 s**.
+  Initial `make setup` completed npm installation and shared builds but its
+  pinned Node download failed with `UND_ERR_SOCKET`. The existing
+  `node-companion.mjs` CLI completes that same step with its required checksum
+  verification; accepted full checks run with the prepared artifact. No
+  browser visual suite or performance benchmark runs.
+- Baseline and final native builds each freeze **487 canonical Lab assets**.
+  An identical private timing seam delays only the existing capture call
+  before its normal Lab refusal. It neither accepts a capture nor changes the
+  error payload, captured archive or command handling. The transport source
+  is restored byte for byte; captured report inputs and CSS remain identical.
+  All **46 production native inputs** remain unchanged; the private Wails
+  **v3.1.0** host changes only its startup URL through an environment variable.
+- English/light/**14 px**/Flame Orange/full-motion starts one held capture,
+  refuses repeated keyboard activation, changes to Chinese in Settings and
+  continues Composer typing. The original failure returns with a Chinese
+  prefix and unchanged detail while retaining Composer focus. Changing back
+  to English after settlement updates that same result without another
+  capture. Chinese/dark/**18 px**/custom blue/motion-off retains later keyboard
+  focus on archive Refresh when the original refusal arrives, then updates
+  the existing result to English through Settings. Each private gate records
+  exactly **one** capture request, including after presentation and language
+  changes; the archive retains its original two records.
+- Both profiles use Actual Size, keyboard **320 px** Dock width, complete
+  wrapped feedback, full-width archive reading and Escape return. Explicitly
+  opening Daily in the English-start profile or Weekly in the Chinese-start
+  profile clears the previous feedback and reads the original saved values.
+  Wheel reading and Back retain the named report's original opener focus.
+  Ordinary native Window Zoom/restore preserves the English-start archive and
+  exact continued draft. Final drafts are
+  `Continue after the archive result. Still writing. Ready.` and
+  `Continue after the archive result. Ready.`; no message is sent.
+
+This qualifies application-owned feedback projection with the actual native
+host and the Lab's existing refused operation. Accepted capture success and its
+localized saved title/time are unit-qualified; no durable capture, deletion,
+live provider, accounting or original-command recovery is exercised natively.
+VoiceOver speech and physical IME behavior remain untested. Selecting/reloading
+the new installed digest is required for existing installations; archive and
+protocol formats remain unchanged. Continue with a fresh evidence-backed task;
+the related Diagnostics and Usage audit found no abandoned reader or broken
+action continuity and does not justify another locale refactor.
+
+All three native parent processes and three verified loopback servers exit
+**0**. Both private app registrations are removed and all **12** unique Library
+paths are absent. The private root, application bundles, data, frozen assets,
+helper scripts and logs are removed. Eleven worktree output/cache roots are
+removed only after checking they contain no tracked files; dependencies and
+hooks remain. Cleanup preserves all 46 native input hashes and all four accepted
+source/resource hashes. No functional suite runs after output removal.
 
 ### Reconciled Usage groupings in the Lab (2026-11-09)
 

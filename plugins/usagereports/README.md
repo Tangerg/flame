@@ -44,6 +44,10 @@ read; unmounting or retirement of the captured component signal ends local
 observation. Accepted commands keep their original Runtime identity and recovery
 path.
 
+Action feedback uses the current display locale, including after settlement.
+Saved-report titles and observation times follow that locale; captured report
+identity and external error text remain unchanged.
+
 One archive action waits at a time. Only its initiating control names the
 waiting action and is busy; it keeps keyboard focus and refuses repeated
 activation. Save stays unavailable while any original command outcome is
