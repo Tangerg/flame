@@ -389,6 +389,8 @@ retain their owners. Other navigation looks retain their existing focus-fill
 policy.
 
 Session search waits for a defined Session snapshot before reporting no matches.
+Rows wrap complete Session titles before selection while timestamps retain their
+intrinsic width.
 Its existing query owns pending, first-read error and retry; accepted results stay
 available through background failure. The shared overlay presents non-result
 feedback outside its listbox, with no active option while that list is hidden.

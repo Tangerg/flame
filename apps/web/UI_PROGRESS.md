@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; the subsequent Session-search display change passes 6 files / 40 focused tests and both native profiles. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -42841,6 +42841,74 @@ VoiceOver audio, fresh forced-colors/RTL OS runs, browser/performance suites and
 Claude CLI are not run. This approves the inspected Search flow, without a
 whole-product award-tier claim. The user requests a milestone pause after this
 qualified batch is published to main.
+
+### Session search complete titles
+
+The **2026-11-13** title follow-up reproduces a separate choice-identification
+gap. Two existing Session summaries have the same long visible prefix and time,
+but end in `Alpha / 甲` and `Beta / 乙`. The original native search paints both
+as the same single line ending in an ellipsis beside `yesterday`. Down changes
+the selected result without revealing the distinguishing suffix. AX retains the
+complete names, so the data and selection identity are intact.
+
+`SessionSearch.tsx` now follows the existing CommandMenu label convention:
+normal wrapping, `overflowWrap: anywhere` and `leading.body` within its original
+flexible label track. The icon and timestamp retain their intrinsic width.
+Short labels remain compact; complete long titles are readable before choosing.
+The existing Session summaries, matching, ordering, exact-ID selection, readiness,
+query, modal, scrolling and focus owners remain unchanged. No Tooltip, disclosure,
+state, shortcut, dependency or shared-component variation is added.
+Better-layout and better-typography guide readable identity without extra labels;
+the existing command-menu implementation supplies the repository convention.
+
+The six current Session search, matching, shared overlay, readiness, sidebar and
+command-menu test files pass **40 tests** (**6.32 s** Vitest, **7.41 s** wall).
+Web typecheck, lint, formatting, layer/design/chrome guards and post-stage module
+consumer checks pass. `make check-native` passes Desktop test/vet/build and the
+production Wails build (**19.86 s**). The standard Lab passes with **484 assets**.
+The preceding **434-file / 4,900-test** complete frontend result belongs to
+`6cd5525b3`; this display-only follow-up does not relabel it as a new full run.
+Native before/after reading provides the display regression evidence, with the
+existing behavior tests preserved rather than adding attribute-only assertions.
+
+Actual Wails acceptance uses English/light/14 px/Orange/full motion and
+Chinese/dark/18 px/**#3B82F6**/motion off, default zoom and macOS Left window
+sizing. Tab passes the sidebar collapse control to the real Search button;
+Return opens the production query input. English filters `Runtime boundary
+review`, while Chinese pastes `应用层`. Both now show both complete mixed-script
+titles in three lines, including the distinguishing endings and separate times.
+Down selects the complete Beta identity. Escape returns to the original Search
+button, and reopening presents a fresh query and initial highlight.
+
+The English full list remains bounded during native wheel reading, with the
+query row visible and short entries compact. Chinese Up from the initial row
+wraps to the last result and reveals it through the existing list scroll owner.
+Cancellation again returns to the opener. This is a Shell read/cancel task:
+its fixture has no Composer or installed shortcut provider. The displayed
+shortcut hint is not a Mod+K qualification; no Session choice, live Runtime,
+provider execution, dialogue return, OS IME or VoiceOver speech is claimed.
+Browser visual suites and performance benchmarks were not run.
+
+Both private native generations use the same single data-input transform of
+`installVisualShellFixture.ts`: two existing titles and one timestamp, preserving
+all IDs and other facts. Its SHA-256 is
+`4921581268f2e3f5448ab6b2d20506446568a9440e049fef2185aeb5fe9aabb6`.
+No repository fixture, interaction, observer or transport is changed. Normal and
+private Lab builds each contain **484 assets**; each private stylesheet matches
+its own normal output. Old and new CSS are also identical because the label
+uses existing rules. All **6,876 tracked inputs** remain frozen through checks,
+native use and cleanup, with only SessionSearch and the Web README changed.
+All twenty installed component resources and forty-six native inputs remain
+exact; copied hosts add only the private URL entry and its required `os` import.
+
+All three native processes and both guarded servers exit and join zero. The
+ports close, and all three exact registrations and bundles are removed. Six
+created Library paths and eleven output/cache paths are removed against their
+absence baselines; all eighteen Library and thirteen output targets are absent.
+Cleanup checks UID, paths, tracked overlap, hashes and the three owned Node bin
+links. The private QA root is deleted after proof retention. Dependencies,
+global caches, user data and unrelated work remain untouched. Only this progress
+record, SessionSearch and the Web README are retained for publication.
 
 ### Pinned Session row identity
 
