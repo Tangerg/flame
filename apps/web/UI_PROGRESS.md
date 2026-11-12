@@ -25534,8 +25534,8 @@ new publisher bytes. Whole-product visual acceptance remains open.
 A bounded source follow-up confirms that installation drafts already retain
 category/search navigation and intentionally reset when Settings closes or its
 Runtime operation generation changes. Their existing source and native receipts
-remain valid. Next native-check the remaining same-open Settings language-change
-coverage before proposing any installation repair. Previously qualified Trajectory
+remain valid. The same-open Settings language-change check is now complete in
+the corresponding Settings section without a product repair. Previously qualified Trajectory
 identity/provenance, cursor, evidence and keyboard-resize work remains complete.
 
 ### Run and Trajectory native reading review after main (2026-11-05)
@@ -43429,9 +43429,46 @@ baseline/qualified-source maps, original-file hashes and the native/cleanup
 receipts. It is **1,769,850 bytes**, SHA-256:
 `cb3f80652fb1bccdd239de182348001a753a95ba6689c3ff29d0a9e872bf0cc0`.
 
+#### Same-open Settings language check (2026-11-13)
+
+Fresh source tracing and actual Wails acceptance close this coverage gap without
+a product change. The operations signal owns the installation source; stable
+Settings pane IDs retain visited components. Display locale replaces neither
+owner. Existing category/search, command and real-generation regressions remain.
+
+Actual Appearance controls confirm light/14 px/Flame `#FB6E30`/default motion.
+Within one open Settings view, English → Simplified Chinese → English retains
+exact unsubmitted `/tmp/flame-ui-unsubmitted/draft-source.zip` and updates labels.
+Keyboard Tab reaches the pane, then its source; End and typing continue it as
+`/tmp/flame-ui-unsubmitted/draft-source.zip-continued`. Ordinary native Left-half
+resizing reaches 1120 pt; wheel/keyboard reading reaches the long plugin body
+while the Settings rail stays available. Default zoom is unchanged.
+
+Closing Settings releases the source. Reopening Plugins shows an empty input and
+disabled Install. Cmd+L retains the 320 px Dock and continues the original middle
+Composer caret as `Keep verified this Settings language draft.`. No installation,
+approval, provider selection or Send is activated. An ambiguous AX helper match
+and typing while the pane container had focus are excluded; observed source
+focus supplies the accepted continuation.
+
+Serial setup (**22.54 s**), staging (**9.17 s**), normal Lab build (**2.84 s**,
+**484 assets**) and private signed production Wails build (**4.51 s**) pass.
+Five relevant source/test owners, ten captured fixture/host facts, all 20 publisher
+resources, 46 native inputs and the Runtime client retain their qualified hashes.
+This documentation-only receipt reuses the preceding source-valid module/native
+gates; no extra unit/browser suite or benchmark is run. Earlier dark/large-type
+and real-generation coverage stays valid; no new IME/clipboard/VoiceOver claim.
+
+The native process and owned server exit 0. The exact registration, two created
+Library trees and seven created output/cache roots are removed. All six identity
+paths, all 13 baseline roots and the private QA root are absent. Dependencies,
+hooks, user data, references and unrelated main work remain. No migration or
+product repair is needed for this accepted language boundary.
+
 **Approve** this inspected Settings installation and return flow. Whole-product
-review continues. Next trace Schedules' structured Run receipt and the Host's
-existing Session/Run navigation owner before choosing a public component action.
+review continues. The Schedules receipt follow-up is already complete in
+“Accepted Run receipts and native command focus”; the current explicit
+`openSession` action preserves that documented scope.
 
 ### Custom color editing and native keyboard entry
 
@@ -47794,9 +47831,9 @@ and cleanup evidence. It is **1,751,354 bytes**, SHA-256:
 in that scope. This is not a whole-product award-tier claim. The installation
 draft follow-up is reconciled with the completed “Unfinished settings tasks and
 native return continuity” qualification; current source preserves the same
-ownership. Only same-open Settings language-change coverage needs a new native
-check. Inspect Run receipt navigation against current owners before selecting a
-repair.
+ownership. Same-open Settings language-change coverage is now qualified in that
+section. Run receipt navigation is already complete in “Accepted Run receipts
+and native command focus.” Choose fresh task evidence before selecting a repair.
 
 ## Working and maintenance practice
 
