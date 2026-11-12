@@ -43,7 +43,7 @@ async function openUsage({
   );
   const summary = vi.spyOn(runtime.usage, "summary");
   if (report) summary.mockResolvedValueOnce(report);
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: { installationId: "usage-review", digest: "a".repeat(64), componentId: "usage" },
     runtime,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
@@ -64,9 +64,13 @@ async function openUsage({
     owner.abort();
     await runtime.close();
   });
-  testClient.render(<Usage context={context} />);
+  const rendered = testClient.render(<Usage context={context} />);
+  function changeLocale(locale: string) {
+    context = Object.freeze({ ...context, locale });
+    rendered.rerender(<Usage context={context} />);
+  }
   await screen.findByText(loaded);
-  return summary;
+  return { summary, context, changeLocale };
 }
 
 async function choose(name: string, label: string) {
@@ -133,7 +137,7 @@ function headings(name: string) {
 
 it("names known calling origins and associations without changing accounting or reading again", async () => {
   const accepted = structuredClone(CLASSIFIED);
-  const summary = await openUsage({ report: CLASSIFIED });
+  const { summary } = await openUsage({ report: CLASSIFIED });
   const rows = () => headings("Recorded usage by source");
   const totals = screen.getByLabelText("Recorded usage totals");
   const before = totals.textContent;
@@ -169,7 +173,7 @@ it("names known calling origins and associations without changing accounting or 
 
 it("finds Chinese classification labels and original keys while other identities stay raw", async () => {
   const accepted = structuredClone(CLASSIFIED);
-  const summary = await openUsage({
+  const { summary } = await openUsage({
     locale: "zh",
     report: CLASSIFIED,
     loaded: "已加载记录的用量。全部时间。",
@@ -289,7 +293,7 @@ it.each([
   "keeps a sub-micro charge distinct from a recorded zero in $locale",
   async ({ locale, loaded, tiny, zero, ...label }) => {
     const accepted = structuredClone(SUB_MICRO);
-    const summary = await openUsage({ locale, report: SUB_MICRO, loaded });
+    const { summary } = await openUsage({ locale, report: SUB_MICRO, loaded });
     expect(facts(screen.getByLabelText(label.totals), label.totalCost)).toEqual([tiny]);
 
     const accounting = screen.getByRole("button", { name: label.accounting }).closest("section")!;
@@ -332,7 +336,7 @@ it("keeps ordinary charges, missing prices and six significant sub-micro digits"
     ],
   };
   const accepted = structuredClone(report);
-  const summary = await openUsage({ report });
+  const { summary } = await openUsage({ report });
   expect(
     facts(screen.getByLabelText("Recorded usage totals"), "Known price subtotal (USD)"),
   ).toEqual(["3.60"]);
@@ -486,7 +490,7 @@ it.each([
     const accepted = [COUNTED_MANY, COUNTED_ONE, COUNTED_NONE].map((report) =>
       structuredClone(report),
     );
-    const summary = await openUsage({ locale, report: COUNTED_MANY, loaded });
+    const { summary } = await openUsage({ locale, report: COUNTED_MANY, loaded });
     expect(screen.getByText(many, literalText)).toBeTruthy();
     for (const row of rows)
       for (const text of row) expect(screen.getByText(text, literalText)).toBeTruthy();
@@ -506,7 +510,7 @@ it.each([
 );
 
 it("establishes the report range before local filters and preserves total meaning while filtering", async () => {
-  const summary = await openUsage();
+  const { summary } = await openUsage();
   const scope = screen.getByRole("group", { name: "Report scope" });
   const filter = screen.getByRole("searchbox", { name: "Filter sources" });
   expect(scope.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -527,7 +531,7 @@ it("establishes the report range before local filters and preserves total meanin
 });
 
 it("keeps the same local controls and later focus when a refreshed report becomes empty and returns", async () => {
-  const summary = await openUsage();
+  const { summary } = await openUsage();
   await choose("Group by", "Model");
   const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
   const group = screen.getByRole("combobox", { name: "Group by" });
@@ -581,7 +585,7 @@ it("keeps the same local controls and later focus when a refreshed report become
 });
 
 it("keeps the accepted period beside the requested range after failure and recovers on refresh", async () => {
-  const summary = await openUsage();
+  const { summary } = await openUsage();
   summary.mockRejectedValueOnce(new Error("Report read failed"));
   await choose("Period", "Last 30 days");
   await screen.findByRole("alert");
@@ -597,7 +601,7 @@ it("keeps the accepted period beside the requested range after failure and recov
 });
 
 it("keeps a pending Refresh focusable and inert while the accepted report, filter and grouping remain", async () => {
-  const summary = await openUsage();
+  const { summary } = await openUsage();
   const pending = [
     Promise.withResolvers<typeof VISUAL_USAGE>(),
     Promise.withResolvers<typeof VISUAL_USAGE>(),
@@ -665,4 +669,187 @@ it("keeps a pending Refresh focusable and inert while the accepted report, filte
   expect(screen.queryByRole("alert")).toBeNull();
   expect(document.activeElement).toBe(filter);
   expectAcceptedScope();
+});
+
+it.each([
+  {
+    kind: "Refresh",
+    query: {},
+    requested: "全部时间",
+    loaded: "已加载记录的用量。全部时间。",
+    start: async () => fireEvent.click(screen.getByRole("button", { name: "Refresh" })),
+  },
+  {
+    kind: "range",
+    query: { sinceDays: 30 },
+    requested: "最近 30 天",
+    loaded: "已加载记录的用量。最近 30 天。",
+    start: () => choose("Period", "Last 30 days"),
+  },
+])("accepts the original held $kind read after a display-locale change", async (copy) => {
+  const { summary, context, changeLocale } = await openUsage({ report: CLASSIFIED });
+  const pending = Promise.withResolvers<typeof VISUAL_USAGE>();
+  summary.mockImplementationOnce(() => pending.promise);
+  const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
+  fireEvent.change(filter, { target: { value: "openai" } });
+  try {
+    await copy.start();
+    await waitFor(() => expect(summary).toHaveBeenCalledTimes(2));
+    const [query, originalSignal] = summary.mock.calls[1]!;
+    expect(query).toEqual(copy.query);
+    expect(originalSignal!.aborted).toBe(false);
+    act(() => filter.focus());
+    await act(async () => changeLocale("zh"));
+    expect(summary).toHaveBeenCalledTimes(2);
+    expect(originalSignal!.aborted).toBe(false);
+    expect(context.signal.aborted).toBe(false);
+    expect(screen.getByText("正在读取用量…")).toBeTruthy();
+    expect(screen.getByText("显示上次成功读取时的 全部时间。")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "时间段" }).textContent).toContain(copy.requested);
+    expect(facts(screen.getByLabelText("已记录用量合计"), "总费用 (USD)")).toEqual(["1.50"]);
+    expect(screen.getByRole("searchbox", { name: "筛选来源" })).toBe(filter);
+    expect(filter.value).toBe("openai");
+    expect(document.activeElement).toBe(filter);
+    await act(async () => pending.resolve(VISUAL_USAGE));
+    await screen.findByText(copy.loaded);
+    expect(facts(screen.getByLabelText("已记录用量合计"), "总费用 (USD)")).toEqual(["4.12"]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(summary.mock.calls.map(([query]) => query)).toEqual([{}, copy.query]);
+    expect(originalSignal!.aborted).toBe(false);
+    expect(document.activeElement).toBe(filter);
+    expect(filter.value).toBe("openai");
+  } finally {
+    await act(async () => pending.resolve(VISUAL_USAGE));
+  }
+});
+
+const usageRangeFailure = "  Requested range unavailable.\n原始原因 · 保留  ";
+
+it.each([
+  {
+    failure: "literal",
+    cause: new Error(usageRangeFailure),
+    english: `The current report could not be read: ${usageRangeFailure}`,
+    chinese: `无法读取当前报告：${usageRangeFailure}`,
+  },
+  {
+    failure: "fallback",
+    cause: undefined,
+    english: "The current report could not be read: The report could not be read.",
+    chinese: "无法读取当前报告：无法读取该报告。",
+  },
+])(
+  "retains a settled $failure range failure across display-locale changes until explicit Refresh",
+  async (copy) => {
+    const { summary, changeLocale } = await openUsage({ report: CLASSIFIED });
+    await choose("Group by", "Model");
+    const group = screen.getByRole("combobox", { name: "Group by" });
+    const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
+    fireEvent.change(filter, { target: { value: "openai" } });
+    const sources = screen.getByRole("region", { name: "Recorded usage by source" });
+    const details = within(sources).getByRole("button", { name: "Token and coverage details" });
+    fireEvent.click(details);
+    summary.mockRejectedValueOnce(copy.cause);
+    await choose("Period", "Last 30 days");
+    expect((await screen.findByRole("alert")).textContent).toBe(copy.english);
+    expect(summary).toHaveBeenCalledTimes(2);
+    const period = screen.getByRole("combobox", { name: "Period" });
+    expect(screen.getByText("Showing all time from the last successful read.")).toBeTruthy();
+    expect(facts(screen.getByLabelText("Recorded usage totals"), "Total cost (USD)")).toEqual([
+      "1.50",
+    ]);
+    summary.mockResolvedValueOnce(VISUAL_USAGE);
+    act(() => filter.focus());
+    await act(async () => changeLocale("zh"));
+    expect(summary).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("alert").textContent).toBe(copy.chinese);
+    expect(screen.getByText("显示上次成功读取时的 全部时间。")).toBeTruthy();
+    expect(facts(screen.getByLabelText("已记录用量合计"), "总费用 (USD)")).toEqual(["1.50"]);
+    expect(screen.getByRole("combobox", { name: "时间段" })).toBe(period);
+    expect(period.textContent).toContain("最近 30 天");
+    expect(screen.getByRole("combobox", { name: "分组方式" })).toBe(group);
+    expect(group.textContent).toContain("模型");
+    expect(screen.getByRole("searchbox", { name: "筛选来源" })).toBe(filter);
+    expect(filter.value).toBe("openai");
+    expect(headings("按来源记录的用量")).toEqual(["openai/gpt-5.6-sol"]);
+    expect(
+      within(screen.getByRole("region", { name: "按来源记录的用量" })).getByRole("button", {
+        name: "标记与覆盖明细",
+      }),
+    ).toBe(details);
+    expect(details.getAttribute("aria-expanded")).toBe("true");
+    expect(facts(sources, "已知费用 (USD)")).toEqual(["1.00"]);
+    expect(document.activeElement).toBe(filter);
+    await act(async () => changeLocale("en"));
+    expect(summary).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("alert").textContent).toBe(copy.english);
+    expect(screen.getByText("Showing all time from the last successful read.")).toBeTruthy();
+    expect(details.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(filter);
+    const refresh = screen.getByRole("button", { name: "Refresh" });
+    act(() => refresh.focus());
+    fireEvent.click(refresh);
+    act(() => filter.focus());
+    await screen.findByText("Recorded usage loaded. Last 30 days.");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(facts(screen.getByLabelText("Recorded usage totals"), "Total cost (USD)")).toEqual([
+      "4.12",
+    ]);
+    expect(summary.mock.calls.map(([query]) => query)).toEqual([
+      {},
+      { sinceDays: 30 },
+      { sinceDays: 30 },
+    ]);
+    expect(group.textContent).toContain("Model");
+    expect(filter.value).toBe("openai");
+    expect(details.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(filter);
+  },
+);
+
+it("cancels a genuinely replaced range and ignores its late result after the current range wins", async () => {
+  const { summary } = await openUsage({ report: CLASSIFIED });
+  const thirty = Promise.withResolvers<typeof VISUAL_USAGE>();
+  const seven = Promise.withResolvers<typeof VISUAL_USAGE>();
+  summary.mockImplementationOnce(() => thirty.promise).mockImplementationOnce(() => seven.promise);
+  try {
+    await choose("Period", "Last 30 days");
+    await waitFor(() => expect(summary).toHaveBeenCalledTimes(2));
+    const oldSignal = summary.mock.calls[1]![1]!;
+    expect(oldSignal.aborted).toBe(false);
+    await choose("Period", "Last 7 days");
+    await waitFor(() => expect(summary).toHaveBeenCalledTimes(3));
+    const currentSignal = summary.mock.calls[2]![1]!;
+    expect(oldSignal.aborted).toBe(true);
+    expect(currentSignal.aborted).toBe(false);
+    expect(screen.getByText("Showing all time from the last successful read.")).toBeTruthy();
+    expect(facts(screen.getByLabelText("Recorded usage totals"), "Total cost (USD)")).toEqual([
+      "1.50",
+    ]);
+    const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
+    fireEvent.change(filter, { target: { value: "openai" } });
+    act(() => filter.focus());
+    await act(async () => seven.resolve(VISUAL_USAGE));
+    await screen.findByText("Recorded usage loaded. Last 7 days.");
+    await act(async () => thirty.resolve(SUB_MICRO));
+    expect(screen.getByText("Recorded usage loaded. Last 7 days.")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Period" }).textContent).toContain("Last 7 days");
+    expect(facts(screen.getByLabelText("Recorded usage totals"), "Total cost (USD)")).toEqual([
+      "4.12",
+    ]);
+    expect(summary.mock.calls.map(([query]) => query)).toEqual([
+      {},
+      { sinceDays: 30 },
+      { sinceDays: 7 },
+    ]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(currentSignal.aborted).toBe(false);
+    expect(filter.value).toBe("openai");
+    expect(document.activeElement).toBe(filter);
+  } finally {
+    await act(async () => {
+      thirty.resolve(SUB_MICRO);
+      seven.resolve(VISUAL_USAGE);
+    });
+  }
 });

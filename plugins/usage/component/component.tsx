@@ -281,10 +281,11 @@ type Period = (typeof PERIODS)[number];
 type Read = {
   loading: boolean;
   accepted?: { report: UsageSummary; period: Period };
-  error?: string;
+  error?: { cause: unknown };
 };
 
 export function Usage({ context }: { context: ComponentContext }) {
+  const { runtime, track, signal: componentSignal } = context;
   const t = useTranslator(CATALOGS, context.locale);
   const fmt = useMemo(
     () => makeFormatters(context.locale, t),
@@ -299,11 +300,11 @@ export function Usage({ context }: { context: ComponentContext }) {
     reading.current?.abort();
     const controller = new AbortController();
     reading.current = controller;
-    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const signal = AbortSignal.any([componentSignal, controller.signal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
-      const report = await context.track(() =>
-        context.runtime.usage.summary(period.query, signal),
+      const report = await track(() =>
+        runtime.usage.summary(period.query, signal),
       );
       if (!signal.aborted)
         setRead({ loading: false, accepted: { report, period } });
@@ -312,10 +313,10 @@ export function Usage({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error: failureText(error, t("read.failed")),
+          error: { cause: error },
         }));
     }
-  }, [context, period, t]);
+  }, [runtime, track, componentSignal, period]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
@@ -356,7 +357,9 @@ export function Usage({ context }: { context: ComponentContext }) {
           )}
           {read.error && (
             <Metadata role="alert">
-              {t("status.error", { error: read.error })}
+              {t("status.error", {
+                error: failureText(read.error.cause, t("read.failed")),
+              })}
             </Metadata>
           )}
           {read.accepted &&

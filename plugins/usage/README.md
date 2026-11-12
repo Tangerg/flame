@@ -18,6 +18,11 @@ cannot mislabel retained totals.
 Changing a range cancels the previous request. Refresh or range-read failure retains
 the last accepted snapshot and labels its actual range. Component retirement cancels
 and joins queries; it does not cancel independently accepted Runs or erase accounting.
+Display-language changes preserve the original pending read, accepted range and
+totals, requested range, grouping, filter, expanded details and later focus. They
+neither reread nor retry a failed requested range. Replacing the Runtime, tracking
+function or component signal still cancels the previous read. Failures retain their
+raw cause; literal details stay exact while fallback guidance uses the current language.
 The component has no backend process or own callable contribution. Shared React, JSX
 and UI controls come from the actual workbench graph. There is no HTML guest or
 view-specific usage query.

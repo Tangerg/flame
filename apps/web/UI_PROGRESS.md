@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -13529,6 +13529,87 @@ processes and the primary parallel checkout remain untouched. This documentation
 receipt changes no accepted product input; its publication is followed by fresh
 remote, cleanliness and preservation checks. Continue from a fresh task observation,
 preserving Memory's local recovery and nonmodal command/draft ownership.
+
+### Usage range and read continuity across display languages (2026-11-12)
+
+Starting from published `88ea59f83`, the original exact Usage ESM reproduces a
+scope defect in Wails 3.1.0: a failed Last 30 days request correctly retains the
+All-time report, but changing English to Chinese silently rereads, removes the
+failure and accepts Last 30 days without Refresh. The read callback depended on
+the translated presentation and the locale-only context wrapper.
+
+The existing read owner now captures Runtime, track, component signal and Period.
+Language formatting cannot restart or cancel that read. Genuine range and owner
+replacement still use the original abort controller and acceptance guards. The
+existing error state retains its raw cause; literal detail stays intact and the
+fallback is translated when rendered. Requested range, accepted range, totals,
+local grouping/filter, expanded details and later focus keep their existing
+owners. No Runtime accounting, protocol, locale catalog, query, shared UI, theme,
+style, persisted data or fixture fact changes. The README records the contract.
+
+Read-only ZCode `settings/usage-stats/AppUsagePanel.tsx` and the actual
+`useAppUsageStats` in `hooks/useUsageStats.ts` separate range/service reads from
+display formatting. Flame retains its own cancellation and explicit-refresh
+model; no reference query, version counter, chart or truncation is copied.
+The established better-layout, better-writing and better-accessibility guidance
+applies to report scope, progressive detail and returning to the conversation.
+A bounded subagent implements the reviewed regression and component changes;
+the primary agent owns red verification, resource generation, gates and native QA.
+
+The original scope suite fails **4** locale cases and passes **14**, including
+the existing cases and genuine 30-to-7-day cancellation. Final scope, saved-report
+and actual component-module integration passes **75 tests / 3 files**, without
+the original red run's act warnings. Held Refresh and range responses retain the
+original signal/query; literal and undefined failures keep the accepted All-time
+1.50 report until explicit Refresh accepts the prepared 4.12 report. A late old
+range result cannot replace the accepted seven-day result. Local controls,
+disclosure identity and later focus remain stable.
+
+All serial gates pass: plugin publication and full checks (**47 script tests**,
+**648 source tests / 44 files**, with the existing **17 tests / 2 files** skipped),
+Web typecheck, lint, format, layers and design-system checks, `make check-native`
+and normal Lab build (**484 assets**). All **20** resources rebuild/check; only
+Usage changes. Normal and exact-resource native Lab builds retain identical CSS.
+
+Native old/new comparison loads each exact published ESM through the existing
+InstalledComponent. A byte-identical private transport seam refuses only the
+second Usage request after checking `{ sinceDays: 30 }`; all other reads use
+the canonical captured report. No mode, fake rows or business writes are added.
+Installer and transport bytes are restored exactly after each private build.
+Accepted Usage ESM SHA-256:
+`1c6ba68107b7c7f108d76741b518ff5f979d0fb832330a971f8d06920183f20a`.
+
+- English/light/14 px/Orange/full motion: EN → ZH → EN keeps the literal failure,
+  accepted All-time scope, requested 30 days, `anthropic` filter, Model grouping
+  and expanded `anthropic/claude-opus-5` facts. Keyboard resizing reaches 320 px;
+  native window resizing and wheel reading expose all eight source fact pairs.
+  Only keyboard Refresh clears the failure and accepts 30 days. Files → Usage
+  retains the same reading state. Composer continues exactly as
+  `Keep verified this Usage reading draft.` at its retained middle insertion point.
+- Chinese/dark/18 px/custom **#3B82F6**/motion off, verified in Appearance:
+  ZH → EN → ZH retains the same failed/requested/accepted distinction, `openai`
+  filter, Model grouping and expanded raw `openai/gpt-5.6-sol` facts. A 320 px Dock
+  and native Move & Resize → Left remain readable; wheel reaches the final
+  reasoning-token zero without moving the conversation. Keyboard Refresh accepts
+  30 days; Tab/Return on Clear filter restores both sources and input focus.
+  Composer continues exactly as `Keep verified this dark Usage draft.`.
+
+Default page zoom is retained. Canonical native reports are identical for all
+ranges; these tasks qualify UI range identity and recovery, not server date
+filtering or live accounting. Native held reads, undefined-error fallback,
+physical IME/clipboard, VoiceOver, numeric contrast, release installation and
+resource leases are not newly qualified. Unit coverage supplies held responses
+and distinct report data. No browser visual suite or benchmark runs.
+
+Cleanup joins **3 native processes** and **2 preview servers**, all exit 0;
+unregisters the three exact bundles; removes six created Library stores and
+verifies all **18** identity paths absent. All **13** initially absent output/cache
+roots are absent again (**12** were created), and the private QA root is removed.
+The four accepted non-document paths, **20** resources, **9** captured owners,
+**8** Usage locales and **46** native inputs retain their qualified hashes.
+Dependencies, hooks, global caches, read-only references and the clean primary
+checkout are preserved. A final fetch confirms main still equals the qualified
+base. Continue from fresh observations; whole-product visual acceptance remains open.
 
 ### Usage native report reading after main (2026-11-05)
 
