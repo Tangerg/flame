@@ -65,6 +65,44 @@ function noticeText(notice: Notice, t: Translate) {
   }
 }
 
+function SkillCommandFeedback({
+  command,
+  notice,
+  reconcile,
+  t,
+}: Pick<
+  ReturnType<typeof useSkills>,
+  "command" | "notice" | "reconcile" | "t"
+>) {
+  return (
+    <>
+      {notice && <p role="status">{noticeText(notice, t)}</p>}
+      {command && (
+        <section aria-label={t("command.status.label")}>
+          <p role={command.uncertain ? "alert" : "status"}>
+            {command.uncertain
+              ? t("command.uncertain")
+              : t("command.pending", {
+                  label: commandLabel(command.intent, t),
+                })}
+          </p>
+          {command.error && <RecordBody>{command.error}</RecordBody>}
+          {command.uncertain && (
+            <>
+              <Metadata>
+                {t("command.original", {
+                  key: command.promise.idempotencyKey,
+                })}
+              </Metadata>
+              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
+            </>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
 function SkillReadStatus({
   opened,
   read,
@@ -169,31 +207,12 @@ export function Skills({ context }: { context: ComponentContext }) {
       ? feedbackName
       : undefined;
   const feedback = (
-    <>
-      {notice && <p role="status">{noticeText(notice, t)}</p>}
-      {command && (
-        <section aria-label={t("command.status.label")}>
-          <p role={command.uncertain ? "alert" : "status"}>
-            {command.uncertain
-              ? t("command.uncertain")
-              : t("command.pending", {
-                  label: commandLabel(command.intent, t),
-                })}
-          </p>
-          {command.error && <RecordBody>{command.error}</RecordBody>}
-          {command.uncertain && (
-            <>
-              <Metadata>
-                {t("command.original", {
-                  key: command.promise.idempotencyKey,
-                })}
-              </Metadata>
-              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
-            </>
-          )}
-        </section>
-      )}
-    </>
+    <SkillCommandFeedback
+      command={command}
+      notice={notice}
+      reconcile={reconcile}
+      t={t}
+    />
   );
   return (
     <Panel

@@ -1,5 +1,8 @@
 # Functions accepted above the complexity threshold, written by tooling/complexity.mjs --write.
 # This list may only shrink: reduce a function, then lower or remove its line.
+21 apps/web/lab/scenarios/computerConsoleFixture.tsx:fetch
+24 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:resultFor
+23 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:send
 32 apps/web/scripts/check-agent-wire.mjs:wireIn
 24 apps/web/scripts/check-port-surface.mjs:<anonymous>
 21 apps/web/scripts/check-published-boundaries.mjs:reportDuplicateVocabulary
@@ -23,9 +26,6 @@
 23 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
-21 apps/web/lab/scenarios/computerConsoleFixture.tsx:fetch
-24 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:resultFor
-23 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:send
 21 apps/web/vite.config.ts:name
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
 34 packages/runtime-client/src/client.ts:dispatchMessage
@@ -76,7 +76,7 @@
 33 plugins/providers/component/roles.tsx:RoleSection
 58 plugins/schedules/component/component.tsx:Schedules
 24 plugins/scripts/build.mjs:buildPlugin
-36 plugins/skills/component/component.tsx:Skills
+34 plugins/skills/component/component.tsx:Skills
 27 plugins/tool-results/component/component.tsx:<anonymous>
 40 plugins/tool-results/component/component.tsx:resultContent
 23 plugins/tool-results/component/component.tsx:webPage
