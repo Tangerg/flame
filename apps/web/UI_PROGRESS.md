@@ -12333,9 +12333,14 @@ cleanup because dependencies changed before publication. Its final cleanup
 returns **13** owned output/cache roots to absence, including the newly created
 Runtime-client Vitest cache, and removes the second private logs root. All **29**
 incoming hashes, **46** integrated native hashes and qualified Memory inputs are
-preserved. No functional suite runs after this final cleanup. Continue with a
-reproduced reading or return problem; keep the one-off Escape observation
-conditional on fresh evidence.
+preserved. A final independent main commit `1428acedf` subsequently validates
+UTF-8 receipt keys at Runtime delivery and updates CLI/tooling candidate pins.
+Its eight paths do not change any qualified frontend, captured transport or
+integrated desktop input. Review and hash comparison retain its incoming bytes;
+all three incoming commits now cover **31** distinct paths. This last backend
+change is not independently requalified by the UI task. No functional suite runs
+after the final cleanup. Continue with a reproduced reading or return problem;
+keep the one-off Escape observation conditional on fresh evidence.
 
 ### Memory Lab target identity and User reading (2026-11-09)
 

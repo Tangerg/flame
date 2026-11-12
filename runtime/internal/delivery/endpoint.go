@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
@@ -269,8 +270,8 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 	if method.Idempotency == IdempotencyOwnerRun && options.IdempotencyKey == "" {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "a Run command requires an idempotency key retained by its caller")
 	}
-	if len(options.IdempotencyKey) > maxIdempotencyKeyBytes {
-		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")
+	if failure := validateIdempotencyKey(options.IdempotencyKey); failure != nil {
+		return failure
 	}
 	if options.IdempotencyNamespace != "" && options.IdempotencyKey == "" {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
@@ -290,6 +291,16 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 		if err := flameidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
 			return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))
 		}
+	}
+	return nil
+}
+
+func validateIdempotencyKey(key string) *protocol.Failure {
+	if !utf8.ValidString(key) {
+		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must be valid UTF-8")
+	}
+	if len(key) > maxIdempotencyKeyBytes {
+		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")
 	}
 	return nil
 }
