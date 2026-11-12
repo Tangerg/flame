@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, saved-report reads and action feedback through locale changes are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries and saved-report locale behavior are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -36255,6 +36255,99 @@ and **11 owned build/cache roots** are removed. All six changed source/resource
 files and the 46 native inputs retain their pre-cleanup bytes; normal dependencies
 and hooks remain. Continue with fresh content/Dock observations rather than
 reopening the resolved provenance or unrevealed-close cases as new findings.
+
+#### Recorded HTTP header/body boundary (2026-11-12)
+
+The specialized HTTP reader previously joined recorded headers and body with a
+single newline. A valid response with `x-proof: header` in its headers and
+`x-proof: body` in its body displayed the same text as another response whose
+body contained both lines. The actual Wails baseline confirms contiguous,
+indistinguishable lines before and during body Find. The public Web contract
+already gives headers and body distinct fields; this is a projection defect.
+
+`plugins/tool-results/component/component.tsx` now places a blank line after
+nonempty recorded header lines. Without headers, it displays the untouched body
+without adding a leading newline. Body whitespace, empty content, UTF-8 and
+labelled base64 remain unchanged. The response stays one located row, retaining
+status, duration, truncation, whole-response Find and reader selection. Copy
+result still writes the exact original JSON. No new state, label, navigation,
+request, protocol or shared styling is introduced.
+
+The [HTTP message-format convention](https://www.rfc-editor.org/rfc/rfc9112.html#section-2.1)
+uses an empty line to mark the end of headers. That convention informs this
+reading boundary; the original captured JSON remains the authoritative encoding.
+Fresh read-only ZCode `web-fetch.tsx` and `ToolSummaryRow.tsx` distinguish the
+operation, literal target and supporting content, but supply no HTTP response
+detail model to copy. Better Typography and Writing guide the preformatted
+grouping; Better Accessibility retains one Find task and explicit return focus.
+The existing `HTTP_CALL` now records `text/plain`, `x-proof: header`, and a
+body beginning `x-proof: body` before its original JSON health line. Its method,
+URL, status, duration, cache-control and other calls remain unchanged. The normal
+Lab uses the published installed ESM, with no additional scene or private timing
+seam.
+
+Verification:
+
+- The old source has **5 failures / 109 passes** across two files in **19.40 s**:
+  UTF-8/base64 boundaries, the two-capture collision, and absent/empty header
+  maps. Final recorded-result and snapshot checks pass **114 tests / 2 files**
+  in **4.05 s**. Eight Workspace command tests pass in **7.94 s**. The new cases
+  also retain complete-row Find, query focus, exact original JSON including its
+  trailing newline, inert markup, Close-find return, body indentation and
+  leading/trailing blank lines. No assertions or deadlines are weakened.
+- Normal `make setup`, publication and all plugin checks pass: **47 script
+  tests**, **644 source tests** in **58.90 s**, the existing **17 skips / 2 files**,
+  **20 catalogs / eight locales**, typecheck, lint, formatting and exact resource
+  reproduction. Web typecheck, lint, full formatting and design-system boundaries
+  pass. `make check-native` passes normal staged Web, Wails macOS build and
+  Desktop test/vet/build. Canonical `lab:build` passes in **2.33 s**. No browser
+  visual suite, full Web suite or performance benchmark runs.
+- Three isolated Wails **v3.1.0** launches run serially: baseline English,
+  final English/light/**14 px**/Flame Orange/full motion and final
+  Chinese/dark/**18 px**/**#3B82F6**/motion off. Both builds freeze **487 Lab
+  assets**, with identical capture, transport and CSS bytes. All **46 production
+  native inputs** retain their bytes; the private host changes only its startup
+  URL to the loopback Lab. All three native processes exit **0** through Cmd+Q.
+- Both final profiles use Actual Size and read the complete header/body
+  boundary, status, duration and original GET/URL arguments. Body Find retains
+  both stanzas; Chinese header Find and Clear retain query focus. English
+  preserves the query and open, wrapped Arguments through auxiliary catalogue
+  → full-width catalogue → visible Close → original conversation, then closes
+  local Find with Escape and retains result focus. Native Window Zoom/restore
+  retains the record and draft; Tab/Shift+Tab returns to Composer. Chinese uses
+  keyboard entry to the splitter, End for a **1000 px** Dock and Home for
+  **320 px**. The narrow main column retains both stanzas and the complete
+  wrapped URL; wheel reading reaches the request tail and response context.
+  Six reverse Tabs from the divider return to the exact draft while Find and
+  Arguments remain open. Both drafts continue as
+  `Continue after checking the HTTP response. Ready.`; no message is sent.
+
+Current Agent-fixture assembly limits this native scope. It directly renders
+`ChatPanel` in `VisualAgentStateFixture.tsx` and omits global shortcuts,
+`workspaceKeymap` and Files from `installVisualAgentFixture.ts`. Its installed
+workbench command therefore lacks the ref-owned main entry, and its catalogue
+contains Subagents only. Observed global Cmd+L and catalogue Escape attempts are
+excluded; visible Close, local Find Escape and Tab return are accepted. The
+Workspace fixture and production mount `app.main` and include those owners.
+This identifies an Agent-fixture coverage gap, without establishing a production
+command defect. The earlier Files/native records retain their stated historical
+scope; this batch does not requalify that path. The next fixture review should
+trace its custom send contract before aligning its assembly with production.
+
+Live HTTP, provider/Runtime execution, replay, native clipboard bytes, physical
+IME and VoiceOver remain untested. Base64 and no-header cases are unit-qualified.
+Existing installations need explicit selection/reload of the new component
+digest; captured data and protocol formats remain unchanged. Independent main
+SDK test-only commits are fast-forwarded through `e495177c0` after acceptance;
+all accepted UI/resource and native hashes remain unchanged. Those unrelated
+SDK test changes are preserved and excluded from this batch's diff.
+
+All three private static servers exit **0** after verified SIGINT. Both app
+registrations and all **12** unique Library paths are absent. The private root,
+apps, data, assets, helpers and logs are removed. Eleven ignored output/cache
+roots are removed after tracked-file guards; ordinary dependencies and hooks
+remain. Cleanup and main integration preserve all 46 native input hashes and
+five accepted source/resource hashes. No functional suite runs after cleanup.
 
 #### Captured Web-page scope and literal request summaries (2026-11-04)
 

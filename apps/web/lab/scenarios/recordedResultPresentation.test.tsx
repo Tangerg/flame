@@ -200,8 +200,8 @@ it.each([
   { encoding: "base64", data: "AAECAw==", expected: "base64: AAECAw==" },
   {
     encoding: "utf8",
-    data: "<img src=x onerror=alert(1)>",
-    expected: "<img src=x onerror=alert(1)>",
+    data: "\n  <img src=x onerror=alert(1)>\n\n",
+    expected: "\n  <img src=x onerror=alert(1)>\n\n",
   },
 ])(
   "preserves $encoding HTTP response bytes in the installed renderer",
@@ -225,10 +225,87 @@ it.each([
     expect(reader.textContent).toContain("content-type: application/octet-stream");
     expect(reader.textContent).toContain("x-raw: base64: /wA=");
     expect(reader.textContent).toContain(expected);
+    expect(reader.querySelector("pre")?.textContent).toBe(
+      `content-type: application/octet-stream\nx-raw: base64: /wA=\n\n${expected}`,
+    );
     expect(reader.textContent).not.toContain("[object Object]");
     expectInert(reader);
   },
 );
+
+it("distinguishes recorded HTTP headers from header-like body text through Find and exact Copy", async () => {
+  const captures = [
+    {
+      status: 200,
+      duration: "12ms",
+      headers: {
+        "content-type": [{ encoding: "utf8", data: "text/plain" }],
+        "x-proof": [{ encoding: "utf8", data: "header" }],
+      },
+      body: { encoding: "utf8", data: "x-proof: body" },
+    },
+    {
+      status: 200,
+      duration: "12ms",
+      headers: {
+        "content-type": [{ encoding: "utf8", data: "text/plain" }],
+      },
+      body: { encoding: "utf8", data: "x-proof: header\nx-proof: body" },
+    },
+  ];
+  const readings: string[] = [];
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  try {
+    for (const capture of captures) {
+      const source = JSON.stringify(capture, null, 2) + "\n";
+      const view = testClient.render(
+        <RecordedResult context={capturedContext("web_http_request", source)} />,
+      );
+      const reader = screen.getByRole("region", { name: "Result" });
+      const reading = reader.querySelector("pre")!.textContent!;
+      readings.push(reading);
+      fireEvent.click(screen.getByRole("button", { name: "Find" }));
+      const field = screen.getByRole("searchbox", { name: "Filter result" });
+      for (const query of ["content-type", "x-proof: body"]) {
+        fireEvent.change(field, { target: { value: query } });
+        expect(reader.querySelector("pre")?.textContent).toBe(reading);
+        expect(reader.textContent).toContain("200 12ms");
+        expect(document.activeElement).toBe(field);
+      }
+      fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+      await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith(source));
+      fireEvent.click(screen.getByRole("button", { name: "Close find" }));
+      expect(document.activeElement).toBe(reader);
+      expectInert(reader);
+      view.unmount();
+    }
+    expect(readings).toEqual([
+      "content-type: text/plain\nx-proof: header\n\nx-proof: body",
+      "content-type: text/plain\n\nx-proof: header\nx-proof: body",
+    ]);
+    expect(writeText).toHaveBeenCalledTimes(2);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each([
+  { name: "absent", headers: undefined },
+  { name: "empty", headers: {} },
+])("keeps the HTTP body unchanged with $name headers", ({ headers }) => {
+  const body = "x-proof: body\n\n";
+  const source = JSON.stringify({
+    status: 200,
+    duration: "12ms",
+    headers,
+    body: { encoding: "utf8", data: body },
+  });
+  testClient.render(<RecordedResult context={capturedContext("web_http_request", source)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  expect(reader.querySelector("pre")?.textContent).toBe(body);
+  expectInert(reader);
+});
 
 it.each([
   { body: { encoding: "utf8", data: "body", unrecognized: "keep" } },

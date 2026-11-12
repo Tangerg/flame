@@ -330,7 +330,9 @@ function resultContent(
             {
               kind: "located",
               location: `${response.status} ${response.duration}${response.truncated ? ` · ${t("http.truncated")}` : ""}`,
-              body: `${response.headers}\n${response.body}`,
+              body: response.headers
+                ? `${response.headers}\n\n${response.body}`
+                : response.body,
             },
           ],
         }

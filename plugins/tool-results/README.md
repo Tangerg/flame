@@ -14,6 +14,9 @@ Installed code intelligence and HTTP calls use their model-visible names,
 `codeintel_lsp` and `web_http_request`. HTTP presentation preserves UTF-8 text
 and labels base64 bytes without decoding them; unknown response members or
 malformed content keep the complete recorded source.
+Recorded header lines and body stay in one response row, separated by a blank
+line when headers exist. Without headers, reading starts at the body. Body
+whitespace and empty content remain unchanged.
 
 The public SDK supplies `context.toolResult`, a detached frozen settled transcript
 projection containing the original call/Run IDs, arguments, result, status, ranges and

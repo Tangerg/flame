@@ -386,10 +386,11 @@ const HTTP_CALL = settledTool(
     duration: "12ms",
     truncated: false,
     headers: {
-      "content-type": [{ encoding: "utf8", data: "application/json" }],
+      "content-type": [{ encoding: "utf8", data: "text/plain" }],
       "cache-control": [{ encoding: "utf8", data: "no-store" }],
+      "x-proof": [{ encoding: "utf8", data: "header" }],
     },
-    body: { encoding: "utf8", data: '{"ready":true,"database":"open"}' },
+    body: { encoding: "utf8", data: 'x-proof: body\n{"ready":true,"database":"open"}' },
   }),
 );
 
