@@ -128,7 +128,7 @@ func invalidWireContentBlock(index int, field, detail string) error {
 	constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{
 		Field: fmt.Sprintf("input[%d].%s", index, field), Detail: detail,
 	}}}
-	return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
+	return protocol.NewFailure(protocol.ErrInvalidParams, constraint.Error(), constraint)
 }
 
 func wireRunStartErr(err error) error {
@@ -143,23 +143,23 @@ func wireRunStartErr(err error) error {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
 		// A retried start whose key no longer pins the same request is the same
 		// refusal the generic replay store gives every other keyed command.
-		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation", err)
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), "input must contain a user text or image block")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "input must contain a user text or image block", err)
 	case modelchoice.IsInvalid(err):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrInvalidRunOptions):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrUnsupportedMedia):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrUnsupportedModelSelection):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrInvalidStart):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, session.ErrInvalid):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, frame.ErrStaleBinding):
@@ -172,7 +172,7 @@ func wireRunStartErr(err error) error {
 }
 
 func pluginChanged(err error) error {
-	return protocol.NewFailure(errors.Join(protocol.ErrPluginChanged, err), "a plugin installation changed while the run was being prepared; nothing was started")
+	return protocol.NewFailure(protocol.ErrPluginChanged, "a plugin installation changed while the run was being prepared; nothing was started", err)
 }
 
 func generationOptionsFromWire(in *protocol.GenerationParams) *corechat.Options {

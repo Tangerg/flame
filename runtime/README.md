@@ -1,5 +1,9 @@
 # Flame Runtime
 
+Delivery selects an operation problem's registered kind explicitly. Diagnostic
+causes cannot reclassify an output defect as a caller error; cancellation stays
+observable beside the original public failure for in-process callers.
+
 Local HTTP requests in token-free mode must use the loopback listener authority. Browser origins must be the listener origin or an explicitly allowed UI origin. OAuth token forms may follow redirects only within the original issuer endpoint origin. If a system browser cannot open, configure its launcher and start a new sign-in attempt.
 
 HTTP RPC scalar metadata occurs at most once. Repeated credentials, content type,

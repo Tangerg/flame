@@ -110,14 +110,14 @@ func mapGoalErr(err error) error {
 	case errors.Is(err, plugin.ErrUnavailable):
 		return wirePluginError(err)
 	case errors.Is(err, goals.ErrGoalActive):
-		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
+		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
 		modelchoice.IsInvalid(err),
 		errors.Is(err, goal.ErrInvalid),
 		errors.Is(err, modelchoice.ErrUnsupported):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return mapModelError(err)
 	}

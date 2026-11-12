@@ -78,6 +78,12 @@ are encoded through `packages/go-sdk/plugin/mcp.EncodeReply`; only the business 
 representation. Protocol consumers validate complete values with
 `ValidateWireTree`; individual generated node validators are private.
 
+`protocol.NewFailure` takes an exact registered kind, a client-safe explanation
+and optional diagnostic causes. Causes retain local error identity without
+selecting the public problem category. Joined or wrapped errors are not kind
+arguments; migrate them to the diagnostic arguments. `ProjectError` preserves
+caller cancellation even when it appears outside an already projected failure.
+
 `plugin.DefiniteToolFailure` projects failures only when a caller can prove no
 external mutation. An existing Scope Failure already owns its kind, public
 output and diagnostic cause; the SDK returns it and any boundary wrapping

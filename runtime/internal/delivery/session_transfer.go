@@ -39,7 +39,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	result, err := s.sessions.ExportSession(ctx, request.SessionID, results)
 	if err != nil {
 		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID))
+			return nil, protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID), err)
 		}
 		return nil, wireSessionErr(err)
 	}
@@ -103,13 +103,13 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	view, err := s.sessions.RestorePortableSession(ctx, portable)
 	if err != nil {
 		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", sessionID))
+			return nil, protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight or open interrupt", sessionID), err)
 		}
 		if errors.Is(err, sessions.ErrInvalidPortableSnapshot) {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
 		if errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, transcript.ErrToolResultIdentityConflict) {
-			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
 		return nil, wireSessionErr(err)
 	}

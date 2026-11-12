@@ -10536,7 +10536,7 @@
         },
         {
           "name": "NewFailure",
-          "signature": "func(cause error, detail string) *Failure"
+          "signature": "func(kind error, detail string, causes ...error) *Failure"
         },
         {
           "name": "NewPage",

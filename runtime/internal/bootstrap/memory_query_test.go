@@ -46,7 +46,7 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.Call
 func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) delivery.Result {
 	request, err := memoryQuery(r, input)
 	if err != nil {
-		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
+		return delivery.Result{Failure: protocol.ProjectError(err)}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }

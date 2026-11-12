@@ -14,7 +14,7 @@ func pluginProviderErrors(other ...string) []string {
 }
 
 func runtimeProduced(detail string, cause error) *protocol.Failure {
-	return protocol.NewFailure(errors.Join(protocol.ErrInternalError, cause), "the runtime produced "+detail)
+	return protocol.NewFailure(protocol.ErrInternalError, "the runtime produced "+detail, cause)
 }
 func failureFromData(data protocol.ProblemData) *protocol.Failure {
 	failure, err := protocol.DecodeFailure(data)
@@ -26,7 +26,7 @@ func failureFromData(data protocol.ProblemData) *protocol.Failure {
 
 func projectError(err error) *protocol.Failure {
 	if errors.Is(err, framemcp.ErrInvocationConflict) {
-		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key already binds a different command")
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key already binds a different command", err)
 	}
 	if _, found := errors.AsType[*protocol.Failure](err); found {
 		return protocol.ProjectError(err)

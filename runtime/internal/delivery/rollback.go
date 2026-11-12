@@ -60,7 +60,7 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 func wireRollbackErr(err error, sessionID string) error {
 	switch {
 	case errors.Is(err, sessions.ErrRollbackRecoveryPending):
-		return protocol.NewFailure(errors.Join(protocol.ErrInternalError, err), "file rollback recovery is still pending; retain the original request for recovery")
+		return protocol.NewFailure(protocol.ErrInternalError, "file rollback recovery is still pending; retain the original request for recovery", err)
 	case errors.Is(err, sessions.ErrCheckpointRestoreIncomplete):
 		return err
 	case errors.Is(err, rundomain.ErrSessionBusy):
@@ -70,11 +70,11 @@ func wireRollbackErr(err error, sessionID string) error {
 	case errors.Is(err, sessions.ErrCheckpointUnavailable):
 		return protocol.ErrCheckpointUnavailable
 	case errors.Is(err, sessions.ErrCheckpointConflict):
-		return protocol.NewFailure(errors.Join(protocol.ErrCheckpointConflict, err), "file restore was refused to preserve unarchived workspace material; move the conflicting files or directories before trying again")
+		return protocol.NewFailure(protocol.ErrCheckpointConflict, "file restore was refused to preserve unarchived workspace material; move the conflicting files or directories before trying again", err)
 	case errors.Is(err, transcript.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return wireSessionErr(err)
 	}
@@ -85,7 +85,7 @@ func wireBoundaryErr(err error) error {
 	case errors.Is(err, transcript.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return err
 	}
