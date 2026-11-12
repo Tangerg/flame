@@ -408,6 +408,16 @@ without a provider `CodeBlock` renders it plain. The Desktop installs its single
 here, so transcript code, captured file previews and recorded evidence share one
 highlighter, cache and scheme-following theme. `copyText` and `useCopyFeedback` are the shared
 plain-text clipboard owner. Input and output wells retain their own sunken surface.
+
+`copyText` reports whether the clipboard accepted that write. `useCopyFeedback.copy()`
+returns `true` for current success, `false` for current refusal, or `undefined` when
+the owner unmounts, the material changes or a newer copy supersedes it. Only the
+current intent publishes success feedback and its reset timer. Consumers show
+refusal only for `result === false`; callbacks that ignore the result keep their
+existing behavior. Source consumers must accept the widened optional result when
+rebuilt. Rebuild the shared UI, host and affected installed component resources
+together through their normal build and publication paths.
+
 `DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
 heading rhythm, nested list markers, quotes, rules, emphasis, inline code and
 tables. Other semantic renderers use that same root marker while retaining their

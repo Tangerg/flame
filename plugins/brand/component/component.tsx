@@ -176,7 +176,7 @@ export function Brand({ context }: { context: ComponentContext }) {
                 if (context.signal.aborted) return;
                 setFailure(undefined);
                 void copy().then((accepted) => {
-                  if (!accepted && !context.signal.aborted)
+                  if (accepted === false && !context.signal.aborted)
                     setFailure({ kind: "copy" });
                 });
               }}

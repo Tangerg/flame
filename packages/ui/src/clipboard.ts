@@ -30,7 +30,7 @@ export function useCopyFeedback(
   material: string,
   resetAfterMs = 1500,
   copyMaterial: CopyMaterial = copyText,
-): { copied: boolean; copy: () => Promise<boolean> } {
+): { copied: boolean; copy: () => Promise<boolean | undefined> } {
   const ownerRef = useRef<CopyFeedbackOwnership>({
     material,
     lease: {},
@@ -58,7 +58,7 @@ export function useCopyFeedback(
     };
   }, []);
 
-  const copy = useCallback(async (): Promise<boolean> => {
+  const copy = useCallback(async (): Promise<boolean | undefined> => {
     const owner = ownerRef.current;
     const lease = (owner.lease = {});
     clearResetTimer(owner);
@@ -66,13 +66,13 @@ export function useCopyFeedback(
 
     const accepted = await copyMaterial(material);
     if (
-      !accepted ||
       !owner.mounted ||
       owner.material !== material ||
       owner.lease !== lease
     ) {
-      return false;
+      return undefined;
     }
+    if (!accepted) return false;
 
     setAccepted(material);
     owner.resetTimer = setTimeout(() => {

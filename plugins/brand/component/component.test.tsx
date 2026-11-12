@@ -19,6 +19,8 @@ vi.mock("@flame/brand-assets", () => ({
 }));
 afterEach(() => {
   cleanup();
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -154,3 +156,39 @@ it("projects a deferred copy refusal and settled guidance in the current languag
   expect(writeText).toHaveBeenCalledOnce();
   expect(f.saveFile).not.toHaveBeenCalled();
 });
+
+it.each(["success", "refusal"] as const)(
+  "keeps the latest copy feedback when an older %s settles",
+  async (outcome) => {
+    vi.useFakeTimers();
+    const older = Promise.withResolvers<void>();
+    const latest = Promise.withResolvers<void>();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockReturnValue(latest.promise)
+      .mockReturnValueOnce(older.promise);
+    const f = fixture();
+    render(<Brand context={f.context} />);
+    const copy = screen.getByRole("button", { name: "Copy HEX" });
+    act(() => copy.focus());
+    fireEvent.click(copy);
+    fireEvent.click(copy);
+    await act(async () => latest.resolve());
+    expect(screen.getByRole("button", { name: "Copied" })).toBe(copy);
+    expect(document.activeElement).toBe(copy);
+
+    await act(async () => {
+      if (outcome === "success") older.resolve();
+      else
+        older.reject(
+          new DOMException("Earlier write refused", "NotAllowedError"),
+        );
+    });
+
+    expect(screen.getByRole("button", { name: "Copied" })).toBe(copy);
+    expect(document.activeElement).toBe(copy);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(writeText.mock.calls).toEqual([["#FB6E30"], ["#FB6E30"]]);
+    expect(f.saveFile).not.toHaveBeenCalled();
+  },
+);

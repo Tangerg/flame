@@ -14,3 +14,8 @@ Failure guidance follows the current display locale, including when a pending
 copy or save fails after a language change. Download failures retain the original
 host error text beside that guidance. Changing language does not repeat a copy or
 save.
+
+Only a current `false` copy result displays refusal guidance. Superseded or
+retired copy completions leave current feedback alone. Rebuild the shared UI,
+host and published Brand resource together through their normal paths. Existing
+installations must explicitly select the rebuilt package digest.

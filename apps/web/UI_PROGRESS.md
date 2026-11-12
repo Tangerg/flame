@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -6929,12 +6929,118 @@ Cleanup preserves all four accepted inputs, the three original PNGs, nineteen
 other resources, four captured owners and all 46 native inputs; ordinary
 dependencies and hooks remain. No functional suite runs after cleanup.
 
-The next bounded investigation concerns overlapping successful copy acknowledgements:
-the shared hook suppresses an older result's feedback by returning `false`, which
-Brand interprets as refusal. Source tracing predicts a false failure when two
-successful copies finish in reverse order. This predates the locale repair and
-is not native-qualified here; reproduce that return-value contract before editing
-the shared owner.
+The overlapping-copy investigation is reproduced and qualified in the following
+shared-owner repair. It predates this locale change.
+
+### Current copy feedback and completion ownership (2026-11-12)
+
+`packages/ui/src/clipboard.ts` already gives each copy intent a lease and retires
+it on replacement, material change or unmount. Its return value nevertheless
+collapsed retirement and actual refusal into `false`. Brand interpreted both as
+failure: after the latest write succeeded, an older success or refusal could add
+an error beside the current `Copied` control. The shared hook owns eligibility;
+Brand owns only the current refusal's localized presentation.
+
+The original shared implementation fails **4 new assertions / 3 passes** in the
+selected copy group (**2.67 s**); the other 81 file cases are filtered out. Brand
+fails **2 new regressions / 4 existing passes** in **3.43 s**. Actual baseline
+Wails shows the same focused `Copied` button and `Couldn't copy the color` alert
+after two successful acknowledgements complete in reverse order. This is a real
+presentation defect, without an OS clipboard denial.
+
+The hook now checks its existing mounted/material/lease eligibility before
+interpreting the write result. `copy()` returns `true` for current acceptance,
+`false` for current refusal and `undefined` for retired completion. Brand uses
+`accepted === false`. The underlying `copyText` and `CopyMaterial` retain their
+actual-write boolean contract. No lease, state, timer, clipboard implementation,
+component profile or command is added. The existing 1.5-second reset remains with
+the latest accepted intent. The five other production consumers ignore the
+optional result and retain their existing feedback behavior.
+
+Better-accessibility's stable trigger/focus rules and better-writing's accurate
+success/failure feedback guide this repair. HeroUI's local v3 Snippet migration
+example awaits Clipboard acceptance before changing the same control to `Copied`;
+it is an illustrative success pattern, not evidence of concurrent completion or
+unmount guarantees. Flame retains its own shared lifetime owner and component
+system. A bounded subagent authors the regressions and four implementation/docs
+paths; primary review establishes both red baselines, diagnoses native behavior,
+runs all checks and owns qualification/publication.
+
+Final verification passes:
+
+- Shared copy group: **7 tests (16.35 s)**. Older success and refusal both retire
+  without clearing current success or replacing its sole reset timer. Current
+  refusal stays `false`; changed material and unmount retire pending results.
+- Complete UI check: build, source/test types, lint, format, **15 files / 288 tests
+  (6.81 s)** and independent packed UI/icon consumption. The initial run finds
+  new-test formatting, corrected normally. A subsequent offline consumer attempt
+  lacks the locked `use-sync-external-store` archive; preparing **31** consumer
+  packages in a private QA cache restores the prerequisite. The final complete
+  command passes with its original offline install and assertions.
+- Brand: **6 tests (20.61 s)**, including both older completion outcomes, exact
+  HEX dispatches, stable clicked control/focus and no stale alert. Existing locale,
+  current refusal, PNG/save and retirement assertions remain intact.
+- Complete plugin check: types, lint, format, **47 script tests**, **648 source
+  tests / 44 passed files (58.17 s)**, existing **17 skips / 2 files**, all **20
+  catalogs / 8 locales** and exact component resource reproduction.
+- Web consumer/lifecycle acceptance: **8 files / 225 tests (49.20 s)** covering
+  installed modules, Files, Markdown tables/rendering, Mermaid, captured code
+  actions and Workspace commands. Web types, lint, complete format, layers and
+  the **827-file** design-system check pass.
+- `make check-native` passes Wails **v3.1.0**, normal Web staging and Desktop
+  test/vet/build with repository macOS policy. The initial Wails invocation uses
+  the default external proxy and cannot resolve a prepared candidate SDK revision;
+  replay with the repository's existing local-module proxy environment passes.
+  No manifest, check or global configuration changes. The normal final Lab build
+  passes in **7.60 s**, with **484 assets** and no private seam.
+
+Native qualification uses the published Brand ESM and shared UI in the existing
+Workspace scene. The private copied HTML substitutes only public
+`navigator.clipboard.writeText`: it validates `#FB6E30`, holds the first successful
+acknowledgement, then resolves the second before the first. A guarded module entry
+prevents the UI from rendering unless that isolated collaborator is installed.
+It never reads or writes the OS clipboard. Baseline and candidate use the same
+seam; each normal build's compiled assets and repository HTML remain intact. Both
+private copies have **484 assets**. Their stylesheets match the normal builds and
+each other; all **3** embedded PNGs, **19** other component resources, **5** captured
+data/transport owners and **46** native inputs remain intact. Independent main
+test maintenance through `2c7a5f4f2` is preserved before final Lab/native acceptance.
+
+- EN/light/14 px/Orange/full motion: two pointer activations show only `Copied`,
+  then reset normally to `Copy HEX`, with the same focused button and no alert.
+  Native Window Zoom/restore retains the Brand controls. Cmd+L returns to the
+  original middle caret; continued ASCII typing yields exactly
+  `Keep verified this latest copy draft.` The native select-text helper initially
+  cannot locate the just-typed word; the visible draft is intact and ordinary
+  keyboard caret movement completes the task.
+- ZH/dark/18 px/**#3B82F6**/motion off: pointer activation followed by Enter
+  completes the second intent. `已复制`, its visible blue keyboard perimeter and
+  normal reset remain on the same control without a failure. Wheel reading
+  reveals the complete guideline tail; **#FB6E30 / 251, 110, 48** stays fixed.
+  Cmd+L continues the retained middle caret as
+  `Keep verified this dark copy draft.` An initial `zh-CN` entry is rejected by
+  the Workspace fixture's locale registry; it is excluded from acceptance and
+  relaunched with the existing registered `zh` parameter.
+
+Acceptance uses default page zoom and ordinary native resizing. Real OS clipboard
+bytes/permissions, physical IME, VoiceOver, live Runtime/provider commands and
+whole-product visual acceptance remain outside this receipt. No native Send or
+save, browser visual suite or performance benchmark runs. The widened TypeScript return
+requires source consumers to handle absence; the host/UI and Brand resource must
+ship together, with existing installations selecting the rebuilt digest normally.
+A partial rollout retains the preceding stale-feedback defect; current refusals
+remain recognized in either mixed-version pairing. No persisted-data migration
+or compatibility adapter is required.
+
+All **4** native launches and **2** loopback servers exit **0**. Three bundle
+registrations and six created Library stores are removed; all **18** private
+Library paths are absent. All **14** owned ignored output/cache roots and the
+private apps/data/assets/helpers/logs/npm cache are removed. Cleanup preserves
+the **7** accepted authored/resource hashes, 19 other resources, five captured
+owners and all 46 native inputs. Ordinary dependencies and hooks remain; no
+functional suite runs after cleanup. Continue native content/Dock task research
+from the current captured sources and installed command paths; this repaired
+copy-completion contract is qualified, not an outstanding issue.
 
 ### New-conversation brand identity
 

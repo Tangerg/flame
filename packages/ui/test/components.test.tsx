@@ -895,16 +895,18 @@ describe("copy feedback", () => {
   function CopyHarness({
     material,
     copyMaterial,
+    onResult,
   }: {
     material: string;
     copyMaterial: (text: string) => Promise<boolean>;
+    onResult?: (result: boolean | undefined) => void;
   }) {
     const feedback = useCopyFeedback(material, 1500, copyMaterial);
     return (
       <button
         type="button"
         aria-label={feedback.copied ? "copied" : "copy"}
-        onClick={feedback.copy}
+        onClick={() => void feedback.copy().then(onResult)}
       >
         {material}
       </button>
@@ -932,6 +934,106 @@ describe("copy feedback", () => {
 
     expect(screen.getByRole("button", { name: "copy" })).toBeTruthy();
   });
+
+  it.each([
+    { outcome: "success", accepted: true },
+    { outcome: "refusal", accepted: false },
+  ])(
+    "retires an older $outcome after the latest copy succeeds",
+    async ({ accepted }) => {
+      vi.useFakeTimers();
+      const older = Promise.withResolvers<boolean>();
+      const latest = Promise.withResolvers<boolean>();
+      const copyMaterial = vi
+        .fn<(text: string) => Promise<boolean>>()
+        .mockReturnValueOnce(older.promise)
+        .mockReturnValueOnce(latest.promise);
+      const results = vi.fn<(result: boolean | undefined) => void>();
+      render(
+        <CopyHarness
+          material="same"
+          copyMaterial={copyMaterial}
+          onResult={results}
+        />,
+      );
+      const button = screen.getByRole("button", { name: "copy" });
+      fireEvent.click(button);
+      fireEvent.click(button);
+
+      await act(async () => latest.resolve(true));
+      expect(results).toHaveBeenCalledExactlyOnceWith(true);
+      expect(screen.getByRole("button", { name: "copied" })).toBe(button);
+      expect(vi.getTimerCount()).toBe(1);
+      await act(async () => older.resolve(accepted));
+
+      expect(results).toHaveBeenNthCalledWith(2, undefined);
+      expect(copyMaterial.mock.calls).toEqual([["same"], ["same"]]);
+      expect(screen.getByRole("button", { name: "copied" })).toBe(button);
+      expect(vi.getTimerCount()).toBe(1);
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+      expect(screen.getByRole("button", { name: "copy" })).toBe(button);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it("returns false for a current refusal without publishing success", async () => {
+    vi.useFakeTimers();
+    const copyMaterial = vi
+      .fn<(text: string) => Promise<boolean>>()
+      .mockResolvedValue(false);
+    const results = vi.fn<(result: boolean | undefined) => void>();
+    render(
+      <CopyHarness
+        material="same"
+        copyMaterial={copyMaterial}
+        onResult={results}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "copy" }));
+    });
+
+    expect(results).toHaveBeenCalledExactlyOnceWith(false);
+    expect(screen.queryByRole("button", { name: "copied" })).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(["material replacement", "unmount"] as const)(
+    "retires a pending result after %s",
+    async (retirement) => {
+      vi.useFakeTimers();
+      const accepted = Promise.withResolvers<boolean>();
+      const copyMaterial = vi
+        .fn<(text: string) => Promise<boolean>>()
+        .mockReturnValue(accepted.promise);
+      const results = vi.fn<(result: boolean | undefined) => void>();
+      const view = render(
+        <CopyHarness
+          material="original"
+          copyMaterial={copyMaterial}
+          onResult={results}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "copy" }));
+      if (retirement === "material replacement")
+        view.rerender(
+          <CopyHarness
+            material="replacement"
+            copyMaterial={copyMaterial}
+            onResult={results}
+          />,
+        );
+      else view.unmount();
+      await act(async () => accepted.resolve(true));
+
+      expect(results).toHaveBeenCalledExactlyOnceWith(undefined);
+      expect(copyMaterial).toHaveBeenCalledExactlyOnceWith("original");
+      expect(screen.queryByRole("button", { name: "copied" })).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
 
   it("retires the feedback timer with its mounted owner", async () => {
     vi.useFakeTimers();
