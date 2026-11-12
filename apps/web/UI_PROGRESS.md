@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,888 tests; subsequent Computer and GenUI changes have focused qualification below. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,896 tests on the native-qualified Computer and GenUI inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -26711,6 +26711,22 @@ and twelve created outputs are removed with all **13 output/cache roots** absent
 Evidence is retained before deleting the owned QA root. No functional check runs
 after cleanup. Continue with a newly observed task gap rather than another
 mechanical locale refactor.
+
+**Integrated frontend follow-up (2026-11-13).** At published `b44f797a1`, the
+complete serial frontend project passes **434 files / 4,896 tests**, exit zero,
+in **335.13 s Vitest / 336.90 s wall**, after 22.04 s setup. This includes the
+eight newly added Computer/GenUI regressions. All **6,876 tracked inputs** remain
+byte-identical through the run; the **46 native inputs** and **20 published
+resources** match the preceding actual Wails qualification. Its EN/ZH native
+scopes are reused without claiming an additional GUI exercise. The unchanged
+GenUI iframe-attribute case still prints HappyDOM's disabled-page-load diagnostic;
+no output filter, assertion, timeout, retry or exclusion changes. The separate
+Runtime project is not run and its historical qualifications remain unchanged.
+Seven created outputs are removed, all **13 output/cache roots** return to
+absence, the setup/test processes join and the owned qualification root is
+removed after evidence retention. No app or server is created, and no functional
+check runs after cleanup. The next source-confirmed task is the message menu's
+keyboard entry; establish its current native counterexample before editing.
 
 ### Recorded-image decoder feedback
 
