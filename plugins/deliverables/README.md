@@ -130,6 +130,14 @@ its local draft and native-file selection; reopening resumes the same form.
 Disclosure owns expansion, while the existing forms and command/upload owners
 retain their inputs and recovery state.
 
+Display-language changes update labels and browsing dates without replacing the
+captured I/O lifetime. Unsubmitted create/import/edit drafts, the selected File,
+accepted pages and revision selection, pending reads and original command
+observations remain with that capture. Replacing its Runtime, component namespace,
+callable binding, tracking function, cancellation signal or save capability
+retires the old workspace and its observers; it does not replay or retract a
+command.
+
 Document and revision-history pagination keeps its controls focusable while a
 read is pending and at page boundaries. Pending controls reject repeat activation;
 settlement preserves the user's current focus, including a later move to another

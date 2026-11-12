@@ -15,8 +15,13 @@ import {
   createFlameClient,
   createHttpTransport,
   type MutationJournalStorage,
+  type MutationPromise,
 } from "@flame/runtime-client";
-import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
+import type {
+  CallPluginRequest,
+  CallPluginResponse,
+  ServerCapabilities,
+} from "@flame/runtime-client/wire";
 import { stringifyJSON } from "@frame/sdk/json";
 import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
@@ -109,12 +114,17 @@ async function rig() {
   let creations = 0;
   const holds = new Map<
     string,
-    { gate: PromiseWithResolvers<void>; arrived: PromiseWithResolvers<void> }
+    {
+      gate: PromiseWithResolvers<void>;
+      arrived: PromiseWithResolvers<void>;
+      signal?: AbortSignal;
+    }
   >();
-  async function waitForRead(key: string) {
+  async function waitForReply(key: string, signal?: AbortSignal | null) {
     const hold = holds.get(key);
     if (!hold) return;
     holds.delete(key);
+    hold.signal = signal ?? undefined;
     hold.arrived.resolve();
     await hold.gate.promise;
   }
@@ -174,7 +184,7 @@ async function rig() {
         limitsJSON: "{}",
       });
     if (params.method === METHODS.list) {
-      await waitForRead(`list:${input.before ?? ""}`);
+      await waitForReply(`list:${input.before ?? ""}`, init?.signal);
       if (paged === "list") {
         if (input.before === "next")
           return failedPage ? uncertain() : output({ entries: [documents.get(doc2)!.document] });
@@ -187,7 +197,7 @@ async function rig() {
     if (params.method === METHODS.assessment)
       return output(assessments.get(input.assessmentId as string));
     if (params.method === METHODS.history) {
-      await waitForRead(`history:${input.before ?? ""}`);
+      await waitForReply(`history:${input.before ?? ""}`, init?.signal);
       const document = documents.get(input.id as string)!;
       const revision = document.revision;
       if (paged === "history") {
@@ -202,7 +212,7 @@ async function rig() {
       const captured = structuredClone(documents.get(input.id as string));
       if (captured && input.revision === historicalRevision(captured).id)
         captured.revision = historicalRevision(captured);
-      await waitForRead(input.id as string);
+      await waitForReply(input.id as string, init?.signal);
       if (failedReads) return uncertain();
       return output(captured);
     }
@@ -231,6 +241,7 @@ async function rig() {
       const document = make(newDocument, newRevision, input.title as string);
       documents.set(newDocument, document);
       results.set(key, document.revision);
+      await waitForReply(METHODS.create, init?.signal);
       if (unknownCreate) return uncertain();
       return output(document.revision);
     }
@@ -343,6 +354,7 @@ async function rig() {
   });
   return {
     context,
+    retire: () => controllers.forEach((controller) => controller.abort()),
     ui,
     client,
     calls,
@@ -409,11 +421,278 @@ async function rig() {
       const gate = Promise.withResolvers<void>();
       const arrived = Promise.withResolvers<void>();
       gates.push(gate);
-      holds.set(id, { gate, arrived });
-      return { arrived: arrived.promise, release: gate.resolve };
+      const held = { gate, arrived, signal: undefined as AbortSignal | undefined };
+      holds.set(id, held);
+      return {
+        arrived: arrived.promise,
+        release: gate.resolve,
+        get signal() {
+          return held.signal;
+        },
+      };
     },
   };
 }
+
+function displayContext(context: ComponentContext, locale: string): ComponentContext {
+  const compose: ComponentContext["compose"] = (composition) => context.compose(composition);
+  return Object.freeze({ ...context, locale, compose });
+}
+
+it("retains unsent creation and import drafts with the same File through a display wrapper change", async () => {
+  const fixture = await rig();
+  const context = Object.freeze(fixture.context());
+  const view = fixture.ui.render(<Deliverables context={context} />);
+  try {
+    await screen.findByRole("button", { name: /Quarterly report/ });
+    const create = screen.getByRole("button", { name: "Create a deliverable", expanded: false });
+    fireEvent.click(create);
+    const body = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Document text" });
+    const title = within(body.closest("form")!).getByRole<HTMLInputElement>("textbox", {
+      name: "Title",
+    });
+    fireEvent.change(title, { target: { value: "Unsent  创建 title" } });
+    fireEvent.change(body, { target: { value: "Keep this original body.\n  保留两处空格" } });
+    const importing = screen.getByRole("button", { name: "Import native file", expanded: false });
+    fireEvent.click(importing);
+    const input = screen.getByLabelText<HTMLInputElement>("Choose native file");
+    const file = new File([fixture.bytes], "original 保留.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    await act(async () => fireEvent.change(input, { target: { files: [file] } }));
+    await screen.findByText(file.name);
+    const importTitle = within(input.closest("form")!).getByRole<HTMLInputElement>("textbox", {
+      name: "Title",
+    });
+    fireEvent.change(importTitle, { target: { value: "Unsent import 保留" } });
+    const calls = fixture.calls.length;
+
+    await act(async () => view.rerender(<Deliverables context={displayContext(context, "zh")} />));
+
+    expect(fixture.calls).toHaveLength(calls);
+    expect(screen.getByRole("button", { name: "创建成果", expanded: true })).toBe(create);
+    expect(screen.getByRole("button", { name: "导入原生文件", expanded: true })).toBe(importing);
+    expect(screen.getByRole("textbox", { name: "文档正文" })).toBe(body);
+    expect(body.value).toBe("Keep this original body.\n  保留两处空格");
+    expect(title.value).toBe("Unsent  创建 title");
+    expect(within(body.closest("form")!).getByRole("textbox", { name: "标题" })).toBe(title);
+    expect(screen.getByLabelText("选择原生文件")).toBe(input);
+    expect(input.files?.[0]).toBe(file);
+    expect(screen.getByText(file.name)).toBeTruthy();
+    expect(importTitle.value).toBe("Unsent import 保留");
+    expect(within(input.closest("form")!).getByRole("textbox", { name: "标题" })).toBe(importTitle);
+    expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+  } finally {
+    await act(async () => {
+      fixture.retire();
+      view.unmount();
+    });
+  }
+});
+
+it("retains the selected reader, edit draft and held original read while its display language changes", async () => {
+  const fixture = await rig();
+  const context = Object.freeze(fixture.context());
+  const view = fixture.ui.render(<Deliverables context={context} />);
+  const held = fixture.hold(doc1);
+  try {
+    await screen.findByRole("button", { name: /Quarterly report/ });
+    const search = screen.getByRole<HTMLInputElement>("searchbox", {
+      name: "Search this page of titles",
+    });
+    fireEvent.change(search, { target: { value: "Quarterly" } });
+    fireEvent.click(screen.getByRole("button", { name: /Quarterly report/ }));
+    await held.arrived;
+    await act(async () => held.release());
+    await screen.findByText("Current native revision");
+    const entry = screen.getByRole("region", { name: "Revision history" });
+    const details = screen.getByRole("button", { name: "Revision identity and native facts" });
+    fireEvent.click(details);
+    fireEvent.click(screen.getByRole("button", { name: "Edit this revision" }));
+    await chooseOption("Editing mode", "Advanced JSON editor");
+    const operations = screen.getByRole<HTMLTextAreaElement>("textbox", {
+      name: "Local edit operations (JSON)",
+    });
+    const draft =
+      '{"operations":[{"type":"docx.replace_text","path":"word/document.xml#text:0","text":"Unsent  保留"}]}';
+    fireEvent.change(operations, { target: { value: draft } });
+    const refreshRead = fixture.hold(doc1);
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await refreshRead.arrived;
+      });
+      const originalSignal = refreshRead.signal!;
+      const calls = fixture.calls.length;
+      act(() => search.focus());
+
+      await act(async () =>
+        view.rerender(<Deliverables context={displayContext(context, "zh")} />),
+      );
+
+      expect(originalSignal.aborted).toBe(false);
+      expect(fixture.calls).toHaveLength(calls);
+      expect(screen.getByRole("region", { name: "版本历史" })).toBe(entry);
+      expect(screen.getByText("当前原生版本")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "版本身份与原生信息", expanded: true })).toBe(
+        details,
+      );
+      expect(screen.getByText(doc1, { exact: true })).toBeTruthy();
+      expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
+      expect(screen.getByRole("searchbox", { name: "搜索本页标题" })).toBe(search);
+      expect(search.value).toBe("Quarterly");
+      expect(screen.queryByRole("button", { name: /Meeting notes/ })).toBeNull();
+      expect(screen.getByRole("textbox", { name: "局部编辑操作（JSON）" })).toBe(operations);
+      expect(operations.value).toBe(draft);
+      const time = new Intl.DateTimeFormat("zh", {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }).format(new Date(timestamp));
+      expect(screen.getByRole("combobox", { name: "选择确切版本" }).textContent).toBe(
+        `${time} · 创建 · ${rev1.slice(0, 12)}`,
+      );
+      expect(document.activeElement).toBe(search);
+      await act(async () => refreshRead.release());
+      await waitFor(() => expect(screen.queryByText("读取中…")).toBeNull());
+      expect(screen.getByRole("heading", { name: "Quarterly report" })).toBeTruthy();
+      expect(screen.getByRole("region", { name: "版本历史" })).toBe(entry);
+      expect(operations.value).toBe(draft);
+      expect(fixture.calls).toHaveLength(calls);
+      expect(document.activeElement).toBe(search);
+    } finally {
+      await act(async () => {
+        fixture.retire();
+        refreshRead.release();
+      });
+    }
+  } finally {
+    await act(async () => {
+      fixture.retire();
+      held.release();
+      view.unmount();
+    });
+  }
+});
+
+it("keeps the original pending creation handle and settlement across display wrappers without replay", async () => {
+  const fixture = await rig();
+  const call = vi.spyOn(fixture.client.plugins, "call");
+  const context = Object.freeze(fixture.context());
+  const view = fixture.ui.render(<Deliverables context={context} />);
+  const held = fixture.hold(METHODS.create);
+  try {
+    await screen.findByRole("button", { name: /Quarterly report/ });
+    fireEvent.click(screen.getByRole("button", { name: "Create a deliverable", expanded: false }));
+    const body = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Document text" });
+    const form = body.closest("form")!;
+    fireEvent.change(within(form).getByRole("textbox", { name: "Title" }), {
+      target: { value: "Original command 保留" },
+    });
+    fireEvent.change(body, { target: { value: "Original submitted body." } });
+    await act(async () => {
+      fireEvent.submit(form);
+      await held.arrived;
+    });
+    const index = call.mock.calls.findIndex(([request]) => request.method === METHODS.create);
+    const original = call.mock.results[index]!.value as MutationPromise<CallPluginResponse>;
+    const request = structuredClone(fixture.originals.get(original.idempotencyKey)!);
+    expect(request.method).toBe(METHODS.create);
+    expect(JSON.parse(request.input)).toMatchObject({ title: "Original command 保留" });
+    expect(fixture.creations()).toBe(1);
+    const progress = screen.getByText(/Waiting for original outcome…/);
+    const identity = screen.getByRole("button", { name: "Original command identity" });
+    fireEvent.click(identity);
+    expect(screen.getByText(original.idempotencyKey, { exact: true })).toBeTruthy();
+    const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+    act(() => search.focus());
+    const calls = fixture.calls.length;
+
+    await act(async () => view.rerender(<Deliverables context={displayContext(context, "zh")} />));
+
+    expect(screen.getByText(/等待原始结果…/)).toBe(progress);
+    expect(screen.getByRole("button", { name: "原始命令标识", expanded: true })).toBe(identity);
+    expect(screen.getByText(original.idempotencyKey, { exact: true })).toBeTruthy();
+    expect(fixture.calls).toHaveLength(calls);
+    expect(fixture.calls.filter((entry) => entry.method === METHODS.create)).toHaveLength(1);
+    expect(fixture.originals.get(original.idempotencyKey)).toEqual(request);
+    expect(document.activeElement).toBe(search);
+    await act(async () => {
+      held.release();
+      await original;
+    });
+    await screen.findByRole("heading", { name: "Original command 保留" });
+    expect(screen.getByText("原生版本已创建，草稿仍然保留。")).toBeTruthy();
+    expect(screen.queryByText(/等待原始结果…/)).toBeNull();
+    expect(body.value).toBe("Original submitted body.");
+    expect(screen.getByRole("textbox", { name: "文档正文" })).toBe(body);
+    expect(fixture.calls.filter((entry) => entry.method === METHODS.create)).toEqual([
+      { method: METHODS.create, input: JSON.parse(request.input), key: original.idempotencyKey },
+    ]);
+    expect(fixture.creations()).toBe(1);
+    expect(fixture.client.plugins.pendingCommands()).toHaveLength(0);
+    expect(document.activeElement).toBe(search);
+  } finally {
+    await act(async () => {
+      fixture.retire();
+      held.release();
+      view.unmount();
+    });
+  }
+});
+
+it("retires a genuine captured source and resets its drafts while fencing a late original read", async () => {
+  const fixture = await rig();
+  const context = Object.freeze(fixture.context());
+  const view = fixture.ui.render(<Deliverables context={context} />);
+  const held = fixture.hold(doc1);
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+    await held.arrived;
+    fireEvent.click(screen.getByRole("button", { name: "Create a deliverable", expanded: false }));
+    const body = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Document text" });
+    fireEvent.change(within(body.closest("form")!).getByRole("textbox", { name: "Title" }), {
+      target: { value: "Retired source title" },
+    });
+    fireEvent.change(body, { target: { value: "Retired source body." } });
+
+    await act(async () => {
+      fixture.retire();
+      const next = fixture.context();
+      view.rerender(
+        <Deliverables
+          context={Object.freeze({ ...context, signal: next.signal, track: next.track })}
+        />,
+      );
+    });
+
+    expect(held.signal?.aborted).toBe(true);
+    await screen.findByRole("button", { name: /Quarterly report/ });
+    expect(screen.queryByRole("region", { name: "Revision history" })).toBeNull();
+    expect(screen.queryByText("Current native revision")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Create a deliverable", expanded: false }));
+    const nextBody = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Document text" });
+    expect(nextBody).not.toBe(body);
+    expect(nextBody.value).toBe("");
+    expect(
+      within(nextBody.closest("form")!).getByRole<HTMLInputElement>("textbox", { name: "Title" })
+        .value,
+    ).toBe("");
+    const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+    act(() => search.focus());
+    await act(async () => held.release());
+    expect(screen.queryByRole("region", { name: "Revision history" })).toBeNull();
+    expect(screen.queryByText("Current native revision")).toBeNull();
+    expect(fixture.calls.filter((entry) => entry.method === METHODS.read)).toHaveLength(1);
+    expect(fixture.calls.filter((entry) => entry.key !== null)).toHaveLength(0);
+    expect(document.activeElement).toBe(search);
+  } finally {
+    await act(async () => {
+      fixture.retire();
+      held.release();
+      view.unmount();
+    });
+  }
+});
 
 it("retires old reads when another exact revision is selected", async () => {
   const fixture = await rig();

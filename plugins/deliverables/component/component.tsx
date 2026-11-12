@@ -595,15 +595,22 @@ function Capabilities({
   );
 }
 
-function Workspace({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+function Workspace({
+  context: initialContext,
+  locale,
+}: {
+  context: ComponentContext;
+  locale: string;
+}) {
+  const [context] = useState(initialContext);
+  const t = useTranslator(catalogs, locale);
   const dateTime = useMemo(
     () =>
-      new Intl.DateTimeFormat(context.locale, {
+      new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "medium",
       }),
-    [context.locale],
+    [locale],
   );
   const state = useDeliverables(context);
   const historyEntry = useRef<HTMLElement>(null);
@@ -717,7 +724,11 @@ function Workspace({ context }: { context: ComponentContext }) {
 }
 
 export function Deliverables({ context }: { context: ComponentContext }) {
-  // A new captured host context retires all local drafts, reads, and recovery observers.
-  const instance = useMemo(() => crypto.randomUUID(), [context]);
-  return <Workspace key={instance} context={context} />;
+  // Display wrappers do not retire the captured I/O or authored drafts.
+  const { runtime, component, binding, track, signal, saveFile } = context;
+  const instance = useMemo(
+    () => crypto.randomUUID(),
+    [runtime, component, binding, track, signal, saveFile],
+  );
+  return <Workspace key={instance} context={context} locale={context.locale} />;
 }

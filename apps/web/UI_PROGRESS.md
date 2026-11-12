@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -26603,6 +26603,116 @@ e6cdcd77c6689537eb95ed2072a429cc0e72e72889d8b91afd70ff66ef57146f. This final han
 continue from fresh content/Dock task evidence with the continuous goal active.
 
 ### Deliverables pagination and reading continuity
+
+#### Drafts and captured I/O across display languages (2026-11-13)
+
+The actual installed component incorrectly treated every display wrapper as a
+new captured source. With the original ESM, English-to-Chinese language change
+leaves all six observed I/O identities unchanged but collapses Create; reopening
+shows an empty title and body. This is a separate failure from navigation that
+actually retires a client view. Two preliminary native return-path probes could
+not isolate locale from view retirement and are excluded from the comparison.
+
+`Deliverables` now keys its workspace by the Runtime, component namespace,
+callable binding, tracking function, cancellation signal and save capability.
+That keyed workspace captures its original I/O context once and receives the
+current locale separately for labels and browsing dates. Display-only wrapper
+changes preserve create/import/edit drafts, native File selection, accepted
+reader/history state and existing read/command observers. A real captured-source
+replacement still retires the workspace and fences late work. The inner
+`useDeliverables`, authoring and importing implementations remain byte-identical;
+no new draft store, command owner, replay, recovery policy or shared API is added.
+The README records this boundary.
+
+One bounded subagent implements the component, README and regression details;
+the primary agent reviews the diff, runs the serial checks, owns the private
+native comparison and publication. Better-layout and better-accessibility guide
+continuity and focus; the existing ZCode/HeroUI/Radix research and current SDK
+display-projection contract supply the reference. No new reference-product
+behavior or component system is inferred.
+
+The original **51 test bodies remain byte-identical**. Four real exported-component
+cases cover unsent forms and the same File, selected revision/edit draft with an
+original held read, an original pending creation handle and settlement without
+replay, and genuine source retirement with a late read and later search focus.
+The frozen display clone changes locale and its composition wrapper while
+retaining the captured I/O. The valid original-source counter is **3 failed /
+52 passed / 55 total**, 9.19 s, without act warnings. An earlier reader probe
+omitted the existing Edit action before locating its editor; that setup failure
+is excluded and the complete assertions remain. A test-only unknown-JSON type
+error is corrected with the same title assertion through `toMatchObject`, without
+a cast, suppression or weakened check.
+
+| Final serial verification                              | Result                                                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Deliverables workspace, transfer and SDK host boundary | 3 files / 95 tests pass; 9.34 s Vitest, 10.51 s wall; no stderr/act warnings              |
+| Plugin checks                                          | 47 script checks and 652 tests / 44 files pass; 17 existing skips / 2 files; 50.00 s wall |
+| Web checks                                             | Typecheck, lint, formatting, layers and design pass                                       |
+| Native check                                           | `make check-native` passes; 16.76 s                                                       |
+| Normal Lab build                                       | Passes; 2.78 s; 484 assets                                                                |
+
+Only the Deliverables ESM changes among the **20** installed component resources,
+from `a51d9f841dbc1108db75f4418e7593d6a5fd204b44f314f85f7a8297c421b8f8`
+to `233fc540c4972f969695979b8e92704064897e38891398a8a0e8e1d8507353d9`.
+Eight locale catalogs, the three inner source owners, ten captured fixture/host
+inputs, 46 native inputs, the Runtime client and shared CSS remain exact. The
+incoming `572cb7ff9` CodeIntel-only commit is fast-forwarded after review of its
+15 disjoint paths; it changes none of these qualification inputs. No duplicate
+checks are run for that unrelated backend change.
+
+Native comparison uses the actual published ESM and public InstalledComponent
+boundary in the pinned Wails v3 host. A temporary private full-width workspace
+mounts the real Appearance pane beside the component, so changing language keeps
+that component mounted. A read-only identity projection distinguishes display
+updates from genuine source replacement. The definitive original and candidate
+use identical private installer, transport and existing catalog literal seams;
+the installer and transport are restored exactly afterward. Only the existing
+test catalog plus empty document/upload reads are admitted; all mutations and
+unexpected reads are refused. The catalog is synthetic test data, not evidence
+of this Mac's installed document engines.
+
+English/light/14 px/Flame Orange `#FB6E30`/full motion and Chinese/dark/18 px/custom
+`#3B82F6`/motion off are verified through the actual Appearance controls. At
+default zoom, native 1120 pt window sizing and a 320 px Dock, both complete a
+language round trip without changing the six captured identities or losing
+create title/body, import title or disclosure state. English also retains the
+native file input's `captured-native.docx`, 20-byte size and SHA-256
+`3ec3339d72da0854a3bace075a39a27bd49e19b5278cdd20ca5e46a8b01b1597`.
+Those bytes are the existing test payload, not a valid Office file or fidelity
+claim; no upload is activated. Chinese does not repeat native file selection;
+the component regression checks the exact File object.
+
+English closes the format menu with Escape and reaches the retained body through
+two Tabs, then continues typing. Chinese continues the retained body after an
+observed pointer focus. An attempted Shift+Tab sequence after the native Window
+menu did not reach that body or change input and is excluded. Native wheel
+reading, fixed header/navigation and both visible focus styles are inspected.
+Returning to Composer inserts at the original middle caret, yielding exactly
+`Keep verified this Deliverables reading draft.` and
+`Keep verified this dark Deliverables draft.` with Dock width still 320. English
+also closes and reopens the real client view: new captured identities reset the
+old form and selected file, with Upload disabled. The empty native catalog does
+not qualify selected revision, held-read or command execution; those boundaries
+are covered by the component tests above.
+
+All **five** native launches and **four** loopback servers exit and their four
+ports close. Five private registrations, eleven created Library paths and twelve
+created output/cache roots are removed; all thirty Library and thirteen output
+absence targets are checked. The unique `/tmp/flame-ui-deliverables-locale-c1rsx059`
+tree, profiles, local file payload, binaries, assets and logs are removed after
+freezing the qualification and cleanup proof. Signed applications are verified
+with `codesign`; unsigned-build byte equality is not a valid signature check.
+All four private 484-asset maps and qualified source/resource groups match before
+cleanup. Dependencies, hooks, global caches, reference projects and unrelated
+primary-checkout work are preserved.
+
+There is no protocol or persisted-data migration. Installed releases need the
+normal rebuild/reinstall and selection of the new digest. Live Runtime calls,
+Office creation/rendering, export/upload, engine admission, OS IME and VoiceOver
+are not qualified here. No browser visual suite, performance benchmark or zoom
+matrix is run. The next batch must start from a new observed task problem in the
+content area or Dock; previously completed locale and return work is not reopened
+from historical Next notes. Whole-product award-level acceptance remains open.
 
 #### Catalog opening and the revision reading entry (2026-11-03)
 
