@@ -288,15 +288,22 @@ export const DropdownMenu = {
 } as const;
 
 function ContextTrigger({
+  onContextMenu,
   onKeyDown,
   ...props
 }: ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
   return (
     <ContextMenuPrimitive.Trigger
       {...props}
+      onContextMenu={(event) => {
+        onContextMenu?.(event);
+        // Portals follow React ancestry, but this menu owns only its trigger's DOM.
+        if (!event.currentTarget.contains(event.target as Node)) event.preventBaseUIHandler();
+      }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
         if (event.defaultPrevented || event.key !== "F10" || !event.shiftKey) return;
+        if (!event.currentTarget.contains(event.target as Node)) return;
         event.preventDefault();
         const target = event.target as HTMLElement;
         const box = target.getBoundingClientRect();

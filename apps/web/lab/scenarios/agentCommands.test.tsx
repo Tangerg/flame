@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
@@ -8,6 +8,7 @@ import { executeCommand } from "@/features/command/public/commands";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
 import { showWorkspaceDock } from "@/features/workspace/public/navigation";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
+import * as clipboard from "@/lib/clipboard";
 import { activeLocale, setLocale } from "@/lib/i18n/index";
 import { queryClient } from "@/lib/queryClient";
 import { resetKernelForTest } from "@/test/kernel";
@@ -114,6 +115,148 @@ function pressModified(target: Element, key: string, code: string) {
     }),
   );
 }
+
+function pressShiftF10(target: Element) {
+  fireEvent(
+    target,
+    new KeyboardEvent("keydown", {
+      key: "F10",
+      code: "F10",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
+async function messageCopyAction(author: string) {
+  const heading = await screen.findByRole("heading", { name: author, level: 2 });
+  return within(heading.parentElement!).findByRole<HTMLButtonElement>("button", {
+    name: "Copy message",
+  });
+}
+
+async function openCopyMenu(copy: HTMLButtonElement) {
+  act(() => {
+    fireEvent.keyDown(copy, { key: "Enter", code: "Enter" });
+    // Happy DOM does not synthesize a native button's Enter click.
+    fireEvent.click(copy, { detail: 0 });
+  });
+  const menu = await screen.findByRole("menu", { name: "Copy message" });
+  await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+  const markdown = within(menu).getByRole("menuitem", { name: /^Copy markdown\b/ });
+  const plain = within(menu).getByRole("menuitem", { name: /^Copy plain text\b/ });
+  act(() => markdown.focus());
+  return { menu, markdown, plain };
+}
+
+it.each([
+  {
+    author: "You",
+    present: ["Edit in composer", "Edit & rerun from here", "Fork up to here"],
+    absent: ["Regenerate response"],
+  },
+  {
+    author: "Assistant",
+    present: ["Regenerate response"],
+    absent: ["Edit in composer", "Fork up to here"],
+  },
+])(
+  "opens the $author message menu from its actual Copy action and returns to authoring",
+  async ({ author, present, absent }) => {
+    const copied = vi.spyOn(clipboard, "writeToClipboard").mockResolvedValue(true);
+    const { sendInput, createSession, requests } = await mountAgent("idle");
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const value = "Keep this message menu draft — 保留";
+    fireEvent.change(draft, { target: { value } });
+    const copy = await messageCopyAction(author);
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(7, 7);
+      copy.focus();
+    });
+
+    pressShiftF10(copy);
+
+    const menu = await screen.findByRole("menu", { name: author });
+    await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+    expect(within(menu).getByRole("menuitem", { name: "Copy plain text" })).toBeTruthy();
+    for (const name of present) expect(within(menu).getByRole("menuitem", { name })).toBeTruthy();
+    for (const name of absent) expect(within(menu).queryByRole("menuitem", { name })).toBeNull();
+    pressEscape(document.activeElement!);
+    await waitFor(() => expect(screen.queryByRole("menu", { name: author })).toBeNull());
+    expect(await messageCopyAction(author)).toBe(copy);
+    await waitFor(() => expect(document.activeElement).toBe(copy));
+    expect(draft.value).toBe(value);
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+
+    const child = await openCopyMenu(copy);
+    expect(screen.queryByRole("menu", { name: author })).toBeNull();
+    fireEvent.keyDown(child.markdown, { key: "ArrowDown", code: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(child.plain));
+    pressEscape(child.plain);
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(copy));
+
+    await act(() => executeCommand("composer.focus"));
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe(value);
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+    expect(copied).not.toHaveBeenCalled();
+    expect(sendInput).not.toHaveBeenCalled();
+    expect(createSession).not.toHaveBeenCalled();
+    expect(
+      requests.mock.calls.filter(([request]) => /^(sessions|runs)\./.test(request.method)),
+    ).toEqual([]);
+  },
+);
+
+it.each(["keyboard", "pointer"] as const)(
+  "keeps the portaled Copy menu as the owner of a %s context request",
+  async (entry) => {
+    const copied = vi.spyOn(clipboard, "writeToClipboard").mockResolvedValue(true);
+    const { sendInput, createSession, requests } = await mountAgent("idle");
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const value = "Keep the nested Copy task — 保留";
+    fireEvent.change(draft, { target: { value } });
+    const copy = await messageCopyAction("You");
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(5, 5);
+      copy.focus();
+    });
+    const { menu, markdown, plain } = await openCopyMenu(copy);
+    fireEvent.keyDown(markdown, { key: "ArrowDown", code: "ArrowDown" });
+    await waitFor(() => expect(document.activeElement).toBe(plain));
+
+    act(() => {
+      if (entry === "keyboard") pressShiftF10(plain);
+      else fireEvent.contextMenu(plain, { button: 2 });
+    });
+
+    expect(screen.queryByRole("menu", { name: "You" })).toBeNull();
+    expect(screen.getByRole("menu", { name: "Copy message" })).toBe(menu);
+    expect(document.activeElement).toBe(plain);
+    expect(within(menu).getByRole("menuitem", { name: /^Copy plain text\b/ })).toBe(plain);
+    fireEvent.keyDown(plain, { key: "ArrowUp", code: "ArrowUp" });
+    await waitFor(() => expect(document.activeElement).toBe(markdown));
+    pressEscape(markdown);
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(copy));
+    await act(() => executeCommand("composer.focus"));
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe(value);
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 5]);
+    expect(copied).not.toHaveBeenCalled();
+    expect(sendInput).not.toHaveBeenCalled();
+    expect(createSession).not.toHaveBeenCalled();
+    expect(
+      requests.mock.calls.filter(([request]) => /^(sessions|runs)\./.test(request.method)),
+    ).toEqual([]);
+  },
+);
 
 it("returns from the Agent sidebar through the installed Composer command and its key", async () => {
   const { sendInput } = await mountAgent("tool-remote");

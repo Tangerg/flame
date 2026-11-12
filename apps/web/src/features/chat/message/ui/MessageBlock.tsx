@@ -131,54 +131,56 @@ function MessageBlockInner({
     </div>
   );
 
+  const messageColumn = (
+    <div
+      ref={columnRef}
+      tabIndex={-1}
+      onFocusCapture={(event) => {
+        heldFocus.current = true;
+        lastFocused.current = event.target as HTMLElement;
+      }}
+      onBlurCapture={(event) => {
+        if (event.relatedTarget) {
+          heldFocus.current = false;
+          lastFocused.current = null;
+        }
+      }}
+      {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
+    >
+      <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
+        {roleLabel}
+      </h2>
+      {messageContent}
+      {isUser && <SteerInputStatus feedback={row.inputFeedback} messageId={msg.id} />}
+      {isUser && !msg.steer && msg.runId === null && <Badge>{t("agent.inputNotApplied")}</Badge>}
+      {actionsVisibility !== "absent" && (
+        <div
+          data-reveal={actionsVisibility === "hover" ? "hover" : undefined}
+          {...stylex.props(
+            messageStyles.actions,
+            ACTIONS_VISIBILITY[actionsVisibility],
+            isUser ? messageStyles.actionsOutdentEnd : messageStyles.actionsOutdentStart,
+          )}
+        >
+          <Slot name="message.actions" />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <MessageContext.Provider value={messageContext}>
       <MessageVisibleMaterialProvider
         owner={visibleMaterialOwner}
         generation={visibleMaterialGeneration}
       >
-        <div
-          ref={columnRef}
-          tabIndex={-1}
-          onFocusCapture={(event) => {
-            heldFocus.current = true;
-            lastFocused.current = event.target as HTMLElement;
-          }}
-          onBlurCapture={(event) => {
-            if (event.relatedTarget) {
-              heldFocus.current = false;
-              lastFocused.current = null;
-            }
-          }}
-          {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
-        >
-          <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
-            {roleLabel}
-          </h2>
-          {msg.phase === "commentary" ? (
-            messageContent
-          ) : (
-            <MessageContextMenu msg={msg} label={roleLabel}>
-              {messageContent}
-            </MessageContextMenu>
-          )}
-          {isUser && <SteerInputStatus feedback={row.inputFeedback} messageId={msg.id} />}
-          {isUser && !msg.steer && msg.runId === null && (
-            <Badge>{t("agent.inputNotApplied")}</Badge>
-          )}
-          {actionsVisibility !== "absent" && (
-            <div
-              data-reveal={actionsVisibility === "hover" ? "hover" : undefined}
-              {...stylex.props(
-                messageStyles.actions,
-                ACTIONS_VISIBILITY[actionsVisibility],
-                isUser ? messageStyles.actionsOutdentEnd : messageStyles.actionsOutdentStart,
-              )}
-            >
-              <Slot name="message.actions" />
-            </div>
-          )}
-        </div>
+        {msg.phase === "commentary" ? (
+          messageColumn
+        ) : (
+          <MessageContextMenu msg={msg} label={roleLabel}>
+            {messageColumn}
+          </MessageContextMenu>
+        )}
         {actionMaterialization === "settled" && terminalFooter}
       </MessageVisibleMaterialProvider>
     </MessageContext.Provider>

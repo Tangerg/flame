@@ -362,6 +362,12 @@ Transcript turns render normally so history stays readable across native page
 zoom and material return. Message turns do not use off-screen paint skipping such
 as `content-visibility: auto`.
 
+Each non-commentary message keeps its body and existing actions in one context
+menu trigger. Shift+F10 from an action opens that message's named menu without
+adding a Tab stop; cancellation returns to the original action. The shared
+trigger ignores events from portaled descendants outside its DOM, so a nested
+Copy menu retains its own keyboard, pointer and dismissal scope.
+
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content

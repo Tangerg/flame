@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,896 tests on the native-qualified Computer and GenUI inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The current complete frontend project passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20942,8 +20942,9 @@ observed Zoom In actions establish the final 200% result, followed by Actual Siz
 These are isolated native interaction results, not a live Runtime/provider or
 durable rollback exercise. Image-read races, storage replacement and clear/send
 identity are covered by regression tests, not native file pickers or Send. Menu
-selection uses keyboard navigation after pointer entry; Shift-F10 at Copy message
-did not open this context menu, so full keyboard entry remains unqualified.
+selection used keyboard navigation after pointer entry; Shift-F10 at Copy message
+did not open this context menu in that baseline. The
+[keyboard-entry follow-up](#message-menu-keyboard-entry) below now qualifies that route.
 VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance
 benchmarks were not run. Existing child-Run rollback eligibility is a separate
 follow-up: first confirm the actual target and root-only contract, preserving the
@@ -20981,6 +20982,89 @@ Pre-existing UI Vite cache, dependencies, global compiler caches, read-only
 references and the user's independently changing checkout remain. The temporary
 main publisher and verification receipts are removed after exact remote-main
 verification; no second repository progress record is retained.
+
+### Message menu keyboard entry
+
+The **2026-11-13** follow-up resolves the preceding native entry gap. With the
+original canonical idle Agent, Cmd+L and four reverse Tabs reach the user's
+actual Copy action; Shift+F10 leaves that button focused without opening a menu.
+Right-clicking the same message body opens the named You menu with Edit & rerun,
+Restore and Fork. A short plain-text message supplies no separate natural Tab
+stop inside its body. The old native comparison establishes entry only; its
+batched authoring-return attempt is excluded.
+
+`MessageBlock.tsx` now gives the existing message column, including its actions,
+to the existing `MessageContextMenu` trigger. The same column retains its ref,
+programmatic focus destination, focus witnesses, heading and action visibility.
+The inner quote source, Markdown/image grouping marks and user fold stay in
+place. Commentary still has no message menu; visible-material ownership and the
+terminal footer keep their original boundaries. No Tab stop, More button,
+shortcut, menu state or command path is added.
+
+Expanding the trigger alone fixes entry but exposes React portal bubbling:
+Shift+F10 and right-click inside the independent Copy popup open the outer You
+menu. The shared `ui/atoms/menu.tsx` trigger now accepts only events whose target
+belongs to its actual DOM. It preserves consumer callbacks and uses Base UI's
+public handler prevention for an out-of-DOM pointer request. The Copy popup keeps
+its own focus, arrows and dismissal; no Copy-specific listener or propagation
+barrier is added. The installed Base UI trigger/prop-merging implementation and
+its independent-menu contract are the primary implementation evidence.
+Better-accessibility's scoped keyboard and focus-return criteria guide acceptance.
+
+The bounded subagent preserves all **11 existing Agent-command test bodies** and
+adds four public interaction cases. Original production fails the two message
+entry cases and passes thirteen; the column-only candidate instead fails exactly
+the two portal cases. The final trigger passes **15/15**. A first new helper
+waited for all Agent browser tasks and timed out; it was corrected to observe the
+local menu/focus contract before these causal comparisons. No product timeout,
+assertion or original test was weakened. The final complete frontend project
+passes **434 files / 4,900 tests** (**332.20 s** Vitest, **333.21 s** wall).
+Web typecheck, lint, formatting, layer/design/chrome guards and post-stage
+installed-module consumer checks pass. `make check-native` passes Desktop
+test/vet/build and the production Wails build (**20.49 s**). The standard Lab
+passes with **484 assets**. The existing disabled-iframe diagnostic remains
+non-failing; this frontend run excludes the separate Runtime test project.
+
+Actual Wails acceptance uses those normal Lab bytes without fixture seams.
+English/light/14 px/Orange/full motion and Chinese/dark/18 px/**#3B82F6**/motion
+off use default zoom and macOS Left window sizing. Both qualify natural keyboard
+entry from the real user and assistant Copy buttons, the correctly named and
+role-specific menus, directional navigation and Escape back to the source Copy.
+English additionally enters the same user menu from Edit. Body right-click
+continues to open the appropriate message menu.
+
+Physical Enter opens the independent Copy popup in both profiles. Shift+F10
+inside it keeps that popup; a pointer right-click opens only WebKit's existing
+Reload layer above it. Escape dismisses that platform layer, arrows still move
+within Copy, and the next Escape returns to its original button. No message
+menu or command is activated by those nested requests. Cmd+L then returns to the
+same draft and a native insertion at its original fifth character produces
+`Keep verified this message menu draft.` and
+`Keep verified this dark message draft — 保留菜单草稿。`. The Chinese draft uses
+paste, not an OS IME qualification. An initial private `zh-CN` URL reached the
+Lab's unregistered-locale page; it was excluded, quit and replaced by the
+supported `zh` URL with a fresh isolated profile. No product locale changed.
+
+All **6,876 tracked inputs** remain frozen through checks, native use and cleanup;
+only the four qualified source/README paths differ from baseline. All twenty
+published plugin resources, forty-six native inputs and normal CSS remain exact.
+The copied native hosts differ only in their private URL entry and required
+`os` import. No Copy choice, editing/history action, Fork, Restore, Regenerate,
+Send or live Runtime operation is qualified by this open/browse/cancel task.
+Their existing command and final-focus regression coverage remains intact.
+VoiceOver speech, other-platform GUIs, browser visual suites and performance
+benchmarks were not run.
+
+Four native launches, including the excluded locale attempt, exit and join zero.
+Both owned loopback servers are joined with their ports closed; the original
+server exits 130 after guarded SIGINT, and the final server exits zero. Three
+exact app registrations and bundles, six newly created Library paths and eleven
+created output/cache paths are removed. All eighteen private Library targets and
+thirteen output targets are absent. UID, exact path, ignored/tracked overlap,
+source hashes and the three legitimate Node bin symlinks are checked before
+removal; no unrelated process, dependency, global cache or user data is removed.
+The private QA directory is deleted after freezing the proof. Publication retains
+only this progress record and the four owned implementation/README paths.
 
 ### Message actions respect root history scope
 
