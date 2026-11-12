@@ -7,7 +7,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { CodeBlock, CodeHighlightProvider } from "@flame/ui";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
@@ -16,7 +16,7 @@ const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).
 
 describe("ShikiCodeBlock", () => {
   beforeAll(async () => {
-    await getHighlighter();
+    await getHighlighter("javascript");
   });
 
   beforeEach(() => {
@@ -32,19 +32,30 @@ describe("ShikiCodeBlock", () => {
         <ShikiCodeBlock lang="javascript" code={code} />
       </CodeHighlightProvider>
     );
-    const view = testClient.render(block("const accepted = true;"));
-    await waitFor(() => expect(view.container.querySelector("code .line")).not.toBeNull());
-    const region = view.container.querySelector("pre")!;
-    region.focus();
-    expect(document.activeElement).toBe(region);
+    vi.useFakeTimers();
+    try {
+      const view = testClient.render(block("const accepted = true;"));
+      await act(async () => {
+        await getHighlighter("javascript");
+      });
+      expect(view.container.querySelector("code .line")).not.toBeNull();
+      const region = view.container.querySelector("pre")!;
+      region.focus();
+      expect(document.activeElement).toBe(region);
 
-    const next = "const accepted = true;\nconst owner = 'Runtime';";
-    view.rerender(block(next));
-    expect(view.container.querySelector("pre")).toBe(region);
-    expect(region.textContent).toBe(next);
-    expect(document.activeElement).toBe(region);
-    await waitFor(() => expect(region.querySelector("code .line")).not.toBeNull());
-    expect(document.activeElement).toBe(region);
+      const next = "const accepted = true;\nconst owner = 'Runtime';";
+      view.rerender(block(next));
+      expect(view.container.querySelector("pre")).toBe(region);
+      expect(region.textContent).toBe(next);
+      expect(document.activeElement).toBe(region);
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync();
+      });
+      expect(region.querySelector("code .line")).not.toBeNull();
+      expect(document.activeElement).toBe(region);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps long code readable in its scrolling surface instead of replacing it with a fold row", async () => {

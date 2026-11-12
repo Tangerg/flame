@@ -45,6 +45,7 @@ export default defineConfig({
         test: {
           name: "runtime",
           include: [runtimeLifecycleTest],
+          globalSetup: ["./tests/integration/runtime-http.setup.ts"],
           sequence: { groupOrder: 1 },
         },
       },

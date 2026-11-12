@@ -53,31 +53,34 @@ describe("Flame icon integration", () => {
     expect(svg.getAttribute("viewBox")).toBe("0 0 16 16");
   });
 
-  it("selects the right master for every application name, font and size token", () => {
+  it.each(
+    Array.from(
+      { length: UI_FONT_SIZE_MAX_PX - UI_FONT_SIZE_MIN_PX + 1 },
+      (_, index) => UI_FONT_SIZE_MIN_PX + index,
+    ),
+  )("selects the right master for every application name and size token at font %i", (font) => {
     const names = [...ICON_NAMES];
     const { container, rerender } = testClient.render(<Icon name="plus" />);
-    for (let font = UI_FONT_SIZE_MIN_PX; font <= UI_FONT_SIZE_MAX_PX; font++) {
-      act(() => testClient.theme.appearance.publishUiFontSize(font));
-      for (const size of ["xs", "sm", "md", "lg", "xl", "composer"] as const) {
-        rerender(
-          <>
-            {names.map((name) => (
-              <Icon key={name} name={name} size={size} />
-            ))}
-          </>,
-        );
-        const pixels = productIconSizePx(size, font);
-        const grid = pixels < 22 ? 16 : 24;
-        const svgs = [...container.querySelectorAll("svg")];
-        expect(svgs).toHaveLength(names.length);
-        expect(new Set(svgs.map((svg) => svg.getAttribute("viewBox")))).toEqual(
-          new Set([`0 0 ${grid} ${grid}`]),
-        );
-        expect(new Set(svgs.map((svg) => svg.getAttribute("stroke-width")))).toEqual(
-          new Set([grid === 16 ? "1.25" : "1.5"]),
-        );
-        expect(new Set(svgs.map((svg) => svg.style.width))).toEqual(new Set([`${pixels}px`]));
-      }
+    act(() => testClient.theme.appearance.publishUiFontSize(font));
+    for (const size of ["xs", "sm", "md", "lg", "xl", "composer"] as const) {
+      rerender(
+        <>
+          {names.map((name) => (
+            <Icon key={name} name={name} size={size} />
+          ))}
+        </>,
+      );
+      const pixels = productIconSizePx(size, font);
+      const grid = pixels < 22 ? 16 : 24;
+      const svgs = [...container.querySelectorAll("svg")];
+      expect(svgs).toHaveLength(names.length);
+      expect(new Set(svgs.map((svg) => svg.getAttribute("viewBox")))).toEqual(
+        new Set([`0 0 ${grid} ${grid}`]),
+      );
+      expect(new Set(svgs.map((svg) => svg.getAttribute("stroke-width")))).toEqual(
+        new Set([grid === 16 ? "1.25" : "1.5"]),
+      );
+      expect(new Set(svgs.map((svg) => svg.style.width))).toEqual(new Set([`${pixels}px`]));
     }
   });
 

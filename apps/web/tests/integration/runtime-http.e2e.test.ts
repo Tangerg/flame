@@ -9,18 +9,7 @@ import {
   updateInstalledMemory,
 } from "./memoryOperations";
 import { execFile, spawn } from "node:child_process";
-import {
-  chmod,
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  realpath,
-  rm,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, symlink, writeFile } from "node:fs/promises";
 import {
   createServer as createHttpServer,
   type IncomingMessage,
@@ -28,11 +17,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { createConnection, createServer as createNetServer } from "node:net";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, inject, it, vi } from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { RpcError } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
@@ -55,8 +43,6 @@ import {
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 
 const execFileAsync = promisify(execFile);
-
-const runtimeDirectory = resolve(process.cwd(), "../../runtime");
 
 const managedSkillName = "runtime-http-e2e";
 
@@ -759,11 +745,11 @@ async function collectRunEvents(events: AsyncIterable<RunEvent>): Promise<RunEve
 }
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
-  let environmentRoot = "";
-  let root = "";
-  let runtimeHome = "";
-  let runtimeData = "";
-  let runtimeStore = "";
+  const environmentRoot = inject("runtimeHttpEnvironmentRoot");
+  const root = join(environmentRoot, "workspace");
+  const runtimeHome = join(environmentRoot, "home");
+  const runtimeData = join(environmentRoot, "runtime-data");
+  const runtimeStore = join(runtimeData, "runtime");
   let baseUrl = "";
   let mcpFixturePath = "";
   let providerBaseUrl = "";
@@ -780,8 +766,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let client: FlameClient | undefined;
   let negotiated: import("@flame/runtime-client/wire").ServerCapabilities | undefined;
   let processOutput = "";
-  let runtimeExecutable = "";
-  let cliExecutable = "";
+  const runtimeExecutable = join(environmentRoot, "flame-e2e");
+  const cliExecutable = join(environmentRoot, "flame-cli-e2e");
   let runtimePort = 0;
   const managedOwners = new Map<
     "memory" | "schedules",
@@ -1043,11 +1029,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
 
   beforeAll(async () => {
     const readyBefore = Date.now() + runtimeFixtureStartupMilliseconds;
-    environmentRoot = await mkdtemp(join(tmpdir(), "flame-runtime-e2e-"));
-    root = join(environmentRoot, "workspace");
-    runtimeHome = join(environmentRoot, "home");
-    runtimeData = join(environmentRoot, "runtime-data");
-    runtimeStore = join(runtimeData, "runtime");
     await Promise.all([mkdir(root, { recursive: true }), mkdir(runtimeHome, { recursive: true })]);
     mcpFixturePath = join(environmentRoot, "mcp-fixture.mjs");
     await writeFile(
@@ -1179,47 +1160,6 @@ for await (const line of lines) {
     }
     providerBaseUrl = `http://127.0.0.1:${providerAddress.port}`;
 
-    runtimeExecutable = join(environmentRoot, "flame-e2e");
-    cliExecutable = join(environmentRoot, "flame-cli-e2e");
-    await Promise.all([
-      execFileAsync(process.execPath, [
-        resolve(runtimeDirectory, "../tooling/node-companion.mjs"),
-        "--os",
-        process.platform === "win32" ? "windows" : process.platform,
-        "--arch",
-        process.arch === "x64" ? "amd64" : process.arch,
-        "--output",
-        environmentRoot,
-        "--offline",
-      ]),
-      execFileAsync("go", ["build", "-o", runtimeExecutable, "./cmd/flame-runtime"], {
-        cwd: runtimeDirectory,
-      }),
-      execFileAsync(
-        "go",
-        [
-          "build",
-          "-o",
-          join(environmentRoot, "frame-runner"),
-          "github.com/Tangerg/frame/cmd/frame-runner",
-        ],
-        { cwd: runtimeDirectory },
-      ),
-      execFileAsync("go", ["build", "-o", cliExecutable, "."], {
-        cwd: resolve(runtimeDirectory, "../apps/cli"),
-        env: { ...process.env, GOWORK: resolve(runtimeDirectory, "../go.work") },
-      }),
-      execFileAsync(process.execPath, [
-        resolve(runtimeDirectory, "../plugins/scripts/build-packages.mjs"),
-        "--os",
-        process.platform === "win32" ? "windows" : process.platform,
-        "--arch",
-        process.arch === "x64" ? "amd64" : process.arch,
-        "--output",
-        join(environmentRoot, "plugins"),
-      ]),
-    ]);
-
     await startRunnerProcess(readyBefore);
     runtimePort = await unusedLoopbackPort();
     baseUrl = `http://127.0.0.1:${runtimePort}`;
@@ -1238,23 +1178,27 @@ for await (const line of lines) {
   });
 
   afterAll(async () => {
-    await client?.close();
-    await stopRuntimeProcess();
-    await stopRunnerProcess();
-    if (provider?.listening) {
-      await new Promise<void>((resolve, reject) =>
-        provider?.close((error) => (error ? reject(error) : resolve())),
-      );
+    const failures: unknown[] = [];
+    for (const close of [
+      () => client?.close(),
+      stopRuntimeProcess,
+      stopRunnerProcess,
+      async () => {
+        if (provider?.listening)
+          await new Promise<void>((resolve, reject) =>
+            provider?.close((error) => (error ? reject(error) : resolve())),
+          );
+      },
+    ]) {
+      try {
+        await close();
+      } catch (failure) {
+        failures.push(failure);
+      }
     }
-    if (environmentRoot) {
-      const entries = await readdir(environmentRoot, { recursive: true, withFileTypes: true });
-      await Promise.all(
-        entries
-          .filter((entry) => entry.isDirectory())
-          .map((entry) => chmod(join(entry.parentPath, entry.name), 0o700)),
-      );
-      await rm(environmentRoot, { recursive: true, force: true });
-    }
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1)
+      throw new AggregateError(failures, "runtime HTTP fixture shutdown failed");
   }, 10_000);
 
   it("admits the shipped portable package through the shared client and revokes its reads", async () => {
