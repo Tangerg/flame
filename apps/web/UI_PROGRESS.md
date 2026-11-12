@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -24545,6 +24545,119 @@ preserved. Continue with a fresh observed reading/Dock task; no pause or overall
 goal completion is implied.
 
 ## Client diagnostics reading
+
+### Accepted diagnostics reads across display languages (2026-11-12)
+
+Scope: preserve a conversation draft → select Logs → expand a recorded error and
+its original JSON → explicitly refresh and receive a read failure → change display
+language → return to the same evidence → explicitly recover → continue the draft.
+The original component rebuilt `refresh` from the whole context and translator.
+A language update therefore reread the buffer, replaced the accepted snapshot and
+could dismiss a real read/Clear failure without a Refresh action.
+
+`InstalledComponent` retains its captured telemetry collaborator and component
+signal when projecting a new locale. Diagnostics now keys its initial/fresh-owner
+read to those actual collaborators. `Read.error` retains the read/Clear operation
+and original cause; current rendering supplies fallback guidance. The shared
+`RecordBody` preserves multiline error text and indentation inside the existing
+alert semantic wrapper. Empty details do not create an empty alert. No state,
+controller, ref, reader mode, catalog, locale key, shared UI API or style override
+is added. Explicit Refresh, signal selection, accepted/stale counts, Clear's
+reset-before-reread order and retirement guards retain their existing owners.
+
+Read-only reference review inspected ZCode's actual `ExtensionLogsPane.tsx` and
+`useExtensionLogs.ts`: service-bound retention and raw entries remain separate
+from Intl labels and local filters. Flame keeps its own detached-snapshot and
+explicit Refresh contract rather than adopting that reference's live subscription
+model. The existing About text and read/failure tests are the local authority.
+Better-writing/accessibility/layout review keeps literal evidence, current-language
+fallbacks, one last-read status and existing shared reading/focus surfaces.
+Bounded subagent implementation was reviewed and qualified by the primary agent.
+
+Verification before cleanup:
+
+- The original component fails **5** new language cases while **12** pass
+  (**17** total, **4.96 s**): its original **11** cases and the added real-owner/
+  retirement case already pass. The final **17** Diagnostics cases pass within
+  **76** relevant integration tests across **4** files (**7.40 s**). They cover
+  selected Logs, exact raw/body evidence, disclosure node continuity, later focus,
+  explicit newer acceptance, read/Clear × literal/fallback failures, actual
+  telemetry/signal replacement and an already-open Clear action retired before
+  selection. The Runtime/track/compose guards remain active; context cloning
+  preserves their property descriptors instead of invoking the forbidden getter.
+  Captured code actions retain all eight language cases; the real detached-buffer
+  and retirement owner tests and published component consumers also pass.
+- Normal setup/staging, full plugin check and exact publication pass: **47**
+  script tests and **648** source tests across **44** passed files (**54.28 s**),
+  with the existing **17** skips in **2** files. All 20 resources and eight locales
+  validate. Web typecheck, lint, formatting, layers and the **827-file** shared
+  design-system boundary check pass. No check, assertion or deadline is weakened.
+- The supported Wails **v3.1.0** / Go **1.27.3** / macOS **13.0** production
+  build and desktop Go tests pass. Baseline, candidate and both private native
+  Lab builds each contain **484** assets with identical shared CSS. No browser
+  visual suite, performance benchmark or page-zoom test runs. Unchanged shared
+  UI/SDK/Runtime complete suites are not repeated for this presentation change.
+
+Canonical Diagnostics imports TSX in the Lab. The private native builds point
+only that entry at the exact ordinary published ESM through InstalledComponent.
+A byte-identical private seam in the captured telemetry read refuses its second
+call after checking the canonical buffer identity; other reads use the actual
+existing detached-buffer owner. It adds no timer, fake record or permanent mode.
+The installer and telemetry source restore byte for byte. The exact old resource
+begins `ed1eba67cd79`; the rebuilt accepted resource begins `cb1d373f9312`.
+No Runtime installation is changed; normal exact-digest package publication and
+selection remain necessary for an existing installed resource.
+
+Actual old-ESM Wails shows an explicit Refresh failure and retained expanded
+`reading-log`/raw data. EN → ZH alone removes that failure and changes stale status
+to the accepted-read label. Its plain error paragraph also collapses original
+line breaks. The candidate qualifies both full tasks at default page zoom:
+
+- English/light/**14 px**/Flame Orange/full motion: Logs remains **2**, the same
+  error record and raw JSON stay expanded, and enabled word wrap survives EN → ZH.
+  The original two-line refusal and indentation remain intact; stale guidance
+  uses Chinese. Keyboard resizing reaches **320 px**. Native wheel reading in
+  the Dock and Window → Zoom/restore retain the failure and selected material.
+  Only the subsequent explicit Refresh accepts a read and removes the failure,
+  preserving the selected Logs and surviving disclosure. Cmd+L continues the
+  saved middle caret to exactly `Keep verified this diagnostics reading draft.`
+- Chinese/dark/**18 px**/**#3B82F6**/motion off: Appearance confirms those values.
+  ZH → EN preserves the original refusal, stale state, Logs and expanded raw
+  `reading-log`. The **320 px** Dock and ordinary native Move & Resize → Left
+  (**1120-point** window) keep all controls reachable. The raw reader's own wheel
+  reaches final trace/span/source fields while the conversation stays put;
+  Shift+Tab and Return return to its record summary. Multiline failure text is
+  readable at that width. Explicit Refresh recovers. Clear then affects only
+  this isolated app's buffer, selects Traces and shows known **0/0/0** counts and
+  accepted empty state without reseeding. Menu focus returns to its trigger.
+  Cmd+L yields exactly `Keep verified this dark diagnostics draft.`
+
+The native seam qualifies synchronous local read failure, retained evidence,
+explicit recovery and the real isolated local Clear. Initial/fallback/Clear
+failure and retirement boundaries also retain unit/integration coverage. It does
+not qualify live user telemetry, remote accounting, Runtime/provider execution,
+installation leasing, physical IME, clipboard behavior, VoiceOver, measured
+contrast or whole-product acceptance. Exact hidden scroll offsets are not claimed.
+
+Before publication, independent main commit `da22c7155` refactors Skills command
+feedback and updates its ordinary ESM/complexity baseline in **3** paths. A guarded
+fast-forward preserves all **4** qualified Diagnostics hashes, **9** captured
+owners, **8** locale files and **46** native inputs. Skills is the one intentional
+incoming resource change; no new Skills native qualification is claimed here.
+Integrated staging, **112** tests across **5** relevant files (**7.73 s**), exact
+resource reproduction, native build/desktop tests and the canonical Lab build
+(**1.86 s**, **484** assets and the same CSS) all pass.
+
+All **3** native launches and **2** loopback servers exit **0**. Three app
+registrations, **6** created Library stores, all **18** private Library paths,
+**13** owned output/cache roots and the private apps/assets/helpers/logs return
+to absence. Cleanup preserves the **4** accepted Diagnostics hashes, **20** current
+resources, **9** captured owners, **8** locale files, **46** native inputs and all
+**3** incoming hashes. Dependencies/hooks and unrelated primary work remain intact.
+No functional suite runs after cleanup. Continue task-specific Dock/full-view and
+conversation reading inspection; do not reopen the completed read-language owner.
+
+### Signal counts and metric units (2026-10-26)
 
 The existing signal controls now carry their last-read counts, formatted through
 Intl for the current locale. They derive directly from the one accepted snapshot.

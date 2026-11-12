@@ -31,6 +31,13 @@ Refresh rereads that owner. Clear delegates to its existing local clear operatio
 and discards the displayed snapshot before reading again. The component does not
 clear Runtime accounting or remote telemetry. Retirement invalidates both operations
 without changing the retained buffer. Read failure preserves the last accepted read.
+The initial read and replacement of the telemetry collaborator or component signal
+read that owner. Display-language changes preserve the accepted snapshot, selected
+signal, expanded evidence and later focus without reading or clearing the buffer.
+Read and Clear failures retain their original cause: literal details keep their
+line breaks and indentation in the shared reader, while fallback guidance follows
+the current display language. A language change does not dismiss a failure or
+accept newer observations; explicit Refresh remains available for that read.
 
 The package declares installation scope and a generic `diagnostics` material key for
 the existing navigation consumer. It uses prebuilt ESM, shared React/UI and normal

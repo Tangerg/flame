@@ -200,9 +200,13 @@ function DiagnosticsReport({
     </RecordGroup>
   );
 }
-type Read = { snapshot?: TelemetrySnapshot; error?: string };
+type Read = {
+  snapshot?: TelemetrySnapshot;
+  error?: { operation: "read" | "clear"; cause: unknown };
+};
 
 export function Diagnostics({ context }: { context: ComponentContext }) {
+  const { telemetry, signal: componentSignal } = context;
   const t = useTranslator(CATALOGS, context.locale);
   const numbers = useMemo(
     () => new Intl.NumberFormat(context.locale),
@@ -212,30 +216,33 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
   const [read, setRead] = useState<Read>({});
   const refresh = useCallback(() => {
     try {
-      context.signal.throwIfAborted();
-      setRead({ snapshot: context.telemetry.read() });
+      componentSignal.throwIfAborted();
+      setRead({ snapshot: telemetry.read() });
     } catch (error) {
       setRead((previous) => ({
         ...previous,
-        error: failureText(error, t("read.failed")),
+        error: { operation: "read", cause: error },
       }));
     }
-  }, [context, t]);
+  }, [telemetry, componentSignal]);
   useEffect(refresh, [refresh]);
   function clear() {
     try {
-      context.signal.throwIfAborted();
-      context.telemetry.clear();
+      componentSignal.throwIfAborted();
+      telemetry.clear();
       setSignal("spans");
       setRead({});
       refresh();
     } catch (error) {
       setRead((previous) => ({
         ...previous,
-        error: failureText(error, t("clear.failed")),
+        error: { operation: "clear", cause: error },
       }));
     }
   }
+  const detail =
+    read.error &&
+    failureText(read.error.cause, t(`${read.error.operation}.failed`));
   return (
     <Panel
       label={t("panel.title")}
@@ -246,12 +253,12 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
             icon={Refresh}
             aria-label={t("refresh")}
             size="md"
-            disabled={context.signal.aborted}
+            disabled={componentSignal.aborted}
             onClick={refresh}
           />
           <ActionMenu
             label={t("actions.label")}
-            disabled={context.signal.aborted}
+            disabled={componentSignal.aborted}
             items={[
               {
                 label: t("actions.clear"),
@@ -277,7 +284,11 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
         </Toolbar>
       }
     >
-      {read.error && <p role="alert">{read.error}</p>}
+      {detail && (
+        <div role="alert">
+          <RecordBody>{detail}</RecordBody>
+        </div>
+      )}
       {read.snapshot && (
         <>
           <Metadata role="status">

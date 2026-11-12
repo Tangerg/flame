@@ -7,7 +7,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type {
   ComponentContext,
@@ -74,7 +74,7 @@ function openDiagnostics(
   telemetry: ClientTelemetry = { read: () => structuredClone(recorded), clear() {} },
   locale = "en",
 ) {
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: {
       installationId: "diagnostics-reading",
       digest: "a".repeat(64),
@@ -103,7 +103,24 @@ function openDiagnostics(
       throw Error("Diagnostics must not compose another component");
     },
   };
-  return testClient.render(<Diagnostics context={context} />);
+  const rendered = testClient.render(<Diagnostics context={context} />);
+  function changeContext({
+    locale = context.locale,
+    telemetry = context.telemetry,
+    signal = context.signal,
+  }: Partial<Pick<ComponentContext, "locale" | "telemetry" | "signal">>) {
+    // Preserve the forbidden Runtime getter without invoking it during a display update.
+    context = Object.freeze(
+      Object.create(Object.getPrototypeOf(context), {
+        ...Object.getOwnPropertyDescriptors(context),
+        locale: { value: locale, enumerable: true },
+        telemetry: { value: telemetry, enumerable: true },
+        signal: { value: signal, enumerable: true },
+      }),
+    ) as ComponentContext;
+    rendered.rerender(<Diagnostics context={context} />);
+  }
+  return { ...rendered, context, changeContext };
 }
 
 function signal(name: string) {
@@ -261,6 +278,179 @@ it("preserves selected accepted material when clearing itself fails", () => {
   expect(
     within(observations()).getByRole("button", { name: /Preview could not be refreshed/ }),
   ).toBeTruthy();
+});
+
+it("retains selected expanded evidence across display-locale changes until explicit Refresh", () => {
+  const later = structuredClone(recorded);
+  later.logs[0]!.body = "Updated log accepted by explicit Refresh.";
+  later.logs.push({ ...later.logs[0]!, id: "next", body: "Another accepted log." });
+  const read = vi.fn().mockReturnValueOnce(structuredClone(recorded)).mockReturnValue(later);
+  const clear = vi.fn();
+  const { context, changeContext } = openDiagnostics({ read, clear });
+  fireEvent.click(signal("Logs"));
+  const record = openRecord(/Preview could not be refreshed/);
+  const raw = within(observations()).getByRole("button", { name: "Raw observation" });
+  fireEvent.click(raw);
+  const evidence = within(observations()).getByRole("region", {
+    name: "Local observation details",
+  });
+  const laterFocus = screen.getByRole("button", { name: "About client diagnostics" });
+  act(() => laterFocus.focus());
+  act(() => changeContext({ locale: "zh" }));
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(clear).not.toHaveBeenCalled();
+  expect(context.signal.aborted).toBe(false);
+  expect(signal("日志").getAttribute("aria-checked")).toBe("true");
+  expect(signal("日志").textContent).toBe("日志 · 1");
+  const records = within(screen.getByRole("region", { name: "本地观测记录" }));
+  expect(records.getByRole("button", { name: /Preview could not be refreshed/ })).toBe(record);
+  expect(record.getAttribute("aria-expanded")).toBe("true");
+  expect(records.getByRole("button", { name: "原始观测记录" })).toBe(raw);
+  expect(raw.getAttribute("aria-expanded")).toBe("true");
+  expect(records.getByRole("region", { name: "本地观测记录详情" })).toBe(evidence);
+  expect(evidence.textContent).toContain(JSON.stringify(recorded.logs[0], null, 2));
+  expect(
+    records.getByText(
+      (_, node) => node?.tagName === "P" && node.textContent === recorded.logs[0]!.body,
+    ),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(laterFocus);
+  const refresh = screen.getByRole("button", { name: "刷新" });
+  act(() => refresh.focus());
+  fireEvent.click(refresh);
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(clear).not.toHaveBeenCalled();
+  expect(signal("日志").textContent).toBe("日志 · 2");
+  expect(signal("日志").getAttribute("aria-checked")).toBe("true");
+  expect(records.getByRole("button", { name: /Updated log accepted by explicit Refresh/ })).toBe(
+    record,
+  );
+  expect(evidence.textContent).toContain(JSON.stringify(later.logs[0], null, 2));
+  expect(screen.getByRole("status").textContent).toBe("最近一次读取");
+  expect(document.activeElement).toBe(refresh);
+});
+
+const diagnosticFailure = "  Local buffer unavailable.\n原始原因 · 保留  ";
+
+it.each([
+  {
+    operation: "read",
+    failure: "literal",
+    cause: new Error(diagnosticFailure),
+    english: diagnosticFailure,
+    chinese: diagnosticFailure,
+    reads: 2,
+    clears: 0,
+  },
+  {
+    operation: "clear",
+    failure: "literal",
+    cause: new Error(diagnosticFailure),
+    english: diagnosticFailure,
+    chinese: diagnosticFailure,
+    reads: 1,
+    clears: 1,
+  },
+  {
+    operation: "read",
+    failure: "fallback",
+    cause: undefined,
+    english: "Local observations could not be read.",
+    chinese: "无法读取本地观测记录。",
+    reads: 2,
+    clears: 0,
+  },
+  {
+    operation: "clear",
+    failure: "fallback",
+    cause: undefined,
+    english: "Local observations could not be cleared.",
+    chinese: "无法清除本地观测记录。",
+    reads: 1,
+    clears: 1,
+  },
+])(
+  "retains a $failure $operation failure and accepted evidence across display-locale changes",
+  async (copy) => {
+    const read = vi.fn(() => structuredClone(recorded));
+    const clear = vi.fn<() => void>();
+    const { changeContext } = openDiagnostics({ read, clear });
+    fireEvent.click(signal("Logs"));
+    const record = openRecord(/Preview could not be refreshed/);
+    const operation = copy.operation === "read" ? read : clear;
+    operation.mockImplementationOnce(() => {
+      throw copy.cause;
+    });
+    const invoke =
+      copy.operation === "read"
+        ? () => fireEvent.click(screen.getByRole("button", { name: "Refresh" }))
+        : clearObservations;
+    invoke();
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(screen.getByRole("alert").textContent).toBe(copy.english);
+    const laterFocus = screen.getByRole("button", { name: "About client diagnostics" });
+    act(() => laterFocus.focus());
+    act(() => changeContext({ locale: "zh" }));
+    expect(read).toHaveBeenCalledTimes(copy.reads);
+    expect(clear).toHaveBeenCalledTimes(copy.clears);
+    expect(screen.getByRole("alert").textContent).toBe(copy.chinese);
+    expect(screen.getByRole("status").textContent).toBe("当前显示上次成功读取的内容。");
+    expect(signal("日志").textContent).toBe("日志 · 1");
+    expect(signal("日志").getAttribute("aria-checked")).toBe("true");
+    expect(
+      within(screen.getByRole("region", { name: "本地观测记录" })).getByRole("button", {
+        name: /Preview could not be refreshed/,
+      }),
+    ).toBe(record);
+    expect(record.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(laterFocus);
+    act(() => changeContext({ locale: "en" }));
+    expect(read).toHaveBeenCalledTimes(copy.reads);
+    expect(clear).toHaveBeenCalledTimes(copy.clears);
+    expect(screen.getByRole("alert").textContent).toBe(copy.english);
+    expect(screen.getByRole("status").textContent).toBe("Showing the last accepted read.");
+    expect(document.activeElement).toBe(laterFocus);
+  },
+);
+
+it("reads genuine telemetry and signal replacements while retiring an already-open Clear action", async () => {
+  const read = vi.fn(() => structuredClone(recorded));
+  const clear = vi.fn();
+  const { changeContext } = openDiagnostics({ read, clear });
+  fireEvent.click(signal("Logs"));
+  const replacement = structuredClone(recorded);
+  replacement.logs = [{ ...replacement.logs[0]!, id: "replacement", body: "New telemetry owner." }];
+  const renewed = structuredClone(replacement);
+  renewed.logs.push({ ...renewed.logs[0]!, id: "renewed", body: "New signal accepted read." });
+  const replacementRead = vi.fn().mockReturnValueOnce(replacement).mockReturnValue(renewed);
+  const replacementClear = vi.fn();
+  act(() => changeContext({ telemetry: { read: replacementRead, clear: replacementClear } }));
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(clear).not.toHaveBeenCalled();
+  expect(replacementRead).toHaveBeenCalledTimes(1);
+  expect(signal("Logs").getAttribute("aria-checked")).toBe("true");
+  expect(within(observations()).getByRole("button", { name: /New telemetry owner/ })).toBeTruthy();
+  const owner = new AbortController();
+  act(() => changeContext({ signal: owner.signal }));
+  expect(replacementRead).toHaveBeenCalledTimes(2);
+  expect(signal("Logs").textContent).toBe("Logs · 2");
+  expect(
+    within(observations()).getByRole("button", { name: /New signal accepted read/ }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Diagnostic actions" }));
+  const clearAction = screen.getByRole("menuitem", { name: "Clear local observations" });
+  act(() => owner.abort(new Error("Diagnostics owner retired.")));
+  fireEvent.click(clearAction);
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  expect(replacementClear).not.toHaveBeenCalled();
+  expect(replacementRead).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("alert").textContent).toBe("Diagnostics owner retired.");
+  expect(signal("Logs").textContent).toBe("Logs · 2");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  fireEvent.click(screen.getByRole("button", { name: "Diagnostic actions" }));
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(replacementRead).toHaveBeenCalledTimes(2);
+  expect(replacementClear).not.toHaveBeenCalled();
 });
 
 it("formats category counts for the active locale", () => {
