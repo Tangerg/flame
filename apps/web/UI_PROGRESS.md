@@ -42560,6 +42560,27 @@ source/resource/asset fencing. All **20** publisher resources, the **17** unchan
 Provider source owners, eight locale files, nine captured/installation facts and
 46 tracked native inputs retain their accepted hashes. No migration is needed.
 
+Publication first fences the concurrent main advance, then integrates
+`216735e4d` / `40e453066` at `e309cf048`. Those commits give protocol failure
+categories an explicit owner and update frozen Go dependencies; the desktop now
+uses Go SDK `v0.1.12-dev.20261113.t0ff39af3f896`. The two incoming desktop manifest
+updates are preserved. All four accepted Provider implementation/test/resource
+inputs, the other publisher resources, captured facts and shared CSS stay exact.
+Serial setup (**26.19 s**), `make check-native` (**28.63 s**) and normal Lab
+(**4.31 s**, **484** assets) pass against the integrated source. The unchanged JS
+suites retain their complete passing qualification above.
+
+A fresh signed Wails host built with that Go SDK again qualifies the exact
+published Provider resource at **18 px / dark / custom #3B82F6 / motion off**.
+The original role and focus survive the same known refusal; raw newline/indent,
+`https://integrated-role.example.test/v1`, ZH→EN, native Left, **320 px** Dock and
+Settings close/reopen pass. Middle-caret return produces exactly
+`Keep verified this integrated Provider draft.`. All **46 current native inputs**
+are fenced against the integrated baseline. The supplemental native process and
+server exit **0**; its registration and two created Library trees are removed,
+all six identity paths and all 13 output roots are absent, and the second private
+QA root is removed. This adds no live Runtime or provider-execution claim.
+
 Next inspect Hooks read continuity across display language changes. Source shows
 whole-context read/watch dependencies; establish a native no-language tab-return
 control and compare a locale-only return before deciding on a change. Preserve
