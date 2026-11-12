@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/samber/lo"
 )
@@ -71,12 +72,8 @@ func (e ExecutionFactCommit) Fact() ExecutionFact {
 
 func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	switch value := fact.(type) {
-	case MessageDelta:
-		return value, true
-	case ReasoningDelta:
-		return value, true
-	case ModelCallStarted:
-		return value, true
+	case MessageDelta, ReasoningDelta, ModelCallStarted, ToolCallStarted, PlanUpdated:
+		return fact, true
 	case ModelCallCompleted:
 		if value.FirstOutputLatencyMillis != nil {
 			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
@@ -98,28 +95,23 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
 		}
 		return value, true
-	case ToolCallStarted:
-		return value, true
 	case ToolCallPrepared:
 		value.Context = value.Context.Clone()
 		return value, true
 	case ExecutionTreeSettled:
-		for _, event := range value.Facts {
-			switch event.Payload.(type) {
-			case ToolResultsCommitted, SegmentEnded:
-			default:
-				return nil, false
-			}
-		}
-		return value.clone(), true
+		return value.clone()
 	case ToolResultsCommitted:
 		return value.clone(), true
 	case CompactionBoundary:
+		if value.Rewrite != nil {
+			value.Rewrite = new(*value.Rewrite)
+		}
 		return value, true
 	case SegmentEnded:
+		if run.ValidateEnding(value.Ending) != nil {
+			return nil, false
+		}
 		return NewSegmentEnded(value.Ending, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
-	case PlanUpdated:
-		return value, true
 	case SteerMessagesApplied:
 		value.Messages = slices.Clone(value.Messages)
 		for index := range value.Messages {

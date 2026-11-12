@@ -28,8 +28,7 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 		return nil, errors.New("mcp: supplied oauth session store is nil")
 	}
 	seen := make(map[mcpserver.ID]struct{}, len(servers))
-	for index := range servers {
-		srv := servers[index].Clone()
+	for _, srv := range servers {
 		if _, duplicate := seen[srv.ID()]; duplicate {
 			return nil, fmt.Errorf("mcp: duplicate server name %q", srv.ID())
 		}

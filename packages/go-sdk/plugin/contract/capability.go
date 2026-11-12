@@ -102,8 +102,13 @@ func (c *Capability) Descriptor() CapabilityDescriptor {
 	return CapabilityDescriptor{Protocol: Protocol, Reference: service.Reference, Composition: c.composition, Scope: c.scope, Methods: service.Methods}
 }
 
-func (c *Capability) Identity() value.JSON          { return c.identity }
-func (c *Capability) Service() *portable.Capability { return c.service }
+func (c *Capability) Identity() value.JSON { return c.identity }
+func (c *Capability) Service() *portable.Capability {
+	if c.service == nil {
+		return nil
+	}
+	return new(*c.service)
+}
 
 func (c *Capability) Method(name string) (*portable.Method, bool) {
 	if c == nil || c.service == nil {

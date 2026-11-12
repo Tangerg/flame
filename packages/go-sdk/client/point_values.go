@@ -32,6 +32,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}
+	contract = new(*contract)
 	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
 		return nil, err
 	}

@@ -110,8 +110,12 @@ func (s Server) ValidateConnection() error {
 	if err := s.HandshakeTimeout.Validate(); err != nil {
 		return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 	}
-	if s.Connection == nil {
+	switch s.Connection.(type) {
+	case nil:
 		return fmt.Errorf("mcpserver %q: a connection is required", s.ID())
+	case StdioConnection, HTTPConnection:
+	default:
+		return fmt.Errorf("mcpserver %q: connection must be a value variant", s.ID())
 	}
 	if err := s.Connection.validate(); err != nil {
 		return fmt.Errorf("mcpserver %q: %w", s.ID(), err)

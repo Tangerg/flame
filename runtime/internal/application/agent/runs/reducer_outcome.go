@@ -12,9 +12,6 @@ import (
 )
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
-	if e.Ending == nil {
-		return nil, errors.New("segment end has no ending")
-	}
 	r.segmentDuration = e.Duration
 	terminal, err := r.finishedRun(r.cancelDetail(e.Ending), e.unresolvedEffects)
 	if err != nil {
@@ -77,6 +74,9 @@ func (r *reducer) cancelDetail(ending run.Ending) run.Ending {
 }
 
 func (r *reducer) finishedRun(ending run.Ending, effects []run.UnresolvedEffect) (SegmentFinished, error) {
+	if err := run.ValidateEnding(ending); err != nil {
+		return SegmentFinished{}, err
+	}
 	if _, ok := run.Running.Terminate(ending.Outcome()); !ok {
 		return SegmentFinished{}, fmt.Errorf("outcome %q does not terminate a running run", ending.Outcome())
 	}

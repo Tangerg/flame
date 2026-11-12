@@ -253,7 +253,7 @@ func (r Run) validateOpen() error {
 }
 
 func (r Run) validateTerminal() error {
-	if err := validateEnding(r.ending); err != nil {
+	if err := ValidateEnding(r.ending); err != nil {
 		return err
 	}
 	switch {
@@ -333,7 +333,7 @@ type Termination struct {
 
 // Terminate finishes a Running Run with one coherent terminal fact set.
 func (r Run) Terminate(termination Termination) (Run, error) {
-	if err := validateEnding(termination.Ending); err != nil {
+	if err := ValidateEnding(termination.Ending); err != nil {
 		return Run{}, err
 	}
 	next, ok := r.state.Terminate(termination.Ending.Outcome())

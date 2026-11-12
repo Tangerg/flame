@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "./errors";
-import { createMutationPromise, type MutationPromise } from "./mutation";
+import { createMutationPromise, MutationLookupError, type MutationPromise } from "./mutation";
 import { createMutationSettler, MutationSettlementClosedError } from "./mutationSettlement";
 
 afterEach(() => vi.useRealTimers());
@@ -13,6 +13,45 @@ function resolvedMutation<T>(value: T): MutationPromise<T> {
 }
 
 describe("unary mutation settlement", () => {
+  it.each([0, -1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 31])(
+    "refuses an invalid deadline %s without dispatching or losing original recovery",
+    async (timeoutMs) => {
+      vi.useFakeTimers();
+      const retry = vi.fn(() => resolvedMutation("recovered"));
+      const open = vi.fn(() =>
+        Object.assign(Promise.reject<string>(new RpcTransportError("ack lost")), {
+          idempotencyKey: "original-command",
+          retry,
+        }),
+      );
+      const settler = createMutationSettler();
+      try {
+        await expect(settler.settle("runs.start", open)).rejects.toThrow("ack lost");
+        await expect(settler.settle("runs.start", open, { timeoutMs })).rejects.toBeInstanceOf(
+          RangeError,
+        );
+        expect(open).toHaveBeenCalledOnce();
+        expect(retry).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
+        await expect(settler.settle("runs.start", open)).resolves.toBe("recovered");
+        expect(open).toHaveBeenCalledOnce();
+        expect(retry).toHaveBeenCalledOnce();
+      } finally {
+        settler.dispose();
+      }
+    },
+  );
+
+  it.each([1, 2 ** 31 - 1])("accepts a platform-representable deadline %s", async (timeoutMs) => {
+    vi.useFakeTimers();
+    const settler = createMutationSettler();
+    await expect(
+      settler.settle("runs.start", () => resolvedMutation("accepted"), { timeoutMs }),
+    ).resolves.toBe("accepted");
+    expect(vi.getTimerCount()).toBe(0);
+    settler.dispose();
+  });
+
   it("retains the dispatched command when its identity observer throws", async () => {
     const projectionError = new Error("projection failed");
     const transportError = new RpcTransportError("ack lost");
@@ -154,7 +193,7 @@ describe("unary mutation settlement", () => {
   it("closes the replacement attempt when the replay is refused outright", async () => {
     vi.useFakeTimers();
     const refused = new Error("journal no longer owns this key");
-    const retry = vi.fn(() => {
+    const retry = vi.fn<() => MutationPromise<string>>(() => {
       throw refused;
     });
     const open = vi.fn((signal: AbortSignal) =>
@@ -172,8 +211,40 @@ describe("unary mutation settlement", () => {
     const settled = rejected(settler.settle("test:refused-replay", open, { timeoutMs: 10 }));
     await vi.advanceTimersByTimeAsync(10);
 
-    expect(await settled).toBe(refused);
+    const failure = await settled;
+    expect(failure).toBeInstanceOf(MutationLookupError);
+    expect(failure.cause).toBe(refused);
     expect(vi.getTimerCount()).toBe(0);
+    retry.mockImplementationOnce(() => resolvedMutation("recovered"));
+    await expect(settler.settle("test:refused-replay", open)).resolves.toBe("recovered");
+    expect(open).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledTimes(2);
+    settler.dispose();
+  });
+
+  it("retains the original command when explicit recovery cannot open its retry", async () => {
+    const refused = new Error("recovery unavailable");
+    const retry = vi
+      .fn<() => MutationPromise<string>>()
+      .mockImplementationOnce(() => {
+        throw refused;
+      })
+      .mockImplementationOnce(() => resolvedMutation("recovered"));
+    const open = vi.fn(() =>
+      Object.assign(Promise.reject<string>(new RpcTransportError("ack lost")), {
+        idempotencyKey: "original-command",
+        retry,
+      }),
+    );
+    const settler = createMutationSettler();
+    await expect(settler.settle("runs.start", open)).rejects.toThrow("ack lost");
+    const failure = await rejected(settler.settle("runs.start", open));
+    expect(failure).toBeInstanceOf(MutationLookupError);
+    expect(failure.cause).toBe(refused);
+    await expect(settler.settle("runs.start", open)).resolves.toBe("recovered");
+    expect(open).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledTimes(2);
+    settler.dispose();
   });
 
   it("settles after the finite retry budget even when the transport ignores abort", async () => {

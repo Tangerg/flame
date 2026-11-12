@@ -39,6 +39,31 @@ func backendStreamingSession(t *testing.T, method *StreamingMethod[callbackInput
 	return binding, callbacks
 }
 
+func TestDelayedBackendStreamRetainsItsMethodAndBinding(t *testing.T) {
+	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Stream records."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, callbacks := backendStreamingSession(t, method, func(context.Context, *sdk.ServerSession, Command[callbackInput]) iter.Seq2[StreamValue[int64, bool], error] {
+		return func(yield func(StreamValue[int64, bool], error) bool) {
+			yield(StreamValue[int64, bool]{Result: new(true)}, nil)
+		}
+	})
+	stream := method.StreamWithMetadata(t.Context(), binding, callbacks, callbackTestLimits, "original-stream", callbackInput{Value: 7}, sdk.ParamsBase{})
+	*method = StreamingMethod[callbackInput, int64, bool]{}
+	*binding = Binding{}
+	completed := false
+	for value, err := range stream {
+		if err != nil || value.Result == nil || !*value.Result {
+			t.Fatalf("replacement changed the captured stream: %+v, %v", value, err)
+		}
+		completed = true
+	}
+	if !completed {
+		t.Fatal("original stream did not complete")
+	}
+}
+
 func TestBackendStreamRetainsOriginalInvocationAndConsumerBackpressure(t *testing.T) {
 	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Stream records."})
 	if err != nil {

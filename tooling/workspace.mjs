@@ -678,6 +678,9 @@ async function stageWeb() {
   await cp(join(root, "apps/web/dist"), destination, { recursive: true });
 }
 async function goMembers(native) {
+  const macOS = native
+    ? (await import("../apps/desktop/build/product.mjs")).desktopProduct.macOS
+    : undefined;
   const env = {
     ...proxyEnvironment(join(root, "out/module-proxy")),
     GOWORK: "off",
@@ -692,7 +695,17 @@ async function goMembers(native) {
       requiresNative && !native
         ? ["./cmd/bridgegen", "./internal/bridge"]
         : ["./..."];
-    const unformatted = run("gofmt", ["-l", "."], directory, env, true)
+    const memberEnv = macOS
+      ? {
+          ...env,
+          CGO_ENABLED: "1",
+          CGO_CFLAGS: macOS.compilerFlags,
+          CGO_LDFLAGS: macOS.compilerFlags,
+          MACOSX_DEPLOYMENT_TARGET: macOS.minimumVersion,
+        }
+      : env;
+    const linkerArgs = macOS ? ["-ldflags", macOS.linkerFlags] : [];
+    const unformatted = run("gofmt", ["-l", "."], directory, memberEnv, true)
       .toString()
       .trim();
     if (unformatted) {
@@ -701,19 +714,38 @@ async function goMembers(native) {
       );
     }
     for (const operation of ["test", "vet", "build"]) {
-      const args = [operation, "-mod=readonly"];
+      const args = [operation, "-mod=readonly", ...linkerArgs];
       if (operation === "test") args.push("-p=1");
-      run("go", [...args, ...packages], directory, env);
+      run("go", [...args, ...packages], directory, memberEnv);
     }
     if (native) {
       const output = join(root, "out/native-check");
       await mkdir(output, { recursive: true });
       run(
         "go",
-        ["build", "-mod=readonly", "-o", join(output, "flame"), "."],
+        [
+          "build",
+          "-mod=readonly",
+          ...linkerArgs,
+          "-o",
+          join(output, "flame"),
+          ".",
+        ],
         directory,
-        env,
+        memberEnv,
       );
+      const metadata = run(
+        "xcrun",
+        ["vtool", "-show-build", join(output, "flame")],
+        directory,
+        memberEnv,
+        true,
+      ).toString();
+      const minimum = /^\s*minos\s+(\S+)\s*$/m.exec(metadata)?.[1];
+      if (minimum !== macOS.minimumVersion)
+        throw new Error(
+          `native verification: expected macOS ${macOS.minimumVersion}, found ${minimum ?? "no deployment target"}`,
+        );
     }
   }
 }

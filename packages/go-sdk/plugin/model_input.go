@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/Tangerg/frame/portable"
 	framevalue "github.com/Tangerg/frame/value"
@@ -35,7 +34,7 @@ func ModelInputContract() (*plugincontract.Capability, error) { return modelInpu
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelInputContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
+var modelInputContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
 		return nil, err

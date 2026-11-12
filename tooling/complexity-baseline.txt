@@ -11,7 +11,6 @@
 22 apps/web/src/features/agent/application/fold/projections.ts:rawLabelSource
 23 apps/web/src/features/chat/message/ui/MessageBlock.tsx:MessageBlockInner
 34 apps/web/src/features/composer/quote-selection/SelectionQuote.tsx:<anonymous>
-21 apps/web/src/features/goal/application/goalComposerSubmitMode.ts:submitGoalComposerMode
 26 apps/web/src/features/plugins/contributions.tsx:<anonymous>
 23 apps/web/src/features/plugins/ui/PackageManager.tsx:PackageManager
 24 apps/web/src/features/plugins/ui/PendingCommands.tsx:PendingCommands

@@ -1,6 +1,7 @@
-import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 
 const MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
+const MAXIMUM_MUTATION_ATTEMPT_TIMEOUT_MS = 2 ** 31 - 1;
 
 export class MutationSettlementClosedError extends Error {
   override readonly name = "MutationSettlementClosedError";
@@ -160,7 +161,9 @@ function driveMutation<T>(
       replay = mutation.retry({ signal: retry.signal });
     } catch (error) {
       retry.dispose();
-      throw error;
+      // Refusing a new observation cannot settle the original timed-out command.
+      markUnknown();
+      throw new MutationLookupError(error);
     }
     replaceMutation(replay);
     try {
@@ -205,6 +208,15 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
       options: MutationSettleOptions = {},
     ): Promise<T> {
       if (disposed) return Promise.reject(new MutationSettlementClosedError());
+      const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;
+      if (
+        !Number.isInteger(timeoutMs) ||
+        timeoutMs <= 0 ||
+        timeoutMs > MAXIMUM_MUTATION_ATTEMPT_TIMEOUT_MS
+      )
+        return Promise.reject(
+          new RangeError("mutation attempt timeout must be within the platform timer range"),
+        );
       const activeReplay = replaying.get(identity);
       if (activeReplay)
         return projectMutation(
@@ -215,7 +227,6 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
 
       const retained = take<T>(identity);
 
-      const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;
       const ownership = options.parent
         ? AbortSignal.any([options.parent, lifetime.signal])
         : lifetime.signal;
@@ -227,7 +238,10 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
           : open(first.signal);
       } catch (error) {
         first.dispose();
-        if (retained) retain(identity, retained as PendingMutation<unknown>);
+        if (retained) {
+          retain(identity, retained as PendingMutation<unknown>);
+          return Promise.reject(new MutationLookupError(error));
+        }
         return Promise.reject(error);
       }
 

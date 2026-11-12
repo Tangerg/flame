@@ -1,4 +1,5 @@
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
+import { Database } from "@flame/backend-sdk/sqlite";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   Capability,
@@ -111,12 +112,11 @@ function unconfirmed(): never {
 }
 
 export class Archive {
-  readonly #db: DatabaseSync;
+  readonly #db: Database;
   readonly #capture: Method;
   readonly #remove: Method;
   readonly #get: Method;
   readonly #commands: ReadonlyMap<string, Method>;
-  #closed = false;
 
   constructor(path: string, contract: Capability) {
     this.#capture = contract.portable.method("flame.usage-reports/capture.v1");
@@ -134,7 +134,6 @@ export class Archive {
       readBigInts: true,
       timeout: 0,
     });
-    this.#db = db;
     try {
       // EXCLUSIVE retains the SQLite file lock between transactions. Admission
       // survives a lost callback without holding a SQL transaction over await.
@@ -163,36 +162,30 @@ export class Archive {
         } else for (const sql of Object.values(schemas)) db.exec(sql);
         db.exec("COMMIT");
       } catch (error) {
-        this.#rollback(error);
+        try {
+          if (db.isTransaction) db.exec("ROLLBACK");
+        } catch (rollback) {
+          throw new AggregateError(
+            [error, rollback],
+            "usage reports: archive startup rollback is unconfirmed",
+          );
+        }
+        throw error;
       }
     } catch (error) {
-      db.close();
+      try {
+        db.close();
+      } catch (close) {
+        throw new AggregateError(
+          [error, close],
+          "usage reports: archive startup cleanup failed",
+        );
+      }
       throw error;
     }
+    this.#db = new Database(db);
   }
 
-  #rollback(error: unknown): never {
-    try {
-      this.#db.exec("ROLLBACK");
-    } catch (rollback) {
-      throw new AggregateError(
-        [error, rollback],
-        "usage reports: transaction outcome is unconfirmed",
-      );
-    }
-    throw error;
-  }
-  #transaction<T>(action: () => T): T {
-    if (this.#closed) throw new Error("usage reports: archive is closed");
-    this.#db.exec("BEGIN IMMEDIATE");
-    try {
-      const result = action();
-      this.#db.exec("COMMIT");
-      return result;
-    } catch (error) {
-      return this.#rollback(error);
-    }
-  }
   #command(id: string): Row | undefined {
     if (!validCommand(id))
       throw new Error("usage reports: invalid stored command identity");
@@ -308,7 +301,7 @@ export class Archive {
     read: (days: number) => Promise<string>,
   ): Promise<Header> {
     context.signal.throwIfAborted();
-    const admission = this.#transaction(() =>
+    const admission = this.#db.transaction(() =>
       this.#admit(this.#capture, context),
     );
     if (!admission.fresh) return decodeReply(admission.reply) as Header;
@@ -322,7 +315,7 @@ export class Archive {
       period: input.period,
       value,
     };
-    const reply = this.#transaction(() => {
+    const reply = this.#db.transaction(() => {
       context.signal.throwIfAborted();
       const count = this.#db
         .prepare("SELECT COUNT(*) AS count FROM reports")
@@ -415,7 +408,7 @@ export class Archive {
   remove(context: Command): boolean {
     context.signal.throwIfAborted();
     return decodeReply(
-      this.#transaction(() => {
+      this.#db.transaction(() => {
         const admission = this.#admit(this.#remove, context);
         if (!admission.fresh) return admission.reply;
         const { id } = parseJSON(context.requestInput) as { id: string };
@@ -459,8 +452,6 @@ export class Archive {
     };
   }
   close(): void {
-    if (this.#closed) return;
     this.#db.close();
-    this.#closed = true;
   }
 }

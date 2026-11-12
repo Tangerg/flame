@@ -280,6 +280,8 @@ canonical input/digest and invocation. It reserves space for the bounded result.
 A valid observed result is recorded once. Same-ID calls only observe that record.
 Transport loss, process failure or cancellation after possible dispatch leaves
 the outcome unconfirmed. Missing receipts never authorize re-execution.
+The backend SDK owns private transaction admission. An unconfirmed rollback fences
+the original connection, including history and receipt reads, until reopening.
 
 An engine `isError` result is still a known original result. If an action result
 arrives but subsequent turn cleanup fails, the result remains known while the

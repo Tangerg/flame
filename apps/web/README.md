@@ -28,6 +28,8 @@ animated formats export a still frame. Browser reports download dispatch, while
 Desktop reports a completed write or cancellation. The download action names PNG
 explicitly. [SVG image contexts](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)
 disable scripts and external resource loading.
+Streamed native save failures preserve both transfer and cleanup diagnostics in
+the visible error; an unconfirmed cleanup is never reported as cancellation.
 
 From the repository root:
 
@@ -107,7 +109,9 @@ shutdown retires the generation and renderer shutdown disposes the owner.
 
 Goal commands and composer mode belong to one explicitly composed feature
 instance. Commands retain their admitted Runtime generation, including a pending
-replacement confirmation. Resetting composer mode invalidates its submission
+replacement confirmation. Each submission captures its Session, objective and
+model options before confirmation. Model options cannot replace the Session or
+objective. Resetting composer mode invalidates its submission
 settlement, so a late reply cannot accept or change a newer draft in the same
 Session. Plugin shutdown retires Runtime work and resets mode; renderer shutdown
 disposes both owners.
@@ -896,7 +900,9 @@ including when an unloaded plugin's row disappears.
 
 Installed MCP settings live in `plugins/mcp`; the graphical Host resolves their
 settings intent and retains no MCP configuration gateway or feature query cache.
-Runtime remains the registry, connection, authorization and approval owner.
+The external connector owns its directory and OAuth attempts. Runtime owns host
+credentials, launch permissions, live connections, installation-bound
+authorization attempts and tool approval rules.
 MCP server and expanded-tool lists keep their initial loading presentation while
 the existing query is pending, including a paused first request. Empty states
 require accepted empty data; accepted rows and tools remain available through

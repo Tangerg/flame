@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"sync"
-
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -14,7 +12,7 @@ func ModelObserverContract() (*plugincontract.Capability, error) { return modelO
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelObserverContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
+var modelObserverContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	call, err := ModelMethod()
 	if err != nil {
 		return nil, err

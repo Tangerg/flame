@@ -77,8 +77,9 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify Classifier, han
 }
 
 func (m *Method[P, R]) bind(classify Classifier, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
-	return boundMethod{contract: m.contract, validate: validateMethodInput[P](m.contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*methodResult[jsontext.Value], error) {
-		ctx, command, err := admitCommand[P](ctx, m.contract, wire)
+	contract := m.contract
+	return boundMethod{contract: contract, validate: validateMethodInput[P](contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*methodResult[jsontext.Value], error) {
+		ctx, command, err := admitCommand[P](ctx, contract, wire)
 		if err != nil {
 			return nil, err
 		}
@@ -88,8 +89,8 @@ func (m *Method[P, R]) bind(classify Classifier, handler func(context.Context, *
 			if err != nil {
 				return nil, err
 			}
-			if err := m.contract.ValidateOutput(encoded); err != nil {
-				return nil, fmt.Errorf("plugin: %s output: %w", m.Name(), err)
+			if err := contract.ValidateOutput(encoded); err != nil {
+				return nil, fmt.Errorf("plugin: %s output: %w", contract.Name(), err)
 			}
 		}
 		outcome, err := reply(value, operationErr, classify)
@@ -181,7 +182,7 @@ func (m *Method[P, R]) Bind(capability *CapabilityBinding) (*BoundMethod[P, R], 
 	if m.contract.Identity() != binding.Contract() {
 		return nil, errors.New("plugin: typed method differs from capability contract")
 	}
-	return &BoundMethod[P, R]{method: m, binding: binding}, nil
+	return &BoundMethod[P, R]{method: new(*m), binding: binding}, nil
 }
 
 func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {

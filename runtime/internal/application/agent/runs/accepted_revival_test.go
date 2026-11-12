@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -24,7 +25,7 @@ func (s *acceptedRevivalStore) Delete(context.Context, string) error { s.retired
 
 func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) {
 	transient := errors.New("tree store unavailable")
-	for _, scenario := range []string{"transient failure", "proven loss", "busy", "segment changed", "terminal"} {
+	for _, scenario := range []string{"transient failure", "proven loss", "busy", "segment changed", "terminal", "missing input", "foreign input", "wrong input kind"} {
 		t.Run(scenario, func(t *testing.T) {
 			at := time.Date(2026, 10, 12, 1, 0, 0, 0, time.UTC)
 			pending := testApprovalPending("member_1", at)
@@ -37,7 +38,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			accepted, err := NewAcceptedContinuation("ses_1", pending, run.TreeResumeDraft{Runs: []run.Replacement{resumed}}, "")
+			accepted, err := NewAcceptedContinuation("ses_1", pending, run.TreeResumeDraft{Runs: []run.Replacement{resumed}}, "item_input")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,6 +47,13 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			coordinator.segments.newSegmentID = func() string { t.Fatal("revival allocated a Segment"); return "" }
 			coordinator.runs.(*fakeRunProjection).runs["run_1"] = resumed.State()
 			items := coordinator.items.(*fakeItemProjection).items
+			input, err := transcript.NewUserMessage(transcript.ItemIdentity{
+				SessionID: "ses_1", RunID: "run_1", ItemID: "item_input", OccurredAt: at.Add(time.Second),
+			}, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "Continue with this input"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			items[input.ID()] = input
 			acceptance, err := NewResumeAcceptance("ses_1", pending, items, []InterruptAnswer{{InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1", Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)})}})
 			if err != nil {
 				t.Fatal(err)
@@ -82,6 +90,18 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 					t.Fatal(err)
 				}
 				coordinator.runs.(*fakeRunProjection).runs["run_1"] = value
+			case "missing input":
+				delete(items, input.ID())
+			case "foreign input":
+				identity := input.Snapshot().Identity
+				identity.RunID = "run_other"
+				foreign, err := transcript.NewUserMessage(identity, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "Another Run's input"}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				items[input.ID()] = foreign
+			case "wrong input kind":
+				store.value.InputItemID = "item_1"
 			}
 			err = coordinator.ReviveAcceptedContinuations(t.Context())
 			if scenario == "transient failure" {

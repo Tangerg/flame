@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -79,5 +80,53 @@ func TestNavigationRetiresAnOpenNativeExportPicker(t *testing.T) {
 	matches, err := filepath.Glob(filepath.Join(filepath.Dir(destination), ".flame-export-*"))
 	if err != nil || len(matches) != 0 {
 		t.Fatalf("retired picker staged %v: %v", matches, err)
+	}
+}
+
+func TestUnconfirmedExportDiscardRetainsItsOriginalTransfer(t *testing.T) {
+	destination := filepath.Join(t.TempDir(), "saved")
+	var transfer exportTransfer
+	id, err := transfer.begin("saved", 1, selectedExport(destination))
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged := transfer.pending.file.Name()
+	retained := staged + ".retained"
+	if err := os.Rename(staged, retained); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(staged, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staged, "blocked"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := transfer.cancel(id); err == nil {
+		t.Fatal("failed staging-file removal was reported as successful cancellation")
+	}
+	if err := transfer.appendChunk(id, 0, base64.StdEncoding.EncodeToString([]byte("x"))); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("unconfirmed cleanup restored the write capability: %v", err)
+	}
+	if _, err := transfer.begin("another", 1, selectedExport(destination)); err == nil {
+		t.Fatal("a new transfer replaced the unresolved staging-file owner")
+	}
+	if err := os.RemoveAll(staged); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(retained, staged); err != nil {
+		t.Fatal(err)
+	}
+	if err := transfer.cancel(id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(staged); !os.IsNotExist(err) {
+		t.Fatalf("original staging file survived confirmed cancellation: %v", err)
+	}
+	next, err := transfer.begin("another", 1, selectedExport(destination))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := transfer.cancel(next); err != nil {
+		t.Fatal(err)
 	}
 }

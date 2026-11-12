@@ -56,7 +56,9 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
         signal,
       });
     } catch (err) {
-      throw new RpcConnectionError(`sidecar ${path}: ${errorMessage(err)}`);
+      const error = new RpcConnectionError(`sidecar ${path}: ${errorMessage(err)}`);
+      error.cause = err;
+      throw error;
     }
     const requestId = res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
     const text = await readResponseDocument(

@@ -127,6 +127,7 @@ func TestAuthorizationHistoryRejectsImpossibleStates(t *testing.T) {
 	}{
 		{name: "pending_with_finish", status: wire.Pending, finished: int64(2)},
 		{name: "settled_without_finish", status: wire.Succeeded},
+		{name: "finish_before_start", status: wire.Succeeded, finished: int64(0)},
 		{name: "unknown_status", status: "invalid", finished: int64(2)},
 	} {
 		t.Run(test.name, func(t *testing.T) {

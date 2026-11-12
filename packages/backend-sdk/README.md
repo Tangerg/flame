@@ -33,6 +33,18 @@ identity, and uses the captured response budget. Cleanup is reserved on the
 original call Lifetime before discovery starts. It does not create another
 resource owner.
 
+`@flame/backend-sdk/sqlite` supplies `Database` for synchronous private SQLite
+transactions. Admit the plugin's schema first, then transfer the original idle
+`node:sqlite` connection to this owner and register `close` with the setup Lifetime.
+Use its statements immediately; do not retain statements or use the original
+connection after transfer. Business rules and receipt formats stay with the plugin.
+External I/O must finish outside `transaction`; its callback cannot return a promise.
+A failed mutation rolls back before another operation is admitted. If rollback
+cannot be confirmed, the owner fences all new statements and transactions before
+closing the original connection. Failed close remains retryable; an uncertain
+connection never supplies a receipt or a read projection. Reopening and reading
+the original durable evidence establishes whether a lost commit succeeded.
+
 Use `toolCommandId(context)` to derive the Flame Tool's private command identity.
 `toolReceipts(backend, handler)` exposes the Flame Tool receipt contract through
 the same Flame backend. Return `{}` for an absent receipt. A recorded receipt carries

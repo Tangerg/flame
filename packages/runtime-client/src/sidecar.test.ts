@@ -20,6 +20,17 @@ function makeFetch(status: number, body: unknown): typeof fetch {
 }
 
 describe("SidecarClient", () => {
+  it("preserves the original fetch failure", async () => {
+    const cause = new TypeError("connection refused");
+    const client = createSidecarClient({
+      baseUrl: "http://x",
+      fetch: async () => {
+        throw cause;
+      },
+    });
+    await expect(client.info()).rejects.toMatchObject({ name: "RpcConnectionError", cause });
+  });
+
   it("info() returns public bootstrap metadata", async () => {
     const fetchStub = makeFetch(200, {
       protocolVersion: PROTOCOL_VERSION,

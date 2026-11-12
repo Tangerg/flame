@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,6 +65,89 @@ function receipt(
     inputDigest: digestJSON(input),
   });
 }
+
+it("preserves startup, rollback and close failures together", () => {
+  const f = fixture();
+  const failure = new Error("schema commit failed");
+  const rollback = new Error("schema rollback failed");
+  const close = new Error("schema close failed");
+  const execute = DatabaseSync.prototype.exec;
+  let release: (() => void) | undefined;
+  const injected = vi
+    .spyOn(DatabaseSync.prototype, "exec")
+    .mockImplementation(function (this: DatabaseSync, sql: string) {
+      release ??= () => {
+        if (this.isOpen) this.close();
+      };
+      if (sql === "COMMIT") throw failure;
+      if (sql === "ROLLBACK") throw rollback;
+      return execute.call(this, sql);
+    });
+  const closing = vi
+    .spyOn(DatabaseSync.prototype, "close")
+    .mockImplementationOnce(() => {
+      throw close;
+    });
+  try {
+    expect(() => f.open()).toThrow(
+      expect.objectContaining({
+        errors: [
+          expect.objectContaining({ errors: [failure, rollback] }),
+          close,
+        ],
+      }),
+    );
+  } finally {
+    injected.mockRestore();
+    closing.mockRestore();
+    release?.();
+  }
+});
+
+it.each([false, true])(
+  "refuses reads after lost commit and rollback acknowledgements (committed=%s)",
+  async (committed) => {
+    const f = fixture();
+    const archive = f.open();
+    const saved = await archive.capture(command("capture"), async () =>
+      canonicalJSON(accounting()),
+    );
+    const removal = {
+      id: "remove",
+      method: "flame.usage-reports/delete.v1",
+      inputDigest: digestJSON({ id: saved.id }),
+    };
+    const execute = DatabaseSync.prototype.exec;
+    const failure = new Error("commit acknowledgement lost");
+    const rollback = new Error("rollback acknowledgement lost");
+    const injected = vi
+      .spyOn(DatabaseSync.prototype, "exec")
+      .mockImplementation(function (this: DatabaseSync, sql: string) {
+        if (sql === "COMMIT") {
+          if (committed) execute.call(this, sql);
+          throw failure;
+        }
+        if (sql === "ROLLBACK") throw rollback;
+        return execute.call(this, sql);
+      });
+    try {
+      expect(() => archive.remove(command("remove", { id: saved.id }))).toThrow(
+        AggregateError,
+      );
+      expect(() => archive.list()).toThrow();
+      expect(() => archive.read(saved.id)).toThrow();
+      expect(() => archive.receipt(removal)).toThrow();
+    } finally {
+      injected.mockRestore();
+    }
+    archive.close();
+    const reopened = f.open();
+    expect(reopened.list()).toEqual(committed ? [] : [saved]);
+    expect(reopened.receipt(removal)).toEqual(
+      committed ? { found: true, reply: { value: true } } : { found: false },
+    );
+  },
+);
 
 it("keeps exact accounting, immutable report identities and original receipts through close/removal", async () => {
   const f = fixture();

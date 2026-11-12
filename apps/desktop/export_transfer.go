@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"errors"
-	"io"
 	"sync"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
@@ -18,17 +17,23 @@ type exportTransfer struct {
 	size    int
 }
 
-func (s *exportTransfer) abort() {
+func (s *exportTransfer) abort() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.discard()
+	return s.discard()
 }
-func (s *exportTransfer) discard() {
+func (s *exportTransfer) discard() error {
+	var err error
 	if s.pending != nil {
-		s.pending.discard()
+		err = s.pending.discard()
+		if s.pending.ownsStagingFile() {
+			return err
+		}
 	}
 	s.pending = nil
 	s.id = ""
+	s.size = 0
+	return err
 }
 
 func (s *exportTransfer) begin(name string, size int, picker exportDestinationPicker) (string, error) {
@@ -54,13 +59,11 @@ func (s *exportTransfer) begin(name string, size int, picker exportDestinationPi
 		return "", nil
 	}
 	if err != nil || destination == "" {
-		s.discard()
-		return "", err
+		return "", errors.Join(err, s.discard())
 	}
 	f, err := prepareExport(destination)
 	if err != nil {
-		s.discard()
-		return "", err
+		return "", errors.Join(err, s.discard())
 	}
 	s.pending = f
 	s.size = size
@@ -72,10 +75,9 @@ func (s *exportTransfer) appendChunk(id string, offset int, encoded string) erro
 	if s.pending == nil || id != s.id {
 		return errors.New("export does not belong to this transfer")
 	}
-	position, err := s.pending.file.Seek(0, io.SeekCurrent)
+	position, err := s.pending.position()
 	if err != nil {
-		s.discard()
-		return err
+		return errors.Join(err, s.discard())
 	}
 	if int64(offset) != position {
 		return errors.New("export offset does not match written bytes")
@@ -87,20 +89,19 @@ func (s *exportTransfer) appendChunk(id string, offset int, encoded string) erro
 	if len(contents) == 0 || len(contents) > s.size-offset {
 		return errors.New("export chunk exceeds remaining bytes")
 	}
-	if _, err := s.pending.file.Write(contents); err != nil {
-		s.discard()
-		return err
+	if _, err := s.pending.Write(contents); err != nil {
+		return errors.Join(err, s.discard())
 	}
 	return nil
 }
-func (s *exportTransfer) finish(id string) error {
+func (s *exportTransfer) finish(id string) (returned error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending == nil || id != s.id {
 		return errors.New("export does not belong to this transfer")
 	}
-	defer s.discard()
-	position, err := s.pending.file.Seek(0, io.SeekCurrent)
+	defer func() { returned = errors.Join(returned, s.discard()) }()
+	position, err := s.pending.position()
 	if err != nil {
 		return err
 	}
@@ -113,7 +114,7 @@ func (s *exportTransfer) cancel(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending != nil && id == s.id {
-		s.discard()
+		return s.discard()
 	}
 	return nil
 }

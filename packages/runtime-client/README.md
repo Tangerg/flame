@@ -14,6 +14,8 @@ const discovery = await client.runtime.discover();
 A successful streaming call requires a 200 SSE response. A 200 JSON document may carry
 its refusal. Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
+HTTP transport captures its endpoint, credentials and resource limits on creation;
+later edits to the supplied configuration cannot change an admitted connection.
 
 Consumers use explicit public entries: the main API, `json`, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
@@ -43,6 +45,10 @@ and durable commands retain their registry-classified distinction.
 the identity of the selected original mutation, including retained or shared
 recovery attempts. It grants no replacement command or independent retry owner;
 the existing mutation handle and journal retain settlement authority.
+Deadlines must be positive whole milliseconds within the platform timer range;
+invalid deadlines are refused before opening or consuming a recovery attempt.
+Failure to open an original command's retry remains a `MutationLookupError` and
+retains that original handle because it cannot prove the command's outcome.
 
 Each `plugins.pendingCommands()` handle exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.

@@ -78,6 +78,54 @@ describe("Goal composer submit mode", () => {
     expect(start).not.toHaveBeenCalled();
   });
 
+  it("confirms replacement with the model selection captured with its original intent", async () => {
+    goalState = {
+      available: true,
+      goal: { objective: "old objective", status: "paused" } as GoalState["goal"],
+    };
+    const options = { provider: "openai", model: "gpt-5", reasoningEffort: "high" };
+    dependencies.runOptions = () => options;
+    const mode = createGoalComposerSubmitMode(owner, dependencies);
+    mode.submit(context);
+    options.provider = "anthropic";
+    options.model = "claude-sonnet";
+    options.reasoningEffort = "low";
+
+    owner.confirmReplacement("ses_a");
+
+    await vi.waitFor(() =>
+      expect(start).toHaveBeenCalledWith({
+        sessionId: "ses_a",
+        objective: "ship alpha",
+        provider: "openai",
+        model: "gpt-5",
+        reasoningEffort: "high",
+      }),
+    );
+    expectSendable(start);
+  });
+
+  it("keeps the authored session and objective authoritative over extra run option fields", async () => {
+    dependencies.runOptions = () => ({
+      provider: "openai",
+      model: "gpt-5",
+      sessionId: "ses_other",
+      objective: "different objective",
+    });
+    const mode = createGoalComposerSubmitMode(owner, dependencies);
+    mode.submit(context);
+
+    await vi.waitFor(() =>
+      expect(start).toHaveBeenCalledWith({
+        sessionId: "ses_a",
+        objective: "ship alpha",
+        provider: "openai",
+        model: "gpt-5",
+      }),
+    );
+    expectSendable(start);
+  });
+
   it("turns a bare /goal command into composer mode without opening a second draft", () => {
     context = {
       ...context,
@@ -141,6 +189,21 @@ describe("Goal composer submit mode", () => {
 
     await vi.waitFor(() => expect(dependencies.reportStartError).toHaveBeenCalledWith(error));
     expect(context.accept).not.toHaveBeenCalled();
+    expect(owner.snapshot().phase).toBe("armed");
+  });
+
+  it("reports a selection capture failure without consuming the draft or submitting", () => {
+    const error = new Error("selection unavailable");
+    dependencies.runOptions = () => {
+      throw error;
+    };
+    const mode = createGoalComposerSubmitMode(owner, dependencies);
+
+    mode.submit(context);
+
+    expect(dependencies.reportStartError).toHaveBeenCalledWith(error);
+    expect(context.accept).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
     expect(owner.snapshot().phase).toBe("armed");
   });
 

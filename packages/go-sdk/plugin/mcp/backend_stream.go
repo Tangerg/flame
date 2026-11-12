@@ -174,13 +174,16 @@ func (b *Binding) streamReceiver(call context.Context, chunks chan<- pendingChun
 // StreamWithMetadata retains the original MCP invocation while acknowledged
 // callback delivery keeps production behind actual consumer demand.
 func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id CommandID, input framevalue.JSON, metadata sdk.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error] {
+	if b != nil {
+		b = new(*b)
+	}
 	frozen := scopemetadata.Map(metadata.Meta).Clone()
 	_, metadataErr := json.Marshal(sdk.ParamsBase{Meta: sdk.Meta(frozen)})
 	return func(yield func(StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		fail := func(err error) {
 			yield(StreamValue[jsontext.Value, jsontext.Value]{}, errors.Join(ErrStreamUnconfirmed, err, ctx.Err(), context.Cause(ctx)))
 		}
-		if b == nil || callbacks == nil || len(b.method.Descriptor().Stream) == 0 {
+		if b == nil || b.method == nil || callbacks == nil || len(b.method.Descriptor().Stream) == 0 {
 			fail(errors.New("plugin: streaming binding and callback owner are required"))
 			return
 		}
@@ -249,9 +252,10 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 
 func (m *StreamingMethod[P, C, R]) StreamWithMetadata(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id CommandID, input P, metadata sdk.ParamsBase) iter.Seq2[StreamValue[C, R], error] {
 	admitted, admissionErr := framevalue.EncodeJSON(input)
+	matches := m != nil && m.contract != nil && binding != nil && binding.method != nil && m.contract.Identity() == binding.Contract()
 	source := binding.StreamWithMetadata(ctx, callbacks, limits, id, admitted, metadata)
 	return func(yield func(StreamValue[C, R], error) bool) {
-		if admissionErr != nil || m == nil || binding == nil || m.contract.Identity() != binding.Contract() {
+		if admissionErr != nil || !matches {
 			yield(StreamValue[C, R]{}, errors.Join(admissionErr, errors.New("plugin: typed stream differs from captured binding")))
 			return
 		}

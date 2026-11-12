@@ -1,4 +1,5 @@
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
+import { Database } from "@flame/backend-sdk/sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
@@ -185,9 +186,8 @@ function summary(row: Row): ReceiptSummary {
 }
 
 export class Receipts {
-  readonly #db: DatabaseSync;
+  readonly #db: Database;
   readonly #limits: ReceiptLimits;
-  #closed = false;
 
   constructor(path: string, limits: ReceiptLimits) {
     if (
@@ -209,7 +209,6 @@ export class Receipts {
       readBigInts: true,
       timeout: 0,
     });
-    this.#db = db;
     try {
       db.exec(
         "PRAGMA locking_mode=EXCLUSIVE; PRAGMA synchronous=FULL; BEGIN EXCLUSIVE",
@@ -248,26 +247,7 @@ export class Receipts {
         "computer: receipt startup cleanup failed",
       );
     }
-  }
-
-  #transaction<T>(action: () => T): T {
-    if (this.#closed) throw new Error("computer: receipts are closed");
-    this.#db.exec("BEGIN IMMEDIATE");
-    try {
-      const result = action();
-      this.#db.exec("COMMIT");
-      return result;
-    } catch (cause) {
-      try {
-        this.#db.exec("ROLLBACK");
-      } catch (rollback) {
-        throw new AggregateError(
-          [cause, rollback],
-          "computer: receipt transaction rollback failed",
-        );
-      }
-      throw cause;
-    }
+    this.#db = new Database(db);
   }
 
   #decode(row: Row): ReceiptRecord {
@@ -342,7 +322,7 @@ export class Receipts {
     admission: "ordinary" | "reserved" = "ordinary",
   ): ReceiptAdmission {
     const { owner, bytes } = admitted(original, this.#limits);
-    return this.#transaction(() => {
+    return this.#db.transaction(() => {
       const previous = this.read(original.id);
       if (previous) {
         if (
@@ -392,7 +372,7 @@ export class Receipts {
   }
 
   markDispatched(id: string): void {
-    this.#transaction(() => {
+    this.#db.transaction(() => {
       const current = this.read(id);
       if (!current || current.state !== "pending" || current.dispatched)
         throw new Error(
@@ -419,7 +399,7 @@ export class Receipts {
       throw new Error(
         "computer: observed result exceeds retained result capacity",
       );
-    this.#transaction(() => {
+    this.#db.transaction(() => {
       const current = this.read(id);
       if (!current || current.kind !== kind)
         throw new Error("computer: settlement requires its original admission");
@@ -523,8 +503,6 @@ export class Receipts {
   }
 
   close(): void {
-    if (this.#closed) return;
     this.#db.close();
-    this.#closed = true;
   }
 }

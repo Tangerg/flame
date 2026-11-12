@@ -2,7 +2,6 @@ package run
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -51,12 +50,17 @@ func validateEndingDetail(detail string) error {
 	return nil
 }
 
-func validateEnding(ending Ending) error {
-	if ending == nil {
+// ValidateEnding admits only immutable variants before any observer invokes
+// their methods; a typed nil or mutable pointer cannot own a terminal fact.
+func ValidateEnding(ending Ending) error {
+	switch ending.(type) {
+	case nil:
 		return errors.New("run: terminal Run has no ending")
+	case Completed, Canceled, Failed, TimedOut, Lost:
+		return ending.validate()
+	default:
+		// Pointer variants would let callers change committed facts and bypass
+		// the value variants consumed by the aggregate's queries.
+		return errors.New("run: ending must be an immutable value variant")
 	}
-	if !ending.Outcome().valid() {
-		return fmt.Errorf("run: unknown outcome %q", ending.Outcome())
-	}
-	return ending.validate()
 }

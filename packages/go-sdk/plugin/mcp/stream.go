@@ -82,8 +82,9 @@ func NewStreamingCallback[P, C, R any](method *StreamingMethod[P, C, R], handler
 }
 
 func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, *sdk.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) boundMethod {
-	return boundMethod{contract: method.contract, validate: validateMethodInput[P](method.contract), stream: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
-		ctx, command, err := admitCommand[P](ctx, method.contract, wire)
+	contract := method.contract
+	return boundMethod{contract: contract, validate: validateMethodInput[P](contract), stream: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
+		ctx, command, err := admitCommand[P](ctx, contract, wire)
 		if err != nil {
 			return nil, err
 		}
@@ -104,13 +105,13 @@ func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(c
 				if item.Chunk != nil {
 					data, err = json.Marshal(item.Chunk)
 					if err == nil {
-						err = method.contract.ValidateChunk(data)
+						err = contract.ValidateChunk(data)
 					}
 				} else {
 					frame.Kind, final = "result", true
 					data, err = json.Marshal(item.Result)
 					if err == nil {
-						err = method.contract.ValidateOutput(data)
+						err = contract.ValidateOutput(data)
 					}
 				}
 				if err != nil {
@@ -162,6 +163,9 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 // StreamHost starts one delivery only when consumed. Closing iteration cancels it;
 // transport writes and reads provide bounded backpressure without an event queue.
 func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id CommandID, input P) iter.Seq2[StreamValue[C, R], error] {
+	if method != nil {
+		method = new(*method)
+	}
 	admitted, admissionErr := framevalue.EncodeJSON(input)
 	return func(yield func(StreamValue[C, R], error) bool) {
 		fail := func(err error) {

@@ -23,6 +23,67 @@ func testCapability(t *testing.T, methods ...portable.MethodDescriptor) *pluginc
 	return capability
 }
 
+func TestCapabilityPublicationAndRestorationCaptureTheirOriginalContract(t *testing.T) {
+	for _, replaced := range []string{"backend", "client", "server method", "client method"} {
+		t.Run(replaced, func(t *testing.T) {
+			method, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Query, Target: "workspace", Description: "Read."})
+			if err != nil {
+				t.Fatal(err)
+			}
+			original := testCapability(t, method.Descriptor())
+			serverContract, clientContract := new(*original), new(*original)
+			serverMethod := new(*method)
+			backend := testBackend(t, sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil))
+			if err := serverMethod.RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "original", nil }); err != nil {
+				t.Fatal(err)
+			}
+			if err := backend.BindCapability("records", serverContract); err != nil {
+				t.Fatal(err)
+			}
+			client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
+			if err := RegisterClient(client); err != nil {
+				t.Fatal(err)
+			}
+			session := connectPublishedBackend(t, backend, client)
+			binding, err := NewCapabilityBinding(session, "records", clientContract)
+			if err != nil {
+				t.Fatal(err)
+			}
+			descriptor := original.Descriptor()
+			descriptor.Reference = "replacement"
+			replacement, err := plugincontract.AdmitCapability(descriptor)
+			if err != nil {
+				t.Fatal(err)
+			}
+			bound, err := method.Bind(binding)
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacementMethod, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Command, Target: "workspace", Description: "Replace read with write."})
+			if err != nil {
+				t.Fatal(err)
+			}
+			switch replaced {
+			case "backend":
+				*serverContract = *replacement
+			case "client":
+				*clientContract = *replacement
+			case "server method":
+				*serverMethod = *replacementMethod
+			case "client method":
+				*method = *replacementMethod
+			}
+			result, err := bound.Call(t.Context(), struct{}{})
+			if err != nil || result != "original" {
+				t.Fatalf("replacing the %s source changed its captured contract: %q, %v", replaced, result, err)
+			}
+			if err := VerifyCapabilities(t.Context(), session, []CapabilityExport{{Name: "records", Contract: original.Descriptor()}}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 	read, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Query, Target: "workspace", Description: "Read."})
 	if err != nil {

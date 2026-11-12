@@ -118,6 +118,7 @@ ${pair("CFBundleName", product.name)}
 ${pair("CFBundlePackageType", "APPL")}
 ${pair("CFBundleShortVersionString", product.version)}
 ${pair("CFBundleVersion", product.version)}
+${pair("LSMinimumSystemVersion", product.macOS.minimumVersion)}
 ${development ? "    <key>NSAppTransportSecurity</key>\n    <dict>\n      <key>NSAllowsLocalNetworking</key>\n      <true/>\n    </dict>\n" : ""}    <key>NSHighResolutionCapable</key>
     <true/>
 ${pair("NSHumanReadableCopyright", product.copyright)}

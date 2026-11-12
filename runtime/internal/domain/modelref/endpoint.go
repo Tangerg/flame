@@ -155,10 +155,14 @@ func (i EndpointInvocation) Validate() error {
 			return err
 		}
 	}
-	if i.Request == nil {
+	switch i.Request.(type) {
+	case nil:
 		return errors.New("models: endpoint invocation requires a request")
+	case ChatEndpointRequest, EmbeddingEndpointRequest:
+		return i.Request.validate()
+	default:
+		return errors.New("models: endpoint request must be a value variant")
 	}
-	return i.Request.validate()
 }
 
 // InvocationState is the durable observation of one model invocation, whether
@@ -227,6 +231,11 @@ func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, 
 	}
 	known := o.Response != nil
 	if known {
+		switch o.Response.(type) {
+		case ChatEndpointResponse, EmbeddingEndpointResponse:
+		default:
+			return "", errors.New("models: endpoint response must be a value variant")
+		}
 		if o.Response.Kind() != invocation.Kind() {
 			return "", errors.New("models: endpoint response belongs to another request kind")
 		}

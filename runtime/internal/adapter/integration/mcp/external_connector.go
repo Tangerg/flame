@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/samber/lo"
 )
 
 type grantVault interface {
@@ -48,6 +49,9 @@ type ExternalConnector struct {
 }
 
 func NewExternalConnector(installed *Installed, installations plugins.Store, selections plugins.SelectionStore, vault grantVault) (*ExternalConnector, error) {
+	if installed == nil || lo.IsNil(installations) || lo.IsNil(selections) || lo.IsNil(vault) {
+		return nil, errors.New("external mcp: installed sessions, installations, selections and grant vault are required")
+	}
 	m, err := connectormcp.NewMethods()
 	if err != nil {
 		return nil, err
@@ -126,7 +130,25 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.
 	return method.CallCommand(ctx, pluginmcp.CommandID(operation.Identity(ctx)), input)
 }
 func (c *ExternalConnector) entries(ctx context.Context, u *connectorUse, name string) (wire.Directory, error) {
-	return connectorCall(ctx, u, c.methods.List, wire.Selector{Name: name})
+	directory, err := connectorCall(ctx, u, c.methods.List, wire.Selector{Name: name})
+	if err != nil {
+		return wire.Directory{}, err
+	}
+	seen := make(map[mcpserver.ServerName]struct{}, len(directory.Entries))
+	for _, entry := range directory.Entries {
+		identity, err := mcpserver.ParseServerName(entry.Name)
+		if err != nil {
+			return wire.Directory{}, errors.Join(app.ErrInvalidServerConfiguration, err)
+		}
+		if entry.Revision == "" || entry.LaunchGrant == "" || name != "" && entry.Name != name {
+			return wire.Directory{}, app.ErrInvalidServerConfiguration
+		}
+		if _, duplicate := seen[identity]; duplicate {
+			return wire.Directory{}, app.ErrInvalidServerConfiguration
+		}
+		seen[identity] = struct{}{}
+	}
+	return directory, nil
 }
 func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e wire.Entry) (mcpserver.Server, error) {
 	name, err := mcpserver.ParseServerName(e.Name)
@@ -202,9 +224,6 @@ func (c *ExternalConnector) find(ctx context.Context, u *connectorUse, name mcps
 	d, err := c.entries(ctx, u, name.String())
 	if err != nil || len(d.Entries) == 0 {
 		return wire.Entry{}, false, err
-	}
-	if len(d.Entries) != 1 || d.Entries[0].Name != name.String() {
-		return wire.Entry{}, false, app.ErrInvalidServerConfiguration
 	}
 	return d.Entries[0], true, nil
 }

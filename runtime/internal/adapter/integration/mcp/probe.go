@@ -37,6 +37,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 	if validateErr := cfg.Validate(); validateErr != nil {
 		return validateErr
 	}
+	cfg = cfg.Clone()
 	ctx, span := tracer.Start(ctx, "mcp.probe",
 		trace.WithAttributes(attribute.String("mcp.server.name", cfg.ID().String())))
 	defer span.End()

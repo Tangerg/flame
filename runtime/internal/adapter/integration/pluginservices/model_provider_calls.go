@@ -292,7 +292,10 @@ func providerFailure(failure *modelprovider.Failure) error {
 	case modelprovider.ProviderUnavailable:
 		kind = run.FailureProviderUnavailable
 	}
-	delay := time.Duration(min(failure.RetryAfterMillis, run.MaximumRetryAfter.Milliseconds())) * time.Millisecond
+	var delay time.Duration
+	if kind.AllowsRetryAfter() {
+		delay = time.Duration(min(failure.RetryAfterMillis, run.MaximumRetryAfter.Milliseconds())) * time.Millisecond
+	}
 	return &coreinvocation.Failure{Kind: failure.Execution, Cause: &run.FailureError{Kind: kind, RetryAfter: delay, Err: cause}}
 }
 

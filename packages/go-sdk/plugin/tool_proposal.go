@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"errors"
-	"sync"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/frame/portable"
@@ -19,7 +18,7 @@ func ToolProposalMethod() (*pluginmcp.Method[chat.ToolCall, chat.ToolCall], erro
 
 func ToolProposalContract() (*plugincontract.Capability, error) { return toolProposalContract() }
 
-var toolProposalContract = sync.OnceValues(func() (*plugincontract.Capability, error) {
+var toolProposalContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	method, err := ToolProposalMethod()
 	if err != nil {
 		return nil, err

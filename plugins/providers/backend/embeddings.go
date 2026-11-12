@@ -32,25 +32,25 @@ func buildEmbeddingModel(ctx context.Context, spec clientSpec, modelID string) (
 }
 
 func buildOpenAIEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return openaimodel.NewEmbeddingModel(ctx, openaimodel.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	return openaimodel.NewEmbeddingModel(ctx, openaimodel.EmbeddingModelConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 }
 
 func buildAzureOpenAIEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return azureopenai.NewEmbeddingModel(ctx, azureopenai.EmbeddingModelConfig{Config: azureopenai.Config{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()}, DefaultOptions: o})
+	return azureopenai.NewEmbeddingModel(ctx, azureopenai.EmbeddingModelConfig{Config: azureopenai.Config{APIKey: s.connection.APIKey, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient}, DefaultOptions: o})
 }
 
 func buildGoogleEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return google.NewEmbeddingModel(ctx, google.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	return google.NewEmbeddingModel(ctx, google.EmbeddingModelConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 }
 
 func buildMistralEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return mistral.NewEmbeddingModel(ctx, mistral.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	return mistral.NewEmbeddingModel(ctx, mistral.EmbeddingModelConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 }
 
 func buildZhipuEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return zhipu.NewEmbeddingModel(ctx, zhipu.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	return zhipu.NewEmbeddingModel(ctx, zhipu.EmbeddingModelConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 }
 
 func buildAlibabaEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {
-	return alibaba.NewEmbeddingModel(ctx, alibaba.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	return alibaba.NewEmbeddingModel(ctx, alibaba.EmbeddingModelConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 }

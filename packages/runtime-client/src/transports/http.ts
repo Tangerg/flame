@@ -114,10 +114,13 @@ async function feedEventStreamText(
 }
 
 export function createHttpTransport(config: HttpTransportConfig): Transport {
+  const { localToken, maximumEventStreamFrameBytes } = config;
   const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
-  if (config.localToken && !endpointAcceptsBearer(baseUrl))
+  if (localToken && !endpointAcceptsBearer(baseUrl))
     throw new TypeError("Bearer credentials require HTTPS outside loopback");
+  if (localToken && /[\r\n]/.test(localToken))
+    throw new TypeError("Bearer credentials must not contain line breaks");
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
   const maximumEventStreamFrameCharacters =
     config.maximumEventStreamFrameCharacters ?? MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS;
@@ -128,9 +131,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     throw new RangeError("event-stream frame capacity must be a positive safe integer");
   }
   if (
-    config.maximumEventStreamFrameBytes !== undefined &&
-    (!Number.isSafeInteger(config.maximumEventStreamFrameBytes) ||
-      config.maximumEventStreamFrameBytes <= 0)
+    maximumEventStreamFrameBytes !== undefined &&
+    (!Number.isSafeInteger(maximumEventStreamFrameBytes) || maximumEventStreamFrameBytes <= 0)
   )
     throw new RangeError("event-stream byte capacity must be a positive safe integer");
 
@@ -143,7 +145,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
 
   function requestHeaders(extra: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = { ...extra };
-    if (config.localToken) headers[HTTP_HEADERS.authorization] = `Bearer ${config.localToken}`;
+    if (localToken) headers[HTTP_HEADERS.authorization] = `Bearer ${localToken}`;
     return headers;
   }
 
@@ -162,8 +164,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       onEvent(event) {
         if (!event.data) return;
         if (
-          config.maximumEventStreamFrameBytes !== undefined &&
-          new TextEncoder().encode(event.data).byteLength + 1 > config.maximumEventStreamFrameBytes
+          maximumEventStreamFrameBytes !== undefined &&
+          new TextEncoder().encode(event.data).byteLength + 1 > maximumEventStreamFrameBytes
         )
           throw new RpcTransportError(
             "event-stream frame exceeds its byte capacity",
@@ -378,7 +380,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       });
     } catch (err) {
       endSpan(span, err);
-      throw new RpcConnectionError(`fetch failed: ${errorMessage(err)}`);
+      const error = new RpcConnectionError(`fetch failed: ${errorMessage(err)}`);
+      error.cause = err;
+      throw error;
     }
     span.setAttribute("rpc.http.status_code", res.status);
     const metadata: TransportResponseMetadata = {

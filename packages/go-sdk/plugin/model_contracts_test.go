@@ -70,6 +70,24 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 	}
 }
 
+func TestPublishedModelContractsCannotBeReplacedByConsumers(t *testing.T) {
+	for _, load := range []func() (*plugincontract.Capability, error){ModelObserverContract, ModelInputContract, ModelContextContract, ToolProposalContract} {
+		contract, err := load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		original := *contract
+		func() {
+			defer func() { *contract = original }()
+			*contract = plugincontract.Capability{}
+			other, err := load()
+			if err != nil || other.Identity() != original.Identity() {
+				t.Error("one consumer replaced the process-wide contract")
+			}
+		}()
+	}
+}
+
 func BenchmarkPublishedModelContracts(b *testing.B) {
 	for _, test := range []struct {
 		name string

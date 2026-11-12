@@ -15,6 +15,43 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
+func TestDelayedHostStreamRetainsItsPublishedMethod(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
+	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "test/stream", Kind: portable.Command, Target: "call", Description: "Stream the captured owner."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	callback, err := NewStreamingCallback(method, func(context.Context, Command[callbackInput]) iter.Seq2[StreamValue[int64, bool], error] {
+		return func(yield func(StreamValue[int64, bool], error) bool) {
+			yield(StreamValue[int64, bool]{Result: new(true)}, nil)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, release, err := host.Open(t.Context(), session, callbackTestLimits, callback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	stream := StreamHost(t.Context(), ref, method, "original-stream", callbackInput{Value: 7})
+	*method = StreamingMethod[callbackInput, int64, bool]{}
+	completed := false
+	for value, err := range stream {
+		if err != nil || value.Result == nil || !*value.Result {
+			t.Fatalf("replacement changed the captured host stream: %+v, %v", value, err)
+		}
+		completed = true
+	}
+	if !completed {
+		t.Fatal("original host stream did not complete")
+	}
+}
+
 func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)

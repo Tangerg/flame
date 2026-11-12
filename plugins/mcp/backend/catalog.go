@@ -17,6 +17,7 @@ const entriesSchema = `CREATE TABLE IF NOT EXISTS entries(name TEXT PRIMARY KEY,
 const attemptsSchema = `CREATE TABLE IF NOT EXISTS attempts(
  id TEXT PRIMARY KEY, name TEXT NOT NULL, epoch TEXT NOT NULL,
  status TEXT NOT NULL, started INTEGER NOT NULL, finished INTEGER,
+ CHECK(finished IS NULL OR finished>=started),
  CHECK((status='` + string(wire.Pending) + `' AND finished IS NULL) OR
  (status IN ('` + string(wire.Unconfirmed) + `','` + string(wire.Succeeded) + `','` + string(wire.Failed) + `','` + string(wire.Canceled) + `') AND finished IS NOT NULL))
 )`

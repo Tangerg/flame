@@ -4,5 +4,10 @@
   "identifier": "com.tangerg.flame",
   "version": "0.0.1",
   "description": "Agent client for the Flame Runtime",
-  "copyright": "(c) 2026, tangerg"
+  "copyright": "(c) 2026, tangerg",
+  "macOS": {
+    "minimumVersion": "13.0",
+    "compilerFlags": "-O2 -g -mmacosx-version-min=13.0",
+    "linkerFlags": "-macos=13.0 -extldflags '-mmacosx-version-min=13.0 -Wl,-no_warn_duplicate_libraries -Wl,-fatal_warnings'"
+  }
 }

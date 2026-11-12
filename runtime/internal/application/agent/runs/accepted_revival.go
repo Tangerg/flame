@@ -69,9 +69,12 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 		if err != nil {
 			return err
 		}
+		if !found {
+			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item is missing"))
+		}
 		message, isUserMessage := item.Body().(transcript.UserMessageBody)
-		if !found || !isUserMessage || item.SessionID() != accepted.SessionID || item.RunID() != root.ID() {
-			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item is missing or has another owner"))
+		if !isUserMessage || item.SessionID() != accepted.SessionID || item.RunID() != root.ID() {
+			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item has another kind or owner"))
 		}
 		input = &CommittedUserInput{ItemID: item.ID(), Content: message.Content}
 	}

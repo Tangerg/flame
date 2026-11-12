@@ -42,38 +42,39 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	if lo.IsNil(caller) || binding.Contract == nil || method == nil {
 		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
 	}
-	required, err := admitPluginBinding(binding, method.Descriptor())
+	captured, required, err := admitPluginBinding(binding, method.Descriptor())
 	if err != nil {
 		return nil, err
 	}
-	return &PluginMethod[P, R]{caller: caller, binding: binding, method: required}, nil
+	return &PluginMethod[P, R]{caller: caller, binding: captured, method: required}, nil
 }
 
-func admitPluginBinding(binding PluginBinding, descriptor portable.MethodDescriptor) (*portable.Method, error) {
+func admitPluginBinding(binding PluginBinding, descriptor portable.MethodDescriptor) (PluginBinding, *portable.Method, error) {
 	if binding.Contract == nil {
-		return nil, errors.New("runtime: plugin binding contract is required")
+		return PluginBinding{}, nil, errors.New("runtime: plugin binding contract is required")
 	}
+	binding.Contract = new(*binding.Contract)
 	required, found := binding.Contract.Method(descriptor.Name)
 	actual, err := portable.AdmitMethod(descriptor)
 	if err != nil {
-		return nil, err
+		return PluginBinding{}, nil, err
 	}
 	if !found || required.Identity() != actual.Identity() {
-		return nil, errors.New("runtime: typed method differs from its required capability")
+		return PluginBinding{}, nil, errors.New("runtime: typed method differs from its required capability")
 	}
 	if err := binding.Target.Validate(); err != nil {
-		return nil, err
+		return PluginBinding{}, nil, err
 	}
 	if binding.Target.Scope != required.Descriptor().Target {
-		return nil, errors.New("runtime: plugin target differs from its method contract")
+		return PluginBinding{}, nil, errors.New("runtime: plugin target differs from its method contract")
 	}
 	if err := protocol.ValidateWireTree(protocol.PluginReleaseRequest{InstallationID: binding.InstallationID, Digest: binding.Digest}); err != nil {
-		return nil, err
+		return PluginBinding{}, nil, err
 	}
 	if err := protocol.ValidateWireTree(protocol.SelectPluginProviderRequest{InstallationID: binding.InstallationID, Contribution: binding.Contribution, Role: binding.Contract.Descriptor().Reference}); err != nil {
-		return nil, err
+		return PluginBinding{}, nil, err
 	}
-	return required, nil
+	return binding, required, nil
 }
 
 func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol.PluginCallOptions) (R, error) {

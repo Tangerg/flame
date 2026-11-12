@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -48,6 +49,59 @@ func TestExecutionFactReceiptRetainsTheCommitDecision(t *testing.T) {
 func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T) {
 	if _, _, err := NewExecutionFactCommit(&ModelCallStarted{}); err == nil {
 		t.Fatal("execution fact commit accepted a pointer representation the reducer cannot consume")
+	}
+}
+
+func TestExecutionFactCommitOwnsCompactionRewrite(t *testing.T) {
+	rewrite, err := conversation.NewCompaction(2, 2, 1, []corechat.Message{
+		corechat.NewAssistantMessage(corechat.NewTextPart("original summary")),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := conversation.NewCompaction(2, 0, 0, []corechat.Message{
+		corechat.NewAssistantMessage(corechat.NewTextPart("other first")),
+		corechat.NewAssistantMessage(corechat.NewTextPart("other second")),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fact := CompactionBoundary{Rewrite: &rewrite, Summary: "original summary", MessagesBefore: 2, MessagesAfter: 1}
+	commit, _, err := NewExecutionFactCommit(fact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	*fact.Rewrite = replacement
+	projected := commit.Fact().(CompactionBoundary)
+	if messages := projected.Rewrite.Messages(); len(messages) != 1 || messages[0].Text() != "original summary" {
+		t.Fatal("captured compaction aliases the producer's replacement")
+	}
+	*projected.Rewrite = replacement
+	owned := commit.Fact().(CompactionBoundary)
+	if messages := owned.Rewrite.Messages(); len(messages) != 1 || messages[0].Text() != "original summary" {
+		t.Fatal("captured compaction aliases the consumer's projection")
+	}
+}
+
+func TestExecutionFactCommitRejectsMutableSegmentEndings(t *testing.T) {
+	for name, ending := range map[string]run.Ending{
+		"absent":        nil,
+		"mutable value": &run.Completed{},
+		"typed nil":     (*run.Completed)(nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := NewExecutionFactCommit(NewSegmentEnded(ending, 0)); err == nil {
+				t.Fatal("accepted a terminal fact without an immutable ending")
+			}
+			if _, _, err := NewExecutionFactCommit(ExecutionTreeSettled{Facts: []ExecutorEvent{
+				{Payload: NewSegmentEnded(ending, 0)},
+			}}); err == nil {
+				t.Fatal("accepted a tree publication without an immutable ending")
+			}
+			if _, err := newReducer(testReducerConfig()).reduce(NewSegmentEnded(ending, 0)); err == nil {
+				t.Fatal("reduced a terminal fact without an immutable ending")
+			}
+		})
 	}
 }
 

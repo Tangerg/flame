@@ -265,6 +265,25 @@ describe("DesktopHostClient", () => {
     );
   });
 
+  it("retains transfer and cleanup failures in the visible native save error", async () => {
+    const binding = hostBinding({
+      [DesktopMethods.BeginFileSave.name]: async () => "transfer",
+      [DesktopMethods.AppendFileSave.name]: async () => {
+        throw new Error("disk full");
+      },
+      [DesktopMethods.CancelFileSave.name]: async () => {
+        throw new Error("staging file removal denied");
+      },
+    });
+    const saving = createDesktopHostClient(binding).saveFile({
+      filename: "large",
+      mime: "application/octet-stream",
+      bytes: new Uint8Array(MAXIMUM_EXPORT_CHUNK_BYTES + 1),
+    });
+    await expect(saving).rejects.toThrow("disk full");
+    await expect(saving).rejects.toThrow("staging file removal denied");
+  });
+
   it("reads the platform's window-control geometry", async () => {
     const binding = hostBinding();
     await expect(createDesktopHostClient(binding).windowChrome()).resolves.toEqual({

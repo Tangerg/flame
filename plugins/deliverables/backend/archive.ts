@@ -1,4 +1,5 @@
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
+import { Database } from "@flame/backend-sdk/sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
@@ -79,8 +80,7 @@ function conflict(): never {
 }
 
 export class Archive {
-  readonly #db: DatabaseSync;
-  #closed = false;
+  readonly #db: Database;
 
   constructor(path: string) {
     if (!isAbsolute(path))
@@ -91,7 +91,6 @@ export class Archive {
       readBigInts: true,
       timeout: 0,
     });
-    this.#db = db;
     try {
       db.exec(
         "PRAGMA foreign_keys=ON; PRAGMA locking_mode=EXCLUSIVE; PRAGMA synchronous=FULL; PRAGMA auto_vacuum=FULL; PRAGMA max_page_count=262144; BEGIN EXCLUSIVE",
@@ -117,33 +116,24 @@ export class Archive {
       } else for (const sql of Object.values(tables)) db.exec(sql);
       db.exec("COMMIT");
     } catch (cause) {
+      const failures = [cause];
       try {
         if (db.isTransaction) db.exec("ROLLBACK");
-      } finally {
-        db.close();
-      }
-      throw cause;
-    }
-  }
-
-  #transaction<T>(work: () => T): T {
-    if (this.#closed) throw new Error("deliverables: archive is closed");
-    this.#db.exec("BEGIN IMMEDIATE");
-    try {
-      const result = work();
-      this.#db.exec("COMMIT");
-      return result;
-    } catch (cause) {
-      try {
-        this.#db.exec("ROLLBACK");
       } catch (rollback) {
-        throw new AggregateError(
-          [cause, rollback],
-          "deliverables: archive rollback is unconfirmed",
-        );
+        failures.push(rollback);
       }
-      throw cause;
+      try {
+        db.close();
+      } catch (close) {
+        failures.push(close);
+      }
+      if (failures.length === 1) throw cause;
+      throw new AggregateError(
+        failures,
+        "deliverables: archive startup cleanup failed",
+      );
     }
+    this.#db = new Database(db);
   }
 
   #writing(): void {
@@ -227,7 +217,7 @@ export class Archive {
   ): Promise<unknown> {
     signal.throwIfAborted();
     this.#original(original);
-    const admission = this.#transaction(() => {
+    const admission = this.#db.transaction(() => {
       const previous = this.#db
         .prepare("SELECT * FROM commands WHERE id=?")
         .get(original.id);
@@ -279,7 +269,7 @@ export class Archive {
       // has a definite, replayable outcome even for a renderer-backed command.
       signal.throwIfAborted();
       return decodeReply(
-        this.#transaction(() => {
+        this.#db.transaction(() => {
           const value = publish();
           const reply: Reply = { value };
           this.#settle(original.id, reply);
@@ -296,7 +286,7 @@ export class Archive {
             )
           : cause;
       if (outcome instanceof Refusal)
-        this.#transaction(() =>
+        this.#db.transaction(() =>
           this.#settle(original.id, {
             failure: { code: outcome.code, message: outcome.message },
           }),
@@ -762,8 +752,6 @@ export class Archive {
   }
 
   close(): void {
-    if (this.#closed) return;
     this.#db.close();
-    this.#closed = true;
   }
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -39,11 +40,15 @@ func main() {
 	if err := host.bind(shell); err != nil {
 		log.Fatal(err)
 	}
-	window.RegisterHook(events.Mac.WebViewDidCommitNavigation, func(*application.WindowEvent) { host.transfer.abort() })
-	window.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) { host.transfer.abort() })
+	discardExport := func(*application.WindowEvent) {
+		if err := host.transfer.abort(); err != nil {
+			log.Printf("desktop host: discard export: %v", err)
+		}
+	}
+	window.RegisterHook(events.Mac.WebViewDidCommitNavigation, discardExport)
+	window.RegisterHook(events.Common.WindowClosing, discardExport)
 	installNativeZoom(app)
-	err = app.Run()
-	host.transfer.abort()
+	err = errors.Join(app.Run(), host.transfer.abort())
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -122,7 +122,7 @@ func (t ExecutionTreeCommit) validatePublications() error {
 	return nil
 }
 
-func (e ExecutionTreeSettled) clone() ExecutionTreeSettled {
+func (e ExecutionTreeSettled) clone() (ExecutionTreeSettled, bool) {
 	e.InputAcceptances = slices.Clone(e.InputAcceptances)
 	for index := range e.InputAcceptances {
 		e.InputAcceptances[index] = e.InputAcceptances[index].Clone()
@@ -134,9 +134,22 @@ func (e ExecutionTreeSettled) clone() ExecutionTreeSettled {
 	e.Children = slices.Clone(e.Children)
 	e.Facts = slices.Clone(e.Facts)
 	for index := range e.Facts {
-		e.Facts[index].Payload, _ = cloneExecutionFact(e.Facts[index].Payload.(ExecutionFact))
+		var fact ExecutionFact
+		switch value := e.Facts[index].Payload.(type) {
+		case ToolResultsCommitted:
+			fact = value
+		case SegmentEnded:
+			fact = value
+		default:
+			return ExecutionTreeSettled{}, false
+		}
+		owned, supported := cloneExecutionFact(fact)
+		if !supported {
+			return ExecutionTreeSettled{}, false
+		}
+		e.Facts[index].Payload = owned
 	}
-	return e
+	return e, true
 }
 
 func (h ExecutionTreeHead) SameCommit(other ExecutionTreeHead) bool {

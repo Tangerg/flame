@@ -60,6 +60,8 @@ names remain opaque contract data. The backend uses `@flame/backend-sdk` and
 the distribution's selected Node companion, with `node:sqlite` as the private
 archive owner. Exclusive SQLite ownership spans the process lifetime;
 transactions never span host I/O. There is no replacement Go executable.
+The backend SDK owns transaction admission and fences the connection after an
+unconfirmed rollback, including reads and receipt lookup until reopening.
 
 Build a portable package with the ordinary first-party builder:
 

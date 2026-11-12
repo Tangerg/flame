@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/samber/lo"
 	"golang.org/x/oauth2"
 )
 
@@ -43,6 +44,9 @@ func (s ServerConfig) Validate() error {
 		return err
 	}
 	if s.OAuthHandler != nil {
+		if lo.IsNil(s.OAuthHandler) {
+			return fmt.Errorf("mcp server %q: supplied OAuth handler is nil", s.ID())
+		}
 		http, ok := s.Connection.(mcpserver.HTTPConnection)
 		if !ok {
 			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.ID())

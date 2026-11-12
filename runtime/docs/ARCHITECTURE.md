@@ -1,10 +1,10 @@
 # Flame Runtime architecture
 
-Flame Runtime is the product backend and sole authority for durable agent semantics. Its center is the user-visible `Run`, not a provider call, framework process, transport connection, or database row.
+Flame Runtime is the product backend and authority for durable execution facts. Installed providers own their authored workflow decisions and feature semantics. Runtime captures their exact source and commits accepted decisions through the same semantic endpoint. Its center is the user-visible `Run`.
 
 ## Product model
 
-Runtime owns Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. Each fact has one Domain or Application owner. Protocol objects, storage records, streams, and client caches encode or project those facts without advancing them independently.
+Runtime owns Session, Run, Segment, Item, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. Workflow providers decide Goal transitions and author Plan versions; Runtime validates and commits each captured decision against its original incarnation or version. Protocol objects, storage records, streams, and client caches encode or project those facts without advancing them independently.
 
 The main aggregate relationships are:
 
@@ -12,7 +12,7 @@ The main aggregate relationships are:
 - A Run owns one logical execution lifecycle.
 - A Segment is one active interval of a Run; interruption and resume create another Segment without creating another logical Run.
 - Items are durable observable history. Streaming deltas are replaceable previews.
-- Goals and Plans are distinct product concepts with their own invariants and Application workflows.
+- Goal and Plan envelopes retain their exact author, incarnation or version, and committed content. Their providers own workflow decisions; Runtime owns receipt, accounting, permission, and commit guarantees.
 
 An aggregate validates its complete initial state, keeps mutable representation private, and exposes intention-revealing queries and legal transitions. Application code coordinates aggregates instead of reproducing their rules with switches over exported fields. Wire payloads, storage records, configuration values, provider messages, and read projections remain strict data because they translate facts rather than own them.
 
@@ -31,7 +31,7 @@ A Goal outcome report requires the immutable Goal incarnation that admitted its 
 
 Domain does not depend on Application or outer rings. Application depends on Domain and declares narrow interfaces for effects it consumes. Adapters and Infra satisfy those interfaces. Delivery invokes Application through one endpoint. Bootstrap is the only concrete composition root.
 
-External SDK types do not cross their adapter. Protocol types do not enter Domain or Application. Persistence records are decoded into valid Domain values before use.
+Vendor SDK types do not cross their provider adapter. Released Scope core values supply the shared model and Tool vocabulary. Runtime Protocol types do not enter Domain or Application. Persistence records are decoded into valid Domain values before use.
 
 ## Package organization
 
@@ -68,15 +68,15 @@ Required interface methods and serialized fields retain the names their contract
 require. Generated protocol node validation is private; all consumers enter
 through `protocol.ValidateWireTree`.
 
-| Owner                       | Package                                         | Boundary                                                                          |
-| --------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
-| Product execution           | `application/agent/runs`                        | Admission, publication ordering, and durable Run transitions                      |
-| Scope execution translation | `adapter/run/execution`                         | Deployment, tree observation, checkpoints, and execution resource lifetime        |
-| Human-input translation     | `adapter/run/input`                             | Strict prompt, resolution, and continuation codecs against Scope's input contract |
-| Model integration           | `adapter/integration/model`                     | Provider selection translation, capabilities, pricing, and auxiliary calls        |
-| Lifecycle Hooks             | `application/integration/hooks`                 | Catalog inspection, project trust changes, and event decisions                    |
-| Feedback                    | `domain/feedback`, `application/agent/feedback` | Independent quality observations and their durable append use case                |
-| Workspace observations      | `application/workspace`, `adapter/workspace`    | Resolved workspace scope and translation of filesystem and Git observations       |
+| Owner                       | Package                                           | Boundary                                                                          |
+| --------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Product execution           | `application/agent/runs`                          | Admission, publication ordering, and durable Run transitions                      |
+| Scope execution translation | `adapter/run/execution`                           | Deployment, tree observation, checkpoints, and execution resource lifetime        |
+| Human-input translation     | `adapter/run/input`                               | Strict prompt, resolution, and continuation codecs against Scope's input contract |
+| Model integration           | `adapter/integration/model`                       | Provider selection translation, capabilities, pricing, and auxiliary calls        |
+| Lifecycle Hooks             | `application/integration/hooks`                   | Catalog inspection, project trust changes, and event decisions                    |
+| Feedback                    | `domain/annotation`, `application/agent/feedback` | Opaque provider-authored observations and their source-bound durable append       |
+| Workspace observations      | `application/workspace`, `adapter/workspace`      | Resolved workspace scope and translation of filesystem and Git observations       |
 
 Hook management consumes its own `Roots`, `Inspector`, and `TrustStore` ports.
 Bootstrap supplies the existing workspace scope as the root resolver, so Hooks
@@ -86,8 +86,9 @@ successful trust writes publish the Hook invalidation.
 
 Feedback references to Sessions, Runs, and Items are optional historical context.
 They do not make feedback part of a Session aggregate or its deletion lifecycle.
-The feedback recorder validates one observation and appends it without loading
-or acquiring those aggregates.
+The feedback provider owns the observation's meaning. Runtime validates the
+annotation envelope and appends its opaque content and exact source with the
+command acknowledgement without loading or acquiring those aggregates.
 
 The workspace VCS adapter translates Git results and failures directly from
 `infra/git`. Checkpoint adapters remain separate because they own snapshot

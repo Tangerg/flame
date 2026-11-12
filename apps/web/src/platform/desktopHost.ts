@@ -69,7 +69,10 @@ async function saveExport(
     try {
       await callDesktop(binding, "CancelFileSave", transfer);
     } catch (cleanup) {
-      throw new AggregateError([error, cleanup], "file export failed during transfer and cleanup");
+      throw new AggregateError(
+        [error, cleanup],
+        `file export failed: ${errorMessage(error)}; cleanup failed: ${errorMessage(cleanup)}`,
+      );
     }
     throw error;
   }

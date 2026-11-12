@@ -48,6 +48,10 @@ async function host(reply: unknown, status = 200) {
       response.end(stringifyJSON(reply));
     });
   });
+  return { ref: await listen(server), received: received.promise };
+}
+
+async function listen(server: Server) {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   servers.push(server);
@@ -55,13 +59,10 @@ async function host(reply: unknown, status = 200) {
   if (!address || typeof address === "string")
     throw new Error("callback fixture requires an IP listener");
   return {
-    ref: {
-      endpoint: `http://127.0.0.1:${address.port}/`,
-      credential: "1".repeat(64),
-      call: "2".repeat(64),
-      maxResponseBytes: 1 << 20,
-    },
-    received: received.promise,
+    endpoint: `http://127.0.0.1:${address.port}/`,
+    credential: "1".repeat(64),
+    call: "2".repeat(64),
+    maxResponseBytes: 1 << 20,
   };
 }
 
@@ -161,12 +162,87 @@ it("keeps the invocation captured by the callback transport after caller mutatio
 it.each([
   [429, "capacity"],
   [410, "closed"],
+  [204, "outcome_unknown"],
+  [205, "outcome_unknown"],
+  [304, "outcome_unknown"],
   [503, "outcome_unknown"],
 ])("preserves callback admission status %i as %s", async (status, code) => {
   const fixture = await host({}, status as number);
   await expect(
     callHost(fixture.ref, method, {}, new AbortController().signal),
   ).rejects.toMatchObject({ name: "FrameError", code });
+});
+
+it("rejects a response outside Fetch's status range without escaping the call", async () => {
+  const fixture = await host({}, 600);
+  await expect(
+    callHost(fixture.ref, method, {}, new AbortController().signal),
+  ).rejects.toMatchObject({
+    message: "plugin: invalid callback response",
+    cause: expect.any(RangeError),
+  });
+});
+
+it.each([true, false])(
+  "enforces the captured response byte budget (fits=%s)",
+  async (fits) => {
+    const fixture = await host({ value: true });
+    fixture.ref.maxResponseBytes =
+      Buffer.byteLength(stringifyJSON({ value: true })) - (fits ? 0 : 1);
+    const result = callHost(
+      fixture.ref,
+      method,
+      {},
+      new AbortController().signal,
+    );
+    if (fits) expect(await result).toBe(true);
+    else await expect(result).rejects.toThrow("response capacity exceeded");
+  },
+);
+
+it.each(["cancel", "abort"])(
+  "releases the original HTTP response on %s during body delivery",
+  async (stop) => {
+    const closed = Promise.withResolvers<void>();
+    const ref = await listen(
+      createServer((request, response) => {
+        request.socket.once("close", closed.resolve);
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.write("{");
+      }),
+    );
+    const cancellation = new AbortController();
+    const response = await callbackFetch(ref)(ref.endpoint, {
+      method: "POST",
+      body: "{}",
+      signal: cancellation.signal,
+    });
+    const reader = response.body!.getReader();
+    expect(await reader.read()).toMatchObject({ done: false });
+    if (stop === "abort") {
+      const pending = reader.read();
+      cancellation.abort();
+      await expect(pending).rejects.toThrow();
+    } else await reader.cancel();
+    reader.releaseLock();
+    await closed.promise;
+  },
+);
+
+it("keeps streaming delivery open across multiple response budgets", async () => {
+  const first = "data: 1\n\n";
+  const ref = await listen(
+    createServer((_request, response) => {
+      response.writeHead(200, { "Content-Type": "text/event-stream" });
+      response.end(first.repeat(3));
+    }),
+  );
+  ref.maxResponseBytes = Buffer.byteLength(first);
+  const response = await callbackFetch(ref)(ref.endpoint, {
+    method: "POST",
+    body: "{}",
+  });
+  expect(await response.text()).toBe(first.repeat(3));
 });
 
 it.each(["", "known refusal", "拒绝 😀"])(

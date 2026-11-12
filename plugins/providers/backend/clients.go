@@ -41,9 +41,6 @@ type clientSpec struct {
 }
 
 func (s clientSpec) Format(state fmt.State, _ rune) { s.connection.Format(state, 'v') }
-func (s clientSpec) sdkAPIKey() string              { return s.connection.APIKey }
-func (s clientSpec) sdkBaseURL() string             { return s.connection.BaseURL }
-func (s clientSpec) sdkHTTPClient() *http.Client    { return s.httpClient }
 
 func newClientSpec(connection modelprovider.Connection) (clientSpec, error) {
 	if err := connection.Validate(); err != nil {
@@ -89,57 +86,57 @@ var providers = mustProviderCatalog(
 	bundledProvider(providerOpenAI, apiMount, defaultOpenAIModel, buildOpenAIResponsesModel).
 		withEmbedding(defaultOpenAIEmbeddingModel, buildOpenAIEmbeddingModel),
 	bundledProvider(providerGoogle, googleMount, google.ModelGemini36Flash, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return google.NewChat(ctx, google.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return google.NewChat(ctx, google.ChatConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(google.ModelGeminiEmbedding2, buildGoogleEmbeddingModel),
 
 	// OpenAI-compatible vendors — each adapter encodes its own endpoint.
 	bundledProvider(providerMoonshot, apiMount, moonshot.ModelK3, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return moonshot.NewChatCompletions(ctx, moonshot.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return moonshot.NewChatCompletions(ctx, moonshot.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerDeepSeek, apiMount, deepseek.ModelFlash, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return deepseek.NewChatCompletions(ctx, deepseek.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return deepseek.NewChatCompletions(ctx, deepseek.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerAlibaba, apiMount, alibaba.ModelQwen37Plus, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return alibaba.NewChatCompletions(ctx, alibaba.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return alibaba.NewChatCompletions(ctx, alibaba.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(alibaba.ModelEmbeddingV4, buildAlibabaEmbeddingModel),
 	bundledProvider(providerFireworks, apiMount, fireworks.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return fireworks.NewChatCompletions(ctx, fireworks.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return fireworks.NewChatCompletions(ctx, fireworks.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerGroq, apiMount, groq.ModelGPTOSS20B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return groq.NewChatCompletions(ctx, groq.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return groq.NewChatCompletions(ctx, groq.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerHuggingface, apiMount, huggingface.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return huggingface.NewChatCompletions(ctx, huggingface.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return huggingface.NewChatCompletions(ctx, huggingface.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerMinimax, apiMount, minimax.ModelM3, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return minimax.NewChatCompletions(ctx, minimax.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return minimax.NewChatCompletions(ctx, minimax.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerMistral, apiMount, mistral.ModelSmall, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return mistral.NewChat(ctx, mistral.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return mistral.NewChat(ctx, mistral.ChatConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(mistral.ModelEmbed, buildMistralEmbeddingModel),
 	bundledProvider(providerOpenRouter, apiMount, openrouter.ModelAuto, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	endpointProvider(providerPerplexity, apiMount, false, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerTogether, apiMount, together.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerXAI, apiMount, xai.ModelGrok45, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return xai.NewChatCompletions(ctx, xai.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return xai.NewChatCompletions(ctx, xai.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerXiaomi, apiMount, xiaomi.ModelV25Pro, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return xiaomi.NewChatCompletions(ctx, xiaomi.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return xiaomi.NewChatCompletions(ctx, xiaomi.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerZhipu, apiMount, zhipu.ModelGLM52, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return zhipu.NewChatCompletions(ctx, zhipu.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+		return zhipu.NewChatCompletions(ctx, zhipu.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(zhipu.ModelEmbedding3, buildZhipuEmbeddingModel),
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
 	// the model id is a deployment name. Both are user-supplied.
 	endpointProvider(providerAzureOpenAI, azureMount, true, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return azureopenai.NewChatCompletions(ctx, azureopenai.ChatCompletionsConfig{Config: azureopenai.Config{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()}, DefaultOptions: o})
+		return azureopenai.NewChatCompletions(ctx, azureopenai.ChatCompletionsConfig{Config: azureopenai.Config{APIKey: s.connection.APIKey, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient}, DefaultOptions: o})
 	}).withEmbedding("", buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
@@ -165,28 +162,28 @@ func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options
 		}
 	}
 	return anthropic.NewMessages(ctx, anthropic.MessagesConfig{
-		APIKey:         spec.sdkAPIKey(),
+		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.sdkBaseURL(),
-		HTTPClient:     spec.sdkHTTPClient(),
+		BaseURL:        spec.connection.BaseURL,
+		HTTPClient:     spec.httpClient,
 	})
 }
 
 func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return openai.NewResponses(ctx, openai.ResponsesConfig{
-		APIKey:         spec.sdkAPIKey(),
+		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.sdkBaseURL(),
-		HTTPClient:     spec.sdkHTTPClient(),
+		BaseURL:        spec.connection.BaseURL,
+		HTTPClient:     spec.httpClient,
 	})
 }
 
 func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return openai.NewChatCompletions(ctx, openai.ChatCompletionsConfig{
-		APIKey:         spec.sdkAPIKey(),
+		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.sdkBaseURL(),
-		HTTPClient:     spec.sdkHTTPClient(),
+		BaseURL:        spec.connection.BaseURL,
+		HTTPClient:     spec.httpClient,
 	})
 }
 

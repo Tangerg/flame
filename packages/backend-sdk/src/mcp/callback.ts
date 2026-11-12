@@ -1,4 +1,6 @@
-import { request as httpRequest } from "node:http";
+import { request as httpRequest, type IncomingMessage } from "node:http";
+import { constants as httpStatus } from "node:http2";
+import { Readable } from "node:stream";
 import { FrameError } from "@frame/sdk";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import {
@@ -106,54 +108,12 @@ export function callbackFetch(
           agent: false,
         },
         (response) => {
-          const responseHeaders = new Headers();
-          for (const [key, value] of Object.entries(response.headers)) {
-            if (value !== undefined)
-              responseHeaders.set(
-                key,
-                Array.isArray(value) ? value.join(", ") : value,
-              );
+          try {
+            resolve(callbackResponse(response, BigInt(ref.maxResponseBytes)));
+          } catch (cause) {
+            response.destroy();
+            reject(new Error("plugin: invalid callback response", { cause }));
           }
-          const streaming = (response.headers["content-type"] ?? "").includes(
-            "text/event-stream",
-          );
-          let size = 0n;
-          const bound = BigInt(ref.maxResponseBytes);
-          const iterator = response[Symbol.asyncIterator]();
-          const body = new ReadableStream<Uint8Array>({
-            async pull(controller) {
-              try {
-                const next = await iterator.next();
-                if (next.done) {
-                  controller.close();
-                  return;
-                }
-                const bytes = next.value as Buffer;
-                if (!streaming) {
-                  size += BigInt(bytes.length);
-                  if (size > bound)
-                    throw new Error(
-                      "plugin: callback response capacity exceeded",
-                    );
-                }
-                controller.enqueue(bytes);
-              } catch (error) {
-                response.destroy();
-                await iterator.return?.();
-                throw error;
-              }
-            },
-            async cancel() {
-              response.destroy();
-              await iterator.return?.();
-            },
-          });
-          resolve(
-            new Response(body, {
-              status: response.statusCode!,
-              headers: responseHeaders,
-            }),
-          );
         },
       );
       request.once("error", (cause) =>
@@ -165,6 +125,41 @@ export function callbackFetch(
       } else request.end(init.body);
     });
   }) as typeof fetch;
+}
+
+function callbackResponse(response: IncomingMessage, bound: bigint): Response {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(response.headers)) {
+    if (value !== undefined)
+      headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+  }
+  const metadata = { status: response.statusCode!, headers };
+  switch (response.statusCode) {
+    case httpStatus.HTTP_STATUS_NO_CONTENT:
+    case httpStatus.HTTP_STATUS_RESET_CONTENT:
+    case httpStatus.HTTP_STATUS_NOT_MODIFIED:
+      response.destroy();
+      return new Response(null, metadata);
+  }
+  const source = Readable.toWeb(response, {
+    strategy: { size: (bytes: Uint8Array) => bytes.byteLength },
+  }) as ReadableStream<Uint8Array>;
+  if ((headers.get("content-type") ?? "").includes("text/event-stream"))
+    return new Response(source, metadata);
+  let size = 0n;
+  return new Response(
+    source.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(bytes, controller) {
+          size += BigInt(bytes.length);
+          if (size > bound)
+            throw new Error("plugin: callback response capacity exceeded");
+          controller.enqueue(bytes);
+        },
+      }),
+    ),
+    metadata,
+  );
 }
 
 // The refusal code every method reports when a command identity is reused with

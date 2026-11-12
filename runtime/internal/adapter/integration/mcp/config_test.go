@@ -92,6 +92,7 @@ func TestServerConfigValidate(t *testing.T) {
 		{"http auth fields ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}}}, true},
 		{"http authorization header duplicate", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}}, false},
 		{"http oauth with static authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Authorization: "Bearer t"}}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"http typed nil oauth handler", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e"}}, OAuthHandler: (*restoredOAuthHandler)(nil)}, false},
 		{"http oauth with authorization header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}, OAuthHandler: oauthHandlerStub{}}, false},
 	}
 	for _, tc := range cases {

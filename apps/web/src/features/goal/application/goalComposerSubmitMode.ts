@@ -59,8 +59,9 @@ function submitGoalComposerMode(
     return;
   }
 
-  const goalCommand = context.slash?.command === "/goal";
-  const objective = (goalCommand ? context.slash?.args : context.text)?.trim() ?? "";
+  const slash = context.slash;
+  const goalCommand = slash?.command === "/goal";
+  const objective = (goalCommand ? slash.args : context.text).trim();
   const existing = state.goal;
   if (!goalCanEnterComposerMode(existing)) {
     dependencies.reportUnavailable();
@@ -77,9 +78,16 @@ function submitGoalComposerMode(
     return;
   }
 
+  let input: StartGoalInput;
+  try {
+    input = captureStartGoalInput(sessionId, objective, dependencies.runOptions());
+  } catch (error) {
+    if (!dependencies.retired(error)) dependencies.reportStartError(error);
+    return;
+  }
   const startCommand = dependencies.captureStart();
   const start = (submission: GoalComposerSubmission) => {
-    void startGoal(submission, dependencies, startCommand, context, sessionId, objective);
+    void startGoal(submission, dependencies, startCommand, context, input);
   };
   if (existing) {
     owner.requestReplacement(sessionId, existing.objective, start);
@@ -89,16 +97,29 @@ function submitGoalComposerMode(
   if (submission) start(submission);
 }
 
+function captureStartGoalInput(
+  sessionId: string,
+  objective: string,
+  { provider, model, reasoningEffort }: AgentRunStartOptions,
+): StartGoalInput {
+  return {
+    sessionId,
+    objective,
+    ...(provider !== undefined ? { provider } : {}),
+    ...(model !== undefined ? { model } : {}),
+    ...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
+  };
+}
+
 async function startGoal(
   submission: GoalComposerSubmission,
   dependencies: GoalComposerSubmitDependencies,
   startCommand: (input: StartGoalInput) => Promise<void>,
   context: ComposerSubmitModeContext,
-  sessionId: string,
-  objective: string,
+  input: StartGoalInput,
 ): Promise<void> {
   try {
-    await startCommand({ sessionId, objective, ...dependencies.runOptions() });
+    await startCommand(input);
     const committed = submission.finish(true);
     if (committed) context.accept();
   } catch (error) {

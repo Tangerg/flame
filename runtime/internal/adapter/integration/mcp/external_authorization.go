@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -48,7 +49,7 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 		release()
 		return app.AuthorizationAttempt{}, nil, err
 	}
-	attempt, err := readExternalAttempt(result, id)
+	attempt, err := readStartedExternalAttempt(result, id, server.ID())
 	if err != nil {
 		release()
 		return app.AuthorizationAttempt{}, nil, err
@@ -83,7 +84,7 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 		result, readErr := connectorCall(operation.Start(ctx, extension.Automatic, c.methods.Get.Name(), id.String()), current, c.methods.Get, wire.Request{ID: id.String(), Epoch: epoch})
 		if readErr == nil {
 			observed, decodeErr := readExternalAttempt(result, id)
-			if decodeErr == nil && observed.Status != app.AuthorizationAttemptPending {
+			if decodeErr == nil && observed.Server == server.ID() && observed.Status != app.AuthorizationAttemptPending {
 				return nil
 			}
 			readErr = decodeErr
@@ -107,6 +108,18 @@ func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id app.Author
 	}
 	return readExternalAttempt(result, id)
 }
+
+func readStartedExternalAttempt(r wire.AttemptResult, id app.AuthorizationAttemptID, server mcpserver.ID) (app.AuthorizationAttempt, error) {
+	attempt, err := readExternalAttempt(r, id)
+	if err != nil {
+		return app.AuthorizationAttempt{}, err
+	}
+	if attempt.Server != server || attempt.Status != app.AuthorizationAttemptPending {
+		return app.AuthorizationAttempt{}, app.ErrInvalidServerConfiguration
+	}
+	return attempt, nil
+}
+
 func readExternalAttempt(r wire.AttemptResult, id app.AuthorizationAttemptID) (app.AuthorizationAttempt, error) {
 	if r.Attempt == nil {
 		return app.AuthorizationAttempt{}, app.ErrAuthorizationAttemptNotFound
@@ -128,13 +141,29 @@ func readExternalAttempt(r wire.AttemptResult, id app.AuthorizationAttemptID) (a
 	if err != nil {
 		return app.AuthorizationAttempt{}, err
 	}
-	value := app.AuthorizationAttempt{ID: id, Server: server, Status: status, CreatedAt: created}
+	if created.IsZero() {
+		return app.AuthorizationAttempt{}, app.ErrInvalidServerConfiguration
+	}
+	if err := instant.Validate(created); err != nil {
+		return app.AuthorizationAttempt{}, err
+	}
+	value := app.AuthorizationAttempt{ID: id, Server: server, Status: status, CreatedAt: created.UTC()}
 	if a.FinishedAt != "" {
 		finished, err := time.Parse(time.RFC3339Nano, a.FinishedAt)
 		if err != nil {
 			return app.AuthorizationAttempt{}, err
 		}
+		if err := instant.Validate(finished); err != nil {
+			return app.AuthorizationAttempt{}, err
+		}
+		if finished.Before(created) {
+			return app.AuthorizationAttempt{}, app.ErrInvalidServerConfiguration
+		}
+		finished = finished.UTC()
 		value.FinishedAt = &finished
+	}
+	if (status == app.AuthorizationAttemptPending) != (value.FinishedAt == nil) {
+		return app.AuthorizationAttempt{}, app.ErrInvalidServerConfiguration
 	}
 	return value, nil
 }

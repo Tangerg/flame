@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { LIMITS } from "../contracts/limits";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { Refusal, canonicalJSON, digestJSON } from "@flame/backend-sdk/mcp";
 import { Archive, type Original } from "./archive";
 import { Document, digest, revision } from "./document";
@@ -21,6 +21,40 @@ async function fixture() {
   cleanup.push(() => archive.close());
   return { archive, path };
 }
+
+it("preserves startup, rollback and close failures together", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-deliverable-startup-"));
+  cleanup.push(() => rm(directory, { recursive: true, force: true }));
+  const failure = new Error("schema commit failed");
+  const rollback = new Error("schema rollback failed");
+  const close = new Error("schema close failed");
+  const execute = DatabaseSync.prototype.exec;
+  let release: (() => void) | undefined;
+  const injected = vi
+    .spyOn(DatabaseSync.prototype, "exec")
+    .mockImplementation(function (this: DatabaseSync, sql: string) {
+      release ??= () => {
+        if (this.isOpen) this.close();
+      };
+      if (sql === "COMMIT") throw failure;
+      if (sql === "ROLLBACK") throw rollback;
+      return execute.call(this, sql);
+    });
+  const closing = vi
+    .spyOn(DatabaseSync.prototype, "close")
+    .mockImplementationOnce(() => {
+      throw close;
+    });
+  try {
+    expect(() => new Archive(join(directory, "deliverables.db"))).toThrow(
+      expect.objectContaining({ errors: [failure, rollback, close] }),
+    );
+  } finally {
+    injected.mockRestore();
+    closing.mockRestore();
+    release?.();
+  }
+});
 
 function original(
   id: string,

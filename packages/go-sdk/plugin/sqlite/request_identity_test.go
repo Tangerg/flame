@@ -15,7 +15,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
-func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testing.T) {
+func TestReceiptRetainsOriginalMethodAndRawInputAcrossRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
 	schema := []string{CommandsSchema, `CREATE TABLE IF NOT EXISTS counter(value INTEGER NOT NULL)`, `INSERT INTO counter SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM counter)`}
 	db, err := sqlite.OpenSchema(t.Context(), path, schema)
@@ -53,6 +53,11 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 		if err := binding.Publish(); err != nil {
 			t.Fatal(err)
 		}
+		replacement, err := pluginmcp.NewMethod[input, string](portable.MethodConfig{Name: "replacement", Kind: portable.Command, Target: "installation", Description: "another command"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		*method = *replacement
 		client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
 		if err := pluginmcp.RegisterClient(client); err != nil {
 			t.Fatal(err)

@@ -47,6 +47,9 @@ its absence never authorizes an external retry.
 without entering the command. Use `errors.Is` for identity conflicts instead of
 matching error strings or importing Runtime internals.
 
+Registration captures the typed method by value. Replacing the caller's handle
+cannot change the published method's receipt identity or output validation.
+
 ## Commands with external work
 
 `AdmitCommand` retains the original input before external I/O. Only

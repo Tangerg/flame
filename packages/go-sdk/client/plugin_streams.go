@@ -32,11 +32,11 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 	if lo.IsNil(caller) || method == nil {
 		return nil, errors.New("runtime: plugin streamer and typed method are required")
 	}
-	required, err := admitPluginBinding(binding, method.Descriptor())
+	captured, required, err := admitPluginBinding(binding, method.Descriptor())
 	if err != nil {
 		return nil, err
 	}
-	return &PluginStreamingMethod[P, C, R]{caller: caller, binding: binding, method: required}, nil
+	return &PluginStreamingMethod[P, C, R]{caller: caller, binding: captured, method: required}, nil
 }
 
 // Stream freezes input and options before lazy delivery. The returned sequence

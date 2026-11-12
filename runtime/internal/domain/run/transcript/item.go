@@ -114,8 +114,12 @@ func NewCompaction(identity ItemIdentity, summary string, droppedMessages int) (
 
 // RestoreItem rebuilds a complete Item from a technical record.
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
-	if snapshot.Body == nil {
+	switch snapshot.Body.(type) {
+	case nil:
 		return Item{}, errors.New("transcript: Item body is required")
+	case UserMessageBody, AgentMessageBody, ReasoningBody, QuestionBody, ToolCallBody, CompactionBody:
+	default:
+		return Item{}, errors.New("transcript: Item body must be a value variant")
 	}
 	snapshot.Identity.OccurredAt = snapshot.Identity.OccurredAt.UTC()
 	item := Item{identity: snapshot.Identity, status: snapshot.Status, body: snapshot.Body.clone()}

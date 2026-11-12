@@ -39,7 +39,7 @@ func (b *Backend) BindCapability(name string, contract *plugincontract.Capabilit
 			return fmt.Errorf("plugin: capability export %s requires exact method %s", name, descriptor.Name)
 		}
 	}
-	b.capabilities[name] = contract
+	b.capabilities[name] = new(*contract)
 	return nil
 }
 
@@ -85,7 +85,7 @@ func NewCapabilityBinding(session *sdk.ClientSession, name string, contract *plu
 	if session == nil || contract == nil || contract.Identity().Validate() != nil || !plugincontract.ValidExportName(name) {
 		return nil, errors.New("plugin: session, capability and valid export name are required")
 	}
-	return &CapabilityBinding{session: session, export: name, contract: contract}, nil
+	return &CapabilityBinding{session: session, export: name, contract: new(*contract)}, nil
 }
 
 func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name string, required *plugincontract.Capability) (*CapabilityBinding, error) {
@@ -101,7 +101,7 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 	if err != nil {
 		return nil, err
 	}
-	if actual := published[name]; actual == nil || actual.Identity() != required.Identity() {
+	if actual := published[name]; actual == nil || actual.Identity() != binding.contract.Identity() {
 		return nil, errors.New("plugin: capability export contract mismatch")
 	}
 	return binding, nil

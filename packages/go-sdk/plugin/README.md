@@ -51,6 +51,9 @@ process-wide values. Their schemas are compiled once by this package; checkpoint
 validation and callers share the admitted contract. `Descriptor` still returns
 owned schema bytes, so one consumer cannot alter another consumer's validation.
 Caller-authored and received contracts retain ordinary strict admission.
+Returned capability and portable service handles are owned projections. Replacing
+one cannot rewrite a published contract, a registered backend export or a captured
+client binding. Compiled schemas remain shared immutable values.
 
 `pluginmcp.NewMethod[P, R]` is the authoring contract for typed feature methods. Its owner
 declares semantic identity, query/command kind, target meaning and description

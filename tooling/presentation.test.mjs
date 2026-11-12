@@ -14,6 +14,7 @@ test("native bundle metadata escapes source text and uses actual plist booleans"
     version: "1.2.3",
     description: 'Read "quoted" & <values>',
     copyright: "Owner's work",
+    macOS: { minimumVersion: "14.0" },
   };
   for (const development of [false, true]) {
     const plist = nativePlist(product, development);
@@ -23,6 +24,10 @@ test("native bundle metadata escapes source text and uses actual plist booleans"
     assert.match(plist, /<key>NSHighResolutionCapable<\/key>\s*<true\/>/);
     assert.equal(plist.includes("NSAllowsLocalNetworking"), development);
     assert.doesNotMatch(plist, /<string>true<\/string>/);
+    assert.match(
+      plist,
+      /<key>LSMinimumSystemVersion<\/key>\s*<string>14\.0<\/string>/,
+    );
   }
 });
 

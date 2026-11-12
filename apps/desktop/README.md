@@ -29,6 +29,12 @@ the Web theme canvas into the native Go constants, Task metadata and both plists
 Run `make generate` after changing an owner; generated files are not packaging
 configuration. Deliveries are under `out/desktop/darwin-<architecture>`.
 
+`build/product.mjs` also owns the macOS deployment target and native compiler/linker
+policy. Wails compilation, independent Go checks and generated plists consume the
+same values. Native verification checks the resulting Mach-O deployment target.
+Linker warnings are fatal except the duplicate system-library diagnostic produced
+by Go's per-package Objective-C linkage ([Go #67799](https://github.com/golang/go/issues/67799)).
+
 Each macOS distribution targets one explicit `amd64` or `arm64` architecture.
 `ARCH` selects `TARGET_ARCH` once; binary output, bundle output, Go compilation and
 companions consume that same target, including cross-architecture builds.
@@ -85,6 +91,9 @@ base64 frame for a small file. Larger files use a single transfer issued by the
 native picker. Each append must match the current file offset. Finish publishes only
 after the declared bytes are present, using the same atomic rename as a small export.
 Cancellation, a main-frame navigation, shutdown, and failed transfers discard staged bytes.
+Cleanup errors remain visible. A failed removal retains its original staging-file
+owner and blocks another streamed export until cancellation confirms removal;
+closing the file never reauthorizes writes to that transfer.
 
 `make check-native` stages the same Web product, runs native Go test/vet/build
 and the supported Wails build. A browser bundle alone is not native verification.

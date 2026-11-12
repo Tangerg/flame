@@ -62,7 +62,7 @@ func Open(
 	}
 	configs := make([]ServerConfig, len(servers))
 	for index, server := range servers {
-		configs[index] = ServerConfig{Server: server.Clone()}
+		configs[index] = ServerConfig{Server: server}
 	}
 	pool := &Pool{commands: commands, registry: registry, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
 	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks)
@@ -100,7 +100,7 @@ func (p *Pool) BeginAuthorize(ctx context.Context, name mcpserver.ID) (mcpapp.At
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
-	return p.inner.probe(ctx, ServerConfig{Server: server.Clone()})
+	return p.inner.probe(ctx, ServerConfig{Server: server})
 }
 
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launchPermit, error) {

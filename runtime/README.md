@@ -100,6 +100,9 @@ Model failures use `invocation.Failure` and `invocation.ClassifyFailure` for the
 invocation. Nested failures cannot replace that classification, and known
 generation remains available when later publication fails. Custom JSON codecs
 describe their wire model with `JSONSchemaModel`.
+Provider retry hints remain source evidence. Run failure policy decides whether
+a hint applies to its classification, so authentication, rejection and internal
+failures never acquire an invalid retry delay during translation.
 The installed [model adapter](../plugins/providers/README.md) owns SDK clients,
 provider profiles, native streaming, counting, embeddings and endpoint discovery.
 Runtime captures its exact installation, original construction receipt and model

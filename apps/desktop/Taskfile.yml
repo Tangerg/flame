@@ -17,8 +17,12 @@ vars:
   # ../web/vite.config.ts for why HMR cannot infer this value reliably.
   VITE_PORT: "{{.WAILS_VITE_PORT | default 5174}}"
   GOOS: "{{.GOOS | default OS}}"
-  # Go 1.27 requires macOS 13. Compiler inputs and bundle metadata project this floor.
-  MACOS_MIN_VERSION: "13.0"
+  MACOS_MIN_VERSION:
+    sh: node -p 'require("./build/product.generated.json").macOS.minimumVersion'
+  MACOS_COMPILER_FLAGS:
+    sh: node -p 'require("./build/product.generated.json").macOS.compilerFlags'
+  MACOS_LINKER_FLAGS:
+    sh: node -p 'require("./build/product.generated.json").macOS.linkerFlags'
 
 includes:
   common: ./build/Taskfile.yml

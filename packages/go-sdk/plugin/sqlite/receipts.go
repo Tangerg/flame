@@ -137,6 +137,7 @@ func RegisterCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Databa
 	if server == nil || db == nil || prepare == nil {
 		return errors.New("managed plugin: backend, database and command preparation are required")
 	}
+	method = new(*method)
 	output, err := portable.AdmitSchema(method.Descriptor().Output)
 	if err != nil {
 		return err

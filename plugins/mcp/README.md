@@ -2,8 +2,10 @@
 
 This installed client component owns server configuration drafts, JSON import,
 connection and authorization interaction, and tool visibility and auto-approval
-controls. Runtime owns the server registry, connections, OAuth attempts and
-approval rules. The component calls those public operations directly.
+controls. The external connector backend owns its server directory and OAuth
+attempts. Runtime owns host credentials, launch permissions, live connections,
+installation-bound authorization attempts and tool approval rules. The component
+calls the public operations that project those owners.
 
 An explicitly constructed source retains drafts and original command observations
 across view closes. An authored draft is the only editable state of its editor;
@@ -70,7 +72,6 @@ never reclaims focus. A read that is ready on arrival shows no recovery action.
 
 The `mcp-servers` settings intent routes the graphical client's tools shortcut to
 the unique installed entry. Missing or ambiguous entries lead to plugin management.
-No backend, private server registry or independent authorization store is added.
 
 The `external-servers` backend owns the external directory, directory revisions and
 interactive authorization attempts. An installation stores them in its private
@@ -78,6 +79,13 @@ interactive authorization attempts. An installation stores them in its private
 name. A grant identifies protected process or HTTP transport material and cannot be
 redeemed for a different source. OAuth tokens, environment values, request headers,
 tool authorization and execution receipts stay with Runtime.
+
+Runtime admits one versioned entry per exact server name and refuses duplicate
+identities, missing revisions or grants, and replies outside the requested
+selector before materializing transport grants. Authorization replies must keep
+their original identity and coherent pending or terminal times; private SQL
+constraints also refuse a finish before its start. This schema change requires a
+fresh development directory for the connector; no conversion is performed.
 
 Disabling or removing the selected connector withdraws external tools. Installed package
 backends retain their own Frame bindings. Selecting the original connector again restores
