@@ -26,14 +26,20 @@ export type OpenedDocument = {
   error?: string;
 };
 export type CatalogReturn = { opener: HTMLElement; scroll: ScrollPosition[] };
+export type CommandIntent = {
+  action: "approve" | "reject" | "archive" | "restore";
+  name: string;
+};
 export type Command = {
   promise: MutationPromise<void>;
-  label: string;
+  intent: CommandIntent;
   uncertain: boolean;
   error?: string;
-  libraryName?: string;
 };
-export type Notice = { text: string; libraryName?: string };
+export type Notice =
+  | { kind: "completed"; intent: CommandIntent }
+  | { kind: "revisionConflict"; intent: CommandIntent }
+  | { kind: "failure"; intent: CommandIntent; detail: string };
 export type Review = {
   proposal: SkillProposal;
   decision: "approve" | "reject";

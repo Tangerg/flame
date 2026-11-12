@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -6890,8 +6890,11 @@ the **8 Workspace command tests** pass in **12.06 s**. `make check-native` passe
 normal Web staging, Wails build and Desktop test/vet/build. The ordinary Lab build
 passes with **484 assets**, without the private refusal seam.
 
-Native qualification uses published ESM in the existing Workspace Brand settings
-scene. A temporary compilation substitutes only its public `saveFile` collaborator:
+Native qualification uses the source-composed Brand component through
+`InstalledComponent` in the existing Workspace settings scene. The normal Lab
+installer imports the component's TSX; published-resource reproduction is checked
+separately. The earlier published-ESM qualification wording was too broad and is
+corrected here. A temporary compilation substitutes only its public `saveFile` collaborator:
 valid Brand PNG requests receive `Recorded isolated save refusal.`. Baseline and
 candidate use that same refusal. The fixture source is restored byte-for-byte
 after each build; no permanent fixture, variant or production branch is added.
@@ -6994,8 +6997,11 @@ Final verification passes:
   No manifest, check or global configuration changes. The normal final Lab build
   passes in **7.60 s**, with **484 assets** and no private seam.
 
-Native qualification uses the published Brand ESM and shared UI in the existing
-Workspace scene. The private copied HTML substitutes only public
+Native qualification uses the source-composed Brand component through
+`InstalledComponent` and the shared UI in the existing Workspace scene. The
+normal installer imports TSX; the published-resource build/check is separate,
+and the earlier published-ESM qualification wording is corrected here. The
+private copied HTML substitutes only public
 `navigator.clipboard.writeText`: it validates `#FB6E30`, holds the first successful
 acknowledgement, then resolves the second before the first. A guarded module entry
 prevents the UI from rendering unless that isolated collaborator is installed.
@@ -30014,6 +30020,123 @@ Verification for this contract:
 - Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
+### Skills command language and retained reads (2026-11-12)
+
+The component stored translated command labels and settled notices. Pending
+Approve/Reject, completed decisions and revision-conflict guidance therefore kept
+their initiating language. Actual Wails reproduces English completion text among
+Chinese controls after one approved proposal. A second source trace finds that
+`InstalledComponent` creates a new frozen display context when locale changes;
+the captured Runtime, workspace, signal and tracking function remain the same.
+Skills depended on that whole context, restarting its watch and aborting an
+original pending document read during a display-only change.
+
+`plugins/skills/component/types.ts` now retains action/name intent beside the
+original mutation, with closed completed/conflict/failure notices. `component.tsx`
+derives guidance from the current translator and preserves literal failure detail.
+Archive/restore intent also identifies its existing feedback row, replacing the
+separate target name. `useSkills.ts` binds reads and observation to their actual
+captured collaborators and catalog target. Locale no longer restarts them. The
+original mutation, exact reviewed scope/name/revision, key, namespace, retry,
+uncertain-result rules, cancellation, focus and read reconciliation remain their
+existing owners. No SDK API, theme, profile, catalog or persisted-data change is
+introduced. Normal generation rebuilds only the Skills ESM; existing installations
+must explicitly select its new digest through the ordinary release/reload path.
+
+Better-writing's current guidance and literal causes, better-accessibility's
+stable focus, and better-layout's persistent reading context guide this repair.
+Read-only ZCode `ToolSummaryRow.tsx`, `ToolDetailSection.tsx` and
+`settings/SkillsSection.tsx` distinguish display status from raw results. ChatGPT's
+actual lazy-loaded `chatgpt-skill-source-dialog-a8953c103a2f.js` keys its source
+query by plugin/Skill identity and renders localized failure/retry controls outside
+returned source data; the import in `chatgpt-sources-side-panel-tab-4a8e2437448c.js`
+confirms it is interface code. Flame keeps its existing shared controls and
+Runtime boundary. A bounded subagent authors the implementation and regressions;
+primary review owns diagnosis, both red baselines, gates and native acceptance.
+
+The corrected original baseline fails **4 / 36 tests (4.19 s)**: the original
+document signal aborts, both pending command labels stay English, and settled
+conflict guidance does not translate. An initial refusal fixture incorrectly used
+`internal_error`, which correctly means unknown acknowledgement; it is replaced
+with the existing definite `plugin_command_retired` refusal. Awaited `act` removes
+test-harness warnings without changing product assertions or deadlines.
+
+Final verification passes:
+
+- Skills **36 tests (7.36 s)**. The five new cases use new frozen contexts with
+  the same captured collaborators. Deferred document/read-watch counts, later
+  outside focus, query/return, pending and settled EN→ZH→EN command guidance,
+  exact single dispatch/key/namespace and padded multiline CJK refusal detail are
+  observed through the real component and Runtime client.
+- Skills, installed Workspace continuity and component loading together:
+  **3 files / 77 tests (9.70 s)**. Web types, lint, complete formatting, layers
+  and the **827-file** design-system check pass.
+- Complete plugin check: types, lint, format, **47 script tests**, **648 source
+  tests / 44 passed files (64.11 s)**, the existing **17 skips / 2 files**, all
+  **20 catalogs / 8 locales** and exact component resource reproduction.
+- `make check-native` passes normal Web staging, Wails **v3.1.0** and Desktop
+  test/vet/build with the repository's prepared module proxy and macOS policy.
+  Normal clean Lab build passes with **484 assets (3.47 s)**. Shared UI source
+  is unchanged; the preceding complete **288-test** and packed-consumer check is
+  retained rather than rerun. No aggregate full-Web or backend suite is claimed.
+
+The normal Lab installer composes component TSX through `InstalledComponent`.
+That native baseline establishes the presentation defect, independently of the
+published-resource check. For this batch's explicit ESM qualification, a private
+build temporarily changes only the Skills import to its exact published
+`components/component.js`, then restores the installer byte-for-byte. Both old
+and rebuilt ESM artifacts contain **484 assets** and the identical clean
+stylesheet; old published ESM also reproduces the stale completion. The rebuilt
+resource SHA-256 is
+`acb7fa13e2a2c4392295c442d3c43d377715f18771631c51726cdc4bbfc709aa`.
+No HTML, transport or captured-data seam is added. Existing
+`skills-commands=accept` changes only the cloned fixture proposal list, matching
+the inspected workspace/scope/name/revision. The copied Wails host changes only
+its initial URL; all **46** tracked native inputs remain unchanged. Independent
+main test maintenance through `f8507e5fb` is retained before final acceptance.
+
+- EN/light/14 px/Orange/full motion reads the filtered `runtime-boundaries`
+  document, source/revision and full instruction tail. Keyboard resizing reaches
+  **320 px** with visible divider focus; Back restores `runtime` and the opening
+  row. Pointer entry alone did not focus the divider, so that attempt is excluded
+  as resize evidence. One `risk-first-review` approval, after inspecting Project
+  and its exact revision, leaves one proposal. Appearance → Chinese → Cmd+L shows
+  current Chinese completion. Ordinary Window Zoom/restore retains the 320 px
+  result. Continued middle-caret typing yields exactly
+  `Keep verified this Skills decision draft.`
+- ZH/dark/18 px/**#3B82F6**/motion off filters `release`, reads the instructions
+  and Project/revision, and rejects `release-notes` once. Chinese completion and
+  zero matching proposals become English completion and the same filtered count
+  after Appearance → English → Cmd+L. Escape clears only the focused search;
+  the remaining proposal returns. Middle-caret continuation yields exactly
+  `Keep verified this Chinese Skills draft.`
+
+One initial Chinese return has an unpainted search field although AX retains its
+query and clear action; focusing it restores its paint. An old-ESM control and a
+fresh candidate repeat of the same dark/18 px rejection/language-return task both
+paint normally. The observation remains **unclassified and not reproducible**;
+it is neither claimed fixed nor attributed to a pre-existing defect. Revisit it
+if ordinary retained-view navigation reproduces it. Full-resolution captures
+qualify the stated reading tasks; small overview captures do not qualify type or
+contrast. Acceptance uses default page zoom, without a browser visual suite or
+performance benchmark.
+
+These native tasks qualify the exact published component's presentation through
+the Lab host, not Runtime installation/resource leasing, durable Skill publication
+or command recovery. Pending-read cancellation, deferred acknowledgements,
+conflict and retry remain unit/integration coverage. No actual Skill file,
+Archive/Restore, live Runtime/provider command, Send, physical IME, VoiceOver or
+whole-product visual acceptance is claimed.
+
+All **6** native launches and **4** loopback server launches exit **0**. Three
+bundle registrations, six created Library stores, all **18** private Library
+paths, **12** owned ignored output/cache roots and the private apps/data/assets/
+helpers/logs return to absence. Cleanup preserves **6** accepted source/resource
+hashes, **19** other resources, **7** captured owners and **46** native inputs;
+ordinary dependencies/hooks and unrelated primary-checkout work remain intact.
+No functional suite runs after cleanup. Continue from actual remaining content
+and Dock tasks; the Skills locale/read ownership defects are qualified.
 
 ### Skills proposal review context in the reading frame (2026-11-05)
 

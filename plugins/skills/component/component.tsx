@@ -29,7 +29,12 @@ import {
   selectAllInReader,
   Toolbar,
 } from "@flame/ui";
-import { type SkillSnapshot, type Target } from "./types";
+import {
+  type CommandIntent,
+  type Notice,
+  type SkillSnapshot,
+  type Target,
+} from "./types";
 import { SkillRow } from "./SkillRow";
 import { useSkills, SECTION_VALUES } from "./useSkills";
 function catalogSummary(
@@ -43,6 +48,21 @@ function catalogSummary(
   return matching < count
     ? t(`summary.matching.${target}`, { matching, count })
     : t(`summary.${target}`, { count });
+}
+
+function commandLabel(intent: CommandIntent, t: Translate) {
+  return t(`command.${intent.action}`, { name: intent.name });
+}
+
+function noticeText(notice: Notice, t: Translate) {
+  switch (notice.kind) {
+    case "completed":
+      return t("notice.completed", { label: commandLabel(notice.intent, t) });
+    case "revisionConflict":
+      return t("notice.revisionConflict");
+    case "failure":
+      return notice.detail;
+  }
 }
 
 function SkillReadStatus({
@@ -138,7 +158,11 @@ export function Skills({ context }: { context: ComponentContext }) {
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const instructions = useRef<HTMLElement>(null);
-  const feedbackName = command?.libraryName ?? notice?.libraryName;
+  const feedbackIntent = command?.intent ?? notice?.intent;
+  const feedbackName =
+    feedbackIntent?.action === "archive" || feedbackIntent?.action === "restore"
+      ? feedbackIntent.name
+      : undefined;
   const feedbackRow =
     snapshot?.type === "library" &&
     matching.some((item) => item.name === feedbackName)
@@ -146,13 +170,15 @@ export function Skills({ context }: { context: ComponentContext }) {
       : undefined;
   const feedback = (
     <>
-      {notice && <p role="status">{notice.text}</p>}
+      {notice && <p role="status">{noticeText(notice, t)}</p>}
       {command && (
         <section aria-label={t("command.status.label")}>
           <p role={command.uncertain ? "alert" : "status"}>
             {command.uncertain
               ? t("command.uncertain")
-              : t("command.pending", { label: command.label })}
+              : t("command.pending", {
+                  label: commandLabel(command.intent, t),
+                })}
           </p>
           {command.error && <RecordBody>{command.error}</RecordBody>}
           {command.uncertain && (
@@ -329,7 +355,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                           name,
                           revision,
                         }),
-                  t(`command.${review.decision}`, { name }),
+                  { action: review.decision, name },
                 );
               }}
             >
@@ -427,13 +453,13 @@ export function Skills({ context }: { context: ComponentContext }) {
                           item.lifecycle === "archived"
                             ? context.runtime.skills.restore(item.name)
                             : context.runtime.skills.archive(item.name),
-                        t(
-                          item.lifecycle === "archived"
-                            ? "command.restore"
-                            : "command.archive",
-                          { name: item.name },
-                        ),
-                        item.name,
+                        {
+                          action:
+                            item.lifecycle === "archived"
+                              ? "restore"
+                              : "archive",
+                          name: item.name,
+                        },
                       )
                     }
                   >

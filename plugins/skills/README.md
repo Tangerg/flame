@@ -44,6 +44,12 @@ skills/plugins/file notices refresh the current catalog and any open document th
 one captured subscription/watch that document navigation does not recreate.
 Cancellation retires and joins the subscription and reads.
 
+Display-locale changes preserve the captured Runtime, workspace, signal and
+tracking collaborators. Pending document reads and the current subscription stay
+with those originals; a language change does not restart them or dispatch a
+command. Actual collaborator or target changes retain their ordinary rebinding
+and cancellation boundaries.
+
 Each Available Skill is one whole-row `RecordButton` showing its name, description
 and scope; activating it opens that Skill's document. Provenance belongs to the
 selected reader. Personal library rows show their complete name, description and
@@ -98,8 +104,17 @@ journal reuses its original key and Runtime store namespace. A different Runtime
 store refuses that original command. The component's visible pending form lasts
 for its mounted lifetime; it does not create a separate receipt or journal owner.
 
+Commands retain their original action and literal Skill name as presentation
+intent beside the original mutation. Pending labels, completion notices and
+revision-conflict guidance use the current display locale, while captured failure
+details remain literal. Archive/restore intent identifies the personal-library
+feedback row without a separate target name.
+
 When an accepted read removes a focused catalog row, focus returns to the catalog
 search. Focus already moved to another control, including an open document, is
 preserved.
 
 The component consumes public Runtime Skills operations through `@flame/component-sdk`. Its declared namespace resource is tracked and exact rebuilds are checked. Disablement or uninstall withdraws presentation/resources and preserves canonical Skill business data.
+
+Rebuild its resource through the normal publisher and explicitly select the new
+package digest for existing installations; rebuilding source does not update them.

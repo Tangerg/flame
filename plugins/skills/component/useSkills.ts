@@ -25,6 +25,7 @@ import {
   type OpenedDocument,
   type CatalogReturn,
   type Command,
+  type CommandIntent,
   type Notice,
   type Review,
 } from "./types";
@@ -44,12 +45,16 @@ export const SECTION_VALUES = [
 ] as const satisfies readonly Target[];
 export function useSkills(context: ComponentContext) {
   const t = useTranslator(CATALOGS, context.locale);
+  const {
+    runtime,
+    workspace: capturedWorkspace,
+    signal: componentSignal,
+    track,
+  } = context;
+  const workspaceRef = capturedWorkspace?.ref;
   const workspace = useMemo(
-    () =>
-      context.workspace
-        ? context.runtime.workspace(context.workspace.ref)
-        : undefined,
-    [context],
+    () => (workspaceRef ? runtime.workspace(workspaceRef) : undefined),
+    [runtime, workspaceRef],
   );
   const [target, setTarget] = useState<Target>(
     workspace ? "available" : "library",
@@ -80,7 +85,7 @@ export function useSkills(context: ComponentContext) {
     }
     const controller = new AbortController();
     reading.current = controller;
-    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const signal = AbortSignal.any([componentSignal, controller.signal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
       let accepted: SkillSnapshot;
@@ -88,25 +93,19 @@ export function useSkills(context: ComponentContext) {
         case "library":
           accepted = {
             type: target,
-            data: await context.track(() =>
-              context.runtime.skills.listLibrary(signal),
-            ),
+            data: await track(() => runtime.skills.listLibrary(signal)),
           };
           break;
         case "available":
           accepted = {
             type: target,
-            data: await context.track(() =>
-              workspace!.skills.listDiscovered(signal),
-            ),
+            data: await track(() => workspace!.skills.listDiscovered(signal)),
           };
           break;
         case "review":
           accepted = {
             type: target,
-            data: await context.track(() =>
-              workspace!.skills.listProposals(signal),
-            ),
+            data: await track(() => workspace!.skills.listProposals(signal)),
           };
           break;
       }
@@ -119,7 +118,7 @@ export function useSkills(context: ComponentContext) {
           error: failure(error),
         }));
     }
-  }, [context, workspace, target]);
+  }, [runtime, componentSignal, track, workspace, target]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
@@ -129,13 +128,13 @@ export function useSkills(context: ComponentContext) {
       documentReading.current?.abort();
       const controller = new AbortController();
       documentReading.current = controller;
-      const signal = AbortSignal.any([context.signal, controller.signal]);
+      const signal = AbortSignal.any([componentSignal, controller.signal]);
       setOpened(
         (previous) =>
           previous && { ...previous, loading: true, error: undefined },
       );
       try {
-        const accepted = await context.track(() =>
+        const accepted = await track(() =>
           workspace!.skills.getDiscovered(name, signal),
         );
         if (!signal.aborted)
@@ -154,7 +153,7 @@ export function useSkills(context: ComponentContext) {
           );
       }
     },
-    [context, workspace],
+    [componentSignal, track, workspace],
   );
   useEffect(() => () => documentReading.current?.abort(), []);
   const refreshOwners = useEffectEvent(() => {
@@ -163,11 +162,11 @@ export function useSkills(context: ComponentContext) {
   });
   useEffect(() => {
     const controller = new AbortController();
-    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const signal = AbortSignal.any([componentSignal, controller.signal]);
     setObservationError(undefined);
     const observeChanges = async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        const subscription = await runtime.runtimeEvents.subscribe(
           {
             topics: [
               "skills.changed",
@@ -200,11 +199,11 @@ export function useSkills(context: ComponentContext) {
         if (!signal.aborted) setObservationError(failure(error));
       }
     };
-    void context.track(() => observeChanges());
+    void track(() => observeChanges());
     return () => controller.abort();
-  }, [context, workspace]);
+  }, [runtime, componentSignal, track, workspace]);
   function navigate(next: Target) {
-    if (pending.current || context.signal.aborted) return;
+    if (pending.current || componentSignal.aborted) return;
     if (next === target) {
       void refresh();
       return;
@@ -223,7 +222,7 @@ export function useSkills(context: ComponentContext) {
       position.element.scrollTop = 0;
   }
   function openDocument(name: string, opener: HTMLElement) {
-    if (pending.current || context.signal.aborted) return;
+    if (pending.current || componentSignal.aborted) return;
     catalogReturn.current = { opener, scroll: scrollPositions(panel.current) };
     pendingFocus.current = {
       target: "document",
@@ -265,16 +264,16 @@ export function useSkills(context: ComponentContext) {
     try {
       await captured.promise;
       pending.current = undefined;
-      if (!context.signal.aborted) {
+      if (!componentSignal.aborted) {
         setCommand(undefined);
         setNotice({
-          text: t("notice.completed", { label: captured.label }),
-          libraryName: captured.libraryName,
+          kind: "completed",
+          intent: captured.intent,
         });
         void refresh();
       }
     } catch (error) {
-      if (context.signal.aborted) return;
+      if (componentSignal.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
         const uncertain = {
           ...captured,
@@ -286,28 +285,26 @@ export function useSkills(context: ComponentContext) {
       } else {
         pending.current = undefined;
         setCommand(undefined);
-        setNotice({
-          text: isErrorType(error, "revision_conflict")
-            ? t("notice.revisionConflict")
-            : failure(error),
-          libraryName: captured.libraryName,
-        });
+        setNotice(
+          isErrorType(error, "revision_conflict")
+            ? { kind: "revisionConflict", intent: captured.intent }
+            : {
+                kind: "failure",
+                intent: captured.intent,
+                detail: failure(error),
+              },
+        );
         void refresh();
       }
     }
   }
-  function submit(
-    make: () => MutationPromise<void>,
-    label: string,
-    libraryName?: string,
-  ) {
-    if (pending.current || context.signal.aborted) return;
+  function submit(make: () => MutationPromise<void>, intent: CommandIntent) {
+    if (pending.current || componentSignal.aborted) return;
     try {
       const captured = {
-        promise: context.track(make),
-        label,
+        promise: track(make),
+        intent,
         uncertain: false,
-        libraryName,
       };
       pending.current = captured;
       setCommand(captured);
@@ -315,18 +312,18 @@ export function useSkills(context: ComponentContext) {
       setNotice(undefined);
       void observe(captured);
     } catch (error) {
-      if (!context.signal.aborted)
-        setNotice({ text: failure(error), libraryName });
+      if (!componentSignal.aborted)
+        setNotice({ kind: "failure", intent, detail: failure(error) });
     }
   }
   function reconcile() {
     const original = pending.current;
-    if (!original?.uncertain || context.signal.aborted) return;
+    if (!original?.uncertain || componentSignal.aborted) return;
     try {
       const retry = {
         ...original,
-        promise: context.track(() =>
-          original.promise.retry({ signal: context.signal }),
+        promise: track(() =>
+          original.promise.retry({ signal: componentSignal }),
         ),
         uncertain: false,
         error: undefined,
@@ -335,7 +332,7 @@ export function useSkills(context: ComponentContext) {
       setCommand(retry);
       void observe(retry);
     } catch (error) {
-      if (!context.signal.aborted)
+      if (!componentSignal.aborted)
         setCommand({ ...original, error: failure(error) });
     }
   }

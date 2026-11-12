@@ -57,8 +57,9 @@ async function mountSkills(locale: keyof typeof LABELS = "en") {
   const workspace = runtime.workspace({ path: VISUAL_WORKSPACE_PATH });
   const listDiscovered = vi.spyOn(workspace.skills, "listDiscovered");
   const getDiscovered = vi.spyOn(workspace.skills, "getDiscovered");
+  const subscribe = vi.spyOn(runtime.runtimeEvents, "subscribe");
   vi.spyOn(runtime, "workspace").mockReturnValue(workspace);
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: { installationId: "skills", digest: "b".repeat(64), componentId: "skills" },
     runtime,
     workspace: { ref: { path: VISUAL_WORKSPACE_PATH } },
@@ -86,26 +87,32 @@ async function mountSkills(locale: keyof typeof LABELS = "en") {
     owner.abort();
     await runtime.close();
   });
-  testClient.render(
+  const scene = () => (
     <>
       <button>Outside action</button>
       <div data-testid="viewport" style={{ overflowY: "auto", height: 400 }}>
         <Skills context={context} />
       </div>
-    </>,
+    </>
   );
+  const view = testClient.render(scene());
   // The mount read and the read that closes the subscription gap both settle first.
   await waitFor(() => expect(listDiscovered).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.queryByText(LABELS[locale].reading)).toBeNull());
   return {
     listDiscovered,
     getDiscovered,
+    subscribe,
     owner,
     outsideEscape,
     runtime,
     workspace,
     send,
     sendRequest,
+    changeLocale(next: keyof typeof LABELS) {
+      context = Object.freeze({ ...context, locale: next });
+      view.rerender(scene());
+    },
   };
 }
 
@@ -691,6 +698,48 @@ it("keeps a later focus choice and ignores document reads retired by return, a n
   expect(instructions("risk-first-review")).toBeNull();
 });
 
+it("keeps the original pending document read through a display-locale change", async () => {
+  const { getDiscovered, listDiscovered, subscribe, owner, changeLocale } = await mountSkills();
+  const accepted = Promise.withResolvers<SkillDetail>();
+  getDiscovered.mockImplementationOnce(() => accepted.promise);
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: LABELS.en.search });
+  fireEvent.change(search, { target: { value: "runtime" } });
+  fireEvent.click(readButtons()[0]!);
+  const originalSignal = getDiscovered.mock.lastCall![1]!;
+  const reads = listDiscovered.mock.calls.length;
+  const watches = subscribe.mock.calls.length;
+  const outside = screen.getByRole("button", { name: "Outside action" });
+  act(() => outside.focus());
+  try {
+    await act(async () => changeLocale("zh"));
+
+    expect(originalSignal.aborted).toBe(false);
+    expect(owner.signal.aborted).toBe(false);
+    expect(getDiscovered).toHaveBeenCalledOnce();
+    expect(listDiscovered).toHaveBeenCalledTimes(reads);
+    expect(subscribe).toHaveBeenCalledTimes(watches);
+    expect(screen.getByText("正在读取 runtime-boundaries…")).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+    await act(async () => accepted.resolve(RUNTIME_BOUNDARIES));
+    const instructions = await screen.findByRole("region", { name: "runtime-boundaries 的指令" });
+    expect(instructions.textContent).toBe(RUNTIME_BOUNDARIES.instructions);
+    expect(screen.getByRole("heading", { name: "runtime-boundaries" })).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+
+    const back = screen.getByRole("button", { name: "返回可用技能" });
+    act(() => back.focus());
+    fireEvent.click(back);
+    expect(screen.getByRole<HTMLInputElement>("searchbox", { name: LABELS.zh.search }).value).toBe(
+      "runtime",
+    );
+    expect(getDiscovered).toHaveBeenCalledExactlyOnceWith("runtime-boundaries", originalSignal);
+    expect(listDiscovered).toHaveBeenCalledTimes(reads);
+    expect(subscribe).toHaveBeenCalledTimes(watches);
+  } finally {
+    await act(async () => accepted.resolve(RUNTIME_BOUNDARIES));
+  }
+});
+
 it("lets a canonical catalog read remove the opener while its document stays readable", async () => {
   const { listDiscovered } = await mountSkills();
   const canonical = Promise.withResolvers<SkillDiscovery>();
@@ -897,6 +946,147 @@ it.each([
     act(() => cancel.focus());
     expect(revealed).toEqual([fits ? form : actions]);
     expect(document.activeElement).toBe(cancel);
+  },
+);
+
+it.each([
+  {
+    action: "Approve",
+    operation: "approveProposal",
+    method: "skills.proposals.approve",
+    zh: "批准",
+  },
+  { action: "Reject", operation: "rejectProposal", method: "skills.proposals.reject", zh: "拒绝" },
+] as const)(
+  "projects the original $action command and its completion in the current display language",
+  async ({ action, operation, method, zh }) => {
+    const { workspace, send, sendRequest, owner, changeLocale } = await mountSkills();
+    const acknowledgement = Promise.withResolvers<void>();
+    send.mockImplementation(async (request, signal, options) => {
+      if (request.method === method) await acknowledgement.promise;
+      return sendRequest(request, signal, options);
+    });
+    const decide = vi.spyOn(workspace.skills, operation);
+    const proposal = VISUAL_SKILL_PROPOSALS.data[0]!;
+    fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
+    await summaryStatus("2 pending proposals");
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: LABELS.en.search });
+    fireEvent.change(search, { target: { value: proposal.name } });
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    try {
+      fireEvent.click(screen.getByRole("button", { name: `Confirm ${action.toLowerCase()}` }));
+      const original = decide.mock.results[0]!.value as MutationPromise<void>;
+      const attempts = () => send.mock.calls.filter(([request]) => request.method === method);
+      await waitFor(() => expect(attempts()).toHaveLength(1));
+      const key = original.idempotencyKey;
+      const namespace = attempts()[0]![2]?.idempotencyNamespace;
+      const pending = screen.getByRole("region", { name: "Skill command status" });
+      const outside = screen.getByRole("button", { name: "Outside action" });
+      act(() => outside.focus());
+
+      await act(async () => changeLocale("zh"));
+      expect(screen.getByRole("region", { name: "技能命令状态" })).toBe(pending);
+      expect(within(pending).getByRole("status").textContent).toBe(`${zh} ${proposal.name}…`);
+      expect(document.activeElement).toBe(outside);
+      expect(owner.signal.aborted).toBe(false);
+      await act(async () => acknowledgement.resolve());
+      await summaryStatus(`${zh} ${proposal.name}已完成。`);
+
+      await act(async () => changeLocale("en"));
+      await summaryStatus(`${action} ${proposal.name} completed.`);
+      expect(screen.getByRole("searchbox", { name: LABELS.en.search })).toBe(search);
+      expect(search.value).toBe(proposal.name);
+      expect(document.activeElement).toBe(outside);
+      expect(decide).toHaveBeenCalledExactlyOnceWith({
+        scope: proposal.scope,
+        name: proposal.name,
+        revision: proposal.revision,
+      });
+      expect(attempts()).toHaveLength(1);
+      expect(attempts()[0]![0].params).toEqual({
+        workspace: { path: VISUAL_WORKSPACE_PATH },
+        scope: proposal.scope,
+        name: proposal.name,
+        revision: proposal.revision,
+      });
+      expect(attempts()[0]![2]?.idempotencyKey).toBe(key);
+      expect(attempts()[0]![2]?.idempotencyNamespace).toBe(namespace);
+      expect(original.idempotencyKey).toBe(key);
+    } finally {
+      await act(async () => acknowledgement.resolve());
+    }
+  },
+);
+
+const rawProposalRefusal = "  Provider refused — 保留\n    original cause  ";
+
+it.each([
+  {
+    outcome: "revision conflict",
+    error: new RpcError({ message: "revision conflict", data: { type: "revision_conflict" } }),
+    en: "The proposal changed. Read the latest revision before deciding again.",
+    zh: "提议已更改。请先读取最新修订，再重新决定。",
+  },
+  {
+    outcome: "literal provider refusal",
+    error: new RpcError({
+      message: "plugin command retired",
+      data: { type: "plugin_command_retired", detail: rawProposalRefusal },
+    }),
+    en: rawProposalRefusal,
+    zh: rawProposalRefusal,
+  },
+])(
+  "projects a settled $outcome without changing its original command or query",
+  async (outcome) => {
+    const { workspace, send, sendRequest, changeLocale } = await mountSkills();
+    send.mockImplementation(async (request, signal, options) => {
+      if (request.method === "skills.proposals.approve") throw outcome.error;
+      return sendRequest(request, signal, options);
+    });
+    const approve = vi.spyOn(workspace.skills, "approveProposal");
+    const proposal = VISUAL_SKILL_PROPOSALS.data[0]!;
+    fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
+    await summaryStatus("2 pending proposals");
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: LABELS.en.search });
+    fireEvent.change(search, { target: { value: proposal.name } });
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm approve" }));
+    const original = approve.mock.results[0]!.value as MutationPromise<void>;
+    const outside = screen.getByRole("button", { name: "Outside action" });
+    act(() => outside.focus());
+    const notice = await screen.findByText(outcome.en, {
+      selector: "[role=status]",
+      normalizer: (value) => value,
+    });
+    const attempts = send.mock.calls.filter(
+      ([request]) => request.method === "skills.proposals.approve",
+    );
+    const namespace = attempts[0]![2]?.idempotencyNamespace;
+
+    await act(async () => changeLocale("zh"));
+    expect(notice.textContent).toBe(outcome.zh);
+    expect(screen.getByRole("searchbox", { name: LABELS.zh.search })).toBe(search);
+    await act(async () => changeLocale("en"));
+    expect(notice.textContent).toBe(outcome.en);
+    expect(search.value).toBe(proposal.name);
+    expect(document.activeElement).toBe(outside);
+    expect(approve).toHaveBeenCalledExactlyOnceWith({
+      scope: proposal.scope,
+      name: proposal.name,
+      revision: proposal.revision,
+    });
+    expect(
+      send.mock.calls.filter(([request]) => request.method === "skills.proposals.approve"),
+    ).toHaveLength(1);
+    expect(attempts[0]![0].params).toEqual({
+      workspace: { path: VISUAL_WORKSPACE_PATH },
+      scope: proposal.scope,
+      name: proposal.name,
+      revision: proposal.revision,
+    });
+    expect(attempts[0]![2]?.idempotencyKey).toBe(original.idempotencyKey);
+    expect(attempts[0]![2]?.idempotencyNamespace).toBe(namespace);
   },
 );
 
