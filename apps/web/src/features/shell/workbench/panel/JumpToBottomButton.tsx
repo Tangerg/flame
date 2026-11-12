@@ -1,16 +1,17 @@
 import { type Ref } from "react";
-import {
-  scrollStreamToBottom,
-  useStreamAtBottom,
-} from "@/features/shell/workbench/panel/streamFollow";
+import { useStreamFollow } from "@/ui/agent/stream-follow";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 
 export function JumpToBottomButton({ dockRef }: { dockRef?: Ref<HTMLDivElement> }) {
-  const visible = !useStreamAtBottom();
+  const follow = useStreamFollow();
+  const visible = !!follow && !follow.isAtBottom;
   return (
     <AgentJumpToBottom
       visible={visible}
-      onClick={scrollStreamToBottom}
+      onClick={() => {
+        follow?.contentRef.current?.focus({ preventScroll: true });
+        void follow?.scrollToBottom();
+      }}
       placement="above-composer"
       dockRef={dockRef}
     />

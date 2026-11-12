@@ -15,6 +15,11 @@ import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/renderi
 import { openChatSearch } from "@/features/chat/search/application/openChatSearch";
 import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
+import {
+  StreamFollowProvider,
+  usePublishStreamFollow,
+  type StreamFollow,
+} from "@/ui/agent/stream-follow";
 const highlights = vi.hoisted(() => ({ paint: vi.fn(), clear: vi.fn() }));
 
 vi.mock("@/features/chat/search/adapters/searchHighlights", () => ({
@@ -50,6 +55,7 @@ function SearchFixture({
   inertComposer = false,
   content = "Alpha beta ALPHA a+b",
   earlierContent,
+  follow,
 }: {
   visible?: boolean;
   removeComposer?: boolean;
@@ -57,27 +63,35 @@ function SearchFixture({
   inertComposer?: boolean;
   content?: ReactNode;
   earlierContent?: string;
+  follow?: StreamFollow;
 }) {
   return (
     <>
-      <ContentVisibility visible={visible}>
-        <div role="region" aria-label="Conversation" tabIndex={-1} hidden={!visible}>
-          {!removeComposer && (
-            <div hidden={hideComposer} inert={inertComposer}>
-              <textarea aria-label="Composer draft" defaultValue="Keep this draft." />
+      <StreamFollowProvider>
+        <ContentVisibility visible={visible}>
+          <div role="region" aria-label="Conversation" tabIndex={-1} hidden={!visible}>
+            {!removeComposer && (
+              <div hidden={hideComposer} inert={inertComposer}>
+                <textarea aria-label="Composer draft" defaultValue="Keep this draft." />
+              </div>
+            )}
+            <div className="msg-scroll-viewport">
+              <div>
+                {earlierContent && (
+                  <article key="earlier" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
+                    {earlierContent}
+                  </article>
+                )}
+                <article key="answer" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
+                  {content}
+                </article>
+              </div>
             </div>
-          )}
-          {earlierContent && (
-            <article key="earlier" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
-              {earlierContent}
-            </article>
-          )}
-          <article key="answer" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
-            {content}
-          </article>
-          <ChatSearchOverlay />
-        </div>
-      </ContentVisibility>
+            <ChatSearchOverlay />
+            {follow && <FollowRelay follow={follow} />}
+          </div>
+        </ContentVisibility>
+      </StreamFollowProvider>
       <aside role="region" aria-label="Dock">
         <article className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
           alpha outside the conversation
@@ -86,6 +100,11 @@ function SearchFixture({
       </aside>
     </>
   );
+}
+
+function FollowRelay({ follow }: { follow: StreamFollow }) {
+  usePublishStreamFollow(follow);
+  return null;
 }
 
 function renderSearch() {
@@ -626,4 +645,311 @@ describe("ChatSearchOverlay", () => {
     expect(highlights.clear.mock.calls.length).toBeGreaterThan(clearCount);
     expect(openSearch().value).toBe("");
   });
+});
+
+describe("current Find match reading", () => {
+  const resizes: ReadingResizeObserver[] = [];
+  class ReadingResizeObserver implements ResizeObserver {
+    readonly targets = new Set<Element>();
+    constructor(readonly callback: ResizeObserverCallback) {
+      resizes.push(this);
+    }
+    observe(target: Element) {
+      this.targets.add(target);
+    }
+    unobserve(target: Element) {
+      this.targets.delete(target);
+    }
+    disconnect() {
+      this.targets.clear();
+    }
+  }
+
+  beforeEach(() => {
+    resizes.length = 0;
+    vi.stubGlobal("ResizeObserver", ReadingResizeObserver);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function resize(target?: Element) {
+    act(() => {
+      for (const observer of resizes) {
+        const targets = [...observer.targets].filter((element) => !target || target === element);
+        if (!targets.length) continue;
+        observer.callback(
+          targets.map((element) => ({
+            target: element,
+            contentRect: element.getBoundingClientRect(),
+            borderBoxSize: [],
+            contentBoxSize: [],
+            devicePixelContentBoxSize: [],
+          })),
+          observer,
+        );
+      }
+    });
+  }
+
+  function layout() {
+    const body = (text = "Alpha beta ALPHA a+b") => (
+      <pre style={{ overflowX: "auto", overflowY: "auto", scrollPaddingTop: 10 }}>{text}</pre>
+    );
+    const follow: StreamFollow = {
+      isAtBottom: false,
+      state: { isAtBottom: false, targetScrollTop: 0 },
+      scrollRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
+      contentRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
+      scrollToBottom: vi.fn(() => true),
+      stopScroll: vi.fn(() => {
+        follow.state.isAtBottom = false;
+      }),
+    };
+    const view = testClient.render(<SearchFixture content={body()} follow={follow} />);
+    const region = screen.getByRole("region", { name: "Conversation" });
+    const viewport = region.querySelector<HTMLElement>(".msg-scroll-viewport")!;
+    const content = viewport.firstElementChild as HTMLElement;
+    follow.scrollRef.current = viewport;
+    follow.contentRef.current = content;
+    const pre = viewport.querySelector("pre")!;
+    const dimensions = { height: 300, codeHeight: 100, codeWidth: 360, wordTop: 146 };
+    viewport.style.overflowX = "auto";
+    viewport.style.overflowY = "auto";
+    viewport.style.scrollPaddingTop = "10px";
+    viewport.style.scrollPaddingBottom = "20px";
+    vi.spyOn(region, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 0, 400, 600));
+    vi.spyOn(viewport, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 100, 400, dimensions.height),
+    );
+    vi.spyOn(content, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 100 - viewport.scrollTop, 400, dimensions.codeHeight + 200),
+    );
+    vi.spyOn(pre, "getBoundingClientRect").mockImplementation(
+      () =>
+        new DOMRect(
+          20 - viewport.scrollLeft,
+          120 - viewport.scrollTop,
+          dimensions.codeWidth,
+          dimensions.codeHeight,
+        ),
+    );
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, get: () => 400 },
+      clientHeight: { configurable: true, get: () => dimensions.height },
+    });
+    Object.defineProperties(pre, {
+      clientWidth: { configurable: true, get: () => dimensions.codeWidth },
+      clientHeight: { configurable: true, get: () => dimensions.codeHeight },
+    });
+    const word = () =>
+      new DOMRect(
+        60 - viewport.scrollLeft - pre.scrollLeft,
+        dimensions.wordTop - viewport.scrollTop - pre.scrollTop,
+        40,
+        16,
+      );
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(
+      () =>
+        Object.assign([word()], {
+          item: (index: number) => (index === 0 ? word() : null),
+        }) as unknown as DOMRectList,
+    );
+    const scrolls = [viewport, pre].map((element) =>
+      vi
+        .spyOn(element, "scrollTo")
+        .mockImplementation((options: ScrollToOptions | number | undefined) => {
+          if (typeof options !== "object") throw new Error("expected absolute reading offsets");
+          if (options.top !== undefined) element.scrollTop = Math.max(0, options.top);
+          if (options.left !== undefined) element.scrollLeft = Math.max(0, options.left);
+        }),
+    );
+    const input = searchFor("alpha");
+    input.setSelectionRange(1, 3);
+    return {
+      ...view,
+      region,
+      viewport,
+      content,
+      pre,
+      dimensions,
+      word,
+      scrolls,
+      input,
+      follow,
+      replace: (text: string) =>
+        view.rerender(<SearchFixture content={body(text)} follow={follow} />),
+    };
+  }
+
+  it("ends rearmed bottom follow before it carries the current word out of an unchanged frame", () => {
+    const reading = layout();
+    reading.follow.state.isAtBottom = true;
+    reading.follow.state.targetScrollTop = 200;
+    resize(reading.content);
+    expect(reading.follow.state.isAtBottom).toBe(false);
+    expect(reading.follow.stopScroll).toHaveBeenCalledOnce();
+    expect(reading.scrolls[0]).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(reading.input);
+    expect([reading.input.selectionStart, reading.input.selectionEnd]).toEqual([1, 3]);
+  });
+
+  it("allows follow whose destination keeps the complete current word readable", () => {
+    const reading = layout();
+    reading.follow.state.isAtBottom = true;
+    reading.follow.state.targetScrollTop = 10;
+    resize(reading.content);
+    expect(reading.follow.stopScroll).not.toHaveBeenCalled();
+    expect(reading.follow.state.isAtBottom).toBe(true);
+  });
+
+  it("ends conflicting follow when explicitly moving to another match", () => {
+    const reading = layout();
+    reading.follow.state.isAtBottom = true;
+    reading.follow.state.targetScrollTop = 200;
+    fireEvent.keyDown(reading.input, { key: "Enter" });
+    expect(reading.follow.state.isAtBottom).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("2 / 2");
+  });
+
+  it.each(["scroll", "focus"] as const)(
+    "leaves follow with later %s after Find reading retires",
+    (retire) => {
+      const reading = layout();
+      if (retire === "scroll") {
+        reading.pre.scrollTop = 100;
+        fireEvent.scroll(reading.pre);
+      } else screen.getByRole("button", { name: "Outside" }).focus();
+      reading.follow.state.isAtBottom = true;
+      reading.follow.state.targetScrollTop = 200;
+      resize(reading.content);
+      expect(reading.follow.stopScroll).not.toHaveBeenCalled();
+      expect(reading.follow.state.isAtBottom).toBe(true);
+    },
+  );
+
+  it("keeps a visible word when the inner reading viewport shrinks inside a fixed Conversation", () => {
+    const reading = layout();
+    reading.dimensions.height = 60;
+    resize(reading.viewport);
+    expect(reading.viewport.scrollTop).toBe(22);
+    expect(reading.word().bottom).toBe(140);
+    expect(document.activeElement).toBe(reading.input);
+    expect([reading.input.selectionStart, reading.input.selectionEnd]).toEqual([1, 3]);
+    expect(screen.getByRole("status").textContent).toBe("1 / 2");
+  });
+
+  it("keeps the word after native layout scroll is delivered before resize", () => {
+    const reading = layout();
+    reading.dimensions.height = 60;
+    reading.viewport.scrollTop = 10;
+    fireEvent.scroll(reading.viewport);
+    resize();
+    expect(reading.viewport.scrollTop).toBe(22);
+    expect(reading.word().bottom).toBe(140);
+  });
+
+  it("does not move a word that remains inside the fractional reading edge", () => {
+    const reading = layout();
+    reading.dimensions.wordTop = 146.4;
+    reading.dimensions.height = 82;
+    resize(reading.viewport);
+    expect(reading.scrolls[0]).not.toHaveBeenCalled();
+    expect(reading.scrolls[1]).not.toHaveBeenCalled();
+  });
+
+  it("retains the word within a shrinking nested code clip", () => {
+    const reading = layout();
+    reading.dimensions.codeHeight = 40;
+    resize(reading.content);
+    expect(reading.pre.scrollTop).toBe(2);
+    expect(reading.viewport.scrollTop).toBe(0);
+    expect(reading.word().bottom).toBe(160);
+  });
+
+  it("retains the complete word when the nested code clip narrows", () => {
+    const reading = layout();
+    reading.dimensions.codeWidth = 60;
+    resize(reading.pre);
+    expect(reading.pre.scrollLeft).toBe(20);
+    expect(reading.viewport.scrollLeft).toBe(0);
+    expect(reading.word().right).toBe(80);
+  });
+
+  it("keeps a pending reflow witness when host geometry publication refreshes live ranges", async () => {
+    const reading = layout();
+    const before = highlights.paint.mock.lastCall![0][0];
+    reading.dimensions.height = 60;
+    reading.content.style.height = "60px";
+    await act(async () => {});
+    expect(highlights.paint.mock.lastCall![0][0]).not.toBe(before);
+    resize(reading.viewport);
+    expect(reading.viewport.scrollTop).toBe(22);
+    expect(reading.word().bottom).toBe(140);
+    expect(document.activeElement).toBe(reading.input);
+  });
+
+  it("leaves deliberate nested reading in place on subsequent reflow", () => {
+    const reading = layout();
+    reading.pre.scrollTop = 100;
+    fireEvent.scroll(reading.pre);
+    reading.dimensions.height = 60;
+    resize();
+    expect(reading.pre.scrollTop).toBe(100);
+    expect(reading.viewport.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(reading.input);
+  });
+
+  it("leaves later outside focus and its reading position with their owner", () => {
+    const reading = layout();
+    const outside = screen.getByRole("button", { name: "Outside" });
+    outside.focus();
+    reading.dimensions.height = 60;
+    resize();
+    expect(document.activeElement).toBe(outside);
+    expect(reading.viewport.scrollTop).toBe(0);
+    expect(composer().value).toBe("Keep this draft.");
+  });
+
+  it("does not turn a content-only range refresh into another reveal", async () => {
+    const reading = layout();
+    const before = highlights.paint.mock.lastCall![0][0];
+    reading.dimensions.wordTop = 260;
+    reading.replace("prefix Alpha beta ALPHA a+b");
+    await act(async () => {});
+    expect(highlights.paint.mock.lastCall![0][0]).not.toBe(before);
+    resize();
+    expect(reading.scrolls[0]).not.toHaveBeenCalled();
+    expect(reading.scrolls[1]).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(reading.input);
+    expect([reading.input.selectionStart, reading.input.selectionEnd]).toEqual([1, 3]);
+    reading.dimensions.height = 60;
+    resize(reading.viewport);
+    expect(reading.scrolls[0]).not.toHaveBeenCalled();
+    expect(reading.scrolls[1]).not.toHaveBeenCalled();
+  });
+
+  it.each(["close", "hide", "session"] as const)(
+    "ignores late resize delivery after %s",
+    (retire) => {
+      const reading = layout();
+      const pending = [...resizes].filter(
+        (observer) =>
+          observer.targets.has(reading.region) || observer.targets.has(reading.viewport),
+      );
+      if (retire === "close") fireEvent.keyDown(reading.input, { key: "Escape" });
+      else if (retire === "hide") reading.rerender(<SearchFixture visible={false} />);
+      else act(() => testClient.agent.access.selectAgentSession("session-b"));
+      const focus = document.activeElement;
+      reading.dimensions.height = 60;
+      act(() => {
+        for (const observer of pending) observer.callback([], observer);
+      });
+      expect(searchInput()).toBeNull();
+      expect(document.activeElement).toBe(focus);
+      expect(reading.scrolls[0]).not.toHaveBeenCalled();
+      expect(reading.scrolls[1]).not.toHaveBeenCalled();
+    },
+  );
 });

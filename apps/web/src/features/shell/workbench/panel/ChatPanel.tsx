@@ -45,6 +45,7 @@ import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { ChatStream } from "@/features/shell/workbench/panel/ChatStream";
+import { StreamFollowProvider } from "@/ui/agent/stream-follow";
 import { RuntimeConnectionNotice } from "@/features/shell/workbench/panel/RuntimeConnectionNotice";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { space } from "@flame/ui/tokens.stylex";
@@ -243,8 +244,10 @@ function ConversationContent({
         />
         <Slot name="chat.header.meta" />
       </AgentSurfaceHeader>
-      <Slot name="chat.search" />
-      <ChatStream onSend={onSend} />
+      <StreamFollowProvider>
+        <Slot name="chat.search" />
+        <ChatStream onSend={onSend} />
+      </StreamFollowProvider>
       <RunAnnouncer />
     </>
   );

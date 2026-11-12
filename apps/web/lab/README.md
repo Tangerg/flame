@@ -155,10 +155,14 @@ Workspace installs the production conversation Find plugin alongside its existin
 shortcut owner. `searchReading.browser.spec.ts` enters Find from an unsent draft
 through the real shortcut, checks visible active matches and keyboard navigation,
 and follows material retirement, focus return, resizing and continued editing in
-both browser engines and locales. It uses the existing Workspace scenario and
-production search state. Actual macOS composition is qualified separately in the
-same Lab through native Wails keys; browser text entry does not establish OS IME
-behavior. The scoped native evidence is recorded in
+both browser engines and locales. Its existing tasks retain the current word
+through ordinary 1120 × 755 and 1280 × 800 window frames, retire that witness after an
+actual nested-code wheel scroll, and resume only on explicit match navigation.
+Restoring the window also checks pending bottom-follow interference and later
+outside focus. These assertions use the existing Workspace scenario, production
+search state and real CSS Highlight ranges. Actual macOS composition is qualified
+separately in the same Lab through native Wails keys; browser text entry does not
+establish OS IME behavior. The scoped native evidence is recorded in
 [UI progress](../UI_PROGRESS.md#conversation-find-and-reading-return).
 
 Each component example owns only its local input, selection or disclosure state.

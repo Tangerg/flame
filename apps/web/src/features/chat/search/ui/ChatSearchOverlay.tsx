@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from 
 import { IconButton, isImeKey, TextField, useContentVisible, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useAppearanceProjection } from "@/lib/appearance";
+import { useStreamFollow, type StreamFollow } from "@/ui/agent/stream-follow";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import {
@@ -51,11 +52,13 @@ const EMPTY_SEARCH: SearchState = {
 
 function SessionChatSearchOverlay() {
   const appearance = useAppearanceProjection();
+  const follow = useStreamFollow();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const focusReturn = useRef<HTMLElement | null>(null);
+  const readingWitness = useRef({ visible: false, frame: [] as number[] });
 
   const requestOpen = useEffectEvent(() => {
     // Repeated Find from inside the bar keeps the original opener.
@@ -101,6 +104,16 @@ function SessionChatSearchOverlay() {
       matches.map((match) => match.range),
       activeIndex,
     );
+    const range = matches[activeIndex]?.range;
+    const frame = range ? readingFrame(range, root) : [];
+    // Host geometry publication also refreshes ranges; keep a pending reflow's visible witness.
+    if (retained < 0 || sameFrame(readingWitness.current.frame, frame)) {
+      readingWitness.current = {
+        visible:
+          !!range && !!barRef.current?.contains(document.activeElement) && isReadable(range, root),
+        frame,
+      };
+    }
   });
 
   useEffect(() => {
@@ -109,9 +122,66 @@ function SessionChatSearchOverlay() {
     return observeMessageChanges(root, refreshMatches);
   }, [open, search.query]);
 
+  const currentRange = search.matches[search.activeIndex]?.range;
+  const protectReading = useEffectEvent((range: Range) => stopFollowHidingMatch(range, follow));
+
+  useEffect(() => {
+    const bar = barRef.current;
+    const region = owningRegion(bar);
+    const viewport = currentRange?.startContainer.parentElement?.closest(".msg-scroll-viewport");
+    if (!open || !currentRange || !bar || !region || !viewport || !region.contains(viewport))
+      return;
+    const document = bar.ownerDocument;
+    let live = true;
+    const onResize = () => {
+      if (!live) return;
+      const frame = readingFrame(currentRange, region);
+      if (!bar.contains(document.activeElement)) readingWitness.current.visible = false;
+      // Content shrink can rearm follow without changing the reading frame.
+      if (readingWitness.current.visible) protectReading(currentRange);
+      if (sameFrame(readingWitness.current.frame, frame)) return;
+      if (readingWitness.current.visible) {
+        retainInFrames(currentRange, region);
+        protectReading(currentRange);
+      }
+      readingWitness.current.frame = readingFrame(currentRange, region);
+    };
+    const onScroll = (event: Event) => {
+      // Native reflow can deliver a clamped scroll before ResizeObserver; that is not reading.
+      if (!live || !sameFrame(readingWitness.current.frame, readingFrame(currentRange, region)))
+        return;
+      if (event.target instanceof Node && event.target.contains(currentRange.startContainer)) {
+        readingWitness.current.visible =
+          bar.contains(document.activeElement) && isReadable(currentRange, region);
+      }
+    };
+    const onFocus = () => {
+      if (live)
+        readingWitness.current.visible =
+          bar.contains(document.activeElement) && isReadable(currentRange, region);
+    };
+    const observer = new ResizeObserver(onResize);
+    for (const element of new Set([
+      viewport,
+      viewport.firstElementChild,
+      ...clippingAncestors(currentRange, region),
+    ])) {
+      if (element) observer.observe(element);
+    }
+    region.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    document.addEventListener("focusin", onFocus);
+    return () => {
+      live = false;
+      observer.disconnect();
+      region.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("focusin", onFocus);
+    };
+  }, [open, currentRange]);
+
   const reset = () => {
     clearChatSearchHighlights();
     focusReturn.current = null;
+    readingWitness.current = { visible: false, frame: [] };
     setSearch(EMPTY_SEARCH);
     setOpen(false);
   };
@@ -134,7 +204,13 @@ function SessionChatSearchOverlay() {
       found.map((match) => match.range),
       0,
     );
-    scrollRangeIntoView(found[0]?.range, appearance.read().motionScale);
+    const range = found[0]?.range;
+    stopFollowHidingMatch(range, follow);
+    scrollRangeIntoView(range, appearance.read().motionScale);
+    readingWitness.current = {
+      visible: !!range && !!root && isReadable(range, root),
+      frame: range && root ? readingFrame(range, root) : [],
+    };
   };
 
   const move = (delta: number) => {
@@ -146,7 +222,14 @@ function SessionChatSearchOverlay() {
       matches.map((match) => match.range),
       nextIndex,
     );
-    scrollRangeIntoView(matches[nextIndex]?.range, appearance.read().motionScale);
+    const range = matches[nextIndex]?.range;
+    stopFollowHidingMatch(range, follow);
+    scrollRangeIntoView(range, appearance.read().motionScale);
+    const region = owningRegion(barRef.current);
+    readingWitness.current = {
+      visible: !!range && !!region && isReadable(range, region),
+      frame: range && region ? readingFrame(range, region) : [],
+    };
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -242,4 +325,112 @@ function scrollRangeIntoView(range: Range | undefined, motionScale: number): voi
     block: "center",
     behavior: reduced ? "instant" : "smooth",
   });
+}
+
+type Edges = { left: number; right: number; top: number; bottom: number };
+
+const CLIPPING_OVERFLOW = new Set(["auto", "scroll", "hidden", "clip"]);
+
+function clippingAncestors(range: Range, region: HTMLElement): HTMLElement[] {
+  const clips: HTMLElement[] = [];
+  for (let at = range.startContainer.parentElement; at && at !== region; at = at.parentElement) {
+    const style = getComputedStyle(at);
+    if (CLIPPING_OVERFLOW.has(style.overflowX) || CLIPPING_OVERFLOW.has(style.overflowY)) {
+      clips.push(at);
+    }
+  }
+  return clips;
+}
+
+function clipEdges(element: HTMLElement): Edges {
+  const box = element.getBoundingClientRect();
+  const style = getComputedStyle(element);
+  const left = box.left + element.clientLeft;
+  const top = box.top + element.clientTop;
+  return {
+    left: left + (parseFloat(style.scrollPaddingLeft) || 0),
+    right: left + element.clientWidth - (parseFloat(style.scrollPaddingRight) || 0),
+    top: top + (parseFloat(style.scrollPaddingTop) || 0),
+    bottom: top + element.clientHeight - (parseFloat(style.scrollPaddingBottom) || 0),
+  };
+}
+
+function rangeEdges(range: Range): Edges | null {
+  const boxes = [...range.getClientRects()].filter((box) => box.width > 0 && box.height > 0);
+  if (boxes.length === 0) return null;
+  return {
+    left: Math.min(...boxes.map((box) => box.left)),
+    right: Math.max(...boxes.map((box) => box.right)),
+    top: Math.min(...boxes.map((box) => box.top)),
+    bottom: Math.max(...boxes.map((box) => box.bottom)),
+  };
+}
+
+function stopFollowHidingMatch(range: Range | undefined, follow: StreamFollow | null): void {
+  const viewport = follow?.scrollRef.current;
+  if (!range || !follow?.state.isAtBottom || !viewport?.contains(range.startContainer)) return;
+  const movement = follow.state.targetScrollTop - viewport.scrollTop;
+  if (movement <= 0) return;
+  const word = rangeEdges(range);
+  if (!word) return;
+  const clip = clipEdges(viewport);
+  if (word.top - movement < clip.top || word.bottom - movement > clip.bottom) follow.stopScroll();
+}
+
+function isReadable(range: Range, region: HTMLElement): boolean {
+  const word = rangeEdges(range);
+  return (
+    !!word &&
+    clippingAncestors(range, region).every((element) => {
+      const clip = clipEdges(element);
+      return (
+        word.left >= clip.left - 0.5 &&
+        word.right <= clip.right + 0.5 &&
+        word.top >= clip.top - 0.5 &&
+        word.bottom <= clip.bottom + 0.5
+      );
+    })
+  );
+}
+
+function readingFrame(range: Range, region: HTMLElement): number[] {
+  return clippingAncestors(range, region).flatMap((element) => {
+    const box = element.getBoundingClientRect();
+    const clip = clipEdges(element);
+    // Relative clip edges stay unchanged when a reader deliberately scrolls its ancestors.
+    return [
+      box.width,
+      box.height,
+      clip.left - box.left,
+      clip.right - box.left,
+      clip.top - box.top,
+      clip.bottom - box.top,
+    ];
+  });
+}
+
+function sameFrame(previous: number[], next: number[]): boolean {
+  return previous.length === next.length && previous.every((value, index) => value === next[index]);
+}
+
+function edgeDelta(start: number, end: number, min: number, max: number): number {
+  if (start >= min - 0.5 && end <= max + 0.5) return 0;
+  return start < min || end - start > max - min ? Math.floor(start - min) : Math.ceil(end - max);
+}
+
+function retainInFrames(range: Range, region: HTMLElement): void {
+  // Innermost first, so each outer scroll carries an already-placed nested reader.
+  for (const element of clippingAncestors(range, region)) {
+    const word = rangeEdges(range);
+    if (!word) return;
+    const clip = clipEdges(element);
+    const left = edgeDelta(word.left, word.right, clip.left, clip.right);
+    const top = edgeDelta(word.top, word.bottom, clip.top, clip.bottom);
+    if (left === 0 && top === 0) continue;
+    element.scrollTo({
+      left: element.scrollLeft + left,
+      top: element.scrollTop + top,
+      behavior: "instant",
+    });
+  }
 }

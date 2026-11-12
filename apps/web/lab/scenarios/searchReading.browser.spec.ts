@@ -313,59 +313,60 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await expect(status).toHaveText(/^1 \/ [1-9]\d*$/);
           return Number((await status.textContent())!.split(" / ")[1]);
         };
-        const expectActiveMatch = async (label: string) => {
-          const geometry = () =>
-            conversation.evaluate((region) => {
-              const ranges = [...(CSS.highlights.get("search-match-active") ?? [])];
-              const range = ranges[0];
-              const parent = range?.startContainer.parentElement;
-              const viewport = parent?.closest<HTMLElement>(".msg-scroll-viewport");
-              if (ranges.length !== 1 || !(range instanceof Range) || !parent || !viewport)
-                return null;
-              const outside = viewport.getBoundingClientRect();
-              const style = getComputedStyle(viewport);
-              const frame = {
-                left: Math.max(outside.left + viewport.clientLeft, 0),
-                right: Math.min(
-                  outside.left + viewport.clientLeft + viewport.clientWidth,
-                  innerWidth,
+        const activeMatchGeometry = () =>
+          conversation.evaluate((region) => {
+            const ranges = [...(CSS.highlights.get("search-match-active") ?? [])];
+            const range = ranges[0];
+            const parent = range?.startContainer.parentElement;
+            const viewport = parent?.closest<HTMLElement>(".msg-scroll-viewport");
+            if (ranges.length !== 1 || !(range instanceof Range) || !parent || !viewport)
+              return null;
+            const outside = viewport.getBoundingClientRect();
+            const style = getComputedStyle(viewport);
+            const frame = {
+              left: Math.max(outside.left + viewport.clientLeft, 0),
+              right: Math.min(
+                outside.left + viewport.clientLeft + viewport.clientWidth,
+                innerWidth,
+              ),
+              top: outside.top + parseFloat(style.scrollPaddingTop),
+              bottom: outside.bottom - parseFloat(style.scrollPaddingBottom),
+            };
+            const pre = parent.closest("pre");
+            if (pre) {
+              const box = pre.getBoundingClientRect();
+              frame.left = Math.max(frame.left, box.left + pre.clientLeft);
+              frame.right = Math.min(frame.right, box.left + pre.clientLeft + pre.clientWidth);
+              frame.top = Math.max(frame.top, box.top + pre.clientTop);
+              frame.bottom = Math.min(frame.bottom, box.top + pre.clientTop + pre.clientHeight);
+            }
+            const boxes = [...range.getClientRects()].filter((box) => box.width && box.height);
+            return {
+              text: range.toString(),
+              owned: region.contains(parent),
+              frame,
+              boxes: boxes.map((box) => box.toJSON()),
+              visible:
+                boxes.length > 0 &&
+                boxes.every(
+                  (box) =>
+                    box.left >= frame.left - 0.5 &&
+                    box.right <= frame.right + 0.5 &&
+                    box.top >= frame.top - 0.5 &&
+                    box.bottom <= frame.bottom + 0.5,
                 ),
-                top: outside.top + parseFloat(style.scrollPaddingTop),
-                bottom: outside.bottom - parseFloat(style.scrollPaddingBottom),
-              };
-              const pre = parent.closest("pre");
-              if (pre) {
-                const box = pre.getBoundingClientRect();
-                frame.left = Math.max(frame.left, box.left + pre.clientLeft);
-                frame.right = Math.min(frame.right, box.left + pre.clientLeft + pre.clientWidth);
-                frame.top = Math.max(frame.top, box.top + pre.clientTop);
-                frame.bottom = Math.min(frame.bottom, box.top + pre.clientTop + pre.clientHeight);
-              }
-              const boxes = [...range.getClientRects()].filter((box) => box.width && box.height);
-              return {
-                text: range.toString(),
-                owned: region.contains(parent),
-                frame,
-                boxes: boxes.map((box) => box.toJSON()),
-                visible:
-                  boxes.length > 0 &&
-                  boxes.every(
-                    (box) =>
-                      box.left >= frame.left - 0.5 &&
-                      box.right <= frame.right + 0.5 &&
-                      box.top >= frame.top - 0.5 &&
-                      box.bottom <= frame.bottom + 0.5,
-                  ),
-              };
-            });
+            };
+          });
+        const expectActiveMatch = async (label: string) => {
           try {
-            await expect.poll(async () => (await geometry())?.visible).toBe(true);
-            const current = await geometry();
+            await expect.poll(async () => (await activeMatchGeometry())?.visible).toBe(true);
+            const current = await activeMatchGeometry();
+            expect(current?.visible).toBe(true);
             expect(current?.owned).toBe(true);
             expect(current?.text.toLowerCase()).toBe(query.toLowerCase());
           } finally {
             await testInfo.attach(`chat-search-${label}-active-match`, {
-              body: JSON.stringify(await geometry()),
+              body: JSON.stringify(await activeMatchGeometry()),
               contentType: "application/json",
             });
           }
@@ -504,6 +505,12 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await expect(mounted).toHaveCount(0);
         await expect(material).toBeFocused();
         await capture("material");
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await expect(mounted).toHaveCount(0);
+        await expect(material).toBeFocused();
+        await page.setViewportSize({ width: 1120, height: 755 });
+        await expect(mounted).toHaveCount(0);
+        await expect(material).toBeFocused();
         await page.getByRole("button", name("common.close")).click();
         await expect(conversation).toBeVisible();
         await expectDraft();
@@ -516,11 +523,61 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await page.keyboard.type(query);
         expect(await matchTotal()).toBe(total);
         await expectBar("reopened");
-        await page.setViewportSize({ width: 563, height: 366 });
+        await page.keyboard.press("Enter");
+        await expect(status).toHaveText(`2 / ${total}`);
+        await expectActiveMatch("before-reflow");
+        await page.setViewportSize({ width: 1280, height: 800 });
         await expect(field).toHaveValue(query);
-        await expectBar("563x366");
+        await expect(status).toHaveText(`2 / ${total}`);
+        await expectBar("normal-larger-window");
+        await expectActiveMatch("normal-larger-window");
         await page.setViewportSize({ width: 1120, height: 755 });
         await expect(field).toHaveValue(query);
+        await expect(status).toHaveText(`2 / ${total}`);
+        await expectBar("normal-restored-window");
+        await expectActiveMatch("normal-restored-window");
+        const code = conversation.locator("pre").first();
+        const word = (await activeMatchGeometry())!.boxes[0]!;
+        const beforeWheel = await code.evaluate((node) => node.scrollTop);
+        await page.mouse.move(word.left + word.width / 2, word.top + word.height / 2);
+        await page.mouse.wheel(0, 1200);
+        await expect
+          .poll(() => code.evaluate((node) => node.scrollTop))
+          .toBeGreaterThan(beforeWheel);
+        await expect.poll(async () => (await activeMatchGeometry())?.visible).toBe(false);
+        await capture("wheel-exit");
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await expectBar("wheel-reflow");
+        await expect(status).toHaveText(`2 / ${total}`);
+        await expect.poll(async () => (await activeMatchGeometry())?.visible).toBe(false);
+        expect(await code.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+        await testInfo.attach("chat-search-wheel-retired-match", {
+          body: JSON.stringify(await activeMatchGeometry()),
+          contentType: "application/json",
+        });
+        await page.keyboard.press("Shift+Enter");
+        await expect(status).toHaveText(`1 / ${total}`);
+        await expectActiveMatch("explicit-resume");
+        await page.setViewportSize({ width: 1120, height: 755 });
+        await expect(field).toHaveValue(query);
+        await expect(status).toHaveText(`1 / ${total}`);
+        await expectActiveMatch("restored");
+        await composer.click();
+        await page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await expect(composer).toBeFocused();
+        await expectDraft();
+        await page.setViewportSize({ width: 1120, height: 755 });
+        await expect(composer).toBeFocused();
+        await expectDraft();
+        expect(
+          await composer.evaluate((node) => {
+            const draft = node as HTMLTextAreaElement;
+            return [draft.selectionStart, draft.selectionEnd];
+          }),
+        ).toEqual([profile.draft.length, profile.draft.length]);
+        await openFind();
+        await expect.poll(selection).toEqual([0, query.length]);
         await expect(status).toHaveText(`1 / ${total}`);
         await expectBar("restored");
 

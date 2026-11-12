@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
-import { publishStreamFollow } from "@/features/shell/workbench/panel/streamFollow";
+import { usePublishStreamFollow } from "@/ui/agent/stream-follow";
 import { type BlockCtx } from "@/features/chat/public/message/rendering";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
-import { useEffect, type PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { cn } from "@/lib/classNames";
 import { useContentVisible } from "@/ui/index";
@@ -43,15 +43,7 @@ interface Props {
 
 function ControlsRelay() {
   const ctx = useStickToBottomContext();
-  useEffect(() => {
-    publishStreamFollow({
-      atBottom: ctx.isAtBottom,
-      scrollToBottom: () => {
-        ctx.contentRef.current?.focus({ preventScroll: true });
-        void ctx.scrollToBottom();
-      },
-    });
-  });
+  usePublishStreamFollow(ctx);
   return null;
 }
 

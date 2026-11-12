@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge, and the original Wails production entry renders successfully. The Lab remains the sole visual verification owner through its supported HTTP entry. Workspace now includes the production conversation Find plugin. English/Chinese native tasks qualify Find, material return, multiline draft continuation, 200%/300% zoom and all five footer targets at 300%. Real macOS Chinese composition qualifies the observed Composer and Find Enter/Escape paths. Whole-product visual acceptance and live Runtime execution remain open.
+UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge, and the Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for future acceptance; the user explicitly stopped zoom stress testing.** Conversation Find now shares its own stream's follow controller, preserves visible reading during normal reflow, and leaves deliberate reading and later focus with their owners. Whole-product visual acceptance and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -20887,6 +20887,89 @@ Dialog and HeroUI modal references inform the bounded task model; static Ace
 artwork supplies no keyboard evidence.
 
 ## Conversation Find and reading return
+
+The current follow-up fixes normal Find navigation being carried away by a
+pending bottom-follow tick. A passive trace in the existing Lab proves real
+`use-stick-to-bottom` resize/animation writes: the first visible `Runtime` word
+moves from y132 to y-177 while query and counter stay unchanged. The actual
+MessageStream controller now belongs to its Conversation through
+`ui/agent/stream-follow.tsx`. Find and Jump to bottom consume that same controller;
+the former module-global projection is removed. Only a follow destination that
+would hide the current word is stopped. Library follow remains the sole owner.
+
+`ChatSearchOverlay.tsx` retains an already-visible current Range through actual
+viewport/content/code-clip changes. Scroll padding and nested clipping determine
+minimal absolute offsets. A layout scroll delivered before resize cannot erase
+its pending witness. Content-only refresh, deliberate scrolling away, outside
+focus, close, hidden material and Session retirement do not request another
+reveal. No copied query, index, caret snapshot, Runtime state or follow mode is
+introduced. Read-only ZCode `conversationFindHighlightDom.ts` supplies explicit
+Find reveal evidence; the pinned follow library's actual lifecycle supplies the
+cancellation boundary. Better-layout and better-accessibility guide the review.
+
+**Latest acceptance scope:** the user explicitly stopped meaningless zoom
+sweeps. Future work uses default zoom, ordinary windows and real task paths.
+The existing Lab Find tasks now use **1120 × 755 and 1280 × 800**; miniature
+viewport stress frames have been removed. Earlier zoom receipts are historical
+and are not a requirement to repeat. No second visual route, configuration,
+runner or fixture is added.
+
+Final owner verification passes **151 tests in 10 files** (**80.149 s**), including
+Find lifecycle/geometry, scoped controller replacement, Workbench continuity and
+all affected frontend files that failed in later aggregate attempts. Restoring
+the original overlay against its final regressions fails seven and passes 61,
+then restores the exact accepted bytes in `finally`. Final normal-window Lab
+integration passes **11/11** (**69.533 s**), with no skipped, flaky or global-error
+results. All forty positive active-Range records are visible. Typecheck, lint and
+all non-test Web gates pass. `make check-native` passes in **60.731 s**; canonical
+Lab and both private native host builds pass.
+
+The complete Web aggregate is **not reported green**. Its first attempt passes
+all **434 files / 4,872 tests** before the dead-token guard rejects a test-only
+custom property; normal `style.height` replaces that trigger and the guard passes.
+Later aggregate attempts hit the unchanged icon matrix's 5-second deadline. The
+last attempt records five frontend failures (timeouts, unsettled highlighting
+and a syntax-colour assertion), plus Runtime's 60-second setup/shutdown failure
+and 52 unexecuted Runtime cases. The final 151-test owner run passes all those
+frontend files. Concurrent unrelated Go tests and substantial host swapping are
+observed; no assertion or deadline is weakened. The Runtime aggregate failure
+remains recorded rather than being reclassified as a new successful run.
+
+Actual Wails v3.1.0 acceptance uses the **488 canonical HTTP Lab assets**, with
+only the host's initial URL privately changed. EN/light/14 px/Orange/full motion
+and ZH/dark/18 px/blue/motion off pass normal Find navigation, Escape return, two
+material visits each, hidden Find refusal and a fresh empty query after return.
+English preserves and continues its padded fifth line. Chinese preserves the
+existing one-line draft: the intended multiline seed did not land, so that paste
+is not claimed as Chinese multiline-input evidence. All five Chinese footer
+controls receive visible native Tab focus at default zoom. No further zoom
+commands run after the user's instruction; earlier English stress observations
+are historical only. No new physical-IME or live Send/Stop claim is made.
+
+One interrupted native phase receives 362 non-tool wheel events and is excluded
+from acceptance. A bounded passive diagnostic forwards original setters,
+`scrollTo` and ResizeObserver callbacks through the same Lab entry. A clean
+window task records no wheel events and retains the current word. The exact
+canonical HTML and all 488 asset hashes are restored before final uninstrumented
+acceptance; no speculative extra product fix is added. The archive retains
+**99 original images and 109 AX records**, including historical and diagnostic
+captures; accepted normal task images and original metadata are reviewed.
+
+A bounded Claude source audit exits 0; its implementation call reaches the
+configured 20-turn limit (21 reported), exits 1 and leaves a partial candidate
+without tests. Primary review completes and verifies the change. Evidence uses
+`flame-lab-find-1k7_srjl`. All five owned native instances quit, registrations and
+twelve private Library paths are absent, and the exact owned HTTP process exits
+130 after SIGINT. All thirteen output/cache roots are restored. A failed-check
+Runtime root is attributed by its three matching private prerequisite binaries,
+closed handles and creation interval, then removed; the two unrelated roots stay
+untouched. Concurrent dirty work in the primary checkout is observed and is never
+edited. Publication and guarded QA-root retirement retain their receipts in the
+external evidence archive. There is no data migration. Further polishing needs a
+new normal-use observation; do not resume extreme zoom testing or reopen completed
+formula, camera or table work from older notes.
+
+The earlier canonical Lab follow-up below is historical evidence.
 
 The **2026-11-12 canonical Lab follow-up** closes a fixture coverage gap. On
 `9bdc99932`, native Cmd+F from the Workspace Composer does nothing because the

@@ -736,10 +736,18 @@ captured messages nor such run details.
 
 Conversation Find follows rendered message changes while its query is open.
 Refreshes retain the selected occurrence in its message, rebuild current highlight
-ranges and preserve focus and reading position. Only query changes and explicit
-navigation request a match reveal; hiding or closing retires the observer with
-the existing search lifetime. The Find scope owns Escape and query navigation;
-zero-result navigation buttons keep focus while refusing activation.
+ranges and preserve focus and reading position. Query changes and explicit
+navigation reveal a match. While Find owns focus, reflow retains an already
+visible current word inside its actual transcript and nested code clips. Manual
+scrolling away, later outside focus, hiding and closing retire that reading
+witness. Content-only refresh does not reveal another match.
+
+The Conversation publishes its actual MessageStream follow controller through
+`ui/agent/stream-follow.tsx`; Find and Jump to bottom consume the same scoped
+controller. Find stops pending bottom follow only when its destination would
+hide the current word. There is no global follow registry or second follow mode.
+The Find scope owns Escape and query navigation; zero-result navigation buttons
+keep focus while refusing activation.
 
 Conversation notices share one named keyboard reader, capped at 40% of their
 conversation pane. Long Run errors, working-directory notices and contributed
