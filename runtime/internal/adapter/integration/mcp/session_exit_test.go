@@ -15,18 +15,36 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func observedTestSession(t *testing.T, owner *connections, name mcpserver.ID, closed *atomic.Int32) (*sdk.ClientSession, *sdk.ServerSession, []Executable) {
+type sessionExitTransport struct {
+	sdk.Transport
+	connection sdk.Connection
+}
+
+func (t *sessionExitTransport) Connect(ctx context.Context) (sdk.Connection, error) {
+	connection, err := t.Transport.Connect(ctx)
+	if err == nil {
+		t.connection = connection
+	}
+	return connection, err
+}
+
+func observedTestSession(t *testing.T, owner *connections, name mcpserver.ID, closed *atomic.Int32) (*sdk.ClientSession, func() error, []Executable) {
 	t.Helper()
 	remote := sdk.NewServer(&sdk.Implementation{Name: "observed"}, nil)
 	remote.AddTool(&sdk.Tool{Name: "read", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(context.Context, *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		return &sdk.CallToolResult{}, nil
 	})
 	serverTransport, clientTransport := sdk.NewInMemoryTransports()
-	serverSession, err := remote.Connect(t.Context(), serverTransport, nil)
+	transport := &sessionExitTransport{Transport: serverTransport}
+	serverSession, err := remote.Connect(t.Context(), transport, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = serverSession.Close() })
+	// A peer exit breaks I/O; graceful session close drains RPCs and is a different event.
+	t.Cleanup(func() {
+		_ = transport.connection.Close()
+		_ = serverSession.Close()
+	})
 	clientSession, err := owner.client.Connect(t.Context(), clientTransport, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -51,20 +69,20 @@ func observedTestSession(t *testing.T, owner *connections, name mcpserver.ID, cl
 	current.settle(clientSession, tools, mcpserver.ConnectionConnected, "", nil)
 	owner.publishToolsLocked(name)
 	owner.mu.Unlock()
-	return clientSession, serverSession, tools
+	return clientSession, transport.connection.Close, tools
 }
 
 func TestNaturalSessionExitWithdrawsItsCatalogAndDispatchAuthority(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		owner := newTestConnections(t)
 		var closes atomic.Int32
-		session, remote, tools := observedTestSession(t, owner, testsupport.UserMCPServer("files"), &closes)
+		session, exit, tools := observedTestSession(t, owner, testsupport.UserMCPServer("files"), &closes)
 		var published atomic.Int32
 		owner.setToolSink(func(tools []Executable, _, _ []mcpserver.ID) { published.Store(int32(len(tools))) })
 		if !tools[0].Current() || published.Load() != 1 {
 			t.Fatal("control session was not live")
 		}
-		if err := remote.Close(); err != nil {
+		if err := exit(); err != nil {
 			t.Fatal(err)
 		}
 		if err := session.Wait(); err != nil {
@@ -101,9 +119,9 @@ func TestLateSessionExitCannotWithdrawItsReplacement(t *testing.T) {
 		owner := newTestConnections(t)
 		name := testsupport.UserMCPServer("files")
 		var oldCloses, newCloses atomic.Int32
-		_, oldRemote, oldTools := observedTestSession(t, owner, name, &oldCloses)
+		_, oldExit, oldTools := observedTestSession(t, owner, name, &oldCloses)
 		_, _, newTools := observedTestSession(t, owner, name, &newCloses)
-		if err := oldRemote.Close(); err != nil {
+		if err := oldExit(); err != nil {
 			t.Fatal(err)
 		}
 		synctest.Wait()
@@ -128,9 +146,9 @@ func TestSessionExitDetachAndShutdownShareOneRetirement(t *testing.T) {
 		owner := newTestConnections(t)
 		name := testsupport.UserMCPServer("files")
 		var closes atomic.Int32
-		_, remote, _ := observedTestSession(t, owner, name, &closes)
+		_, exit, _ := observedTestSession(t, owner, name, &closes)
 		stopped := make(chan error, 3)
-		go func() { stopped <- remote.Close() }()
+		go func() { stopped <- exit() }()
 		go func() {
 			err := owner.detach(name)
 			if errors.Is(err, errConnectionsClosed) {

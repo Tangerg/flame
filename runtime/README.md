@@ -1749,6 +1749,11 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## MCP OAuth credentials
 
+Loopback callbacks reject malformed form encoding, invalid UTF-8 and repeated code,
+state, error or issuer fields before consuming the pending authorization state.
+The admitted issuer value reaches the SDK unchanged; issuer matching and token
+exchange remain SDK-owned.
+
 MCP OAuth credentials belong to one persisted authorization grant per MCP source, bound to the fingerprint of the OAuth target that requested it. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. A changed credential recipient (a user server's endpoint or headers; an installation server's endpoint declaration, or for stdio its release) yields a different target, so an earlier credential simply never matches it; there is no trigger or write-time deletion. Descriptive metadata and Tool policy changes preserve the target. Removing the source removes its credentials by cascade. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Pre-release databases without the current grant and target bindings require a fresh data directory; saved credentials are not converted during opening.
 
 ## Integration probes
