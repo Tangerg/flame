@@ -6890,11 +6890,11 @@ the **8 Workspace command tests** pass in **12.06 s**. `make check-native` passe
 normal Web staging, Wails build and Desktop test/vet/build. The ordinary Lab build
 passes with **484 assets**, without the private refusal seam.
 
-Native qualification uses the source-composed Brand component through
-`InstalledComponent` in the existing Workspace settings scene. The normal Lab
-installer imports the component's TSX; published-resource reproduction is checked
-separately. The earlier published-ESM qualification wording was too broad and is
-corrected here. A temporary compilation substitutes only its public `saveFile` collaborator:
+Native qualification uses published Brand ESM through `InstalledComponent` in the
+existing Workspace settings scene. Its installer eagerly imports the published
+`components/component.js`; unlike the Skills entry, it does not import TSX.
+This qualifies prebuilt presentation, not Runtime installation/resource leasing.
+A temporary compilation substitutes only its public `saveFile` collaborator:
 valid Brand PNG requests receive `Recorded isolated save refusal.`. Baseline and
 candidate use that same refusal. The fixture source is restored byte-for-byte
 after each build; no permanent fixture, variant or production branch is added.
@@ -6997,11 +6997,10 @@ Final verification passes:
   No manifest, check or global configuration changes. The normal final Lab build
   passes in **7.60 s**, with **484 assets** and no private seam.
 
-Native qualification uses the source-composed Brand component through
-`InstalledComponent` and the shared UI in the existing Workspace scene. The
-normal installer imports TSX; the published-resource build/check is separate,
-and the earlier published-ESM qualification wording is corrected here. The
-private copied HTML substitutes only public
+Native qualification uses published Brand ESM through `InstalledComponent` and
+shared UI in the existing Workspace scene. The installer eagerly imports the
+published `components/component.js`; Runtime installation/resource leasing remains
+outside this receipt. The private copied HTML substitutes only public
 `navigator.clipboard.writeText`: it validates `#FB6E30`, holds the first successful
 acknowledgement, then resolves the second before the first. A guarded module entry
 prevents the UI from rendering unless that isolated collaborator is installed.
@@ -30081,7 +30080,7 @@ Final verification passes:
   is unchanged; the preceding complete **288-test** and packed-consumer check is
   retained rather than rerun. No aggregate full-Web or backend suite is claimed.
 
-The normal Lab installer composes component TSX through `InstalledComponent`.
+The Lab's Skills entry composes component TSX through `InstalledComponent`.
 That native baseline establishes the presentation defect, independently of the
 published-resource check. For this batch's explicit ESM qualification, a private
 build temporarily changes only the Skills import to its exact published
