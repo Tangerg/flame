@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge. The original Wails production entry renders successfully; the rejected embedded Lab entry violates its HTTP-only observation contract. Pointer-entered source reading now retains its fitting context through native zoom and minimum-window reflow. English/Chinese native Lab tasks cover actual 200%/300% zoom, detail return, exact draft continuation and all five footer targets at 300%. The Lab remains the sole visual verification owner. Whole-product visual acceptance and live Runtime execution remain open.
+UI polishing is **active at the user's request**. Native control works through the bundled Sky bridge, and the original Wails production entry renders successfully. The Lab remains the sole visual verification owner through its supported HTTP entry. Workspace now includes the production conversation Find plugin. English/Chinese native tasks qualify Find, material return, multiline draft continuation, 200%/300% zoom and all five footer targets at 300%. Real macOS Chinese composition qualifies the observed Composer and Find Enter/Escape paths. Whole-product visual acceptance and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -73,15 +73,18 @@ return and exactly continue a padded six-line unsent draft. All **five footer
 controls** receive visible native keyboard focus at 300%. English completes the
 whole task with observation off; Chinese repeats 200%/300% pointer reading with
 observation off after its diagnostic task. No Send or Runtime mutation is activated.
-The current batch retains **100 original JPEGs and 109 AX records**, including its
+The pointer-entry batch retains **100 original JPEGs and 109 AX records**, including its
 original baseline and two explicitly assessed diagnostic exceptions. Every indexed
 image is verified and reviewed. All three launched native instances are absent
 after native Quit, all three private registrations and twelve private Library
 paths are absent, and the owned HTTP server exits **130** after verified SIGINT.
 The prior production-entry investigation and its `flame-startup-ceytolkm` evidence
-remain applicable; current evidence and publication receipts use `flame-reader-rbips9p7`.
-Physical IME, VoiceOver speech, RTL, older-macOS distribution and whole-product
-visual acceptance remain unqualified.
+remain applicable; that evidence and its publication receipts use `flame-reader-rbips9p7`.
+Its paste-based tasks do not qualify OS IME. The later
+[Conversation Find follow-up](#conversation-find-and-reading-return) adds the
+production plugin to the existing Lab and qualifies real macOS composition.
+VoiceOver speech, RTL, older-macOS distribution and whole-product visual acceptance
+remain unqualified.
 
 ### Linked icon loading in Lab development (2026-11-09)
 
@@ -20884,6 +20887,76 @@ Dialog and HeroUI modal references inform the bounded task model; static Ace
 artwork supplies no keyboard evidence.
 
 ## Conversation Find and reading return
+
+The **2026-11-12 canonical Lab follow-up** closes a fixture coverage gap. On
+`9bdc99932`, native Cmd+F from the Workspace Composer does nothing because the
+fixture omits the production search plugin. `installVisualWorkspaceFixture.ts`
+now installs that plugin once beside its existing shortcut owner. No additional
+provider, bootstrap, route, scene, visual runner or production handler is added.
+The earlier private-bootstrap qualification below remains historical evidence.
+
+The existing `searchReading.browser.spec.ts` adds four complete Workspace tasks:
+Chromium/WebKit with English/light/14 px and Chinese/dark/18 px. Each retains the
+same padded five-line textarea, opens Find with the real shortcut, navigates the
+49 captured `Runtime` matches with next/previous/wraparound, and verifies the active word
+against actual transcript scroll padding and CodeFrame clipping bounds. Repeated
+Find selects the query; Escape returns to the original draft. Full-width material
+retires Find, refuses hidden reopening, and returns to the same draft. A later
+Find starts empty. All Find controls remain contained and hit-testable through
+563 × 366 and restored frames, followed by exact continued editing.
+
+The final search integration run passes **11/11** in **32.107 s** with no skipped,
+flaky or global-error results. Restoring only the original fixture registration
+fails all four new tasks at the missing real Find entry (**34.708 s**), then
+restores the exact candidate bytes in `finally`. The initial test failures are
+retained: a resize rail intersected only the bar's empty gutter, and the wide
+Dock action uses `dock.action.expand`. Geometry now checks actual controls/status
+and the unchanged complete bar bounds. A typecheck failure is corrected by
+requiring a live `Range` before reading CSS Highlight geometry. No check,
+deadline or valid assertion is weakened.
+
+Actual Wails **v3.1.0** uses the same **488 canonical HTTP Lab assets**, with only
+the production host's initial URL changed privately. English/light/14 px/Orange/
+full motion and Chinese/dark/18 px/blue/motion off qualify native Find navigation,
+reselection, Escape return, 200%/300% zoom, minimum/enlarged/restored windows,
+two material visits per locale, wheel reading and continued fifth-line editing.
+All five Composer footer targets receive visible native Tab focus at 300%.
+Find focus retains the existing Composer reading scrollport budget; editing
+focus reveals its controls. Zoom retains the query/index; the next real match
+navigation reveals the selected code word. Automatic current-match reveal after
+every resize is not qualified by these tasks.
+
+Chinese composition uses real native letter keys: marked `ni'hao` becomes
+`你好` with Space in both Composer and Find. Enter commits the observed raw Latin
+composition without sending the draft or advancing Find's first match; a later
+explicit Enter advances it. Escape cancels marked text while retaining committed
+input and the Find field. Shift+Enter creates the observed draft newline. The
+original ASCII input source is restored through the same native shortcut and
+verified with literal letter/Space input. Seed/continuation paste is recorded
+separately and is not the evidence for Chinese conversion. Native multiline AX
+adds a separator newline: raw projections are retained unchanged, return compares
+the same projection, and final visible fifth-line continuation verifies placement.
+No native event-order or key-code instrumentation claim is made.
+
+Focused owner coverage passes **71 tests in three files** (**5.474 s**).
+The complete Web gate passes **433 files / 4,853 tests** (**254.858 s** command,
+**216.06 s** test duration). The ordinary native gate passes in **72.018 s**;
+the final Lab build takes **2.315 s**, and both final native host builds pass.
+Two bounded Claude Code CLI calls exit **0** without permission denials; primary
+review corrects and verifies the candidate rather than accepting its report.
+Evidence uses `flame-lab-ime-l0gs1qrz`: **92 original JPEGs and 96 AX records**,
+including four AX-only Window menus. All indexed originals are verified/reviewed.
+Three native instances quit, their registrations and twelve private Library paths
+are absent, and the owned HTTP server exits **130** after verified SIGINT.
+The thirteen output/cache roots are restored before publication. Unrelated work
+in the primary checkout and pre-existing helper roots is preserved.
+
+This qualifies the observed macOS IME and recorded Lab task. Live Send, running
+Stop, provider execution, VoiceOver audio, other IME variants, RTL and other
+platform versions remain outside it. There is no data migration. Future search
+reflow work should first reproduce the retained-current-match behavior through
+the same Lab; do not reopen the already completed formula, camera or table work
+from older pending notes.
 
 At delivered main `13a4cef05`, actual Wails reproduced a globally fixed Find
 bar covering the Dock header, Escape from the query losing focus to body,

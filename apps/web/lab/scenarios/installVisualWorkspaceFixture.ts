@@ -36,6 +36,7 @@ import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { splitFilePath } from "@/lib/path";
 import shortcutsSettings from "@/features/command/shortcuts/index";
+import chatSearch from "@/features/chat/search/index";
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import { workbenchSettings } from "@/features/shell/workbench/index";
 import appearanceSettings from "@/features/settings/appearance";
@@ -756,6 +757,7 @@ export async function installVisualWorkspaceFixture(
     appearanceSettings,
     createProviderCatalogPlugin(runtimeClient),
     shortcutsSettings(visual.workspace.access),
+    chatSearch,
     workspaceKeymap(visual.workspace.access),
     approvalsSettings,
     connectionSettings,

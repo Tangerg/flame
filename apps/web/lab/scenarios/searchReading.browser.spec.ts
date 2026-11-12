@@ -1,6 +1,8 @@
 import { contrastRatio, WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 import { expect, test, type Locator, type Page } from "./test";
 import { expectLabReady } from "../readiness";
+import { en } from "@/lib/i18n/locales/en";
+import zh from "../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 async function openOutput(page: Page, query = "") {
   await page.goto(`/lab/fixture.html?fixture=agent&state=tool-shells${query}`);
   await expectLabReady(page);
@@ -242,3 +244,301 @@ test("bounded output, inspector code and Dock evidence release vertical scrollin
   const outer = dock.locator('[data-slot="panel"]').locator("..");
   await expectVerticalContinuation(page, evidence, outer);
 });
+
+for (const browserName of ["chromium", "webkit"] as const) {
+  for (const profile of [
+    {
+      locale: "en",
+      theme: "light",
+      fontSize: 14,
+      messages: en,
+      draft:
+        "  Keep this search draft.\nFind the recorded evidence.\n\nReturn without sending.\n  End  ",
+      continuation: " Continue after Find.",
+    },
+    {
+      locale: "zh",
+      theme: "dark",
+      fontSize: 18,
+      messages: zh,
+      draft: "  保留这份搜索草稿。\n查找已记录的证据。\n\n返回后不要发送。\n  结束  ",
+      continuation: "继续核对。",
+    },
+  ] as const) {
+    test.extend({ browserName })(
+      `${browserName} conversation Find opens from the draft and retires with material in ${profile.locale}`,
+      async ({ page, browserName: actualBrowserName }, testInfo) => {
+        expect(actualBrowserName).toBe(browserName);
+        const messages: Record<string, string> = profile.messages;
+        const name = (key: string) => ({ name: messages[key]!, exact: true });
+        const capture = async (label: string) =>
+          testInfo.attach(`chat-search-${label}.png`, {
+            body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+            contentType: "image/png",
+          });
+        await page.setViewportSize({ width: 1120, height: 755 });
+        const link = new URLSearchParams({
+          fixture: "workspace",
+          state: "dock-trajectory",
+          "agent-state": "code-reading",
+          locale: profile.locale,
+          theme: profile.theme,
+          "font-size": String(profile.fontSize),
+        });
+        await page.goto(`/lab/fixture.html?${link}`);
+        await expectLabReady(page);
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+        const conversation = page.getByRole("region", name("shell.region.conversation"));
+        const composer = page.getByRole("textbox", name("composer.input.label"));
+        await composer.fill(profile.draft);
+        const input = (await composer.elementHandle())!;
+        const bar = conversation.getByRole("search", name("chatSearch.label"));
+        const field = bar.locator("input");
+        const status = bar.getByRole("status");
+        const mounted = page.getByRole("search", {
+          ...name("chatSearch.label"),
+          includeHidden: true,
+        });
+        const query = "Runtime";
+
+        const expectDraft = async () => {
+          expect(await composer.evaluate((node, held) => node === held, input)).toBe(true);
+          await expect(composer).toHaveValue(profile.draft);
+        };
+        const openFind = async () => {
+          await page.keyboard.press("ControlOrMeta+f");
+          await expect(field).toBeFocused();
+        };
+        const matchTotal = async () => {
+          await expect(status).toHaveText(/^1 \/ [1-9]\d*$/);
+          return Number((await status.textContent())!.split(" / ")[1]);
+        };
+        const expectActiveMatch = async (label: string) => {
+          const geometry = () =>
+            conversation.evaluate((region) => {
+              const ranges = [...(CSS.highlights.get("search-match-active") ?? [])];
+              const range = ranges[0];
+              const parent = range?.startContainer.parentElement;
+              const viewport = parent?.closest<HTMLElement>(".msg-scroll-viewport");
+              if (ranges.length !== 1 || !(range instanceof Range) || !parent || !viewport)
+                return null;
+              const outside = viewport.getBoundingClientRect();
+              const style = getComputedStyle(viewport);
+              const frame = {
+                left: Math.max(outside.left + viewport.clientLeft, 0),
+                right: Math.min(
+                  outside.left + viewport.clientLeft + viewport.clientWidth,
+                  innerWidth,
+                ),
+                top: outside.top + parseFloat(style.scrollPaddingTop),
+                bottom: outside.bottom - parseFloat(style.scrollPaddingBottom),
+              };
+              const pre = parent.closest("pre");
+              if (pre) {
+                const box = pre.getBoundingClientRect();
+                frame.left = Math.max(frame.left, box.left + pre.clientLeft);
+                frame.right = Math.min(frame.right, box.left + pre.clientLeft + pre.clientWidth);
+                frame.top = Math.max(frame.top, box.top + pre.clientTop);
+                frame.bottom = Math.min(frame.bottom, box.top + pre.clientTop + pre.clientHeight);
+              }
+              const boxes = [...range.getClientRects()].filter((box) => box.width && box.height);
+              return {
+                text: range.toString(),
+                owned: region.contains(parent),
+                frame,
+                boxes: boxes.map((box) => box.toJSON()),
+                visible:
+                  boxes.length > 0 &&
+                  boxes.every(
+                    (box) =>
+                      box.left >= frame.left - 0.5 &&
+                      box.right <= frame.right + 0.5 &&
+                      box.top >= frame.top - 0.5 &&
+                      box.bottom <= frame.bottom + 0.5,
+                  ),
+              };
+            });
+          try {
+            await expect.poll(async () => (await geometry())?.visible).toBe(true);
+            const current = await geometry();
+            expect(current?.owned).toBe(true);
+            expect(current?.text.toLowerCase()).toBe(query.toLowerCase());
+          } finally {
+            await testInfo.attach(`chat-search-${label}-active-match`, {
+              body: JSON.stringify(await geometry()),
+              contentType: "application/json",
+            });
+          }
+        };
+        const expectBar = async (label: string) => {
+          await expect(field).toBeFocused();
+          const geometry = await conversation.evaluate(
+            async (region, node) => {
+              await new Promise(requestAnimationFrame);
+              await new Promise(requestAnimationFrame);
+              const bounds = node.getBoundingClientRect();
+              const hit = (element: Element) => {
+                const box = element.getBoundingClientRect();
+                return element.contains(
+                  document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2),
+                );
+              };
+              const controls = [...node.querySelectorAll("input, button, [role='status']")].map(
+                (control) => ({
+                  label: control.getAttribute("aria-label") ?? control.getAttribute("role"),
+                  bounds: control.getBoundingClientRect().toJSON(),
+                  hit: hit(control),
+                }),
+              );
+              return {
+                viewport: { width: innerWidth, height: innerHeight },
+                inside: region.contains(node),
+                region: region.getBoundingClientRect().toJSON(),
+                bounds: bounds.toJSON(),
+                controls,
+                overlaps: [
+                  ...document.querySelectorAll<HTMLElement>(
+                    "button, input, textarea, [role='separator']",
+                  ),
+                ]
+                  .filter((other) => {
+                    if (region.contains(other) || other.getClientRects().length === 0) return false;
+                    if (getComputedStyle(other).visibility === "hidden") return false;
+                    const box = other.getBoundingClientRect();
+                    return controls.some(
+                      ({ bounds: target }) =>
+                        box.right > target.left &&
+                        box.left < target.right &&
+                        box.bottom > target.top &&
+                        box.top < target.bottom,
+                    );
+                  })
+                  .map((other) => ({
+                    label: other.getAttribute("aria-label"),
+                    bounds: other.getBoundingClientRect().toJSON(),
+                  })),
+              };
+            },
+            (await bar.elementHandle())!,
+          );
+          await testInfo.attach(`chat-search-${label}-geometry`, {
+            body: JSON.stringify(geometry),
+            contentType: "application/json",
+          });
+          await capture(label);
+          expect(geometry.inside).toBe(true);
+          const frame = {
+            left: Math.max(geometry.region.left, 0),
+            right: Math.min(geometry.region.right, geometry.viewport.width),
+            top: Math.max(geometry.region.top, 0),
+            bottom: Math.min(geometry.region.bottom, geometry.viewport.height),
+          };
+          for (const box of [
+            geometry.bounds,
+            ...geometry.controls.map((control) => control.bounds),
+          ]) {
+            expect(box.width).toBeGreaterThan(0);
+            expect(box.left).toBeGreaterThanOrEqual(frame.left - 1);
+            expect(box.right).toBeLessThanOrEqual(frame.right + 1);
+            expect(box.top).toBeGreaterThanOrEqual(frame.top - 1);
+            expect(box.bottom).toBeLessThanOrEqual(frame.bottom + 1);
+          }
+          for (const control of geometry.controls)
+            expect(control.hit, String(control.label)).toBe(true);
+          expect(geometry.overlaps).toEqual([]);
+        };
+
+        await openFind();
+        await expect(field).toHaveValue("");
+        await page.keyboard.type(query);
+        await expect(field).toHaveValue(query);
+        const total = await matchTotal();
+        expect(total).toBeGreaterThan(1);
+        await expectActiveMatch("first");
+        await expectBar("open");
+        await page.keyboard.press("Enter");
+        await expect(status).toHaveText(`${(1 % total) + 1} / ${total}`);
+        await expect(field).toBeFocused();
+        await expectActiveMatch("next");
+        await page.keyboard.press("Shift+Enter");
+        await expect(status).toHaveText(`1 / ${total}`);
+        await expectActiveMatch("previous");
+        await page.keyboard.press("Shift+Enter");
+        await expect(status).toHaveText(`${total} / ${total}`);
+        await expect(field).toBeFocused();
+        await expectActiveMatch("last");
+        await page.keyboard.press("Enter");
+        await expect(status).toHaveText(`1 / ${total}`);
+        await expectActiveMatch("wrapped");
+        await page.keyboard.press("End");
+        const selection = () =>
+          field.evaluate((node) => {
+            const search = node as HTMLInputElement;
+            return [search.selectionStart, search.selectionEnd];
+          });
+        expect(await selection()).toEqual([query.length, query.length]);
+        await openFind();
+        await expect.poll(selection).toEqual([0, query.length]);
+        await expect(status).toHaveText(`1 / ${total}`);
+        await page.keyboard.press("Escape");
+        await expect(mounted).toHaveCount(0);
+        await expect(composer).toBeFocused();
+        await expectDraft();
+        await capture("closed");
+
+        await openFind();
+        await page.keyboard.type(query);
+        await matchTotal();
+        await page.getByRole("button", name("dock.action.expand")).click();
+        const material = page.locator('[data-slot="workspace-view-body"]:visible');
+        await expect(material).toBeFocused();
+        await expect(
+          material.locator('[data-trajectory-record="item:item_code_reading"]'),
+        ).toBeVisible();
+        await expect(mounted).toHaveCount(0);
+        await page.keyboard.press("ControlOrMeta+f");
+        await page.evaluate(
+          () =>
+            new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        );
+        await expect(mounted).toHaveCount(0);
+        await expect(material).toBeFocused();
+        await capture("material");
+        await page.getByRole("button", name("common.close")).click();
+        await expect(conversation).toBeVisible();
+        await expectDraft();
+
+        await composer.click();
+        await expect(composer).toBeFocused();
+        await openFind();
+        await expect(field).toHaveValue("");
+        await expect(status).toHaveText("");
+        await page.keyboard.type(query);
+        expect(await matchTotal()).toBe(total);
+        await expectBar("reopened");
+        await page.setViewportSize({ width: 563, height: 366 });
+        await expect(field).toHaveValue(query);
+        await expectBar("563x366");
+        await page.setViewportSize({ width: 1120, height: 755 });
+        await expect(field).toHaveValue(query);
+        await expect(status).toHaveText(`1 / ${total}`);
+        await expectBar("restored");
+
+        await page.keyboard.press("Escape");
+        await expect(mounted).toHaveCount(0);
+        await expect(composer).toBeFocused();
+        await expectDraft();
+        await page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
+        expect(
+          await composer.evaluate((node) => {
+            const draft = node as HTMLTextAreaElement;
+            return [draft.selectionStart, draft.selectionEnd];
+          }),
+        ).toEqual([profile.draft.length, profile.draft.length]);
+        await page.keyboard.type(profile.continuation);
+        await expect(composer).toHaveValue(profile.draft + profile.continuation);
+        await capture("continued-draft");
+      },
+    );
+  }
+}

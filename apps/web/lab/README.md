@@ -151,6 +151,16 @@ chooses the visible name; the Lab does not maintain a second translation map.
 Fixture IDs, scopes and captured transport bindings remain fixture-owned. Icon
 gallery is a full-view contribution and is not added to the Dock picker.
 
+Workspace installs the production conversation Find plugin alongside its existing
+shortcut owner. `searchReading.browser.spec.ts` enters Find from an unsent draft
+through the real shortcut, checks visible active matches and keyboard navigation,
+and follows material retirement, focus return, resizing and continued editing in
+both browser engines and locales. It uses the existing Workspace scenario and
+production search state. Actual macOS composition is qualified separately in the
+same Lab through native Wails keys; browser text entry does not establish OS IME
+behavior. The scoped native evidence is recorded in
+[UI progress](../UI_PROGRESS.md#conversation-find-and-reading-return).
+
 Each component example owns only its local input, selection or disclosure state.
 Its variant vocabulary is checked against the production public API. Examples
 compare one dimension at a time instead of generating every props combination.
