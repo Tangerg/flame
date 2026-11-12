@@ -95,7 +95,9 @@ or preserve that client and its journal separately for recovery and start with a
 fresh client journal.
 
 Run `npm run check --workspace @flame/runtime-client` from the root after
-`make setup`. Independent author checks consume a real packed package, rather
+`make setup`. Test files run serially so sibling fixtures do not compete for the
+CPU and event-loop time required by transport deadlines. Independent author
+checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export
 is provided.
 

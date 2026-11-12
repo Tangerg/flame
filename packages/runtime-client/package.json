@@ -19,7 +19,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --no-file-parallelism",
     "lint": "oxlint src testing --deny-warnings",
     "format:check": "prettier --check src testing package.json tsconfig.json",
     "knip": "knip",
