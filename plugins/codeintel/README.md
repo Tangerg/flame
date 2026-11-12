@@ -36,6 +36,10 @@ shutdown. Missing optional formatters are unsupported operations; other failures
 remain visible alongside a successful edit.
 The graceful-shutdown deadline also interrupts pending LSP stdio writes before
 child-process retirement and retains any connection-close failure.
+Request cancellation interrupts a blocked document notification or query dispatch
+and retires that connection because an incomplete frame cannot be reused. Connection
+cleanup finishes before the request returns, retaining cancellation and close failures.
+Canceling only the response wait keeps the synchronized connection available.
 
 The optional installation input `lsp-servers` is a JSON array of server
 specifications (`name`, `command`, `args`, `languages` (extension-to-language-ID object), `rootMarkers`). Omit it to use the built-in

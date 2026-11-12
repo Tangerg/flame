@@ -88,7 +88,7 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 		if err := c.evictColdestDocumentLocked(ctx); err != nil {
 			return 0, err
 		}
-		err = c.conn.Notify(ctx, "textDocument/didOpen", didOpenParams{
+		err = c.notify(ctx, "textDocument/didOpen", didOpenParams{
 			TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.Languages[strings.ToLower(filepath.Ext(abs))], Version: version, Text: string(text)},
 		})
 	} else {
@@ -99,7 +99,7 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 		case changeIncremental:
 			change.Range = &Range{End: prev.end}
 		}
-		err = c.conn.Notify(ctx, "textDocument/didChange", didChangeParams{
+		err = c.notify(ctx, "textDocument/didChange", didChangeParams{
 			TextDocument:   versionedTextDocumentIdentifier{URI: uri, Version: version},
 			ContentChanges: []contentChange{change},
 		})
@@ -128,7 +128,7 @@ func (c *client) evictColdestDocumentLocked(ctx context.Context) error {
 			coldest, oldestVersion = uri, doc.version
 		}
 	}
-	if err := c.conn.Notify(ctx, "textDocument/didClose", didCloseParams{
+	if err := c.notify(ctx, "textDocument/didClose", didCloseParams{
 		TextDocument: textDocumentIdentifier{URI: coldest},
 	}); err != nil {
 		return fmt.Errorf("lsp: close %s before document admission: %w", coldest, err)

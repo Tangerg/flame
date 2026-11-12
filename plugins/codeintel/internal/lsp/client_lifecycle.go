@@ -129,7 +129,7 @@ func (c *client) initialize(ctx context.Context) error {
 		Capabilities:     defaultCapabilities(),
 		WorkspaceFolders: c.workspaceFolders(),
 	}
-	if err := c.conn.Call(ctx, "initialize", params, &res); err != nil {
+	if err := c.call(ctx, "initialize", params, &res); err != nil {
 		return fmt.Errorf("lsp: initialize %s: %w", c.spec.Name, err)
 	}
 	if encoding := res.Capabilities.PositionEncoding; encoding != "" && encoding != positionEncodingUTF16 {
@@ -140,7 +140,7 @@ func (c *client) initialize(ctx context.Context) error {
 		return fmt.Errorf("lsp: server document synchronization: %w", err)
 	}
 	c.syncPolicy = policy
-	if err := c.conn.Notify(ctx, "initialized", struct{}{}); err != nil {
+	if err := c.notify(ctx, "initialized", struct{}{}); err != nil {
 		return fmt.Errorf("lsp: initialized %s: %w", c.spec.Name, err)
 	}
 	return nil

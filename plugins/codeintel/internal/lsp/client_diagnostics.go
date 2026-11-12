@@ -56,7 +56,7 @@ func (c *client) notifySave(ctx context.Context, uri string, version int, conten
 	if c.syncPolicy.Save.IncludeText {
 		params.Text = new(string(content))
 	}
-	return c.conn.Notify(ctx, "textDocument/didSave", params)
+	return c.notify(ctx, "textDocument/didSave", params)
 }
 
 func (c *client) diagnosticsVersion(ctx context.Context, abs string, version int, settle time.Duration) ([]Diagnostic, error) {

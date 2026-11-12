@@ -16,7 +16,7 @@ func (c *client) references(ctx context.Context, abs string, pos Position) ([]Lo
 		return nil, err
 	}
 	var raw jsontext.Value
-	if err := c.conn.Call(ctx, "textDocument/references", referenceParams{
+	if err := c.call(ctx, "textDocument/references", referenceParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
 		Context:      referenceContext{IncludeDeclaration: true},
@@ -42,7 +42,7 @@ func (c *client) positionLocations(ctx context.Context, abs string, pos Position
 		return nil, err
 	}
 	var raw jsontext.Value
-	if err := c.conn.Call(ctx, method, positionParams{
+	if err := c.call(ctx, method, positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
 	}, &raw); err != nil {
@@ -65,7 +65,7 @@ func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, ou
 		return nil, err
 	}
 	var items []jsontext.Value
-	if err := c.conn.Call(ctx, "textDocument/prepareCallHierarchy", positionParams{
+	if err := c.call(ctx, "textDocument/prepareCallHierarchy", positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
 	}, &items); err != nil {
@@ -94,7 +94,7 @@ func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, ou
 func (c *client) relatedCalls(ctx context.Context, params callHierarchyItemParams, outgoing bool) ([]Symbol, error) {
 	if outgoing {
 		var calls []callHierarchyOutgoingCall
-		if err := c.conn.Call(ctx, "callHierarchy/outgoingCalls", params, &calls); err != nil {
+		if err := c.call(ctx, "callHierarchy/outgoingCalls", params, &calls); err != nil {
 			return nil, fmt.Errorf("lsp: outgoingCalls: %w", err)
 		}
 		out := make([]Symbol, 0, len(calls))
@@ -104,7 +104,7 @@ func (c *client) relatedCalls(ctx context.Context, params callHierarchyItemParam
 		return out, nil
 	}
 	var calls []callHierarchyIncomingCall
-	if err := c.conn.Call(ctx, "callHierarchy/incomingCalls", params, &calls); err != nil {
+	if err := c.call(ctx, "callHierarchy/incomingCalls", params, &calls); err != nil {
 		return nil, fmt.Errorf("lsp: incomingCalls: %w", err)
 	}
 	out := make([]Symbol, 0, len(calls))
@@ -119,7 +119,7 @@ func (c *client) hover(ctx context.Context, abs string, pos Position) (string, e
 		return "", err
 	}
 	var raw jsontext.Value
-	if err := c.conn.Call(ctx, "textDocument/hover", positionParams{
+	if err := c.call(ctx, "textDocument/hover", positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
 	}, &raw); err != nil {
@@ -138,7 +138,7 @@ func (c *client) documentSymbols(ctx context.Context, abs string) ([]Symbol, err
 	}
 	uri := pathToURI(abs)
 	var raw jsontext.Value
-	if err := c.conn.Call(ctx, "textDocument/documentSymbol", documentSymbolParams{
+	if err := c.call(ctx, "textDocument/documentSymbol", documentSymbolParams{
 		TextDocument: textDocumentIdentifier{URI: uri},
 	}, &raw); err != nil {
 		return nil, fmt.Errorf("lsp: documentSymbol: %w", err)
@@ -152,7 +152,7 @@ func (c *client) documentSymbols(ctx context.Context, abs string) ([]Symbol, err
 
 func (c *client) workspaceSymbols(ctx context.Context, query string) ([]Symbol, error) {
 	var infos []symbolInformation
-	if err := c.conn.Call(ctx, "workspace/symbol", workspaceSymbolParams{Query: query}, &infos); err != nil {
+	if err := c.call(ctx, "workspace/symbol", workspaceSymbolParams{Query: query}, &infos); err != nil {
 		return nil, fmt.Errorf("lsp: workspace/symbol: %w", err)
 	}
 	out := make([]Symbol, 0, len(infos))
