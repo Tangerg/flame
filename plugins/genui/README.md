@@ -37,6 +37,15 @@ accepted initial values; ordinary backend reads obtain current business data.
 There is no competing localStorage history, React form-state mirror, document
 revision protocol, or synchronization winner rule.
 
+Display-language changes keep the same captured document lifetime: local fields,
+running actions, original recovery handles and accepted feedback remain with
+their existing owners. Unchanged resource permissions and reading state survive
+while labels and percentage formatting use the current locale. A new captured
+component signal or Tool result resets the Renderer store and interaction owner
+to that document's accepted initial values. Retirement ends local observation;
+it does not resubmit a followup, replay a command or change its captured route.
+Local reports do not read Runtime services to establish this lifetime.
+
 ## Interface vocabulary
 
 The single component definition catalog supplies both authored and evaluated

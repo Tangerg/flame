@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { createContext, Fragment, useContext, useMemo, useState } from "react";
 import {
   type ComponentContext,
   type Translate,
@@ -78,6 +78,20 @@ const CALLOUT_KIND = {
   negative: "caution",
 } as const;
 
+const DisplayContext = createContext<{
+  context: ComponentContext;
+  presentation: Presentation;
+  t: Translate;
+  locale: string;
+} | null>(null);
+
+function useDisplay() {
+  const display = useContext(DisplayContext);
+  if (!display)
+    throw new Error("genui: display requires its captured document");
+  return display;
+}
+
 function DocumentView({
   props,
   renderNode,
@@ -94,13 +108,11 @@ function DocumentView({
   );
 }
 
-function displayLibrary(
-  t: Translate,
-  context: ComponentContext,
-  presentation: Presentation,
-) {
-  return createDisplayLibrary({
-    Document: (view) => (
+// OpenUI renders these functions as component types, so display updates must not replace them.
+const displayLibrary = createDisplayLibrary({
+  Document: (view) => {
+    const { context, presentation, t } = useDisplay();
+    return (
       <GenUIInteractionProvider
         context={context}
         presentation={presentation}
@@ -108,137 +120,138 @@ function displayLibrary(
       >
         <DocumentView {...view} />
       </GenUIInteractionProvider>
-    ),
-    Stack: StackView,
-    Grid: GridView,
-    Card: CardView,
-    Section: SectionView,
-    Tabs: (view) => <TabsView {...view} t={t} />,
-    Accordion: AccordionView,
-    Disclosure: DisclosureView,
-    Carousel: (view) => <CarouselView {...view} t={t} />,
-    Popover: PopoverView,
-    If: ({ props, renderNode }) =>
-      props.when ? renderNode(props.children) : null,
-    Text: ({ props }) => <RecordBody>{props.text}</RecordBody>,
-    Markdown: (view) => <MarkdownView {...view} t={t} />,
-    Code: (view) => <CodeView {...view} t={t} />,
-    Badge: ({ props }) => <Badge tone={props.tone}>{props.text}</Badge>,
-    Callout: ({ props }) => (
-      <Callout kind={CALLOUT_KIND[props.tone ?? "info"]}>
-        {props.title && <strong>{props.title}</strong>}
-        <RecordBody>{props.text}</RecordBody>
-      </Callout>
-    ),
-    Link: ({ props }) => {
-      if (!isSafeURL(props.href, "link"))
-        throw new Error("genui: invalid link destination");
-      return (
-        <a href={props.href} target="_blank" rel="noreferrer noopener">
-          {props.label}
-        </a>
-      );
-    },
-    Image: (view) => <ImageView {...view} t={t} />,
-    Metric: ({ props }) => {
-      const value = String(props.value);
-      const digits = /^[0-9]+$/.test(value);
-      return (
-        <Stats
-          values={[
-            [
-              props.label,
-              <>
-                <bdi
-                  style={
-                    digits
-                      ? { display: "block", textWrap: "balance" }
-                      : undefined
-                  }
-                >
-                  {digits
-                    ? [...value].map((digit, index) => (
-                        <Fragment key={index}>
-                          {index > 0 && <wbr />}
-                          {digit}
-                        </Fragment>
-                      ))
-                    : value}
-                </bdi>
-                {props.detail !== undefined && (
-                  <Metadata>{props.detail}</Metadata>
-                )}
-              </>,
-            ],
-          ]}
-        />
-      );
-    },
-    List: ({ props }) => {
-      const Tag = props.ordered ? "ol" : "ul";
-      return (
-        <Tag>
-          {props.items.map((item, index) => (
-            <li key={index} dir="auto">
-              {item}
-            </li>
-          ))}
-        </Tag>
-      );
-    },
-    Table: (view) => <TableView {...view} t={t} />,
-    Chart: ({ props }) => (
+    );
+  },
+  Stack: StackView,
+  Grid: GridView,
+  Card: CardView,
+  Section: SectionView,
+  Tabs: (view) => <TabsView {...view} t={useDisplay().t} />,
+  Accordion: AccordionView,
+  Disclosure: DisclosureView,
+  Carousel: (view) => <CarouselView {...view} t={useDisplay().t} />,
+  Popover: PopoverView,
+  If: ({ props, renderNode }) =>
+    props.when ? renderNode(props.children) : null,
+  Text: ({ props }) => <RecordBody>{props.text}</RecordBody>,
+  Markdown: (view) => <MarkdownView {...view} t={useDisplay().t} />,
+  Code: (view) => <CodeView {...view} t={useDisplay().t} />,
+  Badge: ({ props }) => <Badge tone={props.tone}>{props.text}</Badge>,
+  Callout: ({ props }) => (
+    <Callout kind={CALLOUT_KIND[props.tone ?? "info"]}>
+      {props.title && <strong>{props.title}</strong>}
+      <RecordBody>{props.text}</RecordBody>
+    </Callout>
+  ),
+  Link: ({ props }) => {
+    if (!isSafeURL(props.href, "link"))
+      throw new Error("genui: invalid link destination");
+    return (
+      <a href={props.href} target="_blank" rel="noreferrer noopener">
+        {props.label}
+      </a>
+    );
+  },
+  Image: (view) => <ImageView {...view} t={useDisplay().t} />,
+  Metric: ({ props }) => {
+    const value = String(props.value);
+    const digits = /^[0-9]+$/.test(value);
+    return (
+      <Stats
+        values={[
+          [
+            props.label,
+            <>
+              <bdi
+                style={
+                  digits ? { display: "block", textWrap: "balance" } : undefined
+                }
+              >
+                {digits
+                  ? [...value].map((digit, index) => (
+                      <Fragment key={index}>
+                        {index > 0 && <wbr />}
+                        {digit}
+                      </Fragment>
+                    ))
+                  : value}
+              </bdi>
+              {props.detail !== undefined && (
+                <Metadata>{props.detail}</Metadata>
+              )}
+            </>,
+          ],
+        ]}
+      />
+    );
+  },
+  List: ({ props }) => {
+    const Tag = props.ordered ? "ol" : "ul";
+    return (
+      <Tag>
+        {props.items.map((item, index) => (
+          <li key={index} dir="auto">
+            {item}
+          </li>
+        ))}
+      </Tag>
+    );
+  },
+  Table: (view) => <TableView {...view} t={useDisplay().t} />,
+  Chart: ({ props }) => {
+    const { t } = useDisplay();
+    return (
       <ChartView
         {...props}
         dataLabel={t("chart.data", { chart: props.caption })}
         emptyLabel={t("chart.empty")}
       />
-    ),
-    Progress: ({ props }) => (
-      <ProgressBar
-        label={props.label}
-        value={props.value}
-        max={props.max}
-        locale={context.locale}
-        labelVisibility="visible"
-      />
-    ),
-    Divider: () => <hr />,
-    Input: (view) => <InputView {...view} t={t} />,
-    TextArea: (view) => <TextAreaView {...view} t={t} />,
-    Select: (view) => <SelectView {...view} t={t} />,
-    MultiSelect: (view) => <MultiSelectView {...view} t={t} />,
-    RadioGroup: (view) => <RadioGroupView {...view} t={t} />,
-    Checkbox: CheckboxView,
-    Switch: SwitchView,
-    Slider: SliderView,
-    DatePicker: (view) => <DatePickerView {...view} t={t} />,
-    Form: (view) => <FormView {...view} t={t} />,
-    Button: ButtonView,
-    Math: (view) => <MathView {...view} t={t} />,
-    Timer: (view) => <TimerView {...view} t={t} />,
-    Flashcard: (view) => <FlashcardView {...view} t={t} />,
-    YouTube: (view) => <YouTubeView {...view} t={t} />,
-    Map: (view) => <MapView {...view} t={t} />,
-    HtmlView: ({ props }) => <SandboxView {...props} />,
-    Svg: SvgView,
-    G: ({ props, renderNode }) => (
-      <g transform={props.transform}>{renderNode(props.children)}</g>
-    ),
-    Circle: ({ props }) => <circle {...props} />,
-    Ellipse: ({ props }) => <ellipse {...props} />,
-    Rect: ({ props }) => <rect {...props} />,
-    Line: ({ props }) => <line {...props} />,
-    Path: ({ props }) => <path {...props} />,
-    Polyline: ({ props }) => <polyline {...props} />,
-    Polygon: ({ props }) => <polygon {...props} />,
-    SvgText: ({ props }) => (
-      <text x={props.x} y={props.y} fill={props.fill} fontSize={props.fontSize}>
-        {props.text}
-      </text>
-    ),
-  });
-}
+    );
+  },
+  Progress: ({ props }) => (
+    <ProgressBar
+      label={props.label}
+      value={props.value}
+      max={props.max}
+      locale={useDisplay().locale}
+      labelVisibility="visible"
+    />
+  ),
+  Divider: () => <hr />,
+  Input: (view) => <InputView {...view} t={useDisplay().t} />,
+  TextArea: (view) => <TextAreaView {...view} t={useDisplay().t} />,
+  Select: (view) => <SelectView {...view} t={useDisplay().t} />,
+  MultiSelect: (view) => <MultiSelectView {...view} t={useDisplay().t} />,
+  RadioGroup: (view) => <RadioGroupView {...view} t={useDisplay().t} />,
+  Checkbox: CheckboxView,
+  Switch: SwitchView,
+  Slider: SliderView,
+  DatePicker: (view) => <DatePickerView {...view} t={useDisplay().t} />,
+  Form: (view) => <FormView {...view} t={useDisplay().t} />,
+  Button: ButtonView,
+  Math: (view) => <MathView {...view} t={useDisplay().t} />,
+  Timer: (view) => <TimerView {...view} t={useDisplay().t} />,
+  Flashcard: (view) => <FlashcardView {...view} t={useDisplay().t} />,
+  YouTube: (view) => <YouTubeView {...view} t={useDisplay().t} />,
+  Map: (view) => <MapView {...view} t={useDisplay().t} />,
+  HtmlView: ({ props }) => <SandboxView {...props} />,
+  Svg: SvgView,
+  G: ({ props, renderNode }) => (
+    <g transform={props.transform}>{renderNode(props.children)}</g>
+  ),
+  Circle: ({ props }) => <circle {...props} />,
+  Ellipse: ({ props }) => <ellipse {...props} />,
+  Rect: ({ props }) => <rect {...props} />,
+  Line: ({ props }) => <line {...props} />,
+  Path: ({ props }) => <path {...props} />,
+  Polyline: ({ props }) => <polyline {...props} />,
+  Polygon: ({ props }) => <polygon {...props} />,
+  SvgText: ({ props }) => (
+    <text x={props.x} y={props.y} fill={props.fill} fontSize={props.fontSize}>
+      {props.text}
+    </text>
+  ),
+});
 
 function failOnRenderErrors(errors: OpenUIError[]) {
   if (errors.length === 0) return;
@@ -247,32 +260,57 @@ function failOnRenderErrors(errors: OpenUIError[]) {
   );
 }
 
-export function GenUIResult({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
-  const tool = context.toolResult;
-  const presentation = useMemo(() => {
+function CapturedDocument({
+  context: initialContext,
+  locale,
+}: {
+  context: ComponentContext;
+  locale: string;
+}) {
+  const [captured] = useState(() => {
+    const tool = initialContext.toolResult;
     if (tool?.status !== "ok" || typeof tool.result !== "string") {
       throw new Error("genui: requires a successful captured tool result");
     }
-    return Presentation.read(tool.result);
-  }, [tool]);
-  const library = useMemo(
-    () => displayLibrary(t, context, presentation),
-    [t, context, presentation],
-  );
-  const response = useMemo(
-    () => presentation.openUI(library),
-    [presentation, library],
+    const presentation = Presentation.read(tool.result);
+    return {
+      context: initialContext,
+      presentation,
+      response: presentation.openUI(displayLibrary),
+    };
+  });
+  const t = useTranslator(CATALOGS, locale);
+  const display = useMemo(
+    () => ({
+      context: captured.context,
+      presentation: captured.presentation,
+      t,
+      locale,
+    }),
+    [captured, t, locale],
   );
   return (
-    <Renderer
-      key={tool?.id}
-      response={response}
-      library={library}
-      initialState={presentation.initialState()}
-      isStreaming={false}
-      onError={failOnRenderErrors}
-      publishObservability={false}
+    <DisplayContext value={display}>
+      <Renderer
+        response={captured.response}
+        library={displayLibrary}
+        initialState={captured.presentation.initialState()}
+        isStreaming={false}
+        onError={failOnRenderErrors}
+        publishObservability={false}
+      />
+    </DisplayContext>
+  );
+}
+
+export function GenUIResult({ context }: { context: ComponentContext }) {
+  const { signal, toolResult } = context;
+  const instance = useMemo(() => crypto.randomUUID(), [signal, toolResult]);
+  return (
+    <CapturedDocument
+      key={instance}
+      context={context}
+      locale={context.locale}
     />
   );
 }

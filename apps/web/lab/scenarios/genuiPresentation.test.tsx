@@ -43,6 +43,7 @@ function capturedContext(
   result: string,
   locale = "en",
   recorded: Partial<CapturedToolResult> = {},
+  options: { signal?: AbortSignal; interaction?: CapturedToolInteraction } = {},
 ): ComponentContext {
   return Object.freeze({
     component: Object.freeze({
@@ -51,7 +52,8 @@ function capturedContext(
       componentId: "genui-result",
     }),
     locale,
-    signal: new AbortController().signal,
+    signal: options.signal ?? new AbortController().signal,
+    ...(options.interaction ? { interaction: options.interaction } : {}),
     toolResult: Object.freeze({
       id: "item_genui_result",
       runId: "run_genui_result",
@@ -102,6 +104,313 @@ function show(value: AcceptedDocument, locale = "en") {
   const context = capturedContext(JSON.stringify(value), locale);
   return { context, ...testClient.render(<GenUIResult context={context} />) };
 }
+
+function displayContext(context: ComponentContext, locale: string): ComponentContext {
+  const compose: ComponentContext["compose"] = (composition) => context.compose(composition);
+  return Object.freeze(
+    Object.defineProperties(
+      {},
+      {
+        ...Object.getOwnPropertyDescriptors(context),
+        locale: { value: locale, enumerable: true },
+        compose: { value: compose, enumerable: true },
+      },
+    ),
+  ) as ComponentContext;
+}
+
+const followupReport = document(
+  [
+    { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+    { id: "send", type: "Button", props: { label: "Send readout", action: "send" } },
+    { id: "delivery", type: "Text", props: { text: { state: "delivery" } } },
+  ],
+  [
+    { id: "note", value: "Captured note" },
+    { id: "delivery", value: "No delivery accepted." },
+  ],
+  [
+    {
+      id: "send",
+      steps: [
+        {
+          type: "followup",
+          message: { literal: "Review captured note" },
+          payload: { object: { note: { state: "note" } } },
+        },
+        { type: "set", state: "delivery", value: { literal: "Original followup accepted." } },
+      ],
+    },
+  ],
+);
+
+function followupScene(context: ComponentContext) {
+  return (
+    <>
+      <GenUIResult context={context} />
+      <input aria-label="Later draft" defaultValue="Continue authoring" />
+    </>
+  );
+}
+
+it("retains the original followup recovery and blocked action through display locale changes", async () => {
+  const owner = new AbortController();
+  onTestFinished(() => owner.abort());
+  const recover = vi.fn(async () => ({
+    status: "accepted" as const,
+    sessionId: "ses_original",
+    runId: "run_original",
+    userItemId: "item_input",
+  }));
+  const submit = vi.fn<CapturedToolInteraction["submit"]>(async () => ({
+    status: "unknown",
+    idempotencyKey: "original-followup",
+    recover,
+  }));
+  const context = capturedContext(
+    JSON.stringify(followupReport),
+    "en",
+    {},
+    {
+      signal: owner.signal,
+      interaction: { source: { runId: "run_genui_result", itemId: "item_genui_result" }, submit },
+    },
+  );
+  const view = testClient.render(followupScene(context));
+  const note = screen.getByRole<HTMLInputElement>("textbox", { name: "Review note" });
+  const send = screen.getByRole<HTMLButtonElement>("button", { name: "Send readout" });
+  await waitFor(() => expect(send.disabled).toBe(false));
+  fireEvent.change(note, { target: { value: "Original review 保留" } });
+  await act(async () => fireEvent.click(send));
+  const recovery = await screen.findByRole("button", { name: "Recover original action" });
+  expect(screen.getByText("send · original-followup")).toBeTruthy();
+  expect(send.disabled).toBe(true);
+  const later = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+  act(() => later.focus());
+  fireEvent.change(later, { target: { value: "Continue the later task" } });
+  const localized = displayContext(context, "zh");
+
+  await act(async () => view.rerender(followupScene(localized)));
+
+  expect(owner.signal.aborted).toBe(false);
+  expect(localized.toolResult).toBe(context.toolResult);
+  expect(localized.interaction).toBe(context.interaction);
+  expect(screen.getByRole("button", { name: "恢复原动作" })).toBe(recovery);
+  expect(screen.getByText("send · original-followup")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Send readout" })).toBe(send);
+  expect(screen.getByRole("textbox", { name: "Review note" })).toBe(note);
+  expect(note.value).toBe("Original review 保留");
+  expect(note.readOnly).toBe(true);
+  expect(send.disabled).toBe(true);
+  expect(window.document.activeElement).toBe(later);
+  fireEvent.click(send);
+  expect(submit).toHaveBeenCalledOnce();
+  expect(submit).toHaveBeenCalledWith({
+    action: "Review captured note",
+    payloadJSON: '{"note":"Original review 保留"}',
+  });
+  await act(async () => fireEvent.click(recovery));
+  expect(await screen.findByText("动作已接受。")).toBeTruthy();
+  expect(screen.getByText("Original followup accepted.")).toBeTruthy();
+  expect(recover).toHaveBeenCalledOnce();
+  expect(submit).toHaveBeenCalledOnce();
+  expect(send.disabled).toBe(false);
+  expect(note.readOnly).toBe(false);
+  expect(screen.queryByRole("button", { name: "恢复原动作" })).toBeNull();
+  expect(window.document.activeElement).toBe(later);
+  expect(later.value).toBe("Continue the later task");
+  expect(context.toolResult!.result).toBe(JSON.stringify(followupReport));
+});
+
+it("keeps a held original followup and its editing state through a display locale change", async () => {
+  const owner = new AbortController();
+  onTestFinished(() => owner.abort());
+  const reply = Promise.withResolvers<Awaited<ReturnType<CapturedToolInteraction["submit"]>>>();
+  const submit = vi.fn<CapturedToolInteraction["submit"]>(() => reply.promise);
+  const context = capturedContext(
+    JSON.stringify(followupReport),
+    "en",
+    {},
+    {
+      signal: owner.signal,
+      interaction: { source: { runId: "run_genui_result", itemId: "item_genui_result" }, submit },
+    },
+  );
+  const view = testClient.render(followupScene(context));
+  const note = screen.getByRole<HTMLInputElement>("textbox", { name: "Review note" });
+  const send = screen.getByRole<HTMLButtonElement>("button", { name: "Send readout" });
+  await waitFor(() => expect(send.disabled).toBe(false));
+  fireEvent.change(note, { target: { value: "Held original draft 保留" } });
+  try {
+    await act(async () => fireEvent.click(send));
+    expect(submit).toHaveBeenCalledOnce();
+    expect(screen.getByText("Waiting for the operation…")).toBeTruthy();
+    const later = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+    act(() => later.focus());
+    fireEvent.change(later, { target: { value: "Writing while the original waits" } });
+
+    await act(async () => view.rerender(followupScene(displayContext(context, "zh"))));
+
+    expect(owner.signal.aborted).toBe(false);
+    expect(screen.getByRole("textbox", { name: "Review note" })).toBe(note);
+    expect(screen.getByRole("button", { name: "Send readout" })).toBe(send);
+    expect(note.value).toBe("Held original draft 保留");
+    expect(note.readOnly).toBe(true);
+    expect(send.disabled).toBe(true);
+    expect(screen.getByText("正在等待操作结果…")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "恢复原动作" })).toBeNull();
+    expect(window.document.activeElement).toBe(later);
+    fireEvent.click(send);
+    expect(submit).toHaveBeenCalledOnce();
+  } finally {
+    await act(async () =>
+      reply.resolve({
+        status: "accepted",
+        sessionId: "ses_original",
+        runId: "run_original",
+        userItemId: "item_input",
+      }),
+    );
+  }
+  expect(await screen.findByText("动作已接受。")).toBeTruthy();
+  expect(screen.getByText("Original followup accepted.")).toBeTruthy();
+  expect(screen.getByRole("textbox", { name: "Review note" })).toBe(note);
+  expect(note.value).toBe("Held original draft 保留");
+  expect(note.readOnly).toBe(false);
+  expect(send.disabled).toBe(false);
+  expect(submit).toHaveBeenCalledOnce();
+  expect(submit).toHaveBeenCalledWith({
+    action: "Review captured note",
+    payloadJSON: '{"note":"Held original draft 保留"}',
+  });
+  const later = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
+  expect(window.document.activeElement).toBe(later);
+  expect(later.value).toBe("Writing while the original waits");
+});
+
+it("preserves permitted Markdown media and reading state through a full result locale update", async () => {
+  const value = document([
+    {
+      id: "markdown",
+      type: "Markdown",
+      props: {
+        text: '![Recorded diagram](https://example.test/diagram.png)\n\n```json\n{"source":"captured"}\n```\n\n| Source | Owner |\n| --- | --- |\n| captured | Runtime |',
+      },
+    },
+  ]);
+  const { context, rerender } = show(value);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Load external content: Recorded diagram" }));
+  const image = screen.getByRole("img", { name: "Recorded diagram" });
+  fireEvent.load(image);
+  const source = screen.getByRole("region", { name: "Code" });
+  const table = screen.getByRole("region", { name: "Markdown table" });
+  const trigger = screen.getByRole("button", { name: "View image: Recorded diagram" });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const preview = await screen.findByRole("dialog", { name: "Recorded diagram" });
+  const zoom = within(preview).getByRole("button", { name: "Zoom in image" });
+  act(() => zoom.focus());
+  fireEvent.click(zoom);
+  const viewport = within(preview).getByRole("region", { name: "Recorded diagram" });
+  const chinese = createTranslator({ en, zh }, "zh");
+
+  await act(async () => rerender(<GenUIResult context={displayContext(context, "zh")} />));
+
+  expect(context.signal.aborted).toBe(false);
+  expect(screen.getByRole("dialog", { name: "Recorded diagram" })).toBe(preview);
+  expect(within(preview).getByRole("button", { name: chinese("image.zoomIn") })).toBe(zoom);
+  expect(viewport.getAttribute("data-image-zoom")).toBe("125");
+  expect(window.document.activeElement).toBe(zoom);
+  fireEvent.keyDown(preview, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(window.document.activeElement).toBe(trigger));
+  expect(screen.getByRole("button", { name: `${chinese("image.view")}: Recorded diagram` })).toBe(
+    trigger,
+  );
+  expect(screen.getByRole("img", { name: "Recorded diagram" })).toBe(image);
+  expect(
+    screen.queryByRole("button", {
+      name: chinese("resource.load", { resource: "Recorded diagram" }),
+    }),
+  ).toBeNull();
+  expect(screen.getByRole("region", { name: chinese("code.label") })).toBe(source);
+  expect(source.textContent).toBe('{"source":"captured"}\n');
+  expect(screen.getByRole("region", { name: chinese("markdown.table") })).toBe(table);
+});
+
+it("resets the document on real signal retirement and fences a late original followup", async () => {
+  const owner = new AbortController();
+  const replacement = new AbortController();
+  onTestFinished(() => {
+    owner.abort();
+    replacement.abort();
+  });
+  const reply = Promise.withResolvers<Awaited<ReturnType<CapturedToolInteraction["submit"]>>>();
+  const submit = vi.fn<CapturedToolInteraction["submit"]>(() => reply.promise);
+  const context = capturedContext(
+    JSON.stringify(followupReport),
+    "en",
+    {},
+    {
+      signal: owner.signal,
+      interaction: { source: { runId: "run_genui_result", itemId: "item_genui_result" }, submit },
+    },
+  );
+  const view = testClient.render(followupScene(context));
+  const oldNote = screen.getByRole<HTMLInputElement>("textbox", { name: "Review note" });
+  const send = screen.getByRole<HTMLButtonElement>("button", { name: "Send readout" });
+  await waitFor(() => expect(send.disabled).toBe(false));
+  fireEvent.change(oldNote, { target: { value: "Retired submitted note" } });
+  try {
+    await act(async () => fireEvent.click(send));
+    expect(submit).toHaveBeenCalledOnce();
+    const next = Object.freeze(
+      Object.defineProperties(
+        {},
+        {
+          ...Object.getOwnPropertyDescriptors(displayContext(context, "zh")),
+          signal: { value: replacement.signal, enumerable: true },
+        },
+      ),
+    ) as ComponentContext;
+    await act(async () => {
+      owner.abort();
+      view.rerender(followupScene(next));
+    });
+    const note = screen.getByRole<HTMLInputElement>("textbox", { name: "Review note" });
+    await waitFor(() => expect(note.readOnly).toBe(false));
+    expect(next.toolResult).toBe(context.toolResult);
+    expect(owner.signal.aborted).toBe(true);
+    expect(replacement.signal.aborted).toBe(false);
+    expect(note).not.toBe(oldNote);
+    expect(note.value).toBe("Captured note");
+    expect(screen.getByText("No delivery accepted.")).toBeTruthy();
+    fireEvent.change(note, { target: { value: "Continue under the new source" } });
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+  } finally {
+    await act(async () =>
+      reply.resolve({
+        status: "accepted",
+        sessionId: "ses_original",
+        runId: "run_original",
+        userItemId: "item_input",
+      }),
+    );
+  }
+  const note = screen.getByRole<HTMLInputElement>("textbox", { name: "Review note" });
+  expect(note.value).toBe("Continue under the new source");
+  expect(note.readOnly).toBe(false);
+  expect(screen.getByText("No delivery accepted.")).toBeTruthy();
+  expect(screen.queryByText("Original followup accepted.")).toBeNull();
+  expect(screen.queryByText("动作已接受。")).toBeNull();
+  expect(window.document.activeElement).toBe(screen.getByRole("textbox", { name: "Later draft" }));
+  expect(submit).toHaveBeenCalledOnce();
+  expect(submit).toHaveBeenCalledWith({
+    action: "Review captured note",
+    payloadJSON: '{"note":"Retired submitted note"}',
+  });
+});
 
 it("delivers a local open action through document link navigation without retaining its anchor", async () => {
   onTestFinished(preventBrowserNavigation());

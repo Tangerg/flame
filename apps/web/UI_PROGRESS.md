@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,888 tests; subsequent Computer changes have focused qualification below. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,888 tests; subsequent Computer and GenUI changes have focused qualification below. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -26605,6 +26605,112 @@ memory-only archive round-trips **69 UTF-8 records**, **6,030,738 raw bytes** an
 Native screenshots and AX task evidence remain in CUA. The interval fetch finds
 zero incoming main commits at `92faa04b3`. Continue from new content/Dock task
 evidence; the native reverse-Tab finding and continuous UI goal remain open.
+
+#### Complete-report display and original-action continuity (2026-11-13)
+
+The earlier Markdown repair preserves its own readers through independent local
+updates. A display-language change through the complete `GenUIResult` still
+recreated the OpenUI library's component types. Actual installed OpenUI 1.1.0
+renders those functions as React types, so the Document and interaction provider
+remounted. Its field store retained values, but the new controller lost the
+visible waiting, original recovery and accepted-action state. Host interaction
+latches still reject another submission while active or unknown; no duplicate
+Runtime admission is established or repaired here.
+
+Old-resource Wails confirms this narrower distinction: after entering six weeks
+and applying the canonical local scenario, English → Chinese retains all seven
+captured source identities, the six-week input and computed result, but removes
+both English and Chinese acceptance feedback. The actual Appearance pane changes
+language beside the still-mounted tool result; URL reload and navigation away
+are excluded as language-only comparisons.
+
+`plugins/genui/component/component.tsx` now declares one static display library.
+A private React context supplies current translations and percentage locale to
+those fixed component types. A captured document lazily retains its original
+context, admitted Presentation and compiled response. Its signal/Tool-result
+identity keys the whole Renderer lifetime: a real source replacement resets
+both the field store and interaction owner. The Host supplies a new signal when
+captured collaborators change. Static documents do not read Runtime getters to
+establish identity. There is no mutable library, current-I/O ref, translated
+state mirror or new recovery mechanism. The existing interaction/controller,
+media, catalog, contracts, dictionaries, SDK/Host and backend remain unchanged.
+Normal publishing changes only GenUI's ESM resource, SHA-256
+`7b9296de688737d7c21b703ca1cdc00a262e2716123e622755ce5547bf2c39b1`.
+
+Four real-Renderer regressions preserve all **73 original test bodies**. They
+cover the original followup recovery/key and blocked submission; a held original
+followup through current-language completion; permitted Markdown media, open
+zoomed Lightbox, source/table identity and focus; and real signal retirement
+resetting initial fields while fencing a late original followup. Original public
+submit/recovery counts, exact payloads and later editing focus remain asserted.
+The final original-source run fails **4 / passes 73** in **3.77 s Vitest /
+5.15 s wall**; the restored candidate passes **77** in **3.72 / 4.78 s**.
+The first candidate's sole remaining failure is a new exact-code expectation
+that omitted Markdown's retained terminal newline. Correcting that literal
+preserves exact comparison; the final original-source run still fails all four.
+Arbitrary HappyDOM scroll offsets were removed before the first red run; they
+cannot establish native overflow. Existing disabled-iframe and KaTeX quirks-mode
+diagnostics remain visible and non-failing. No assertion or deadline is weakened.
+
+Final serial checking passes **157 tests / five files**, including the three
+GenUI files and Host interaction/component-module handling. The full plugin check
+passes **47 script tests**, **652 tests / 44 files**, the existing **17 Linux-only
+skips / two files**, **20 catalogs / eight locales** and resource reproduction.
+Web typecheck, lint, formatting, layer/design-system and production module-consumer
+checks pass. Supported **make check-native** passes in **14.99 s**; normal Lab
+build passes with **484 assets**. The first module-consumer dispatch fails
+`ENOENT` because it precedes production staging. Moving it after the native
+build supplies its real prerequisite; it passes without product changes or
+repeating unaffected passed checks. The earlier complete frontend baseline is
+not rerun or relabeled as a new whole-project pass.
+
+Native Wails **v3.1.0**, Go **1.27.3** and macOS 13.0 deployment use the frozen
+canonical `genui-report`, projected through the normal snapshot fold,
+RecordedToolComponent and installed Tool-result boundary. Its only action sets
+local scenario state; operations/contributions stay empty. A temporary Workspace
+installer composes that result with real Appearance controls and a read-only
+source-identity line. Its exact bytes/mode restore in `finally`. Old/new private
+installer/report hashes, all **46 native inputs**, other **19 resources** and
+shared CSS match. Each private build contains **485 assets**. Preservation checks
+cover all **6,876 tracked inputs**, including Markdown paths; an initial inventory
+preflight rejects quoted Git path output before any baseline/build/source write
+and is corrected to NUL-delimited paths.
+
+- **EN/light/14 px/Orange/full motion**, default zoom, native ordinary-window
+  resize to **1120 pt**, keyboard **320 px Dock**: entering six weeks with Return
+  keeps acceptance feedback through English → Chinese → English, with the same
+  seven captured identities and authored calculation. Delivery-track Escape
+  returns to its trigger and the next Tab reaches the native review-date year.
+  Real view retirement/reopening supplies new identities, restores four weeks
+  and the unapplied scenario, and removes the old acceptance. Returning to the
+  original caret yields `Keep verified this GenUI reading draft.`.
+- **ZH/dark/18 px/custom Blue/motion off**, the same window/zoom/Dock boundary:
+  complete paste establishes team `保持本地草稿团队`, Return applies seven weeks,
+  and wheel reading reaches table page two. The `browser` row is selected once.
+  Chinese → English → Chinese retains the team, seven-week result, accepted
+  status, page **2 / 2**, selected row and count **1**, with current translated
+  controls. Returning yields `Keep verified this dark GenUI draft.`.
+
+These are actual CUA keyboard, pointer, wheel, sizing and return observations.
+They qualify local report acceptance, not live input submission, command Review,
+unknown-result recovery, remote-resource loading or image decoding. Those changed
+integration boundaries have the composed regression scope above; previous native
+Markdown evidence keeps its original scope. No provider/Runtime write, external
+resource load, browser suite or benchmark occurs. Physical IME, VoiceOver,
+other GUI locales/platforms and whole-product/award-level acceptance stay open.
+
+The SDK locale/interaction contracts, actual OpenUI rendering/store source and
+React skill's stable-component rule guide this repair. Existing read-only
+Markdown/image research and better-accessibility/layout guidance supply reading
+and return checks. Bounded subagents provide test/implementation and harness
+candidates; primary review corrects test precision and check ordering and owns
+source review, all execution, native acceptance and publication. Three native
+processes and two servers exit normally; both ports close and three registrations
+are absent. Six created Library paths are removed, all **18 targets** are absent,
+and twelve created outputs are removed with all **13 output/cache roots** absent.
+Evidence is retained before deleting the owned QA root. No functional check runs
+after cleanup. Continue with a newly observed task gap rather than another
+mechanical locale refactor.
 
 ### Recorded-image decoder feedback
 
