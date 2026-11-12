@@ -949,6 +949,8 @@ a committed prefix.
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; repository Go cross-product checks live in
 `../../tooling/integration`. All UI visual fixtures, capture cases and browser checks live in [`lab`](lab/README.md).
+Frontend test files run serially so competing module transforms cannot consume
+another file's DOM assertion deadline.
 The Runtime test project prepares disposable binaries and packages before suite
 startup deadlines begin. Project setup owns those artifacts and their final
 removal; the suite joins every process before project teardown reclaims the files.

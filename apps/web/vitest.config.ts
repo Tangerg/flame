@@ -29,6 +29,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "frontend",
+          fileParallelism: false,
           // Fixture validity and portable component contracts do not require a browser;
           // Playwright owns rendered geometry and appearance.
           include: [
