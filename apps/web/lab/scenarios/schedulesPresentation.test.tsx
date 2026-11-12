@@ -38,7 +38,7 @@ async function mountSchedules() {
     { capabilities: () => VISUAL_CAPABILITIES },
   );
   const call = vi.spyOn(runtime.plugins, "call");
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: { ...VISUAL_SCHEDULES_BINDING, componentId: "schedules" },
     binding: VISUAL_SCHEDULES_BINDING,
     runtime,
@@ -61,7 +61,7 @@ async function mountSchedules() {
     owner.abort();
     await runtime.close();
   });
-  testClient.render(
+  const rendered = testClient.render(
     <div data-testid="viewport" style={{ overflowY: "auto", height: 400 }}>
       <Schedules context={context} />
     </div>,
@@ -69,7 +69,17 @@ async function mountSchedules() {
   mockSelectViewport(screen.getByTestId("viewport"));
   await screen.findByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[0]!.Title });
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
-  return { call, runtime };
+  function changeContext(
+    changes: Partial<Pick<ComponentContext, "locale" | "runtime" | "track" | "signal">>,
+  ) {
+    context = Object.freeze({ ...context, ...changes });
+    rendered.rerender(
+      <div data-testid="viewport" style={{ overflowY: "auto", height: 400 }}>
+        <Schedules context={context} />
+      </div>,
+    );
+  }
+  return { call, runtime, context, changeContext };
 }
 
 function holdModelReads(runtime: FlameClient) {
@@ -96,6 +106,16 @@ async function chooseModel(editor: HTMLElement, name: string) {
   fireEvent.click(option);
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   return model;
+}
+
+async function openSavedSchedule() {
+  fireEvent.click(
+    screen.getByRole("button", { name: "More actions for Nightly dependency audit" }),
+  );
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+  const editor = await screen.findByRole("dialog", { name: "Edit Nightly dependency audit" });
+  await within(editor).findByRole("button", { name: "Refresh model choices" });
+  return editor;
 }
 
 it("starts a changed page query at its first result without moving search focus or reading again", async () => {
@@ -390,4 +410,159 @@ it("returns an idle edit to its available record opener", async () => {
   fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("retains accepted model choices, a saved selection and later draft focus across a display-locale change", async () => {
+  const { runtime, context, changeContext } = await mountSchedules();
+  const editor = await openSavedSchedule();
+  const model = within(editor).getByRole("combobox", { name: "Model" });
+  await waitFor(() => expect(model.textContent).toContain("openai / GPT-5.6 Sol"));
+  const instructions = within(editor).getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Instructions",
+  });
+  fireEvent.change(instructions, {
+    target: { value: "Review the dependency report.\n保留模型草稿" },
+  });
+  const catalogue = vi.spyOn(runtime.providers, "list");
+  const models = vi.spyOn(runtime.models, "list");
+  catalogue.mockRejectedValueOnce(new Error("catalogue unavailable"));
+  act(() => instructions.focus());
+  await act(async () => changeContext({ locale: "zh" }));
+  expect(catalogue).not.toHaveBeenCalled();
+  expect(models).not.toHaveBeenCalled();
+  expect(context.signal.aborted).toBe(false);
+  expect(screen.getByRole("dialog", { name: "编辑 Nightly dependency audit" })).toBe(editor);
+  expect(within(editor).getByRole("combobox", { name: "模型" })).toBe(model);
+  expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+  expect(within(editor).getByRole("textbox", { name: "指令" })).toBe(instructions);
+  expect(instructions.value).toBe("Review the dependency report.\n保留模型草稿");
+  expect(document.activeElement).toBe(instructions);
+  const refresh = within(editor).getByRole("button", { name: "刷新模型选项" });
+  fireEvent.click(refresh);
+  await within(editor).findByText("无法读取模型选项：catalogue unavailable");
+  expect(catalogue).toHaveBeenCalledTimes(1);
+  expect(models).not.toHaveBeenCalled();
+  expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+  expect(instructions.value).toBe("Review the dependency report.\n保留模型草稿");
+  expect(document.activeElement).toBe(instructions);
+  fireEvent.click(model);
+  const selected = await screen.findByRole("option", { name: "openai / GPT-5.6 Sol" });
+  expect(selected.getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("option", { name: "Runtime 默认模型" })).toBeTruthy();
+  fireEvent.keyDown(selected, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+});
+
+it("accepts the original held model refresh after a display-locale change without replacing its signal", async () => {
+  const { runtime, context, changeContext } = await mountSchedules();
+  const editor = await openSavedSchedule();
+  const model = within(editor).getByRole("combobox", { name: "Model" });
+  await waitFor(() => expect(model.textContent).toContain("openai / GPT-5.6 Sol"));
+  const { catalogue, hold } = holdModelReads(runtime);
+  const models = vi.spyOn(runtime.models, "list");
+  const release = hold();
+  const refresh = within(editor).getByRole("button", { name: "Refresh model choices" });
+  const instructions = within(editor).getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Instructions",
+  });
+  try {
+    act(() => refresh.focus());
+    fireEvent.click(refresh);
+    await waitFor(() => expect(catalogue).toHaveBeenCalledTimes(1));
+    const originalSignal = catalogue.mock.calls[0]![0]!;
+    expect(originalSignal.aborted).toBe(false);
+    fireEvent.change(instructions, { target: { value: "Keep the original model read. 保留" } });
+    act(() => instructions.focus());
+    await act(async () => changeContext({ locale: "zh" }));
+    expect(catalogue).toHaveBeenCalledTimes(1);
+    expect(models).not.toHaveBeenCalled();
+    expect(originalSignal.aborted).toBe(false);
+    expect(context.signal.aborted).toBe(false);
+    expect(within(editor).getByRole("button", { name: "正在刷新模型选项…" })).toBe(refresh);
+    expect(refresh.getAttribute("aria-busy")).toBe("true");
+    expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+    expect(instructions.value).toBe("Keep the original model read. 保留");
+    expect(document.activeElement).toBe(instructions);
+    await act(async () => release());
+    await within(editor).findByRole("button", { name: "刷新模型选项" });
+    expect(refresh.getAttribute("aria-busy")).not.toBe("true");
+    expect(catalogue).toHaveBeenCalledTimes(1);
+    expect(models).toHaveBeenCalledTimes(1);
+    expect(models).toHaveBeenLastCalledWith("openai", originalSignal);
+    expect(originalSignal.aborted).toBe(false);
+    expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+    expect(instructions.value).toBe("Keep the original model read. 保留");
+    expect(document.activeElement).toBe(instructions);
+  } finally {
+    await act(async () => release());
+  }
+});
+
+it("fences a replaced model owner while retaining the saved unavailable fallback and ignoring an old reply", async () => {
+  const { runtime, changeContext } = await mountSchedules();
+  const editor = await openSavedSchedule();
+  const model = within(editor).getByRole("combobox", { name: "Model" });
+  await waitFor(() => expect(model.textContent).toContain("openai / GPT-5.6 Sol"));
+  const oldReply = Promise.withResolvers<Awaited<ReturnType<FlameClient["models"]["list"]>>>();
+  const oldModels = vi.spyOn(runtime.models, "list").mockImplementationOnce(() => oldReply.promise);
+  const owner = new AbortController();
+  const nextRuntime = createFlameClient(
+    createVisualRuntimeTransport(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => REVIEW_DIFF,
+    ),
+    { capabilities: () => VISUAL_CAPABILITIES },
+  );
+  releases.push(async () => {
+    owner.abort();
+    await nextRuntime.close();
+  });
+  const nextReply = Promise.withResolvers<void>();
+  const originalProviders = nextRuntime.providers.list.bind(nextRuntime.providers);
+  const nextProviders = vi
+    .spyOn(nextRuntime.providers, "list")
+    .mockImplementationOnce(async (...args) => {
+      await nextReply.promise;
+      return originalProviders(...args);
+    });
+  const nextModels = vi.spyOn(nextRuntime.models, "list");
+  try {
+    fireEvent.click(within(editor).getByRole("button", { name: "Refresh model choices" }));
+    await waitFor(() => expect(oldModels).toHaveBeenCalledTimes(1));
+    const retiredSignal = oldModels.mock.calls[0]![1]!;
+    await act(async () =>
+      changeContext({
+        runtime: nextRuntime,
+        signal: owner.signal,
+        track: (operation) => operation(owner.signal),
+      }),
+    );
+    expect(retiredSignal.aborted).toBe(true);
+    expect(nextProviders).toHaveBeenCalledTimes(1);
+    expect(nextModels).not.toHaveBeenCalled();
+    expect(model.textContent).toContain("openai / gpt-5.6-sol (unavailable)");
+    fireEvent.click(model);
+    const fallback = await screen.findByRole("option", {
+      name: "openai / gpt-5.6-sol (unavailable)",
+    });
+    expect(fallback.getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("option", { name: "openai / GPT-5.6 Sol" })).toBeNull();
+    fireEvent.keyDown(fallback, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    await act(async () => nextReply.resolve());
+    await waitFor(() => expect(model.textContent).toContain("openai / GPT-5.6 Sol"));
+    expect(nextModels).toHaveBeenCalledTimes(1);
+    await act(async () => oldReply.resolve({ data: [] }));
+    expect(model.textContent).toContain("openai / GPT-5.6 Sol");
+    expect(nextProviders).toHaveBeenCalledTimes(1);
+    expect(nextModels).toHaveBeenCalledTimes(1);
+    expect(oldModels).toHaveBeenCalledTimes(1);
+    expect(owner.signal.aborted).toBe(false);
+  } finally {
+    await act(async () => {
+      oldReply.resolve({ data: [] });
+      nextReply.resolve();
+    });
+  }
 });

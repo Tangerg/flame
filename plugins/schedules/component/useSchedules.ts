@@ -71,9 +71,18 @@ export function useSchedules(context: ComponentContext) {
   const reading = useRef<AbortController>(undefined);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const modelSource = useMemo(
+    () => ({
+      runtime: context.runtime,
+      track: context.track,
+      signal: context.signal,
+    }),
+    [context.runtime, context.track, context.signal],
+  );
   const [modelRead, setModelRead] = useState<ModelRead>();
   const [modelRefresh, setModelRefresh] = useState(0);
-  const currentModels = modelRead?.context === context ? modelRead : undefined;
+  const currentModels =
+    modelRead?.source === modelSource ? modelRead : undefined;
   const models = [...(currentModels?.catalogs.values() ?? [])].flat();
   const [edit, setEdit] = useState<Edit>();
   const [deleting, setDeleting] = useState<{
@@ -170,20 +179,21 @@ export function useSchedules(context: ComponentContext) {
   }, [context, refresh]);
   useEffect(() => {
     const controller = new AbortController();
-    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const signal = AbortSignal.any([modelSource.signal, controller.signal]);
     setModelRead((previous) => ({
-      context,
-      catalogs: previous?.context === context ? previous.catalogs : new Map(),
+      source: modelSource,
+      catalogs:
+        previous?.source === modelSource ? previous.catalogs : new Map(),
       loading: true,
     }));
     const readModels = async () => {
       try {
-        const page = await context.runtime.providers.list(signal);
+        const page = await modelSource.runtime.providers.list(signal);
         if (signal.aborted) return;
         const providers = page.data.filter((provider) => provider.configured);
         const results = await Promise.allSettled(
           providers.map((provider) =>
-            context.runtime.models.list(provider.id, signal),
+            modelSource.runtime.models.list(provider.id, signal),
           ),
         );
         if (signal.aborted) return;
@@ -196,7 +206,7 @@ export function useSchedules(context: ComponentContext) {
               catalogs.set(provider.id, result.value.data);
             else {
               const retained =
-                previous?.context === context
+                previous?.source === modelSource
                   ? previous.catalogs.get(provider.id)
                   : undefined;
               if (retained) catalogs.set(provider.id, retained);
@@ -204,7 +214,7 @@ export function useSchedules(context: ComponentContext) {
             }
           }
           return {
-            context,
+            source: modelSource,
             catalogs,
             loading: false,
             error: errors.join("; ") || undefined,
@@ -213,17 +223,17 @@ export function useSchedules(context: ComponentContext) {
       } catch (error) {
         if (!signal.aborted)
           setModelRead((previous) => ({
-            context,
+            source: modelSource,
             catalogs:
-              previous?.context === context ? previous.catalogs : new Map(),
+              previous?.source === modelSource ? previous.catalogs : new Map(),
             loading: false,
             error: failure(error),
           }));
       }
     };
-    void context.track(() => readModels());
+    void modelSource.track(() => readModels());
     return () => controller.abort();
-  }, [context, modelRefresh]);
+  }, [modelSource, modelRefresh]);
   async function observe(captured: Command) {
     try {
       const output = await captured.promise;

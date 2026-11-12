@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP command-error reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP command-error reading, Schedule model-catalog continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -18066,11 +18066,10 @@ accepted non-progress paths, **20** resources, **16** MCP read/command/form owne
 qualified hashes. Dependencies, hooks, global caches, read-only references and
 the clean primary checkout are preserved. A final fetch matches the qualified base.
 
-Next candidate: reproduce accepted Schedule model-choice retention after a
-locale-only context change and refused catalog read. Source inspection finds
-catalog retention keyed by the display context; the saved model survives as an
-unavailable option, but other accepted choices can disappear. Native qualification
-is still required before editing that boundary. Whole-product acceptance remains open.
+The subsequent **Schedule model catalogs across display languages (2026-11-13)**
+section qualifies that source/language boundary. Preserve its actual read source,
+saved-selection fallback and independent command lifecycle. Whole-product acceptance
+remains open.
 
 ### MCP tool-policy ownership and original-result continuity (2026-11-04)
 
@@ -19097,6 +19096,96 @@ Source/resource/reference and cleanup proofs remain available across publication
 Next inspect the observed German 200% saved-schedules heading behind the sticky
 toolbar after Cancel. Reproduce it separately before attributing a layout defect.
 The goal remains active; continue from actual observations after publication.
+
+### Schedule model catalogs across display languages (2026-11-13)
+
+From published `9264b8da8`, the original exact Schedule ESM loses accepted model
+choices after EN → ZH triggers a refused catalog read: **22** choices become
+only Runtime default and the saved GPT model marked unavailable. Its saved model
+and `medium` identity survive, but their accepted names/capabilities disappear.
+ModelRead used the whole display context as its source and cleared that source's
+catalogs on a locale-only replacement.
+
+The model-read source now captures only Runtime, track and component signal.
+Existing ModelRead data belongs to that stable source; locale changes format
+the same accepted or pending read. Actual source replacement still retires the
+old controller/catalog. Explicit Refresh and per-provider failure retention keep
+their original paths. No additional mutable state, ref, controller, version
+counter, cache, Runtime API or locale data is added. List/watch ownership, commands, form and
+saved-selection behavior are unchanged; the intentional unavailable fallback
+still describes genuinely missing models.
+
+Read-only ZCode `settings/AutomationEditView.tsx:1458` binds model reads to the
+resolved service and derives Intl labels separately. The actual
+`hooks/useModelSelectionView.ts` retains a same-service catalog while fencing
+another service. Flame keeps its existing abort model and per-provider queries;
+no registry, preferred-selection policy, retry timer or version-ref scheme is copied.
+The established better-layout/accessibility/writing guidance applies to the
+named read action, available choices and return to the original task. A bounded
+subagent implements the reviewed tests/source; the primary owns red verification,
+resources, serial gates and native qualification.
+
+Original presentation tests fail **2** locale cases and pass **15 / 17** in
+**3.92 s**; the genuine source-replacement guard already passes. Final
+presentation, Schedule-reading and actual component-module integration passes
+**62 tests / 3 files**. They preserve an authored draft/later focus and accepted
+selection through locale with no provider/model read, accept the original held
+refresh without changing its signal, retain choices after explicit refused
+refresh, and fence a replaced Runtime/track/signal and its late old response.
+All existing assertion bodies remain.
+
+All serial gates pass: component publication, full plugins (**47 script tests**,
+**648 source tests / 44 files**, existing **17 tests / 2 files** skipped), Web
+typecheck/lint/format/layers/design-system, `make check-native` and normal Lab
+(**484 assets**). All **20** resources rebuild/check; only Schedules changes.
+Normal and private old/new Lab CSS remains byte-identical. Accepted exact ESM:
+`91df990124a7096d4eeb4ad75548531fdd927af488e7b145a5c74fa9997c51b3`.
+
+Canonical Schedules normally imports TSX. Native comparison privately selects
+its exact published ESM through InstalledComponent, restoring that import and
+transport bytes after each build. One identical guarded public transport allows
+the first two canonical OpenAI model reads, then refuses later same-shape model
+queries. The existing `dock-schedules-models` facts supply all choices; no model
+or Schedule result is fabricated and no Schedule command is invoked.
+
+- English/light/14 px/Orange/full motion: a 320 px Dock and `Nightly` query
+  survive EN → ZH. The original GPT name, `medium` and all 22 choices remain.
+  Explicit Refresh shows the controlled provider refusal while retaining the
+  complete draft and capabilities. End/Return selects Panel focus model 19;
+  that deliberate new choice uses the existing provider-default effort behavior.
+  Ordinary native Left sizing remains readable. Tab/Return on Cancel restores
+  the original record opener/query. Composer continues at its retained middle
+  insertion point as `Keep verified this Schedule model draft.`.
+- Chinese/dark/18 px/custom **#3B82F6**/motion off, verified in Appearance:
+  ZH → EN retains all 22 choices and GPT/`medium`. Explicit refused Refresh keeps
+  the exact two-line editor draft. A 320 px Dock, native Left window and actual
+  popup wheel reading reach Panel focus model 19 while preserving GPT selection
+  and the surrounding task. Escape closes choices first, then cancels the editor
+  back to its original record. Composer continues exactly as
+  `Keep verified this dark model draft.`.
+
+Language changes use visible Settings after closing the editor. The original
+Cmd+, probe opens Settings behind the still-owned modal; it does not permit
+background picker use. Retained-editor locale and held reads are unit-qualified.
+One English typeText replacement produced only its suffix; that probe remains
+unclassified and is excluded from typing acceptance. Native setValue supplies
+the complete editor draft, which survives read/selection/reflow; Chinese uses
+the same explicit field operation. No typing workaround is added to production.
+Revisit that input probe only with a repeatable native event trace. Default page
+zoom is retained. Live catalogs, scheduling/Run writes, native held reads, source
+replacement, physical IME/clipboard, VoiceOver, numeric contrast, release
+installation and resource leases are not newly qualified. No browser visual
+suite or benchmark runs.
+
+Cleanup joins **3 native processes** and **2 preview servers**, all exit 0,
+unregisters all three bundles and removes six created Library stores. All **18**
+identity paths and **13** initially absent output/cache roots are absent again
+(**12** roots created); the private QA root is removed. Five accepted non-progress
+paths, **20** resources, both unchanged Schedule component/template files,
+**9** captured owners, **8** locale catalogs and **46** native inputs retain
+their qualified hashes. Dependencies, hooks, global caches, read-only references
+and the clean primary checkout are preserved. Final fetch matches the qualified
+base. Continue from fresh task evidence; whole-product acceptance remains open.
 
 ### Schedules model-choice reading and dialog feedback (2026-11-04)
 

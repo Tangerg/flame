@@ -28,7 +28,7 @@ export type Read = {
 };
 export type Edit = { basis?: Schedule; draft: Draft };
 export type ModelRead = {
-  context: ComponentContext;
+  source: Pick<ComponentContext, "runtime" | "track" | "signal">;
   catalogs: Map<string, Model[]>;
   loading: boolean;
   error?: string;

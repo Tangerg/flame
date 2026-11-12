@@ -215,8 +215,11 @@ is preserved. Read refreshes do not originate that focus transition.
 
 Each configured Provider's model catalog is read independently. Named failures
 remain visible while successful catalogs stay selectable; a failed refresh retains
-that Provider's last accepted catalog within the captured component context. A
-refresh never replaces a saved selection. Missing and deprecated selections retain
+that Provider's last accepted catalog for the same Runtime, tracking function and
+component signal. Language-only context replacement preserves that source, its
+catalogs and any pending read without querying Providers or models. Replacing a
+source collaborator retires the old read and catalog. A refresh never replaces a
+saved selection. Missing and deprecated selections retain
 their exact Provider/Model as labeled items until the user chooses another model.
 Refresh model choices names its wait and keeps keyboard focus through a read using
 the shared pending control; settlement retains the draft, selection and later focus.
