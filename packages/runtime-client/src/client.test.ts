@@ -345,6 +345,73 @@ describe("RpcClient", () => {
     await expect(client.call("sessions.get", { sessionId: "ses_01" })).rejects.toBeInstanceOf(
       RpcTransportError,
     );
+    expect(() =>
+      client.subscribe("notifications.runtime.event", { next: vi.fn(), error: vi.fn() }),
+    ).toThrow(RpcTransportError);
+    expect(() => client.onStreamEnd(vi.fn())).toThrow(RpcTransportError);
+  });
+
+  it.each([false, true])(
+    "joins teardown and notifies every observer when an error observer throws (transport fails=%s)",
+    async (transportFails) => {
+      const inner = createMemoryTransport();
+      const observerFailure = new Error("terminal observer failed");
+      const transportFailure = new Error("transport close failed");
+      const close = vi.fn(async () => {
+        await inner.close();
+        if (transportFails) throw transportFailure;
+      });
+      const client = createRpcClient({ ...inner, close });
+      const first = vi.fn().mockImplementationOnce(() => {
+        throw observerFailure;
+      });
+      const second = vi.fn();
+      client.subscribe("notifications.runtime.event", { next: vi.fn(), error: first });
+      client.subscribe("notifications.runtime.event", { next: vi.fn(), error: second });
+      try {
+        const closing = client.close();
+        const failure: unknown = await closing.catch((cause: unknown) => cause);
+        const causes = failure instanceof AggregateError ? failure.errors : [failure];
+        expect(causes).toEqual(
+          transportFails ? [transportFailure, observerFailure] : [observerFailure],
+        );
+        expect(close).toHaveBeenCalledOnce();
+        expect(first).toHaveBeenCalledOnce();
+        expect(second).toHaveBeenCalledOnce();
+        expect(client.close()).toBe(closing);
+      } finally {
+        await inner.close();
+      }
+    },
+  );
+
+  it("reports a thrown undefined teardown failure", async () => {
+    const inner = createMemoryTransport();
+    const client = createRpcClient({
+      ...inner,
+      close: async () => {
+        await inner.close();
+        throw undefined;
+      },
+    });
+    await expect(client.close()).rejects.toBeUndefined();
+  });
+
+  it("publishes one close operation before terminal callbacks can reenter", async () => {
+    const inner = createMemoryTransport();
+    const close = vi.fn(() => inner.close());
+    const client = createRpcClient({ ...inner, close });
+    let reentered: Promise<void> | undefined;
+    client.subscribe("notifications.runtime.event", {
+      next: vi.fn(),
+      error: () => {
+        reentered = client.close();
+      },
+    });
+    const closing = client.close();
+    await closing;
+    expect(reentered).toBe(closing);
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it("keeps concurrent close callers joined to the same transport teardown", async () => {

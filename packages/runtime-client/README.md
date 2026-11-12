@@ -60,6 +60,10 @@ validated by command capture and receipt recovery. No raw intent or authored
 input is added to the persistent journal.
 
 Each client owns one mutation journal and retires it when `close()` begins.
+Closing also revokes notification registration, notifies each captured observer
+once and joins transport, receive and consumer work. A failed error observer
+cannot prevent another observer's terminal delivery or resource release; shutdown
+preserves every observer and cleanup failure, including non-Error rejections.
 Consumers may supply `mutationStorage` to retain unresolved commands across
 client replacement. The `capabilities` reader supplies the sole namespace and
 retention authority; there is no separate scope, clock, or journal lifecycle

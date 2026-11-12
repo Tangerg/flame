@@ -107,8 +107,13 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
   const streamEndHandlers = new Set<StreamEndHandler>();
   const consumers = new Set<Promise<void>>();
+  const observerFailures: unknown[] = [];
   const connection = new AbortController();
   let closePromise: Promise<void> | undefined;
+
+  function requireOpen(): void {
+    if (connection.signal.aborted) throw new RpcTransportError("client closed");
+  }
 
   function failAllPending(failure: RpcTransportError): void {
     for (const { reject } of pending.values()) reject(failure);
@@ -116,13 +121,19 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   }
 
   function failConnection(failure: RpcTransportError): void {
-    connection.abort(failure);
-    failAllPending(failure);
-    for (const observers of subscribers.values()) {
-      for (const observer of observers) observer.error(failure);
-    }
+    if (connection.signal.aborted) return;
+    const observers = [...subscribers.values()].flatMap((values) => [...values]);
     subscribers.clear();
     streamEndHandlers.clear();
+    connection.abort(failure);
+    failAllPending(failure);
+    for (const observer of observers) {
+      try {
+        observer.error(failure);
+      } catch (cause) {
+        observerFailures.push(cause);
+      }
+    }
   }
 
   const receiveLoop = (async () => {
@@ -341,7 +352,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     callOptions: RpcCallOptions = {},
     exactJSON = false,
   ): Promise<WireResult<M> | string> {
-    if (connection.signal.aborted) throw new RpcTransportError("client closed");
+    requireOpen();
     const requiresIdempotency = requestRequiresIdempotency(method, params);
     if (
       exactJSON &&
@@ -380,7 +391,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     checkRequest(method, params, requestMeta);
     const id = (++lastRequestId).toString();
     callOptions.onRequestRpcId?.(id);
-    if (connection.signal.aborted) throw new RpcTransportError("client closed");
+    requireOpen();
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,
       id,
@@ -453,6 +464,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     method: M,
     observer: NotificationObserver<M>,
   ): () => void {
+    requireOpen();
     const validatedObserver = observer as NotificationObserver;
     let set = subscribers.get(method);
     if (!set) {
@@ -469,23 +481,34 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   }
 
   function onStreamEnd(handler: StreamEndHandler): () => void {
+    requireOpen();
     streamEndHandlers.add(handler);
     return () => streamEndHandlers.delete(handler);
   }
 
   function close(): Promise<void> {
-    closePromise ??= (async () => {
-      if (!connection.signal.aborted) failConnection(new RpcTransportError("client closed"));
-      let closeFailure: unknown;
+    if (closePromise) return closePromise;
+    const completion = Promise.withResolvers<void>();
+    closePromise = completion.promise;
+    failConnection(new RpcTransportError("client closed"));
+    void (async () => {
+      const failures: unknown[] = [];
       try {
         await transport.close();
       } catch (error) {
-        closeFailure = error;
+        failures.push(error);
       }
-      await receiveLoop;
-      await Promise.all(consumers);
-      if (closeFailure !== undefined) throw closeFailure;
-    })();
+      try {
+        await receiveLoop;
+      } catch (error) {
+        failures.push(error);
+      }
+      for (const outcome of await Promise.allSettled(consumers))
+        if (outcome.status === "rejected") failures.push(outcome.reason);
+      failures.push(...observerFailures);
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1) throw new AggregateError(failures, "rpc client shutdown failed");
+    })().then(completion.resolve, completion.reject);
     return closePromise;
   }
 
