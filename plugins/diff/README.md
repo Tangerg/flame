@@ -29,6 +29,13 @@ The accepted comparison, file/workspace scope, real baseline and read time stay
 beside that identity in both readers and the overview. Read time records client
 acceptance, not a repository revision. A pending or failed request retains these
 facts with the accepted content; only a successful response advances them.
+Display-locale changes reformat labels and dates without changing those accepted
+facts, selection, filters or layout. They preserve the original pending read and
+issue no request. Read lifetimes follow the captured Runtime, workspace, signal,
+tracking collaborator and comparison query. Actual replacement, query changes
+and retirement retain their cancellation boundaries.
+Failures retain their original cause. Error and RPC detail text stays literal;
+a missing or unsupported cause uses the current display locale's fallback.
 Full read feedback belongs to scrolling content. The persistent toolbar keeps a
 compact failure cue and Refresh; verbose feedback cannot consume the reading
 viewport beside a long filename at large font sizes or zoom.
@@ -73,3 +80,5 @@ npm run check:resources --prefix plugins
 
 Edit `component/component.tsx` and rebuild the tracked ESM. React/JSX/UI are host-provided
 shared modules. Installation admits exact package bytes without executing code.
+Existing installations must explicitly select the rebuilt package digest through
+the normal resource rollout; rebuilding source does not update an admitted release.

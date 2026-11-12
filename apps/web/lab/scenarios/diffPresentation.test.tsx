@@ -51,7 +51,7 @@ function mountDiff(
   const workspace = runtime.workspace({ path: "/Users/visual/scope" });
   const get = vi.spyOn(workspace.diff, "get");
   vi.spyOn(runtime, "workspace").mockReturnValue(workspace);
-  const context: ComponentContext = {
+  let context: ComponentContext = {
     component: { installationId: "diff-review", digest: "a".repeat(64), componentId: "diff" },
     runtime,
     workspace: { ref: { path: "/Users/visual/scope" }, focus: { path, revision: 1n } },
@@ -79,16 +79,26 @@ function mountDiff(
     owner.abort();
     await runtime.close();
   });
-  const view = testClient.render(
+  const scene = () => (
     <>
       <button>Outside action</button>
       <div data-testid="viewport" style={{ overflowY: "auto", height: 400 }}>
         <WorkspaceDiff context={context} />
       </div>
-    </>,
+    </>
   );
+  const view = testClient.render(scene());
   mockSelectViewport(view.getByTestId("viewport"));
-  return { ...view, get, owner, outsideEscape };
+  return {
+    ...view,
+    get,
+    owner,
+    outsideEscape,
+    changeLocale(locale: string) {
+      context = Object.freeze({ ...context, locale });
+      view.rerender(scene());
+    },
+  };
 }
 
 async function loaded() {
@@ -98,8 +108,10 @@ async function loaded() {
 async function comparison(label: string) {
   fireEvent.click(screen.getByRole("combobox", { name: "Comparison" }));
   const option = await screen.findByRole("option", { name: label });
-  fireEvent.pointerDown(option, { pointerType: "mouse" });
-  fireEvent.click(option);
+  await act(async () => {
+    fireEvent.pointerDown(option, { pointerType: "mouse" });
+    fireEvent.click(option);
+  });
 }
 
 it("keeps an accepted read when the current comparison is selected again", async () => {
@@ -110,6 +122,123 @@ it("keeps an accepted read when the current comparison is selected again", async
   expect(get).toHaveBeenCalledTimes(1);
   expect(document.querySelector("time")!.dateTime).toBe(at);
 });
+
+it("keeps the inspected diff and its read time through display-language changes until Refresh", async () => {
+  const first = "2026-11-12T03:00:01.000Z";
+  const next = "2026-11-12T03:05:02.000Z";
+  vi.setSystemTime(new Date(first));
+  const later: Diff = {
+    ...REVIEW_DIFF,
+    baseline: { type: "head", commit: "b".repeat(40) },
+  };
+  const read = vi.fn().mockResolvedValueOnce(REVIEW_DIFF).mockResolvedValue(later);
+  const { get, changeLocale } = mountDiff("", read);
+  await loaded();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
+  fireEvent.change(search, { target: { value: "DockResizer" } });
+  const opener = screen.getByRole("button", { name: /^DockResizer.tsx / });
+  fireEvent.click(opener);
+  const reader = screen.getByRole("region", { name: `Changes in ${ACTIVE_DIFF_FILE}` });
+  const original = await get.mock.results[0]!.value;
+  const outside = screen.getByRole("button", { name: "Outside action" });
+  act(() => outside.focus());
+  vi.setSystemTime(new Date(next));
+
+  await act(async () => changeLocale("zh"));
+  expect(get).toHaveBeenCalledOnce();
+  expect(screen.getByRole("region", { name: `${ACTIVE_DIFF_FILE} 中的更改` })).toBe(reader);
+  expect(document.querySelector("time")!.dateTime).toBe(first);
+  expect(screen.getByText("基线：HEAD · 12345678")).toBeTruthy();
+  expect(document.activeElement).toBe(outside);
+  await act(async () => changeLocale("en"));
+  expect(get).toHaveBeenCalledOnce();
+  expect(screen.getByRole("region", { name: `Changes in ${ACTIVE_DIFF_FILE}` })).toBe(reader);
+  expect(document.querySelector("time")!.dateTime).toBe(first);
+
+  const heading = screen.getByRole("heading", { name: "DockResizer.tsx" });
+  act(() => heading.focus());
+  fireEvent.keyDown(heading, { key: "Escape" });
+  const returnedSearch = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
+  expect(returnedSearch.value).toBe("DockResizer");
+  expect(document.activeElement).toBe(opener);
+  expect(get).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await waitFor(() => expect(document.querySelector("time")!.dateTime).toBe(next));
+  expect(get).toHaveBeenCalledTimes(2);
+  expect(screen.getByText("Baseline: HEAD · bbbbbbbb")).toBeTruthy();
+  expect(original).toEqual(REVIEW_DIFF);
+  expect(returnedSearch.value).toBe("DockResizer");
+});
+
+it("keeps the original pending scoped diff read through a display-language change", async () => {
+  const accepted = Promise.withResolvers<Diff>();
+  const { get, owner, changeLocale } = mountDiff(ACTIVE_DIFF_FILE, () => accepted.promise);
+  await waitFor(() => expect(get).toHaveBeenCalledOnce());
+  const originalSignal = get.mock.calls[0]![1]!;
+  const outside = screen.getByRole("button", { name: "Outside action" });
+  act(() => outside.focus());
+  try {
+    await act(async () => changeLocale("zh"));
+    expect(originalSignal.aborted).toBe(false);
+    expect(owner.signal.aborted).toBe(false);
+    expect(get).toHaveBeenCalledExactlyOnceWith(
+      { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+      originalSignal,
+    );
+    expect(screen.getByText("正在读取未提交的更改…")).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+    await act(async () => accepted.resolve({ ...REVIEW_DIFF, files: [REVIEW_DIFF.files![0]!] }));
+    expect(screen.getByRole("region", { name: `${ACTIVE_DIFF_FILE} 中的更改` })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+    expect(get).toHaveBeenCalledOnce();
+  } finally {
+    await act(async () => accepted.resolve(REVIEW_DIFF));
+  }
+});
+
+const literalDiffRefusal = "  Git refused — 保留\n    original cause  ";
+
+it.each([
+  {
+    cause: new Error(literalDiffRefusal),
+    en: literalDiffRefusal,
+    zh: literalDiffRefusal,
+    kind: "literal cause",
+  },
+  {
+    cause: undefined,
+    en: "The diff could not be read.",
+    zh: "无法读取该 diff。",
+    kind: "localized fallback",
+  },
+])(
+  "retains a failed comparison and its $kind through display-language changes",
+  async (failure) => {
+    const { get, changeLocale } = mountDiff();
+    await loaded();
+    const at = document.querySelector("time")!.dateTime;
+    get.mockRejectedValueOnce(failure.cause);
+    await comparison("Branch changes");
+    const notice = await screen.findByRole("alert");
+    expect(notice.textContent).toBe(`Could not read branch changes: ${failure.en}`);
+    const outside = screen.getByRole("button", { name: "Outside action" });
+    act(() => outside.focus());
+
+    await act(async () => changeLocale("zh"));
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(notice.textContent).toBe(`无法读取分支更改：${failure.zh}`);
+    expect(screen.getByRole("status").textContent).toBe("显示上次成功读取时的未提交的更改。");
+    expect(document.querySelector("time")!.dateTime).toBe(at);
+    expect(screen.getByText("基线：HEAD · 12345678")).toBeTruthy();
+    expect(document.activeElement).toBe(outside);
+    await act(async () => changeLocale("en"));
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(notice.textContent).toBe(`Could not read branch changes: ${failure.en}`);
+    expect(document.querySelector("time")!.dateTime).toBe(at);
+    expect(document.activeElement).toBe(outside);
+  },
+);
 
 it("reads a source-targeted file outside the workspace page and explicitly requests the overview", async () => {
   const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => ({

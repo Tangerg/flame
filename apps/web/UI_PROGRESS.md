@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -27001,6 +27001,110 @@ inform persistent identity, task grouping and quiet supporting detail. Static
 artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
+
+### Diff reads through display-language changes (2026-11-12)
+
+`WorkspaceDiff` derived its workspace from the whole display context and bound
+Refresh to that context and its translator. Changing language therefore issued
+an unrequested Git read, aborted an original pending scoped request, advanced the
+accepted read time and cleared failed-comparison feedback. A changed workspace
+could replace the inspected result without Refresh or a comparison change.
+Actual original published ESM in Wails changes **Read at 10:30:00 PM** to
+**读取于 22:31:25** solely after Appearance → Chinese → Cmd+L. The existing Lab
+calendar advances normally; no clock or read-result substitution is used.
+
+The component now derives workspace identity from the captured workspace and
+binds its existing read callback to Runtime, workspace, signal, tracking function
+and query. Display language only reformats the accepted facts and controls. The
+existing error field captures the original cause; rendering derives its current
+fallback with `failureText`, preserving Error/RPC detail literally. Pending,
+failure, selection, comparison, file/raw scope, baseline, acceptance time, layout,
+filter, cancellation and focus continuations retain their existing owners. No
+new effect, counter, query cache, Runtime API or shared UI mechanism is added.
+Normal generation updates only the Diff ESM, and the component README records
+the display contract and ordinary explicit digest rollout.
+
+Better-layout's stable reading context, better-writing's accurate read status and
+better-accessibility's local return/focus guide this repair. Read-only ZCode's
+actual `components/ui/diff-viewer.tsx` separates patch/file inputs from display
+options; it supplies that presentation distinction, not a claim about its host's
+read lifecycle. The SDK's display-only locale contract and the actual
+`InstalledComponent` capture establish Flame's lifetime boundary. Existing
+ChatGPT/HeroUI/Radix reading and focus research remains applicable. A bounded
+subagent implements only the component and README; primary authors regressions,
+reviews source and owns all gates and native acceptance.
+
+The original implementation fails all **4 new cases / 48 existing passes
+(7.89 s)**. They expose the extra read, aborted original signal and discarded
+literal/fallback failure. The comparison helper now awaits its activation in
+`act`, eliminating immediate-rejection harness warnings. A Chinese label is
+corrected to its existing catalog value. The first candidate run also exposes an
+invalid new-test assumption: the FilterBar is intentionally unmounted while a
+reader is shown. The corrected return assertion checks the retained query and
+original row focus; no existing product assertion or deadline is weakened.
+
+Final verification passes:
+
+- Diff **52 tests (3.87 s)**. New frozen display contexts preserve the original
+  pending scoped request and signal, accepted reader identity/baseline/time,
+  later outside focus, query/row return and original causes. EN→ZH→EN retains
+  both padded multiline CJK Error text and a localized no-cause fallback. An
+  explicit Refresh accepts a newly available baseline and advances time.
+- Diff, installed Workspace continuity and component loading together:
+  **3 files / 93 tests (7.77 s)**. Web types, lint, complete formatting, layers
+  and the **827-file** design-system check pass.
+- Complete plugins: types, lint, format, **47 script tests**, **648 source tests /
+  44 passed files (42.06 s)**, existing **17 skips / 2 files**, all **20 catalogs /
+  8 locales** and exact resource reproduction.
+- `make check-native` passes normal Web staging, Wails **v3.1.0** and Desktop
+  test/vet/build with the prepared repository module proxy and macOS policy.
+  Normal final Lab build passes with **484 assets (2.10 s)**. Shared UI source
+  is unchanged; its preceding complete **288-test** and packed-consumer receipt
+  remains applicable. No full-Web aggregate or backend suite is claimed.
+
+The normal Workspace Diff Lab entry imports TSX. Both native comparison artifacts
+instead temporarily select the exact published `WorkspaceDiff` ESM export, then
+restore the installer byte-for-byte. Old/new artifacts each contain **484 assets**
+and the identical normal stylesheet. The rebuilt resource SHA-256 is
+`a293788ff2a9952a8fa63fe331492a2289b81ef301650f18b84713c626c40bbb`.
+The existing canonical Diff snapshots, transport, clock and fixture state remain
+unchanged. No private HTML or business-result seam is added. The copied native
+host changes only its initial URL; all **46** tracked native inputs remain intact.
+
+- EN/light/14 px/Orange/full motion: Files → `DockResizer` filter → reader retains
+  the accepted **22:30:26**, workspace scope and HEAD baseline through keyboard
+  **320 px** Dock resizing, Appearance → Chinese and ordinary Window Zoom/restore.
+  The named code reader reaches its right edge with arrows. Escape returns to
+  the same row and query. Only an explicit Refresh advances time to **22:34:41**.
+  Cmd+L continues the original middle caret as
+  `Keep verified this Diff reading draft.`
+- ZH/dark/18 px/**#3B82F6**/motion off: Files → `session` filter → `session.go`
+  switches to Side by side with keyboard selection. Appearance → English retains
+  that file, layout, HEAD and the same **22:30:30 / 10:30:30 PM**. Keyboard reading
+  reaches the final after-code column; Escape restores the original row/query.
+  Clearing the filter and explicitly choosing Branch changes accepts merge base
+  `abcdef12` at **10:33:00 PM**, its three files and the canonical prior-file
+  absence notice. Cmd+L yields exactly `Keep verified this dark Diff draft.`
+
+Horizontal scrolling is qualified by the focused reader's arrow keys. A coordinate
+wheel probe lands on the conversation, and an AX-targeted wheel probe does not
+establish movement; neither is used as scrolling evidence. Horizontal-offset
+retention across Settings is not qualified. All acceptance uses default page zoom
+and full-resolution native views; no browser visual suite or performance benchmark
+runs. Deferred failures/cancellation remain unit/integration coverage. The native
+tasks qualify published presentation over captured reads, not live Git/Runtime
+accuracy, installation/resource leasing, physical IME, VoiceOver or whole-product
+acceptance. No message or Runtime mutation is submitted.
+
+All **3** native launches and **2** loopback servers exit **0**. Three registrations,
+six created Library stores, all **18** private Library paths, **12** owned ignored
+output/cache roots and the private apps/data/assets/helpers/logs return to absence.
+Cleanup preserves **4** accepted source/resource hashes, **19** other resources,
+**7** captured owners, **2** clock owners and **46** native inputs; ordinary
+dependencies/hooks and unrelated primary work remain intact. No functional suite
+runs after cleanup. The next strong read-only finding is Memory's command observer
+being coupled to a translated load callback; establish deferred-command regression
+and native evidence before changing that separate owner.
 
 ### File and Diff native reading (2026-11-11)
 

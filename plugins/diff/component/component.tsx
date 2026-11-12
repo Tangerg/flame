@@ -78,7 +78,7 @@ type Query =
 type Read = {
   loading: boolean;
   accepted?: { diff: Diff; query: Query; at: string };
-  error?: string;
+  error?: { cause: unknown };
 };
 type Selection =
   | { view: "files"; path: string | null }
@@ -108,18 +108,24 @@ function focusMovedFromOrigin(
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
+  const {
+    runtime,
+    workspace: capturedWorkspace,
+    signal: componentSignal,
+    track,
+  } = context;
   const workspace = useMemo(() => {
-    if (!context.workspace || !context.workspace.focus)
+    if (!capturedWorkspace || !capturedWorkspace.focus)
       throw new Error("Workspace diff requires a workspace context");
-    const prefix = context.workspace.ref.path.endsWith("/")
-      ? context.workspace.ref.path
-      : `${context.workspace.ref.path}/`;
-    const path = context.workspace.focus.path;
+    const prefix = capturedWorkspace.ref.path.endsWith("/")
+      ? capturedWorkspace.ref.path
+      : `${capturedWorkspace.ref.path}/`;
+    const path = capturedWorkspace.focus.path;
     return {
-      ref: context.workspace.ref,
+      ref: capturedWorkspace.ref,
       focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
     };
-  }, [context]);
+  }, [capturedWorkspace]);
   const [query, setQuery] = useState<Query>(() => ({
     mode: "worktree",
     format: "rows",
@@ -155,11 +161,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     reading.current?.abort();
     const controller = new AbortController();
     reading.current = controller;
-    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const signal = AbortSignal.any([componentSignal, controller.signal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
-      const diff = await context.track(() =>
-        context.runtime.workspace(workspace.ref).diff.get(query, signal),
+      const diff = await track(() =>
+        runtime.workspace(workspace.ref).diff.get(query, signal),
       );
       if (!signal.aborted) {
         setSelection((current) =>
@@ -180,11 +186,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error: failureText(error, t("read.failed")),
+          error: { cause: error },
         }));
       }
     }
-  }, [context, query, workspace, t]);
+  }, [runtime, componentSignal, track, query, workspace]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
@@ -561,7 +567,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         <Metadata role="alert">
           {t("status.error", {
             name: comparisonName(t, query.mode).toLocaleLowerCase(),
-            error: read.error,
+            error: failureText(read.error.cause, t("read.failed")),
           })}
         </Metadata>
       )}
