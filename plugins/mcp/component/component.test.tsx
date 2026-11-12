@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import {
   act,
   cleanup,
@@ -8,7 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import { MCPServers } from "./component";
 import { fixture, mutation, server } from "./testing";
@@ -41,6 +43,15 @@ afterEach(() => {
   for (const f of fixtures.splice(0)) f.dispose();
   vi.restoreAllMocks();
 });
+function loadUiStyles() {
+  const style = document.createElement("style");
+  style.textContent = readFileSync(
+    createRequire(import.meta.url).resolve("@flame/ui/styles.css"),
+    "utf8",
+  );
+  document.head.append(style);
+  onTestFinished(() => style.remove());
+}
 async function mount(f = create()) {
   const view = render(<f.Component context={f.context} />);
   await screen.findByText("docs");
@@ -796,6 +807,7 @@ async function openPolicyWithDraft() {
   return { f, description };
 }
 it("keeps a deferred visibility write and its refusal in Tools without claiming the editor is saving", async () => {
+  loadUiStyles();
   const { f, description } = await openPolicyWithDraft();
   const done = Promise.withResolvers<void>();
   f.setExposure.mockReturnValueOnce(mutation(done.promise));
@@ -821,6 +833,7 @@ it("keeps a deferred visibility write and its refusal in Tools without claiming 
   await act(async () => done.reject(new Error(reason)));
   const failure = screen.getByText(reason, literal);
   expect(screen.getAllByText(reason, literal)).toEqual([failure]);
+  expect(getComputedStyle(failure).whiteSpace).toBe("pre-wrap");
   expect(failure.closest("[role=alert]")).not.toBeNull();
   expect(failure.closest("[data-focus-unit]")).not.toBeNull();
   expect(screen.queryByText(saving)).toBeNull();
@@ -984,6 +997,7 @@ it("keeps a focused Tools recovery as one button through acceptance until focus 
   expect(f.update).not.toHaveBeenCalled();
 });
 it("keeps a focused known refusal on the confirmed button beside its literal error", async () => {
+  loadUiStyles();
   const { f, retry, reconcile } = await focusedUncertainVisibility();
   const original = Promise.withResolvers<void>();
   retry.mockReturnValueOnce(original.promise);
@@ -992,6 +1006,7 @@ it("keeps a focused known refusal on the confirmed button beside its literal err
   await act(async () => original.reject(new Error(reason)));
   expectFocusedRecovery(reconcile, confirmedName, true);
   const failure = screen.getByText(reason, literal);
+  expect(getComputedStyle(failure).whiteSpace).toBe("pre-wrap");
   expect(failure.closest("[role=alert]")).not.toBeNull();
   expect(failure.closest("[data-focus-unit]")).toBe(
     reconcile.closest("[data-focus-unit]"),

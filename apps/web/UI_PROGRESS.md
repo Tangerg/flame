@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP command-error reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -17994,6 +17994,83 @@ exact qualification root. No native process or private endpoint listener remains
 Both existing UI caches and the protected 123-byte draft remain byte-exact.
 Preserved in-thread evidence: **180 text records / 51 capture hashes**; gzip SHA-256
 `f81a5197e52ecb0b67a2780d1c5bd939d9cdea89c21903dca024ff0277341bb0`.
+
+### Literal MCP command-error reading (2026-11-12)
+
+From published `278dbc149`, the original exact MCP ESM collapses the existing
+two-line refusal into one native line, losing its indentation. The command model
+already retains the exact cause and correct refusal state; only ErrorMessage's
+ordinary span and `whiteSpace: normal` projection discard that reading structure.
+It now uses the already-imported shared RecordBody and retires that local
+whitespace override. Icon, alert and focus-unit ancestry remain. No command,
+read, recovery, state, locale, shared-style or protocol owner changes; the earlier
+tool-description paragraph-validity fix is preserved.
+
+Read-only ZCode `settings/McpFailurePresentation.tsx` separates current guidance
+from raw technical evidence. Flame keeps its existing inline command feedback,
+rather than adding another popover or error category. Better-typography,
+better-writing and better-accessibility guide literal reading and task return.
+A bounded subagent makes the reviewed test/body changes; the primary owns red
+verification, publication resources, gates and actual native qualification.
+
+The two existing direct/recovered refusal tests load the real public
+`@flame/ui/styles.css` only for their own lifetime and remove it afterward.
+They preserve every original literal-cause, dispatch/recovery, focus and draft
+assertion and additionally check the computed `pre-wrap` policy. The original
+passes **29** and fails **2** of **31** at `normal` versus `pre-wrap` (**2.84 s**).
+No CSS or computed style is mocked. This verifies the actual stylesheet policy;
+native screenshots separately establish real line layout.
+
+All serial gates pass: publication, full plugin checks (**47 script tests** and
+**648 source tests / 44 files**, with the existing **17 tests / 2 files** skipped),
+**33** actual component-module integration tests, Web typecheck/lint/format,
+layers/design-system, `make check-native` and normal Lab (**484 assets**).
+All **20** resources rebuild/check; only MCP changes. Normal and native old/new
+Lab CSS is byte-identical. The new exact ESM SHA-256 is
+`cdadea0aad07ec2213788ddc0d404ca8b6d6d5c75404ea8b423e36bde76159e5`.
+
+The existing MCP fixture already loads published ESM through MCPServers.create
+and InstalledComponent. A byte-identical private public-transport seam guards
+only `mcp.tools.setExposure` for user `workspace-tools`, `read_workspace_files`,
+`disabled: true`, and returns the existing test's literal multiline known refusal.
+Other captured reads remain canonical; no real policy or configuration is written.
+Transport bytes are restored exactly after each private build.
+
+- English/light/14 px/Orange/full motion, verified in Appearance: the original
+  hard newline and two-space indentation remain readable with ordinary soft
+  wrapping. Tool Enable stays on and Auto-approve off. A Description draft,
+  keyboard Cancel → original Edit focus → Return/reopen, and EN → ZH preserve
+  both the draft and original refusal. Native Move & Resize → Left remains
+  readable. Composer continues at its retained middle insertion point as
+  `Keep verified this MCP evidence draft.`.
+- Chinese/dark/18 px/custom **#3B82F6**/motion off, verified in Appearance:
+  ZH → EN retains the same raw cause and tool identity. Ordinary Left sizing
+  and actual MCP-pane wheel reading reveal server identity and the complete
+  refusal while preserving later Description focus. Keyboard traversal reaches
+  Cancel, returns to Edit and reopens `Retain this dark MCP draft.`. Composer
+  continues exactly as `Keep verified this dark MCP draft.`.
+
+Default page zoom is retained. An English wheel action with no matched movement
+capture does not establish scroll continuity; the accepted Chinese wheel task
+does. Native unknown-command recovery, successful policy/configuration writes,
+live Runtime/OAuth/permissions, physical IME/clipboard, VoiceOver, numeric contrast,
+release installation and resource leases are not newly qualified. Existing unit
+coverage retains original-command recovery. No browser visual suite or benchmark runs.
+
+Cleanup joins **3 native processes** and **2 preview servers**, all exit 0,
+unregisters three exact bundles, removes six created Library stores and verifies
+all **18** identity paths absent. All **13** initially absent output/cache roots
+are absent again (**12** created), and the private QA root is removed. The four
+accepted non-progress paths, **20** resources, **16** MCP read/command/form owners,
+**9** captured owners, **8** MCP locales and **46** native inputs retain their
+qualified hashes. Dependencies, hooks, global caches, read-only references and
+the clean primary checkout are preserved. A final fetch matches the qualified base.
+
+Next candidate: reproduce accepted Schedule model-choice retention after a
+locale-only context change and refused catalog read. Source inspection finds
+catalog retention keyed by the display context; the saved model survives as an
+unavailable option, but other accepted choices can disappear. Native qualification
+is still required before editing that boundary. Whole-product acceptance remains open.
 
 ### MCP tool-policy ownership and original-result continuity (2026-11-04)
 

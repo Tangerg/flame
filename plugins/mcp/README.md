@@ -61,6 +61,8 @@ it actionable. Leaving a pending or confirmed button retires its focus projectio
 a later completion never reclaims focus. Only an accepted recovery whose original
 editor is still mounted closes that editor; an older completion cannot close a
 later editor.
+Literal command failures use the shared record body so recorded line breaks and
+indentation remain readable through refusal and original-command reconciliation.
 
 Failed reads of tools, tool visibility and auto-approve rules name their object
 above the publisher's literal explanation. Each failure and its Retry form one
