@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **paused at a milestone at the user's explicit request (2026-11-12)**. The current syntax-test reliability batch is verified and published before this pause; do not start another polishing batch until the user resumes it. Native control works through the bundled Sky bridge, and the Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for future acceptance; the user explicitly stopped zoom stress testing.** Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests now observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock, and the recorded-identity batch is qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -24311,6 +24311,122 @@ and Ace composition references remain applicable; static artwork supplies no
 keyboard evidence. Runtime trajectory generation, evidence, status, Session
 renaming and all command lifecycles retain their existing owners.
 
+### Recorded identity before long prose (2026-11-12)
+
+This resumed batch starts from `015487259` in the isolated
+`codex/flame-ui-reading` worktree. Literal Markdown in the forensic reader is an
+intentional contract. Actual Wails reproduces the reading-order gap: expanding
+the 48-line response puts its record/Run identity and Recorded evidence entry
+below the complete raw body, outside the initial visible frame.
+
+`plugins/trajectory/component/report.tsx` now places Facts, notices and the
+existing Recorded evidence entry before the complete body. Every literal byte,
+text/image order, opaque JSON number, unknown field and reasoning-redaction
+boundary stays with its existing owner. Page/filter state and disclosure/focus
+behavior are unchanged. There is no new clipping, scroll surface, renderer,
+state or animation.
+
+`installVisualWorkspaceFixture.ts` selects the rebuilt Trajectory package ESM
+through the same eager import used by its other published components. The final
+native task exercises that built component within the existing Lab. This is not
+a live Runtime installation or byte-exact network-resource selection check.
+
+Better Accessibility, Layout, Writing, Typography, Colors and UI guide the
+review. Read-only ZCode `ModelTrajectoryPaneDetails.tsx:25` retains literal prose,
+while `ModelTrajectoryExpandedContent.tsx` explicitly handles long-content
+reachability. Flame needs only the existing reading-order repair here. The actual
+ChatGPT Sources panel's trigger/control relation and the
+[HeroUI Accordion](https://heroui.com/en/docs/react/components/accordion) and
+[Radix Collapsible](https://www.radix-ui.com/primitives/docs/components/collapsible)
+references support progressive disclosure without a modal task. Arc's
+reduced-motion handling does not justify adding motion to this frequent read.
+Original-size Ace Alpaca and Marketer references are inspected from their source
+sites after the old caches are absent; they inform grouping and workspace
+proportion, not keyboard evidence.
+
+Verification:
+
+- The strengthened existing reading regression fails against the original
+  production order at its first identity-before-body assertion. The remaining
+  tests are unselected in that focused baseline, not disabled.
+- Final focused source contracts pass **4 files / 70 tests**: portable
+  presentation, exact evidence, trajectory navigation and captured-code actions.
+  The additional existing `workspaceCommands.test.tsx` passes **8 tests** against
+  the Lab installation entry.
+- Plugin `check` passes type/lint/format, **47 script tests**, **644 source tests**,
+  **20 catalogs / eight locales** and exact resource reproduction. Its **17 skipped
+  tests / two skipped files** retain their existing platform or explicit native
+  opt-in conditions.
+- Web typecheck, lint, full formatting and design-system boundary checks pass.
+  `make check-native` passes production Web staging, Wails build, Desktop Go
+  tests/vet/build and the macOS deployment-target check. A complete Web/Runtime
+  aggregate, browser visual suites and performance benchmarks are not run.
+- Normal publisher rebuilding changes only Trajectory's ESM. Its sole semantic
+  change moves the same body variable in the output children array. The final
+  Lab build and its three-document stylesheet check pass. Baseline and final
+  builds contain **488** and **487 assets**, with byte-identical CSS.
+- The private production-tagged Wails **v3.1.0** host preserves all **46** production
+  native inputs. Its copy differs only in `application.go` for the private HTTP
+  Lab URL. Separate application identities and `FLAME_HOME` values isolate the
+  native tasks from user data and the unavailable Runtime endpoint.
+
+The original turn and two continuations cannot enter native control while the
+Mac is locked. Their refusal is retained as unqualified work, not a passing
+native result. After the user confirms manual unlock, the baseline and final
+native tasks run at default page zoom with ordinary window sizes:
+
+- EN/light/14 px/Flame Orange/full motion reproduces the original buried context.
+  The final build enters the filtered response by Tab/Enter, shows complete
+  record/Run identity before the body and focuses Recorded evidence visibly.
+  Keyboard wrapping and Arrow reading reach observation 48 in the JSON. Closing
+  evidence returns focus to its trigger. Full-width material, native Window
+  Zoom/restore, literal-body wheel reading and Dock return retain the query,
+  expanded response and exact four-line draft. Cmd+L continues that draft with
+  ` Continue reviewing.`.
+- ZH/dark/18 px/**#3B82F6**/motion off checks the same task. Actual keyboard focus
+  followed by Home sets the Dock to **320 px**, where complete identity fields
+  stack and the evidence entry stays reachable. An earlier click/Home probe
+  retains 660 px and is not used as width evidence. Full-width JSON keyboard
+  reading reaches observation 48; close and Dock return preserve the filter,
+  response and exact four-line Chinese draft. Cmd+L appends `再核对一次。`.
+  A combined narrow Arrow/wheel probe finishes on the literal body and is not
+  used to claim inner-wheel containment.
+
+These tasks use the unchanged Lab observation-off setting. No Send, live Runtime
+mutation, page-zoom command or zoom stress matrix is activated. Chinese text is
+pasted through the native text path; this supplies no new physical-IME evidence.
+VoiceOver speech, RTL, older-macOS distribution, live provider data and
+whole-product award-tier acceptance remain outside this scoped qualification.
+No new rendered-contrast measurement is claimed.
+
+| Domain        | Evidence inspected                                                                      | Result                                                      |
+| ------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Accessibility | Native Tab/Enter, focus perimeters, disclosure close and Cmd+L return                   | Scoped keyboard/focus pass; VoiceOver not run               |
+| Layout        | Before/after native entry, 320 px Dock, full-width material and ordinary window restore | Identity and evidence are reachable before complete content |
+| Writing       | Existing eight-locale labels and literal recorded prose                                 | No interface copy change; EN/ZH identity remains coherent   |
+| Typography    | Exact multiline/Unicode contracts and native 14/18 px reading                           | Complete literal text retained and readable in scope        |
+| Colors        | Byte-identical CSS, unchanged semantic tokens and Orange/blue native focus              | No new role finding; rendered contrast not remeasured       |
+| UI            | Native pointer/keyboard/wheel task and retained authoring                               | Scoped flow passes; no added motion or state                |
+
+| Severity | Domain | Location                                      | Before                                                 | After                                                           | Why                                                            |
+| -------- | ------ | --------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------- |
+| MEDIUM   | Layout | `plugins/trajectory/component/report.tsx:371` | Long content precedes its identity and evidence action | Existing context and evidence entry lead; complete body follows | Identify the captured object before deciding how to inspect it |
+
+The independent subagent's read-only review finds no actionable source defect.
+**Approve** the inspected recorded-identity and reading-return flow; no HIGH
+finding remains in that scope. This is not a whole-product visual verdict.
+
+Cleanup is complete. Baseline and final English hosts quit natively; the final
+Chinese process is stopped through verified SIGTERM. Both owned HTTP servers
+stop through verified SIGINT. All five process handles return exit 0. Both
+private registrations and twelve private Library paths are absent. The private
+QA app/assets/data/log root and **12** owned build/cache roots are removed;
+normal installed worktree dependencies and commit hooks remain available.
+The primary checkout and read-only references are preserved. No data migration
+is required. Delivery integrates only the qualified owned paths into main.
+Next inspect a fresh content/Dock task gap from current native evidence; do not
+repeat the resolved literal-body, identity-order or keyboard-resize investigation.
+
 ### Run and Trajectory native reading review after main (2026-11-05)
 
 The task is an existing conversation draft → page-local recorded observations →
@@ -45946,7 +46062,7 @@ against current owners before selecting a repair.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- Implementation follows the 2026-11-02 goal: prefer Claude Code CLI for bounded detail development, and complete verified batch commits and publication to main. Earlier CLI prohibitions, milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup.
+- Implementation follows the resumed 2026-11-12 goal: prefer subagents for bounded detail development, and complete verified batch commits and publication to main. Earlier CLI preferences, milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `npm run check --workspace @flame/plugins` alone: `apps/web/lab/scenarios/*.test.tsx` imports several plugin sources directly and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run the affected Lab source tests or the complete Web check before committing. Verify the rebuilt installed ESM through the same Lab when its rendering changes; treat a broken contract as a signal to reconsider the change, not just to update the test.
@@ -45954,7 +46070,7 @@ against current owners before selecting a repair.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Work on `codex/flame-ui-polish` in the new managed worktree. Commit explicit owned paths, integrate qualified batches into main, push remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
+- Work on `codex/flame-ui-reading` in its isolated worktree. Commit explicit owned paths, integrate qualified batches into main, push remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
 - Keep user-facing replies in Chinese and repository content in English. Preserve the approved visual direction and task model. Continue evidence-backed UI batches until the user explicitly stops the resumed goal.
 
 ## Milestone closure (2026-10-23)

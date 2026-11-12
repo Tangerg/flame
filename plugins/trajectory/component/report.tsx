@@ -370,7 +370,6 @@ function Observation({
   );
   return (
     <>
-      {body}
       <Facts values={facts} />
       {notes.map((note, index) => (
         <Metadata key={index}>{note}</Metadata>
@@ -380,6 +379,7 @@ function Observation({
       ) : (
         raw
       )}
+      {body}
     </>
   );
 }

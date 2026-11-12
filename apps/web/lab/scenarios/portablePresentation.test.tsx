@@ -871,9 +871,12 @@ it("distinguishes same-time Runs before expansion and keeps one Run identity fac
   );
 });
 
-it("reads recorded text and images in order while keeping full evidence and reasoning redaction", () => {
+it("keeps identity and evidence before long recorded content without changing text, images or redaction", () => {
   const occurredAt = "2026-07-31T08:00:00.000Z";
-  const first = "First observation.\n\nKeep **literal** Markdown and <script> text.";
+  const first = [
+    "First observation.\n\nKeep **literal** Markdown and <script> text.",
+    ...Array.from({ length: 48 }, (_, index) => `  const boundary${index} = "原始记录 😀";`),
+  ].join("\n");
   const last = "After the recorded image.\nPreserve the final line.";
   const image = { type: "image", mime: "image/png", data: "aW1hZ2U=" } as const;
   const common = { createdAt: occurredAt, runId: "run_root", status: "completed" as const };
@@ -892,7 +895,7 @@ it("reads recorded text and images in order while keeping full evidence and reas
     ...common,
     type: "reasoning" as const,
     id: "item_body_reasoning",
-    text: "Accepted reasoning.\n\nThe second paragraph remains complete.",
+    text: `Accepted reasoning.\n\n${first}`,
   };
   const secret = "REDACTED_REASONING_MUST_NEVER_APPEAR";
   const redacted = { ...reasoning, id: "item_redacted", redacted: true, text: secret };
@@ -908,9 +911,9 @@ it("reads recorded text and images in order while keeping full evidence and reas
         ...common,
         type: "compaction" as const,
         id: "item_body_compaction",
-        summary: "Recorded compaction.\n\nKeep its complete summary.",
+        summary: `Recorded compaction.\n\n${first}`,
       },
-      reading: ["Recorded compaction.\n\nKeep its complete summary."],
+      reading: [`Recorded compaction.\n\n${first}`],
     },
   ];
   const entries: TrajectoryEntry[] = cases.map(({ item }) => ({ type: "item", occurredAt, item }));
@@ -943,7 +946,16 @@ it("reads recorded text and images in order while keeping full evidence and reas
       : [];
     expect(scope.queryAllByRole("img").map((node) => node.getAttribute("src"))).toEqual(images);
     expect(scope.queryByRole("region", { name: "Recorded evidence" })).toBeNull();
-    fireEvent.click(scope.getByRole("button", { name: "Recorded evidence", expanded: false }));
+    const body = scope.getByText(sample.reading[0]!, { normalizer: (value) => value });
+    const evidence = scope.getByRole("button", { name: "Recorded evidence", expanded: false });
+    for (const context of [
+      scope.getByText(sample.item.id, { exact: true }),
+      scope.getByText(common.runId, { exact: true }),
+      evidence,
+    ]) {
+      expect(context.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    fireEvent.click(evidence);
     expect(scope.getByRole("region", { name: "Recorded evidence" }).textContent).toBe(
       JSON.stringify({ type: "item", occurredAt, item: sample.item }, null, 2),
     );

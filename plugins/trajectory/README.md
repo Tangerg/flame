@@ -115,10 +115,12 @@ Expanded Run facts name that identity once and retain the recorded root, parent
 and delegating item relationships.
 
 Message text, non-redacted reasoning and compaction summaries use literal recorded
-prose. Message content keeps its text and image order. When a readable body is
-present, complete JSON remains available under Recorded evidence; structured
-records keep primary JSON evidence. Both projections use the same redacted
-evidence, preserving unknown fields while omitting redacted reasoning text.
+prose. Expanded records show their identity facts, notices and complete JSON
+entry before the body, so long content cannot bury its source or evidence action.
+Message content keeps its text and image order. When a readable body is present,
+complete JSON remains available under Recorded evidence; structured records keep
+primary JSON evidence. Both projections use the same redacted evidence, preserving
+unknown fields while omitting redacted reasoning text.
 Recorded-evidence code actions and accepted-copy feedback use the component's
 active locale. Shared UI retains the literal reader and wrap preference; changing
 an action label does not rewrite the captured evidence.

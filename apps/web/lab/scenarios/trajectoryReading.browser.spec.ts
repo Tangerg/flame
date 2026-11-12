@@ -162,7 +162,7 @@ test("collapsed Run summaries retain complete identities and their recorded rela
   expect(await dock.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
 });
 
-test("a narrow trajectory reads literal multiline text before optional complete JSON", async ({
+test("a narrow trajectory reads literal multiline text with optional complete JSON", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1120, height: 1000 });
