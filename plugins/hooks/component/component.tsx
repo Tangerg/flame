@@ -50,6 +50,8 @@ type Command = { phase: "running" } | { phase: "unknown"; error: string };
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
 export function Hooks({ context }: { context: ComponentContext }) {
+  const { runtime, track, signal: componentSignal, sessionId } = context;
+  const workspaceRef = context.workspace?.ref;
   const t = useTranslator(CATALOGS, context.locale);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
@@ -58,19 +60,15 @@ export function Hooks({ context }: { context: ComponentContext }) {
   const [command, setCommand] = useState<Command>();
   const [commandError, setCommandError] = useState<string>();
   const refresh = useCallback(async () => {
-    if (context.signal.aborted || (context.sessionId && !context.workspace))
-      return;
+    if (componentSignal.aborted || (sessionId && !workspaceRef)) return;
     reading.current?.abort();
     const controller = new AbortController();
     reading.current = controller;
-    const signal = AbortSignal.any([controller.signal, context.signal]);
+    const signal = AbortSignal.any([controller.signal, componentSignal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
-      const accepted = await context.track(async () => {
-        const workspace = await context.runtime.workspaces.open(
-          context.workspace?.ref,
-          signal,
-        );
+      const accepted = await track(async () => {
+        const workspace = await runtime.workspaces.open(workspaceRef, signal);
         return {
           result: await workspace.hooks.list(signal),
           workspace: workspace.ref,
@@ -85,7 +83,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
           error: failureText(error),
         }));
     }
-  }, [context]);
+  }, [runtime, track, componentSignal, workspaceRef, sessionId]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
@@ -97,10 +95,10 @@ export function Hooks({ context }: { context: ComponentContext }) {
   useEffect(() => {
     if (!workspacePath || observationError) return;
     const controller = new AbortController();
-    const signal = AbortSignal.any([context.signal, controller.signal]);
-    void context.track(async () => {
+    const signal = AbortSignal.any([componentSignal, controller.signal]);
+    void track(async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        const subscription = await runtime.runtimeEvents.subscribe(
           {
             topics: ["hooks.changed", "plugins.changed", "files.changed"],
             watches: [
@@ -126,7 +124,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
       }
     });
     return () => controller.abort();
-  }, [context, workspacePath, observationError]);
+  }, [runtime, track, componentSignal, workspacePath, observationError]);
 
   async function observe(original: MutationPromise<void>, recover: boolean) {
     setCommand({ phase: "running" });

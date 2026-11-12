@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. Whole-product visual acceptance, the recorded aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -39347,6 +39347,104 @@ Verification for this surface (2026-10-21):
 - Cleanup completed: all three owned native processes and the CLI exited, the exact app bundle was unregistered, and its bundle, disposable data, captures, overlays, prompts/reports, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references, user data and unrelated main work remain.
 - This uses production components and the Wails host with private data-only `hooks.list` capture. No live hooks, shell command, trust change, provider execution or Run was invoked. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified. No protocol, persisted data, dependency or installed-resource migration is required.
 
+### Hooks read and watch continuity across display languages (2026-11-13)
+
+Qualified from `037d1c135`. Actual Wails with the published old Hooks ESM accepts
+the canonical empty catalog, then shows a known refusal after explicit Refresh.
+Ordinary Appearance→Hooks tab return retains that failure and the accepted
+catalog. Changing only EN→ZH instead clears both the failure and retained-read
+notice through an unrequested replacement read. The component's initial read and
+watch depend on the whole display context; locale wraps the same captured
+Runtime, tracking function, signal and target in a new context object.
+
+`plugins/hooks/component/component.tsx` now keys its existing read callback by
+those actual collaborators, captured workspace ref and session gate. Observation
+uses the actual Runtime/track/signal, accepted workspace path and observation
+failure. Locale changes keep the original pending read and established watch;
+the current translator still renders labels and retained metadata. Explicit
+Refresh/Retry, subscription establishment, hooks/plugins/files changes and resync
+retain their existing refresh policy. Actual session/workspace changes remain
+keyed source retirement in `InstalledComponent`. No new controller, mutable
+state, ref, owner, retry policy, wire shape or local cache is introduced.
+The existing trust/recovery/rendering tail and type/import prefix are byte-exact;
+all original test bodies are independently confirmed byte-exact.
+
+Read-only ZCode `settings/HooksSection.tsx` keeps the selected scope as its read
+and write target; `HooksList.tsx` localizes scope/group presentation separately.
+These actual task/source boundaries support stable source identity while labels
+change. Flame retains its own Runtime trust, public read, cancellation and shared
+record owners. The better accessibility/layout/writing/typography references
+support retaining the current reading scope, cause and next action rather than
+making a display preference originate a new read.
+
+Four regressions extend the existing seven Hooks component cases. They cover an
+accepted populated catalog plus explicit failure through locale change, an
+original held manual read settling under the current language without taking
+later focus, actual subscription-gap/event refresh, and keyed target retirement
+with late-response fencing. The new cases use the public in-memory Runtime
+client/transport for subscription acknowledgement, event delivery and real
+cancellation; cleanup releases held replies, aborts/unmounts, joins tracked tasks
+and closes the client. Existing fixtures and trust assertions are preserved.
+Old source fails only the two locale cases (**2 failed / 9 passed / 11**,
+**4.01 s**): a fourth read replaces the failed third read, and the original held
+read is aborted. No act warnings occur.
+
+Serial final verification passes **47** publisher script tests and **652** source
+tests in **44** files, with the existing **17** skipped tests in **2** files
+(**42.04 s**). All **33** published host module tests pass in **3.93 s**.
+Web typecheck, lint, formatting, layers and design-system checks pass.
+`make check-native` exits **0** (**19.15 s**); the normal Lab build has **484**
+assets and the unchanged shared stylesheet. Only the Hooks published resource
+changes, to SHA-256
+`99a679fefb7599ebc994d45049df05b1dd65fa7684ce187f4d7cbc59caf9bfd0`.
+
+The private Wails builds replace only the canonical Lab's Hooks import with that
+published ESM; its existing Session-aware client-scoped `InstalledComponent`
+continues to own the captured workspace. One identical old/new transport seam
+refuses only the third exact `hooks.list({workspace})` read for the captured
+workspace. First two and subsequent reads use the unchanged canonical facts.
+The original installer and transport bytes are restored after each build. Both
+private hosts and their served copies match all **484** private assets; all
+**46** tracked native inputs remain unchanged. This qualifies the installed
+published presentation in isolation, not a production package update or live
+Runtime execution.
+
+- English **14 px / light / Orange #FB6E30 / full motion** is verified in
+  Appearance. EN→ZH→EN retains the raw cause, accepted empty catalog and current
+  retained metadata. Native Left remains readable at **1120 pt**. Keyboard Retry
+  alone accepts the next read and removes the failure; its retired button leaves
+  focus on HTML, and the next Tab reaches local Refresh. No retained Retry-node
+  focus is claimed. A wheel action leaves the fitting empty reader unchanged.
+  The **320 px** Dock and middle-caret Settings return produce exactly
+  `Keep verified this Hooks reading draft.`
+- Chinese **18 px / dark / custom #3B82F6 / motion off** is verified in Appearance.
+  ZH→EN→ZH preserves the same failed read, scope and localized retained notice.
+  Native Left and keyboard Retry→Tab→Refresh pass with the complete controls
+  readable. The empty reader remains stable under wheel input. A fresh canonical
+  empty read after Settings close/reopen is expected source lifecycle; return
+  through the **320 px** Dock produces exactly
+  `Keep verified this dark Hooks draft.` at the retained middle caret.
+
+The canonical native catalog is empty. Populated data retention, held reads,
+actual notification handling and real retirement are qualified by the regression
+boundary above; no new native populated-list scroll, trust mutation, shell hook,
+backend event execution, physical IME, clipboard, VoiceOver or numeric contrast
+claim is made. Existing populated provenance and trust-context qualifications
+remain unchanged. No browser visual suite or performance benchmark is run.
+
+All three native processes and both servers exit **0**. Three exact registrations
+and six created Library trees are removed; all **18** identity paths are absent.
+Twelve created output/cache roots are removed and all **13** baseline roots are
+absent. The private Hooks QA root is removed after source/resource/asset fencing.
+All **20** accepted publisher resources, eight Hooks locales, ten captured/host
+facts and 46 native inputs retain their qualified hashes. No migration is needed.
+
+Next trace Trajectory page/cursor continuity across display changes. Its broad
+read dependencies and a context-clone reset expectation need a native comparison
+against the current captured-source contract. Preserve accepted ranges, captured
+descendant scope, details and real source retirement. Recorded identity/provenance
+work is already complete; whole-product visual acceptance remains open.
+
 ### Project trust context during keyboard reading (2026-11-05)
 
 Qualified from main `a87237bf6`. Actual Wails Hooks, using generated component
@@ -42581,11 +42679,9 @@ server exit **0**; its registration and two created Library trees are removed,
 all six identity paths and all 13 output roots are absent, and the second private
 QA root is removed. This adds no live Runtime or provider-execution claim.
 
-Next inspect Hooks read continuity across display language changes. Source shows
-whole-context read/watch dependencies; establish a native no-language tab-return
-control and compare a locale-only return before deciding on a change. Preserve
+Hooks read/watch continuity is now qualified in the Hooks section, including
 legitimate subscription-gap refreshes, data events, trust commands and actual
-source/target replacement. Whole-product visual acceptance remains open.
+source/target retirement. Whole-product visual acceptance remains open.
 
 ### Provider role selection and retained editing (2026-11-06)
 

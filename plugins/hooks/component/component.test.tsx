@@ -10,8 +10,19 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
-import { RpcTransportError, type MutationPromise } from "@flame/runtime-client";
-import { type HooksListResult } from "@flame/runtime-client/wire";
+import {
+  createFlameClient,
+  RpcTransportError,
+  type MutationPromise,
+} from "@flame/runtime-client";
+import {
+  createMemoryTransport,
+  respondSuccess,
+} from "@flame/runtime-client/testing";
+import {
+  NOTIFICATIONS_RUNTIME_EVENT,
+  type HooksListResult,
+} from "@flame/runtime-client/wire";
 import { Hooks } from "./component";
 
 afterEach(cleanup);
@@ -74,6 +85,321 @@ function fixture(
   } as unknown as ComponentContext;
   return { context, controller, list, setTrust, open, subscribe };
 }
+
+function watchedFixture(
+  list: ReturnType<typeof fixture>["list"],
+  path = "/repo",
+) {
+  const f = fixture(list);
+  f.open.mockResolvedValue({ ref: { path }, hooks: { list } });
+  const transport = createMemoryTransport();
+  const watching =
+    Promise.withResolvers<Parameters<typeof transport.send>[0]>();
+  const send = transport.send;
+  transport.send = async (...args) => {
+    await send(...args);
+    if (args[0].method === "runtime.subscribe") watching.resolve(args[0]);
+  };
+  const client = createFlameClient(transport);
+  const subscribe = vi.fn(client.runtimeEvents.subscribe);
+  const open = vi.fn(f.context.runtime.workspaces.open);
+  const tracked: Promise<unknown>[] = [];
+  const context: ComponentContext = Object.freeze({
+    ...f.context,
+    runtime: {
+      ...f.context.runtime,
+      workspaces: { ...f.context.runtime.workspaces, open },
+      runtimeEvents: { subscribe },
+    },
+    workspace: Object.freeze({ ref: Object.freeze({ path }) }),
+    track: <P extends Promise<unknown>>(
+      operation: (signal: AbortSignal) => P,
+    ): P => {
+      const result = operation(f.controller.signal);
+      tracked.push(result);
+      return result;
+    },
+  });
+  return {
+    ...f,
+    context,
+    open,
+    subscribe,
+    transport,
+    client,
+    tracked,
+    watching: watching.promise,
+  };
+}
+
+it("retains an accepted catalog and explicit read failure across display locales until retry", async () => {
+  const catalog = { hooks: [globalHook], projectTrusted: false };
+  const next = {
+    hooks: [{ ...globalHook, source: "/captured/new-hooks.json" }],
+    projectTrusted: false,
+  };
+  const reason = "catalog unavailable\n  原始原因: policy store refused";
+  const f = watchedFixture(
+    vi
+      .fn<() => Promise<HooksListResult>>()
+      .mockResolvedValueOnce(catalog)
+      .mockResolvedValueOnce(catalog)
+      .mockRejectedValueOnce(new Error(reason))
+      .mockResolvedValue(next),
+  );
+  const view = render(<Hooks context={f.context} />);
+  try {
+    await act(async () => {
+      await f.tracked[0];
+    });
+    const watch = await f.watching;
+    await act(async () => respondSuccess(f.transport, watch.id, {}));
+    expect(f.list).toHaveBeenCalledTimes(2);
+    const source = screen.getByText(globalHook.source);
+    const refresh = screen.getByRole("button", { name: "Refresh" });
+    await act(async () => fireEvent.click(refresh));
+    expect(
+      screen.getByText(reason, { normalizer: (text) => text }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("The last accepted read is retained."),
+    ).toBeTruthy();
+    act(() => refresh.focus());
+
+    await act(async () =>
+      view.rerender(
+        <Hooks context={Object.freeze({ ...f.context, locale: "zh" })} />,
+      ),
+    );
+
+    expect(f.list).toHaveBeenCalledTimes(3);
+    expect(f.open).toHaveBeenCalledTimes(3);
+    expect(f.subscribe).toHaveBeenCalledOnce();
+    expect(screen.getByText(globalHook.source)).toBe(source);
+    expect(screen.getByText("guard")).toBeTruthy();
+    expect(screen.getByText("全局")).toBeTruthy();
+    expect(
+      screen.getByText(reason, { normalizer: (text) => text }),
+    ).toBeTruthy();
+    expect(screen.getByText("保留上次接受的读取。")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "刷新" })).toBe(refresh);
+    expect(document.activeElement).toBe(refresh);
+
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "重试" })),
+    );
+    expect(f.list).toHaveBeenCalledTimes(4);
+    expect(screen.getByText(next.hooks[0].source)).toBeTruthy();
+    expect(screen.queryByText(globalHook.source)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(f.setTrust).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => {
+      f.controller.abort();
+      view.unmount();
+      await Promise.allSettled(f.tracked);
+      await f.client.close();
+    });
+  }
+});
+
+it("accepts the original held manual read in the current locale without replacing its watch or focus", async () => {
+  const catalog = { hooks: [globalHook], projectTrusted: false };
+  const reply = {
+    hooks: [{ ...globalHook, source: "/captured/refresh-reply.json" }],
+    projectTrusted: false,
+  };
+  const held = Promise.withResolvers<HooksListResult>();
+  const f = watchedFixture(
+    vi
+      .fn<() => Promise<HooksListResult>>()
+      .mockResolvedValueOnce(catalog)
+      .mockResolvedValueOnce(catalog)
+      .mockReturnValueOnce(held.promise)
+      .mockResolvedValue(catalog),
+  );
+  const view = render(
+    <>
+      <Hooks context={f.context} />
+      <button type="button">Later focus</button>
+    </>,
+  );
+  try {
+    await act(async () => {
+      await f.tracked[0];
+    });
+    const watch = await f.watching;
+    await act(async () => respondSuccess(f.transport, watch.id, {}));
+    expect(f.list).toHaveBeenCalledTimes(2);
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "Refresh" })),
+    );
+    expect(f.list).toHaveBeenCalledTimes(3);
+    const originalSignal = f.open.mock.calls[2][1]!;
+    const watchSignal = f.subscribe.mock.calls[0][1]!;
+    const later = screen.getByRole("button", { name: "Later focus" });
+    act(() => later.focus());
+
+    await act(async () =>
+      view.rerender(
+        <>
+          <Hooks context={Object.freeze({ ...f.context, locale: "zh" })} />
+          <button type="button">Later focus</button>
+        </>,
+      ),
+    );
+
+    expect(originalSignal.aborted).toBe(false);
+    expect(watchSignal.aborted).toBe(false);
+    expect(f.list).toHaveBeenCalledTimes(3);
+    expect(f.subscribe).toHaveBeenCalledOnce();
+    expect(screen.getByText(globalHook.source)).toBeTruthy();
+    expect(screen.getByText("全局")).toBeTruthy();
+    expect(document.activeElement).toBe(later);
+    await act(async () => held.resolve(reply));
+    expect(screen.getByText(reply.hooks[0].source)).toBeTruthy();
+    expect(screen.queryByText(globalHook.source)).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "刷新" })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true");
+    expect(f.list).toHaveBeenCalledTimes(3);
+    expect(document.activeElement).toBe(later);
+  } finally {
+    await act(async () => {
+      held.resolve(reply);
+      f.controller.abort();
+      view.unmount();
+      await Promise.allSettled(f.tracked);
+      await f.client.close();
+    });
+  }
+});
+
+it("refreshes after actual subscription establishment and a delivered hook change", async () => {
+  const f = watchedFixture(
+    vi
+      .fn<() => Promise<HooksListResult>>()
+      .mockResolvedValueOnce({ hooks: [globalHook], projectTrusted: false })
+      .mockResolvedValueOnce({
+        hooks: [{ ...globalHook, command: "gap accepted" }],
+        projectTrusted: false,
+      })
+      .mockResolvedValue({
+        hooks: [{ ...globalHook, command: "event accepted" }],
+        projectTrusted: false,
+      }),
+  );
+  const view = render(<Hooks context={f.context} />);
+  try {
+    await act(async () => {
+      await f.tracked[0];
+    });
+    const watch = await f.watching;
+    expect(f.list).toHaveBeenCalledOnce();
+    expect(screen.getByText("guard")).toBeTruthy();
+    expect(watch.params).toEqual({
+      topics: ["hooks.changed", "plugins.changed", "files.changed"],
+      watches: [{ watchId: "hook-settings", workspace: { path: "/repo" } }],
+    });
+    await act(async () => respondSuccess(f.transport, watch.id, {}));
+    expect(f.list).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("gap accepted")).toBeTruthy();
+
+    await act(async () =>
+      f.transport.inject(
+        {
+          jsonrpc: "2.0",
+          method: NOTIFICATIONS_RUNTIME_EVENT,
+          params: { event: { type: "hooks.changed", sequence: 1 } },
+        },
+        undefined,
+        watch.id,
+      ),
+    );
+
+    expect(f.list).toHaveBeenCalledTimes(3);
+    expect(f.subscribe).toHaveBeenCalledOnce();
+    expect(screen.getByText("event accepted")).toBeTruthy();
+    expect(screen.queryByText("gap accepted")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  } finally {
+    await act(async () => {
+      f.controller.abort();
+      view.unmount();
+      await Promise.allSettled(f.tracked);
+      await f.client.close();
+    });
+  }
+});
+
+it("retires the original read and established watch before a keyed target successor", async () => {
+  const catalog = { hooks: [globalHook], projectTrusted: false };
+  const held = Promise.withResolvers<HooksListResult>();
+  const previous = watchedFixture(
+    vi
+      .fn<() => Promise<HooksListResult>>()
+      .mockResolvedValueOnce(catalog)
+      .mockResolvedValueOnce(catalog)
+      .mockReturnValue(held.promise),
+  );
+  const next = {
+    hooks: [
+      { ...globalHook, source: "/next/hooks.json", command: "next guard" },
+    ],
+    projectTrusted: false,
+  };
+  const successor = watchedFixture(vi.fn().mockResolvedValue(next), "/next");
+  const view = render(<Hooks key="previous" context={previous.context} />);
+  try {
+    await act(async () => {
+      await previous.tracked[0];
+    });
+    const oldWatch = await previous.watching;
+    await act(async () => respondSuccess(previous.transport, oldWatch.id, {}));
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "Refresh" })),
+    );
+    expect(previous.list).toHaveBeenCalledTimes(3);
+    const originalSignal = previous.open.mock.calls[2][1]!;
+    const watchSignal = previous.subscribe.mock.calls[0][1]!;
+
+    await act(async () => {
+      previous.controller.abort();
+      view.rerender(<Hooks key="successor" context={successor.context} />);
+    });
+    const newWatch = await successor.watching;
+    await act(async () => respondSuccess(successor.transport, newWatch.id, {}));
+    expect(originalSignal.aborted).toBe(true);
+    expect(watchSignal.aborted).toBe(true);
+    expect(successor.open.mock.calls[0]).toEqual([
+      { path: "/next" },
+      expect.any(AbortSignal),
+    ]);
+    await act(async () => {
+      held.resolve(catalog);
+      await Promise.allSettled(previous.tracked);
+    });
+    expect(screen.getByText(next.hooks[0].source)).toBeTruthy();
+    expect(screen.getByText("next guard")).toBeTruthy();
+    expect(screen.queryByText(globalHook.source)).toBeNull();
+    expect(previous.list).toHaveBeenCalledTimes(3);
+    expect(successor.list).toHaveBeenCalledTimes(2);
+    expect(successor.subscribe).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alert")).toBeNull();
+  } finally {
+    await act(async () => {
+      held.resolve(catalog);
+      previous.controller.abort();
+      successor.controller.abort();
+      view.unmount();
+      await Promise.allSettled([...previous.tracked, ...successor.tracked]);
+      await previous.client.close();
+      await successor.client.close();
+    });
+  }
+});
 
 it.each([{ hooks: [] }, { hooks: [globalHook] }])(
   "waits for the first result and retains the accepted catalog during reread: $hooks",

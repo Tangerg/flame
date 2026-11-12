@@ -44,6 +44,12 @@ read failures, and an uncertain trust command must be reconciled using its origi
 mutation before another intent is admitted. Source retirement cancels observation;
 it does not infer a command's outcome.
 
+Display-language changes preserve the accepted catalog, read failure and original
+pending read without restarting observation. Reads and watches follow the captured
+Runtime, tracking function, cancellation signal and workspace target. Explicit
+Refresh/Retry, subscription establishment and matching Runtime change/resync events
+still request fresh reads; actual source or target retirement still cancels them.
+
 Keyboard focus on a fitting project-trust row reveals its shell-execution
 consequence and captured project root through the shared Panel owner; an
 oversized row falls back to revealing the focused control.
