@@ -9,8 +9,10 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
+	"slices"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
@@ -82,25 +84,16 @@ func newOAuthFlow(ctx context.Context) (*oauthFlow, error) {
 	return f, nil
 }
 
-// handleCallback captures the authorization code (or error) from the redirect,
-// shows the user a close-this-tab page, and hands the outcome to fetch.
 func (o *oauthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		http.Error(w, "GET required", http.StatusMethodNotAllowed)
 		return
 	}
-	q := r.URL.Query()
-	cb := oauthCallback{response: auth.AuthorizationResult{
-		Code: q.Get("code"), State: q.Get("state"), Iss: q.Get("iss"),
-	}}
-	denied := q.Get("error")
-	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || (denied == "") == (cb.response.Code == "") {
+	cb, err := parseAuthorizationResponse(r.URL.RawQuery)
+	if err != nil {
 		http.Error(w, "invalid authorization response", http.StatusBadRequest)
 		return
-	}
-	if denied != "" {
-		cb.err = fmt.Errorf("authorization denied: %s", denied)
 	}
 	o.mu.Lock()
 	if o.state == "" || cb.response.State != o.state {
@@ -117,6 +110,29 @@ func (o *oauthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_, _ = w.Write([]byte(oauthResultHTML("Authorization response received — return to Flame to check the result.")))
 	}
+}
+
+func parseAuthorizationResponse(rawQuery string) (oauthCallback, error) {
+	q, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return oauthCallback{}, fmt.Errorf("mcp oauth: invalid callback encoding: %w", err)
+	}
+	for name, values := range q {
+		if !utf8.ValidString(name) || slices.ContainsFunc(values, func(value string) bool { return !utf8.ValidString(value) }) {
+			return oauthCallback{}, errors.New("mcp oauth: callback fields must be UTF-8")
+		}
+	}
+	cb := oauthCallback{response: auth.AuthorizationResult{
+		Code: q.Get("code"), State: q.Get("state"), Iss: q.Get("iss"),
+	}}
+	denied := q.Get("error")
+	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 || (denied == "") == (cb.response.Code == "") {
+		return oauthCallback{}, errors.New("mcp oauth: invalid authorization response")
+	}
+	if denied != "" {
+		cb.err = fmt.Errorf("authorization denied: %s", denied)
+	}
+	return cb, nil
 }
 
 func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*auth.AuthorizationResult, error) {
@@ -232,9 +248,6 @@ func newOAuthHandler(
 // redirect to another origin.
 func oauthHTTPClient() *http.Client { return &http.Client{CheckRedirect: checkRedirect} }
 
-// openBrowser opens url in the user's default browser, best-effort and
-// platform-specific. This service is local and binds loopback, so this
-// opens on the user's machine; launch failure terminates this authorization attempt.
 func openBrowser(ctx context.Context, url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
