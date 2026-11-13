@@ -750,6 +750,237 @@ it("retires a real captured lifetime and fences its late evidence from the new s
   expect(setup.server.originals.size).toBe(0);
 });
 
+const reviewedSelectionDraft = '  {"code":"await fixture.inspect(\'Keep before 保留\');"}  ';
+
+it.each([
+  {
+    selection: "collapsed middle caret",
+    start: reviewedSelectionDraft.indexOf("保留"),
+    end: reviewedSelectionDraft.indexOf("保留"),
+    direction: "none",
+  },
+  {
+    selection: "backward selected range",
+    start: reviewedSelectionDraft.indexOf("before"),
+    end: reviewedSelectionDraft.indexOf("保留"),
+    direction: "backward",
+  },
+] as const)(
+  "returns the reviewed arguments to their $selection before continued editing",
+  async ({ start, end, direction }) => {
+    const setup = rig();
+    setup.mount();
+    const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+      name: "Tool arguments (JSON)",
+    });
+    fireEvent.change(editor, { target: { value: reviewedSelectionDraft } });
+    const prepare = screen.getByRole("button", { name: "Review operation" });
+    act(() => {
+      editor.focus();
+      editor.setSelectionRange(start, end, direction);
+      prepare.focus();
+    });
+
+    fireEvent.click(prepare);
+
+    const review = await screen.findByRole("region", { name: "Review operation" });
+    const back = within(review).getByRole("button", { name: "Back to editor" });
+    await waitFor(() => expect(document.activeElement).toBe(back));
+    expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
+    expect(within(review).getByRole("region", { name: "Tool arguments (JSON)" }).textContent).toBe(
+      reviewedSelectionDraft,
+    );
+    expect(within(review).getByText(initial.session!.id, { exact: true })).not.toBeNull();
+    expect(within(review).getByText(initial.session!.workerId, { exact: true })).not.toBeNull();
+    expect(within(review).getByText(digest, { exact: true })).not.toBeNull();
+
+    fireEvent.click(back);
+
+    const restored = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+      name: "Tool arguments (JSON)",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(restored));
+    expect(restored.value).toBe(reviewedSelectionDraft);
+    expect([restored.selectionStart, restored.selectionEnd, restored.selectionDirection]).toEqual([
+      start,
+      end,
+      direction,
+    ]);
+    const insertion = "after ";
+    const continued =
+      restored.value.slice(0, restored.selectionStart) +
+      insertion +
+      restored.value.slice(restored.selectionEnd);
+    fireEvent.change(restored, {
+      target: {
+        value: continued,
+        selectionStart: start + insertion.length,
+        selectionEnd: start + insertion.length,
+      },
+    });
+    expect(restored.value).toBe(
+      reviewedSelectionDraft.slice(0, start) + insertion + reviewedSelectionDraft.slice(end),
+    );
+    expect(document.activeElement).toBe(restored);
+    expect(screen.queryByRole("region", { name: "Review operation" })).toBeNull();
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("returns an independently retired permission to status controls while review stays open", async () => {
+  const setup = rig();
+  setup.mount();
+  const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+    name: "Tool arguments (JSON)",
+  });
+  fireEvent.change(editor, { target: { value: reviewedSelectionDraft } });
+  fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
+  const review = await screen.findByRole("region", { name: "Review operation" });
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      within(review).getByRole("button", { name: "Back to editor" }),
+    ),
+  );
+  act(() =>
+    setup.server.publish({
+      ...initial,
+      session: { ...initial.session!, approval: nativeApproval() },
+    }),
+  );
+  const decline = await screen.findByRole("button", { name: "Decline" });
+  act(() => {
+    decline.focus();
+    setup.server.publish(initial);
+  });
+
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
+
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh status" }));
+  expect(screen.getByRole("region", { name: "Review operation" })).toBe(review);
+  expect(within(review).getByRole("region", { name: "Tool arguments (JSON)" }).textContent).toBe(
+    reviewedSelectionDraft,
+  );
+  expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("retains the captured review through a held current-surface read", async () => {
+  const setup = rig();
+  setup.mount();
+  const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+    name: "Tool arguments (JSON)",
+  });
+  fireEvent.change(editor, { target: { value: reviewedSelectionDraft } });
+  fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
+  const review = await screen.findByRole("region", { name: "Review operation" });
+  const back = within(review).getByRole("button", { name: "Back to editor" });
+  await waitFor(() => expect(document.activeElement).toBe(back));
+  const held = setup.server.holdContext();
+  try {
+    act(() =>
+      setup.server.publish({
+        ...initial,
+        session: { ...initial.session!, workerId: "worker-2", surfaceDigest: "b".repeat(64) },
+      }),
+    );
+    await held.arrived;
+
+    await screen.findByText("Reading the current runtime instructions and tools…");
+
+    expect(screen.getByRole("region", { name: "Review operation" })).toBe(review);
+    expect(document.activeElement).toBe(back);
+    expect(within(review).getByRole("region", { name: "Tool arguments (JSON)" }).textContent).toBe(
+      reviewedSelectionDraft,
+    );
+    const execute = within(review).getByRole("button", { name: "Execute reviewed operation" });
+    expect(execute.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText(/captured target changed/)).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
+    const later = screen.getByRole("button", { name: "Refresh outcomes" });
+    act(() => later.focus());
+    await act(async () => held.release());
+
+    await screen.findByText(/captured target changed/);
+
+    expect(document.activeElement).toBe(later);
+    expect(execute.hasAttribute("disabled")).toBe(true);
+    expect(within(review).getByText("worker-1", { exact: true })).not.toBeNull();
+    act(() => back.focus());
+    fireEvent.click(back);
+    const restored = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+      name: "Tool arguments (JSON)",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(restored));
+    expect(restored.value).toBe(reviewedSelectionDraft);
+    fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
+    const current = await screen.findByRole("region", { name: "Review operation" });
+    expect(within(current).getByText("worker-2", { exact: true })).not.toBeNull();
+    expect(within(current).getByText("b".repeat(64), { exact: true })).not.toBeNull();
+    expect(within(current).getByRole("region", { name: "Tool arguments (JSON)" }).textContent).toBe(
+      reviewedSelectionDraft,
+    );
+    expect(setup.server.originals.size).toBe(0);
+  } finally {
+    await act(async () => held.release());
+  }
+});
+
+it("returns to status from review during a held current-surface read without claiming later focus", async () => {
+  const setup = rig();
+  setup.mount();
+  const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+    name: "Tool arguments (JSON)",
+  });
+  fireEvent.change(editor, { target: { value: reviewedSelectionDraft } });
+  const caret = reviewedSelectionDraft.indexOf("保留");
+  const prepare = screen.getByRole("button", { name: "Review operation" });
+  act(() => {
+    editor.focus();
+    editor.setSelectionRange(caret, caret, "none");
+    prepare.focus();
+  });
+  fireEvent.click(prepare);
+  const back = await screen.findByRole("button", { name: "Back to editor" });
+  await waitFor(() => expect(document.activeElement).toBe(back));
+  const held = setup.server.holdContext();
+  try {
+    act(() =>
+      setup.server.publish({
+        ...initial,
+        session: { ...initial.session!, workerId: "worker-2", surfaceDigest: "b".repeat(64) },
+      }),
+    );
+    await held.arrived;
+    await screen.findByText("Reading the current runtime instructions and tools…");
+    fireEvent.click(screen.getByRole("button", { name: "Back to editor" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Review operation" })).toBeNull(),
+    );
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh status" }));
+    expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
+    const later = screen.getByRole("button", { name: "Refresh outcomes" });
+    act(() => later.focus());
+    await act(async () => held.release());
+
+    const restored = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+      name: "Tool arguments (JSON)",
+    });
+    expect(restored.value).toBe(reviewedSelectionDraft);
+    expect([restored.selectionStart, restored.selectionEnd, restored.selectionDirection]).toEqual([
+      caret,
+      caret,
+      "none",
+    ]);
+    expect(document.activeElement).toBe(later);
+    expect(screen.queryByRole("region", { name: "Review operation" })).toBeNull();
+    expect(setup.server.originals.size).toBe(0);
+  } finally {
+    await act(async () => held.release());
+  }
+});
+
 it.each(["[]", "null", "{"])(
   "identifies invalid arguments %s at the editable field and retains the corrected draft",
   async (value) => {

@@ -75,13 +75,15 @@ function ExecuteForm({
   pending,
   execute,
   editor,
+  opener,
   t,
 }: {
-  surface: Surface;
+  surface: Surface | undefined;
   ready: boolean;
   pending: boolean;
   execute(input: ExecuteInput): Promise<boolean>;
   editor: RefObject<HTMLTextAreaElement | null>;
+  opener(): HTMLElement | null;
   t: Translate;
 }) {
   const [tool, setTool] = useState<ExecuteInput["tool"]>("js");
@@ -90,18 +92,19 @@ function ExecuteForm({
   const [error, setError] = useState<string>();
   const errorId = useId();
   const cancel = useRef<HTMLButtonElement>(null);
-  const editorTarget = useCallback(() => editor.current, [editor]);
   useEffect(() => {
     if (review) cancel.current?.focus();
   }, [review]);
   const current =
     review &&
+    surface &&
     review.sessionId === surface.sessionId &&
     review.workerId === surface.workerId &&
     review.surfaceDigest === surface.surfaceDigest;
+  const editing = review === undefined && surface !== undefined;
 
   function prepare() {
-    if (!ready || pending) return;
+    if (!surface || !ready || pending) return;
     setError(undefined);
     try {
       const value = parseJSON(argumentsJSON);
@@ -121,13 +124,13 @@ function ExecuteForm({
   }
 
   return (
-    <RecordGroup>
+    <RecordGroup hidden={!surface && !review}>
       <Metadata>{t("execute.help")}</Metadata>
-      {review ? (
+      {review && (
         <RecordForm
           role="region"
           aria-label={t("execute.review")}
-          opener={editorTarget}
+          opener={opener}
         >
           <Callout kind="warning">
             {t(
@@ -149,7 +152,9 @@ function ExecuteForm({
             label={t("execute.arguments")}
             t={t}
           />
-          {!current && <Callout kind="warning">{t("execute.stale")}</Callout>}
+          {surface && !current && (
+            <Callout kind="warning">{t("execute.stale")}</Callout>
+          )}
           <Toolbar label={t("execute.actions")}>
             <Button
               ref={cancel}
@@ -173,61 +178,72 @@ function ExecuteForm({
             </Button>
           </Toolbar>
         </RecordForm>
-      ) : (
-        <RecordGroup>
-          <Select
-            label={t("execute.tool")}
-            value={tool}
-            options={[
-              { value: "js", label: "js" },
-              { value: "js_reset", label: "js_reset" },
-            ]}
-            disabled={!ready || pending}
-            onValueChange={(value) => {
-              setTool(value as ExecuteInput["tool"]);
-              setArgumentsJSON("{}");
-            }}
-          />
-          <FormField label={t("execute.arguments")}>
-            <TextArea
-              ref={editor}
-              font="mono"
-              value={argumentsJSON}
-              onChange={(event) => {
-                setArgumentsJSON(event.target.value);
-                setError(undefined);
-              }}
-              rows={8}
-              spellCheck={false}
-              maxLength={LIMITS.maxInputBytes}
-              readOnly={!ready || pending}
-              invalid={error !== undefined}
-              aria-describedby={error ? errorId : undefined}
-            />
-          </FormField>
-          {error && (
-            <div id={errorId} role="alert">
-              <RecordBody>{error}</RecordBody>
-            </div>
-          )}
-          <Button disabled={!ready || pending} onClick={prepare}>
-            {t("execute.review")}
-          </Button>
-        </RecordGroup>
       )}
-      <Disclosure title={t("context.instructions")}>
-        <Source
-          t={t}
-          value={surface.instructions}
-          label={t("context.instructions")}
+      <RecordGroup hidden={!editing}>
+        <Select
+          label={t("execute.tool")}
+          value={tool}
+          options={[
+            { value: "js", label: "js" },
+            { value: "js_reset", label: "js_reset" },
+          ]}
+          disabled={!ready || pending}
+          onValueChange={(value) => {
+            setTool(value as ExecuteInput["tool"]);
+            setArgumentsJSON("{}");
+          }}
         />
-      </Disclosure>
-      <Disclosure title={t("context.tools")}>
-        <Source value={surface.toolsJSON} label={t("context.tools")} t={t} />
-      </Disclosure>
-      <Disclosure title={t("context.server")}>
-        <Source value={surface.serverJSON} label={t("context.server")} t={t} />
-      </Disclosure>
+        <FormField label={t("execute.arguments")}>
+          <TextArea
+            ref={editing ? editor : undefined}
+            font="mono"
+            value={argumentsJSON}
+            onChange={(event) => {
+              setArgumentsJSON(event.target.value);
+              setError(undefined);
+            }}
+            rows={8}
+            spellCheck={false}
+            maxLength={LIMITS.maxInputBytes}
+            readOnly={!ready || pending}
+            invalid={error !== undefined}
+            aria-describedby={error ? errorId : undefined}
+          />
+        </FormField>
+        {error && (
+          <div id={errorId} role="alert">
+            <RecordBody>{error}</RecordBody>
+          </div>
+        )}
+        <Button disabled={!ready || pending} onClick={prepare}>
+          {t("execute.review")}
+        </Button>
+      </RecordGroup>
+      {surface && (
+        <>
+          <Disclosure title={t("context.instructions")}>
+            <Source
+              t={t}
+              value={surface.instructions}
+              label={t("context.instructions")}
+            />
+          </Disclosure>
+          <Disclosure title={t("context.tools")}>
+            <Source
+              value={surface.toolsJSON}
+              label={t("context.tools")}
+              t={t}
+            />
+          </Disclosure>
+          <Disclosure title={t("context.server")}>
+            <Source
+              value={surface.serverJSON}
+              label={t("context.server")}
+              t={t}
+            />
+          </Disclosure>
+        </>
+      )}
     </RecordGroup>
   );
 }
@@ -648,6 +664,7 @@ function ManualExecution({
   pending,
   execute,
   editor,
+  opener,
   t,
 }: {
   surface: ComputerView["surface"];
@@ -655,6 +672,7 @@ function ManualExecution({
   pending: boolean;
   execute(input: ExecuteInput): Promise<boolean>;
   editor: RefObject<HTMLTextAreaElement | null>;
+  opener(): HTMLElement | null;
   t: Translate;
 }) {
   return (
@@ -665,16 +683,20 @@ function ManualExecution({
           <RecordBody>{surface.error}</RecordBody>
         </div>
       )}
-      {surface?.value && (
-        <ExecuteForm
-          surface={surface.value}
-          ready={ready}
-          pending={pending}
-          execute={execute}
-          editor={editor}
-          t={t}
-        />
-      )}
+      <ExecuteForm
+        surface={surface?.value}
+        ready={
+          ready &&
+          surface?.value !== undefined &&
+          !surface.loading &&
+          !surface.error
+        }
+        pending={pending}
+        execute={execute}
+        editor={editor}
+        opener={opener}
+        t={t}
+      />
     </PanelSection>
   );
 }
@@ -693,7 +715,7 @@ function Console({
   const [leaseError, setLeaseError] = useState(false);
   const editor = useRef<HTMLTextAreaElement>(null);
   const refresh = useRef<HTMLButtonElement>(null);
-  const approvalReturnTarget = useCallback(
+  const formReturnTarget = useCallback(
     () => editor.current ?? refresh.current,
     [],
   );
@@ -782,7 +804,7 @@ function Console({
             approval={session.approval}
             pending={state.busy(METHODS.reply)}
             respond={(input) => state.submit(METHODS.reply, input)}
-            opener={approvalReturnTarget}
+            opener={formReturnTarget}
             t={t}
           />
         </PanelSection>
@@ -794,6 +816,7 @@ function Console({
           pending={state.busy(METHODS.execute)}
           execute={(input) => state.submit(METHODS.execute, input)}
           editor={editor}
+          opener={formReturnTarget}
           t={t}
         />
       )}

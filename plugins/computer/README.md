@@ -74,12 +74,18 @@ presentation and recovery of original uncertain Runtime commands. Stop and close
 remain available while an unrelated action is running or awaiting a reply.
 
 Manual JSON validation identifies and focuses the arguments field. Returning from
-review preserves the draft; waiting or unconfirmed operations keep it selectable
-and read-only. Review and permission forms use the shared form focus boundary:
+review preserves the draft, native caret and selection; waiting or unconfirmed
+operations keep it selectable and read-only. Review and permission forms use the
+shared form focus boundary:
 retirement returns to the surviving editor, or status controls when no editor is
 available, only while that form still owns focus. Pending permission actions stay
 focusable without admitting another response. Captured targets, original command
 identity and permission authority remain with their existing owners.
+
+Prepared review retains its original target and JSON through a current-surface
+read. Confirmation requires a matching current surface; Back returns to status
+controls while authoring is unavailable. A replacement surface never rewrites
+the reviewed target.
 
 Display-language changes update labels, dates and capacity formatting while
 preserving the same captured I/O, manual and permission drafts, reviewed input,

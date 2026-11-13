@@ -5098,6 +5098,90 @@ physical IME, VoiceOver, other GUI locales/platforms and whole-product visual
 acceptance remain outside this qualification. Continue from another observed
 task gap; do not reopen this locale boundary without new evidence.
 
+##### Review return and current-surface reads (2026-11-13)
+
+This batch starts from synchronized main `7b545a7ec43a`. The canonical Computer
+scene exposes a native return defect: Review preserves the raw JSON and returns
+focus, but recreates the textarea and loses its selection. Two Wails controls
+return to position zero. In the stronger control, typing `before ` first proves
+the actual middle caret; after Review and Back, `after ` still appears before the
+JSON instead of beside `before `. The incoming `f46d8c2` extraction did not change
+this form, so this is not attributed to that refactor.
+
+`ExecuteForm` now retains its authoring DOM with the existing native `hidden`
+contract. The browser remains the selection owner; no caret state, selection
+restoration effect or second surface representation is added. The same form
+owner also survives a current-surface read. Its prepared review retains the
+original target and raw input, while confirmation requires an accepted, matching
+current surface. Reading or failing to read that surface cannot silently retire
+the review or retarget it. A stale-target warning appears after an actual
+replacement surface is known. Hidden authoring controls remain inaccessible and
+do not expose an editor focus target. Review and permission retirement share the
+existing visible-editor-to-status return policy and later-user-focus guard.
+The five real source keys and inactive-session retirement remain unchanged.
+
+Five added component cases cover a collapsed middle caret, a backward selection,
+independent permission retirement while Review stays open, a held replacement
+surface, and Back during that hold without claiming later focus. Primary review
+proves the original **60 test bodies are byte-identical**. The original selection
+counterexample fails both cases; a hidden-ref counterexample separately fails
+the status fallback. A DOM-only candidate still fails the original worker fence,
+so it is not accepted as a timing anomaly. Controlled original-source reads then
+fail both new held-surface cases by removing Review and Back. An initial premature
+DOM observation is excluded; the final cases await the existing visible loading
+message. Failure-side cleanup has `act` warnings in those held-read red runs;
+the final complete **65 / 65** passes without stderr or `act` warnings in
+**5.92 s Vitest / 8.48 s wall**. No original assertion or timeout is weakened.
+
+Serial verification passes Web and plugin types, lint and full formatting, README
+formatting, layer/design-system/chrome guards, all **20** published-resource
+checks, production plugin-module links and supported `make check-native`
+(**25.81 s**). Normal Lab builds **484 assets** in **3.77 s**. Normal generation
+changes only Computer's ESM to SHA-256
+`66470ed68a521d18699bb2077fe8896397215936fc41a16b247ac3667d42e932`.
+All **6,876** tracked inputs stay frozen outside the four qualified paths, with
+**46 native inputs** and the other **19 resources** unchanged. The other six
+extracted view components, hook, backend, SDK, dictionaries and command contracts
+are unchanged. The earlier complete frontend and plugin-backend baselines are
+not presented as new runs. No browser visual suite or performance check runs.
+
+Actual Wails **v3.1.0**, Go **1.27.3**, macOS 13.0 deployment, default zoom and
+ordinary native **1120 pt** windows qualify English/light/**14 px/Orange/full
+motion** and Chinese/dark/**18 px/custom Blue/motion off**. Each generation copies
+its complete corresponding normal Lab byte for byte, including CSS; there are
+no source, fixture-data, Vite or asset transforms. The same **46 private native
+inputs** embed each generation's corresponding assets; the repository native
+source is untouched. The final private build takes **9.23 s**, followed by strict
+signing verification for both fresh bundles. English initial window-only
+accessibility resolves through its exposed Raise action in the same process.
+
+English Tab/Return Review and Back followed by immediate typing now produce
+exactly `  {"code":"await fixture.inspect('Keep before after 保留');"}  `.
+Captured session, worker and digest remain exact. The captured execution and
+keyboard permission response complete once; **three records / zero unconfirmed**
+remain. Reading that same operation's original input preserves the exact padded
+JSON; wheel reading and the physical word-wrap control expose the complete input
+and synthetic recorded image. Chinese selection of `替换这段 `, Review, physical
+pointer Back and immediate paste preserve and replace the exact native range,
+producing `  {"code":"await fixture.inspect('保留 已继续 草稿');"}  `.
+The returned AX selection is observed before replacement. These are separate
+static language profiles, not a new language-switch qualification. Held worker
+replacement is qualified by the controlled component tests, not a native fixture
+override. Captured HTTP actions do not grant real engine or OS control; physical
+IME and VoiceOver are not claimed.
+
+Existing better-accessibility/layout guidance and the repository's single-owner
+contracts guide the return boundary. Bounded subagents implement the scoped
+change and prepare guarded helpers; the primary owns actual-diff review, source
+and log checks, native acceptance and publication. All **three native processes
+and two servers** join with exit zero; both ports close. Three registrations,
+six created Library paths and eleven output/cache roots are removed. All **34**
+targets, including all **13** output roots, are absent. Evidence is retained
+before the owned QA directory is deleted. No functional check runs after cleanup.
+The scoped return, hierarchy, focus and theme checks expose no further defect in
+these scenes; whole-product visual acceptance remains open. Continue from the
+next observed task gap, preserving this owner and the approved reading surfaces.
+
 ### Coherent fixture calendar and visible outcome evidence (2026-11-07)
 
 The Lab's `Date.now()` used the recorded calendar while argument-free
