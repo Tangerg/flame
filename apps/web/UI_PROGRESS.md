@@ -4887,6 +4887,65 @@ roots, return to absence. Source, native and resource hashes remain intact befor
 the private QA root is deleted last. Evidence is retained in memory; no functional
 checks run after cleanup. Further work needs another observed reading failure.
 
+#### Complete expanded grouped Tool identity (2026-11-13)
+
+The follow-up starts at published `fd63315c9`. The existing three-call search
+group contains one unknown, safe Tool with a legal 117-character machine name.
+In the original native scene its label does not shrink: both collapsed and
+expanded rows cut off before `evidence_alpha`, run into the action rail and hide
+the chevron. The complete AX name and HTML title do not provide visible keyboard
+reading. This counterexample exercises `ToolGroup` / `ToolGroupRows` /
+`ToolGroupMember`, independently of the preceding standalone-card qualification.
+
+`ToolGroupMember` now uses the existing minimum-width vocabulary instead of the
+non-shrinking label style, and requests `ToolText` wrapping only while disclosed.
+The closed row truncates within its own button; the open header reveals the
+complete identity while retaining its chevron and Copy arguments rail. Built-in
+path details and match counts remain visible. No CSS, DOM, state, observer,
+handler, Tool model, command, Runtime or installed component changes are added.
+The earlier Tool-reading research and better-layout / better-typography guidance
+inform this use of the existing inline disclosure.
+
+The unchanged four Tool regression files pass **31 / 31 tests** in **17.79 s**
+(**20.69 s** wall time), without stderr or `act` warnings. Web typechecking passes
+in **10.63 s**. The first focused format check requests one mechanical JSX-line
+change; the corrected check passes. Web lint/full format, layer/design/chrome
+guards, all twenty resource checks, plugin-module checks and **make check-native
+(23.76 s)** pass under asserted npm **11.21.1** / Node **24.22.2**. No tests are
+weakened or added to assert CSS inventories. The complete frontend suite and
+additional browser visual or performance suites are not run for this display
+change.
+
+The final normal Lab produces **484 assets in 2.57 s**; the private final Lab
+takes **6.33 s** and its Wails **v3.1.0** build **7.73 s**. Both generations use
+the same two literal substitutions in `agentSessionSnapshots.ts`: the unknown
+Tool's name and its existing safe-map key. IDs, arguments, results, ordering,
+safety classification and neighboring built-in Tools remain intact. No fixture
+behavior or repository facts change. Each generation's served and embedded
+private assets match, and its CSS matches its own normal Lab. All **6,877 tracked
+inputs**, **46 native inputs** and **20 ESM resources** are fenced; only the
+member display source and Web README change during qualification.
+
+Actual Wails inspection uses default zoom and ordinary native Left windows.
+English/light/14 px/Orange/full motion and Chinese/dark/18 px/custom blue/motion
+off show the full name on two header lines, including `evidence_alpha`. Keyboard
+expansion, Result End reading, Arguments reading, reverse traversal and collapse
+retain reachable controls and focus. Chinese also qualifies coordinate-pointer
+expansion. Returning with Cmd+L continues the original middle caret: English
+yields `  Keep before after this grouped Tool draft — 保留  `; Chinese yields
+`  保留 检查前 已继续 这段分组工具草稿。  `, including outer spaces. No Send, Tool
+execution or copy action is activated. These isolated captured scenes do not
+qualify live Runtime execution, native hover, physical IME or VoiceOver.
+
+All **five owned processes join with exit 0**, both loopback ports close and
+all three app registrations disappear. Twenty created targets are retired;
+all **34 app/Library/output targets** return to absence with source, native and
+resource hashes preserved. Evidence is retained in memory before the private QA
+root is deleted last. No functional checks run after cleanup. The newly supplied
+Modern Web Guidance report now directs the next batches: verify each finding
+against its current owner, beginning with draft persistence, lifecycle/error
+fidelity and the shared browser-support/bootstrap contract.
+
 ### Representative Computer images and original-source reading (2026-11-07)
 
 The Computer result rendered a recorded image as a static `img`, without the

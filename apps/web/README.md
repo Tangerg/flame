@@ -693,8 +693,9 @@ Schedules retains its accepted manual Session/Run reference and uses this action
 to open the corresponding conversation. Normal scope retirement still applies
 when switching Sessions.
 
-Expanded Tool cards wrap complete machine and prose labels in the existing
-header. Collapsed summaries stay compact; path labels continue to use FilePath.
+Expanded Tool cards and grouped members wrap complete machine and prose labels
+in their existing header. Collapsed summaries stay compact; path labels continue
+to use FilePath.
 
 The generic Tool inspector preserves whitespace-only results and argument text as
 literal source, including their reading and copy controls. Only missing or

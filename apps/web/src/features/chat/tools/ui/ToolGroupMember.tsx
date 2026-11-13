@@ -78,7 +78,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
       <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
         <Icon name={toolCallIconFor(tool)} size="sm" />
       </span>
-      <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
+      <ToolText value={model.intent.label} styles={[vocab.min, gm.inherit]} wrap={disclosed} />
       {disclosable && (
         <span
           aria-hidden
