@@ -117,7 +117,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := process.New(process.Config{Runner: processRunner{cfg.processRunner}, Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -126,6 +126,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		return frameworkComposition{}, err
 	}
 	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
+	lifetime.frameworkCauses = owner.ObserveCloseCauses()
 	host, err := frame.NewHost(ctx, frame.HostConfig{ReadAcceptedBinding: permission.Read, Admission: cfg.stores.Admission, Lifetime: owner, Epoch: cfg.stores.Frame.Epoch(), Limits: frame.HostLimits{MaxInstallations: 128}, Drivers: []frame.Driver{profile}, Installations: cfg.stores.Frame, ExecutionProtection: cfg.stores.Frame})
 	if err != nil {
 		return frameworkComposition{}, err

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/frame"
 )
 
 type runtimeLifetime struct {
@@ -21,14 +22,15 @@ type runtimeLifetime struct {
 	shutdownWait shutdownWaitPolicy
 	shutdown     *shutdownAttempt
 
-	goalDriver     shutdownComponent
-	mcpCoordinator shutdownComponent
-	runSegments    shutdownComponent
-	executor       shutdownComponent
-	runEffectTasks taskOwner
-	toolResources  []*teardownStep
-	hostResources  []*teardownStep
-	resourceGraph  *shutdownSequence
+	goalDriver      shutdownComponent
+	mcpCoordinator  shutdownComponent
+	runSegments     shutdownComponent
+	executor        shutdownComponent
+	runEffectTasks  taskOwner
+	toolResources   []*teardownStep
+	hostResources   []*teardownStep
+	resourceGraph   *shutdownSequence
+	frameworkCauses *frame.CloseCauses
 }
 
 // lifetimePhase orders Runtime shutdown. Stopping is entered once, by the first
@@ -89,7 +91,14 @@ func (i *Instance) Close() error {
 	return closeRuntimeLifetime(i.lifetime)
 }
 
-func closeRuntimeLifetime(lifetime *runtimeLifetime) error {
+func closeRuntimeLifetime(lifetime *runtimeLifetime) (err error) {
+	defer func() {
+		if lifetime.frameworkCauses != nil {
+			if cause := lifetime.frameworkCauses.Err(); cause != nil && !errors.Is(err, cause) {
+				err = errors.Join(err, cause)
+			}
+		}
+	}()
 	// Preserve instance trace values, but never let the caller that happened to
 	// start Close cancel the owner generation.
 	ownerCtx := context.WithoutCancel(lifetime.context)

@@ -996,6 +996,13 @@ resource teardown finishes, every call returns its retained diagnostic without
 repeating cleanup; a later call cannot turn a failed close into apparent success.
 Shutdown cancels accepted calls and component-owned work before joining delivery.
 Dependencies close only after their calls and components have returned.
+If the caller's close wait expires while a Frame resource remains unconfirmed,
+the error retains both the timeout and the original cleanup cause. Frame's
+release proof still controls when storage, content and the directory lease close.
+Once Frame admits a local process creation, Runtime joins that original runner
+request before cleanup. Host cancellation cannot discard its acknowledgement
+and turn a normal shutdown into an unknown creation. Pre-dispatch cancellation
+retains the runner's exact non-dispatch proof; transport failures remain failures.
 Waiting cancellation retains its standard category and caller-supplied cause.
 An already observable completion still owns its result; canceling a waiter
 cannot change that result or cancel an admitted teardown generation. Keyed

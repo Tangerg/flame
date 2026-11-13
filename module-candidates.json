@@ -286,6 +286,10 @@
     "v0.1.28-dev.20261113.tc09138b6c5e1": {
       "tree": "c09138b6c5e168fc88f4e1e8b5790b17efe8d3e6",
       "time": "2026-11-13T07:31:10Z"
+    },
+    "v0.1.29-dev.20261113.tb5d34d29dd36": {
+      "tree": "b5d34d29dd364867baae42b8954d5bb2f3578eaa",
+      "time": "2026-11-13T09:24:27Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {

@@ -15,7 +15,56 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/frame"
 )
+
+func TestInstanceShutdownRetainsOriginalFailureWhileReleaseIsUnconfirmed(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cause := errors.New("original process exit could not be recorded")
+		lateCause := errors.New("original content cleanup failed after exit proof")
+		owner := frame.NewLifetime(t.Context())
+		content, err := owner.Own(frame.Resource{
+			Name: "original content",
+			Close: func(context.Context) (frame.ReleaseState, error) {
+				return frame.ResourceReleased, lateCause
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resource, err := owner.Own(frame.Resource{
+			Name: "original process",
+			Close: func(context.Context) (frame.ReleaseState, error) {
+				return frame.ResourceUnconfirmed, cause
+			},
+		}, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lifetime := newRuntimeLifetime(t.Context(), nil)
+		lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
+		lifetime.frameworkCauses = owner.ObserveCloseCauses()
+		lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(ctx context.Context) error {
+			_, diagnostic := owner.Close(ctx)
+			_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
+			return errors.Join(diagnostic, releaseErr)
+		}))
+		host := Instance{lifetime: lifetime}
+		closeErr := host.Close()
+		if !errors.Is(closeErr, context.DeadlineExceeded) || !errors.Is(closeErr, cause) {
+			t.Errorf("Close = %v, want caller timeout and original resource failure", closeErr)
+		}
+		if outcome := owner.BeginClose(frame.ErrClosed).Outcome(); outcome.Released {
+			t.Error("caller timeout released the original resource")
+		}
+		if err := resource.ConfirmReleased(nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := host.Close(); !errors.Is(err, cause) || !errors.Is(err, lateCause) || errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("Close after proof = %v, want original and late resource failures", err)
+		}
+	})
+}
 
 func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
 	path := t.TempDir()
