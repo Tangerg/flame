@@ -165,7 +165,6 @@ export class EngineProcess implements Transport {
       this.#failed("computer: engine diagnostics failed", cause),
     );
     child.stdout.on("data", (bytes: Buffer) => {
-      if (this.#closed || this.#closing) return;
       try {
         this.#read(bytes);
       } catch (cause) {
@@ -190,7 +189,10 @@ export class EngineProcess implements Transport {
   }
 
   #read(bytes: Buffer): void {
-    for (let start = 0; start < bytes.length;) {
+    for (
+      let start = 0;
+      start < bytes.length && !this.#closed && !this.#closing;
+    ) {
       const end = bytes.indexOf(10, start);
       const fragment = bytes.subarray(start, end < 0 ? bytes.length : end);
       if (this.#frameBytes + fragment.length > LIMITS.maxResultBytes)

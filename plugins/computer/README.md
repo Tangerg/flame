@@ -337,6 +337,8 @@ originals through that same accounting owner.
 created before spawning the external engine. On POSIX the engine owns a distinct
 process group. Normal close sends EOF, then bounded TERM/KILL if needed, joins the
 original child and checks that the group is gone before removing its marker.
+Frame delivery uses that same connection lifetime for each complete message;
+closing during delivery prevents later buffered messages from entering the protocol.
 An exit-probe permission denial retains uncertainty within the original bounded
 wait. Only definitive absence permits release; a persistent denial retains its
 diagnostic and ownership marker, and other probe failures remain explicit.
