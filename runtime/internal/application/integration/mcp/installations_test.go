@@ -50,7 +50,7 @@ func TestInstallationWithdrawalSupersedesInFlightConnectionSynchronously(t *test
 	}
 	attempt := <-live.attempt
 
-	if err := c.WithdrawInstallation([]mcpserver.ID{server.ID()}); err != nil {
+	if err := c.WithdrawInstallation(t.Context(), []mcpserver.ID{server.ID()}); err != nil {
 		t.Fatal(err)
 	}
 	if live.removeName != server.Name.String() {
@@ -64,9 +64,87 @@ func TestInstallationWithdrawalSupersedesInFlightConnectionSynchronously(t *test
 func TestInstallationWithdrawalRefusesUserSourcesWithoutEffect(t *testing.T) {
 	live := &fakePorts{}
 	c := testCoordinator(t, Config{Connections: live})
-	err := c.WithdrawInstallation([]mcpserver.ID{installationServer(t, "files").ID(), testsupport.UserMCPServer("files")})
+	err := c.WithdrawInstallation(t.Context(), []mcpserver.ID{installationServer(t, "files").ID(), testsupport.UserMCPServer("files")})
 	if !errors.Is(err, ErrInvalidServerConfiguration) || live.removeName != "" {
 		t.Fatalf("withdraw user source = %v, detached %q", err, live.removeName)
+	}
+}
+
+type selectedConnectorWorkflow struct {
+	*testExternalWorkflow
+	affected      bool
+	failure       error
+	invalidations int
+}
+
+func (w *selectedConnectorWorkflow) Affected(context.Context, []mcpserver.ID) (bool, error) {
+	return w.affected, w.failure
+}
+
+func (w *selectedConnectorWorkflow) Invalidate() { w.invalidations++ }
+
+func TestInstallationWithdrawalUsesTheCurrentConnectorDecision(t *testing.T) {
+	selectionFailure := errors.New("connector selection is unreadable")
+	for _, test := range []struct {
+		name     string
+		affected bool
+		failure  error
+		withdraw bool
+	}{
+		{"selected", true, nil, true},
+		{"unrelated", false, nil, false},
+		{"unknown", false, selectionFailure, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			changed := installationServer(t, "changed").ID()
+			sibling := installationServer(t, "sibling").ID()
+			external := testsupport.UserMCPServer("external")
+			live := &fakePorts{statuses: []mcpserver.ConnectionStatus{
+				{Server: changed, State: mcpserver.ConnectionConnected},
+				{Server: sibling, State: mcpserver.ConnectionConnected},
+				{Server: external, State: mcpserver.ConnectionConnected},
+			}}
+			workflow := &selectedConnectorWorkflow{testExternalWorkflow: &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}, affected: test.affected, failure: test.failure}
+			c := testCoordinator(t, Config{Connections: live, External: workflow})
+			err := c.WithdrawInstallation(t.Context(), []mcpserver.ID{changed})
+			if !errors.Is(err, test.failure) {
+				t.Fatalf("withdrawal lost its selection failure: %v", err)
+			}
+			remaining := make(map[mcpserver.ID]bool)
+			for _, status := range live.Statuses() {
+				remaining[status.Server] = true
+			}
+			if remaining[changed] || !remaining[sibling] || remaining[external] == test.withdraw {
+				t.Fatalf("withdrawal changed unrelated sources or retained withdrawn authority: %+v", remaining)
+			}
+			if (workflow.invalidations != 0) != test.withdraw {
+				t.Fatal("withdrawal did not invalidate the affected directory incarnation")
+			}
+		})
+	}
+}
+
+func TestSelectionReadFailureDoesNotPreventInstallationRealization(t *testing.T) {
+	server := installationServer(t, "files")
+	selectionFailure := errors.New("connector selection is unreadable")
+	workflow := &selectedConnectorWorkflow{testExternalWorkflow: &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}, failure: selectionFailure}
+	live := &fakePorts{configureDone: make(chan struct{})}
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}}
+	c := testCoordinator(t, Config{Registry: registry, Connections: live, External: workflow})
+	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{server.ID()}); !errors.Is(err, selectionFailure) {
+		t.Fatalf("realization lost its selection failure: %v", err)
+	}
+	<-live.configureDone
+	if live.configureName != server.ID() || workflow.invalidations != 0 {
+		t.Fatal("unknown connector selection prevented independent source realization")
+	}
+}
+
+func TestInstallationWithdrawalRequiresContextWithoutEffect(t *testing.T) {
+	live := &fakePorts{}
+	c := testCoordinator(t, Config{Connections: live})
+	if err := c.WithdrawInstallation(nil, []mcpserver.ID{installationServer(t, "files").ID()}); err == nil || live.removeName != "" {
+		t.Fatalf("withdrawal without context changed a source: %v", err)
 	}
 }
 

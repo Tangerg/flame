@@ -61,7 +61,7 @@ type store interface {
 // ExternalWorkflow owns user-server authorization records. Installed backends can authorize independently.
 type ExternalWorkflow interface {
 	Invalidate()
-	Affected([]mcpserver.ID) bool
+	Affected(context.Context, []mcpserver.ID) (bool, error)
 	List(context.Context) ([]mcpserver.Server, error)
 	AdmitProbe(context.Context) (func(), error)
 	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error)

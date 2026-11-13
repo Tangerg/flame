@@ -10,22 +10,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// WithdrawInstallation retires the live connections and tools of installation
-// sources whose committed projection changed. The installation owner calls it
-// inside the critical section that commits the change, after the durable
-// write, so no Run assembled after the commit can freeze a superseded
-// release's tools. Each source's in-flight connection operation is canceled
-// before the source is detached: a configuration read before the commit is
-// superseded and cannot dial afterwards. Withdrawal performs no I/O and never
-// waits for a dial; ReconcileInstallation realizes the committed projection
-// after the critical section.
-func (c *Coordinator) WithdrawInstallation(servers []mcpserver.ID) error {
+// Frame has committed and fenced the installation before this projection changes.
+// Withdrawal supersedes in-flight connection attempts before the following
+// realization. Selection remains readable from its owner after uninstall;
+// withdrawal never performs connection I/O or waits for a dial.
+func (c *Coordinator) WithdrawInstallation(ctx context.Context, servers []mcpserver.ID) error {
+	if ctx == nil {
+		return errors.New("mcp: withdrawal context is required")
+	}
 	if err := validateInstallationSources(servers); err != nil {
 		return err
 	}
-	var result error
-	if c.external.Affected(servers) {
-		result = c.WithdrawExternal()
+	affected, result := c.external.Affected(ctx, servers)
+	// Unknown selection cannot leave potentially withdrawn external authority live.
+	if result != nil || affected {
+		result = errors.Join(result, c.WithdrawExternal())
 	}
 	for _, id := range servers {
 		result = errors.Join(result, c.connections.Detach(id))
@@ -42,10 +41,15 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 	if err := validateInstallationSources(servers); err != nil {
 		return err
 	}
-	if c.external.Affected(servers) {
-		return errors.Join(c.reconcileSources(ctx, servers), c.ReconcileExternal(ctx))
+	affected, selectionErr := c.external.Affected(ctx, servers)
+	result := c.reconcileSources(ctx, servers)
+	if selectionErr != nil {
+		return errors.Join(result, selectionErr)
 	}
-	return c.reconcileSources(ctx, servers)
+	if affected {
+		result = errors.Join(result, c.ReconcileExternal(ctx))
+	}
+	return result
 }
 
 // External directory I/O cannot block recovery of the Frame instances required to read it.

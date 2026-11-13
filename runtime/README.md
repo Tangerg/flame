@@ -687,6 +687,13 @@ Plugin and Skill read invalidations likewise follow the durable write, outside a
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
 
+Installation withdrawal reads the configured external connector selection through
+the original mutation context. Directory reads cannot change that selection or its
+impact on a later installation change. An unreadable selection withdraws potentially
+affected external connections and retains the read failure; independent installation
+sources still reconcile. No query-populated selection cache participates in lifecycle
+decisions.
+
 Installed commands durably bind identity, method, admitted raw input and
 original installation/release/server before network dispatch. The host records
 prepared, dispatch-admitted and observed evidence, never a business result. A

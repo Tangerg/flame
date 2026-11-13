@@ -217,8 +217,10 @@ func (m *mcpRegistryFake) SetToolExposure(_ context.Context, ref tool.Ref, disab
 	return nil
 }
 
-func (*fakeMCPPorts) Invalidate()                                      {}
-func (*fakeMCPPorts) Affected([]mcpserver.ID) bool                     { return false }
+func (*fakeMCPPorts) Invalidate() {}
+func (*fakeMCPPorts) Affected(context.Context, []mcpserver.ID) (bool, error) {
+	return false, nil
+}
 func (*fakeMCPPorts) List(context.Context) ([]mcpserver.Server, error) { return nil, nil }
 func (*fakeMCPPorts) AdmitProbe(context.Context) (func(), error)       { return func() {}, nil }
 func (*fakeMCPPorts) StartAuthorization(context.Context, mcpserver.Server, mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, func(context.Context, mcpapp.AuthorizationAttemptStatus) error, error) {

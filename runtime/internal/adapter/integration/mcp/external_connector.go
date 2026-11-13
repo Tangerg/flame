@@ -39,7 +39,6 @@ type grantVault interface {
 type ExternalConnector struct {
 	recoveryMu    sync.Mutex
 	recovered     map[identity.InstallationID]string
-	selected      atomic.Pointer[identity.InstallationID]
 	installed     *Installed
 	installations plugins.Store
 	selections    plugins.SelectionStore
@@ -69,16 +68,6 @@ type connectorUse struct {
 }
 
 func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) {
-	selection, configured, err := c.selections.Get(ctx, wire.Reference)
-	if err != nil {
-		return nil, err
-	}
-	if !configured {
-		c.selected.Store(nil)
-		return nil, nil
-	}
-	id := selection.Snapshot().Installation
-	c.selected.Store(&id)
 	b, found, err := plugins.SelectedContribution(ctx, c.installed.host, c.installations, c.selections, c.methods.Contract)
 	if err != nil || !found {
 		return nil, err
@@ -331,18 +320,22 @@ func (c *ExternalConnector) SetToolExposure(ctx context.Context, ref tool.Ref, d
 	return c.vault.SetToolExposure(ctx, ref, disabled)
 }
 
-func (c *ExternalConnector) Affected(servers []mcpserver.ID) bool {
-	selected := c.selected.Load()
-	if selected == nil {
-		return false
+func (c *ExternalConnector) Affected(ctx context.Context, servers []mcpserver.ID) (bool, error) {
+	if len(servers) == 0 {
+		return false, nil
 	}
+	selection, configured, err := c.selections.Get(ctx, wire.Reference)
+	if err != nil || !configured {
+		return false, err
+	}
+	selected := selection.Snapshot().Installation
 	for _, s := range servers {
 		id, ok := s.Origin().Installation()
-		if ok && id == *selected {
-			return true
+		if ok && id == selected {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (c *ExternalConnector) recover(ctx context.Context, u *connectorUse) error {
