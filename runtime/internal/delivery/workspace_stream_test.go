@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -88,10 +89,11 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 		nil,
 		exhausting.exhausted,
 		func() { hub.drained(exhausting) },
-		func() {
+		sync.OnceValue(func() error {
 			releases++
 			unregisterExhausting()
-		},
+			return nil
+		}),
 	) {
 		if err != nil {
 			t.Fatalf("runtime subscription failed: %v", err)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"log/slog"
 	"slices"
 	"sync"
 
@@ -548,30 +549,38 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 			reportObservationError,
 		)
 		if err != nil {
+			var cleanupErr error
 			if fileWatcher != nil {
-				_ = fileWatcher.Close()
+				cleanupErr = fileWatcher.Close()
 			}
 			unregister()
 			close(events)
-			return nil, nil, wireWorkspaceError(fmt.Errorf("start authored resource watcher: %w", err))
+			return nil, nil, wireWorkspaceError(fmt.Errorf("start authored resource watcher: %w", errors.Join(err, cleanupErr)))
 		}
 	}
 
-	releaseSubscription := sync.OnceFunc(func() {
+	releaseSubscription := sync.OnceValue(func() error {
+		var authoredErr, fileErr error
 		if authoredWatcher != nil {
-			_ = authoredWatcher.Close() // joins callbacks — no emit after this
+			authoredErr = authoredWatcher.Close()
 		}
 		if fileWatcher != nil {
-			_ = fileWatcher.Close() // joins callbacks — no emit after this
+			fileErr = fileWatcher.Close()
 		}
-		unregister() // hub stops broadcasting to events
+		unregister()
 		close(events)
+		err := errors.Join(authoredErr, fileErr)
+		if err != nil {
+			// An abandoned consumer has no terminal frame to receive cleanup failure.
+			slog.ErrorContext(ctx, "runtime subscription cleanup failed", "error", err)
+		}
+		return err
 	})
-	stopContextRelease := context.AfterFunc(ctx, releaseSubscription)
-	stopSubscription := sync.OnceFunc(func() {
+	stopContextRelease := context.AfterFunc(ctx, func() { _ = releaseSubscription() })
+	stopSubscription := func() error {
 		stopContextRelease()
-		releaseSubscription()
-	})
+		return releaseSubscription()
+	}
 	return &protocol.RuntimeSubscribeResponse{}, subscriptionEventSequence(
 		events,
 		observationErrors,
@@ -602,39 +611,54 @@ func subscriptionEventSequence(
 	failures <-chan error,
 	exhausted <-chan struct{},
 	queueDrained func(),
-	stopSubscription func(),
+	stopSubscription func() error,
 ) iter.Seq2[protocol.RuntimeEvent, error] {
 	return func(yield func(protocol.RuntimeEvent, error) bool) {
 		defer stopSubscription()
-		for {
-			select {
-			case err := <-failures:
-				yield(protocol.RuntimeEvent{}, wireWorkspaceError(fmt.Errorf("workspace observation ended: %w", err)))
-				return
-
-			case event, open := <-events:
-				if !open {
-					return
-				}
-				queueDrained()
-				if !yield(event, nil) {
-					return
-				}
-			case <-exhausted:
-				// No producer can enqueue after exhaustion. Drain everything accepted
-				// before the terminal signal, then let the deferred owner release stop
-				// watchers, unregister from the hub and close events.
-				for {
-					select {
-					case event, open := <-events:
-						if !open || !yield(event, nil) {
-							return
+		consume := func() (bool, error) {
+			for {
+				select {
+				case err := <-failures:
+					return true, err
+				case event, open := <-events:
+					if !open {
+						return true, nil
+					}
+					queueDrained()
+					if !yield(event, nil) {
+						return false, nil
+					}
+				case <-exhausted:
+					// Exhaustion fences producers, so only already accepted frames remain.
+					for {
+						select {
+						case event, open := <-events:
+							if !open {
+								return true, nil
+							}
+							if !yield(event, nil) {
+								return false, nil
+							}
+						default:
+							return true, nil
 						}
-					default:
-						return
 					}
 				}
 			}
+		}
+		completed, err := consume()
+		cleanupErr := stopSubscription()
+		if !completed {
+			return
+		}
+		// Joined watchers cannot publish after this final failure read.
+		select {
+		case pending := <-failures:
+			err = errors.Join(err, pending)
+		default:
+		}
+		if err = errors.Join(err, cleanupErr); err != nil {
+			yield(protocol.RuntimeEvent{}, wireWorkspaceError(fmt.Errorf("runtime subscription ended: %w", err)))
 		}
 	}
 }
