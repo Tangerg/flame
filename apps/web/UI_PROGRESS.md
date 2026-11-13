@@ -4820,6 +4820,73 @@ physical IME and optional performance measurements remain unfinished. The
 Computer evidence accounting is qualified in the Computer section below. Continue
 triage and qualification in this same Lab, without another visual runner.
 
+#### Complete expanded standalone Tool identity (2026-11-13)
+
+The follow-up starts at published `04f18d8ee`. Two legal unknown Tool names share
+a long prefix and differ only at their `alpha` / `beta` suffix. Original native
+keyboard expansion leaves both visible headers ellipsized before that suffix;
+their Result and Arguments do not supply the missing name. Complete AX names and
+HTML `title` values do not provide visible keyboard reading. This counterexample
+qualifies standalone `ToolCard`, not `ToolGroupMember`.
+
+`ToolCard` now requests wrapping for its primary label while expanded. `ToolText`
+uses the existing minimum-width and `wrapText` vocabulary; collapsed summaries
+retain truncation, and path labels retain `FilePath`. The existing header owns
+the complete identity, chevron and action rail. No duplicate name, Tooltip,
+observer, focus handler, state, CSS rule, Runtime or command contract is added.
+The earlier Tool-reading research and better-layout's complete-value guidance
+inform this use of the existing inline disclosure.
+
+The unchanged four Tool regression files pass **31 / 31 tests** in **5.39 s**
+(**6.88 s** wall time), without stderr or `act` warnings. Web typechecking passes
+in **8.17 s**. Web lint/format, layer/design/chrome guards, all twenty installed
+resource checks, plugin-module checks and **make check-native (33.44 s)** pass.
+No CSS-inventory test or browser visual suite is added; the original/final native
+counterexample supplies the layout evidence. The complete frontend suite is not
+rerun for these two display-source changes.
+
+Toolchain inspection catches that the selected Node **24.22.2** prefix bundles
+npm **11.19.1**. That initial setup is not adopted as supported qualification.
+Setup and all subsequent gates explicitly inherit and assert npm **11.21.1**;
+selecting the Node prefix alone does not pin npm for `make`. A supported original
+source `make check-native` also passes in **35.70 s** at the unchanged published
+Computer commit, supplementing that batch's earlier native build result. Global
+toolchain settings and install-script permissions remain unchanged.
+
+Normal Lab construction produces **484 assets in 2.77 s**. The private final Lab
+build takes **2.25 s**, and its Wails **v3.1.0** native build takes **3.75 s**.
+Both original/final scenes apply the same four literal fixture substitutions:
+the two Tool names and their existing safety-map keys. The **117 / 116-character**
+names retain the calls' IDs, arguments, results, order and existing exec/safe
+classification. No fixture behavior, observer or repository fact changes. Each
+generation's served and embedded private maps match; its CSS matches its own
+normal Lab. Private JavaScript differs from normal through these frozen facts.
+All **6,876 tracked inputs** are fenced: only the two display sources and Web
+README change during qualification; all **46 native inputs / 20 ESM resources**
+remain unchanged. This progress update follows retirement of the qualified scene.
+
+Actual Wails inspection uses default zoom and the ordinary **1120-point** native
+Left window. English/light/14 px/Orange/full motion and Chinese/dark/18 px/custom
+blue/motion off both show the full names, including the distinguishing suffix,
+on two header lines. Keyboard expansion, Result End reading, Arguments reading,
+reverse traversal and collapse retain reachable controls and visible focus.
+Chinese additionally qualifies coordinate-pointer collapse/expansion and an
+internal wheel from the final schedule back to the first. No Send or Tool action
+is activated. Returning with Cmd+L immediately continues the original middle caret:
+English yields `  Keep before after this Tool identity draft — 保留  `; Chinese
+yields `  保留 检查前 已继续 这段工具身份草稿。  `, including outer spaces.
+The initial final-English host remains the same process through manual Mac
+unlock; its exposed native Raise action renders the scene without a reload.
+Native hover, grouped Tool identity, physical IME, VoiceOver and live Runtime
+execution remain outside this qualification.
+
+All **five owned processes join with exit 0**, both loopback ports close, and the
+three app registrations disappear. The twenty created targets are retired; all
+**34 app/Library/output targets**, including the thirteen captured output/cache
+roots, return to absence. Source, native and resource hashes remain intact before
+the private QA root is deleted last. Evidence is retained in memory; no functional
+checks run after cleanup. Further work needs another observed reading failure.
+
 ### Representative Computer images and original-source reading (2026-11-07)
 
 The Computer result rendered a recorded image as a static `img`, without the

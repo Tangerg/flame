@@ -11,9 +11,11 @@ interface ToolTextValue {
 export function ToolText({
   value,
   styles,
+  wrap = false,
 }: {
   value: ToolTextValue;
   styles?: StyleXArray<StyleXStyles | null | false>;
+  wrap?: boolean;
 }) {
   const machine = value.kind !== "prose";
   if (value.kind === "path") {
@@ -26,7 +28,11 @@ export function ToolText({
   }
   return (
     <span
-      {...stylex.props(vocab.truncate, machine && [face.mono, typeStep.code], styles)}
+      {...stylex.props(
+        wrap ? [vocab.min, vocab.wrapText] : vocab.truncate,
+        machine && [face.mono, typeStep.code],
+        styles,
+      )}
       title={value.value}
     >
       {value.value}

@@ -52,7 +52,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         shell="line"
         summaryId={summaryId}
         contentInset="rows"
-        label={<ToolText value={model.intent.label} styles={tc.full} />}
+        label={<ToolText value={model.intent.label} styles={tc.full} wrap={expanded} />}
         detail={model.detail ? <ToolText value={model.detail} styles={tc.full} /> : undefined}
         trailing={
           <>
