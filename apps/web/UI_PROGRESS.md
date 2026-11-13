@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -47052,6 +47052,71 @@ is absent; post-retirement checks pass. Delivery remains a normal explicit-path
 local commit on `codex/ui-feedback-local-1026`, with the primary parallel checkout
 outside scope. Continue with a fresh complete reading task from the feedback
 review; preserve existing ownership and require a reproduced gap before editing.
+
+The **2026-11-13 shared-menu integration follow-up** qualifies the current
+`640bb2b56` file tree after the shared ContextMenu trigger guard changed in the
+message-menu batch. It uses the existing canonical `workspace/dock-files` scene,
+with no source, fixture-data, Vite or asset transformation. The normal, served
+and embedded Lab trees match across all **484 assets**. The private production
+Wails host changes only its initial loopback URL; both language bundles use the
+same compiled binary, with separate identifiers, signatures and private homes.
+All **6,876 tracked files**, **46 native inputs** and **20 published resources**
+remain unchanged through qualification and cleanup.
+
+English/light/14 px/Orange/full motion and Chinese/dark/18 px/**#3B82F6**/motion
+off pass at default zoom in the ordinary native **1120 pt** Left window. Each
+keeps a padded Unicode draft with a middle caret, expands `apps` and enters
+`DockResizer.tsx` with Right. Shift+F10 opens the menu named by its complete
+`apps/web/src/features/shell/workbench/panel/DockResizer.tsx` path; Escape restores
+that same tree row. Return opens the exact eight-line preview with complete path
+and readable wrapped source. Back restores the expanded directory and selected
+file cursor. Right-click opens the same path menu and Escape again restores the
+row. Cmd+L returns to the original draft position and immediate typing produces
+`  Keep verified this workspace draft — 保留  ` in English and
+`  Keep verified this dark workspace draft — 保留  ` in Chinese.
+
+Switching Files → Workspace diff → Files preserves the same expanded directory
+and selected file; focus remains on the explicitly selected tab. A subsequent
+Cmd+L and `after ` insertion yield exactly
+`  Keep verified after this workspace draft — 保留  ` and
+`  Keep verified after this dark workspace draft — 保留  `, including both leading
+and trailing spaces. This is the existing tree-return contract, distinct from
+the legitimate parent-cursor fallback when first returning from a direct preview.
+No file-menu command, clipboard copy, OS Open/Reveal, Send or live Runtime
+operation is activated. Captured file reads do not qualify a live filesystem or provider;
+OS IME and VoiceOver speech remain unverified.
+
+Read-only ZCode's row-owned context menu and exact path identity, the current
+Tree/ContextMenu implementation and existing file-return tests guide this review.
+No product defect is reproduced and no implementation or test is changed. The
+normal Lab build passes in **4.28 s** and the copied native production host builds
+in **4.22 s**; both app signatures pass strict verification. The Chinese bundle
+reuses that binary without another build. Frontend tests and `make check-native`
+are not rerun for this documentation-only qualification; the preceding complete
+frontend and focused Composer results retain their recorded scopes.
+
+Early native arrival is diagnostic only: English initially exposes a window and
+a blank capture; after its native View-menu diagnostics retire through the
+exposed Cancel action, that same process displays the full Workspace. Chinese
+initially exposes only a window, then its exposed Raise action yields the full
+interface. Neither instance reloads, restarts or changes source. These observations
+do not establish a startup defect or root cause; the workflow is qualified only
+after fresh complete interface observation. The existing layout-observation
+control remains off throughout both tasks.
+
+Both native processes and the single server join with exit **0**, and the port
+closes. Two private registrations, four created Library trees and five created
+output/cache roots are removed. All three reserved app paths, eighteen Library
+paths and thirteen output/cache targets are absent. The complete source, asset,
+signature and ownership fences pass before cleanup; the QA root is deleted last
+after proof retention. No functional check runs after cleanup.
+
+Publication incorporates independent main commits `f3735186b` and `f46d8c282`,
+which change Computer connection retirement, console composition, its published
+component and complexity accounting. The FileTree, Composer, shared menu,
+Workspace shell and native inputs are unchanged by those commits. The native
+proof above remains scoped to `640bb2b56`; it does not claim qualification of
+the incoming Computer behavior or a new complete frontend run.
 
 ## Notifications audit
 
