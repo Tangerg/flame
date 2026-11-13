@@ -1,8 +1,52 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 import { EngineProcess } from "./engineProcess";
+
+vi.mock("node:child_process", async (original) => {
+  const actual = await original<typeof import("node:child_process")>();
+  return { ...actual, spawn: vi.fn(actual.spawn) };
+});
+
+it("stops delivering buffered frames when their consumer closes the connection", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-process-retirement-"));
+  const transport = new EngineProcess({
+    command: process.execPath,
+    args: [
+      "-e",
+      "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));",
+    ],
+    ownershipPath: join(directory, "ownership.json"),
+    env: {},
+  });
+  const spawned = vi.mocked(spawn);
+  spawned.mockClear();
+  const received = vi.fn();
+  transport.onmessage = (message) => {
+    received(message);
+    if (received.mock.calls.length === 1) void transport.close();
+  };
+  try {
+    await transport.start();
+    const child = spawned.mock.results[0]?.value;
+    if (!child?.stdout) throw new Error("fixture has no engine output");
+    child.stdout.emit(
+      "data",
+      Buffer.from(
+        '{"jsonrpc":"2.0","method":"first"}\n{"jsonrpc":"2.0","method":"retired"}\n',
+      ),
+    );
+    expect(received).toHaveBeenCalledExactlyOnceWith({
+      jsonrpc: "2.0",
+      method: "first",
+    });
+  } finally {
+    await transport.close();
+    await rm(directory, { recursive: true });
+  }
+});
 
 it.each(["transient denial", "persistent denial", "unexpected failure"])(
   "retains original process-group evidence through $0",
