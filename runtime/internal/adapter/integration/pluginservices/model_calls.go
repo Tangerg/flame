@@ -77,7 +77,8 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 	}
 	stream, err := pluginsdk.NewSelectedModelStreamCallback(func(ctx context.Context, command pluginmcp.Command[pluginsdk.ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
-			sender := newStreamSender(yield)
+			sender := newModelStreamSender(yield)
+			defer sender.finish()
 			selected, request, release, err := capture(ctx, command.Input)
 			if err != nil {
 				sender.fail(err)

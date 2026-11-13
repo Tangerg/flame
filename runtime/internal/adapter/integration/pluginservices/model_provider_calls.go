@@ -123,7 +123,8 @@ type streamingProviderChat struct{ *providerChat }
 func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	request = request.Clone()
 	return func(yield func(*chat.ResponseDelta, error) bool) {
-		sender := newStreamSender(yield)
+		sender := newModelStreamSender(yield)
+		defer sender.finish()
 		if err := p.use.admitRequest(ctx, request); err != nil {
 			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 			return
