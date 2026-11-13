@@ -156,7 +156,7 @@ describe("Runtime target authoring ownership", () => {
     composer().addPaste("paste on A");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-A.ts", 12);
     testClient.navigation.go({ view: "files", subagent: "child-on-A", settings: "connection" });
-    const keyA = testClient.composer.store.persist.getOptions().name!;
+    const keyA = `flame.composer:${encodeURIComponent(targets.targetA)}`;
     const storedA = localStorage.getItem(keyA);
     targets.deleteSession.mockClear();
 
@@ -178,7 +178,7 @@ describe("Runtime target authoring ownership", () => {
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-B.ts", 24);
-    const keyB = testClient.composer.store.persist.getOptions().name!;
+    const keyB = `flame.composer:${encodeURIComponent(targets.targetB)}`;
     expect(keyB).not.toBe(keyA);
     targets.deleteSession.mockClear();
 
@@ -210,7 +210,7 @@ describe("Runtime target authoring ownership", () => {
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     composer().addImageFiles([new File([""], "pending.png")]);
-    const key = testClient.composer.store.persist.getOptions().name!;
+    const key = `flame.composer:${encodeURIComponent(targets.targetA)}`;
 
     targets.replace(targets.targetA);
     reading.resolve({ mime: "image/png", data: "accepted", name: "pending.png" });
@@ -220,7 +220,7 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.draft.value).toBe(
       "retained during token refresh or process restart",
     );
-    expect(testClient.composer.store.persist.getOptions().name).toBe(key);
+    expect(localStorage.getItem(key)).toContain("retained during token refresh or process restart");
   });
 
   it("retires delayed image results even after switching away and back to the same Session", async () => {
@@ -295,7 +295,7 @@ describe("Runtime target authoring ownership", () => {
       testClient.agent.sessions.store.persist.getOptions().name!,
     )!;
     const unscopedComposer = localStorage.getItem(
-      testClient.composer.store.persist.getOptions().name!,
+      `flame.composer:${encodeURIComponent(targets.targetA)}`,
     )!;
     const unscopedDock = localStorage.getItem(
       testClient.workspace.dock.store.persist.getOptions().name!,
@@ -313,7 +313,6 @@ describe("Runtime target authoring ownership", () => {
     const workspace = createContextDockStore();
     disposers.push(() => input.dispose());
     expect(agent.store.persist.hasHydrated()).toBe(false);
-    expect(input.store.persist.hasHydrated()).toBe(false);
     expect(workspace.store.persist.hasHydrated()).toBe(false);
     expect(agent.store.getState().openSessionIds).toEqual([]);
     expect(input.store.getState().composer.draft.value).toBe("");

@@ -21,3 +21,14 @@ export function parsePersistedComposer(persisted: unknown): Composer | null {
   if (!parsed.success) return null;
   return Composer.restoreDrafts(new Map(Object.entries(parsed.data.drafts)));
 }
+
+export function encodePersistedComposer(composer: Composer): string {
+  return JSON.stringify({ state: { drafts: persistedComposerDrafts(composer) }, version: 0 });
+}
+
+export function decodePersistedComposer(raw: string): Composer {
+  const envelope = z.object({ state: z.unknown(), version: z.literal(0) }).parse(JSON.parse(raw));
+  const composer = parsePersistedComposer(envelope.state);
+  if (!composer) throw new Error("saved drafts have an invalid format");
+  return composer;
+}

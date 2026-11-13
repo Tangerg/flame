@@ -3,13 +3,13 @@ import { Composer } from "@/features/composer/domain/composer";
 import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import {
   parsePersistedComposer,
-  persistedComposerDrafts,
+  decodePersistedComposer,
+  encodePersistedComposer,
 } from "@/features/composer/adapters/persistedDrafts";
 function restore(composer: Composer): Composer {
-  const encoded = JSON.stringify({ drafts: persistedComposerDrafts(composer) });
-  const restored = parsePersistedComposer(JSON.parse(encoded));
-  expect(restored).not.toBeNull();
-  return restored!.activate(composer.activeSessionId);
+  return decodePersistedComposer(encodePersistedComposer(composer)).activate(
+    composer.activeSessionId,
+  );
 }
 
 describe("persisted authored text", () => {

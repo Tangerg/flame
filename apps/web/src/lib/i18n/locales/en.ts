@@ -100,6 +100,15 @@ export const en: Record<string, string> = {
   "sidebar.action.tools": "Tools & plugins",
   "sidebar.action.settings": "Settings",
   "composer.input.label": "Message composer",
+  "composer.persistence.saveFailed":
+    "Draft changes aren't saved on this device. Keep this window open and retry, or copy drafts.",
+  "composer.persistence.readFailed":
+    "Saved drafts couldn't be read. Keep this window open and retry.",
+  "composer.persistence.recoveryRequired":
+    "Saved drafts couldn't be read before editing. Copy drafts before reloading to recover saved drafts.",
+  "composer.persistence.copy": "Copy draft text",
+  "composer.persistence.copied": "Draft text copied",
+  "composer.persistence.copyFailed": "Couldn't copy drafts. Keep this window open and try again.",
   "composer.placeholder": "Describe what you want done — @ to reference a file",
   "composer.placeholder.steer": "Send a message to steer the running turn…",
   "composer.switchModel": "Switch model",

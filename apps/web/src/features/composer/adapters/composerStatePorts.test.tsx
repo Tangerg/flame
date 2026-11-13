@@ -1,5 +1,6 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { mockLocalStorage } from "@/test/localStorage";
 let testClient: TestClient;
 prepareTestClient(() => {
   const owned = createTestClient();
@@ -47,6 +48,16 @@ function Harness({ fieldKey = "original" }: { fieldKey?: string }) {
   );
 }
 
+function PersistenceHarness() {
+  const state = testClient.composer.access.usePersistenceState();
+  return (
+    <>
+      <Harness />
+      <output aria-label="Draft saving">{state.status}</output>
+    </>
+  );
+}
+
 function beginReplacement() {
   let replace!: ReturnType<typeof beginComposerDraftReplacement>;
   act(() => {
@@ -63,6 +74,39 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+});
+
+it("publishes a save refusal and retry without replacing the input or claiming later focus", () => {
+  testClient.render(<PersistenceHarness />);
+  const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+  const other = screen.getByRole("button", { name: "Other task" });
+  const key = `flame.composer:${encodeURIComponent(testClient.runtime.endpoint.currentRuntimeEndpoint())}`;
+  const cause = new DOMException("write refused", "QuotaExceededError");
+  const replacement = mockLocalStorage();
+  replacement.storage.setItem.mockImplementation((name, value) => {
+    if (name === key) throw cause;
+    replacement.backing.setItem(name, value);
+  });
+  fireEvent.change(field, { target: { value: "  keep my selection 保留  " } });
+  expect(screen.getByLabelText("Draft saving").textContent).toBe("failed");
+  const draft = testClient.composer.store.getState().composer.draft;
+  act(() => {
+    field.focus();
+    field.setSelectionRange(2, 9, "backward");
+    other.focus();
+  });
+  replacement.restore();
+  act(() => testClient.composer.access.retryPersistence());
+  expect(screen.getByLabelText("Draft saving").textContent).toBe("saved");
+  expect(screen.getByRole("textbox", { name: "Message" })).toBe(field);
+  expect(testClient.composer.store.getState().composer.draft).toBe(draft);
+  expect(field.value).toBe("  keep my selection 保留  ");
+  expect([field.selectionStart, field.selectionEnd, field.selectionDirection]).toEqual([
+    2,
+    9,
+    "backward",
+  ]);
+  expect(document.activeElement).toBe(other);
 });
 
 describe("draft replacement focus", () => {

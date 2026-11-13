@@ -9,6 +9,9 @@ prepareTestClient(() => {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as imageInput from "@/features/composer/public/input";
+import { createComposerStore } from "@/features/composer/adapters/composerStore";
+import { submitComposer } from "@/features/composer/application/submitComposer";
+import { mockLocalStorage } from "@/test/localStorage";
 const composer = () => testClient.composer.store.getState();
 
 let STORAGE_KEY: string;
@@ -16,7 +19,7 @@ let STORAGE_KEY: string;
 afterEach(() => vi.restoreAllMocks());
 
 beforeEach(() => {
-  STORAGE_KEY = testClient.composer.store.persist.getOptions().name!;
+  STORAGE_KEY = `flame.composer:${encodeURIComponent(testClient.runtime.endpoint.currentRuntimeEndpoint())}`;
   localStorage.removeItem(STORAGE_KEY);
   composer().clear();
 });
@@ -101,7 +104,7 @@ describe("the composer's drafts", () => {
     expect(composer().composer.draft.images).toMatchObject([{ data: "original-image" }]);
   });
 
-  it("survive a restart", async () => {
+  it("survive a restart", () => {
     composer().loadSession("s1");
     composer().setValue("half a thought");
 
@@ -109,14 +112,12 @@ describe("the composer's drafts", () => {
     const written = (JSON.parse(payload) as { state: unknown } | null)?.state;
     expect(written, "nothing reached storage").toBeTruthy();
 
-    composer().clear();
-    localStorage.setItem(STORAGE_KEY, payload);
-    await testClient.composer.store.persist.rehydrate();
-
-    const partialize = testClient.composer.store.persist.getOptions().partialize!;
-    expect(JSON.parse(JSON.stringify(partialize(composer() as never)))).toEqual(written);
-    composer().loadSession("s1");
-    expect(composer().composer.draft.value).toBe("half a thought");
+    const restored = createComposerStore();
+    finishTestClient(() => restored.dispose());
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    restored.store.getState().loadSession("s1");
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual({ state: written, version: 0 });
+    expect(restored.store.getState().composer.draft.value).toBe("half a thought");
   });
 
   it("do not carry images into storage", () => {
@@ -125,6 +126,352 @@ describe("the composer's drafts", () => {
     composer().addImages([{ mime: "image/png", data: "AAAAbase64payload" }]);
 
     expect(localStorage.getItem(STORAGE_KEY) ?? "").not.toContain("base64payload");
+  });
+});
+
+function coldComposer() {
+  const owner = createComposerStore();
+  finishTestClient(() => owner.dispose());
+  return owner;
+}
+
+function refuseWrites(cause: unknown, target = STORAGE_KEY) {
+  const replacement = mockLocalStorage();
+  replacement.storage.setItem.mockImplementation((key, value) => {
+    if (key === target) throw cause;
+    replacement.backing.setItem(key, value);
+  });
+  return replacement;
+}
+
+function refuseReads(cause: unknown) {
+  const replacement = mockLocalStorage();
+  replacement.storage.getItem.mockImplementation((key) => {
+    if (key === STORAGE_KEY) throw cause;
+    return replacement.backing.getItem(key);
+  });
+  return replacement;
+}
+
+describe("draft saving failures", () => {
+  it("keeps confirmation through non-text changes without retrying a refused write", () => {
+    composer().loadSession("confirmed");
+    composer().setValue("confirmed text");
+    const cause = new DOMException("write refused", "QuotaExceededError");
+    const write = refuseWrites(cause);
+    composer().setModel({ kind: "explicit", provider: "recorded", model: "selected" });
+    composer().setValue("confirmed text");
+    composer().addImages([{ mime: "image/png", data: "memory-only" }]);
+    composer().removeImage(composer().composer.draft.imageAttachments[0]!.id);
+    composer().loadSession("other");
+    composer().loadSession("confirmed");
+    expect(write.storage.setItem).not.toHaveBeenCalled();
+    expect(composer().persistenceState).toEqual({ status: "saved" });
+    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
+
+    composer().setValue("new text");
+    expect(write.storage.setItem).toHaveBeenCalledOnce();
+    composer().setValue("new text");
+    composer().setModel({ kind: "session" });
+    composer().loadSession("other");
+    composer().loadSession("confirmed");
+    expect(write.storage.setItem).toHaveBeenCalledOnce();
+    expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
+  });
+
+  it.each(["QuotaExceededError", "SecurityError"])(
+    "retains and retries the latest draft after %s",
+    (name) => {
+      composer().loadSession("unsaved");
+      composer().setValue("saved draft");
+      composer().addPaste("  /literal evidence 保留\r\n".repeat(128));
+      const confirmed = localStorage.getItem(STORAGE_KEY);
+      const cause = new DOMException("storage refused the write", name);
+      const write = refuseWrites(cause);
+
+      expect(() => composer().setValue("  newer draft 保留  ")).not.toThrow();
+      composer().setValue("  latest draft 保留\n");
+      const draft = composer().composer.draft;
+      expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
+      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
+      expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+      expect(() => testClient.composer.access.retryPersistence()).not.toThrow();
+      expect(composer().composer.draft).toBe(draft);
+
+      write.restore();
+      testClient.composer.access.retryPersistence();
+      expect(composer().persistenceState).toEqual({ status: "saved" });
+      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
+      expect(composer().composer.draft).toBe(draft);
+      const restored = coldComposer();
+      restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+      restored.store.getState().loadSession("unsaved");
+      expect(restored.store.getState().composer.draft).toEqual(draft);
+    },
+  );
+
+  it("keeps the original encoding cause without escaping authoring", () => {
+    composer().setValue("confirmed");
+    const confirmed = localStorage.getItem(STORAGE_KEY);
+    const cause = { detail: "  encoding refused 保留\noriginal cause" };
+    vi.spyOn(JSON, "stringify").mockImplementationOnce(() => {
+      throw cause;
+    });
+
+    expect(() => composer().setValue("unconfirmed")).not.toThrow();
+    expect(composer().composer.draft.value).toBe("unconfirmed");
+    expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+    testClient.composer.access.retryPersistence();
+    expect(composer().persistenceState).toEqual({ status: "saved" });
+    expect(localStorage.getItem(STORAGE_KEY)).toContain("unconfirmed");
+  });
+
+  it("still reads an image and consumes an accepted input once while saving fails", async () => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    const read = vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    composer().setValue("inspect this image");
+    const write = refuseWrites(new DOMException("full", "QuotaExceededError"));
+    try {
+      expect(() => composer().addImageFiles([new File([""], "proof.png")])).not.toThrow();
+      expect(read).toHaveBeenCalledOnce();
+      expect(composer().composer.draft.imageAttachments).toMatchObject([{ status: "pending" }]);
+      reading.resolve({ mime: "image/png", data: "recorded-image", name: "proof.png" });
+      await vi.waitFor(() => expect(composer().composer.draft.attachmentsReady).toBe(true));
+      const sendInput = vi.fn(() => true);
+      const restoreFocus = vi.fn();
+      expect(() =>
+        submitComposer({
+          draft: composer().captureSubmission(),
+          sendInput,
+          canSend: () => true,
+          restoreFocus,
+        }),
+      ).not.toThrow();
+      expect(sendInput).toHaveBeenCalledExactlyOnceWith({
+        parts: [
+          { kind: "text", text: "inspect this image" },
+          { kind: "image", mime: "image/png", data: "recorded-image" },
+        ],
+      });
+      expect(restoreFocus).toHaveBeenCalledOnce();
+      expect(composer().composer.draft.value).toBe("");
+      expect(composer().composer.draft.imageAttachments).toEqual([]);
+      expect(composer().persistenceState).toMatchObject({ status: "failed", operation: "save" });
+      write.restore();
+      testClient.composer.access.retryPersistence();
+      expect(composer().persistenceState).toEqual({ status: "saved" });
+      expect(sendInput).toHaveBeenCalledOnce();
+    } finally {
+      reading.resolve({ mime: "image/png", data: "recorded-image", name: "proof.png" });
+      await reading.promise;
+    }
+  });
+
+  it.each([
+    { name: "clearing", change: () => composer().clear() },
+    { name: "discarding", change: () => composer().discardSession("removed") },
+  ])("retains an unconfirmed $name removal until retry", ({ change }) => {
+    composer().loadSession("kept");
+    composer().setValue("other Session stays saved");
+    composer().loadSession("removed");
+    composer().setValue("remove this saved draft");
+    const confirmed = localStorage.getItem(STORAGE_KEY);
+    const write = refuseWrites(new DOMException("full", "QuotaExceededError"));
+    expect(change).not.toThrow();
+    expect(composer().composer.draft.value).toBe("");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
+    write.restore();
+    testClient.composer.access.retryPersistence();
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    restored.store.getState().loadSession("removed");
+    expect(restored.store.getState().composer.draft.value).toBe("");
+    restored.store.getState().loadSession("kept");
+    expect(restored.store.getState().composer.draft.value).toBe("other Session stays saved");
+  });
+
+  it("retains inactive endpoint failures for exit observation and recovery copying", () => {
+    const targetA = "https://unconfirmed-a.test";
+    const targetB = "https://unconfirmed-b.test";
+    testClient.composer.activate(targetA);
+    composer().loadSession("shared");
+    const write = refuseWrites(
+      new Error("write refused"),
+      `flame.composer:${encodeURIComponent(targetA)}`,
+    );
+    const observed: boolean[] = [];
+    const stop = testClient.composer.subscribePersistence(() =>
+      observed.push(testClient.composer.hasUnconfirmedDrafts()),
+    );
+    try {
+      composer().setValue("  draft on A 保留  ");
+      composer().addPaste("/not a command\r\noriginal evidence");
+      const draft = composer().composer.draft;
+      testClient.composer.activate(targetB);
+      composer().loadSession("shared");
+      composer().setValue("confirmed on B");
+      expect(composer().persistenceState).toEqual({ status: "saved" });
+      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
+      expect(JSON.parse(testClient.composer.access.getRecoveryDrafts())).toEqual({
+        targets: [
+          {
+            active: false,
+            drafts: {
+              shared: {
+                value: draft.value,
+                pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
+              },
+            },
+          },
+        ],
+      });
+      testClient.composer.activate(targetA);
+      expect(composer().composer.draft).toBe(draft);
+      write.restore();
+      testClient.composer.access.retryPersistence();
+      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
+      expect(observed[0]).toBe(true);
+      expect(observed.at(-1)).toBe(false);
+    } finally {
+      stop();
+    }
+  });
+});
+
+describe("unread draft protection", () => {
+  it("retries a refused read without overwriting the confirmed Session collection", () => {
+    composer().loadSession("alpha");
+    composer().setValue("saved alpha");
+    composer().loadSession("beta");
+    composer().setValue("saved beta");
+    const confirmed = localStorage.getItem(STORAGE_KEY);
+    const cause = new DOMException("read denied", "SecurityError");
+    const read = refuseReads(cause);
+    const write = read.storage.setItem;
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    restored.store.getState().loadSession("beta");
+    restored.store.getState().setValue("");
+    restored.store.getState().removeImage("missing");
+    restored.store.getState().removePaste("missing");
+    restored.store
+      .getState()
+      .setModel({ kind: "explicit", provider: "recorded", model: "selected" });
+    expect(restored.store.getState().persistenceState).toEqual({
+      status: "failed",
+      operation: "read",
+      cause,
+    });
+    expect(write).not.toHaveBeenCalled();
+    read.restore();
+    restored.retryPersistence();
+    expect(restored.store.getState().composer.draft.value).toBe("saved beta");
+    expect(restored.store.getState().modelPreference).toEqual({
+      kind: "explicit",
+      provider: "recorded",
+      model: "selected",
+    });
+    expect(restored.store.getState().persistenceState).toEqual({ status: "saved" });
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+    expect(write).not.toHaveBeenCalled();
+    restored.store.getState().loadSession("alpha");
+    expect(restored.store.getState().composer.draft.value).toBe("saved alpha");
+  });
+
+  it("keeps authored recovery and the unread confirmed payload separate", () => {
+    composer().loadSession("alpha");
+    composer().setValue("unread alpha");
+    composer().loadSession("beta");
+    composer().setValue("unread beta");
+    const confirmed = localStorage.getItem(STORAGE_KEY);
+    const cause = new DOMException("private-token must not be exported", "SecurityError");
+    const read = refuseReads(cause);
+    const write = read.storage.setItem;
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    restored.store.getState().loadSession("alpha");
+    restored.store.getState().setValue("  authored recovery 保留\n");
+    restored.store.getState().addPaste("/literal paste\r\n  original spacing");
+    const draft = restored.store.getState().composer.draft;
+    read.restore();
+    restored.retryPersistence();
+    expect(restored.store.getState().composer.draft).toBe(draft);
+    expect(restored.store.getState().persistenceState).toEqual({
+      status: "recovery-required",
+      cause,
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+    const recovery = restored.getRecoveryDrafts();
+    expect(JSON.parse(recovery)).toEqual({
+      targets: [
+        {
+          active: true,
+          drafts: {
+            alpha: {
+              value: draft.value,
+              pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
+            },
+          },
+        },
+      ],
+    });
+    expect(recovery).not.toContain("private-token");
+    expect(recovery).not.toContain(testClient.runtime.endpoint.currentRuntimeEndpoint());
+  });
+
+  it("does not replace malformed confirmed bytes with an initialized empty draft", () => {
+    const raw = "{unfinished saved draft";
+    localStorage.setItem(STORAGE_KEY, raw);
+    const replacement = mockLocalStorage();
+    const write = replacement.storage.setItem;
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    restored.store.getState().loadSession("original");
+    restored.retryPersistence();
+    expect(restored.store.getState().persistenceState).toMatchObject({
+      status: "failed",
+      operation: "read",
+      cause: expect.any(SyntaxError),
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(raw);
+  });
+
+  it("does not replace an image selected while an original draft read was unavailable", async () => {
+    composer().setValue("confirmed before the read refusal");
+    const confirmed = localStorage.getItem(STORAGE_KEY);
+    const cause = new DOMException("read refused", "SecurityError");
+    const read = refuseReads(cause);
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    try {
+      restored.store.getState().addImageFiles([new File([""], "retained.png")]);
+      const selection = restored.store.getState().composer.draft.imageAttachments[0]!;
+      read.restore();
+      restored.retryPersistence();
+      expect(restored.store.getState().composer.draft.imageAttachments).toEqual([selection]);
+      expect(restored.store.getState().persistenceState).toEqual({
+        status: "recovery-required",
+        cause,
+      });
+      reading.resolve({ mime: "image/png", data: "retained", name: "retained.png" });
+      await vi.waitFor(() =>
+        expect(restored.store.getState().composer.draft.images).toMatchObject([
+          { id: selection.id, data: "retained" },
+        ]),
+      );
+      expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
+    } finally {
+      reading.resolve({ mime: "image/png", data: "retained", name: "retained.png" });
+      await reading.promise;
+    }
   });
 });
 

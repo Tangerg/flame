@@ -18,6 +18,12 @@ export interface ComposerSubmission {
 
 export type ComposerDraftReplacement = (input: ComposerDraftInput) => boolean;
 
+export type ComposerPersistenceState =
+  | { status: "saved" }
+  | { status: "failed"; operation: "save"; cause: unknown }
+  | { status: "failed"; operation: "read"; cause: unknown }
+  | { status: "recovery-required"; cause: unknown };
+
 export interface ComposerStatePort {
   focus(selectionEnd?: number): void;
   captureFocus(): () => void;
@@ -28,6 +34,9 @@ export interface ComposerStatePort {
   registerFocusPresentation(present: (focus: () => void) => void): () => void;
   useText(): string;
   useSetText(): (value: string) => void;
+  usePersistenceState(): ComposerPersistenceState;
+  retryPersistence(): void;
+  getRecoveryDrafts(): string;
   captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
   beginDraftReplacement(): ComposerDraftReplacement;

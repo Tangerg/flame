@@ -17,6 +17,7 @@ import { useT } from "@/lib/i18n/index";
 import { type ComposerSubmission } from "@/features/composer/application/state";
 import { Slot } from "@/extensions/host/Slot";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
+import { ComposerPersistenceNotice } from "@/features/composer/ui/ComposerPersistenceNotice";
 import { ComposerDropCue, useComposerImageDrop } from "@/features/composer/ui/ComposerImageDrop";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
 import { useRef } from "react";
@@ -103,6 +104,7 @@ export function Composer({
       />
       <SlashSuggestions slash={slash} anchor={surfaceRef} />
       <div ref={editorRef} {...stylex.props(composerStyles.editorInset)}>
+        <ComposerPersistenceNotice />
         <ComposerAttachments
           images={images}
           pastes={pastes}

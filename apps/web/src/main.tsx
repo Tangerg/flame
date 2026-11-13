@@ -33,6 +33,7 @@ import { installExternalLinks } from "@/platform/externalLinks";
 import { t } from "@/lib/i18n/index";
 import { toast } from "sonner";
 import { ClientRenderer } from "@/app/renderer";
+import { bindClientPageLifecycle, bindDraftExitWarning } from "@/app/pageLifecycle";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
 import { applyWindowChrome, watchWindowChrome } from "@/app/windowChrome";
 import { disposeHighlighter } from "@/lib/highlight/shiki";
@@ -217,10 +218,12 @@ const teardown = () => {
   });
 };
 
-window.addEventListener("beforeunload", teardown);
+const unbindPageLifecycle = bindClientPageLifecycle(window, teardown);
+const stopDraftWarning = bindDraftExitWarning(window, composer);
 
 disposeOnHmr(() => {
-  window.removeEventListener("beforeunload", teardown);
+  stopDraftWarning();
+  unbindPageLifecycle();
   teardown();
 });
 

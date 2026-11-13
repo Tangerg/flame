@@ -20490,6 +20490,107 @@ lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
 
+### Draft persistence failures and page lifetime (2026-11-13)
+
+The read-only Modern Web Guidance report's **FL-001** exposes an authoring
+failure: a synchronous storage exception escapes a draft change, can prevent
+image preparation from starting and can escape after an accepted Send consumes
+its draft. **FL-003** identifies a separate lifetime error: `beforeunload`
+irreversibly disposes the client even when navigation is canceled. These are
+repaired at the Composer persistence owner and production page-lifetime binding.
+
+`createComposerStore` now owns synchronous read/write confirmation directly;
+the competing Zustand persistence middleware is removed. It retains the exact
+endpoint storage key and version-0 envelope. Only actual text/paste changes
+write; model preferences, Session activation, image-only changes and no-ops do
+not write or silently retry a failed save. Failure retains its cause and the
+current in-memory draft. Explicit Retry saves the latest collection, including
+an accepted submission's cleared draft, without sending another message.
+Endpoint snapshots and captured generation/Session identities retain their
+existing stale-result boundaries.
+
+A read/decode failure blocks writes to preserve unread bytes. Retry can restore
+them before authoring. Editing first enters a recovery-required state; it does
+not merge or overwrite either draft. The failure notice offers an explicit
+manual text/paste copy, including unconfirmed inactive endpoints, without
+endpoint URLs or error causes. Inactive endpoint groups are anonymous; the
+copy is not an import or an automatic recovery format. Images remain outside
+the existing persistence contract. No schema, compatibility reader, fallback
+decoder or implicit migration is introduced.
+
+`ComposerPersistenceNotice` uses existing SystemMessage, TextButton, theme and
+spacing tokens in a stable child slot. All eight locales supply the failure and
+copy outcomes. Keyboard Retry restores the captured input only while its own
+button still owns focus; pointer Retry retains the input. Pending copy feedback
+cannot update a successor state or a later attempt. The healthy state adds no
+label. The production lifecycle binding retains a persisted page and retires
+only a non-persisted `pagehide`; a conditional `beforeunload` listener warns
+while the single Composer owner has unconfirmed drafts. HMR removes both
+bindings before its explicit teardown.
+
+The existing better-writing/accessibility guidance informs concrete failure,
+recovery and focus behavior. Chrome's
+[page-lifecycle guidance](https://developer.chrome.com/docs/web-platform/page-lifecycle-api)
+and [back/forward-cache guidance](https://web.dev/articles/bfcache) inform the
+page-lifetime distinction; they do not guarantee asynchronous unload cleanup.
+
+Verification on Node **24.22.2**, npm **11.21.1** and the selected Wails **3.1.0**:
+
+- The unchanged four-file baseline passes **43 tests**. Final focused coverage
+  passes **105 tests in seven files**, including quota/denied/encoding errors,
+  current-state retry, accepted Send, image preparation, inactive endpoints,
+  unread-byte preservation, copy refusal/late completion, focus/selection and
+  canceled/persisted/terminal page events. The original store fails the same
+  quota regression by throwing its actual `QuotaExceededError`.
+- Early test attempts failed because Happy DOM binds Storage methods and makes
+  prototype/instance spies unreliable. The corrected test boundary delegates
+  through a complete Storage facade backed by the real test storage and restores
+  the window getter. Assertions and production interfaces are retained.
+- The final full Web check passes **436 files / 4,984 tests**, typecheck, lint,
+  formatting, ownership guards, production build and module-identity checks.
+  Test output includes loopback `ECONNREFUSED` and disabled iframe diagnostics;
+  their origin is not established here, and no checks are muted. The protected
+  resource check, `make check-native` and normal Lab build also pass. Intermediate
+  type/lint failures were corrected before these final checks.
+- Actual Wails EN/light/14 px/Orange/full-motion and ZH/dark/18 px/custom-blue/
+  motion-off scenes use default zoom and ordinary Window → Move & Resize → Left.
+  A private, one-shot storage seam rejects only the agreed final draft write;
+  the real Composer, localStorage, notice and Retry remain in use. This is a
+  controlled exception, not actual disk exhaustion. Both notices and actions
+  remain readable alongside the input and toolbar.
+- EN keyboard Shift+Tab reaches Copy draft text, then Retry. Return removes the
+  failure, restores the input and allows `continued ` at the original caret:
+  `  Keep edited continued this storage draft — 保留  `. After normal Quit and
+  an explicit restart with the same isolated origin/profile and fault disabled,
+  that exact draft, including outer spaces, restores without failure. A fresh
+  middle selection continues it with `restored `.
+- ZH pointer Retry retains the original caret; subsequent paste produces
+  `  保留 检查前 已继续 这段存储草稿。  `. CJK paste does not qualify physical IME.
+
+The private Lab initializer only avoids resetting its restored Composer. Lab's
+own teardown remains, so these scenes do not qualify production navigation
+cancellation, actual BFCache restoration, lowest-supported WebKit, OS quit
+warnings, clipboard success, VoiceOver, physical IME, live Runtime/provider
+execution or real disk-full behavior. Production lifecycle behavior is covered
+by the actual binding tests. **FL-001 is repaired; FL-003's root cause is repaired
+with these native lifecycle limits. FL-005 remains open:** skipping non-text
+writes does not remove whole-endpoint serialization on text edits. A storage
+redesign must make its data-preservation/migration choice explicit.
+
+All four owned processes (one server and three native runs, including the cold
+restart) join with exit 0; port 52820 is closed and the GUI inventory is empty.
+Cleanup unregisters both apps, retires **17 present targets** and confirms all
+**34 reserved targets** absent, while preserving **6,882 source inputs**, 46
+native inputs and 20 component resources. The unused base app/profile never
+exists. The exact QA root `/tmp/flame-ui-draft-save-ojjt0fcl`, including its
+profiles, logs and 1,124 remaining nodes, is removed last. Frozen qualification
+SHA-256 is `75a357144e156c352b419c9da083bd5bdb4b357de323c5de52c39c2b6d1d720c`;
+retirement receipt is
+`2cb8633452f1f25b332d39faad8f79f34612fa792709b7d732e4fb29698f1d5d`.
+No product checks run after retirement. Publication follows the ordinary verified
+main integration; the report's remaining startup, input, rendering, transport
+and security findings continue in separate owner-scoped batches.
+
 ### Full-width material switching
 
 At frozen main `7d359a2cc2c885488f8bda59484a513db87f500a`, actual Wails

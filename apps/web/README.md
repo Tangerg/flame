@@ -175,6 +175,29 @@ even while another Session is active. Clearing, replacing or discarding that dra
 retires its pending selections. Endpoint storage replacement also retires pending
 reads; replacement at the same endpoint preserves them. Image bytes and read
 intents remain in memory; only draft text and pasted text are persisted.
+
+Composer owns synchronous confirmation of its endpoint-scoped draft collection.
+Only changed text or pasted text, and explicit Retry, write that collection.
+Encoding or storage refusal retains the current draft, exposes failure beside the
+input and never interrupts image preparation or settlement of accepted input.
+Retry saves the latest collection, including cleared or discarded drafts, without
+resending a message. Endpoint snapshots retain unconfirmed changes when another
+target is active.
+
+A failed read never authorizes writing an initialized empty collection. Retry can
+restore the saved collection before authoring changes; subsequent authoring keeps
+the unread bytes intact and requires explicit recovery. Copy draft text captures
+the unconfirmed text and separate pasted-text records on request, including
+inactive targets, without copying connection credentials or claiming images are
+durable. A late copy cannot confirm a later draft. The original storage key and
+version-zero encoding remain unchanged.
+
+The page installs an exit warning only while the Composer owner reports
+unconfirmed changes. Cancelling departure and persisted page transitions keep
+the same renderer; nonpersisted pagehide and explicit HMR retirement use its
+existing disposal path. Page departure cannot guarantee completion of asynchronous
+cleanup; Runtime leases retain their existing authority.
+
 Explicitly removing an image, referenced file or pasted text returns focus to the
 current Composer input with the remaining draft and attachments; the removal
 itself does not place the caret or select text.

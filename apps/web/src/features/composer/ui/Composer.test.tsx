@@ -18,6 +18,7 @@ import { WORKSPACE_LIST_FILES_KEY } from "@/features/workspace/public/queries";
 import { Composer } from "@/features/composer/ui/Composer";
 import * as imageInput from "@/features/composer/public/input";
 import { loadPluginsForTest } from "@/test/kernel";
+import { mockLocalStorage } from "@/test/localStorage";
 
 import {
   useAddComposerImageFiles,
@@ -346,6 +347,185 @@ function DraftComposer() {
     />
   );
 }
+
+describe("draft persistence recovery", () => {
+  function refuseDraftWrites() {
+    const replacement = mockLocalStorage();
+    replacement.storage.setItem.mockImplementation((key, value) => {
+      if (key.startsWith("flame.composer:")) {
+        throw new DOMException("storage quota exceeded", "QuotaExceededError");
+      }
+      replacement.backing.setItem(key, value);
+    });
+    return replacement;
+  }
+
+  it("keeps the same input and middle caret through failure and a keyboard retry", async () => {
+    act(() => testClient.composer.store.getState().setValue("  Keep this draft  "));
+    wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    input.focus();
+    const refusal = refuseDraftWrites();
+    fireEvent.change(input, {
+      target: { value: "  Keep edited this draft  ", selectionStart: 14, selectionEnd: 14 },
+    });
+
+    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed"));
+    expect(screen.getByRole("textbox")).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("  Keep edited this draft  ");
+    expect(input.selectionStart).toBe(14);
+    refusal.restore();
+    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    retry.focus();
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(screen.getByRole("textbox")).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(14);
+    expect(input.selectionEnd).toBe(14);
+    expect(input.value).toBe("  Keep edited this draft  ");
+  });
+
+  it("keeps failed retry visible and respects a later focus move when storage recovers", () => {
+    wrap(
+      <>
+        <DraftComposer />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    const refusal = refuseDraftWrites();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "retain the latest draft" } });
+    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    retry.focus();
+    fireEvent.click(retry);
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(document.activeElement).toBe(retry);
+    const elsewhere = screen.getByRole<HTMLButtonElement>("button", { name: "Elsewhere" });
+    elsewhere.focus();
+    refusal.restore();
+    act(() => testClient.composer.access.retryPersistence());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("does not hand a retiring retry's focus to a successor input registration", () => {
+    wrap(<DraftComposer />);
+    const refusal = refuseDraftWrites();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "original input draft" } });
+    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    retry.focus();
+    const successor = document.createElement("textarea");
+    document.body.append(successor);
+    const unregister = testClient.composer.access.registerFocusTarget(successor);
+    try {
+      refusal.restore();
+      fireEvent.click(retry);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(document.activeElement).not.toBe(successor);
+    } finally {
+      unregister();
+      successor.remove();
+    }
+  });
+
+  it("copies a recovery snapshot only on request and reports clipboard refusal", async () => {
+    const write = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockRejectedValueOnce(new Error("denied"));
+    const recovery = vi.spyOn(testClient.composer.access, "getRecoveryDrafts");
+    wrap(<DraftComposer />);
+    refuseDraftWrites();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "  keep exact text  " } });
+    act(() => testClient.composer.store.getState().addPaste("attached\ntext"));
+    expect(recovery).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
+    await screen.findByText(t("composer.persistence.copyFailed"));
+    expect(recovery).toHaveBeenCalledOnce();
+    expect(screen.getByRole("textbox").getAttribute("aria-label")).toBe("Message composer");
+    write.mockResolvedValue(undefined);
+    fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
+    await screen.findByRole("button", { name: "Draft text copied" });
+    const copied = JSON.parse(write.mock.calls.at(-1)![0]) as {
+      targets: Array<{
+        drafts: Record<string, { value: string; pastes: Array<{ text: string }> }>;
+      }>;
+    };
+    expect(copied.targets.flatMap((target) => Object.values(target.drafts))).toContainEqual({
+      value: "  keep exact text  ",
+      pastes: [expect.objectContaining({ text: "attached\ntext" })],
+    });
+    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed"));
+    expect(screen.queryByText(t("composer.persistence.copyFailed"))).toBeNull();
+  });
+
+  it("keeps unread saved drafts intact and offers recovery after the user continues editing", () => {
+    const target = "https://draft-read-recovery.test";
+    const key = `flame.composer:${encodeURIComponent(target)}`;
+    const saved = JSON.stringify({
+      state: { drafts: { "": { value: "original confirmed draft", pastes: [] } } },
+      version: 0,
+    });
+    localStorage.setItem(key, saved);
+    const refusal = mockLocalStorage();
+    refusal.storage.getItem.mockImplementation((name) => {
+      if (name === key) throw new DOMException("storage unavailable", "SecurityError");
+      return refusal.backing.getItem(name);
+    });
+    testClient.composer.activate(target);
+    wrap(<DraftComposer />);
+    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.readFailed"));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "keep this new draft" } });
+    refusal.restore();
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      t("composer.persistence.recoveryRequired"),
+    );
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("keep this new draft");
+    expect(localStorage.getItem(key)).toBe(saved);
+    localStorage.removeItem(key);
+  });
+
+  it("does not report a late copy result as confirmation for a newer draft", async () => {
+    const copying = Promise.withResolvers<void>();
+    vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(copying.promise);
+    wrap(<DraftComposer />);
+    refuseDraftWrites();
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "first unsaved draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
+    fireEvent.change(input, { target: { value: "newer unsaved draft" } });
+    await act(async () => {
+      copying.resolve();
+      await copying.promise;
+    });
+    expect(screen.queryByRole("button", { name: "Draft text copied" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("newer unsaved draft");
+  });
+
+  it("does not revive copy confirmation after another target adds an unconfirmed draft", async () => {
+    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    testClient.composer.activate("https://draft-copy-a.test");
+    wrap(<DraftComposer />);
+    refuseDraftWrites();
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "unconfirmed A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
+    await screen.findByRole("button", { name: "Draft text copied" });
+    act(() => {
+      testClient.composer.activate("https://draft-copy-b.test");
+      testClient.composer.store.getState().setValue("unconfirmed B");
+    });
+    act(() => testClient.composer.activate("https://draft-copy-a.test"));
+
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("unconfirmed A");
+    expect(screen.queryByRole("button", { name: "Draft text copied" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
+  });
+});
 
 it("announces pending and failed image input and returns focus after removal", async () => {
   const reading = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();

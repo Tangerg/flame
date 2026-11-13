@@ -61,6 +61,9 @@ export function createComposer(
     },
     useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
+    usePersistenceState: () => useComposerStore((state) => state.persistenceState),
+    retryPersistence: owner.retryPersistence,
+    getRecoveryDrafts: owner.getRecoveryDrafts,
     captureSubmission: () => useComposerStore.getState().captureSubmission(),
     replaceDraft: (input) => {
       useComposerStore.getState().replaceDraft(input);
@@ -151,6 +154,8 @@ export function createComposer(
     access,
     store: useComposerStore,
     activate: activateComposerStorage,
+    hasUnconfirmedDrafts: owner.hasUnconfirmedDrafts,
+    subscribePersistence: owner.subscribePersistence,
     start() {
       if (disposed) throw new Error("Composer is disposed");
       if (!stopSessionSync) installComposerSessionSync(sessions, endpoint, scope);
