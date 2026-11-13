@@ -2301,6 +2301,12 @@ decides whether streaming/counting capabilities exist. No unavailable capability
 is fabricated, and an endpoint's accounting total does not invent a universal
 Run/Goal budget. Evidence deletion follows the retention rules above.
 
+Model stream failures are terminal outcomes. Captured call settlement and source
+release finish before that outcome is delivered, preserving every original cause
+in one error. Partial output carried with a failure is captured before its source
+can reuse the delta. A consumer that stops or panics is never called again by
+deferred cleanup.
+
 ## Installed lifecycle rules
 
 The installed [Hooks backend](../plugins/hooks/README.md) owns configuration

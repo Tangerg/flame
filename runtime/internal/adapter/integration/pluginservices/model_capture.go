@@ -246,7 +246,8 @@ type streamedModelCapture struct{ *modelCapture }
 func (c *streamedModelCapture) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	request = request.Clone()
 	return func(yield func(*chat.ResponseDelta, error) bool) {
-		sender := newStreamSender(yield)
+		sender := newModelStreamSender(yield)
+		defer sender.finish()
 		calling, leave, err := c.enter(ctx)
 		if err != nil {
 			sender.fail(err)
