@@ -117,7 +117,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: processRunner{cfg.processRunner}, Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := process.New(process.Config{Runner: newProcessRunner(cfg.processRunner), Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}

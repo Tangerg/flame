@@ -46,7 +46,7 @@ func TestProcessCreationJoinsOriginalLaunchAfterCancellation(t *testing.T) {
 			}}
 			result := make(chan launchOutcome, 1)
 			go func() {
-				launch, err := (processRunner{next}).Launch(ctx, request)
+				launch, err := newProcessRunner(next).Launch(ctx, request)
 				result <- launchOutcome{launch, err}
 			}()
 			<-entered
@@ -67,20 +67,13 @@ func TestProcessCreationJoinsOriginalLaunchAfterCancellation(t *testing.T) {
 }
 
 func TestProcessCreationPreservesOriginalNonDispatchProof(t *testing.T) {
-	executable, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	authority, err := runner.NewDaemon(runner.DaemonConfig{Executable: executable, Directory: t.TempDir(), StartTimeout: time.Second})
-	if err != nil {
-		t.Fatal(err)
-	}
+	authority := creationAuthority(t)
 	cause := errors.New("creation was canceled before dispatch")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 	for _, callCtx := range []context.Context{ctx, nil} {
 		request := creationRequest()
-		result, err := (processRunner{authority}).Launch(callCtx, request)
+		result, err := newProcessRunner(authority).Launch(callCtx, request)
 		if !result.NotDispatched(request) {
 			t.Error("original non-dispatch proof was lost")
 		}
@@ -92,6 +85,70 @@ func TestProcessCreationPreservesOriginalNonDispatchProof(t *testing.T) {
 			t.Errorf("canceled context error = %v, want cancellation and original cause", err)
 		}
 	}
+}
+
+func TestQueuedProcessCreationRetainsCancellationBeforeDispatch(t *testing.T) {
+	authority := creationAuthority(t)
+	synctest.Test(t, func(t *testing.T) {
+		first := creationRequest()
+		queued := first
+		queued.AttemptID = "queued-attempt"
+		entered, complete := make(chan struct{}), make(chan struct{})
+		next := creationRunner{launch: func(ctx context.Context, request runner.LaunchRequest) (runner.LaunchResult, error) {
+			if request.AttemptID == first.AttemptID {
+				close(entered)
+				<-complete
+				return runner.LaunchResult{Observation: runner.Observation{
+					AttemptID: first.AttemptID, Epoch: first.Epoch, RunnerID: first.RunnerID,
+					State: runner.Running, PID: os.Getpid(),
+				}}, nil
+			}
+			if ctx.Err() == nil {
+				return runner.LaunchResult{}, errors.New("queued creation reached the runner before cancellation")
+			}
+			return authority.Launch(ctx, request)
+		}}
+		owner := newProcessRunner(next)
+		firstDone := make(chan error, 1)
+		go func() {
+			_, err := owner.Launch(t.Context(), first)
+			firstDone <- err
+		}()
+		<-entered
+		cause := errors.New("queued creation was retired")
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		queuedDone := make(chan struct{})
+		var result runner.LaunchResult
+		var launchErr error
+		go func() {
+			defer close(queuedDone)
+			result, launchErr = owner.Launch(ctx, queued)
+		}()
+		synctest.Wait()
+		cancel(cause)
+		<-queuedDone
+		if !result.NotDispatched(queued) || !errors.Is(launchErr, context.Canceled) || !errors.Is(launchErr, cause) {
+			t.Errorf("queued creation = %+v, error = %v; want original non-dispatch proof and cancellation", result, launchErr)
+		}
+		close(complete)
+		if err := <-firstDone; err != nil {
+			t.Errorf("original creation = %v, want unchanged completion", err)
+		}
+	})
+}
+
+func creationAuthority(t *testing.T) *runner.Daemon {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority, err := runner.NewDaemon(runner.DaemonConfig{Executable: executable, Directory: t.TempDir(), StartTimeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authority
 }
 
 func creationRequest() runner.LaunchRequest {

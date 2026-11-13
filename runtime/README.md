@@ -1003,6 +1003,8 @@ Once Frame admits a local process creation, Runtime joins that original runner
 request before cleanup. Host cancellation cannot discard its acknowledgement
 and turn a normal shutdown into an unknown creation. Pre-dispatch cancellation
 retains the runner's exact non-dispatch proof; transport failures remain failures.
+Creation admission matches the runner's serial journal. Queued creations remain
+cancelable before dispatch instead of filling its control queue during retirement.
 Waiting cancellation retains its standard category and caller-supplied cause.
 An already observable completion still owns its result; canceling a waiter
 cannot change that result or cancel an admitted teardown generation. Keyed

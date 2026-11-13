@@ -26,7 +26,11 @@ func TestRuntimeStartupDoesNotCreateMCPServersFromEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = runtime.Close() })
+	t.Cleanup(func() {
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
+		}
+	})
 	servers, err := runtime.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +53,11 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = runtime.Close() })
+	t.Cleanup(func() {
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
+		}
+	})
 	created, err := runtime.CreateMCPServer(t.Context(), protocol.MCPServerCandidate{
 		Name:        "managed",
 		Enabled:     false,
@@ -76,7 +84,11 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = reopened.Close() })
+	t.Cleanup(func() {
+		if err := reopened.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
+		}
+	})
 	servers, err := reopened.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +128,11 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = afterDeletion.Close() })
+	t.Cleanup(func() {
+		if err := afterDeletion.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
+		}
+	})
 	servers, err = afterDeletion.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)

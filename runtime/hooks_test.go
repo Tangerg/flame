@@ -33,7 +33,11 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = current.Close() })
+	t.Cleanup(func() {
+		if err := current.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
+		}
+	})
 	inspect := func(trusted bool) string {
 		t.Helper()
 		result, err := current.ListHooks(t.Context(), protocol.ListHooksRequest{
