@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. The latest native pointer-acceptance focus observation requires a separate baseline comparison; keyboard acceptance and continuation pass. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -4419,15 +4419,13 @@ allow immediate `continued` in the same Composer. The AX tree exposes the first
 Alpha row only; Beta's visual highlight and exact accepted text qualify its
 selection without claiming an exposed second AX option.
 
-Chinese native clicking of the first path inserts the correct Alpha reference
-and chip, but leaves HTML focused and the picker open with three candidates.
-Cmd+L closes it and permits exact continuation. Automatic pointer focus return
-is **not passed**. The unchanged focus/caret owner can explain the observation,
-but its cause and physical-pointer equivalence are not established. Next compare
-an unmodified native baseline and actual coordinate pointer before changing that
-owner; do not classify this single observation as a new layout regression or a
-CUA defect. No Send, live filesystem lookup, Runtime mutation, OS IME or VoiceOver
-speech is qualified.
+The initial Chinese native AX-targeted click of the first path inserts the
+correct Alpha reference and chip, but leaves HTML focused and the picker open
+with three candidates. Cmd+L closes it and permits exact continuation. Automatic
+return for that action is **not passed**. The coordinate comparison below
+distinguishes it from ordinary pointer acceptance; the internal cause remains
+unestablished. No Send, live filesystem lookup, Runtime mutation, OS IME or
+VoiceOver speech is qualified.
 
 All three native processes and both owned servers join with exit **0**; both
 ports close. Three private registrations are removed, six created Library trees
@@ -4436,6 +4434,43 @@ output/cache roots are removed, returning all thirteen output/cache targets
 to their initially absent state. All **6,876 tracked files** match the qualified
 source map before documentation updates. The owned QA root is deleted last after
 retaining the proof in session memory. No functional check runs after cleanup.
+
+The **2026-11-13 coordinate-pointer follow-up** keeps every tracked source byte
+at `d20cff780` unchanged. The signed Wails host uses the same two private file
+facts and CSS as above, with Chinese/dark/18 px/blue/motion off, default zoom and
+the same ordinary Left window. Screenshot-derived coordinate clicks select Beta
+and Alpha independently. Each inserts its exact full path and trailing space,
+closes the picker, retains Composer focus and permits immediate `continued`
+without Cmd+L. Repeating the original AX-targeted first-path click in that same
+application reproduces the correct insertion but HTML focus and an open picker;
+Cmd+L again closes it and permits exact continuation. A control-admission
+rejection after goal resumption sends no input and is excluded; fresh observation,
+an empty draft reset and reentry establish both successful coordinate tasks.
+
+This proves a difference between the exercised native action methods. It does
+not establish a general CUA defect or successful assistive-technology activation.
+No coordinate-pointer failure is reproduced and no product focus code, state,
+event handler or test is changed. Read-only ZCode's prevented-mousedown mention
+selection and the installed Base UI focus implementation inform the comparison;
+its focus-loss branches are possible explanations, not observed event traces.
+The existing guard that preserves the user's later focus remains authoritative.
+
+Normal and private Lab builds each pass with **484 assets** and identical CSS;
+the copied production host builds and passes strict ad-hoc signature verification.
+All **6,876 tracked inputs**, **46 native files** and **20 published resources**
+remain unchanged through qualification and cleanup. This documentation-only
+follow-up does not rerun the frontend suite or `make check-native`; the preceding
+98 focused tests and native check remain the unchanged-code baseline.
+
+The single native process and server both join with exit **0** and their port
+closes. The single private registration, two created Library trees and five
+created output/cache roots are removed; all three reserved app paths, eighteen
+Library paths and thirteen output/cache targets are absent. The first cleanup
+preflight stops before mutation because directory-only ignore rules require a
+trailing slash even for absent targets. The corrected query also rejects any
+present output root that is not a real directory; every ownership and source
+check remains enabled. Cleanup then passes and the private QA root is deleted
+last after proof retention. No functional checks run after cleanup.
 
 The content/Dock qualification uses the existing Code reading task. Chromium and
 WebKit follow English/light/14 px/Orange with full application and system motion,
