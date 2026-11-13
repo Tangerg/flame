@@ -48,10 +48,10 @@ type Candidate interface {
 }
 
 // connections realizes installation sources in the MCP supervisor.
-// WithdrawInstallation runs inside the change's critical section and must not
-// block; ReconcileInstallation dials after it.
+// Withdrawal follows Frame's committed authority transition without connection
+// I/O. ReconcileInstallation then realizes the current sources.
 type connections interface {
-	WithdrawInstallation([]mcpserver.ID) error
+	WithdrawInstallation(context.Context, []mcpserver.ID) error
 	ReconcileInstallation(context.Context, []mcpserver.ID) error
 }
 
@@ -346,7 +346,7 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 		}
 		reconcile = append(reconcile, server)
 	}
-	withdrawErr := c.connections.WithdrawInstallation(reconcile)
+	withdrawErr := c.connections.WithdrawInstallation(ctx, reconcile)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
 	committed, err := c.installationSnapshot(ctx, id)
 	if err != nil {
@@ -378,7 +378,7 @@ func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID)
 	if err := c.framework.Uninstall(ctx, id.Host()); err != nil {
 		return FrameworkError(err)
 	}
-	withdrawErr := c.connections.WithdrawInstallation(servers)
+	withdrawErr := c.connections.WithdrawInstallation(ctx, servers)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
 	realizationCtx, finish := c.realizationContext(ctx)
 	defer finish()

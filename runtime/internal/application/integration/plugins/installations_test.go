@@ -156,7 +156,7 @@ type installationConnections struct {
 	reconcile func(context.Context, []mcpserver.ID) error
 }
 
-func (c installationConnections) WithdrawInstallation(names []mcpserver.ID) error {
+func (c installationConnections) WithdrawInstallation(_ context.Context, names []mcpserver.ID) error {
 	if c.withdraw == nil {
 		return nil
 	}

@@ -687,6 +687,13 @@ Plugin and Skill read invalidations likewise follow the durable write, outside a
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
 
+Installation withdrawal reads the configured external connector selection through
+the original mutation context. Directory reads cannot change that selection or its
+impact on a later installation change. An unreadable selection withdraws potentially
+affected external connections and retains the read failure; independent installation
+sources still reconcile. No query-populated selection cache participates in lifecycle
+decisions.
+
 Installed commands durably bind identity, method, admitted raw input and
 original installation/release/server before network dispatch. The host records
 prepared, dispatch-admitted and observed evidence, never a business result. A
@@ -1769,6 +1776,10 @@ Loopback callbacks reject malformed form encoding, invalid UTF-8 and repeated co
 state, error or issuer fields before consuming the pending authorization state.
 The admitted issuer value reaches the SDK unchanged; issuer matching and token
 exchange remain SDK-owned.
+
+Stored sessions admit only the OAuth SDK's automatic, form-body or HTTP-header
+client authentication modes. An unsupported stored mode fails restoration before
+token refresh; it cannot silently become an unauthenticated token request.
 
 MCP OAuth credentials belong to one persisted authorization grant per MCP source, bound to the fingerprint of the OAuth target that requested it. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. A changed credential recipient (a user server's endpoint or headers; an installation server's endpoint declaration, or for stdio its release) yields a different target, so an earlier credential simply never matches it; there is no trigger or write-time deletion. Descriptive metadata and Tool policy changes preserve the target. Removing the source removes its credentials by cascade. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Pre-release databases without the current grant and target bindings require a fresh data directory; saved credentials are not converted during opening.
 

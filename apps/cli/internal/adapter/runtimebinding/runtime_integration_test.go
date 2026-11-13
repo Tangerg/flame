@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -564,6 +565,9 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Cleanup(func() {
 		if err := owner.Close(); err != nil {
 			t.Errorf("close Runtime: %v", err)
+			const shutdownDiagnosticBytes = 1 << 20
+			stack := make([]byte, shutdownDiagnosticBytes)
+			t.Logf("runtime close goroutines:\n%s", stack[:goruntime.Stack(stack, true)])
 		}
 		if err := filepath.WalkDir(productRoot, func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {

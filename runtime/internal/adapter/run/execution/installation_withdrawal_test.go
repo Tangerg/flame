@@ -64,7 +64,7 @@ type realizingConnections struct {
 	release chan struct{}
 }
 
-func (c realizingConnections) WithdrawInstallation([]mcpserver.ID) error {
+func (c realizingConnections) WithdrawInstallation(context.Context, []mcpserver.ID) error {
 	c.catalog.live.Store(nil)
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strings"
@@ -188,6 +189,55 @@ func TestOAuthSessionRoundTripOwnsSlices(t *testing.T) {
 	}
 	if !gotToken.Expiry.Equal(token.Expiry) {
 		t.Fatalf("decoded expiry = %s, want %s", gotToken.Expiry, token.Expiry)
+	}
+}
+
+func TestOAuthSessionRejectsUnsupportedClientAuthentication(t *testing.T) {
+	cfg, payload := oauthSessionFixture(t, &oauth2.Token{AccessToken: "access"})
+	for _, test := range []struct {
+		name  string
+		style oauth2.AuthStyle
+		valid bool
+	}{
+		{"automatic", oauth2.AuthStyleAutoDetect, true},
+		{"form", oauth2.AuthStyleInParams, true},
+		{"header", oauth2.AuthStyleInHeader, true},
+		{"negative", -1, false},
+		{"unknown", oauth2.AuthStyleInHeader + 1, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := *cfg
+			config.Endpoint.AuthStyle = test.style
+			_, encodeErr := encodeOAuthSession(&config, &oauth2.Token{AccessToken: "access"})
+			if (encodeErr == nil) != test.valid {
+				t.Errorf("encode admitted unsupported client authentication: %v", encodeErr)
+			}
+			var stored storedOAuthSession
+			if err := json.Unmarshal(payload, &stored); err != nil {
+				t.Fatal(err)
+			}
+			stored.Config.AuthStyle = test.style
+			storedPayload, err := json.Marshal(stored)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded, _, decodeErr := decodeOAuthSession(storedPayload)
+			if (decodeErr == nil) != test.valid {
+				t.Errorf("decode admitted unsupported client authentication: %v", decodeErr)
+			}
+			if test.valid && (decoded == nil || decoded.Endpoint.AuthStyle != test.style) {
+				t.Fatal("decoded client authentication differs from its original configuration")
+			}
+			target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), URL: "https://remote.example/mcp"}
+			store := &memoryOAuthStore{target: target.Fingerprint(), binding: "original", payload: storedPayload}
+			handler, restoreErr := restoreOAuthHandler(t.Context(), t.Context(), store, target)
+			if (restoreErr == nil) != test.valid || (handler != nil) != test.valid {
+				t.Fatalf("restoration admitted unsupported client authentication: %v", restoreErr)
+			}
+			if store.binding != "original" || store.removed != 0 || !bytes.Equal(store.payload, storedPayload) {
+				t.Fatal("restoration changed the original stored credentials")
+			}
+		})
 	}
 }
 

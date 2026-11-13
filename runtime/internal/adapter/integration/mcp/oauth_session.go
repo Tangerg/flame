@@ -122,6 +122,11 @@ func (s storedOAuthConfig) validate() error {
 	if s.ClientID == "" {
 		return errors.New("mcp oauth: stored client id is empty")
 	}
+	switch s.AuthStyle {
+	case oauth2.AuthStyleAutoDetect, oauth2.AuthStyleInParams, oauth2.AuthStyleInHeader:
+	default:
+		return errors.New("mcp oauth: stored client authentication style is invalid")
+	}
 	if err := validateStoredOAuthURL("authorization URL", s.AuthURL); err != nil {
 		return err
 	}

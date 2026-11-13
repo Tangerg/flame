@@ -70,7 +70,9 @@ func TestNewRequiresCompleteDependencies(t *testing.T) {
 
 type testExternalWorkflow struct{ attempts *authorizationAttemptStore }
 
-func (*testExternalWorkflow) Affected([]mcpserver.ID) bool                     { return false }
+func (*testExternalWorkflow) Affected(context.Context, []mcpserver.ID) (bool, error) {
+	return false, nil
+}
 func (*testExternalWorkflow) List(context.Context) ([]mcpserver.Server, error) { return nil, nil }
 func (*testExternalWorkflow) AdmitProbe(context.Context) (func(), error)       { return func() {}, nil }
 func (w *testExternalWorkflow) StartAuthorization(_ context.Context, s mcpserver.Server, _ AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error) {
