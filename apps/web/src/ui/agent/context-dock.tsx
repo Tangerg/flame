@@ -395,7 +395,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
       menuReturn.current = null;
       openingFocus.current = null;
     };
-  }, []);
+  }, [visible]);
   useLayoutEffect(() => {
     const root = rootRef.current;
     root
