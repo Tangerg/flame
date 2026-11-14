@@ -404,6 +404,9 @@ Terminal view admission derives required bindings, form kinds and choice
 intersections from every local reference sibling and `allOf` conjunct in the
 callable schema. List rows require an array shape. Frame owns schema admission
 and reference traversal limits; terminal hints remain read-only projections.
+Input forms can choose a non-null alternative. List output and its row records
+require object shapes, rows require an array and a present paging cursor requires
+a string. Optional object paths retain their absent-value semantics.
 
 Knowledge base is another ordinary backend with its own document revisions,
 chunk/vector index and private import receipts. Typed operations and MCP search

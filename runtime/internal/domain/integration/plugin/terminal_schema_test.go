@@ -130,6 +130,100 @@ func TestTerminalViewsRequireArrayRows(t *testing.T) {
 	}
 }
 
+func TestTerminalViewsRefuseUnsupportedOutputShapes(t *testing.T) {
+	for name, output := range map[string]string{
+		"nullable rows":     `{"type":"object","properties":{"Rows":{"type":["array","null"],"items":{"type":"object","properties":{"ID":{"type":"string"}}}}}}`,
+		"nullable row":      `{"type":"object","properties":{"Rows":{"type":"array","items":{"type":["object","null"],"properties":{"ID":{"type":"string"}}}}}}`,
+		"untyped row":       `{"type":"object","properties":{"Rows":{"type":"array","items":{"properties":{"ID":{"type":"string"}}}}}}`,
+		"non-object output": `{"type":"string","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}}}}`,
+		"nullable output":   `{"type":["object","null"],"properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}}}}`,
+		"union output":      `{"type":["object","string"],"properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := terminalSchemaRelease(t, `{"type":"object"}`, output); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("release error = %v, want refusal of an unsupported output shape", err)
+			}
+		})
+	}
+}
+
+func TestTerminalViewsKeepOptionalObjectColumns(t *testing.T) {
+	output := `{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"},"Identity":{"type":["object","null"],"properties":{"Value":{"type":"string"}}}}}}}}`
+	release, err := terminalSchemaRelease(t, `{"type":"object"}`, output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := release.Declaration()
+	declaration.TerminalViews[0].List.Columns[0].Field = "Identity/Value"
+	if _, err := NewRelease(release.Digest(), declaration); err != nil {
+		t.Fatalf("optional object column was refused: %v", err)
+	}
+}
+
+func TestTerminalViewsRefuseBindingsThroughNonObjects(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		input string
+		paths []string
+	}{
+		{name: "root", input: `{"type":"string","properties":{"Value":{"type":"string"}}}`, paths: []string{"Value"}},
+		{name: "nested", input: `{"type":"object","properties":{"Settings":{"type":"string","properties":{"Value":{"type":"string"}}}}}`, paths: []string{"Settings/Value"}},
+		{name: "unbound root", input: `{"type":"string"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := terminalSchemaRelease(t, test.input, terminalRowsSchema, test.paths...); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("release error = %v, want refusal of a non-object binding path", err)
+			}
+		})
+	}
+}
+
+func TestTerminalViewsDistinguishNullableInputAndOutput(t *testing.T) {
+	input := `{"type":"object","properties":{"Value":{"type":["integer","null"]},"Cursor":{"type":["string","null"]}}}`
+	for _, test := range []struct {
+		name       string
+		output     string
+		wantRefuse bool
+	}{
+		{name: "nullable input with concrete output", output: `{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}},"NextCursor":{"type":"string"}}}`},
+		{name: "nullable output cursor", output: `{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}},"NextCursor":{"type":["string","null"]}}}`, wantRefuse: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			release, err := terminalSchemaRelease(t, input, test.output, "Value")
+			if err != nil {
+				t.Fatal(err)
+			}
+			declaration := release.Declaration()
+			declaration.TerminalViews[0].List.Paging = &TerminalPaging{Input: "Cursor", Output: "NextCursor"}
+			release, err = NewRelease(release.Digest(), declaration)
+			if test.wantRefuse {
+				if !errors.Is(err, ErrInvalid) {
+					t.Fatalf("release error = %v, want refusal of a nullable output cursor", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if form := release.TerminalViews()[0].List.Input[0].Value.Form; form.Kind != extension.TerminalFormInteger {
+				t.Fatalf("nullable integer form = %+v", form)
+			}
+		})
+	}
+}
+
+func TestTerminalViewsKeepNullableInputChoices(t *testing.T) {
+	input := `{"type":"object","properties":{"Value":{"type":["string","null"],"enum":["first",null,"second"]}}}`
+	release, err := terminalSchemaRelease(t, input, terminalRowsSchema, "Value")
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := release.TerminalViews()[0].List.Input[0].Value.Form
+	if form.Kind != extension.TerminalFormChoice || !slices.Equal(form.Options, []string{"first", "second"}) {
+		t.Fatalf("nullable input choices = %+v", form)
+	}
+}
+
 func terminalReferenceChain(t *testing.T) string {
 	t.Helper()
 	depth := portable.ProfileLimits().MaxReferenceDepth - 1
