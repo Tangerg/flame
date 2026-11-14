@@ -20,7 +20,7 @@ import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
-const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
+const VISUAL_URL = "/lab/fixture.html";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] as const;
 
@@ -1513,7 +1513,7 @@ test("a menu owns both its own bounds, not its call sites", async ({ page }) => 
 
 test("a short catalogue takes its natural height inside its bound", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
-  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  const input = page.getByLabel(en["composer.input.label"]!, { exact: true });
   const draft = "Keep this draft while choosing a model.";
   await input.fill(draft);
 
@@ -1732,7 +1732,7 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
 test("a suggestion panel above the composer is not clipped away by it", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
 
-  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  const input = page.getByLabel(en["composer.input.label"]!, { exact: true });
   await input.click();
   await input.fill("/");
 
@@ -1765,24 +1765,23 @@ test("the file mention picker paints over the transcript, not under the composer
 }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
 
-  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  const input = page.getByLabel(en["composer.input.label"]!, { exact: true });
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
 
-  const listbox = page.locator("#composer-suggestion-listbox");
+  const listbox = page.getByRole("listbox", { name: en["composer.mention.heading"]!, exact: true });
   await expect(listbox).toBeVisible();
   await expect(
     listbox.getByRole("option").filter({ hasText: "runtime/session/store.go" }).locator("svg"),
   ).toHaveAttribute("data-icon-name", "file-code");
 
-  const geometry = await page.evaluate(() => {
-    const el = document.getElementById("composer-suggestion-listbox")!;
+  const geometry = await listbox.evaluate((el) => {
     const box = el.getBoundingClientRect();
     const composer = document.querySelector("[data-slot=composer-root]")!;
     const cb = composer.getBoundingClientRect();
     const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 8);
     return {
-      rows: el.querySelectorAll('[id^="composer-suggestion-option-"]').length,
+      rows: el.querySelectorAll('[role="option"]').length,
       paintsItself: el.contains(hit) || el === hit,
       aboveComposer: Math.round(box.bottom) <= Math.round(cb.top),
       escapedTheClippingSurface: !composer.contains(el),
@@ -1833,10 +1832,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
               "&sidebar=collapsed",
           );
           await expectLabReady(page);
-          const input = page.getByRole("textbox", {
-            name: messages["composer.input.label"],
-            exact: true,
-          });
+          const input = page.getByLabel(messages["composer.input.label"]!, { exact: true });
           const originalInput = await input.elementHandle();
           const prefix = "  Keep this draft. ";
           const panel = page.getByRole("dialog", {
@@ -1958,10 +1954,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           previewURL(story, selection, `retry:${browserName}`) + "&sidebar=collapsed",
         );
         await expectLabReady(page);
-        const input = page.getByRole("textbox", {
-          name: messages["composer.input.label"],
-          exact: true,
-        });
+        const input = page.getByLabel(messages["composer.input.label"]!, { exact: true });
         const draft = "  Keep this draft. @store";
         await expect(input).toHaveValue("@store");
         const panel = page.getByRole("dialog", {
@@ -2081,9 +2074,22 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await expect(retry).toBeFocused();
         const attempts = () =>
           page.evaluate(() => Number(document.documentElement.dataset.visualFileListAttempts));
+        const reading = () =>
+          page.evaluate(async () => {
+            const clientPath = "/src/lib/queryClient.ts";
+            const keysPath = "/src/features/workspace/public/queries.ts";
+            const { queryClient } = (await import(
+              clientPath
+            )) as typeof import("@/lib/queryClient");
+            const { WORKSPACE_LIST_FILES_KEY } = (await import(
+              keysPath
+            )) as typeof import("@/features/workspace/public/queries");
+            return queryClient.isFetching({ queryKey: [WORKSPACE_LIST_FILES_KEY] });
+          });
         const beforeRetry = await attempts();
         await retry.press("Enter");
         await expect.poll(attempts).toBeGreaterThan(beforeRetry);
+        await expect.poll(reading).toBe(0);
         await expect(retry).toBeVisible();
         await expect(input).toBeFocused();
         await expect(input).toHaveValue(draft);
@@ -2098,6 +2104,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
         const beforePointerRetry = await attempts();
         await retry.click();
         await expect.poll(attempts).toBeGreaterThan(beforePointerRetry);
+        await expect.poll(reading).toBe(0);
         await expect(retry).toBeVisible();
         await expect(input).toBeFocused();
         await expect(input).toHaveValue(draft);
@@ -2156,10 +2163,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           })}`,
         );
         await expectLabReady(page);
-        const input = page.getByRole("textbox", {
-          name: messages["composer.input.label"],
-          exact: true,
-        });
+        const input = page.getByLabel(messages["composer.input.label"]!, { exact: true });
         const originalInput = await input.elementHandle();
         const prefix = "  Keep this draft. ";
         await input.fill(prefix + "@store");
@@ -2337,11 +2341,11 @@ for (const browserName of ["chromium", "webkit"] as const) {
 
 test("the composer's attachment chips are one component, not two", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
-  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  const input = page.getByLabel(en["composer.input.label"]!, { exact: true });
 
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
-  const listbox = page.locator("#composer-suggestion-listbox");
+  const listbox = page.getByRole("listbox", { name: en["composer.mention.heading"]!, exact: true });
   await expect(listbox).toBeVisible();
   const offered = listbox.getByRole("option");
   await expect(offered).toHaveCount(2);

@@ -54,6 +54,7 @@
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
+    "@floating-ui/react": "0.27.20",
     "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz",
     "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/core": "^3.1.1",

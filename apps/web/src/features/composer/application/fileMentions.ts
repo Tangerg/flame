@@ -7,10 +7,7 @@ import {
   formatFileReference,
   mentionCandidates,
 } from "@/features/composer/application/draftContext";
-import {
-  type SuggestionList,
-  useSuggestionIndex,
-} from "@/features/composer/application/suggestions";
+import { type SuggestionList } from "@/features/composer/application/suggestions";
 const MENTION_ROWS = 8;
 
 function mentionRequest(cwd: string, nameQuery: string) {
@@ -80,7 +77,6 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
             : "ready";
 
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
-  const { index, setIndex } = useSuggestionIndex(candidateKey, items.length);
 
   const accept = useCallback(
     (path: string) => {
@@ -103,10 +99,9 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const retry = useCallback(() => void refetch(), [refetch]);
 
   return {
+    key: candidateKey,
     open,
     items,
-    index,
-    setIndex,
     accept,
     dismiss,
     status,

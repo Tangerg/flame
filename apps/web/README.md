@@ -319,6 +319,15 @@ File-list failure exposes keyboard Retry and returns from its disappearing
 action only while that action still owns focus.
 File and command suggestions dismiss on Shift+Tab without accepting a value,
 letting the browser return to the preceding control with the draft intact.
+One suggestion navigation owner holds the candidate identity and highlighted item.
+Floating UI's public root context, virtual list navigation and role bindings read
+the actual textarea and list; Base UI remains the sole popup owner. The input route
+admits composition first, then Retry and acceptance, then explicit library arrow
+navigation, and finally ordinary commands. Home and End retain native editing.
+Highlight, hover, accessibility and acceptance use the same item. Matching reopened
+candidates retain that item; changed candidates select from their current set.
+One popup lifecycle reveals the item within its own scrollport after navigation or
+size changes, without scrolling an ancestor or retaining global option identities.
 
 File suggestions show the filename above its complete wrapping parent directory
 before insertion. Literal path text keeps directory then filename in DOM order,

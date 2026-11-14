@@ -16,7 +16,7 @@ import {
   useFileMentions,
   useKnownWorkspacePaths,
 } from "@/features/composer/application/fileMentions";
-import { handleSuggestionKey } from "@/features/composer/application/suggestions";
+import { useSuggestionNavigation } from "@/features/composer/ui/useSuggestionNavigation";
 import { useSlashSuggestions } from "@/features/composer/application/slashSuggestions";
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
@@ -60,6 +60,11 @@ export function useComposerInputController({
   const { messages } = useNotifications();
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [input, setInput] = useState<HTMLTextAreaElement | null>(null);
+  const bindInput = useCallback((node: HTMLTextAreaElement | null) => {
+    inputRef.current = node;
+    setInput(node);
+  }, []);
   // The file-error Retry lives in the portaled popup, outside the textarea's
   // tab order, so the composer hands focus to it and takes it back.
   const retryRef = useRef<HTMLButtonElement>(null);
@@ -107,6 +112,15 @@ export function useComposerInputController({
   );
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
   const slash = useSlashSuggestions({ value, caret, apply: applyMention });
+  const suggestions = mentions.open ? mentions : slash;
+  const listing = suggestions.open && (!mentions.open || mentions.status === "ready");
+  const navigation = useSuggestionNavigation({
+    open: suggestions.open,
+    candidateKey: suggestions.open ? suggestions.key : null,
+    count: listing ? suggestions.items.length : 0,
+    dismiss: suggestions.dismiss,
+    input,
+  });
   const knownPaths = useKnownWorkspacePaths(cwd, value);
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
@@ -203,9 +217,36 @@ export function useComposerInputController({
       retry.focus();
       return;
     }
-    if (handleSuggestionKey(mentions, event) || handleSuggestionKey(slash, event)) {
-      event.preventDefault();
-      return;
+    if (suggestions.open) {
+      if (event.key === "Tab" && event.shiftKey) {
+        suggestions.dismiss();
+        return;
+      }
+      switch (event.key) {
+        case "Escape":
+          event.preventDefault();
+          suggestions.dismiss();
+          return;
+        case "Tab":
+        case "Enter":
+          if (event.shiftKey) break;
+          event.preventDefault();
+          if (navigation.activeIndex === null) suggestions.dismiss();
+          else if (mentions.open) {
+            const item = mentions.items[navigation.activeIndex];
+            if (item !== undefined) mentions.accept(item);
+          } else {
+            const item = slash.items[navigation.activeIndex];
+            if (item !== undefined) slash.accept(item);
+          }
+          return;
+        case "ArrowUp":
+        case "ArrowDown":
+          event.preventDefault();
+          // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
+          navigation.navigate?.(event);
+          return;
+      }
     }
     const binding = lookupExtensionByKey(
       COMPOSER_KEY_BINDING,
@@ -223,10 +264,13 @@ export function useComposerInputController({
 
   return {
     inputRef,
+    bindInput,
     retryRef,
     returnFocusToInput,
     mentions,
     slash,
+    suggestions,
+    navigation,
     knownPaths,
     placeholder,
     handleChange,

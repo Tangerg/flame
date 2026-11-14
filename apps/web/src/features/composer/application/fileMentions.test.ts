@@ -55,26 +55,25 @@ describe("activeMention", () => {
 });
 
 describe("useFileMentions", () => {
-  it("keys the highlighted row to the current mention candidates", () => {
+  it("identifies the current token and accepted candidates without owning navigation", () => {
     const apply = vi.fn();
     const { result, rerender } = testClient.renderHook(
       ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
       { initialProps: { value: "@", caret: 1 } },
     );
 
-    act(() => result.current.setIndex(2));
-    expect(result.current.index).toBe(2);
+    const initial = result.current.key;
 
     rerender({ value: "@s", caret: 2 });
-    expect(result.current.index).toBe(0);
+    expect(result.current.key).not.toBe(initial);
 
-    act(() => result.current.setIndex(1));
+    const queried = result.current.key;
     rerender({ value: "@s", caret: 2 });
-    expect(result.current.index).toBe(1);
+    expect(result.current.key).toBe(queried);
 
     workspaceFiles.current = [{ path: "src/delta.ts" }, { path: "src/echo.ts" }];
     rerender({ value: "@s", caret: 2 });
-    expect(result.current.index).toBe(0);
+    expect(result.current.key).not.toBe(queried);
   });
 
   it("leaves the @ in place, because that token is what the chip row reads back", () => {

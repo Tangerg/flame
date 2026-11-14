@@ -323,9 +323,182 @@ describe("composer", () => {
       await screen.findByRole("listbox", { name: "Commands" });
 
       fireEvent.keyDown(textarea, { key: "ArrowDown" });
-      expect(textarea.getAttribute("aria-activedescendant")).toBe("composer-suggestion-option-1");
+      await waitFor(() =>
+        expect(
+          document.getElementById(textarea.getAttribute("aria-activedescendant") ?? "")
+            ?.textContent,
+        ).toContain("/grep"),
+      );
       fireEvent.keyDown(textarea, { key: "Tab" });
       await waitFor(() => expect(textarea.value).toBe("/grep "));
+    });
+
+    it("wraps at both boundaries and resets to the accepted shrinking candidate set", async () => {
+      await withSlashCommands();
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const input = typeInto("/g");
+      const active = () =>
+        document.getElementById(input.getAttribute("aria-activedescendant") ?? "");
+      await waitFor(() => expect(active()?.textContent).toContain("/goal"));
+      fireEvent.keyDown(input, { key: "ArrowUp" });
+      await waitFor(() => expect(active()?.textContent).toContain("/grep"));
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      await waitFor(() => expect(active()?.textContent).toContain("/goal"));
+      fireEvent.keyDown(input, { key: "ArrowUp" });
+      fireEvent.change(input, { target: { value: "/go", selectionStart: 3 } });
+      await waitFor(() => expect(active()?.textContent).toContain("/goal"));
+      expect(screen.getAllByRole("option")).toHaveLength(1);
+      fireEvent.keyDown(input, { key: "Enter" });
+      await waitFor(() => expect(input.value).toBe("/goal "));
+      expect(onSend).not.toHaveBeenCalled();
+    });
+
+    it("leaves Home and End with native text editing", async () => {
+      await withSlashCommands();
+      wrap(<Harness initial="" onSend={() => true} />);
+      const input = typeInto("/g");
+      await screen.findByRole("listbox");
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      const active = () =>
+        document.getElementById(input.getAttribute("aria-activedescendant") ?? "");
+      await waitFor(() => expect(active()?.textContent).toContain("/grep"));
+      for (const key of ["Home", "End"]) {
+        expect(fireEvent.keyDown(input, { key })).toBe(true);
+        expect(active()?.textContent).toContain("/grep");
+      }
+    });
+
+    it("admits IME navigation and committed Enter before any library handler", async () => {
+      await withSlashCommands();
+      vi.spyOn(performance, "now").mockReturnValue(0);
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const input = typeInto("/g");
+      const active = () =>
+        document.getElementById(input.getAttribute("aria-activedescendant") ?? "");
+      await waitFor(() => expect(active()?.textContent).toContain("/goal"));
+      fireEvent.compositionStart(input);
+      fireEvent.keyDown(input, { key: "ArrowDown", isComposing: true });
+      fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+      expect(active()?.textContent).toContain("/goal");
+      expect(input.value).toBe("/g");
+      fireEvent.compositionEnd(input);
+      fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+      expect(input.value).toBe("/g");
+      expect(onSend).not.toHaveBeenCalled();
+      fireEvent.keyUp(input, { key: "Enter" });
+      fireEvent.keyDown(input, { key: "Tab" });
+      await waitFor(() => expect(input.value).toBe("/goal "));
+    });
+
+    it("dismisses on reverse Tab without accepting or preventing native focus movement", async () => {
+      await withSlashCommands();
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const input = typeInto("/g");
+      await screen.findByRole("listbox");
+      expect(fireEvent.keyDown(input, { key: "Tab", shiftKey: true })).toBe(true);
+      await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+      expect(input.value).toBe("/g");
+      expect(onSend).not.toHaveBeenCalled();
+    });
+
+    it("retains the highlighted candidate when the same token starts again after dismissal", async () => {
+      await withSlashCommands();
+      wrap(<Harness initial="" onSend={() => true} />);
+      const input = typeInto("/g");
+      const active = () =>
+        document.getElementById(input.getAttribute("aria-activedescendant") ?? "");
+      await screen.findByRole("listbox");
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      await waitFor(() => expect(active()?.textContent).toContain("/grep"));
+      fireEvent.keyDown(input, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+      fireEvent.change(input, { target: { value: "", selectionStart: 0 } });
+      fireEvent.change(input, { target: { value: "/g", selectionStart: 2 } });
+      await waitFor(() => expect(active()?.textContent).toContain("/grep"));
+      fireEvent.keyDown(input, { key: "Tab" });
+      await waitFor(() => expect(input.value).toBe("/grep "));
+    });
+
+    it("uses the same hovered item for appearance, accessibility and pointer acceptance", async () => {
+      await withSlashCommands();
+      wrap(<Harness initial="" onSend={() => true} />);
+      const input = typeInto("/g");
+      act(() => input.focus());
+      const option = await screen.findByRole("option", { name: /\/grep/ });
+      fireEvent.mouseMove(option);
+      await waitFor(() => expect(input.getAttribute("aria-activedescendant")).toBe(option.id));
+      expect(option.getAttribute("aria-selected")).toBe("true");
+      fireEvent.mouseDown(option);
+      expect(input.value).toBe("/g");
+      expect(document.activeElement).toBe(input);
+      fireEvent.click(option);
+      await waitFor(() => expect(input.value).toBe("/grep "));
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("keeps each mounted Composer associated with its own list and active item", async () => {
+      await withSlashCommands();
+      wrap(
+        <>
+          <Harness initial="/g" onSend={() => true} />
+          <Harness initial="/g" onSend={() => true} />
+        </>,
+      );
+      const inputs = await screen.findAllByRole("combobox");
+      await waitFor(() => {
+        const lists = inputs.map((input) => input.getAttribute("aria-controls"));
+        expect(new Set(lists).size).toBe(2);
+        for (const input of inputs) {
+          const list = document.getElementById(input.getAttribute("aria-controls") ?? "");
+          const active = document.getElementById(input.getAttribute("aria-activedescendant") ?? "");
+          expect(list?.getAttribute("role")).toBe("listbox");
+          expect(active).not.toBeNull();
+          expect(list?.contains(active)).toBe(true);
+        }
+      });
+      fireEvent.keyDown(inputs[0]!, { key: "ArrowUp" });
+      await waitFor(() =>
+        expect(
+          document.getElementById(inputs[0]!.getAttribute("aria-activedescendant") ?? "")
+            ?.textContent,
+        ).toContain("/grep"),
+      );
+      expect(
+        document.getElementById(inputs[1]!.getAttribute("aria-activedescendant") ?? "")
+          ?.textContent,
+      ).toContain("/goal");
+    });
+
+    it("keeps empty file suggestions out of history and submission", async () => {
+      const history = vi.fn(() => true);
+      await withSlashCommands();
+      await loadPluginsForTest(
+        definePlugin({
+          name: "test.history-admission",
+          setup(ctx) {
+            for (const key of ["ArrowUp", "ArrowDown"])
+              ctx.contributions.add(COMPOSER_KEY_BINDING, {
+                key,
+                description: "history",
+                handler: history,
+              });
+          },
+        }),
+      );
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const input = typeInto("@");
+      await screen.findByRole("dialog", { name: "Files" });
+      fireEvent.keyDown(input, { key: "ArrowUp" });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      expect(history).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: "Enter" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(input.value).toBe("@");
+      expect(onSend).not.toHaveBeenCalled();
     });
   });
 });
