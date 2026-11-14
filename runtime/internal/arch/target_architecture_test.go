@@ -37,7 +37,7 @@ func repositoryLayer(path string) (string, bool) {
 	if relative, ok := strings.CutPrefix(path, frameModulePath+"/"); ok {
 		return frameLayer(relative), true
 	}
-	if path == localRuntimeModulePath {
+	if path == localRuntimeModulePath || path == localRuntimeModulePath+"/webassets" {
 		return ringDeployment, true
 	}
 	if path == "github.com/Tangerg/flame" || strings.HasPrefix(path, "github.com/Tangerg/flame/") {
@@ -249,6 +249,8 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		{name: "test support", dependency: runtimeModulePath + "/internal/testsupport", wantViolations: 1},
 		{name: "fixture inside a ring", dependency: runtimeModulePath + "/internal/domain/testdata/fixture", wantViolations: 1},
 		{name: "deployment", dependency: localRuntimeModulePath, wantViolations: 1},
+		{name: "web deployment", dependency: localRuntimeModulePath + "/webassets", wantViolations: 1},
+		{name: "unknown deployment", dependency: localRuntimeModulePath + "/unclassified", wantViolations: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := filepath.Join(t.TempDir(), "internal", "delivery", "newmechanism")
@@ -330,6 +332,12 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		{from: sdkModulePath + "/protocol", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/capture"},
 		{from: localRuntimeModulePath, to: runtimeModulePath + "/internal/bootstrap"},
+		{from: runtimeModulePath + "/cmd/flame-runtime", to: localRuntimeModulePath + "/webassets", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: localRuntimeModulePath + "/webassets"},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: localRuntimeModulePath + "/webassets"},
+		{from: runtimeModulePath + "/internal/delivery/newbinding", to: localRuntimeModulePath + "/webassets"},
+		{from: localRuntimeModulePath + "/webassets", to: localRuntimeModulePath, allowed: true},
+		{from: localRuntimeModulePath + "/webassets", to: runtimeModulePath + "/internal/bootstrap"},
 		{from: runtimeModulePath + "/cmd/contractgen", to: runtimeModulePath + "/cmd/contractgen", allowed: true},
 		{from: runtimeModulePath + "/cmd/contractgen", to: sdkModulePath + "/wiregen", allowed: true},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/wiregen"},
