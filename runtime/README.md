@@ -407,6 +407,11 @@ feature store. Memory publishes its read capacity and owns its maintenance budge
 Generic `plugins.dataChanged` invalidates reads without carrying business results
 or settling a command. `plugins.changed` describes installation lifecycle.
 
+Terminal view admission derives required bindings, form kinds and choice
+intersections from every local reference sibling and `allOf` conjunct in the
+callable schema. List rows require an array shape. Frame owns schema admission
+and reference traversal limits; terminal hints remain read-only projections.
+
 Knowledge base is another ordinary backend with its own document revisions,
 chunk/vector index and private import receipts. Typed operations and MCP search
 share retrieval; context v3 supplies the captured model use and original user input

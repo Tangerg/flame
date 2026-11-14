@@ -186,10 +186,10 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 		if err != nil {
 			return err
 		}
-		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.types(), []string{"string"}) {
+		if cursor, ok := input.property(list.Paging.Input); !ok || !cursor.isType(portable.TypeString) {
 			return fmt.Errorf("paging input %q must be a string input property", list.Paging.Input)
 		}
-		if cursor, ok := output.property(list.Paging.Output); !ok || !slices.Equal(cursor.types(), []string{"string"}) {
+		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(portable.TypeString) {
 			return fmt.Errorf("paging output %q must be a string output property", list.Paging.Output)
 		}
 		bound = append(bound, list.Paging.Input)
