@@ -9,7 +9,7 @@ import { parseSync } from "rolldown/utils";
 import { buildComponent } from "./build.mjs";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
 
-test("lowers private resource declarations for the Host browser target while retaining disposal", async () => {
+test("builds private resources for the shared Host target and preserves disposal", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-target-"));
   try {
     await writeFile(join(directory, "package.json"), '{"type":"module"}');
@@ -30,25 +30,20 @@ test("lowers private resource declarations for the Host browser target while ret
       'export const inspect = () => import("./resource.ts").then(module => module.inspect());',
     );
     const output = join(directory, "output");
-    await buildComponent({ input, directory: output, compiler: rolldown });
+    const targets = [];
+    await buildComponent({
+      input,
+      directory: output,
+      compiler(options) {
+        targets.push(options.transform.target);
+        return rolldown(options);
+      },
+    });
+    assert.deepEqual(targets, [profile.browserTargets]);
     const emitted = join(output, "component.js");
     const source = await readFile(emitted, "utf8");
     const parsed = parseSync(emitted, source, { lang: "js" });
     assert.deepEqual(parsed.errors, []);
-    const hasResourceDeclaration = (node) => {
-      if (!node || typeof node !== "object") return false;
-      if (
-        node.type === "VariableDeclaration" &&
-        ["using", "await using"].includes(node.kind)
-      )
-        return true;
-      return Object.values(node).some((value) =>
-        Array.isArray(value)
-          ? value.some(hasResourceDeclaration)
-          : hasResourceDeclaration(value),
-      );
-    };
-    assert.equal(hasResourceDeclaration(parsed.program), false);
     const component = await import(pathToFileURL(emitted));
     assert.deepEqual(await component.inspect(), ["used", "released"]);
   } finally {

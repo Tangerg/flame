@@ -1,4 +1,5 @@
 import { OperationFailure } from "@flame/runtime-client";
+import { parseVisualDiff } from "../../../../plugins/diff/component/visualDiff";
 import { parseMcpImport } from "../../../../plugins/mcp/component/import";
 import { candidate as mcpCandidate } from "../../../../plugins/mcp/component/model";
 import {
@@ -4391,7 +4392,43 @@ for await (const line of lines) {
       data: [{ path: "tracked.txt", status: "modified" }],
     });
     await expect(workspace.diff.get()).resolves.toMatchObject({
-      files: [{ path: "tracked.txt", status: "modified" }],
+      type: "rows",
+      rows: {
+        files: [{ path: "tracked.txt", status: "modified" }],
+        truncated: false,
+      },
+    });
+
+    await writeFile(join(workspaceRoot, "new-中文.txt"), "新🙂");
+    const raw = await workspace.diff.get({ format: "raw" });
+    expect(raw.type).toBe("raw");
+    if (raw.type !== "raw") throw new Error("expected the raw diff projection");
+    expect(raw.patch).toContain("+新🙂\n\\ No newline at end of file\n");
+
+    const visual = await workspace.diff.get({ format: "visual" });
+    expect(visual.type).toBe("visual");
+    if (visual.type !== "visual") throw new Error("expected the visual diff projection");
+    expect(visual.baseline).toEqual(raw.baseline);
+    expect(visual.visual).toEqual({
+      patch: raw.patch,
+      manifest: [
+        { path: "tracked.txt", status: "modified", added: 1, removed: 1 },
+        { path: "new-中文.txt", status: "untracked", added: 1, removed: 0 },
+      ],
+      truncated: false,
+      budget: { files: 5_000, rows: 5_000, bytes: 64 * 1024 * 1024 },
+    });
+    expect([...parseVisualDiff(visual).rendered.keys()]).toEqual(["tracked.txt", "new-中文.txt"]);
+
+    await expect(workspace.diff.get({ format: "visual", limit: 1 })).resolves.toEqual({
+      type: "visual",
+      baseline: raw.baseline,
+      visual: {
+        patch: "",
+        manifest: [],
+        truncated: true,
+        budget: { files: 5_000, rows: 1, bytes: 64 * 1024 * 1024 },
+      },
     });
 
     streamController.abort();
