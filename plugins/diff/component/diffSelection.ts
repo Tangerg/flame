@@ -40,7 +40,6 @@ export function copyDiffSelection(
   range.setStart(selected.startContainer, selected.startOffset);
   range.setEnd(selected.endContainer, selected.endOffset);
   if (range.collapsed) return;
-  event.preventDefault();
   const parts: string[] = [];
   for (const line of root.querySelectorAll("[data-code] [data-line]")) {
     if (!range.intersectsNode(line)) continue;
@@ -66,5 +65,8 @@ export function copyDiffSelection(
       ),
     );
   }
-  event.clipboardData.setData("text/plain", parts.join(""));
+  const text = parts.join("");
+  if (text === "") return;
+  event.preventDefault();
+  event.clipboardData.setData("text/plain", text);
 }

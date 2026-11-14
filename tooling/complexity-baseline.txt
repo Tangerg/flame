@@ -61,7 +61,7 @@
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>#2
 23 plugins/deliverables/component/useDeliverables.ts:useDeliverables
-69 plugins/diff/component/component.tsx:WorkspaceDiff
+65 plugins/diff/component/component.tsx:WorkspaceDiff
 38 plugins/genui/contracts/catalog.ts:validateResolvedProps
 26 plugins/genui/contracts/document.ts:<anonymous>
 30 plugins/genui/contracts/document.ts:Presentation.<anonymous>

@@ -37,6 +37,7 @@ selection therefore covers every presented line without a second hidden DOM.
 Flame's reader handles Select All and projects the native composed range into
 public parsed source lines for clipboard text. Gutters and EOF labels are excluded;
 partial UTF-16 offsets, blank lines, CRLF and the final source newline are preserved.
+Selections containing only reader annotations retain native copy behavior.
 When a selection crosses the EOF of one side into the other, the displayed rows
 remain separated. Split-layout selection follows the selected physical columns;
 the independent included-patch action always copies the same accepted patch.

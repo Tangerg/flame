@@ -24,7 +24,12 @@ async function copied(reader: Locator) {
   return reader.evaluate((node) => {
     const transfer = new DataTransfer();
     node.dispatchEvent(
-      new ClipboardEvent("copy", { bubbles: true, composed: true, clipboardData: transfer }),
+      new ClipboardEvent("copy", {
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+        clipboardData: transfer,
+      }),
     );
     return transfer.getData("text/plain");
   });
@@ -92,6 +97,23 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await expect(reader.getByText("No newline at end of file", { exact: true })).toHaveCount(
             0,
           );
+        const annotation = reader.getByText(profile.eof, { exact: true }).first();
+        await annotation.evaluate((node) =>
+          node.ownerDocument.getSelection()!.selectAllChildren(node),
+        );
+        const ordinaryCopy = await reader.evaluate((node) => {
+          const transfer = new DataTransfer();
+          transfer.setData("text/plain", "ordinary selection");
+          const event = new ClipboardEvent("copy", {
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+            clipboardData: transfer,
+          });
+          node.dispatchEvent(event);
+          return { prevented: event.defaultPrevented, text: transfer.getData("text/plain") };
+        });
+        expect(ordinaryCopy).toEqual({ prevented: false, text: "ordinary selection" });
         const unicode = reader.getByText("alpha中🙂omega", { exact: true });
         await selectText(unicode, 13, 6);
         expect(await copied(reader)).toBe("🙂omega");
@@ -158,6 +180,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
           const event = new ClipboardEvent("copy", {
             bubbles: true,
             composed: true,
+            cancelable: true,
             clipboardData: transfer,
           });
           node.dispatchEvent(event);

@@ -647,23 +647,24 @@ export function visualWorkspaceRuntime(
       : VISUAL_CAPABILITIES;
   let branchEvidenceReads = 0;
   const readDiff = async (signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    const input: Pick<GetDiffRequest, "mode" | "path" | "format"> = request ?? {};
     if (state === "dock-loading") return pending<Diff>(signal);
     if (state === "dock-error") throw new Error("Visual fixture could not load the workspace diff");
-    if (request?.format && request.format !== "visual")
+    if (request && input.format !== "visual")
       throw new Error("Visual fixture only supports the visual diff projection");
     if (state === "dock-diff-evidence") {
-      if (request?.mode === "base") branchEvidenceReads++;
-      return evidenceDiff(request?.path, request?.mode, branchEvidenceReads > 1);
+      if (input.mode === "base") branchEvidenceReads++;
+      return evidenceDiff(input.path, input.mode, branchEvidenceReads > 1);
     }
-    if (state === "dock-diff-budget") return budgetDiff();
-    if (state === "dock-diff-large") return largeFileDiff(request?.path);
-    const selection = { firstPath: reviewPath, path: request?.path };
+    if (state === "dock-diff-budget") return request ? budgetDiff() : evidenceDiff();
+    if (state === "dock-diff-large") return largeFileDiff(input.path);
+    const selection = { firstPath: reviewPath, path: input.path };
     const captured =
       reviewFiles === undefined ? reviewDiff(selection) : scaledReview(reviewFiles, selection);
     const comparison =
-      request?.mode === "base"
+      input.mode === "base"
         ? reviewFiles === undefined && !reviewPath
-          ? branchReviewDiff(request.path)
+          ? branchReviewDiff(input.path)
           : { ...captured, baseline: BRANCH_REVIEW_DIFF.baseline }
         : captured;
     return state === "dock-empty"
