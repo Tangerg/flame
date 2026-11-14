@@ -1092,6 +1092,45 @@ test("mounts a complete product fixture without external or Runtime mutation req
   expect(unexpected).toEqual([]);
 });
 
+test("fixture readiness waits for native draft storage completion", async ({ page }) => {
+  await page.addInitScript(() => {
+    const gate = { completed: 0, readyBeforeStorage: false };
+    const completionDelayMs = 1000;
+    Object.assign(window, { __labDraftStorage: gate });
+    const open = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (name, version) => {
+      const request = open(name, version);
+      // Holding success preserves the real upgrade and draft restoration paths.
+      request.addEventListener(
+        "success",
+        (event) => {
+          event.stopImmediatePropagation();
+          setTimeout(() => {
+            gate.readyBeforeStorage ||= document.documentElement.dataset.labReady === "true";
+            gate.completed += 1;
+            request.dispatchEvent(new Event("success"));
+          }, completionDelayMs);
+        },
+        { once: true },
+      );
+      return request;
+    };
+  });
+  await page.goto("/lab/fixture.html?fixture=agent&state=empty&theme=light");
+  await expectLabReady(page);
+  const storage = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __labDraftStorage: { completed: number; readyBeforeStorage: boolean };
+          }
+        ).__labDraftStorage,
+    );
+  await expect.poll(async () => (await storage()).completed).toBeGreaterThan(0);
+  expect((await storage()).readyBeforeStorage).toBe(false);
+});
+
 for (const locale of ["en", "zh", null] as const) {
   test(`reports a caught fixture boot failure with its document and cause ${locale ?? "default"}`, async ({
     page,

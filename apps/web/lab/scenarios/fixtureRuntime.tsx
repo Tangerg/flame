@@ -476,9 +476,15 @@ function shellArrived(deadlineMs: number): Promise<void> {
     const expiry = performance.now() + deadlineMs;
     const check = () => {
       const pending = rootElement.querySelector("[data-surface-pending]");
-      if (container!.firstElementChild && !pending) resolve();
+      const restoringDrafts =
+        visualClient.composer.store.getState().persistenceState.status === "loading";
+      if (container!.firstElementChild && !pending && !restoringDrafts) resolve();
       else if (performance.now() > expiry)
-        reject(new Error("Fixture surfaces did not arrive before the readiness deadline"));
+        reject(
+          new Error(
+            "fixture surfaces or draft storage did not settle before the readiness deadline",
+          ),
+        );
       else requestAnimationFrame(check);
     };
     check();

@@ -192,8 +192,8 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
   await image.evaluate((image: HTMLImageElement) => image.decode());
   await expect(image).toHaveAttribute("width", "600");
   await expect(image).toHaveAttribute("height", "900");
-  const imageBounds = () =>
-    image.evaluate((image: HTMLImageElement) => {
+  const imageBounds = async () => {
+    const geometry = await image.evaluate((image: HTMLImageElement) => {
       const bounds = image.getBoundingClientRect();
       const frame = image.closest("button")!.getBoundingClientRect();
       const content = image.closest(".msg-content")!;
@@ -208,11 +208,19 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
         contentWidth: content.clientWidth,
         contentOverflow: content.scrollWidth - content.clientWidth,
         pageOverflow: document.documentElement.scrollWidth - innerWidth,
+        pixelSize: 1 / devicePixelRatio,
       };
     });
+    // Intrinsic layout rounds the frame and replaced image independently below a painted pixel.
+    for (const edge of ["width", "height", "left", "top"] as const) {
+      expect(Math.abs(geometry.frame[edge] - geometry.image[edge])).toBeLessThanOrEqual(
+        geometry.pixelSize,
+      );
+    }
+    return geometry;
+  };
   const portrait = await imageBounds();
   expect(portrait.width).toBeCloseTo(portrait.height * portrait.naturalRatio, 1);
-  expect(portrait.frame).toEqual(portrait.image);
   expect(await gaps()).toEqual({ before: 20, after: 24 });
 
   await installImage(sources.badBody);
@@ -230,7 +238,6 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
     await installImage(data);
     await image.evaluate((image: HTMLImageElement) => image.decode());
     const bounds = await imageBounds();
-    expect(bounds.frame).toEqual(bounds.image);
     expect(bounds.width).toBeCloseTo(bounds.height * bounds.naturalRatio, 1);
     expect(bounds.width).toBeLessThanOrEqual(bounds.naturalWidth);
     expect(bounds.height).toBeLessThanOrEqual(bounds.naturalHeight);

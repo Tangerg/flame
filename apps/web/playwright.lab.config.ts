@@ -17,6 +17,8 @@ export default defineConfig({
     deviceScaleFactor: 1,
     locale: "en-US",
     reducedMotion: "reduce",
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
     timezoneId: "UTC",
     viewport: { width: 1120, height: 720 },
   },

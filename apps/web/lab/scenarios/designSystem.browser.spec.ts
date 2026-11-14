@@ -118,7 +118,8 @@ test("segments slide continuously and reverse from their painted position", asyn
 
   await page.setViewportSize({ width: 720, height: 900 });
   await tabs.scrollIntoViewIfNeeded();
-  const resizedReading = tabs.evaluate(async (track) => {
+  await metrics.click();
+  const resizedFrames = await tabs.evaluate(async (track) => {
     const frames = [];
     const start = performance.now();
     while (performance.now() - start < 420) {
@@ -131,8 +132,6 @@ test("segments slide continuously and reverse from their painted position", asyn
     }
     return frames;
   });
-  await metrics.click();
-  const resizedFrames = await resizedReading;
   await testInfo.attach("segment-after-resize-frames", {
     body: JSON.stringify(resizedFrames),
     contentType: "application/json",

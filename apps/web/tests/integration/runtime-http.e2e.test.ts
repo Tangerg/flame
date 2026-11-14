@@ -4736,9 +4736,9 @@ for await (const line of lines) {
       expect.arrayContaining([expect.objectContaining({ path: "ignored.log", type: "file" })]),
     );
 
-    const plainRoot = join(root, "workspace-side-api-plain");
+    // A plain workspace cannot depend on Git's diagnosis of broken repository metadata.
+    const plainRoot = join(environmentRoot, "workspace-side-api-plain");
     await mkdir(join(plainRoot, "empty"), { recursive: true });
-    await writeFile(join(plainRoot, ".git"), "gitdir: ../not-a-repository\n");
     await writeFile(join(plainRoot, "visible.txt"), "visible\n");
     const plainListing = await client.workspace({ path: plainRoot }).files.list();
     expect(plainListing).toMatchObject({
@@ -4747,8 +4747,13 @@ for await (const line of lines) {
         expect.objectContaining({ path: "visible.txt", name: "visible.txt", type: "file" }),
       ],
     });
-    expect(plainListing.data.some((entry) => entry.path === ".git")).toBe(false);
-    const outsidePlainRoot = join(root, "workspace-side-api-outside");
+    await writeFile(join(plainRoot, ".git"), "gitdir: ../not-a-repository\n");
+    const plainIncludingIgnored = await client
+      .workspace({ path: plainRoot })
+      .files.list({ includeIgnored: true });
+    expect(plainIncludingIgnored.data).toEqual(plainListing.data);
+    expect(plainIncludingIgnored.data.some((entry) => entry.path === ".git")).toBe(false);
+    const outsidePlainRoot = join(environmentRoot, "workspace-side-api-outside");
     await mkdir(outsidePlainRoot);
     await writeFile(join(outsidePlainRoot, "secret.txt"), "secret\n");
     await symlink(outsidePlainRoot, join(plainRoot, "escape"), "dir");

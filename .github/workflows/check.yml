@@ -19,6 +19,7 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -100,6 +101,7 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -118,6 +120,7 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -127,4 +130,14 @@ jobs:
       - run: make generate
       - run: npm exec --workspace @flame/web -- playwright install chromium webkit
       - name: Qualify browser interaction and accessibility contracts
+        id: browser_check
         run: npm run lab:verify --workspace @flame/web
+      - name: Retain browser failure diagnostics
+        if: failure() && steps.browser_check.outcome == 'failure'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: browser-failure-diagnostics
+          path: |
+            out/web/lab-results
+            out/web/lab-report
+          retention-days: 7

@@ -727,8 +727,9 @@ ScrollArea is not evidence that the outcome is visible.
 
 The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
 attachment record exact inputs and reproducible preview URLs. Fixture readiness
-requires a mounted surface with no unresolved lazy readers, then layout and the
-fonts requested by that layout, followed by a rendered frame. An unresolved
+requires a mounted surface with no unresolved lazy readers and completion of the
+Composer owner's initial draft restoration, then layout and the fonts requested
+by that layout, followed by a rendered frame. An unresolved
 surface fails at the existing arrival deadline instead of becoming ready. The
 layout-shift canary moves the actual fixed application surface and verifies both
 its displacement and the observer result. The verifier never qualifies an errored

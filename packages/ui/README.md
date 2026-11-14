@@ -598,6 +598,8 @@ or its placeholder while empty. Placeholder typography supplies its natural heig
 the native `rows` minimum retains the control's own font metrics. The component owns
 height updates for input, controlled values, placeholder, form reset, width and font changes;
 CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
+Input bursts share one measurement before paint, using the final native value and
+current styles.
 Natural height and caret geometry share the same inert typography mirror. Sizing
 retains the native `rows` minimum and box model, then applies only the final
 height. Measuring never collapses the live control, so it cannot clamp an outer

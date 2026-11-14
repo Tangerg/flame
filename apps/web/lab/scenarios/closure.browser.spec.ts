@@ -564,9 +564,11 @@ test("text survives its longest language in every pane and dock view", async ({ 
 });
 
 for (const locale of SHIPPED_LOCALES) {
-  test(`text survives its own language — ${locale}`, async ({ page }) => {
-    const clipped: string[] = [];
-    for (const route of LOCALE_ROUTES) {
+  for (const route of LOCALE_ROUTES) {
+    test(`text survives its own language — ${locale}: ${route.fixture}/${route.pane ?? route.state}`, async ({
+      page,
+    }) => {
+      const clipped: string[] = [];
       for (const fontSize of [undefined, 18]) {
         await page.setViewportSize({ width: 1120, height: 720 });
         await openFixture(page, { ...route, locale, ...(fontSize ? { fontSize } : {}) });
@@ -576,10 +578,9 @@ for (const locale of SHIPPED_LOCALES) {
           ...(await verticallyClippedText(page)).map((hit) => `${where} ↓: ${hit}`),
         );
       }
-    }
-
-    expect(clipped).toEqual([]);
-  });
+      expect(clipped).toEqual([]);
+    });
+  }
 }
 
 for (const fixture of ["agent", "workspace"] as const) {

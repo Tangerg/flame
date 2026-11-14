@@ -189,7 +189,7 @@ export function TextArea({
   ...props
 }: TextAreaProps) {
   const element = useRef<HTMLTextAreaElement>(null);
-  const resizeRef = useRef<() => void>(() => {});
+  const requestResizeRef = useRef<() => void>(() => {});
   const fontSize = useFontSize();
   useLayoutEffect(() => {
     const area = element.current;
@@ -233,25 +233,25 @@ export function TextArea({
       schedule();
     });
     observer.observe(area);
-    const reset = () => schedule();
-    area.addEventListener("input", resize);
-    area.form?.addEventListener("reset", reset);
-    document.fonts?.addEventListener("loadingdone", resize);
-    void document.fonts?.ready.then(resize);
-    resizeRef.current = resize;
+    // A multiline paste can emit input per line; measure its final value before paint.
+    area.addEventListener("input", schedule);
+    area.form?.addEventListener("reset", schedule);
+    document.fonts?.addEventListener("loadingdone", schedule);
+    void document.fonts?.ready.then(schedule);
+    requestResizeRef.current = schedule;
     return () => {
       active = false;
       cancelAnimationFrame(frame);
-      resizeRef.current = () => {};
+      requestResizeRef.current = () => {};
       observer.disconnect();
-      area.removeEventListener("input", resize);
-      area.form?.removeEventListener("reset", reset);
-      document.fonts?.removeEventListener("loadingdone", resize);
+      area.removeEventListener("input", schedule);
+      area.form?.removeEventListener("reset", schedule);
+      document.fonts?.removeEventListener("loadingdone", schedule);
       area.style.height = originalHeight;
     };
   }, [autosize]);
   useLayoutEffect(
-    () => resizeRef.current(),
+    () => requestResizeRef.current(),
     [
       autosize,
       variant,

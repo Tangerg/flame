@@ -136,14 +136,18 @@ export function registerUiOwnershipContracts() {
     await expect.poll(height).toBeGreaterThan(initial * 2);
     await note.fill(Array.from({ length: 30 }, (_, index) => `Line ${index}`).join("\n"));
     await expect.poll(height).toBe(160);
+    const capped = await height();
     expect(await note.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
       true,
     );
     await note.fill("Words that wrap into multiple lines when the note becomes narrow.");
+    await expect.poll(height).toBeLessThan(capped);
     const wide = await height();
     await page.getByRole("button", { name: "Toggle note width" }).click();
     await expect.poll(height).toBeGreaterThan(wide);
+    const narrow = await height();
     await note.fill("Short");
+    await expect.poll(height).toBeLessThan(narrow);
     const smallFont = await height();
     await page.getByRole("button", { name: "Toggle note font" }).click();
     await expect.poll(height).toBeGreaterThan(smallFont);
