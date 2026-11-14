@@ -9,11 +9,32 @@ async function drag(page: Page, viewport: Locator) {
   await page.mouse.down();
   await page.mouse.move(x - 50, y - 50, { steps: 5 });
   await expect(viewport).toHaveAttribute("data-panning", "");
+  return { x: x - 50, y: y - 50 };
+}
+
+async function wheelTakeover(page: Page, viewport: Locator) {
+  const position = await drag(page, viewport);
+  await page.mouse.wheel(80, 0);
+  await expect(viewport).not.toHaveAttribute("data-panning");
+  const accepted = await viewport.evaluate(async (node) => {
+    // Wheel dispatch completes before native compositor scrolling has painted.
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    return [node.scrollLeft, node.scrollTop];
+  });
+  await page.mouse.move(position.x - 20, position.y - 10, { steps: 2 });
+  await page.mouse.up();
+  expect(await viewport.evaluate((node) => [node.scrollLeft, node.scrollTop])).toEqual(accepted);
+  await page.mouse.wheel(80, 0);
+  await expect
+    .poll(() => viewport.evaluate((node) => node.scrollLeft))
+    .toBeGreaterThan(accepted[0]!);
 }
 
 for (const browserName of ["chromium", "webkit"] as const) {
   test.extend({ browserName })(
-    `${browserName} diagram pan cancels and retires before Fit takes over`,
+    `${browserName} diagram pan cancels and yields to native wheel scrolling and Fit`,
     async ({ page }) => {
       await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=light");
       await expectLabReady(page);
@@ -34,6 +55,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await expect(dialog).toBeVisible();
       expect(await viewport.evaluate((node) => [node.scrollLeft, node.scrollTop])).toEqual([0, 0]);
       await expect(viewport).not.toHaveAttribute("data-panning");
+      await wheelTakeover(page, viewport);
       await drag(page, viewport);
       await dialog
         .getByRole("button", { name: "Fit", exact: true })
@@ -47,7 +69,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
   );
 
   test.extend({ browserName })(
-    `${browserName} image pan restores cancellation and yields to a keyboard command`,
+    `${browserName} image pan restores cancellation and yields to wheel and keyboard commands`,
     async ({ page }) => {
       await page.setViewportSize({ width: 560, height: 360 });
       await page.goto("/lab/fixture.html?fixture=agent&state=long-content&theme=dark");
@@ -69,6 +91,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await page.mouse.up();
       await expect(dialog).toBeVisible();
       expect(await viewport.evaluate((node) => [node.scrollLeft, node.scrollTop])).toEqual([0, 0]);
+      await wheelTakeover(page, viewport);
       await drag(page, viewport);
       await page.keyboard.press("ArrowDown");
       await expect(viewport).not.toHaveAttribute("data-panning");

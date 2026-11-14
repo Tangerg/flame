@@ -580,7 +580,8 @@ once, cancellation restores a valid preview, and retirement only revokes the old
 operation. Source, visibility, viewport or external authority changes retire before
 new projections apply. Consumers provide the current-source qualification and
 business mutations. `useScrollPan` shares native scroll panning between images and
-diagrams; zoom, fit and keyboard commands retire it before taking over.
+diagrams; native wheel scrolling, zoom, fit and keyboard commands retire it before
+taking over.
 
 `ImageViewport` owns fitting, anchored zoom, keyboard panning and pointer dragging
 for one captured `ImageSource`. Its flex frame owns its bounded scroll region and

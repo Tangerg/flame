@@ -59,6 +59,7 @@ export function useScrollPan(source: unknown, enabled: boolean) {
         },
         finish(outcome) {
           if (session.current === active) session.current = null;
+          if (active) node.removeEventListener("wheel", active.retire);
           observer?.disconnect();
           node.removeAttribute("data-panning");
           if (outcome === "cancel") {
@@ -69,6 +70,7 @@ export function useScrollPan(source: unknown, enabled: boolean) {
       });
       if (!active?.active) return;
       session.current = active;
+      node.addEventListener("wheel", active.retire, { passive: true });
       observer = new node.ownerDocument.defaultView!.ResizeObserver(() => {
         if (node.clientWidth !== width || node.clientHeight !== height)
           active?.retire();

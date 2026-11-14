@@ -89,6 +89,32 @@ describe("native scroll pan", () => {
     expect(node.scrollLeft).toBe(100);
   });
 
+  it.each([
+    { deltaX: 60, deltaY: 0 },
+    { deltaX: 0, deltaY: 60 },
+  ])(
+    "yields to native wheel scrolling %j without a later rollback",
+    (delta) => {
+      render(<Pan />);
+      const node = begin();
+      const wheel = new WheelEvent("wheel", {
+        ...delta,
+        bubbles: true,
+        cancelable: true,
+      });
+      fireEvent(node, wheel);
+      expect(wheel.defaultPrevented).toBe(false);
+      expect(node.hasAttribute("data-panning")).toBe(false);
+      expect([node.scrollLeft, node.scrollTop]).toEqual([120, 250]);
+      node.scrollLeft = 420;
+      node.scrollTop = 650;
+      fireEvent.pointerMove(window, { pointerId: 7, clientX: 0, clientY: 0 });
+      fireEvent.pointerCancel(window, { pointerId: 7 });
+      expect([node.scrollLeft, node.scrollTop]).toEqual([420, 650]);
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it.each(["source", "disabled", "hidden", "keyboard", "viewport", "unmount"])(
     "retires without rollback on %s takeover",
     (reason) => {
