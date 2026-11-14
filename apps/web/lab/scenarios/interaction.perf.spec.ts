@@ -166,6 +166,7 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       await measureLoad(page, async () => {
         await page.goto(REVIEW_URL);
         await expectLabReady(page);
+        await diff.getByRole("button", { name: "Show changed files", exact: true }).click();
         await expect(diffFiles).toHaveCount(REVIEW_FILES);
       }),
     );
