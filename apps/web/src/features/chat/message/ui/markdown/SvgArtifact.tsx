@@ -1,6 +1,7 @@
+import { ButtonPrimitive } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
-import { Pressable, ShikiCodeBlock } from "@/ui/index";
+import { ShikiCodeBlock } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
 const sa = stylex.create({
@@ -34,14 +35,14 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
         <ImagePreviewGallery
           item={{ src, alt: label }}
           trigger={(previewProps) => (
-            <Pressable
+            <ButtonPrimitive
               type="button"
               aria-label={label}
               {...previewProps}
               {...stylex.props(sa.trigger)}
             >
               <img src={src} alt={label} {...stylex.props(sa.preview)} />
-            </Pressable>
+            </ButtonPrimitive>
           )}
         />
       }

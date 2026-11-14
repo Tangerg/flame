@@ -20,6 +20,7 @@ import {
   RecordSummary,
   type Fact,
   type Tone,
+  imageSizeFromBase64,
 } from "@flame/ui";
 
 export const runId = (row: TrajectoryEntry) =>
@@ -220,6 +221,7 @@ function RecordedImage({
   t: Translate;
 }) {
   const src = `data:${mime};base64,${data}`;
+  const size = useMemo(() => imageSizeFromBase64(data), [data]);
   const alt = t("image.alt", { mime });
   const [failedSource, setFailedSource] = useState<string>();
   if (failedSource === src)
@@ -228,6 +230,9 @@ function RecordedImage({
     <span onErrorCapture={() => setFailedSource(src)}>
       <EvidenceImage
         src={src}
+        width={size?.width}
+        height={size?.height}
+        decoding="async"
         alt={alt}
         labels={{
           view: t("image.view"),

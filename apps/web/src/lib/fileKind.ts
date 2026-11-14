@@ -1,4 +1,4 @@
-import { langFromPath } from "@/lib/highlight/shiki";
+import { langFromPath } from "@/lib/highlight/languages";
 import { fileExtension } from "@/lib/path";
 export type FileKind = "image" | "document" | "code" | "file";
 

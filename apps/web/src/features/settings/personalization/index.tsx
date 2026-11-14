@@ -3,9 +3,11 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { PERSONALIZATION_PANE } from "@/features/settings/public/paneIDs";
 const PersonalizationPane = lazy(() =>
-  import("@/features/settings/ui/PersonalizationPane").then(({ PersonalizationPane }) => ({
-    default: PersonalizationPane,
-  })),
+  import(/* @flame-lazy:settings */ "@/features/settings/ui/PersonalizationPane").then(
+    ({ PersonalizationPane }) => ({
+      default: PersonalizationPane,
+    }),
+  ),
 );
 
 export default definePlugin({

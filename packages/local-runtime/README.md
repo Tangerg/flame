@@ -5,6 +5,16 @@ roots, strict token handoff, the original Frame runner executable and companion 
 shared by Runtime, CLI and the native Desktop host without importing their
 business implementation.
 
+`webassets` owns delivery of a built Web distribution for Runtime HTTP and the
+native embedded filesystem. It requires the current build policy, verifies the
+exact served bytes before granting immutable caching, and projects the same
+per-response nonce and main-document embedding rules in both hosts. Its opener
+does not grant filesystem authority: Runtime retains `os.OpenInRoot` confinement;
+Desktop supplies its embedded subtree. Private manifest paths are never served.
+HTML is `no-store` with a fresh 200 response, so revalidation cannot pair a new
+nonce header with an old body. The independent opaque program page remains
+embeddable under its own policy; it does not acquire the main document's deny rule.
+
 `RunnerExecutable` resolves the distribution's sibling `frame-runner` executable.
 The original runner owns process creation, fencing and wait proofs; Runtime never
 substitutes a PID observation or a new runner's empty ledger for that authority.

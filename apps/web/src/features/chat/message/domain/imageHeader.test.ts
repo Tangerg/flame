@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageSizeFromBase64 } from "@/features/chat/message/domain/imageHeader";
+import { imageSizeFromBase64 } from "@flame/ui";
 const toBase64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
 function png(width: number, height: number): string {

@@ -1,0 +1,61 @@
+[data-slot="startup-failure"] {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: var(--fs-ui-md) / var(--leading-body) var(--font-sans, system-ui, sans-serif);
+  user-select: text;
+}
+[data-slot="startup-failure"]:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -4px;
+}
+[data-slot="startup-failure"] > div {
+  width: 100%;
+  flex: 0 0 auto;
+  max-width: 36rem;
+  min-width: 0;
+  margin: auto;
+  overflow-wrap: anywhere;
+}
+[data-slot="startup-failure"] h1 {
+  margin: 0 0 12px;
+  font-size: var(--fs-display-md);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+}
+[data-slot="startup-failure"] :is(p, dl, details) {
+  margin: 0 0 16px;
+}
+[data-slot="startup-failure"] dt {
+  margin-top: 16px;
+  font-weight: 600;
+}
+[data-slot="startup-failure"] dd {
+  margin: 4px 0 0;
+}
+[data-slot="startup-failure"] ul {
+  margin: 0;
+  padding-inline-start: 24px;
+  list-style: disc;
+}
+[data-slot="startup-failure"] pre {
+  white-space: pre-wrap;
+}
+[data-slot="startup-failure"] button {
+  padding: 6px 12px;
+  border: var(--control-edge-width) solid var(--color-control-edge);
+  border-radius: var(--style-shape-sm);
+  background: var(--color-elevated);
+  color: inherit;
+  font: inherit;
+}
+[data-slot="startup-failure"] :is(button, summary, pre):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

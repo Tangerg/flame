@@ -3,6 +3,7 @@ import { join } from "node:path";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
 export const HOST_MODULES = Object.freeze(profile.modules);
 export const HOST_MODULE_PROFILE = profile.profile;
+export const BROWSER_TARGETS = Object.freeze([...profile.browserTargets]);
 
 // Private dependencies are bundled; these modules are supplied by the actual
 // workbench renderer. The format is identical for released and development code.
@@ -15,6 +16,7 @@ export async function buildComponent({ input, directory, compiler }) {
     moduleTypes: { ".png": "dataurl" },
     external: (id) => HOST_MODULES.includes(id),
     transform: {
+      target: BROWSER_TARGETS,
       jsx: { runtime: "automatic", development: false },
       define: { "process.env.NODE_ENV": JSON.stringify("production") },
     },

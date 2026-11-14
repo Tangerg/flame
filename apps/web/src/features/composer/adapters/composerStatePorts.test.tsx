@@ -1,6 +1,6 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
-import { mockLocalStorage } from "@/test/localStorage";
+import { refuseDraftStorage } from "@/test/draftStorage";
 let testClient: TestClient;
 prepareTestClient(() => {
   const owned = createTestClient();
@@ -8,7 +8,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { useEffect, useRef } from "react";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -66,9 +66,12 @@ function beginReplacement() {
   return replace;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   testClient.composer.store.getState().loadSession("focus-draft");
   testClient.composer.store.getState().replaceDraft({ text: "old" });
+  await vi.waitUntil(
+    () => testClient.composer.store.getState().persistenceState.status === "saved",
+  );
 });
 
 afterEach(() => {
@@ -76,19 +79,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("publishes a save refusal and retry without replacing the input or claiming later focus", () => {
+it("publishes a save refusal and retry without replacing the input or claiming later focus", async () => {
   testClient.render(<PersistenceHarness />);
   const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
   const other = screen.getByRole("button", { name: "Other task" });
-  const key = `flame.composer:${encodeURIComponent(testClient.runtime.endpoint.currentRuntimeEndpoint())}`;
   const cause = new DOMException("write refused", "QuotaExceededError");
-  const replacement = mockLocalStorage();
-  replacement.storage.setItem.mockImplementation((name, value) => {
-    if (name === key) throw cause;
-    replacement.backing.setItem(name, value);
-  });
+  const replacement = refuseDraftStorage("save", cause);
   fireEvent.change(field, { target: { value: "  keep my selection 保留  " } });
-  expect(screen.getByLabelText("Draft saving").textContent).toBe("failed");
+  await waitFor(() => expect(screen.getByLabelText("Draft saving").textContent).toBe("failed"));
   const draft = testClient.composer.store.getState().composer.draft;
   act(() => {
     field.focus();
@@ -97,7 +95,7 @@ it("publishes a save refusal and retry without replacing the input or claiming l
   });
   replacement.restore();
   act(() => testClient.composer.access.retryPersistence());
-  expect(screen.getByLabelText("Draft saving").textContent).toBe("saved");
+  await waitFor(() => expect(screen.getByLabelText("Draft saving").textContent).toBe("saved"));
   expect(screen.getByRole("textbox", { name: "Message" })).toBe(field);
   expect(testClient.composer.store.getState().composer.draft).toBe(draft);
   expect(field.value).toBe("  keep my selection 保留  ");

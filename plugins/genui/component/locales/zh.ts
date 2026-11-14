@@ -33,6 +33,8 @@ export const zh: Record<string, string> = {
   "image.unavailable": "此图片无法显示。",
   "code.label": "代码",
   "markdown.table": "Markdown 表格",
+  "markdown.footnotes": "脚注",
+  "markdown.backReference": "返回引用 {{reference}}",
   "carousel.label": "轮播",
   "carousel.description": "轮播",
   "timer.start": "开始",

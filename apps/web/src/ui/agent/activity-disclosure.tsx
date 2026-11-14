@@ -4,9 +4,9 @@ import { type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Children, useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
-import { vocab } from "@flame/ui";
+import { vocab, ButtonPrimitive } from "@flame/ui";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
-import { Pressable } from "@/ui/atoms/pressable";
+
 import { ProgressBar } from "@flame/ui";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { toneInk } from "@flame/ui/tone-ink";
@@ -405,7 +405,7 @@ function TriggerShell({
     );
   }
   return (
-    <Pressable
+    <ButtonPrimitive
       id={id}
       type="button"
       aria-expanded={open}
@@ -415,6 +415,6 @@ function TriggerShell({
       className={className}
     >
       {children}
-    </Pressable>
+    </ButtonPrimitive>
   );
 }

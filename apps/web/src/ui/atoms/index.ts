@@ -18,7 +18,6 @@ export { Loader } from "@/ui/atoms/loader";
 export { ContextMenu, DropdownMenu } from "@/ui/atoms/menu";
 export { OptionRow } from "@/ui/atoms/option-row";
 export { Popover } from "@flame/ui";
-export { Pressable } from "@/ui/atoms/pressable";
 export { Gauge } from "@/ui/atoms/gauge";
 export { ProgressBar } from "@flame/ui";
 export { ProviderIcon, providerDisplayName } from "@/ui/atoms/provider-icon";

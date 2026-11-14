@@ -23,6 +23,54 @@ const press = (init: Partial<KeyboardEventInit> = {}) =>
   );
 
 describe("shortcuts provider", () => {
+  it.each([
+    { isComposing: true, keyCode: 13 },
+    { isComposing: false, keyCode: 229 },
+    { repeat: true, keyCode: 13 },
+  ])(
+    "leaves a rebound Enter command to its input owner during $isComposing/$keyCode/$repeat",
+    async (suppressed) => {
+      const run = vi.fn();
+      useShortcutOverrides.setState({ overrides: { "test.ime": "enter" }, recording: false });
+      await loadPluginsForTest(
+        definePlugin({
+          name: "test.command.ime",
+          setup(ctx) {
+            ctx.contributions.add(COMMAND, { id: "test.ime", label: "Act", combo: "Alt+K", run });
+          },
+        }),
+      );
+      const view = testClient.render(
+        <>
+          <ShortcutsProvider />
+          <input aria-label="Draft" />
+        </>,
+      );
+      const input = screen.getByRole("textbox", { name: "Draft" });
+      input.focus();
+      const key = (extra: KeyboardEventInit = {}) =>
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          bubbles: true,
+          cancelable: true,
+          ...extra,
+        });
+      const composing = key(suppressed);
+      expect(input.dispatchEvent(composing)).toBe(true);
+      expect(run).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(input);
+      const consumed = key();
+      consumed.preventDefault();
+      input.dispatchEvent(consumed);
+      expect(run).not.toHaveBeenCalled();
+      expect(input.dispatchEvent(key())).toBe(false);
+      expect(run).toHaveBeenCalledOnce();
+      useShortcutOverrides.setState({ overrides: {}, recording: false });
+      view.unmount();
+    },
+  );
+
   it("binds a command's combo without anything else listing the command", async () => {
     const run = vi.fn();
     await loadPluginsForTest(

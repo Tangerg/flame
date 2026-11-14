@@ -200,8 +200,22 @@ export function readSourceGraph(root = process.cwd()) {
       for (const specifier of importEdges(source)) {
         if (!specifier || !ts.isStringLiteralLikeNode(specifier)) continue;
         const name = specifier.text;
+        const worker = name.match(/^(.+)\?worker(?:&inline)?$/);
         let target;
-        if (name === FRAME_JSON_EDGE) {
+        if (worker && (name.startsWith(".") || name.startsWith("@/"))) {
+          const request = name.startsWith("@/")
+            ? resolve(src, worker[1].slice(2))
+            : resolve(path, "..", worker[1]);
+          const entry = expected.find(
+            (file) => file === request || file === `${request}.ts`,
+          );
+          if (!entry) {
+            throw new Error(
+              `unresolved local worker: ${localName(path)} -> ${name}`,
+            );
+          }
+          target = localName(entry);
+        } else if (name === FRAME_JSON_EDGE) {
           target = FRAME_JSON_EDGE;
         } else if (
           name === RUNTIME_CLIENT_EDGE ||

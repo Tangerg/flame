@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
-import { MENU_SURFACE } from "@flame/ui";
+import { MENU_SURFACE, ButtonPrimitive, type ButtonPrimitiveProps } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, space, surface, type } from "@flame/ui/tokens.stylex";
-import { Pressable, type PressableProps } from "@/ui/atoms/pressable";
+
 export type RowLayout = "grid" | "flex" | "glyph" | "pick" | "pickWide" | "pickPlain";
 
 type RowSize = "sm" | "md" | "lg";
@@ -48,7 +48,7 @@ export const floatingRow = (layout: RowLayout = "grid", size: RowSize = "md") =>
   floatingRowStyles[size],
 ];
 
-export type OptionRowProps = Omit<PressableProps, "aria-selected"> & {
+export type OptionRowProps = Omit<ButtonPrimitiveProps, "aria-selected"> & {
   layout?: RowLayout;
   size?: RowSize;
   selected?: boolean;
@@ -57,7 +57,7 @@ export type OptionRowProps = Omit<PressableProps, "aria-selected"> & {
 export function OptionRow({ layout, size, selected, className, ...props }: OptionRowProps) {
   const styled = stylex.props(floatingRow(layout, size));
   return (
-    <Pressable
+    <ButtonPrimitive
       {...props}
       type={props.type ?? "button"}
       {...(selected === undefined

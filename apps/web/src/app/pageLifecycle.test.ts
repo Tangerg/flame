@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { bindClientPageLifecycle, bindDraftExitWarning } from "@/app/pageLifecycle";
 import { ClientRenderer } from "@/app/renderer";
 import { createComposerStore } from "@/features/composer/adapters/composerStore";
-import { mockLocalStorage } from "@/test/localStorage";
+import { refuseDraftStorage } from "@/test/draftStorage";
 
 const disposals: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -58,10 +58,11 @@ describe("client page lifecycle", () => {
     drafts.activate("https://draft-exit.test");
     const unbind = bindDraftExitWarning(window, drafts);
     const leaving = () => window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
-    const refusal = mockLocalStorage();
-    refusal.storage.setItem.mockImplementation(() => {
-      throw new DOMException("storage quota exceeded", "QuotaExceededError");
-    });
+    await vi.waitFor(() => expect(drafts.store.getState().persistenceState.status).toBe("saved"));
+    const refusal = refuseDraftStorage(
+      "save",
+      new DOMException("storage quota exceeded", "QuotaExceededError"),
+    );
     try {
       expect(leaving()).toBe(true);
       drafts.store.getState().setValue("unconfirmed draft");
@@ -69,32 +70,40 @@ describe("client page lifecycle", () => {
       expect(page.unmount).not.toHaveBeenCalled();
       expect(page.closeConnection).not.toHaveBeenCalled();
       expect(page.input.isConnected).toBe(true);
+      await vi.waitFor(() =>
+        expect(drafts.store.getState().persistenceState.status).toBe("failed"),
+      );
       refusal.restore();
       drafts.retryPersistence();
+      await vi.waitFor(() => expect(drafts.store.getState().persistenceState.status).toBe("saved"));
       expect(leaving()).toBe(true);
       expect(page.mount).toHaveBeenCalledOnce();
     } finally {
       refusal.restore();
       unbind();
       drafts.dispose();
-      localStorage.removeItem("flame.composer:https%3A%2F%2Fdraft-exit.test");
     }
   });
 
-  it("retains the exit warning for an inactive target and removes it on unbinding", () => {
+  it("retains the exit warning for an inactive target and removes it on unbinding", async () => {
     const drafts = createComposerStore();
     drafts.activate("https://draft-exit-original.test");
     const unbind = bindDraftExitWarning(window, drafts);
     const leaving = () => window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
-    const refusal = mockLocalStorage();
-    refusal.storage.setItem.mockImplementation(() => {
-      throw new DOMException("storage quota exceeded", "QuotaExceededError");
-    });
+    await vi.waitFor(() => expect(drafts.store.getState().persistenceState.status).toBe("saved"));
+    const refusal = refuseDraftStorage(
+      "save",
+      new DOMException("storage quota exceeded", "QuotaExceededError"),
+    );
     try {
       drafts.store.getState().setValue("original target draft");
+      await vi.waitFor(() =>
+        expect(drafts.store.getState().persistenceState.status).toBe("failed"),
+      );
       refusal.restore();
       drafts.activate("https://draft-exit-successor.test");
       drafts.store.getState().setValue("saved successor draft");
+      await vi.waitFor(() => expect(drafts.store.getState().persistenceState.status).toBe("saved"));
       expect(leaving()).toBe(false);
       unbind();
       expect(leaving()).toBe(true);
@@ -102,9 +111,6 @@ describe("client page lifecycle", () => {
       refusal.restore();
       unbind();
       drafts.dispose();
-      for (const target of ["original", "successor"]) {
-        localStorage.removeItem(`flame.composer:https%3A%2F%2Fdraft-exit-${target}.test`);
-      }
     }
   });
 

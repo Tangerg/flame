@@ -11,8 +11,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
 import { Chip } from "@/ui/index";
-import { LightboxDialog } from "@flame/ui";
-import { Pressable } from "@/ui/index";
+import { LightboxDialog, ButtonPrimitive } from "@flame/ui";
+
 import { TextEditorDialog } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";
@@ -151,13 +151,13 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         onOpenChange={setOpen}
         title={name}
         trigger={
-          <Pressable
+          <ButtonPrimitive
             aria-label={t("composer.image.preview")}
             title={image.name}
             {...stylex.props(composerStyles.thumbOpen)}
           >
             <img src={src} alt={image.name ?? ""} {...stylex.props(composerStyles.thumbImage)} />
-          </Pressable>
+          </ButtonPrimitive>
         }
       >
         <img src={src} alt={image.name ?? ""} {...stylex.props(composerStyles.previewImage)} />

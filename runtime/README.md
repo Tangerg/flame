@@ -4,6 +4,13 @@ Delivery selects an operation problem's registered kind explicitly. Diagnostic
 causes cannot reclassify an output defect as a caller error; cancellation stays
 observable beside the original public failure for in-process callers.
 
+A configured Web distribution must include its current build policy. The shared
+`local-runtime/webassets` delivery verifies registered artifact bytes, applies
+nonce-based script CSP and main-document embedding denial, and keeps HTML
+`no-store` with unconditional fresh 200 responses. Only build-proven fingerprint
+URLs receive immutable caching; unversioned public resources remain updateable.
+Protocol responses and resource leases retain their own no-store policy.
+
 Local HTTP requests in token-free mode must use the loopback listener authority. Browser origins must be the listener origin or an explicitly allowed UI origin. OAuth token forms may follow redirects only within the original issuer endpoint origin. If a system browser cannot open, configure its launcher and start a new sign-in attempt.
 
 HTTP RPC scalar metadata occurs at most once. Repeated credentials, content type,

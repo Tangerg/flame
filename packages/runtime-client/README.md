@@ -19,6 +19,15 @@ later edits to the supplied configuration cannot change an admitted connection.
 Every received message completes transport consumption, including a response
 rejected for a mismatched RPC identity. The original request is refused without
 settling another request or requiring cancellation to release stream backpressure.
+Response-body cancellation has one promise per reader. Abort, parsing failure and
+transport shutdown join that original cancellation before releasing the lock.
+Document failures retain their primary cause and secondary cleanup failure;
+HTTP shutdown also retains cleanup failures after a caller already observed
+cancellation. Repeated close returns the same settlement, with each original
+cancellation operation reported once, including equal non-Error rejection values
+from independent readers. Expected aborts
+alone remain successful cleanup.
+
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
 header normalization must never replace a captured command key or replay cursor.

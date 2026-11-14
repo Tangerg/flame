@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
+import { isImeKey } from "@flame/ui";
 import { dispatchBinding, normalizeCombo } from "@/lib/combo";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
 import { useKeymap } from "@/features/command/keymap";
@@ -38,7 +39,7 @@ export function ShortcutsProvider() {
 
     return tinykeys(window, bindings, {
       // A local owner that cancelled the key (a reader's Select All) has consumed it.
-      ignore: (event) => event.repeat || event.isComposing || event.defaultPrevented,
+      ignore: (event) => event.repeat || isImeKey(event) || event.defaultPrevented,
     });
   }, [shortcuts]);
 

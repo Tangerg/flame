@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
+import { describe, expect, it, vi } from "vitest";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import { remarkSyntax } from "./remarkSyntax";
+import { createStreamingBlockSplitter, splitStreamingBlocks } from "./splitStreamingBlocks";
 const CASES: readonly [name: string, markdown: string, blocks: readonly string[]][] = [
   ["two paragraphs", "alpha\n\nbeta", ["alpha", "\n\n", "beta"]],
   [
@@ -84,5 +87,70 @@ describe("splitStreamingBlocks", () => {
     }
     expect(rewritten).toEqual([]);
     expect(splitStreamingBlocks(document).at(-1)).toBe("last para");
+  });
+});
+
+describe("incremental streaming block ownership", () => {
+  const parser = unified().use(remarkParse).use(remarkSyntax);
+  const semantics = (blocks: string[]) =>
+    JSON.stringify(
+      {
+        type: "root",
+        children: blocks.flatMap((block) => parser.parse(block).children),
+      },
+      (key, value) => (key === "position" ? undefined : value),
+    );
+
+  it.each([
+    "# Heading\n\nA paragraph.\n\nA second paragraph.\n\nlast tail",
+    "A title\n---\n\n- one\n\n  next paragraph\n- two\n\nlast tail",
+    "before\n\n| Left | Right |\n| --- | --- |\n| one | two |\n\nafter",
+    "before\n\n```md\n[^literal]: ignored\n\ninside\n```\n\nafter",
+    "before\n\n<div>\n\n<p>inside</p>\n\n</div>\n\nafter",
+    "[late][guide]\n\nA later paragraph.\n\n[guide]: https://example.test",
+    "A supported claim[^来源].\n\nother paragraph\n\n[^来源]: supporting note",
+    "before\n\n\\[\nx^2\n\n+ y^2\n\\]\n\nafter",
+    "before\n\n$$\nx^2\n\n+ y^2\n$$\n\nafter",
+  ])("keeps complete-document semantics through appends: %s", (source) => {
+    const split = createStreamingBlockSplitter();
+    for (let end = 1; end <= source.length; end += 3) {
+      const prefix = source.slice(0, end);
+      const blocks = split(prefix);
+      expect(blocks.join("")).toBe(prefix);
+      expect(semantics(blocks)).toBe(semantics([prefix]));
+    }
+    expect(semantics(split(source))).toBe(semantics([source]));
+  });
+
+  it("parses only the mutable tail after committing a long prefix", () => {
+    const split = createStreamingBlockSplitter();
+    const prefix = Array.from(
+      { length: 30 },
+      (_, index) => `# Section ${index}\n\nParagraph ${index}.\n\n`,
+    ).join("");
+    split(`${prefix}tail`);
+    const parse = vi.spyOn(Object.getPrototypeOf(unified()), "parse");
+    try {
+      const result = split(`${prefix}tail grows`);
+      expect(result.join("")).toBe(`${prefix}tail grows`);
+      expect(parse).toHaveBeenCalledOnce();
+      expect(String(parse.mock.calls[0]![0])).toBe("\n\ntail grows");
+    } finally {
+      parse.mockRestore();
+    }
+  });
+
+  it("retires cached prefixes after a rollback or replacement and repairs only the current tail", () => {
+    const split = createStreamingBlockSplitter();
+    const repair = vi.fn((tail: string) => tail);
+    split("# Original\n\nFirst.\n\nTail", repair);
+    const next = split("# Original\n\nFirst.\n\nTail grows", repair);
+    expect(next.join("")).toBe("# Original\n\nFirst.\n\nTail grows");
+    expect(repair.mock.lastCall![0]).not.toContain("# Original");
+    expect(split("# Original", repair).join("")).toBe("# Original");
+    expect(split("A replacement\n\n[link][id]\n\n[id]: https://example.test", repair)).toEqual([
+      "A replacement\n\n[link][id]\n\n[id]: https://example.test",
+    ]);
+    expect(split("New plain reply")).toEqual(["New plain reply"]);
   });
 });

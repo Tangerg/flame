@@ -786,6 +786,10 @@
   "composer.mention.status.no-workspace": "파일을 참조하려면 프로젝트를 선택하세요",
   "settings.search.empty": "“{{query}}”와(과) 일치하는 설정이 없습니다.",
   "startup.failed.title": "Flame을 시작할 수 없습니다",
+  "startup.unsupported.body": "이 브라우저에는 Flame에 필요한 기능이 없습니다. 브라우저를 업데이트하거나 macOS와 Safari를 업데이트한 다음 Flame을 다시 여세요.",
+  "startup.unsupported.browsers": "지원 브라우저",
+  "startup.unsupported.features": "누락된 브라우저 기능",
+  "startup.loadFailed.body": "앱을 불러오지 못했습니다. 이 창을 새로고침한 뒤 다시 시도하세요.",
   "startup.failed.body": "창이 준비되기 전에 문제가 발생했습니다. 다시 시도하거나 진단 정보를 복사해 보고하세요.",
   "startup.failed.copy": "진단 정보 복사",
   "startup.failed.copied": "복사됨",
@@ -902,5 +906,14 @@
   "session.regenerate.noInput": "기록은 복원되었지만 Runtime이 원래 입력을 반환하지 않았습니다. 아무 내용도 다시 보내지 않았습니다.",
   "composer.image.reading": "{{name}} 읽는 중…",
   "composer.image.failed": "{{name}}을(를) 읽을 수 없습니다. 삭제한 후 다시 선택하세요.",
-  "composer.image.ready": "{{name}} 준비 완료"
+  "composer.image.ready": "{{name}} 준비 완료",
+  "composer.persistence.loading": "저장된 초안을 읽는 중입니다. 읽는 동안 새로 편집한 내용은 여기에 유지됩니다.",
+  "composer.persistence.pending": "이 기기에 초안 변경 내용을 저장하는 중…",
+  "composer.legacy.available": "이전 저장소에 초안이 있습니다. 새 초안 저장소를 사용하려면 편집하기 전에 가져오세요.",
+  "composer.legacy.import": "기존 초안 가져오기",
+  "composer.legacy.blocked": "이전 초안 백업은 보존됩니다. 새 저장소는 이미 사용 중이므로 백업을 복사해 비어 있는 저장소로 가져오세요.",
+  "composer.legacy.failed": "이전 초안 백업을 읽거나 가져올 수 없습니다. 원본 백업은 변경되지 않았습니다.",
+  "composer.legacy.importing": "기존 초안을 가져오는 중… 원본 백업은 보존됩니다.",
+  "composer.legacy.copy": "이전 초안 백업 복사",
+  "composer.legacy.copied": "이전 초안 백업 복사됨"
 }

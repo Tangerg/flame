@@ -822,6 +822,10 @@
   "composer.mention.status.no-workspace": "Choisissez un projet pour citer ses fichiers",
   "settings.search.empty": "Aucun réglage ne correspond à « {{query}} ».",
   "startup.failed.title": "Flame n’a pas pu démarrer",
+  "startup.unsupported.body": "Ce navigateur ne dispose pas des fonctionnalités nécessaires à Flame. Mettez à jour votre navigateur, ou macOS et Safari, puis rouvrez Flame.",
+  "startup.unsupported.browsers": "Navigateurs compatibles",
+  "startup.unsupported.features": "Fonctionnalités du navigateur manquantes",
+  "startup.loadFailed.body": "Impossible de charger l’application. Rechargez cette fenêtre pour réessayer.",
   "startup.failed.body": "Un problème est survenu avant que la fenêtre soit prête. Réessayez ou copiez le diagnostic pour le signaler.",
   "startup.failed.copy": "Copier le diagnostic",
   "startup.failed.copied": "Copié",
@@ -944,5 +948,14 @@
   "session.regenerate.noInput": "L’historique a été restauré, mais Runtime n’a pas renvoyé la demande d’origine. Rien n’a été renvoyé.",
   "composer.image.reading": "Lecture de {{name}}…",
   "composer.image.failed": "Impossible de lire {{name}}. Supprimez l’image et sélectionnez-la à nouveau.",
-  "composer.image.ready": "Image prête : {{name}}"
+  "composer.image.ready": "Image prête : {{name}}",
+  "composer.persistence.loading": "Chargement des brouillons enregistrés. Les nouvelles modifications restent ici pendant le chargement.",
+  "composer.persistence.pending": "Enregistrement des modifications du brouillon sur cet appareil…",
+  "composer.legacy.available": "Des brouillons sont présents dans l’ancien stockage. Importez-les avant toute modification pour utiliser le nouveau stockage de brouillons.",
+  "composer.legacy.import": "Importer les brouillons existants",
+  "composer.legacy.blocked": "La sauvegarde des anciens brouillons est conservée. Le nouveau stockage est déjà utilisé ; copiez la sauvegarde pour l’importer dans un stockage vide.",
+  "composer.legacy.failed": "Impossible de lire ou d’importer la sauvegarde des anciens brouillons. L’original reste inchangé.",
+  "composer.legacy.importing": "Importation des brouillons existants… La sauvegarde d’origine sera conservée.",
+  "composer.legacy.copy": "Copier la sauvegarde des anciens brouillons",
+  "composer.legacy.copied": "Sauvegarde des anciens brouillons copiée"
 }

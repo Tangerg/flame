@@ -363,6 +363,20 @@ emphasizes revision and review of the exported result. Flame implements those
 principles through its existing plugin lifecycle rather than another artifact or
 agent runtime.
 
+ExcelJS remains confined to the managed workbook writer; it is not a Web startup
+dependency. Its supported styles, typed cells, formulas, tables, validation,
+conditional formatting, images, chart-part edits and imported-package preservation
+must survive any replacement. ExcelJS 4.4.0 is the latest release in the
+[upstream release channel](https://github.com/exceljs/exceljs/releases); its deprecated
+transitive archive/CSV dependencies remain maintenance debt. A dependency update
+must inspect that selected tree and audit results, then run workbook creation,
+import, local-edit and actual LibreOffice recalculation/rendering regressions before
+adoption. A new upstream release, a relevant advisory or an independently reviewed
+maintained replacement triggers this work. Cross-major overrides of archive or
+filesystem dependencies do not establish API compatibility and are not used to
+hide installation warnings. The current pin is retained until that qualification
+succeeds; an empty advisory result does not remove this maintenance requirement.
+
 The native writers are [docx](https://docx.js.org/),
 [ExcelJS](https://github.com/exceljs/exceljs) and
 [PptxGenJS](https://gitbrent.github.io/PptxGenJS/); PDF edits use

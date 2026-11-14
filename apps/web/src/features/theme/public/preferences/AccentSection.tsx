@@ -1,3 +1,4 @@
+import { ButtonPrimitive } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
 import { ACCENT } from "@/features/theme/public/extensionPoints";
@@ -7,7 +8,7 @@ import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appear
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { ColorPickerInput } from "@/ui/index";
 import { Icon } from "@/ui/index";
-import { Pressable } from "@/ui/index";
+
 import { corner, motion, space, surface } from "@flame/ui/tokens.stylex";
 const RAINBOW_HINT =
   "conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7, #ec4899, #ef4444)";
@@ -116,7 +117,7 @@ export function AccentSection() {
           const fill = solidFill(swatch.color);
           const selected = isSelected(swatch.color);
           return (
-            <Pressable
+            <ButtonPrimitive
               key={swatch.id}
               type="button"
               onClick={() => setAccent(swatch.color)}
@@ -131,7 +132,7 @@ export function AccentSection() {
                 style={{ background: fill }}
               />
               <SelectionMark selected={selected} fill={fill} />
-            </Pressable>
+            </ButtonPrimitive>
           );
         })}
         <CustomAccentPicker

@@ -34,6 +34,8 @@ export const ko: Record<string, string> = {
   "image.unavailable": "이 이미지를 표시할 수 없습니다.",
   "code.label": "코드",
   "markdown.table": "Markdown 표",
+  "markdown.footnotes": "각주",
+  "markdown.backReference": "참조 {{reference}}(으)로 돌아가기",
   "carousel.label": "캐러셀",
   "carousel.description": "캐러셀",
   "timer.start": "시작",

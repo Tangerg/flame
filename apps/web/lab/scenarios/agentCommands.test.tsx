@@ -13,7 +13,11 @@ import { activeLocale, setLocale } from "@/lib/i18n/index";
 import { queryClient } from "@/lib/queryClient";
 import { resetKernelForTest } from "@/test/kernel";
 import { createVisualClient, type VisualClient } from "./client";
-import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import {
+  VISUAL_CAPABILITIES,
+  VISUAL_FILE_MENTION_DRAFT,
+  type VisualFileListState,
+} from "./agentFixtureFacts";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   VISUAL_ROOT_RUN_ID,
@@ -48,7 +52,11 @@ afterEach(async () => {
   delete document.documentElement.dataset.visualSentInput;
 });
 
-async function mountAgent(state: VisualAgentState) {
+async function mountAgent(
+  state: VisualAgentState,
+  initialDraft?: string,
+  fileListState?: VisualFileListState,
+) {
   const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]);
   const transport = createVisualRuntimeTransport(snapshot, VISUAL_CAPABILITIES, async () => {
     throw new Error("The Agent fixture has no workspace diff read");
@@ -58,6 +66,11 @@ async function mountAgent(state: VisualAgentState) {
   client = runtime;
   const owned = createVisualClient(() => runtime);
   visual = owned;
+  if (initialDraft !== undefined) {
+    owned.composer.activate(owned.runtime.endpoint.currentRuntimeEndpoint());
+    owned.composer.store.getState().loadSession(VISUAL_SESSION_ID);
+    owned.composer.store.getState().replaceDraft({ text: initialDraft });
+  }
   const view = await installVisualAgentFixture(
     owned,
     () => runtime,
@@ -65,6 +78,7 @@ async function mountAgent(state: VisualAgentState) {
     undefined,
     snapshot,
     VISUAL_CAPABILITIES,
+    fileListState,
   );
   const original = owned.agent.dependencies.view.getSession(VISUAL_SESSION_ID);
   if (!original?.send)
@@ -88,6 +102,29 @@ async function mountAgent(state: VisualAgentState) {
   );
   return { visual: owned, sendInput, createSession, requests };
 }
+
+it.each([
+  { state: "idle", fileListState: undefined, expected: "Existing owned draft" },
+  { state: "idle", fileListState: "loading", expected: VISUAL_FILE_MENTION_DRAFT },
+  { state: "steer", fileListState: undefined, expected: "Tighten the error copy and continue." },
+  { state: "running", fileListState: undefined, expected: "" },
+] satisfies Array<{
+  state: VisualAgentState;
+  fileListState?: VisualFileListState;
+  expected: string;
+}>)(
+  "keeps the $state fixture's draft and model in the composer owner ($fileListState)",
+  async ({ state, fileListState, expected }) => {
+    const { visual } = await mountAgent(state, "Existing owned draft", fileListState);
+    const store = visual.composer.store;
+    expect(store.getState().composer.draft.value).toBe(expected);
+    const preference = store.getState().modelPreference;
+    expect(preference.kind).toBe("explicit");
+    act(() => store.getState().setValue(`${expected} edited`));
+    expect(store.getState().modelPreference).toEqual(preference);
+    expect(store.getState().composer.draft.value).toBe(`${expected} edited`);
+  },
+);
 
 function pressEscape(target: Element) {
   fireEvent(

@@ -76,6 +76,212 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 describe("HTTPTransport — streamable HTTP", () => {
+  it.each(["request stopped", { owner: "request" }])(
+    "keeps an explicit caller abort expected while close joins its document (%s)",
+    async (reason) => {
+      const owner = new AbortController();
+      const cancel = vi.fn();
+      const response = new Response(new ReadableStream<Uint8Array>({ cancel }), {
+        headers: { "Content-Type": "application/json" },
+      });
+      const transport = createHttpTransport({ baseUrl: "http://x", fetch: async () => response });
+      const refused = transport
+        .send(req("1", "runtime.discover"), owner.signal)
+        .catch((error: unknown) => error);
+      await vi.waitFor(() => {
+        expect(response.bodyUsed).toBe(true);
+        expect(response.body!.locked).toBe(true);
+      });
+      owner.abort(reason);
+      await transport.close();
+      await expect(refused).resolves.toBe(reason);
+      expect(cancel).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    undefined,
+    "cancel failed",
+    new Error("shared cancel failure"),
+    new DOMException("independent cancellation failed", "AbortError"),
+  ])(
+    "retains each independent cancellation even when two readers reject the same value (%s)",
+    async (failure) => {
+      const cancels = [vi.fn(() => Promise.reject(failure)), vi.fn(() => Promise.reject(failure))];
+      const bodies = cancels.map((cancel) => new ReadableStream<Uint8Array>({ cancel }));
+      let next = 0;
+      const transport = createHttpTransport({
+        baseUrl: "http://x",
+        fetch: async () =>
+          new Response(bodies[next++], {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      });
+      await transport.send(req("1", "runs.start"));
+      await transport.send(req("2", "runs.start"));
+      const closing = transport.close();
+      expect(transport.close()).toBe(closing);
+      await expect(closing).rejects.toMatchObject({ errors: [failure, failure] });
+      for (const cancel of cancels) expect(cancel).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("retains an unexpected active fetch refusal during shutdown", async () => {
+    const response = Promise.withResolvers<Response>();
+    const failure = new Error("unexpected fetch cleanup failure");
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: () => response.promise });
+    const sending = transport.send(req("1", "runtime.discover"));
+    const refused = sending.catch((error: unknown) => error);
+    const failedClose = transport.close().catch((error: unknown) => error);
+    response.reject(failure);
+    await expect(refused).resolves.toMatchObject({ cause: failure });
+    await expect(failedClose).resolves.toMatchObject({
+      errors: [expect.objectContaining({ cause: failure })],
+    });
+  });
+
+  it("closes normally when a parsed JSON response is waiting for its retired consumer", async () => {
+    const response = jsonResponse({ jsonrpc: "2.0", id: "1", result: {} });
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: async () => response });
+    const sending = transport.send(req("1", "runtime.discover"));
+    const refused = sending.catch((error: unknown) => error);
+    await vi.waitFor(() => {
+      expect(response.bodyUsed).toBe(true);
+      expect(response.body!.locked).toBe(false);
+    });
+    await transport.close();
+    await expect(refused).resolves.toMatchObject({ name: "RpcTransportError" });
+    await expect(transport.send(req("2", "runtime.discover"))).rejects.toThrow("transport closed");
+    await transport.close();
+  });
+
+  it.each([1, 2])(
+    "preserves %d reader cancellation failures once across repeated close",
+    async (count) => {
+      const failures = [new Error("first cancel failed"), "second cancel failed"].slice(0, count);
+      const cancellations = failures.map((failure) => vi.fn(() => Promise.reject(failure)));
+      const bodies = cancellations.map((cancel) => new ReadableStream<Uint8Array>({ cancel }));
+      let next = 0;
+      const transport = createHttpTransport({
+        baseUrl: "http://x",
+        fetch: async () =>
+          new Response(bodies[next++], { headers: { "Content-Type": "text/event-stream" } }),
+      });
+      for (let index = 0; index < count; index++)
+        await transport.send(req(String(index), "runs.start"));
+      const closing = transport.close();
+      expect(transport.close()).toBe(closing);
+      await expect(closing).rejects.toMatchObject({ errors: failures });
+      await expect(transport.close()).rejects.toMatchObject({ errors: failures });
+      for (const cancel of cancellations) expect(cancel).toHaveBeenCalledOnce();
+      for (const body of bodies) expect(body.locked).toBe(false);
+    },
+  );
+
+  it("retains an undefined cancellation rejection rather than reporting close as success", async () => {
+    const body = new ReadableStream<Uint8Array>({ cancel: () => Promise.reject(undefined) });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: async () =>
+        new Response(body, {
+          headers: { "Content-Type": "text/event-stream" },
+        }),
+    });
+    await transport.send(req("1", "runs.start"));
+    await expect(transport.close()).rejects.toMatchObject({ errors: [undefined] });
+  });
+
+  it("joins a response reader supplied after closing begins", async () => {
+    const response = Promise.withResolvers<Response>();
+    const cleanup = new Error("late reader cancel failed");
+    const cancel = vi.fn(() => Promise.reject(cleanup));
+    const body = new ReadableStream<Uint8Array>({ cancel });
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: () => response.promise });
+    const sending = transport.send(req("1", "runs.start"));
+    const closing = transport.close();
+    response.resolve(new Response(body, { headers: { "Content-Type": "text/event-stream" } }));
+    await sending;
+    await expect(closing).rejects.toMatchObject({ errors: [cleanup] });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(body.locked).toBe(false);
+  });
+
+  it("does not promote the original socket read failure to cleanup when closing aborts its request", async () => {
+    const reset = Object.assign(new Error("aborted"), { code: "ECONNRESET" });
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(source) {
+        controller = source;
+      },
+      cancel,
+    });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: async (_input, init) => {
+        init?.signal?.addEventListener("abort", () => controller.error(reset), { once: true });
+        return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
+      },
+    });
+    await transport.send(req("1", "runs.start"));
+
+    const closing = transport.close();
+    expect(transport.close()).toBe(closing);
+    await expect(closing).resolves.toBeUndefined();
+    await expect(transport.close()).resolves.toBeUndefined();
+    expect(body.locked).toBe(false);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("retains cleanup after the sole event consumer returns", async () => {
+    const cleanup = new Error("consumer return cancel failed");
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(frame({ jsonrpc: "2.0", id: "1", result: {} })),
+        );
+      },
+      cancel: () => Promise.reject(cleanup),
+    });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: async () =>
+        new Response(body, {
+          headers: { "Content-Type": "text/event-stream" },
+        }),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    await transport.send(req("1", "runs.start"));
+    await events.next();
+    await events.return?.();
+    await expect(transport.close()).rejects.toMatchObject({ errors: [cleanup] });
+  });
+
+  it("preserves document cancellation failure after an RPC has already settled as cancelled", async () => {
+    const cleanup = new Error("document cancel failed");
+    const cancel = vi.fn(() => Promise.reject(cleanup));
+    const ready = deferred();
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: async () => {
+        ready.resolve();
+        return new Response(new ReadableStream<Uint8Array>({ cancel }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      },
+    });
+    const client = createFlameClient(transport);
+    const owner = new AbortController();
+    const query = client.runtime.discover(owner.signal);
+    const refused = query.catch((error: unknown) => error);
+    await ready.promise;
+    await Promise.resolve();
+    owner.abort();
+    await expect(refused).resolves.toMatchObject({ name: "RpcCancellationError" });
+    await expect(client.close()).rejects.toMatchObject({ errors: [cleanup] });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it.each([
     { status: 202, contentType: "application/json" },
     { status: 200, contentType: "text/event-stream" },
@@ -759,7 +965,7 @@ describe("HTTPTransport — streamable HTTP", () => {
       expect(event.value).toMatchObject({ type: "requestError", error: failure });
       expect(failure.cause).toBe(cleanup);
     } finally {
-      await transport.close();
+      await expect(transport.close()).rejects.toMatchObject({ errors: [cleanup] });
     }
   });
 

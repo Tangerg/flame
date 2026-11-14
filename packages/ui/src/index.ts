@@ -147,3 +147,12 @@ export {
 export { ButtonPrimitive, type ButtonPrimitiveProps } from "./button-primitive";
 
 export { remarkCallouts, taskListContent, visibleText } from "./markdown";
+export {
+  isMarkdownFragment,
+  rehypeFootnoteLabels,
+} from "./markdown-references";
+export {
+  imageSizeFromBase64,
+  imageSizeFromBytes,
+  type PixelSize,
+} from "./image-dimensions";

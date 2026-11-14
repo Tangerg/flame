@@ -3,10 +3,10 @@ import { useId } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
-import { Pressable } from "@/ui/index";
+
 import { reveal } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
-import { RecordSummary, toneInk, vocab } from "@flame/ui";
+import { RecordSummary, toneInk, vocab, ButtonPrimitive } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   openWorkspaceSubagentRun,
@@ -74,7 +74,7 @@ export function DelegatedRunLink({
       data-run-id={run.id}
       {...stylex.props(styles.row, reveal.host)}
     >
-      <Pressable
+      <ButtonPrimitive
         aria-current={current ? "true" : undefined}
         onClick={(event) =>
           onOpen ? onOpen() : openWorkspaceSubagentRun(workspaceAccess, run.id, event.currentTarget)
@@ -116,7 +116,7 @@ export function DelegatedRunLink({
         >
           <Icon name="open" size="sm" />
         </span>
-      </Pressable>
+      </ButtonPrimitive>
       {model.cancelable && (
         <span {...stylex.props(styles.cancel, vocab.firstLine, typeStep.uiMd)}>
           <SubagentStopButton run={run} summaryId={summaryId} />

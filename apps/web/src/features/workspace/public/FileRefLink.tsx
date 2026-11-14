@@ -1,8 +1,9 @@
+import { ButtonPrimitive } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { createContext, Fragment, use, type RefObject } from "react";
 import { formatFileRef } from "@/features/agent/public/fileRefs";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
-import { Pressable } from "@/ui/index";
+
 export interface FileReferencePresentation {
   origin: RefObject<HTMLElement | null>;
   onOpen: () => void;
@@ -26,7 +27,7 @@ export function FileRefLink({
   const presentation = use(FileReferencePresentationContext);
   const label = formatFileRef({ path, line, column });
   return (
-    <Pressable
+    <ButtonPrimitive
       render={<span />}
       nativeButton={false}
       data-slot="file-reference"
@@ -56,6 +57,6 @@ export function FileRefLink({
           {segment}
         </Fragment>
       ))}
-    </Pressable>
+    </ButtonPrimitive>
   );
 }

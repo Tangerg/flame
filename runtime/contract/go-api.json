@@ -19212,6 +19212,31 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/local-runtime/webassets",
+      "imports": [
+        "io/fs",
+        "net/http"
+      ],
+      "functions": [
+        {
+          "name": "New",
+          "signature": "func(open func(string) (fs.File, error)) (*Handler, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Handler",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "ServeHTTP",
+              "signature": "func(w http.ResponseWriter, r *http.Request)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime",
       "imports": [
         "context",

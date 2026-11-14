@@ -8,7 +8,8 @@ prepareTestClient(() => {
 });
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
+import { loadHighlightLanguage } from "@/lib/highlight/shikiLanguages";
 import { CodeBlock, CodeHighlightProvider } from "@flame/ui";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { ShikiCodeBlock } from "@/ui/atoms/shiki-code-block";
@@ -16,7 +17,7 @@ const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).
 
 describe("ShikiCodeBlock", () => {
   beforeAll(async () => {
-    await getHighlighter("javascript");
+    await getHighlighter(await loadHighlightLanguage("javascript"));
   });
 
   beforeEach(() => {
@@ -32,30 +33,19 @@ describe("ShikiCodeBlock", () => {
         <ShikiCodeBlock lang="javascript" code={code} />
       </CodeHighlightProvider>
     );
-    vi.useFakeTimers();
-    try {
-      const view = testClient.render(block("const accepted = true;"));
-      await act(async () => {
-        await getHighlighter("javascript");
-      });
-      expect(view.container.querySelector("code .line")).not.toBeNull();
-      const region = view.container.querySelector("pre")!;
-      region.focus();
-      expect(document.activeElement).toBe(region);
+    const view = testClient.render(block("const accepted = true;"));
+    await waitFor(() => expect(view.container.querySelector("code .line")).not.toBeNull());
+    const region = view.container.querySelector("pre")!;
+    region.focus();
+    expect(document.activeElement).toBe(region);
 
-      const next = "const accepted = true;\nconst owner = 'Runtime';";
-      view.rerender(block(next));
-      expect(view.container.querySelector("pre")).toBe(region);
-      expect(region.textContent).toBe(next);
-      expect(document.activeElement).toBe(region);
-      await act(async () => {
-        await vi.runOnlyPendingTimersAsync();
-      });
-      expect(region.querySelector("code .line")).not.toBeNull();
-      expect(document.activeElement).toBe(region);
-    } finally {
-      vi.useRealTimers();
-    }
+    const next = "const accepted = true;\nconst owner = 'Runtime';";
+    view.rerender(block(next));
+    expect(view.container.querySelector("pre")).toBe(region);
+    expect(region.textContent).toBe(next);
+    expect(document.activeElement).toBe(region);
+    await waitFor(() => expect(region.querySelector("code .line")).not.toBeNull());
+    expect(document.activeElement).toBe(region);
   });
 
   it("keeps long code readable in its scrolling surface instead of replacing it with a fold row", async () => {
@@ -135,3 +125,5 @@ describe("ShikiCodeBlock", () => {
     }
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

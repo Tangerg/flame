@@ -11,9 +11,11 @@ export const subagentsView = definePlugin({
       order: 130,
       dock: "session",
       component: lazy(() =>
-        import("@/features/chat/message/ui/SubagentsPanel").then((m) => ({
-          default: m.SubagentsPanel,
-        })),
+        import(/* @flame-lazy:workspace */ "@/features/chat/message/ui/SubagentsPanel").then(
+          (m) => ({
+            default: m.SubagentsPanel,
+          }),
+        ),
       ),
     });
   },

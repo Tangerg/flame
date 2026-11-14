@@ -100,6 +100,29 @@ test("fails if a source is excluded or a local import cannot resolve", () => {
   );
 });
 
+test("retains inline worker dependencies and refuses missing worker sources", () => {
+  fixture(
+    {
+      "src/entry.ts":
+        'import Worker from "./job.worker?worker&inline"; export const load = () => new Worker();',
+      "src/job.worker.ts": 'import "./shared";',
+      "src/shared.ts": 'import "./entry";',
+    },
+    (root) => {
+      const { graph, values } = readSourceGraph(root);
+      assert.deepEqual(graph["entry.ts"], ["job.worker.ts"]);
+      assert.deepEqual(values["entry.ts"], ["job.worker.ts"]);
+      assert.deepEqual(values["job.worker.ts"], ["shared.ts"]);
+      assert.equal(findCycles(values).length, 1);
+    },
+  );
+  fixture(
+    { "src/entry.ts": 'import "./missing.worker.ts?worker&inline";' },
+    (root) =>
+      assert.throws(() => readSourceGraph(root), /unresolved local worker/),
+  );
+});
+
 test("includes module-specific TypeScript extensions in cycle and coverage checks", () => {
   fixture(
     {

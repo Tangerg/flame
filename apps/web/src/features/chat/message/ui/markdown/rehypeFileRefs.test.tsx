@@ -1,4 +1,4 @@
-import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient, vi } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
 prepareTestClient(() => {
@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { fireEvent, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
 import { useWorkspaceFileViewer } from "@/features/workspace/public/navigation";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { markdownSelectionPayload } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
@@ -97,3 +97,5 @@ describe("rehypeFileRefs", () => {
     expect(viewer.result.current).toEqual({ path: "src/main.ts", line: 0 });
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

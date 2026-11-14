@@ -845,6 +845,15 @@ Agent file suggestions select literal, case-insensitive path fragments from the
 same five captured files and honor the requested limit. This keeps attachment
 inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
+The existing highlight grammar case uses a real Worker and host request
+queue for every supported grammar, alias and both themes. It verifies exact literal
+source, unknown-language text behavior, one Worker across requests, and a fresh
+Worker after disposal. Happy DOM rendering tests substitute only the Worker
+transport while retaining the production engine; they do not establish native
+Worker or CSP compatibility.
+The interaction project's Vite development server uses module Workers; production
+inline Blob delivery and inherited CSP require the built Host's native gate.
+
 The existing Code reading scenario follows the same highlighted source and padded
 six-line draft through short reading frames in Chromium and WebKit, English and
 Chinese. Its nested-evidence task repeats that draft to eighteen lines. After
@@ -943,6 +952,13 @@ reading remains at the prefix through another resize; later input resumes
 editing. Local invalid-JSON feedback and Escape retain the draft and return to
 the opener. The task loads the real installed component and shared `TextArea`;
 there is no fixture editor or parallel visual entry.
+
+The macOS browser CI job runs the existing `lab:verify` projects after normal
+generation and installs their pinned Chromium and WebKit engines. Interaction,
+accessibility and explicit WebKit scenarios share this gate; their failures fail
+CI. This WebKit revision is not proof of the Safari 17.4 minimum or the native
+Wails host. The optional measurement project below remains a separate explicit
+command and does not turn variable performance measurements into a functional gate.
 
 ## Optional measurements
 

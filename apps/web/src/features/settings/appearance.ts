@@ -3,9 +3,11 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { APPEARANCE_PANE } from "@/features/settings/public/paneIDs";
 const AppearancePane = lazy(() =>
-  import("@/features/settings/ui/AppearancePane").then(({ AppearancePane }) => ({
-    default: AppearancePane,
-  })),
+  import(/* @flame-lazy:settings */ "@/features/settings/ui/AppearancePane").then(
+    ({ AppearancePane }) => ({
+      default: AppearancePane,
+    }),
+  ),
 );
 
 export default definePlugin({

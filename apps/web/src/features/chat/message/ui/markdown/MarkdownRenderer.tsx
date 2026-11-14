@@ -2,19 +2,18 @@ import { memo, useDeferredValue, useEffect, useId, useMemo, useRef } from "react
 import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
+import /* @flame-lazy:math-styles */ "katex/dist/katex.min.css";
 import rehypeRaw from "rehype-raw";
 import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
 import remend from "remend";
-import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
+import { createStreamingBlockSplitter } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
 import { isInlineImage } from "@/foundation/imageExport";
 import { handleMarkdownCopy } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 import { rehypeFileRefs } from "@/features/chat/message/ui/markdown/rehypeFileRefs";
-import { rehypeFootnoteLabels } from "@/features/chat/message/ui/markdown/rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "@/features/chat/message/ui/markdown/rehypeStreamCaret";
-import { remarkCallouts } from "@flame/ui";
+import { isMarkdownFragment, rehypeFootnoteLabels, remarkCallouts } from "@flame/ui";
 import { remarkLiteralUnknownHtml } from "@/features/chat/message/ui/markdown/remarkLiteralUnknownHtml";
 import {
   useCommitThrottle,
@@ -54,7 +53,10 @@ const allowElement = (el: { tagName: string }) => !DENIED_HTML_TAGS.has(el.tagNa
 const markdownUrlTransform: NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["urlTransform"]
 > = (value, _key, node) =>
-  node.tagName === "img" && isInlineImage(value) ? value : defaultUrlTransform(value);
+  (node.tagName === "img" && isInlineImage(value)) ||
+  (node.tagName === "a" && isMarkdownFragment(value))
+    ? value
+    : defaultUrlTransform(value);
 
 export function MarkdownRenderer(props: MarkdownMessageProps) {
   const { text, reveal } = props;
@@ -70,12 +72,11 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
   const source = instant ? committed : deferred;
   useVisibleTextMaterial(source === text);
 
-  const repaired = useMemo(() => {
-    if (instant) return source;
-    return remend(source);
-  }, [instant, source]);
-
-  const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
+  const split = useMemo(() => createStreamingBlockSplitter(), []);
+  const blocks = useMemo(
+    () => split(source, instant ? undefined : remend),
+    [instant, source, split],
+  );
   const lastIdx = blocks.length - 1;
 
   useEffect(() => {

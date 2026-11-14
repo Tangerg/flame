@@ -5,8 +5,8 @@ import { useT } from "@/lib/i18n/index";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/features/agent/public/conversation";
 import { type Message } from "@/features/agent/public/sessionView";
-import { Pressable } from "@/ui/index";
-import { RichTooltip, vocab } from "@flame/ui";
+
+import { RichTooltip, vocab, ButtonPrimitive } from "@flame/ui";
 import {
   foldExchanges,
   scrollToTurn,
@@ -97,7 +97,7 @@ export function TurnRail() {
             sideOffset={12}
             styles={tr.card}
             trigger={
-              <Pressable
+              <ButtonPrimitive
                 type="button"
                 data-chrome-focus=""
                 aria-current={active ? "true" : undefined}
@@ -117,7 +117,7 @@ export function TurnRail() {
                     } as CSSProperties
                   }
                 />
-              </Pressable>
+              </ButtonPrimitive>
             }
           >
             <TurnPreview turn={turn} answer={answerAfter(messages, turn.id)} />

@@ -439,7 +439,12 @@ reference links. Return links keep the common link underline beside surrounding
 text; superscript reference markers keep their raised numeric cue instead.
 Reference targets reserve reading space above the marker for native fragment return,
 keeping the marker and its focus perimeter clear of the viewport edge.
-The renderer owns document-local identities and navigation.
+The shared `rehypeFootnoteLabels` transform scopes the supporting label to the
+renderer-provided prefix, matching its generated reference and definition IDs.
+Transcript and GenUI adapters supply unique lifetime prefixes and localized note
+and return labels. `isMarkdownFragment` identifies local navigation without
+broadening an adapter's external URL admission. Captured file previews retain
+their inert-link policy. The renderer owns document-local identities and navigation.
 The link appearance marks content that navigates: anchors with a destination
 and actionable workspace file references, which mark themselves as the
 `file-reference` slot. Both read as accent text with a tinted underline that
@@ -574,6 +579,13 @@ source in a media Lightbox. Replacing its source ends the old capture. Its label
 are supplied by the host or portable component; it owns no image acquisition,
 permission, download, document review or business command. The transcript gallery
 shares this viewport while retaining its own image collection and save outcomes.
+
+`EvidenceImage` accepts known intrinsic width/height and native loading/decoding
+hints without inventing dimensions or making every image lazy. The shared
+`imageSizeFromBase64` and `imageSizeFromBytes` read the same bounded PNG, JPEG, GIF
+and WebP headers. Recorded computer/trajectory images and downloaded document page
+bytes can project these dimensions before decoding; remote GenUI images retain
+unknown dimensions. The detached image decoder still owns final natural geometry.
 
 The shared stylesheet owns search emphasis: `search-match` and
 `search-match-active` CSS highlights use the host's selected wash and paired accent

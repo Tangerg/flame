@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
-import { imageSizeFromBase64 } from "@/features/chat/message/domain/imageHeader";
+import { imageSizeFromBase64 } from "@flame/ui";
 describe("the image header reader, over arbitrary payloads", () => {
   it("answers a size or null, never a partial one", () => {
     forEachSeed(600, (a) => {

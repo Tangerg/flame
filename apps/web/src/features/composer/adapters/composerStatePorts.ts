@@ -62,7 +62,10 @@ export function createComposer(
     useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
     usePersistenceState: () => useComposerStore((state) => state.persistenceState),
+    useLegacyDraftState: () => useComposerStore((state) => state.legacyDraftState),
     retryPersistence: owner.retryPersistence,
+    importLegacyDrafts: owner.importLegacyDrafts,
+    getLegacyDraftBackup: owner.getLegacyDraftBackup,
     getRecoveryDrafts: owner.getRecoveryDrafts,
     captureSubmission: () => useComposerStore.getState().captureSubmission(),
     replaceDraft: (input) => {

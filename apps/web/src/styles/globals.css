@@ -113,8 +113,8 @@
 
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
-  --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
-  --scrollbar-thumb-strong: color-mix(in oklab, var(--color-text) 28%, transparent);
+  --scrollbar-thumb: var(--color-control-edge);
+  --scrollbar-thumb-strong: var(--color-text);
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -814,9 +814,6 @@ html.theme-dark {
 }
 :where(*) {
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-:where(*):hover {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 :where(*)::-webkit-scrollbar {
@@ -828,20 +825,25 @@ html.theme-dark {
   background: transparent;
 }
 :where(*)::-webkit-scrollbar-thumb {
-  background: transparent;
+  background: var(--scrollbar-thumb);
   border-radius: var(--shape-pill);
   border: 2px solid transparent;
   background-clip: content-box;
   min-height: 32px;
   min-width: 32px;
 }
-:where(*):hover::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  background-clip: content-box;
-}
 :where(*)::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-strong);
   background-clip: content-box;
+}
+
+@media (forced-colors: active) {
+  :where(*) {
+    scrollbar-color: auto;
+  }
+  :where(*)::-webkit-scrollbar-thumb {
+    background: CanvasText;
+  }
 }
 
 .msg-scroll-viewport {

@@ -11,24 +11,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as imageInput from "@/features/composer/public/input";
 import { createComposerStore } from "@/features/composer/adapters/composerStore";
 import { submitComposer } from "@/features/composer/application/submitComposer";
-import { mockLocalStorage } from "@/test/localStorage";
+import { refuseDraftStorage } from "@/test/draftStorage";
+import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 const composer = () => testClient.composer.store.getState();
 
 let STORAGE_KEY: string;
 
 afterEach(() => vi.restoreAllMocks());
 
-beforeEach(() => {
+beforeEach(async () => {
   STORAGE_KEY = `flame.composer:${encodeURIComponent(testClient.runtime.endpoint.currentRuntimeEndpoint())}`;
   localStorage.removeItem(STORAGE_KEY);
   composer().clear();
+  await vi.waitUntil(() => composer().persistenceState.status === "saved");
 });
 
 describe("the composer's drafts", () => {
   it("keeps partial failures attached until the user removes them", async () => {
     const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
-    vi.spyOn(imageInput, "fileToInputImage")
+    const read = vi
+      .spyOn(imageInput, "fileToInputImage")
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     composer().setValue("keep both selections");
@@ -38,6 +41,7 @@ describe("the composer's drafts", () => {
       "pending",
     ]);
     first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
+    await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     second.reject(new Error("file read failed"));
     await vi.waitFor(() =>
       expect(composer().composer.draft.imageAttachments.map((image) => image.status)).toEqual([
@@ -104,28 +108,27 @@ describe("the composer's drafts", () => {
     expect(composer().composer.draft.images).toMatchObject([{ data: "original-image" }]);
   });
 
-  it("survive a restart", () => {
+  it("restores only committed drafts after a restart", async () => {
     composer().loadSession("s1");
-    composer().setValue("half a thought");
-
-    const payload = localStorage.getItem(STORAGE_KEY) ?? "null";
-    const written = (JSON.parse(payload) as { state: unknown } | null)?.state;
-    expect(written, "nothing reached storage").toBeTruthy();
-
-    const restored = createComposerStore();
-    finishTestClient(() => restored.dispose());
+    composer().setValue("  half a thought 保留  ");
+    await vi.waitFor(() => expect(composer().persistenceState.status).toBe("saved"));
+    const restored = coldComposer();
     restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
     restored.store.getState().loadSession("s1");
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual({ state: written, version: 0 });
-    expect(restored.store.getState().composer.draft.value).toBe("half a thought");
+    await vi.waitFor(() => expect(restored.store.getState().persistenceState.status).toBe("saved"));
+    expect(restored.store.getState().composer.draft.value).toBe("  half a thought 保留  ");
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it("do not carry images into storage", () => {
+  it("does not carry images into current storage", async () => {
     composer().loadSession("s1");
     composer().setValue("look at this");
     composer().addImages([{ mime: "image/png", data: "AAAAbase64payload" }]);
 
-    expect(localStorage.getItem(STORAGE_KEY) ?? "").not.toContain("base64payload");
+    await saved();
+    const stored = await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    expect(stored.drafts.get("s1")?.value).toBe("look at this");
+    expect(JSON.stringify([...stored.drafts])).not.toContain("base64payload");
   });
 });
 
@@ -135,343 +138,297 @@ function coldComposer() {
   return owner;
 }
 
-function refuseWrites(cause: unknown, target = STORAGE_KEY) {
-  const replacement = mockLocalStorage();
-  replacement.storage.setItem.mockImplementation((key, value) => {
-    if (key === target) throw cause;
-    replacement.backing.setItem(key, value);
-  });
-  return replacement;
+async function saved(
+  owner: Pick<ReturnType<typeof createComposerStore>, "store"> = testClient.composer,
+) {
+  await vi.waitFor(() => expect(owner.store.getState().persistenceState.status).toBe("saved"));
 }
 
-function refuseReads(cause: unknown) {
-  const replacement = mockLocalStorage();
-  replacement.storage.getItem.mockImplementation((key) => {
-    if (key === STORAGE_KEY) throw cause;
-    return replacement.backing.getItem(key);
-  });
-  return replacement;
+function persisted() {
+  const database = new DraftDatabase();
+  finishTestClient(() => database.close());
+  return database;
 }
 
-describe("draft saving failures", () => {
-  it("keeps confirmation through non-text changes without retrying a refused write", () => {
-    composer().loadSession("confirmed");
-    composer().setValue("confirmed text");
-    const cause = new DOMException("write refused", "QuotaExceededError");
-    const write = refuseWrites(cause);
-    composer().setModel({ kind: "explicit", provider: "recorded", model: "selected" });
-    composer().setValue("confirmed text");
-    composer().addImages([{ mime: "image/png", data: "memory-only" }]);
-    composer().removeImage(composer().composer.draft.imageAttachments[0]!.id);
-    composer().loadSession("other");
-    composer().loadSession("confirmed");
-    expect(write.storage.setItem).not.toHaveBeenCalled();
-    expect(composer().persistenceState).toEqual({ status: "saved" });
-    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
-
-    composer().setValue("new text");
-    expect(write.storage.setItem).toHaveBeenCalledOnce();
-    composer().setValue("new text");
-    composer().setModel({ kind: "session" });
-    composer().loadSession("other");
-    composer().loadSession("confirmed");
-    expect(write.storage.setItem).toHaveBeenCalledOnce();
-    expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
-  });
-
+describe("transactional draft saving", () => {
   it.each(["QuotaExceededError", "SecurityError"])(
-    "retains and retries the latest draft after %s",
-    (name) => {
+    "retains the latest draft and cause after %s until explicit retry",
+    async (name) => {
       composer().loadSession("unsaved");
-      composer().setValue("saved draft");
-      composer().addPaste("  /literal evidence 保留\r\n".repeat(128));
-      const confirmed = localStorage.getItem(STORAGE_KEY);
-      const cause = new DOMException("storage refused the write", name);
-      const write = refuseWrites(cause);
-
-      expect(() => composer().setValue("  newer draft 保留  ")).not.toThrow();
-      composer().setValue("  latest draft 保留\n");
+      composer().setValue("confirmed");
+      composer().addPaste("/literal evidence 保留\r\n".repeat(128));
+      await saved();
+      const cause = new DOMException("write refused", name);
+      const refusal = refuseDraftStorage("save", cause);
+      composer().setValue("newer");
+      await vi.waitFor(() =>
+        expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause }),
+      );
+      composer().setValue("  latest 保留\n");
       const draft = composer().composer.draft;
-      expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
+      composer().setModel({ kind: "explicit", provider: "recorded", model: "selected" });
+      composer().addImages([{ mime: "image/png", data: "memory-only" }]);
       expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
-      expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-      expect(() => testClient.composer.access.retryPersistence()).not.toThrow();
-      expect(composer().composer.draft).toBe(draft);
-
-      write.restore();
+      expect(
+        (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.get(
+          "unsaved",
+        )?.value,
+      ).toBe("confirmed");
+      refusal.restore();
       testClient.composer.access.retryPersistence();
-      expect(composer().persistenceState).toEqual({ status: "saved" });
+      await saved();
+      expect(composer().composer.draft.value).toBe(draft.value);
       expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
-      expect(composer().composer.draft).toBe(draft);
       const restored = coldComposer();
       restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
       restored.store.getState().loadSession("unsaved");
-      expect(restored.store.getState().composer.draft).toEqual(draft);
+      await saved(restored);
+      expect(restored.store.getState().composer.draft.value).toBe(draft.value);
+      expect(restored.store.getState().composer.draft.pastes).toEqual(draft.pastes);
+      expect(restored.store.getState().composer.draft.images).toEqual([]);
     },
   );
 
-  it("keeps the original encoding cause without escaping authoring", () => {
-    composer().setValue("confirmed");
-    const confirmed = localStorage.getItem(STORAGE_KEY);
-    const cause = { detail: "  encoding refused 保留\noriginal cause" };
-    vi.spyOn(JSON, "stringify").mockImplementationOnce(() => {
-      throw cause;
+  it("keeps an accepted submission consumed exactly once when its removal commit fails", async () => {
+    composer().setValue("accepted once");
+    await saved();
+    const refusal = refuseDraftStorage("save", new Error("refused"));
+    const sendInput = vi.fn(() => true);
+    submitComposer({
+      draft: composer().captureSubmission(),
+      sendInput,
+      canSend: () => true,
+      restoreFocus: vi.fn(),
     });
-
-    expect(() => composer().setValue("unconfirmed")).not.toThrow();
-    expect(composer().composer.draft.value).toBe("unconfirmed");
-    expect(composer().persistenceState).toEqual({ status: "failed", operation: "save", cause });
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-    testClient.composer.access.retryPersistence();
-    expect(composer().persistenceState).toEqual({ status: "saved" });
-    expect(localStorage.getItem(STORAGE_KEY)).toContain("unconfirmed");
-  });
-
-  it("still reads an image and consumes an accepted input once while saving fails", async () => {
-    const reading =
-      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
-    const read = vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
-    composer().setValue("inspect this image");
-    const write = refuseWrites(new DOMException("full", "QuotaExceededError"));
-    try {
-      expect(() => composer().addImageFiles([new File([""], "proof.png")])).not.toThrow();
-      expect(read).toHaveBeenCalledOnce();
-      expect(composer().composer.draft.imageAttachments).toMatchObject([{ status: "pending" }]);
-      reading.resolve({ mime: "image/png", data: "recorded-image", name: "proof.png" });
-      await vi.waitFor(() => expect(composer().composer.draft.attachmentsReady).toBe(true));
-      const sendInput = vi.fn(() => true);
-      const restoreFocus = vi.fn();
-      expect(() =>
-        submitComposer({
-          draft: composer().captureSubmission(),
-          sendInput,
-          canSend: () => true,
-          restoreFocus,
-        }),
-      ).not.toThrow();
-      expect(sendInput).toHaveBeenCalledExactlyOnceWith({
-        parts: [
-          { kind: "text", text: "inspect this image" },
-          { kind: "image", mime: "image/png", data: "recorded-image" },
-        ],
-      });
-      expect(restoreFocus).toHaveBeenCalledOnce();
-      expect(composer().composer.draft.value).toBe("");
-      expect(composer().composer.draft.imageAttachments).toEqual([]);
-      expect(composer().persistenceState).toMatchObject({ status: "failed", operation: "save" });
-      write.restore();
-      testClient.composer.access.retryPersistence();
-      expect(composer().persistenceState).toEqual({ status: "saved" });
-      expect(sendInput).toHaveBeenCalledOnce();
-    } finally {
-      reading.resolve({ mime: "image/png", data: "recorded-image", name: "proof.png" });
-      await reading.promise;
-    }
-  });
-
-  it.each([
-    { name: "clearing", change: () => composer().clear() },
-    { name: "discarding", change: () => composer().discardSession("removed") },
-  ])("retains an unconfirmed $name removal until retry", ({ change }) => {
-    composer().loadSession("kept");
-    composer().setValue("other Session stays saved");
-    composer().loadSession("removed");
-    composer().setValue("remove this saved draft");
-    const confirmed = localStorage.getItem(STORAGE_KEY);
-    const write = refuseWrites(new DOMException("full", "QuotaExceededError"));
-    expect(change).not.toThrow();
+    await vi.waitFor(() => expect(composer().persistenceState.status).toBe("failed"));
     expect(composer().composer.draft.value).toBe("");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
-    write.restore();
+    refusal.restore();
     testClient.composer.access.retryPersistence();
-    const restored = coldComposer();
-    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    restored.store.getState().loadSession("removed");
-    expect(restored.store.getState().composer.draft.value).toBe("");
-    restored.store.getState().loadSession("kept");
-    expect(restored.store.getState().composer.draft.value).toBe("other Session stays saved");
+    await saved();
+    expect(sendInput).toHaveBeenCalledOnce();
+    expect(
+      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.size,
+    ).toBe(0);
   });
 
-  it("retains inactive endpoint failures for exit observation and recovery copying", () => {
-    const targetA = "https://unconfirmed-a.test";
-    const targetB = "https://unconfirmed-b.test";
-    testClient.composer.activate(targetA);
-    composer().loadSession("shared");
-    const write = refuseWrites(
-      new Error("write refused"),
-      `flame.composer:${encodeURIComponent(targetA)}`,
-    );
-    const observed: boolean[] = [];
-    const stop = testClient.composer.subscribePersistence(() =>
-      observed.push(testClient.composer.hasUnconfirmedDrafts()),
-    );
-    try {
-      composer().setValue("  draft on A 保留  ");
-      composer().addPaste("/not a command\r\noriginal evidence");
-      const draft = composer().composer.draft;
-      testClient.composer.activate(targetB);
-      composer().loadSession("shared");
-      composer().setValue("confirmed on B");
-      expect(composer().persistenceState).toEqual({ status: "saved" });
-      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
-      expect(JSON.parse(testClient.composer.access.getRecoveryDrafts())).toEqual({
-        targets: [
-          {
-            active: false,
-            drafts: {
-              shared: {
-                value: draft.value,
-                pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
-              },
-            },
-          },
-        ],
-      });
-      testClient.composer.activate(targetA);
-      expect(composer().composer.draft).toBe(draft);
-      write.restore();
+  it.each(["clear", "discard"])(
+    "persists a %s removal without changing other Sessions",
+    async (action) => {
+      composer().loadSession("kept");
+      composer().setValue("keep me");
+      composer().loadSession("removed");
+      composer().setValue("remove me");
+      await saved();
+      const refusal = refuseDraftStorage("save", new Error("refused"));
+      if (action === "clear") composer().clear();
+      else composer().discardSession("removed");
+      await vi.waitFor(() => expect(composer().persistenceState.status).toBe("failed"));
+      refusal.restore();
       testClient.composer.access.retryPersistence();
-      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
-      expect(observed[0]).toBe(true);
-      expect(observed.at(-1)).toBe(false);
-    } finally {
-      stop();
-    }
+      await saved();
+      const data = await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint());
+      expect(data.drafts.get("removed")).toBeUndefined();
+      expect(data.drafts.get("kept")?.value).toBe("keep me");
+    },
+  );
+
+  it("keeps an inactive target's failed commit in exit observation and recovery copying", async () => {
+    testClient.composer.activate("https://draft-a.test");
+    await saved();
+    composer().loadSession("shared");
+    const refusal = refuseDraftStorage("save", new Error("refused"));
+    composer().setValue("  unsaved A 保留  ");
+    await vi.waitFor(() => expect(composer().persistenceState.status).toBe("failed"));
+    refusal.restore();
+    testClient.composer.activate("https://draft-b.test");
+    composer().loadSession("shared");
+    composer().setValue("saved B");
+    await saved();
+    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
+    expect(JSON.parse(testClient.composer.access.getRecoveryDrafts())).toEqual({
+      targets: [{ active: false, drafts: { shared: { value: "  unsaved A 保留  ", pastes: [] } } }],
+    });
+    testClient.composer.activate("https://draft-a.test");
+    expect(composer().composer.draft.value).toBe("  unsaved A 保留  ");
+    testClient.composer.access.retryPersistence();
+    await saved();
+    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
   });
 });
 
-describe("unread draft protection", () => {
-  it("retries a refused read without overwriting the confirmed Session collection", () => {
-    composer().loadSession("alpha");
-    composer().setValue("saved alpha");
-    composer().loadSession("beta");
-    composer().setValue("saved beta");
-    const confirmed = localStorage.getItem(STORAGE_KEY);
-    const cause = new DOMException("read denied", "SecurityError");
-    const read = refuseReads(cause);
-    const write = read.storage.setItem;
-    const restored = coldComposer();
-    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    restored.store.getState().loadSession("beta");
-    restored.store.getState().setValue("");
-    restored.store.getState().removeImage("missing");
-    restored.store.getState().removePaste("missing");
-    restored.store
-      .getState()
-      .setModel({ kind: "explicit", provider: "recorded", model: "selected" });
-    expect(restored.store.getState().persistenceState).toEqual({
-      status: "failed",
-      operation: "read",
-      cause,
-    });
-    expect(write).not.toHaveBeenCalled();
-    read.restore();
-    restored.retryPersistence();
-    expect(restored.store.getState().composer.draft.value).toBe("saved beta");
-    expect(restored.store.getState().modelPreference).toEqual({
-      kind: "explicit",
-      provider: "recorded",
-      model: "selected",
-    });
-    expect(restored.store.getState().persistenceState).toEqual({ status: "saved" });
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-    expect(write).not.toHaveBeenCalled();
-    restored.store.getState().loadSession("alpha");
-    expect(restored.store.getState().composer.draft.value).toBe("saved alpha");
-  });
-
-  it("keeps authored recovery and the unread confirmed payload separate", () => {
-    composer().loadSession("alpha");
-    composer().setValue("unread alpha");
-    composer().loadSession("beta");
-    composer().setValue("unread beta");
-    const confirmed = localStorage.getItem(STORAGE_KEY);
-    const cause = new DOMException("private-token must not be exported", "SecurityError");
-    const read = refuseReads(cause);
-    const write = read.storage.setItem;
-    const restored = coldComposer();
-    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    restored.store.getState().loadSession("alpha");
-    restored.store.getState().setValue("  authored recovery 保留\n");
-    restored.store.getState().addPaste("/literal paste\r\n  original spacing");
-    const draft = restored.store.getState().composer.draft;
-    read.restore();
-    restored.retryPersistence();
-    expect(restored.store.getState().composer.draft).toBe(draft);
-    expect(restored.store.getState().persistenceState).toEqual({
-      status: "recovery-required",
-      cause,
-    });
-    expect(write).not.toHaveBeenCalled();
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-    const recovery = restored.getRecoveryDrafts();
-    expect(JSON.parse(recovery)).toEqual({
-      targets: [
-        {
-          active: true,
-          drafts: {
-            alpha: {
-              value: draft.value,
-              pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
-            },
-          },
-        },
-      ],
-    });
-    expect(recovery).not.toContain("private-token");
-    expect(recovery).not.toContain(testClient.runtime.endpoint.currentRuntimeEndpoint());
-  });
-
-  it("does not replace malformed confirmed bytes with an initialized empty draft", () => {
-    const raw = "{unfinished saved draft";
-    localStorage.setItem(STORAGE_KEY, raw);
-    const replacement = mockLocalStorage();
-    const write = replacement.storage.setItem;
-    const restored = coldComposer();
-    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    restored.store.getState().loadSession("original");
-    restored.retryPersistence();
-    expect(restored.store.getState().persistenceState).toMatchObject({
-      status: "failed",
-      operation: "read",
-      cause: expect.any(SyntaxError),
-    });
-    expect(write).not.toHaveBeenCalled();
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(raw);
-  });
-
-  it("does not replace an image selected while an original draft read was unavailable", async () => {
-    composer().setValue("confirmed before the read refusal");
-    const confirmed = localStorage.getItem(STORAGE_KEY);
-    const cause = new DOMException("read refused", "SecurityError");
-    const read = refuseReads(cause);
+describe("draft hydration", () => {
+  it("preserves later edits, explicit removals and pending images while restoring untouched Sessions", async () => {
+    composer().loadSession("edited");
+    composer().setValue("old edited");
+    composer().loadSession("untouched");
+    composer().setValue("old untouched");
+    composer().loadSession("removed");
+    composer().setValue("old removed");
+    composer().loadSession("pictured");
+    composer().setValue("text with image");
+    await saved();
     const reading =
       Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     const restored = coldComposer();
     restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    try {
-      restored.store.getState().addImageFiles([new File([""], "retained.png")]);
-      const selection = restored.store.getState().composer.draft.imageAttachments[0]!;
-      read.restore();
-      restored.retryPersistence();
-      expect(restored.store.getState().composer.draft.imageAttachments).toEqual([selection]);
+    restored.store.getState().loadSession("edited");
+    restored.store.getState().setValue("new edited");
+    restored.store.getState().discardSession("removed");
+    restored.store.getState().loadSession("pictured");
+    restored.store.getState().addImageFiles([new File([""], "keep.png")]);
+    await saved(restored);
+    expect(restored.store.getState().composer.draft.value).toBe("text with image");
+    expect(restored.store.getState().composer.draft.imageAttachments).toMatchObject([
+      { status: "pending" },
+    ]);
+    restored.store.getState().loadSession("edited");
+    expect(restored.store.getState().composer.draft.value).toBe("new edited");
+    restored.store.getState().loadSession("removed");
+    expect(restored.store.getState().composer.draft.value).toBe("");
+    restored.store.getState().loadSession("untouched");
+    expect(restored.store.getState().composer.draft.value).toBe("old untouched");
+    reading.resolve({ mime: "image/png", data: "retained", name: "keep.png" });
+  });
+
+  it("retries an unavailable read only before authoring and never overwrites unread records", async () => {
+    composer().setValue("confirmed");
+    await saved();
+    const cause = new DOMException("private cause", "SecurityError");
+    const refusal = refuseDraftStorage("read", cause);
+    const restored = coldComposer();
+    restored.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    await vi.waitFor(() =>
       expect(restored.store.getState().persistenceState).toEqual({
-        status: "recovery-required",
+        status: "failed",
+        operation: "read",
         cause,
-      });
-      reading.resolve({ mime: "image/png", data: "retained", name: "retained.png" });
-      await vi.waitFor(() =>
-        expect(restored.store.getState().composer.draft.images).toMatchObject([
-          { id: selection.id, data: "retained" },
-        ]),
-      );
-      expect(localStorage.getItem(STORAGE_KEY)).toBe(confirmed);
-    } finally {
-      reading.resolve({ mime: "image/png", data: "retained", name: "retained.png" });
-      await reading.promise;
-    }
+      }),
+    );
+    restored.store.getState().setValue("new recovery text");
+    refusal.restore();
+    restored.retryPersistence();
+    expect(restored.store.getState().persistenceState).toEqual({
+      status: "recovery-required",
+      cause,
+    });
+    expect(restored.store.getState().composer.draft.value).toBe("new recovery text");
+    expect(
+      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.get("")
+        ?.value,
+    ).toBe("confirmed");
+    expect(restored.getRecoveryDrafts()).not.toContain("private cause");
+    const readable = coldComposer();
+    const refusalAgain = refuseDraftStorage("read", cause);
+    readable.activate(testClient.runtime.endpoint.currentRuntimeEndpoint());
+    await vi.waitFor(() =>
+      expect(readable.store.getState().persistenceState.status).toBe("failed"),
+    );
+    refusalAgain.restore();
+    readable.retryPersistence();
+    await saved(readable);
+    expect(readable.store.getState().composer.draft.value).toBe("confirmed");
+  });
+});
+
+describe("explicit previous-draft import", () => {
+  const endpoint = "https://legacy-drafts.test";
+  const key = `flame.composer:${encodeURIComponent(endpoint)}`;
+  const raw = JSON.stringify({
+    version: 0,
+    state: {
+      drafts: {
+        session: {
+          value: "  old text 保留  ",
+          pastes: [{ id: "old-paste", text: "/literal\r\n" }],
+        },
+      },
+    },
+  });
+  it("never decodes or writes a legacy envelope on the normal read path", async () => {
+    localStorage.setItem(key, "{malformed previous bytes");
+    const owner = coldComposer();
+    owner.activate(endpoint);
+    await saved(owner);
+    expect(owner.store.getState().legacyDraftState.status).toBe("available");
+    expect(owner.store.getState().composer.draft.value).toBe("");
+    owner.importLegacyDrafts();
+    await vi.waitFor(() =>
+      expect(owner.store.getState().legacyDraftState).toMatchObject({
+        status: "failed",
+        cause: expect.any(SyntaxError),
+      }),
+    );
+    expect(owner.getLegacyDraftBackup()).toBe("{malformed previous bytes");
+    expect((await persisted().read(endpoint)).initialized).toBe(false);
+  });
+  it("imports only on explicit intent, commits its decision and preserves the raw backup", async () => {
+    localStorage.setItem(key, raw);
+    const owner = coldComposer();
+    owner.activate(endpoint);
+    owner.store.getState().loadSession("session");
+    await saved(owner);
+    expect(owner.store.getState().composer.draft.value).toBe("");
+    owner.importLegacyDrafts();
+    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("none"));
+    expect(owner.store.getState().composer.draft).toMatchObject({
+      value: "  old text 保留  ",
+      pastes: [{ id: "old-paste", text: "/literal\r\n" }],
+    });
+    expect((await persisted().read(endpoint)).imported).toBe(true);
+    expect(localStorage.getItem(key)).toBe(raw);
+    const restored = coldComposer();
+    restored.activate(endpoint);
+    await saved(restored);
+    expect(restored.store.getState().legacyDraftState.status).toBe("none");
+  });
+  it("refuses import after current authoring and keeps both current records and raw backup accessible", async () => {
+    localStorage.setItem(key, raw);
+    const owner = coldComposer();
+    owner.activate(endpoint);
+    await saved(owner);
+    owner.store.getState().setValue("current authored text");
+    owner.importLegacyDrafts();
+    await saved(owner);
+    expect(owner.store.getState().legacyDraftState.status).toBe("blocked");
+    expect(owner.getLegacyDraftBackup()).toBe(raw);
+    expect((await persisted().read(endpoint)).imported).toBe(false);
+    expect((await persisted().read(endpoint)).drafts.get("")?.value).toBe("current authored text");
+  });
+  it("rechecks fresh storage transactionally if another owner has already saved", async () => {
+    localStorage.setItem(key, raw);
+    const owner = coldComposer();
+    owner.activate(endpoint);
+    await saved(owner);
+    const concurrent = coldComposer();
+    concurrent.activate(endpoint);
+    await saved(concurrent);
+    concurrent.store.getState().setValue("other owner already saved");
+    await saved(concurrent);
+    owner.importLegacyDrafts();
+    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("failed"));
+    expect((await persisted().read(endpoint)).drafts.get("")?.value).toBe(
+      "other owner already saved",
+    );
+    expect((await persisted().read(endpoint)).imported).toBe(false);
+    expect(owner.getLegacyDraftBackup()).toBe(raw);
+  });
+  it("keeps the original backup and no import decision after a refused transaction", async () => {
+    localStorage.setItem(key, raw);
+    const owner = coldComposer();
+    owner.activate(endpoint);
+    await saved(owner);
+    const cause = new DOMException("full", "QuotaExceededError");
+    const refusal = refuseDraftStorage("save", cause);
+    owner.importLegacyDrafts();
+    await vi.waitFor(() =>
+      expect(owner.store.getState().legacyDraftState).toMatchObject({ status: "failed", cause }),
+    );
+    expect(localStorage.getItem(key)).toBe(raw);
+    expect((await persisted().read(endpoint)).initialized).toBe(false);
+    refusal.restore();
+    owner.importLegacyDrafts();
+    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("none"));
   });
 });
 
@@ -669,7 +626,7 @@ describe("captured draft replacement", () => {
     ]);
   });
 
-  it("keeps selection order when ordinary image imports settle in reverse order", async () => {
+  it("queues ordinary image imports in selection order", async () => {
     const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage")
@@ -678,9 +635,9 @@ describe("captured draft replacement", () => {
     composer().addImageFiles([new File([""], "first.png")]);
     composer().addImageFiles([new File([""], "second.png")]);
 
-    second.resolve({ mime: "image/png", data: "second-image", name: "second.png" });
-    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
     first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
+    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
+    second.resolve({ mime: "image/png", data: "second-image", name: "second.png" });
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(2));
     expect(composer().composer.draft.images.map((image) => image.data)).toEqual([
       "first-image",

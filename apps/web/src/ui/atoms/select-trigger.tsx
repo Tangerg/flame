@@ -1,11 +1,17 @@
 import * as stylex from "@stylexjs/stylex";
 import { type StyleXArray, type StyleXStyles } from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { FIELD_SIZE, FIELD_SURFACE, vocab } from "@flame/ui";
+import {
+  FIELD_SIZE,
+  FIELD_SURFACE,
+  vocab,
+  ButtonPrimitive,
+  type ButtonPrimitiveProps,
+} from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons/index";
-import { Pressable, type PressableProps } from "@/ui/atoms/pressable";
+
 const styles = stylex.create({
   trigger: {
     display: "inline-flex",
@@ -26,7 +32,7 @@ const styles = stylex.create({
 });
 
 export interface SelectTriggerProps extends Omit<
-  PressableProps,
+  ButtonPrimitiveProps,
   "children" | "aria-label" | "aria-labelledby"
 > {
   label: string;
@@ -52,7 +58,7 @@ export function SelectTrigger({
     extra,
   );
   return (
-    <Pressable
+    <ButtonPrimitive
       {...props}
       type={props.type ?? "button"}
       aria-label={`${label}, ${purpose}`}
@@ -64,6 +70,6 @@ export function SelectTrigger({
         {label}
       </span>
       <Icon name="chevron-down" size="xs" {...stylex.props(styles.chevronInk)} />
-    </Pressable>
+    </ButtonPrimitive>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAppearanceProjection } from "@/lib/appearance";
-import { segmentWords } from "@/lib/i18n/segmentWords";
+import { createStreamWords } from "./streamWords";
 import { type StreamReveal } from "@/features/chat/message/streamReveal";
 export type MarkdownReveal = StreamReveal | "instant";
 
@@ -68,7 +68,9 @@ export function useStreamReveal(
 
   const stateRef = useRef({
     rawText: "",
-    words: [] as string[],
+    segments: createStreamWords(),
+    wordIndex: 0,
+    wordEnd: 0,
     displayLen: initialLen,
     lastTickAt: null as number | null,
     charDebt: 0,
@@ -82,13 +84,25 @@ export function useStreamReveal(
     typewriterRef.current = reveal === "typewriter";
     const state = stateRef.current;
     if (state.rawText !== rawText) {
+      if (!rawText.startsWith(state.rawText)) {
+        state.lastTickAt = null;
+        state.charDebt = 0;
+        state.pauseUntil = 0;
+      }
       state.rawText = rawText;
-      state.words = segmentWords(rawText);
       if (state.displayLen > rawText.length) {
         state.displayLen = rawText.length;
+        setDisplayLen(rawText.length);
       }
     }
-  }, [active, rawText, reveal]);
+    if (!whole && reveal === "smooth") {
+      const { changedFrom, changedAt } = state.segments.update(rawText);
+      if (state.wordIndex >= changedFrom) {
+        state.wordIndex = changedFrom;
+        state.wordEnd = changedAt;
+      }
+    }
+  }, [active, rawText, reveal, whole]);
 
   const rafRef = useRef(0);
   const armRef = useRef(() => {});
@@ -127,9 +141,9 @@ export function useStreamReveal(
         st.charDebt -= reveal;
         newLen = st.displayLen + reveal;
       } else {
-        const words = st.words;
-        let charCount = 0;
-        let wordIdx = 0;
+        const words = st.segments.words;
+        let charCount = st.wordEnd;
+        let wordIdx = st.wordIndex;
         while (wordIdx < words.length && charCount < st.displayLen) {
           charCount += words[wordIdx]!.length;
           wordIdx++;
@@ -142,6 +156,8 @@ export function useStreamReveal(
         }
         lastWord = wordIdx > 0 ? words[wordIdx - 1]! : "";
         newLen = charCount;
+        st.wordIndex = wordIdx;
+        st.wordEnd = charCount;
       }
       st.charDebt = Math.max(0, Math.min(st.charDebt, MAX_DEBT));
 

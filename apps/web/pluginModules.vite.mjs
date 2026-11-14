@@ -82,7 +82,10 @@ export function pluginModules() {
         return [
           {
             tag: "script",
-            attrs: { type: "importmap" },
+            attrs: {
+              type: "importmap",
+              ...(config.html.cspNonce ? { nonce: config.html.cspNonce } : {}),
+            },
             children: JSON.stringify({ imports }),
             injectTo: "head-prepend",
           },

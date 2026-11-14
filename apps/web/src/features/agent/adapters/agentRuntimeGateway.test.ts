@@ -223,6 +223,9 @@ describe("agentRuntimeGateway", () => {
   });
 
   it("replays a timed-out create with the same mutation identity and a fresh signal", async () => {
+    await vi.waitUntil(
+      () => testClient.composer.store.getState().persistenceState.status === "saved",
+    );
     vi.useFakeTimers();
     const keys: string[] = [];
     const signals: AbortSignal[] = [];

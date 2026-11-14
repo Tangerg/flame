@@ -181,6 +181,24 @@ export class Composer {
     return texts;
   }
 
+  hydrateDrafts(
+    texts: ReadonlyMap<string, ComposerDraftText>,
+    touched: ReadonlySet<string>,
+  ): Composer {
+    const restored = Composer.restoreDrafts(texts);
+    const drafts = new Map(this.drafts);
+    for (const [sessionId, draft] of restored.drafts) {
+      if (!touched.has(sessionId)) {
+        const current = drafts.get(sessionId);
+        drafts.set(
+          sessionId,
+          current ? current.withValue(draft.value).withPastes(draft.pastes) : draft,
+        );
+      }
+    }
+    return new Composer(drafts, this.rings, this.activeSessionId, this.recall);
+  }
+
   edit(change: (draft: ComposerDraft) => ComposerDraft): Composer {
     return this.replaceDraft(change(this.draft), NOT_RECALLING);
   }

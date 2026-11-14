@@ -5,15 +5,16 @@ import {
   type ShikiTransformer,
   type ThemedToken,
 } from "shiki/core";
-import { disposeHighlighter, getHighlighter, highlightCode } from "@/lib/highlight/shiki";
+import { disposeHighlighter, getHighlighter, highlightCode } from "@/lib/highlight/shikiEngine";
+import { loadHighlightLanguage } from "@/lib/highlight/shikiLanguages";
 import { shikiThemeName, syntaxColorToken } from "@/lib/highlight/shikiTheme";
 import { paletteThemeContribution } from "@/features/theme/kit/palette";
 import { contrastRatio } from "@/features/theme/kit/legibility";
 import { type Scheme } from "@/lib/appearance";
 
 beforeAll(async () => {
-  await getHighlighter("typescript");
-  await getHighlighter("markdown");
+  await getHighlighter(await loadHighlightLanguage("typescript"));
+  await getHighlighter(await loadHighlightLanguage("markdown"));
 });
 afterAll(disposeHighlighter);
 
@@ -118,7 +119,7 @@ function expectPaletteForegrounds(scheme: Scheme, root: HTMLElement, authored: T
 
 describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Scheme) => {
   it("retains source, escaping and authored syntax roles through palette references", async () => {
-    const highlighter = await getHighlighter("typescript");
+    const highlighter = await getHighlighter(await loadHighlightLanguage("typescript"));
     const options = { lang: "typescript", theme: shikiThemeName(scheme) };
     const { root, authored } = observeHighlight(highlighter, () =>
       highlightCode(highlighter, source, options),
@@ -127,7 +128,7 @@ describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Sche
   });
 
   it("maps the foreground a time-limited tokenizer pass authors", async () => {
-    const highlighter = await getHighlighter("typescript");
+    const highlighter = await getHighlighter(await loadHighlightLanguage("typescript"));
     const options = { lang: "typescript", theme: shikiThemeName(scheme) };
     let clock = Date.now();
     const { root, authored } = observeHighlight(highlighter, () => {
@@ -143,7 +144,7 @@ describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Sche
   });
 
   it("keeps syntax emphasis while replacing its foreground", async () => {
-    const highlighter = await getHighlighter("markdown");
+    const highlighter = await getHighlighter(await loadHighlightLanguage("markdown"));
     const options = { lang: "markdown", theme: shikiThemeName(scheme) };
     const code = "*emphasis* and **strong**";
     const { root, authored } = observeHighlight(highlighter, () =>
@@ -163,3 +164,5 @@ describe.each(["light", "dark"] as const)("%s syntax foregrounds", (scheme: Sche
     ).toEqual(emphasis);
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

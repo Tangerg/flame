@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./build": "./build.mjs",
+    "./browser-policy": "./src/browser-policy.generated.ts",
     "./notifications": "./src/notificationAuthorization.generated.ts",
     "./runtime-profile": "./src/runtime-profile.generated.ts"
   },

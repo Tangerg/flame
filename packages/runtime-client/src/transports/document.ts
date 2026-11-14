@@ -1,3 +1,4 @@
+import { bodyCancellation, isPrimaryFailure, retainCleanupFailure } from "./body";
 import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "../errors";
 
 const DEFAULT_DOCUMENT_BYTES = 128 * 1024 * 1024;
@@ -14,19 +15,24 @@ export async function readResponseDocument(
   label: string,
   requestId: string | undefined,
   signal?: AbortSignal,
+  onCleanupFailure?: (cause: unknown, operation: object) => void,
 ): Promise<string> {
   if (!response.body) {
     signal?.throwIfAborted();
     return "";
   }
   const reader = response.body.getReader();
+  const cancellation = bodyCancellation(reader);
+  const { cancel } = cancellation;
   const abort = () => {
-    void reader.cancel(signal?.reason).catch(() => undefined);
+    // The finally block joins this same cancellation and preserves its rejection.
+    void cancel(signal?.reason).catch(() => undefined);
   };
   signal?.addEventListener("abort", abort, { once: true });
   let content = new Uint8Array(0);
   let used = 0;
   let complete = false;
+  let failure: { error: unknown } | undefined;
   try {
     signal?.throwIfAborted();
     for (;;) {
@@ -51,18 +57,34 @@ export async function readResponseDocument(
     }
     complete = true;
   } catch (cause) {
-    if (cause instanceof RpcTransportError || signal?.aborted) throw cause;
-    const error = new RpcConnectionError(
-      `${label} could not be read: ${errorMessage(cause)}`,
-      requestId,
-    );
-    error.cause = cause;
-    throw error;
+    if (cause instanceof RpcTransportError || signal?.aborted) {
+      failure = { error: cause };
+    } else {
+      const error = new RpcConnectionError(
+        `${label} could not be read: ${errorMessage(cause)}`,
+        requestId,
+      );
+      error.cause = cause;
+      failure = { error };
+    }
   } finally {
     signal?.removeEventListener("abort", abort);
-    if (!complete) await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
+    try {
+      if (!complete) await cancel(failure?.error);
+    } catch (cleanup) {
+      if (!failure || !isPrimaryFailure(failure.error, cleanup))
+        onCleanupFailure?.(cleanup, cancellation);
+      failure = { error: failure ? retainCleanupFailure(failure.error, cleanup) : cleanup };
+    }
+    try {
+      reader.releaseLock();
+    } catch (cleanup) {
+      if (!failure || !isPrimaryFailure(failure.error, cleanup))
+        onCleanupFailure?.(cleanup, reader);
+      failure = { error: failure ? retainCleanupFailure(failure.error, cleanup) : cleanup };
+    }
   }
+  if (failure) throw failure.error;
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(content.subarray(0, used));
   } catch (cause) {

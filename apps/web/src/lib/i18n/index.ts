@@ -2,33 +2,12 @@ import i18next from "i18next";
 import { useCallback } from "react";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { en } from "@/lib/i18n/locales/en";
+import { initialLocale, localeToBcp47, LOCALE_STORAGE_KEY, type Locale } from "./locale";
 export { Trans } from "react-i18next";
+export { browserLocale, localeToBcp47 } from "./locale";
+export type { Locale } from "./locale";
 
-export type Locale = string;
-
-const STORAGE_KEY = "flame.locale";
-
-function detectInitial(): Locale {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return stored;
-  } catch {}
-  const nav = typeof navigator !== "undefined" ? navigator.language : "";
-  return browserLocale(nav);
-}
-
-export function browserLocale(language: string): Locale {
-  if (!language) return "en";
-  try {
-    const locale = new Intl.Locale(language);
-    if (locale.language === "zh") return locale.maximize().script === "Hant" ? "zh-TW" : "zh";
-    return locale.language;
-  } catch {
-    return "en";
-  }
-}
-
-const initial = detectInitial();
+const initial = initialLocale();
 
 void i18next.use(initReactI18next).init({
   resources: { en: { translation: en } },
@@ -40,12 +19,6 @@ void i18next.use(initReactI18next).init({
   interpolation: { escapeValue: false },
   returnNull: false,
 });
-
-// The single owner of each app locale's BCP-47 tag for Intl and `html lang`.
-// Only `zh` needs normalization; every other id is already a valid tag.
-export function localeToBcp47(loc: Locale): string {
-  return loc === "zh" ? "zh-CN" : loc;
-}
 
 function syncHtmlLang(loc: Locale): void {
   if (typeof document === "undefined") return;
@@ -66,7 +39,7 @@ export function setLocale(loc: Locale): void {
   if (loc === getLocale()) return;
   void i18next.changeLanguage(loc);
   try {
-    localStorage.setItem(STORAGE_KEY, loc);
+    localStorage.setItem(LOCALE_STORAGE_KEY, loc);
   } catch {}
   syncHtmlLang(loc);
 }

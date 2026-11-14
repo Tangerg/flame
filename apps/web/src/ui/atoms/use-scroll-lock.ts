@@ -10,17 +10,15 @@ function acquireScrollLock(container: HTMLElement): () => void {
     const computed = getComputedStyle(container);
     const paddingSide = computed.direction === "rtl" ? "paddingLeft" : "paddingRight";
     const previousPadding = container.style[paddingSide];
-    const scrollbarSize =
-      container.offsetWidth -
-      container.clientWidth -
-      parseFloat(computed.borderLeftWidth) -
-      parseFloat(computed.borderRightWidth);
+    const previousClientWidth = container.clientWidth;
+    const previousPaddingPixels = parseFloat(computed[paddingSide]);
     const resetPosition = () => {
       container.scrollTop = scrollPosition;
     };
     container.style.scrollbarWidth = "none";
-    if (scrollbarSize > 0) {
-      container.style[paddingSide] = `${parseFloat(computed[paddingSide]) + scrollbarSize}px`;
+    const releasedWidth = container.clientWidth - previousClientWidth;
+    if (releasedWidth > 0) {
+      container.style[paddingSide] = `${previousPaddingPixels + releasedWidth}px`;
     }
     container.addEventListener("scroll", resetPosition, { passive: true });
     lock = {

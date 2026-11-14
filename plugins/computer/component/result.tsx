@@ -11,6 +11,7 @@ import {
   Metadata,
   RecordBody,
   RecordGroup,
+  imageSizeFromBase64,
 } from "@flame/ui";
 import type { OperationRecord } from "./types";
 
@@ -86,20 +87,26 @@ function mediaURL(mime: unknown, data: unknown, kind: "image" | "audio") {
 
 function CapturedImage({
   src,
+  data,
   label,
   t,
 }: {
   src: string;
+  data: string;
   label: string;
   t: Translate;
 }) {
   const [failedSource, setFailedSource] = useState<string>();
+  const size = useMemo(() => imageSizeFromBase64(data), [data]);
   if (failedSource === src)
     return <ImageNotice label={label} detail={t("result.imageUnavailable")} />;
   return (
     <span onErrorCapture={() => setFailedSource(src)}>
       <EvidenceImage
         src={src}
+        width={size?.width}
+        height={size?.height}
+        decoding="async"
         alt={label}
         labels={{
           view: t("image.view"),
@@ -135,6 +142,7 @@ function Content({
         <figure style={{ minWidth: 0, margin: 0 }}>
           <CapturedImage
             src={src}
+            data={String(value.data)}
             label={t("result.image", { number: String(index + 1) })}
             t={t}
           />

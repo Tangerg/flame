@@ -307,9 +307,16 @@ qualification; it is not the evidence for command recovery.
 Use `buildComponent` from `@flame/component-sdk/build` with a source entry, output
 directory and `compiler: rolldown` imported from the author toolchain's declared
 `rolldown` dependency. The compiler has one owner: the author's locked build graph.
-The authored `runtime-profile.json` owns the shared module profile, component export
-name, and module graph filename/version. Its generated TS, JSON and Go projections
+The authored `runtime-profile.json` owns the shared module profile, browser targets,
+component export name, and module graph filename/version. Its generated TS, JSON and Go projections
 are rebuilt together by `make generate`.
+
+`buildComponent` applies those browser targets to the author's supplied compiler;
+individual callers do not select a different target. The Web Host and Lab consume
+the same policy. The pure `@flame/component-sdk/browser-policy` projection supplies
+the early Host diagnosis without importing the SDK's application modules. Targets
+govern syntax transformation, not API polyfills or runtime capability guarantees.
+The shared-module profile version is unchanged by this compilation policy.
 
 The SDK owns shared-module externalization and the prebuilt ESM
 format. The former implicit compiler lookup is removed; all in-repository build

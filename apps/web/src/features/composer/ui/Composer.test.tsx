@@ -18,7 +18,9 @@ import { WORKSPACE_LIST_FILES_KEY } from "@/features/workspace/public/queries";
 import { Composer } from "@/features/composer/ui/Composer";
 import * as imageInput from "@/features/composer/public/input";
 import { loadPluginsForTest } from "@/test/kernel";
-import { mockLocalStorage } from "@/test/localStorage";
+import { refuseDraftStorage } from "@/test/draftStorage";
+import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
+import { ComposerDraft } from "@/features/composer/domain/composer";
 
 import {
   useAddComposerImageFiles,
@@ -349,15 +351,37 @@ function DraftComposer() {
 }
 
 describe("draft persistence recovery", () => {
+  it("keeps ordinary asynchronous commits out of the editing layout while retaining the exit warning", async () => {
+    await waitFor(() =>
+      expect(testClient.composer.store.getState().persistenceState.status).toBe("saved"),
+    );
+    const completion = Promise.withResolvers<void>();
+    vi.spyOn(DraftDatabase.prototype, "write").mockReturnValueOnce(completion.promise);
+    wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    input.focus();
+    try {
+      fireEvent.change(input, {
+        target: { value: "typing 保留", selectionStart: 4, selectionEnd: 4 },
+      });
+      expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
+      expect(screen.queryByText(t("composer.persistence.pending"))).toBeNull();
+      expect(document.activeElement).toBe(input);
+      expect(input.selectionStart).toBe(4);
+    } finally {
+      await act(async () => completion.resolve());
+    }
+    await waitFor(() =>
+      expect(testClient.composer.store.getState().persistenceState.status).toBe("saved"),
+    );
+    expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false);
+  });
+
   function refuseDraftWrites() {
-    const replacement = mockLocalStorage();
-    replacement.storage.setItem.mockImplementation((key, value) => {
-      if (key.startsWith("flame.composer:")) {
-        throw new DOMException("storage quota exceeded", "QuotaExceededError");
-      }
-      replacement.backing.setItem(key, value);
-    });
-    return replacement;
+    return refuseDraftStorage(
+      "save",
+      new DOMException("storage quota exceeded", "QuotaExceededError"),
+    );
   }
 
   it("keeps the same input and middle caret through failure and a keyboard retry", async () => {
@@ -370,17 +394,20 @@ describe("draft persistence recovery", () => {
       target: { value: "  Keep edited this draft  ", selectionStart: 14, selectionEnd: 14 },
     });
 
-    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed")),
+    );
     expect(screen.getByRole("textbox")).toBe(input);
     expect(document.activeElement).toBe(input);
     expect(input.value).toBe("  Keep edited this draft  ");
     expect(input.selectionStart).toBe(14);
     refusal.restore();
-    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    const retry = await screen.findByRole<HTMLButtonElement>("button", { name: "Retry" });
     retry.focus();
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+    expect(testClient.composer.store.getState().persistenceState.status).toBe("saved");
     expect(screen.getByRole("textbox")).toBe(input);
     expect(document.activeElement).toBe(input);
     expect(input.selectionStart).toBe(14);
@@ -388,7 +415,7 @@ describe("draft persistence recovery", () => {
     expect(input.value).toBe("  Keep edited this draft  ");
   });
 
-  it("keeps failed retry visible and respects a later focus move when storage recovers", () => {
+  it("keeps failed retry visible and respects a later focus move when storage recovers", async () => {
     wrap(
       <>
         <DraftComposer />
@@ -397,24 +424,27 @@ describe("draft persistence recovery", () => {
     );
     const refusal = refuseDraftWrites();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "retain the latest draft" } });
-    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    const retry = await screen.findByRole<HTMLButtonElement>("button", { name: "Retry" });
     retry.focus();
     fireEvent.click(retry);
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed")),
+    );
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(document.activeElement).toBe(retry);
     const elsewhere = screen.getByRole<HTMLButtonElement>("button", { name: "Elsewhere" });
     elsewhere.focus();
     refusal.restore();
     act(() => testClient.composer.access.retryPersistence());
-    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(document.activeElement).toBe(elsewhere);
   });
 
-  it("does not hand a retiring retry's focus to a successor input registration", () => {
+  it("does not hand a retiring retry's focus to a successor input registration", async () => {
     wrap(<DraftComposer />);
     const refusal = refuseDraftWrites();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "original input draft" } });
-    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "Retry" });
+    const retry = await screen.findByRole<HTMLButtonElement>("button", { name: "Retry" });
     retry.focus();
     const successor = document.createElement("textarea");
     document.body.append(successor);
@@ -422,7 +452,7 @@ describe("draft persistence recovery", () => {
     try {
       refusal.restore();
       fireEvent.click(retry);
-      expect(screen.queryByRole("alert")).toBeNull();
+      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
       expect(document.activeElement).not.toBe(successor);
     } finally {
       unregister();
@@ -440,11 +470,13 @@ describe("draft persistence recovery", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "  keep exact text  " } });
     act(() => testClient.composer.store.getState().addPaste("attached\ntext"));
     expect(recovery).not.toHaveBeenCalled();
+    await screen.findByRole("button", { name: "Retry" });
     fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
     await screen.findByText(t("composer.persistence.copyFailed"));
     expect(recovery).toHaveBeenCalledOnce();
     expect(screen.getByRole("textbox").getAttribute("aria-label")).toBe("Message composer");
     write.mockResolvedValue(undefined);
+    await screen.findByRole("button", { name: "Retry" });
     fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
     await screen.findByRole("button", { name: "Draft text copied" });
     const copied = JSON.parse(write.mock.calls.at(-1)![0]) as {
@@ -456,37 +488,40 @@ describe("draft persistence recovery", () => {
       value: "  keep exact text  ",
       pastes: [expect.objectContaining({ text: "attached\ntext" })],
     });
-    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.saveFailed")),
+    );
     expect(screen.queryByText(t("composer.persistence.copyFailed"))).toBeNull();
   });
 
-  it("keeps unread saved drafts intact and offers recovery after the user continues editing", () => {
+  it("keeps unread current records intact and offers recovery after the user continues editing", async () => {
     const target = "https://draft-read-recovery.test";
-    const key = `flame.composer:${encodeURIComponent(target)}`;
-    const saved = JSON.stringify({
-      state: { drafts: { "": { value: "original confirmed draft", pastes: [] } } },
-      version: 0,
-    });
-    localStorage.setItem(key, saved);
-    const refusal = mockLocalStorage();
-    refusal.storage.getItem.mockImplementation((name) => {
-      if (name === key) throw new DOMException("storage unavailable", "SecurityError");
-      return refusal.backing.getItem(name);
-    });
+    const database = new DraftDatabase();
+    await database.write(
+      target,
+      new Map([["", ComposerDraft.restoreText("original confirmed draft")]]),
+    );
+    database.close();
+    const refusal = refuseDraftStorage(
+      "read",
+      new DOMException("storage unavailable", "SecurityError"),
+    );
     testClient.composer.activate(target);
     wrap(<DraftComposer />);
-    expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.readFailed"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("composer.persistence.readFailed")),
+    );
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "keep this new draft" } });
     refusal.restore();
-
     expect(screen.getByRole("alert").textContent).toContain(
       t("composer.persistence.recoveryRequired"),
     );
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
     expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("keep this new draft");
-    expect(localStorage.getItem(key)).toBe(saved);
-    localStorage.removeItem(key);
+    const unchanged = new DraftDatabase();
+    expect((await unchanged.read(target)).drafts.get("")?.value).toBe("original confirmed draft");
+    unchanged.close();
   });
 
   it("does not report a late copy result as confirmation for a newer draft", async () => {
@@ -496,6 +531,7 @@ describe("draft persistence recovery", () => {
     refuseDraftWrites();
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "first unsaved draft" } });
+    await screen.findByRole("button", { name: "Retry" });
     fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
     fireEvent.change(input, { target: { value: "newer unsaved draft" } });
     await act(async () => {
@@ -513,6 +549,7 @@ describe("draft persistence recovery", () => {
     wrap(<DraftComposer />);
     refuseDraftWrites();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "unconfirmed A" } });
+    await screen.findByRole("button", { name: "Retry" });
     fireEvent.click(screen.getByRole("button", { name: "Copy draft text" }));
     await screen.findByRole("button", { name: "Draft text copied" });
     act(() => {
@@ -525,12 +562,53 @@ describe("draft persistence recovery", () => {
     expect(screen.queryByRole("button", { name: "Draft text copied" })).toBeNull();
     expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
   });
+
+  it("imports previous drafts only on an explicit action and keeps the mounted input", async () => {
+    const target = "https://explicit-import.test";
+    const key = `flame.composer:${encodeURIComponent(target)}`;
+    const raw = JSON.stringify({
+      version: 0,
+      state: { drafts: { "": { value: "  previous draft 保留  ", pastes: [] } } },
+    });
+    localStorage.setItem(key, raw);
+    testClient.composer.activate(target);
+    wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    const importDrafts = await screen.findByRole("button", { name: t("composer.legacy.import") });
+    expect(input.value).toBe("");
+    input.focus();
+    fireEvent.mouseDown(importDrafts);
+    fireEvent.click(importDrafts);
+    await waitFor(() => expect(input.value).toBe("  previous draft 保留  "));
+    expect(screen.getByRole("textbox")).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(localStorage.getItem(key)).toBe(raw);
+    expect(screen.queryByRole("button", { name: t("composer.legacy.import") })).toBeNull();
+  });
+
+  it("offers exact previous backup copying when new authoring blocks import", async () => {
+    const target = "https://blocked-import.test";
+    const raw = "{unparsed backup bytes 保留";
+    localStorage.setItem(`flame.composer:${encodeURIComponent(target)}`, raw);
+    const copy = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    testClient.composer.activate(target);
+    wrap(<DraftComposer />);
+    await screen.findByRole("button", { name: t("composer.legacy.import") });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "current draft" } });
+    expect(screen.queryByRole("button", { name: t("composer.legacy.import") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: t("composer.legacy.copy") }));
+    await screen.findByRole("button", { name: t("composer.legacy.copied") });
+    expect(copy).toHaveBeenCalledExactlyOnceWith(raw);
+  });
 });
 
 it("announces pending and failed image input and returns focus after removal", async () => {
   const reading = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
   vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
   await withEnterKeymap();
+  await waitFor(() =>
+    expect(testClient.composer.store.getState().persistenceState.status).toBe("saved"),
+  );
   const { container } = wrap(<DraftComposer />);
   const composerRoot = container.querySelector('[data-slot="composer-root"]') as HTMLElement;
   const live = within(composerRoot).getByRole("status");

@@ -40,7 +40,6 @@ import { disposeHighlighter } from "@/lib/highlight/shiki";
 import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
-import "@/styles/globals.css";
 const host = createClientHost();
 const disposeExternalLinks = installExternalLinks(document, host.kind, (error, url) => {
   console.error("[desktop] external link open failed:", error);

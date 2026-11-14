@@ -17,7 +17,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	app := application.New(desktopApplicationOptions(host))
+	options, err := desktopApplicationOptions(host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	app := application.New(options)
 	window := app.Window.NewWithOptions(desktopWindowOptions())
 	shell := nativeShell{
 		window: window,

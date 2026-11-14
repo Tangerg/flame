@@ -34,6 +34,8 @@ export const ja: Record<string, string> = {
   "image.unavailable": "この画像を表示できません。",
   "code.label": "コード",
   "markdown.table": "Markdown テーブル",
+  "markdown.footnotes": "脚注",
+  "markdown.backReference": "参照 {{reference}} に戻る",
   "carousel.label": "カルーセル",
   "carousel.description": "カルーセル",
   "timer.start": "開始",

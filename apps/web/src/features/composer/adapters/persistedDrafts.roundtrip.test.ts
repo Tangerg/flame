@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 import { Composer } from "@/features/composer/domain/composer";
 import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import {
-  parsePersistedComposer,
-  decodePersistedComposer,
-  encodePersistedComposer,
+  parseLegacyComposer,
+  decodeLegacyComposer,
 } from "@/features/composer/adapters/persistedDrafts";
 function restore(composer: Composer): Composer {
-  return decodePersistedComposer(encodePersistedComposer(composer)).activate(
-    composer.activeSessionId,
-  );
+  return decodeLegacyComposer(
+    JSON.stringify({
+      version: 0,
+      state: { drafts: Object.fromEntries(composer.durableDraftTexts()) },
+    }),
+  ).activate(composer.activeSessionId);
 }
 
-describe("persisted authored text", () => {
+describe("previous draft import envelopes", () => {
   it.each(["", "explain these logs  "])("retains pastes with value %j", (value) => {
     const before = Composer.empty()
       .activate("session")
@@ -39,9 +41,9 @@ describe("persisted authored text", () => {
   });
 
   it("rejects obsolete and ambiguous records rather than guessing missing authored data", () => {
-    expect(parsePersistedComposer({ drafts: { session: { value: "old" } } })).toBeNull();
+    expect(parseLegacyComposer({ drafts: { session: { value: "old" } } })).toBeNull();
     expect(
-      parsePersistedComposer({
+      parseLegacyComposer({
         drafts: {
           session: {
             value: "",

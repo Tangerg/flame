@@ -16,19 +16,15 @@ export function persistedComposerDrafts(composer: Composer): Record<string, Comp
   return Object.fromEntries(composer.durableDraftTexts());
 }
 
-export function parsePersistedComposer(persisted: unknown): Composer | null {
+export function parseLegacyComposer(persisted: unknown): Composer | null {
   const parsed = persistedDraftSchema.safeParse(persisted);
   if (!parsed.success) return null;
   return Composer.restoreDrafts(new Map(Object.entries(parsed.data.drafts)));
 }
 
-export function encodePersistedComposer(composer: Composer): string {
-  return JSON.stringify({ state: { drafts: persistedComposerDrafts(composer) }, version: 0 });
-}
-
-export function decodePersistedComposer(raw: string): Composer {
+export function decodeLegacyComposer(raw: string): Composer {
   const envelope = z.object({ state: z.unknown(), version: z.literal(0) }).parse(JSON.parse(raw));
-  const composer = parsePersistedComposer(envelope.state);
+  const composer = parseLegacyComposer(envelope.state);
   if (!composer) throw new Error("saved drafts have an invalid format");
   return composer;
 }

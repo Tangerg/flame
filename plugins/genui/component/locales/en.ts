@@ -34,6 +34,8 @@ export const en: Record<string, string> = {
   "image.unavailable": "This image is unavailable.",
   "code.label": "Code",
   "markdown.table": "Markdown table",
+  "markdown.footnotes": "Footnotes",
+  "markdown.backReference": "Back to reference {{reference}}",
   "carousel.label": "Carousel",
   "carousel.description": "carousel",
   "timer.start": "Start",

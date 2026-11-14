@@ -11,9 +11,11 @@ export const fileView = definePlugin({
       order: 20,
       dock: "workspace",
       component: lazy(() =>
-        import("@/features/workspace/ui/files/FileWorkspace").then((m) => ({
-          default: m.FileWorkspace,
-        })),
+        import(/* @flame-lazy:workspace */ "@/features/workspace/ui/files/FileWorkspace").then(
+          (m) => ({
+            default: m.FileWorkspace,
+          }),
+        ),
       ),
     });
   },

@@ -108,3 +108,23 @@ jobs:
       - run: make setup
       - run: go install github.com/wailsapp/wails/v3/cmd/wails3@$(cd apps/desktop && go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)
       - run: make check-native
+
+  browser:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.work
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm install --global npm@"$NPM_VERSION"
+      - run: make setup
+      - run: make generate
+      - run: npm exec --workspace @flame/web -- playwright install chromium webkit
+      - name: Qualify browser interaction and accessibility contracts
+        run: npm run lab:verify --workspace @flame/web

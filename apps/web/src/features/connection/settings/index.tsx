@@ -3,9 +3,11 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { CONNECTION_PANE } from "@/features/settings/public/paneIDs";
 const ConnectionPane = lazy(() =>
-  import("@/features/connection/settings/ui/ConnectionPane").then(({ ConnectionPane }) => ({
-    default: ConnectionPane,
-  })),
+  import(/* @flame-lazy:settings */ "@/features/connection/settings/ui/ConnectionPane").then(
+    ({ ConnectionPane }) => ({
+      default: ConnectionPane,
+    }),
+  ),
 );
 
 export default definePlugin({

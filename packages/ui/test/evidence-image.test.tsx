@@ -8,10 +8,42 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { ContentVisibility, EvidenceImage } from "../dist/index.js";
+import {
+  ContentVisibility,
+  EvidenceImage,
+  imageSizeFromBase64,
+  imageSizeFromBytes,
+} from "../dist/index.js";
 
 const source =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+it("projects only supplied intrinsic dimensions and native loading hints", () => {
+  const base64 = source.split(",")[1]!;
+  const size = imageSizeFromBase64(base64)!;
+  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  expect(imageSizeFromBytes(bytes)).toEqual(size);
+  const view = render(
+    <EvidenceImage
+      src={source}
+      alt="Known pixels"
+      labels={labels}
+      width={size.width}
+      height={size.height}
+      decoding="async"
+    />,
+  );
+  const image = screen.getByRole("img", { name: "Known pixels" });
+  expect(image.getAttribute("width")).toBe("1");
+  expect(image.getAttribute("height")).toBe("1");
+  expect(image.getAttribute("decoding")).toBe("async");
+  expect(image.hasAttribute("loading")).toBe(false);
+  view.rerender(
+    <EvidenceImage src={source} alt="Unknown pixels" labels={labels} />,
+  );
+  expect(image.hasAttribute("width")).toBe(false);
+  expect(image.hasAttribute("height")).toBe(false);
+});
 
 beforeEach(() => {
   vi.stubGlobal(

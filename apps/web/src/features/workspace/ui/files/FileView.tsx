@@ -1,15 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { type HighlighterCore } from "shiki/core";
 import { useLayoutEffect, useMemo, useRef, type Ref } from "react";
-import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
-import { highlightCode, langFromPath, resolveLang } from "@/lib/highlight/shiki";
+import { stripCodeWrapper, useHighlightedCode } from "@/lib/highlight/useCodeHighlight";
+import { langFromPath } from "@/lib/highlight/languages";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { codeStyles as cs } from "@/features/workspace/ui/viewStyles";
 import { vocab } from "@flame/ui";
-function highlightLines(h: HighlighterCore, code: string, theme: string, path: string): string[] {
-  const lang = resolveLang(h, langFromPath(path));
-  return stripCodeWrapper(highlightCode(h, code, { lang, theme }), "").split("\n");
-}
 
 export function FileView({
   path,
@@ -28,13 +23,13 @@ export function FileView({
   // The presented source, without framing outside the line rows.
   ref?: Ref<HTMLDivElement>;
 }) {
-  const { highlighter, theme: shikiTheme } = useCodeHighlighter(langFromPath(path));
+  const html = useHighlightedCode(content, langFromPath(path));
 
   const plain = useMemo(() => content.split("\n"), [content]);
   const numberWidth = `${String(startLine + plain.length - 1).length}ch`;
   const highlighted = useMemo(
-    () => (highlighter ? highlightLines(highlighter, content, shikiTheme, path) : null),
-    [highlighter, content, shikiTheme, path],
+    () => (html === null ? null : stripCodeWrapper(html, "").split("\n")),
+    [html],
   );
 
   const targetRef = useRef<HTMLDivElement>(null);

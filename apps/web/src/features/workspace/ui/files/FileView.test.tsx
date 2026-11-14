@@ -15,14 +15,20 @@ const projection = vi.hoisted(() => {
     codeToHtml: vi.fn<(code: string) => string>(
       () => "<pre><code><span>highlighted</span></code></pre>",
     ),
-    getLoadedLanguages: vi.fn(() => ["go", "text"]),
   };
-  return { highlighter, currentHighlighter: highlighter as typeof highlighter | null };
+  return {
+    highlighter,
+    currentHighlighter: highlighter as typeof highlighter | null,
+    request: vi.fn(),
+  };
 });
 
 vi.mock("@/lib/highlight/useCodeHighlight", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/highlight/useCodeHighlight")>()),
-  useCodeHighlighter: () => ({ highlighter: projection.currentHighlighter, theme: "test-theme" }),
+  useHighlightedCode: (code: string, lang: string) => {
+    projection.request(code, lang);
+    return projection.currentHighlighter ? projection.highlighter.codeToHtml(code) : null;
+  },
 }));
 
 const INTENT = {};
@@ -32,7 +38,7 @@ let nativeScrollIntoView: typeof HTMLElement.prototype.scrollIntoView | undefine
 beforeEach(() => {
   projection.currentHighlighter = projection.highlighter;
   projection.highlighter.codeToHtml.mockClear();
-  projection.highlighter.getLoadedLanguages.mockClear();
+  projection.request.mockClear();
   nativeScrollIntoView = HTMLElement.prototype.scrollIntoView;
 });
 
@@ -55,11 +61,7 @@ describe("FileView syntax ownership", () => {
       />,
     );
 
-    expect(projection.highlighter.codeToHtml).toHaveBeenCalledWith(content, {
-      lang: "go",
-      theme: "test-theme",
-      transformers: [expect.objectContaining({ name: "flame:syntax-color" })],
-    });
+    expect(projection.request).toHaveBeenCalledWith(content, "go");
   });
 
   it("does not replay the target-line navigation when Shiki materializes", () => {

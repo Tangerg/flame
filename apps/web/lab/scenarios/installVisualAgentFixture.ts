@@ -338,25 +338,25 @@ export async function installVisualAgentFixture(
     fileListProvider(fileListState),
   );
 
-  visual.composer.store.setState((current) => ({
-    composer: current.composer.edit((draft) =>
-      draft.withValue(
-        fileListState
-          ? VISUAL_FILE_MENTION_DRAFT
-          : state === "steer"
-            ? "Tighten the error copy and continue."
-            : "",
-      ),
-    ),
-    modelPreference: {
-      kind: "explicit",
-      provider: VISUAL_MODELS[0]!.provider,
-      model: VISUAL_MODELS[0]!.id,
-      ...(VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel
-        ? { reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel }
-        : {}),
-    },
-  }));
+  const composer = visual.composer.store.getState();
+  composer.setModel({
+    kind: "explicit",
+    provider: VISUAL_MODELS[0]!.provider,
+    model: VISUAL_MODELS[0]!.id,
+    ...(VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel
+      ? { reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel }
+      : {}),
+  });
+  // Idle observes durable drafts; explicit scene seeds must retire pending restoration.
+  if (state !== "idle" || fileListState) {
+    composer.replaceDraft({
+      text: fileListState
+        ? VISUAL_FILE_MENTION_DRAFT
+        : state === "steer"
+          ? "Tighten the error copy and continue."
+          : "",
+    });
+  }
 
   let view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
   for (const event of AGENT_SESSION_TAIL_EVENTS[state]) {

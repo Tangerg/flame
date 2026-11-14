@@ -2,9 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n/index";
-import { Pressable } from "@/ui/index";
+
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
-import { ImageNotice } from "@flame/ui";
+import { ImageNotice, ButtonPrimitive } from "@flame/ui";
 import { radius, space } from "@flame/ui/tokens.stylex";
 import { isInlineImage } from "@/foundation/imageExport";
 const mi = stylex.create({
@@ -81,7 +81,7 @@ export function MarkdownImage({
     <ImagePreviewGallery
       item={{ src, alt, title }}
       trigger={(previewProps) => (
-        <Pressable
+        <ButtonPrimitive
           type="button"
           aria-label={previewLabel}
           {...previewProps}
@@ -100,7 +100,7 @@ export function MarkdownImage({
             onError={() => setFailedSource(src)}
             className={cn("media-edge", stylex.props(mi.image).className)}
           />
-        </Pressable>
+        </ButtonPrimitive>
       )}
     />
   );

@@ -1,38 +1,12 @@
-import { type HighlighterCore } from "shiki/core";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { measureShikiHighlight } from "@/lib/metrics";
 import { useScheme } from "@/lib/appearance";
-import {
-  getHighlighter,
-  highlightCode,
-  reportHighlightFailure,
-  resolveLang,
-} from "@/lib/highlight/shiki";
+import { requestHighlight, reportHighlightFailure } from "@/lib/highlight/shiki";
 import { shikiThemeName } from "@/lib/highlight/shikiTheme";
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 function useShikiTheme(): string {
   return shikiThemeName(useScheme());
-}
-
-export function useCodeHighlighter(lang: string): {
-  highlighter: HighlighterCore | null;
-  theme: string;
-} {
-  const theme = useShikiTheme();
-  const [ready, setReady] = useState<{ lang: string; highlighter: HighlighterCore } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void getHighlighter(lang)
-      .then((h) => {
-        if (!cancelled) setReady({ lang, highlighter: h });
-      })
-      .catch((error: unknown) => reportHighlightFailure("highlighter unavailable", error));
-    return () => {
-      cancelled = true;
-    };
-  }, [lang]);
-  return { highlighter: ready?.lang === lang ? ready.highlighter : null, theme };
 }
 
 export function stripCodeWrapper(html: string, fallback: string): string {
@@ -48,6 +22,14 @@ interface HighlightedCode {
 
 export function useHighlightedCode(code: string, lang: string): string | null {
   const theme = useShikiTheme();
+  const owner = useRef(Symbol("highlight"));
+  const current = useRef<{ code: string; lang: string; theme: string } | null>(null);
+  useLayoutEffect(() => {
+    current.current = { code, lang, theme };
+    return () => {
+      current.current = null;
+    };
+  }, [code, lang, theme]);
   const [settledCode] = useDebouncedValue(code, { wait: 120 });
   const cached = getCachedHighlight(lang, theme, settledCode);
   const [highlighted, setHighlighted] = useState<HighlightedCode | null>(() =>
@@ -55,30 +37,28 @@ export function useHighlightedCode(code: string, lang: string): string | null {
   );
 
   useEffect(() => {
-    if (cached !== undefined) return;
-    let cancelled = false;
-    getHighlighter(lang)
-      .then((highlighter) => {
-        if (cancelled) return;
-        try {
-          const resolvedLang = resolveLang(highlighter, lang);
-          const start = performance.now();
-          const html = highlightCode(highlighter, settledCode, {
-            lang: resolvedLang,
-            theme,
-          });
-          measureShikiHighlight(performance.now() - start, resolvedLang);
-          setCachedHighlight(lang, theme, settledCode, html);
-          setHighlighted({ lang, theme, code: settledCode, html });
-        } catch (error) {
-          reportHighlightFailure(`grammar ${lang}`, error);
-        }
+    if (cached !== undefined || code !== settledCode) return;
+    const controller = new AbortController();
+    void requestHighlight(owner.current, { code: settledCode, lang, theme }, controller.signal)
+      .then((result) => {
+        const captured = current.current;
+        if (
+          controller.signal.aborted ||
+          !captured ||
+          captured.code !== settledCode ||
+          captured.lang !== lang ||
+          captured.theme !== theme
+        )
+          return;
+        measureShikiHighlight(result.duration, result.lang);
+        setCachedHighlight(lang, theme, settledCode, result.html);
+        setHighlighted({ lang, theme, code: settledCode, html: result.html });
       })
-      .catch((error: unknown) => reportHighlightFailure("highlighter unavailable", error));
-    return () => {
-      cancelled = true;
-    };
-  }, [cached, lang, settledCode, theme]);
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) reportHighlightFailure(`grammar ${lang}`, error);
+      });
+    return () => controller.abort();
+  }, [cached, code, lang, settledCode, theme]);
 
   if (code !== settledCode) return null;
   if (cached !== undefined) return cached;

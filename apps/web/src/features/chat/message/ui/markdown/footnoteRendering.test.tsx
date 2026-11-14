@@ -1,4 +1,4 @@
-import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient, vi } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
 prepareTestClient(() => {
@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { waitFor, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
 import { t } from "@/lib/i18n/index";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { markdownSelectionPayload } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
@@ -165,3 +165,5 @@ describe("markdown footnote presentation", () => {
     }
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

@@ -786,6 +786,10 @@
   "composer.mention.status.no-workspace": "選擇專案後才能引用其檔案",
   "settings.search.empty": "沒有與「{{query}}」相符的設定。",
   "startup.failed.title": "Flame 無法啟動",
+  "startup.unsupported.body": "此瀏覽器缺少 Flame 所需的功能。請更新瀏覽器，或更新 macOS 和 Safari，然後重新開啟 Flame。",
+  "startup.unsupported.browsers": "支援的瀏覽器",
+  "startup.unsupported.features": "缺少的瀏覽器功能",
+  "startup.loadFailed.body": "無法載入應用程式。請重新載入此視窗後重試。",
   "startup.failed.body": "視窗就緒前發生了錯誤。請重試，或複製診斷資訊回報。",
   "startup.failed.copy": "複製診斷資訊",
   "startup.failed.copied": "已複製",
@@ -902,5 +906,14 @@
   "session.regenerate.noInput": "歷史已還原，但 Runtime 未傳回原始輸入，未重新傳送任何內容。",
   "composer.image.reading": "正在讀取 {{name}}…",
   "composer.image.failed": "無法讀取 {{name}}，請移除後重新選擇。",
-  "composer.image.ready": "{{name}} 已就緒"
+  "composer.image.ready": "{{name}} 已就緒",
+  "composer.persistence.loading": "正在讀取已儲存的草稿。讀取期間的新編輯會保留在這裡。",
+  "composer.persistence.pending": "正在此裝置上儲存草稿變更…",
+  "composer.legacy.available": "舊儲存空間中有草稿。請在編輯前明確匯入，以使用新的草稿儲存空間。",
+  "composer.legacy.import": "匯入既有草稿至新儲存空間",
+  "composer.legacy.blocked": "舊草稿備份已保留。新儲存空間已在使用，無法覆寫匯入；可複製備份，供匯入至全新儲存空間。",
+  "composer.legacy.failed": "無法讀取或匯入舊草稿備份。原始備份未變更。",
+  "composer.legacy.importing": "正在匯入既有草稿… 原始備份會保留。",
+  "composer.legacy.copy": "複製舊草稿備份",
+  "composer.legacy.copied": "已複製舊草稿備份"
 }

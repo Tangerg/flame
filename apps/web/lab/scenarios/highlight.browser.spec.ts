@@ -37,53 +37,84 @@ const samples = {
   xml: '<?xml version="1.0"?><root>hello</root>',
 };
 
-test("highlights each supported grammar in both themes and disposes its engine", async ({
+test("highlights every grammar in both themes through one real Worker and retires it", async ({
   page,
 }) => {
   await page.goto("/lab/fixture.html?fixture=agent&state=empty", { waitUntil: "domcontentloaded" });
   await expectLabReady(page);
   const result = await page.evaluate(async (samples) => {
     const modulePath = "/src/lib/highlight/shiki.ts";
-    const { getHighlighter, disposeHighlighter, resolveLang } = await import(modulePath);
+    const { requestHighlight, disposeHighlighter } = await import(modulePath);
     await disposeHighlighter();
-    const first = await getHighlighter("text");
-    const initialLanguages = first.getLoadedLanguages();
-    const rendered: string[] = [];
-    for (const [lang, code] of Object.entries(samples)) {
-      const highlighter = await getHighlighter(lang);
-      if (highlighter !== first) throw new Error("language created another engine");
-      for (const theme of ["github-dark", "github-light-high-contrast"]) {
-        const html = highlighter.codeToHtml(code, { lang: resolveLang(highlighter, lang), theme });
-        const root = document.createElement("div");
-        root.innerHTML = html;
-        if (root.querySelector("code")?.textContent !== code || root.querySelector("script")) {
-          throw new Error(`highlight changed the source: ${lang}`);
-        }
-        rendered.push(`${lang}:${theme}`);
+    const nativeWorker = window.Worker;
+    const workers: Worker[] = [];
+    window.Worker = class extends nativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        workers.push(this);
       }
+    };
+    const rendered: string[] = [];
+    const owner = Symbol("grammar acceptance");
+    const signal = new AbortController().signal;
+    try {
+      for (const [lang, code] of Object.entries(samples)) {
+        for (const theme of ["github-dark", "github-light-high-contrast"]) {
+          const result = await requestHighlight(owner, { code, lang, theme }, signal);
+          if (result.lang === "text") throw new Error(`missing grammar: ${lang}`);
+          const root = document.createElement("div");
+          root.innerHTML = result.html;
+          if (root.querySelector("code")?.textContent !== code || root.querySelector("script"))
+            throw new Error(`highlight changed the source: ${lang}`);
+          rendered.push(`${lang}:${theme}`);
+        }
+      }
+      for (const lang of [
+        "cts",
+        "mts",
+        "cjs",
+        "mjs",
+        "kt",
+        "kts",
+        "md",
+        "gql",
+        "regex",
+        "shellscript",
+      ]) {
+        const result = await requestHighlight(
+          owner,
+          {
+            code: "alias",
+            lang,
+            theme: "github-dark",
+          },
+          signal,
+        );
+        if (result.lang === "text") throw new Error(`missing alias: ${lang}`);
+      }
+      const fallback = await requestHighlight(
+        owner,
+        {
+          code: "literal unknown source",
+          lang: "not-a-known-language",
+          theme: "github-dark",
+        },
+        signal,
+      );
+      if (fallback.lang !== "text") throw new Error("unknown grammar changed its fallback");
+      if (workers.length !== 1) throw new Error("highlight readers created multiple workers");
+      await disposeHighlighter();
+      await requestHighlight(
+        owner,
+        { code: "new lifetime", lang: "text", theme: "github-dark" },
+        signal,
+      );
+      return { rendered, workers: workers.length };
+    } finally {
+      await disposeHighlighter();
+      window.Worker = nativeWorker;
     }
-    for (const alias of [
-      "cts",
-      "mts",
-      "cjs",
-      "mjs",
-      "kt",
-      "kts",
-      "md",
-      "gql",
-      "regex",
-      "shellscript",
-    ]) {
-      const highlighter = await getHighlighter(alias);
-      if (resolveLang(highlighter, alias) === "text") throw new Error(`missing alias: ${alias}`);
-    }
-    await disposeHighlighter();
-    const next = await getHighlighter("text");
-    const replaced = next !== first;
-    await disposeHighlighter();
-    return { initialLanguages, rendered, replaced };
   }, samples);
-  expect(result.initialLanguages).toEqual([]);
   expect(result.rendered).toHaveLength(Object.keys(samples).length * 2);
-  expect(result.replaced).toBe(true);
+  expect(result.workers).toBe(2);
 });

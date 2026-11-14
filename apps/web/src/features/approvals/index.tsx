@@ -3,9 +3,11 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { APPROVALS_PANE } from "@/features/settings/public/paneIDs";
 const ApprovalsPane = lazy(() =>
-  import("@/features/approvals/ui/ApprovalsPane").then(({ ApprovalsPane }) => ({
-    default: ApprovalsPane,
-  })),
+  import(/* @flame-lazy:settings */ "@/features/approvals/ui/ApprovalsPane").then(
+    ({ ApprovalsPane }) => ({
+      default: ApprovalsPane,
+    }),
+  ),
 );
 
 export default definePlugin({

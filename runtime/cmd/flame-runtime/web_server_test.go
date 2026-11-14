@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,13 +24,46 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		t.Fatal(err)
 	}
 	for name, content := range map[string]string{
-		"index.html":    "<!doctype html><title>flame browser</title>",
+		"index.html":    `<!doctype html><title>flame browser</title><script nonce="TEST_NONCE" src="/assets/app.js"></script>`,
+		"sandbox.html":  "<!doctype html><p>opaque wrapper</p>",
 		"assets/app.js": "export const application = 'flame'",
 		".private":      "must not be published",
 	} {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
+	}
+	identities := map[string]any{}
+	for _, name := range []string{"index.html", "sandbox.html", "assets/app.js"} {
+		data, err := os.ReadFile(filepath.Join(directory, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		hash := sha256.Sum256(data)
+		identity := map[string]string{"sha256": hex.EncodeToString(hash[:])}
+		if name == "index.html" {
+			identity["document"] = "main"
+		}
+		if name == "sandbox.html" {
+			identity["document"] = "sandbox"
+		}
+		identities[name] = identity
+	}
+	policy, err := json.Marshal(map[string]any{
+		"version": 1, "noncePlaceholder": "TEST_NONCE",
+		"documentPolicy": "script-src 'nonce-TEST_NONCE' 'strict-dynamic'; frame-ancestors 'none'",
+		"embeddedPolicy": "script-src 'nonce-TEST_NONCE' 'strict-dynamic'; frame-ancestors 'self'",
+		"sandbox":        map[string]string{"file": "sandbox.html", "policy": "default-src 'none'"},
+		"files":          identities,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(directory, ".vite"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, ".vite", "flame-web-policy.json"), policy, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	external := filepath.Join(t.TempDir(), "external.txt")
 	if err := os.WriteFile(external, []byte("outside distribution"), 0o600); err != nil {
@@ -73,6 +109,7 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		{http.MethodGet, "/assets/missing.js", "text/html", "", http.StatusNotFound, ""},
 		{http.MethodGet, "/assets", "text/html", "", http.StatusNotFound, ""},
 		{http.MethodGet, "/.private", "*/*", "", http.StatusNotFound, ""},
+		{http.MethodGet, "/.vite/flame-web-policy.json", "*/*", "", http.StatusNotFound, ""},
 		{http.MethodGet, "/../external.txt", "*/*", "", http.StatusNotFound, ""},
 		{http.MethodGet, "/..%5cexternal.txt", "*/*", "", http.StatusNotFound, ""},
 		{http.MethodPost, "/", "*/*", "", http.StatusMethodNotAllowed, ""},

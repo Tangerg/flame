@@ -18,6 +18,12 @@ import { GenUIResult } from "../../../../plugins/genui/component/component";
 import { MarkdownView, YouTubeView } from "../../../../plugins/genui/component/media";
 import { en } from "../../../../plugins/genui/component/locales/en";
 import { zh } from "../../../../plugins/genui/component/locales/zh";
+import { zhTW } from "../../../../plugins/genui/component/locales/zh-TW";
+import { ja } from "../../../../plugins/genui/component/locales/ja";
+import { ko } from "../../../../plugins/genui/component/locales/ko";
+import { es } from "../../../../plugins/genui/component/locales/es";
+import { fr } from "../../../../plugins/genui/component/locales/fr";
+import { de } from "../../../../plugins/genui/component/locales/de";
 import {
   Presentation,
   type AcceptedDocument,
@@ -26,6 +32,90 @@ import {
 import { GENUI_REPORT } from "./genuiReport";
 import { preventBrowserNavigation } from "@/test/browserTasks";
 import { limits } from "../../../../plugins/genui/contracts/expression";
+
+it.each(Object.entries({ en, zh, "zh-TW": zhTW, ja, ko, es, fr, de }))(
+  "keeps duplicate Markdown footnotes local and labeled in %s",
+  (locale, catalog) => {
+    const t = createTranslator({ en, [locale]: catalog }, locale);
+    const text = "Claim[^来源]. Again[^来源].\n\n[^来源]: Supporting note.";
+    const scene = () => <MarkdownView props={{ text }} renderNode={() => null} t={t} />;
+    const view = testClient.render(
+      <>
+        {scene()}
+        {scene()}
+      </>,
+    );
+    const sections = view.container.querySelectorAll<HTMLElement>("[data-footnotes]");
+    expect(sections).toHaveLength(2);
+    const identities = [...view.container.querySelectorAll("[id]")].map((node) => node.id);
+    expect(new Set(identities).size).toBe(identities.length);
+    for (const section of sections) {
+      const root = section.parentElement!;
+      const label = section.querySelector<HTMLElement>(".sr-only")!;
+      expect(label.textContent).toBe(t("markdown.footnotes"));
+      const definition = section.querySelector<HTMLElement>("li[id]")!;
+      const references = root.querySelectorAll<HTMLAnchorElement>("[data-footnote-ref]");
+      const backlinks = section.querySelectorAll<HTMLAnchorElement>("[data-footnote-backref]");
+      expect(references).toHaveLength(2);
+      expect(backlinks).toHaveLength(2);
+      for (const [index, reference] of references.entries()) {
+        expect(reference.getAttribute("href")).toBe(`#${definition.id}`);
+        expect(reference.getAttribute("aria-describedby")).toBe(label.id);
+        expect(reference.ownerDocument.getElementById(reference.id)).toBe(reference);
+        expect(reference.getAttribute("target")).toBeNull();
+        const backlink = backlinks[index]!;
+        expect(backlink.getAttribute("href")).toBe(`#${reference.id}`);
+        expect(backlink.getAttribute("target")).toBeNull();
+        expect(backlink.getAttribute("aria-label")).toBe(
+          t("markdown.backReference", {
+            reference: index === 0 ? "1" : "1-2",
+          }),
+        );
+      }
+    }
+    view.rerender(
+      <>
+        {scene()}
+        {scene()}
+      </>,
+    );
+    expect([...view.container.querySelectorAll("[id]")].map((node) => node.id)).toEqual(identities);
+  },
+);
+
+it("renders named captured tasks without a form checkbox or an extra keyboard stop", () => {
+  const text =
+    "- [x] Accepted **decision**\n- [ ] Pending item\n\n  Supporting paragraph.\n\n  - Nested ordinary item\n- Ordinary item";
+  const view = testClient.render(
+    <MarkdownView props={{ text }} renderNode={() => null} t={createTranslator({ en }, "en")} />,
+  );
+  const checked = screen.getByRole("checkbox", { name: "Accepted decision" });
+  const pending = screen.getByRole("checkbox", { name: "Pending item" });
+  expect(checked.getAttribute("aria-checked")).toBe("true");
+  expect(pending.getAttribute("aria-checked")).toBe("false");
+  for (const marker of [checked, pending]) {
+    expect(marker.getAttribute("aria-disabled")).toBe("true");
+    expect(marker.hasAttribute("tabindex")).toBe(false);
+  }
+  expect(view.container.querySelector('input[type="checkbox"]')).toBeNull();
+  expect(view.container.textContent).toContain("Supporting paragraph.");
+  expect(view.container.textContent).toContain("Nested ordinary item");
+});
+
+it("keeps fragment navigation local without broadening GenUI external URL admission", () => {
+  testClient.render(
+    <MarkdownView
+      props={{
+        text: "[Local](#local) [Web](https://example.test) [Denied](javascript:alert%281%29)",
+      }}
+      renderNode={() => null}
+      t={createTranslator({ en }, "en")}
+    />,
+  );
+  expect(screen.getByRole("link", { name: "Local" }).getAttribute("target")).toBeNull();
+  expect(screen.getByRole("link", { name: "Web" }).getAttribute("target")).toBe("_blank");
+  expect(screen.queryByRole("link", { name: "Denied" })).toBeNull();
+});
 
 let testClient: TestClient;
 beforeEach(() => {

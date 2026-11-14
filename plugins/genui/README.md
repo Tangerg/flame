@@ -168,6 +168,13 @@ links and tables are not replaced to obtain translated copy. Decoding failures,
 open previews and native reading positions keep their existing owners. Changing
 an image's actual source still ends its old preview.
 
+Markdown notes share the host's supporting-label transform and task-list projection.
+Each mounted Markdown view scopes its generated footnote IDs, local destinations,
+return links and descriptions; all eight display locales name notes and returns.
+Fragments stay in that document while admitted external links retain their separate
+protocol rule. Recorded GFM tasks expose named, immutable checkbox markers without
+form controls or another Tab stop. Locale changes retain the same renderer identities.
+
 ## Local computation
 
 The document declares `state`, `nodes`, `actions` and `operations`. Expressions
@@ -347,6 +354,13 @@ Both frames omit same-origin access, forms, popups, top navigation, downloads an
 privileged browser features. No Flame context, cookies, token, tool dispatcher or
 postMessage command bridge is supplied. Inline styles and local data/blob media
 are supported; external scripts, frames and network requests are blocked.
+
+The outer document is the Host's independent `/genui-sandbox.html` response,
+not a `srcdoc` inheriting the application's trusted-script policy. One channel
+is bound to the mounted frame and initialized only by its actual parent; captured
+HTML travels once through that port, never through a URL or a host command bridge.
+Replacing the program retires the original frame and channel. Both opaque
+sandbox layers and the original network and navigation restrictions remain.
 
 The extra outer frame is deliberate: a CSP inside an authored page alone does
 not constrain that page's own navigation. Real browser tests exercise local

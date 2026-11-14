@@ -48,7 +48,13 @@ function jpegSize(b: Uint8Array): PixelSize | null {
   while (at + 9 < b.length) {
     if (b[at] !== 0xff) return null;
     const marker = b[at + 1]!;
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
       return { height: be16(b, at + 5), width: be16(b, at + 7) };
     }
     if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) {
@@ -61,7 +67,10 @@ function jpegSize(b: Uint8Array): PixelSize | null {
 }
 
 function webpSize(b: Uint8Array): PixelSize | null {
-  if (!starts(b, 0, [0x52, 0x49, 0x46, 0x46]) || !starts(b, 8, [0x57, 0x45, 0x42, 0x50])) {
+  if (
+    !starts(b, 0, [0x52, 0x49, 0x46, 0x46]) ||
+    !starts(b, 8, [0x57, 0x45, 0x42, 0x50])
+  ) {
     return null;
   }
   if (starts(b, 12, [0x56, 0x50, 0x38, 0x20]) && b.length >= 30) {
@@ -79,10 +88,15 @@ function webpSize(b: Uint8Array): PixelSize | null {
   return null;
 }
 
-export function imageSizeFromBase64(base64: string): PixelSize | null {
-  const bytes = headerBytes(base64);
-  if (!bytes) return null;
-  const size = pngSize(bytes) ?? jpegSize(bytes) ?? gifSize(bytes) ?? webpSize(bytes);
+export function imageSizeFromBytes(bytes: Uint8Array): PixelSize | null {
+  const header = bytes.subarray(0, (HEADER_CHARS / 4) * 3);
+  const size =
+    pngSize(header) ?? jpegSize(header) ?? gifSize(header) ?? webpSize(header);
   if (!size || size.width <= 0 || size.height <= 0) return null;
   return size;
+}
+
+export function imageSizeFromBase64(base64: string): PixelSize | null {
+  const bytes = headerBytes(base64);
+  return bytes ? imageSizeFromBytes(bytes) : null;
 }

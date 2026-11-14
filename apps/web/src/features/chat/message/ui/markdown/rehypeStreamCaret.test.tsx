@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { act } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 const CASES: readonly [name: string, markdown: string][] = [
   ["plain text", "Hello world here"],
@@ -66,3 +66,5 @@ describe("rehypeStreamCaret", () => {
     expect(trailing, "text stranded to the right of the caret").toEqual([]);
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

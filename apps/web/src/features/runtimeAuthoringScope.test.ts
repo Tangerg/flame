@@ -15,6 +15,7 @@ import { createWorkspace, type WorkspaceOwner } from "@/features/workspace/adapt
 import { createBrowserHost } from "@/platform/browserHost";
 import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { createComposerStore } from "@/features/composer/adapters/composerStore";
+import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 import { createContextDockStore } from "@/features/workspace/adapters/contextDockStore";
 import * as imageInput from "@/features/composer/public/input";
 import { bindWorkspaceSessionNavigation } from "@/features/workspace/application/sessionNavigationSync";
@@ -146,7 +147,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
 }
 
 describe("Runtime target authoring ownership", () => {
-  it("preserves each target's drafts and file context when Session IDs coincide", () => {
+  it("preserves each target's drafts and file context when Session IDs coincide", async () => {
     const targets = installTargets("roundtrip");
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("history on A");
@@ -156,8 +157,10 @@ describe("Runtime target authoring ownership", () => {
     composer().addPaste("paste on A");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-A.ts", 12);
     testClient.navigation.go({ view: "files", subagent: "child-on-A", settings: "connection" });
-    const keyA = `flame.composer:${encodeURIComponent(targets.targetA)}`;
-    const storedA = localStorage.getItem(keyA);
+    await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
+    const storage = new DraftDatabase();
+    disposers.push(() => storage.close());
+    const storedA = await storage.read(targets.targetA);
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
@@ -173,13 +176,14 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(dock().fileViewer).toBeNull();
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    expect(localStorage.getItem(keyA)).toBe(storedA);
+    expect((await storage.read(targets.targetA)).drafts).toEqual(storedA.drafts);
 
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-B.ts", 24);
-    const keyB = `flame.composer:${encodeURIComponent(targets.targetB)}`;
-    expect(keyB).not.toBe(keyA);
+    await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
+    expect((await storage.read(targets.targetB)).drafts.get("shared")?.value).toBe("draft on B");
+    expect((await storage.read(targets.targetA)).drafts.get("shared")?.value).toBe("draft on A");
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetA);
@@ -210,8 +214,6 @@ describe("Runtime target authoring ownership", () => {
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     composer().addImageFiles([new File([""], "pending.png")]);
-    const key = `flame.composer:${encodeURIComponent(targets.targetA)}`;
-
     targets.replace(targets.targetA);
     reading.resolve({ mime: "image/png", data: "accepted", name: "pending.png" });
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
@@ -220,7 +222,12 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.draft.value).toBe(
       "retained during token refresh or process restart",
     );
-    expect(localStorage.getItem(key)).toContain("retained during token refresh or process restart");
+    await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
+    const storage = new DraftDatabase();
+    disposers.push(() => storage.close());
+    expect((await storage.read(targets.targetA)).drafts.get("shared")?.value).toBe(
+      "retained during token refresh or process restart",
+    );
   });
 
   it("retires delayed image results even after switching away and back to the same Session", async () => {
@@ -294,9 +301,11 @@ describe("Runtime target authoring ownership", () => {
     const unscopedAgent = localStorage.getItem(
       testClient.agent.sessions.store.persist.getOptions().name!,
     )!;
-    const unscopedComposer = localStorage.getItem(
-      `flame.composer:${encodeURIComponent(targets.targetA)}`,
-    )!;
+    await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
+    const unscopedComposer = JSON.stringify({
+      state: { drafts: { shared: { value: "unowned legacy draft", pastes: [] } } },
+      version: 0,
+    });
     const unscopedDock = localStorage.getItem(
       testClient.workspace.dock.store.persist.getOptions().name!,
     )!;
@@ -304,6 +313,7 @@ describe("Runtime target authoring ownership", () => {
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("cold draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/B.ts", 2);
+    await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
     localStorage.setItem("flame.agent-session", unscopedAgent);
     localStorage.setItem("flame.composer", unscopedComposer);
     localStorage.setItem("flame.context-dock", unscopedDock);
@@ -324,6 +334,7 @@ describe("Runtime target authoring ownership", () => {
     workspace.store.getState().activateSessionScope("shared");
 
     expect(agent.store.getState().openSessionIds).toEqual(["shared"]);
+    await vi.waitFor(() => expect(input.store.getState().persistenceState.status).toBe("saved"));
     expect(input.store.getState().composer.draft.value).toBe("cold draft on B");
     expect(workspace.store.getState().fileViewer).toEqual({
       path: "src/B.ts",

@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
 const renderMermaid = vi.hoisted(() =>
   vi.fn(
@@ -78,3 +78,5 @@ describe("MermaidBlock", () => {
     expect(screen.getByRole("button", { name: "Copy code" })).toBeTruthy();
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

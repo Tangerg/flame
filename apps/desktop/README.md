@@ -19,7 +19,10 @@ make package-desktop
 ```
 
 Root staging builds shared icons/UI, installed components and `apps/web/dist`,
-then replaces ignored `assets/web`. The host embeds only that package-local
+then replaces ignored `assets/web`. The embedded distribution includes its
+build-owned Web policy; the shared `local-runtime/webassets` handler applies the
+same script nonce, embedding and verified-cache rules as Runtime HTTP. A missing
+or invalid policy refuses startup instead of falling back to unprotected HTML. The host embeds only that package-local
 staging directory. Edit Web sources in `apps/web`; do not edit staged assets.
 The native Taskfile delegates this shared graph to the root and owns platform
 compilation, icon packaging and signing steps. Product name and slug belong to
@@ -32,6 +35,12 @@ configuration. Deliveries are under `out/desktop/darwin-<architecture>`.
 `build/product.mjs` also owns the macOS deployment target and native compiler/linker
 policy. Wails compilation, independent Go checks and generated plists consume the
 same values. Native verification checks the resulting Mach-O deployment target.
+The installation floor does not identify the installed WebKit version. macOS 13
+requires software updates supplying the Web Host's required Safari/WebKit 17.4
+capabilities. The shared Web bootstrap diagnoses missing capabilities before
+loading application dependencies; it does not infer support from the OS version.
+WebKit documents these API additions and the Safari update in its
+[17.4 release notes](https://webkit.org/blog/15063/webkit-features-in-safari-17-4/).
 Linker warnings are fatal except the duplicate system-library diagnostic produced
 by Go's per-package Objective-C linkage ([Go #67799](https://github.com/golang/go/issues/67799)).
 

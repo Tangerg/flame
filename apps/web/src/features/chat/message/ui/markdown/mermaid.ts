@@ -18,7 +18,7 @@ function svgRoot(svg: string): Element {
 }
 
 export async function renderMermaid(code: string, idPrefix: string): Promise<string> {
-  const { renderAsync } = await import("pele/lazy");
+  const { renderAsync } = await import(/* @flame-lazy:diagram-rendering */ "pele/lazy");
   const { svg } = await renderAsync(code, {
     idPrefix,
     fontFamily: "system-ui",

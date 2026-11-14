@@ -5,7 +5,9 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { PLUGINS_PANE } from "@/features/settings/public/paneIDs";
 const PluginsPane = lazy(() =>
-  import("@/features/plugins/ui/PluginsPane").then(({ PluginsPane }) => ({ default: PluginsPane })),
+  import(/* @flame-lazy:settings */ "@/features/plugins/ui/PluginsPane").then(
+    ({ PluginsPane }) => ({ default: PluginsPane }),
+  ),
 );
 
 export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {

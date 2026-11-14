@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import { X } from "@flame/icons/react";
 import { ButtonPrimitive } from "./button-primitive";
 import { IconButton } from "./icon-button";
-import { ImageViewport, type ImageViewportLabels } from "./image-viewport";
+import {
+  ImageViewport,
+  type ImageSource,
+  type ImageViewportLabels,
+} from "./image-viewport";
 import { LightboxDialog } from "./lightbox-dialog";
 import { ScrollRegion } from "./scroll-region";
 import { color, space, type } from "./tokens.stylex";
@@ -31,6 +35,8 @@ const styles = stylex.create({
   },
   image: {
     display: "block",
+    width: "auto",
+    height: "auto",
     maxWidth: "100%",
     maxHeight: "20rem",
     objectFit: "contain",
@@ -68,11 +74,16 @@ const styles = stylex.create({
   },
 });
 
-export function EvidenceImage(props: {
-  src: string;
-  alt: string;
+type EvidenceImageProps = Pick<
+  ImageSource,
+  "src" | "alt" | "width" | "height"
+> & {
   labels: EvidenceImageLabels;
-}) {
+  loading?: "eager" | "lazy";
+  decoding?: "async" | "sync" | "auto";
+};
+
+export function EvidenceImage(props: EvidenceImageProps) {
   return <CapturedImage key={props.src} {...props} />;
 }
 
@@ -80,13 +91,16 @@ function CapturedImage({
   src,
   alt,
   labels,
-}: {
-  src: string;
-  alt: string;
-  labels: EvidenceImageLabels;
-}) {
+  width,
+  height,
+  loading,
+  decoding,
+}: EvidenceImageProps) {
   const [open, setOpen] = useState(false);
-  const image = useMemo(() => ({ src, alt }), [src, alt]);
+  const image = useMemo(
+    () => ({ src, alt, width, height }),
+    [src, alt, width, height],
+  );
   const label = alt || labels.view;
   return (
     <LightboxDialog
@@ -100,7 +114,15 @@ function CapturedImage({
           data-focus-outset=""
           {...stylex.props(styles.trigger)}
         >
-          <img src={src} alt={alt} {...stylex.props(styles.image)} />
+          <img
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            loading={loading}
+            decoding={decoding}
+            {...stylex.props(styles.image)}
+          />
         </ButtonPrimitive>
       }
     >

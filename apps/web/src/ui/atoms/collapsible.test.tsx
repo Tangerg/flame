@@ -37,10 +37,13 @@ function row(text: string): HTMLElement {
   return screen.getByText(text).parentElement!.parentElement!;
 }
 
-function geometry(element: HTMLElement) {
+function geometry(element: HTMLElement, releasedWidth = 26) {
   Object.defineProperties(element, {
     offsetWidth: { configurable: true, value: 130 },
-    clientWidth: { configurable: true, value: 100 },
+    clientWidth: {
+      configurable: true,
+      get: () => 100 + (element.style.scrollbarWidth === "none" ? releasedWidth : 0),
+    },
   });
   element.scrollTop = 42;
 }
@@ -77,6 +80,20 @@ afterEach(() => {
 });
 
 describe("Collapsible shared scroll lifetime", () => {
+  it.each([0, 26])(
+    "compensates only the %d pixels actually released by hiding the scrollbar",
+    (releasedWidth) => {
+      const { rerender } = render(<Pair />);
+      const scrollport = screen.getByTestId("scrollport");
+      geometry(scrollport, releasedWidth);
+      row("First").style.transitionDuration = "100ms";
+      rerender(<Pair first={false} />);
+      expect(scrollport.style.paddingRight).toBe(`${1 + releasedWidth}px`);
+      fireEvent.transitionEnd(row("First"));
+      expectReleased(scrollport);
+    },
+  );
+
   it("restores the original styles after two simultaneous collapses finish", () => {
     const { rerender, scrollport } = sharedPair();
     rerender(<Pair first={false} second={false} />);

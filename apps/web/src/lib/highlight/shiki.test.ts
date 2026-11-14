@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type HighlighterCore } from "shiki/core";
-import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
+import { langFromPath } from "@/lib/highlight/languages";
+import { resolveLang } from "@/lib/highlight/shikiEngine";
 const { createHighlighterCore } = vi.hoisted(() => ({ createHighlighterCore: vi.fn() }));
 
 vi.mock("shiki/core", () => ({ createHighlighterCore }));
@@ -71,7 +72,7 @@ describe("getHighlighter", () => {
   it("builds the highlighter once and shares it", async () => {
     const highlighter = {} as HighlighterCore;
     createHighlighterCore.mockResolvedValue(highlighter);
-    const { getHighlighter } = await import("@/lib/highlight/shiki");
+    const { getHighlighter } = await import("@/lib/highlight/shikiEngine");
 
     await expect(getHighlighter()).resolves.toBe(highlighter);
     await expect(getHighlighter()).resolves.toBe(highlighter);
@@ -83,7 +84,7 @@ describe("getHighlighter", () => {
     createHighlighterCore
       .mockRejectedValueOnce(new Error("chunk unavailable"))
       .mockResolvedValue(highlighter);
-    const { getHighlighter } = await import("@/lib/highlight/shiki");
+    const { getHighlighter } = await import("@/lib/highlight/shikiEngine");
 
     await expect(getHighlighter()).rejects.toThrow("chunk unavailable");
     await expect(getHighlighter()).resolves.toBe(highlighter);
@@ -105,7 +106,7 @@ it("disposes an initializing highlighter and creates a new instance on the next 
         }),
     )
     .mockResolvedValueOnce(second);
-  const { getHighlighter, disposeHighlighter } = await import("@/lib/highlight/shiki");
+  const { getHighlighter, disposeHighlighter } = await import("@/lib/highlight/shikiEngine");
   const loading = getHighlighter();
   await vi.waitFor(() => expect(createHighlighterCore).toHaveBeenCalledTimes(1));
   const disposing = disposeHighlighter();

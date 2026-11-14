@@ -1,13 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { type KeyboardEvent, type ReactNode } from "react";
 import { corner, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
-import { CHOICE_SURFACE } from "@flame/ui";
+import { CHOICE_SURFACE, ButtonPrimitive } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
 import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox-group";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { Pressable } from "@/ui/atoms/pressable";
+
 const styles = stylex.create({
   list: { display: "flex", flexDirection: "column", gap: space.s1 },
   row: {
@@ -159,7 +159,7 @@ export function ChoiceOption({
     nativeButton: true,
     "aria-label": label,
     "aria-description": description || undefined,
-    render: <Pressable />,
+    render: <ButtonPrimitive />,
   };
 
   const content = (

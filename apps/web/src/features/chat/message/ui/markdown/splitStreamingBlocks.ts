@@ -2,6 +2,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { visit } from "unist-util-visit";
 import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
+import { hasStreamingMathContext } from "./remarkMathSyntax";
 
 const parser = unified().use(remarkParse).use(remarkSyntax);
 const FOOTNOTE = /\[\^[^\]\r\n]+\]/;
@@ -35,15 +36,13 @@ function closingTags(raw: string, tag: string): number {
   return raw.match(new RegExp(`</${tag}(?=[\\s>])[^>]*>`, "gi"))?.length ?? 0;
 }
 
-export function splitStreamingBlocks(markdown: string): string[] {
-  if (FOOTNOTE.test(markdown)) return [markdown];
-
+function parsedBlocks(markdown: string): { blocks: string[]; global: boolean } {
   const tree = parser.parse(markdown);
   let hasDefinition = false;
   visit(tree, "definition", () => {
     hasDefinition = true;
   });
-  if (hasDefinition) return [markdown];
+  if (hasDefinition) return { blocks: [markdown], global: true };
 
   const tokens: { type: string; raw: string }[] = [];
   let offset = 0;
@@ -82,5 +81,53 @@ export function splitStreamingBlocks(markdown: string): string[] {
     const tail = blocks.pop()!;
     blocks[blocks.length - 1] += tail;
   }
-  return blocks;
+  return { blocks, global: false };
+}
+
+export function splitStreamingBlocks(markdown: string): string[] {
+  return FOOTNOTE.test(markdown) ? [markdown] : parsedBlocks(markdown).blocks;
+}
+
+export function createStreamingBlockSplitter() {
+  let previous = "";
+  let previousRepair: ((tail: string) => string) | undefined;
+  let stable: string[] = [];
+  let offset = 0;
+  let global = false;
+  let result: string[] = [];
+
+  return (markdown: string, repair?: (tail: string) => string): string[] => {
+    if (markdown === previous && repair === previousRepair) return result;
+    if (!markdown.startsWith(previous)) {
+      stable = [];
+      offset = 0;
+      global = false;
+    }
+    previous = markdown;
+    previousRepair = repair;
+    let tail = markdown.slice(offset);
+    global ||= FOOTNOTE.test(tail) || hasStreamingMathContext(tail);
+    if (!global) {
+      const parsed = parsedBlocks(tail);
+      global = parsed.global;
+      if (!global) {
+        // The last block and its separator can still grow into a list, table or fence.
+        const settled = Math.max(0, parsed.blocks.length - 2);
+        const committed = parsed.blocks.slice(0, settled);
+        stable = stable.concat(committed);
+        offset += committed.reduce((length, block) => length + block.length, 0);
+        tail = markdown.slice(offset);
+        const repaired = repair?.(tail) ?? tail;
+        result = stable.concat(
+          repaired === tail ? parsed.blocks.slice(settled) : splitStreamingBlocks(repaired),
+        );
+        return result;
+      }
+    }
+    // Later definitions and open display delimiters can change already rendered context.
+    stable = [];
+    offset = 0;
+    result = [repair?.(markdown) ?? markdown];
+    return result;
+  };
 }

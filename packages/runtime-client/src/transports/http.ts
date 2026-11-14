@@ -1,3 +1,4 @@
+import { bodyCancellation, isExpectedAbort, isPrimaryFailure, retainCleanupFailure } from "./body";
 import { readResponseDocument, responseDocumentLimit } from "./document";
 import { endpointAcceptsBearer, requireRuntimeEndpoint } from "../endpoint";
 import {
@@ -145,7 +146,11 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
 
   const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
-  const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>();
+  const readers = new Map<
+    ReadableStreamDefaultReader<Uint8Array>,
+    ReturnType<typeof bodyCancellation>
+  >();
+  const cleanupFailures = new Map<object, unknown>();
   const activeSends = new Set<Promise<void>>();
   const activeDrains = new Set<Promise<void>>();
   let closePromise: Promise<void> | undefined;
@@ -165,6 +170,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   ): Promise<void> {
     let responseSeen = false;
     let streamError: Error | undefined;
+    let readFailure: { error: unknown } | undefined;
     let parsedEvent: TransportEvent | undefined;
     let consumption: Promise<void> | undefined;
     const parser = createParser({
@@ -267,7 +273,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       })();
     };
     const reader = body.getReader();
-    readers.add(reader);
+    const cancellation = bodyCancellation(reader);
+    readers.set(reader, cancellation);
     const decoder = new TextDecoder("utf-8", { fatal: true });
     const decodeChunk = (chunk?: Uint8Array): string => {
       try {
@@ -296,7 +303,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
       if (!(await feedEventStreamText(parser, decodeChunk(), deliverParsedEvent))) return;
     } catch (err) {
-      if (signal?.aborted !== true && !channel.closed) {
+      readFailure = { error: err };
+      if (!signal || !isExpectedAbort(err, signal)) {
         streamError =
           err instanceof RpcTransportError || err instanceof RpcProtocolError
             ? err
@@ -305,16 +313,19 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
     } finally {
       try {
-        if (!bodyComplete) await reader.cancel(streamError);
+        if (!bodyComplete || cancellation.started) await cancellation.cancel(streamError);
       } catch (cancelError) {
-        if (streamError && cancelError !== streamError && cancelError !== streamError.cause) {
-          streamError.cause =
-            streamError.cause === undefined
-              ? cancelError
-              : new AggregateError(
-                  [streamError.cause, cancelError],
-                  "response body cancellation failed after its primary failure",
-                );
+        // An errored ReadableStream rejects cancel with its original read failure.
+        if (!readFailure || !isPrimaryFailure(readFailure.error, cancelError)) {
+          cleanupFailures.set(cancellation, cancelError);
+          if (streamError) retainCleanupFailure(streamError, cancelError);
+          else {
+            streamError = new RpcConnectionError(
+              "response body cancellation failed",
+              metadata.requestId,
+            );
+            streamError.cause = cancelError;
+          }
         }
       }
       readers.delete(reader);
@@ -351,8 +362,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     signal?: AbortSignal,
     options: TransportSendOptions = {},
   ): Promise<void> {
-    if (channel.closed) throw new RpcTransportError("transport closed");
-
     const method = msg.method;
     const url = `${baseUrl}${HTTP_ENDPOINTS.rpc.path}`;
     const rpcId = msg.id;
@@ -431,7 +440,10 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       activeDrains.add(draining);
       void draining.then(
         () => activeDrains.delete(draining),
-        () => activeDrains.delete(draining),
+        (cause: unknown) => {
+          cleanupFailures.set(draining, cause);
+          activeDrains.delete(draining);
+        },
       );
       return;
     }
@@ -455,6 +467,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         "RPC response",
         metadata.requestId,
         requestSignal,
+        (cause, operation) => cleanupFailures.set(operation, cause),
       );
     } catch (error) {
       endSpan(span, error);
@@ -489,6 +502,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }))
     ) {
       const err = new RpcTransportError("transport closed before delivering the RPC response");
+      if (closeController.signal.aborted) err.cause = closeController.signal.reason;
       endSpan(span, err);
       throw err;
     }
@@ -500,11 +514,20 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     signal?: AbortSignal,
     options?: TransportSendOptions,
   ): Promise<void> {
+    if (channel.closed) return Promise.reject(new RpcTransportError("transport closed"));
     const sending = sendRequest(msg, signal, options);
     activeSends.add(sending);
     void sending.then(
       () => activeSends.delete(sending),
-      () => activeSends.delete(sending),
+      (cause: unknown) => {
+        if (
+          closePromise &&
+          !isExpectedAbort(cause, closeController.signal) &&
+          (!signal || !isExpectedAbort(cause, signal))
+        )
+          cleanupFailures.set(sending, cause);
+        activeSends.delete(sending);
+      },
     );
     return sending;
   }
@@ -516,12 +539,23 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   async function closeOwnedResources(): Promise<void> {
     channel.close();
     closeController.abort();
-    const cancelReaders = () => [...readers].map((reader) => reader.cancel());
-
-    await Promise.allSettled([...activeSends, ...cancelReaders()]);
-    await Promise.allSettled(cancelReaders());
-    await Promise.allSettled(activeDrains);
+    const joinCancellations = async () => {
+      // Each drain joins its original cancellation even when cancel makes read()
+      // return done; only that owner can distinguish a read error from cleanup.
+      await Promise.allSettled(
+        [...readers.values()].map((owner) => owner.cancel(closeController.signal.reason)),
+      );
+    };
+    await Promise.all([Promise.allSettled(activeSends), joinCancellations()]);
+    // A fetch admitted before close can still supply a reader after the first snapshot.
+    await joinCancellations();
+    const drains = [...activeDrains];
+    const outcomes = await Promise.allSettled(drains);
+    for (const [index, result] of outcomes.entries())
+      if (result.status === "rejected") cleanupFailures.set(drains[index]!, result.reason);
     readers.clear();
+    if (cleanupFailures.size)
+      throw new AggregateError([...cleanupFailures.values()], "http transport cleanup failed");
   }
 
   function close(): Promise<void> {

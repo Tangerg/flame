@@ -822,6 +822,10 @@
   "composer.mention.status.no-workspace": "Elige un proyecto para citar sus archivos",
   "settings.search.empty": "Ningún ajuste coincide con «{{query}}».",
   "startup.failed.title": "Flame no pudo iniciarse",
+  "startup.unsupported.body": "Este navegador no tiene las funciones que Flame necesita. Actualiza el navegador, o actualiza macOS y Safari, y vuelve a abrir Flame.",
+  "startup.unsupported.browsers": "Navegadores compatibles",
+  "startup.unsupported.features": "Funciones del navegador que faltan",
+  "startup.loadFailed.body": "No se pudo cargar la aplicación. Recarga esta ventana para volver a intentarlo.",
   "startup.failed.body": "Algo falló antes de que la ventana estuviera lista. Reinténtalo o copia el diagnóstico para informarlo.",
   "startup.failed.copy": "Copiar diagnóstico",
   "startup.failed.copied": "Copiado",
@@ -944,5 +948,14 @@
   "session.regenerate.noInput": "Se restauró el historial, pero Runtime no devolvió la entrada original. No se reenvió nada.",
   "composer.image.reading": "Leyendo {{name}}…",
   "composer.image.failed": "No se pudo leer {{name}}. Elimínala y vuelve a seleccionarla.",
-  "composer.image.ready": "Imagen lista: {{name}}"
+  "composer.image.ready": "Imagen lista: {{name}}",
+  "composer.persistence.loading": "Cargando los borradores guardados. Las nuevas ediciones se conservan aquí durante la carga.",
+  "composer.persistence.pending": "Guardando los cambios del borrador en este dispositivo…",
+  "composer.legacy.available": "Hay borradores en el almacenamiento anterior. Impórtalos antes de editar para usar el nuevo almacenamiento de borradores.",
+  "composer.legacy.import": "Importar borradores existentes",
+  "composer.legacy.blocked": "Se conserva la copia de los borradores anteriores. El nuevo almacenamiento ya está en uso; copia el respaldo para importarlo en un almacenamiento vacío.",
+  "composer.legacy.failed": "No se pudo leer o importar la copia de los borradores anteriores. El original no ha cambiado.",
+  "composer.legacy.importing": "Importando borradores existentes… Se conservará la copia original.",
+  "composer.legacy.copy": "Copiar respaldo de borradores anteriores",
+  "composer.legacy.copied": "Respaldo de borradores anteriores copiado"
 }

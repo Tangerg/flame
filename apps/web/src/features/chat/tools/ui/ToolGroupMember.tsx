@@ -2,10 +2,10 @@ import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
-import { Pressable } from "@/ui/index";
+
 import { reveal } from "@/ui/index";
 import { chevron } from "@/ui/index";
-import { DiffStat, vocab } from "@flame/ui";
+import { DiffStat, vocab, ButtonPrimitive } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   headlineToolMetaItem,
@@ -105,7 +105,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
     <div>
       <div {...stylex.props(gm.line, reveal.host)}>
         {disclosable ? (
-          <Pressable
+          <ButtonPrimitive
             id={summaryId}
             data-tool={tool.name}
             type="button"
@@ -115,7 +115,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
             className={rowClassName}
           >
             {summary}
-          </Pressable>
+          </ButtonPrimitive>
         ) : (
           <div id={summaryId} data-tool={tool.name} className={rowClassName}>
             {summary}

@@ -24,7 +24,11 @@ import {
   RecordBody,
   RecordForm,
   ScrollRegion,
+  TaskListItem,
   Toolbar,
+  isMarkdownFragment,
+  rehypeFootnoteLabels,
+  taskListContent,
 } from "@flame/ui";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -146,14 +150,33 @@ function useMarkdownT() {
 
 // ReactMarkdown treats these renderers as component types; labels must not replace them.
 const markdownComponents: Components = {
-  a: ({ href, children }) =>
+  a: ({ href, children, node: _node, ...rest }) =>
     href ? (
-      <a href={href} target="_blank" rel="noreferrer noopener">
+      <a
+        {...rest}
+        href={href}
+        target={isMarkdownFragment(href) ? undefined : "_blank"}
+        rel={isMarkdownFragment(href) ? undefined : "noreferrer noopener"}
+      >
         {children}
       </a>
     ) : (
       <span>{children}</span>
     ),
+  li({ children, className, node: _node, ...rest }) {
+    const task = className?.split(/\s+/).includes("task-list-item")
+      ? taskListContent(children)
+      : null;
+    return task ? (
+      <TaskListItem {...rest} checked={task.checked} label={task.label}>
+        {task.children}
+      </TaskListItem>
+    ) : (
+      <li {...rest} className={className}>
+        {children}
+      </li>
+    );
+  },
   img: function MarkdownImage({ src, alt }) {
     const t = useMarkdownT();
     return typeof src === "string" && src ? (
@@ -211,14 +234,36 @@ export function MarkdownView({
   props,
   t,
 }: ComponentRenderProps<DisplayProps["Markdown"]> & { t: Translate }) {
+  const footnotePrefix = `user-content-${useId()}-`;
+  const rehypePlugins = useMemo(() => {
+    const labels: [typeof rehypeFootnoteLabels, string] = [
+      rehypeFootnoteLabels,
+      footnotePrefix,
+    ];
+    return [labels];
+  }, [footnotePrefix]);
   return (
     <MarkdownTranslation value={t}>
       <DocumentBody>
         <ReactMarkdown
           skipHtml
           remarkPlugins={[remarkGfm]}
-          urlTransform={(url, key) =>
-            isSafeURL(url, key === "src" ? "image" : "link") ? url : ""
+          rehypePlugins={rehypePlugins}
+          remarkRehypeOptions={{
+            clobberPrefix: footnotePrefix,
+            footnoteLabel: t("markdown.footnotes"),
+            footnoteBackLabel: (index, reuse) =>
+              t("markdown.backReference", {
+                reference: `${index + 1}${reuse > 1 ? `-${reuse}` : ""}`,
+              }),
+          }}
+          urlTransform={(url, key, node) =>
+            (key === "href" &&
+              node.tagName === "a" &&
+              isMarkdownFragment(url)) ||
+            isSafeURL(url, key === "src" ? "image" : "link")
+              ? url
+              : ""
           }
           components={markdownComponents}
         >

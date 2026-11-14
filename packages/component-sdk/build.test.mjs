@@ -5,8 +5,56 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { rolldown } from "rolldown";
+import { parseSync } from "rolldown/utils";
 import { buildComponent } from "./build.mjs";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
+
+test("lowers private resource declarations for the Host browser target while retaining disposal", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-component-target-"));
+  try {
+    await writeFile(join(directory, "package.json"), '{"type":"module"}');
+    await writeFile(
+      join(directory, "resource.ts"),
+      `export function inspect() {
+        const events = [];
+        {
+          using resource = { [Symbol.dispose]() { events.push("released"); } };
+          events.push("used");
+        }
+        return events;
+      }`,
+    );
+    const input = join(directory, "entry.ts");
+    await writeFile(
+      input,
+      'export const inspect = () => import("./resource.ts").then(module => module.inspect());',
+    );
+    const output = join(directory, "output");
+    await buildComponent({ input, directory: output, compiler: rolldown });
+    const emitted = join(output, "component.js");
+    const source = await readFile(emitted, "utf8");
+    const parsed = parseSync(emitted, source, { lang: "js" });
+    assert.deepEqual(parsed.errors, []);
+    const hasResourceDeclaration = (node) => {
+      if (!node || typeof node !== "object") return false;
+      if (
+        node.type === "VariableDeclaration" &&
+        ["using", "await using"].includes(node.kind)
+      )
+        return true;
+      return Object.values(node).some((value) =>
+        Array.isArray(value)
+          ? value.some(hasResourceDeclaration)
+          : hasResourceDeclaration(value),
+      );
+    };
+    assert.equal(hasResourceDeclaration(parsed.program), false);
+    const component = await import(pathToFileURL(emitted));
+    assert.deepEqual(await component.inspect(), ["used", "released"]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("published components preserve the Host's Runtime error and exact JSON instances", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-runtime-"));

@@ -3,9 +3,9 @@ import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { useRef, useState } from "react";
 import { Gauge } from "@/ui/index";
 import { Popover } from "@/ui/index";
-import { Pressable } from "@/ui/index";
+
 import { StepMark } from "@/ui/index";
-import { ScrollRegion, vocab } from "@flame/ui";
+import { ScrollRegion, vocab, ButtonPrimitive } from "@flame/ui";
 import { useMotion } from "@/lib/motion";
 import { useT } from "@/lib/i18n/index";
 import { type PlanStep } from "@/features/agent/public/plan";
@@ -120,7 +120,7 @@ function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: A
         <Popover.Root open={open && present} onOpenChange={setOpen}>
           <Popover.Trigger
             render={
-              <Pressable
+              <ButtonPrimitive
                 type="button"
                 data-slot="active-plan-pill"
                 aria-label={progressLabel}
@@ -132,7 +132,7 @@ function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: A
                   className={stylex.props(vocab.accent).className}
                 />
                 <span {...stylex.props(vocab.truncate, vocab.figures)}>{progressLabel}</span>
-              </Pressable>
+              </ButtonPrimitive>
             }
           />
           <Popover.Content

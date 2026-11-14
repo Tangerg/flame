@@ -2,6 +2,9 @@ package main
 
 import (
 	"embed"
+	"io/fs"
+
+	"github.com/Tangerg/flame/packages/local-runtime/webassets"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -16,20 +19,28 @@ const (
 	minimumWindowHeight = 720
 )
 
-func desktopApplicationOptions(host *DesktopHost) application.Options {
+func desktopApplicationOptions(host *DesktopHost) (application.Options, error) {
+	distribution, err := fs.Sub(assets, "assets/web")
+	if err != nil {
+		return application.Options{}, err
+	}
+	handler, err := webassets.New(distribution.Open)
+	if err != nil {
+		return application.Options{}, err
+	}
 	return application.Options{
 		Name:        productName,
 		Description: productDescription,
 		Services:    []application.Service{application.NewService(host)},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: handler,
 		},
 		Mac: application.MacOptions{
 			// One window, and closing it means quitting. Without this the process outlives
 			// its own window and the dock icon stays lit with nothing behind it.
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
-	}
+	}, nil
 }
 
 // The WebView owns preferences; native first paint projects the same system canvas.

@@ -26,6 +26,10 @@ const DELIMITERS = [
   { open: "[/math]", close: "[/math]", display: true },
 ] as const;
 
+export function hasStreamingMathContext(source: string): boolean {
+  return DELIMITERS.some((delimiter) => delimiter.display && source.includes(delimiter.open));
+}
+
 function marker(value: string): Construct {
   return {
     partial: true,

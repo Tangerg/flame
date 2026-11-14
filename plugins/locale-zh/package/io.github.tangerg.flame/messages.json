@@ -786,6 +786,10 @@
   "composer.mention.status.no-workspace": "选择一个项目后才能引用其文件",
   "settings.search.empty": "没有与“{{query}}”匹配的设置。",
   "startup.failed.title": "Flame 无法启动",
+  "startup.unsupported.body": "此浏览器缺少 Flame 所需的功能。请更新浏览器，或更新 macOS 和 Safari，然后重新打开 Flame。",
+  "startup.unsupported.browsers": "支持的浏览器",
+  "startup.unsupported.features": "缺少的浏览器功能",
+  "startup.loadFailed.body": "无法加载应用。请重新加载此窗口后重试。",
   "startup.failed.body": "窗口就绪前发生了错误。请重试，或复制诊断信息进行反馈。",
   "startup.failed.copy": "复制诊断信息",
   "startup.failed.copied": "已复制",
@@ -902,5 +906,14 @@
   "session.regenerate.noInput": "历史已恢复，但 Runtime 没有返回原始输入，未重新发送任何内容。",
   "composer.image.reading": "正在读取 {{name}}…",
   "composer.image.failed": "无法读取 {{name}}，请移除后重新选择。",
-  "composer.image.ready": "{{name}} 已就绪"
+  "composer.image.ready": "{{name}} 已就绪",
+  "composer.persistence.loading": "正在读取已保存的草稿。读取期间的新编辑会保留在这里。",
+  "composer.persistence.pending": "正在此设备上保存草稿更改…",
+  "composer.legacy.available": "旧存储中有草稿。请在编辑前显式导入，以使用新的草稿存储。",
+  "composer.legacy.import": "导入已有草稿到新存储",
+  "composer.legacy.blocked": "旧草稿备份已保留。新存储已在使用，无法覆盖导入；可复制备份，供导入到全新存储。",
+  "composer.legacy.failed": "无法读取或导入旧草稿备份。原始备份未更改。",
+  "composer.legacy.importing": "正在导入已有草稿… 原始备份会保留。",
+  "composer.legacy.copy": "复制旧草稿备份",
+  "composer.legacy.copied": "已复制旧草稿备份"
 }

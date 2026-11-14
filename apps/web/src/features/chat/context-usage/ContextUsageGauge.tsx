@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Gauge } from "@/ui/index";
-import { Pressable } from "@/ui/index";
-import { gap, RichTooltip, vocab } from "@flame/ui";
+
+import { gap, RichTooltip, vocab, ButtonPrimitive } from "@flame/ui";
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n/index";
 import { useCurrentRootMaterial } from "@/features/agent/public/run";
@@ -48,9 +48,9 @@ export function ContextUsageGauge() {
 
   const label = t("context.usage.aria", { percent: readout.percent });
   const trigger = (
-    <Pressable aria-label={label} className={stylex.props(cu.trigger).className}>
+    <ButtonPrimitive aria-label={label} className={stylex.props(cu.trigger).className}>
       <Gauge value={readout.ratio} label={t("context.usage.aria", { percent: readout.percent })} />
-    </Pressable>
+    </ButtonPrimitive>
   );
 
   return (

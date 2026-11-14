@@ -1,4 +1,10 @@
-import { Children, cloneElement, isValidElement, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import type { Blockquote, Root } from "mdast";
 import { visit } from "unist-util-visit";
 import { readCalloutMarker } from "./callout";
@@ -54,6 +60,13 @@ type MarkdownElementProps = {
   type?: string;
 };
 
+function markdownTag(element: ReactElement<MarkdownElementProps>): string {
+  return (
+    element.props.node?.tagName ??
+    (typeof element.type === "string" ? element.type : "")
+  );
+}
+
 const BLOCK_TAGS = new Set([
   "p",
   "ul",
@@ -78,8 +91,7 @@ export function taskListContent(
   );
   const lead = items[0];
   const paragraph =
-    isValidElement<MarkdownElementProps>(lead) &&
-    lead.props.node?.tagName === "p"
+    isValidElement<MarkdownElementProps>(lead) && markdownTag(lead) === "p"
       ? lead
       : null;
   const [checkbox, ...content] = paragraph
@@ -87,7 +99,7 @@ export function taskListContent(
     : items;
   if (
     !isValidElement<MarkdownElementProps>(checkbox) ||
-    (checkbox.type !== "input" && checkbox.props.node?.tagName !== "input") ||
+    markdownTag(checkbox) !== "input" ||
     checkbox.props.type !== "checkbox"
   ) {
     return null;
@@ -96,7 +108,7 @@ export function taskListContent(
   const blockIndex = content.findIndex(
     (child) =>
       isValidElement<MarkdownElementProps>(child) &&
-      BLOCK_TAGS.has(child.props.node?.tagName ?? String(child.type)),
+      BLOCK_TAGS.has(markdownTag(child)),
   );
   return {
     checked: checkbox.props.checked === true,

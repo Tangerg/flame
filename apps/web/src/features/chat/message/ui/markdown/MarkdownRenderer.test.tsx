@@ -9,7 +9,7 @@ prepareTestClient(() => {
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { type Element, type Root } from "hast";
-import { getHighlighter } from "@/lib/highlight/shiki";
+import { getHighlighter } from "@/lib/highlight/shikiEngine";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 import { mountLocaleBundle, setLocale } from "@/lib/i18n/index";
@@ -715,3 +715,5 @@ describe("markdownMessage", () => {
     expect(container.querySelectorAll("h1, h2")).toHaveLength(0);
   });
 });
+
+vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

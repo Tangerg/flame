@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
-import { SearchField } from "@flame/ui";
+import { SearchField, ButtonPrimitive } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
@@ -8,7 +8,7 @@ import { Icon, type IconName } from "@/ui/icons/index";
 import { dress } from "@flame/ui/button";
 import { Popover } from "@flame/ui";
 import { floatingRow } from "@/ui/atoms/option-row";
-import { Pressable } from "@/ui/atoms/pressable";
+
 import { vocab } from "@flame/ui/vocabulary";
 const styles = stylex.create({
   content: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column", gap: space.s1 },
@@ -476,7 +476,7 @@ export function RailCatalogPicker({
             {!searching && groups.length > 1 && (
               <div {...stylex.props(styles.rail)}>
                 {groups.map((group) => (
-                  <Pressable
+                  <ButtonPrimitive
                     key={group.id}
                     aria-pressed={group.id === active?.id}
                     aria-label={group.label}
@@ -492,7 +492,7 @@ export function RailCatalogPicker({
                     }
                   >
                     {group.leading}
-                  </Pressable>
+                  </ButtonPrimitive>
                 ))}
               </div>
             )}

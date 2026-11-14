@@ -786,6 +786,10 @@
   "composer.mention.status.no-workspace": "ファイルを参照するにはプロジェクトを選択してください",
   "settings.search.empty": "「{{query}}」に一致する設定はありません。",
   "startup.failed.title": "Flame を起動できませんでした",
+  "startup.unsupported.body": "このブラウザには Flame に必要な機能がありません。ブラウザを更新するか、macOS と Safari を更新してから、Flame を開き直してください。",
+  "startup.unsupported.browsers": "対応ブラウザ",
+  "startup.unsupported.features": "不足しているブラウザ機能",
+  "startup.loadFailed.body": "アプリケーションを読み込めませんでした。このウィンドウを再読み込みして、もう一度試してください。",
   "startup.failed.body": "ウィンドウの準備が整う前に問題が発生しました。再試行するか、診断情報をコピーして報告してください。",
   "startup.failed.copy": "診断情報をコピー",
   "startup.failed.copied": "コピーしました",
@@ -902,5 +906,14 @@
   "session.regenerate.noInput": "履歴は復元されましたが、Runtime から元の入力が返されませんでした。何も再送信されませんでした。",
   "composer.image.reading": "{{name}} を読み込み中…",
   "composer.image.failed": "{{name}} を読み込めません。削除して選び直してください。",
-  "composer.image.ready": "{{name}} の準備ができました"
+  "composer.image.ready": "{{name}} の準備ができました",
+  "composer.persistence.loading": "保存済みの下書きを読み込んでいます。読み込み中の編集内容はここに保持されます。",
+  "composer.persistence.pending": "この端末に下書きの変更を保存しています…",
+  "composer.legacy.available": "以前のストレージに下書きがあります。新しい下書きストレージを使うには、編集前にインポートしてください。",
+  "composer.legacy.import": "既存の下書きをインポート",
+  "composer.legacy.blocked": "以前の下書きのバックアップは保持されています。新しいストレージは使用中のため、バックアップをコピーして空のストレージにインポートしてください。",
+  "composer.legacy.failed": "以前の下書きのバックアップを読み込むかインポートできませんでした。元のバックアップは変更されていません。",
+  "composer.legacy.importing": "既存の下書きをインポートしています… 元のバックアップは保持されます。",
+  "composer.legacy.copy": "以前の下書きのバックアップをコピー",
+  "composer.legacy.copied": "以前の下書きのバックアップをコピーしました"
 }

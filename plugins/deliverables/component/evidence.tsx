@@ -16,6 +16,8 @@ import {
   Select,
   TextArea,
   Toolbar,
+  imageSizeFromBytes,
+  type PixelSize,
 } from "@flame/ui";
 import { FIELD_LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
@@ -130,6 +132,7 @@ function PageImage({
   const [read, setRead] = useState<{
     id: string;
     url?: string;
+    size?: PixelSize;
     error?: string;
   }>();
   const { operations, signal } = state;
@@ -146,7 +149,11 @@ function PageImage({
       .then((bytes) => {
         if (lifetime.aborted) return;
         url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
-        setRead({ id: asset.id, url });
+        setRead({
+          id: asset.id,
+          url,
+          size: imageSizeFromBytes(bytes) ?? undefined,
+        });
       })
       .catch((error: unknown) => {
         if (!lifetime.aborted)
@@ -181,6 +188,9 @@ function PageImage({
         >
           <EvidenceImage
             src={current.url}
+            width={current.size?.width}
+            height={current.size?.height}
+            decoding="async"
             alt={t("preview.page", { page })}
             labels={{
               view: t("image.view"),

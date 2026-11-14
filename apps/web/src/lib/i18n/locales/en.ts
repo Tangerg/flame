@@ -100,6 +100,18 @@ export const en: Record<string, string> = {
   "sidebar.action.tools": "Tools & plugins",
   "sidebar.action.settings": "Settings",
   "composer.input.label": "Message composer",
+  "composer.persistence.loading": "Loading saved drafts. New edits stay here while loading.",
+  "composer.persistence.pending": "Saving draft changes on this device…",
+  "composer.legacy.available":
+    "Drafts from the previous storage are available. Import them before editing to use the new draft storage.",
+  "composer.legacy.import": "Import existing drafts",
+  "composer.legacy.blocked":
+    "The previous draft backup is preserved. New draft storage is already in use; copy the backup to import into fresh storage.",
+  "composer.legacy.failed":
+    "Couldn’t read or import the previous draft backup. The original backup is unchanged.",
+  "composer.legacy.importing": "Importing existing drafts… The original backup will be kept.",
+  "composer.legacy.copy": "Copy previous draft backup",
+  "composer.legacy.copied": "Previous draft backup copied",
   "composer.persistence.saveFailed":
     "Draft changes aren't saved on this device. Keep this window open and retry, or copy drafts.",
   "composer.persistence.readFailed":
@@ -846,6 +858,11 @@ export const en: Record<string, string> = {
   "composer.mention.status.no-workspace": "Choose a project to reference its files",
   "settings.search.empty": "No settings match “{{query}}”.",
   "startup.failed.title": "Flame couldn’t start",
+  "startup.unsupported.body":
+    "This browser is missing features Flame needs. Update your browser, or update macOS and Safari, then reopen Flame.",
+  "startup.unsupported.browsers": "Supported browsers",
+  "startup.unsupported.features": "Missing browser features",
+  "startup.loadFailed.body": "The application couldn't load. Reload this window to try again.",
   "startup.failed.body":
     "Something failed before the window was ready. Retry, or copy the diagnostics to report it.",
   "startup.failed.copy": "Copy diagnostics",
