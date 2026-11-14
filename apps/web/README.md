@@ -995,8 +995,11 @@ resizes, including Composer clearance changes, re-evaluate the decision.
 
 The activity disclosure's `preview` is redundant supporting text beside its toggle,
 so arriving reasoning never renames that control. Ordinary `detail` remains part
-of the summary name. Reasoning previews and prose use the existing faint text role;
-the retained reader owns its scroll position through closing and reopening.
+of the summary name. Reasoning previews and prose use the existing faint text role.
+Each reasoning reader delegates bottom follow and user escape to its own existing
+use-stick-to-bottom instance. Its refs observe only visible, expanded streaming
+content; closing and reopening retain the same reader and paused follow. Fade and
+overflow remain read-only geometry and never write a competing scroll position.
 
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested

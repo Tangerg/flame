@@ -116,7 +116,11 @@ export {
 } from "./code-block";
 export { copyText, useCopyFeedback } from "./clipboard";
 export { isImeKey } from "./keyboard";
-export { copyWholeReader, selectAllInReader } from "./reader-selection";
+export {
+  copyReaderSelection,
+  readerSelectionLines,
+  selectAllInReader,
+} from "./reader-selection";
 export { readingUnitFor } from "./reading-unit";
 export { TaskListItem } from "./task-list-item";
 export {

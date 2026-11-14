@@ -1676,7 +1676,8 @@ test("expanded reasoning keeps a quiet identity mark and an aside rule", async (
   const rules = await region.evaluate((body) => {
     const frame = body.closest('[data-slot="agent-activity-disclosure"]');
     const widths = [];
-    for (let node: Element | null = body; node && node !== frame; node = node.parentElement) {
+    const reader = body.querySelector('[data-slot="reasoning-scroller"]');
+    for (let node: Element | null = reader; node && node !== frame; node = node.parentElement) {
       const width = Number.parseFloat(getComputedStyle(node).borderInlineStartWidth);
       if (width > 0) widths.push(width);
     }

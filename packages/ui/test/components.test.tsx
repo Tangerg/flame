@@ -41,7 +41,7 @@ import {
   FormGroup,
   FormSection,
   FontScaleProvider,
-  copyWholeReader,
+  copyReaderSelection,
   Facts,
   HeadingLevel,
   IconButton,
@@ -354,7 +354,7 @@ describe("recorded code", () => {
           aria-label="Reader"
           tabIndex={0}
           onKeyDown={selectAllInReader}
-          onCopy={(event) => copyWholeReader(event, "presented text")}
+          onCopy={(event) => copyReaderSelection(event, "presented text")}
         >
           <span>captured</span>
           <input aria-label="Nested field" defaultValue="draft" />
@@ -442,7 +442,7 @@ describe("recorded code", () => {
             tabIndex={0}
             onKeyDown={(event) => selectAllInReader(event, content.current!)}
             onCopy={(event) =>
-              copyWholeReader(event, rows.join("\n"), content.current!)
+              copyReaderSelection(event, rows.join("\n"), content.current!)
             }
           >
             <p>src/review.go</p>
@@ -544,7 +544,7 @@ describe("recorded code", () => {
             selectAllInReader(event, screen.getByText("Outside source"))
           }
           onCopy={(event) =>
-            copyWholeReader(
+            copyReaderSelection(
               event,
               "outside",
               screen.getByText("Outside source"),

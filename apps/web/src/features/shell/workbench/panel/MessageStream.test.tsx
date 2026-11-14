@@ -53,7 +53,8 @@ vi.mock("@/extensions/host/Slot", () => ({
   Slot: ({ name }: { name: string }) => <div data-testid={name} />,
 }));
 
-vi.mock("use-stick-to-bottom", () => {
+vi.mock("use-stick-to-bottom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("use-stick-to-bottom")>();
   const context = {
     isAtBottom: true,
     scrollToBottom: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock("use-stick-to-bottom", () => {
   };
   const StickToBottom = ({ children }: PropsWithChildren) => <div>{children}</div>;
   return {
+    ...actual,
     StickToBottom,
     useStickToBottomContext: () => context,
   };

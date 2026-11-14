@@ -32,7 +32,7 @@ import { TextButton } from "@/ui/index";
 import { Icon, fileIconName } from "@/ui/index";
 import {
   Button,
-  copyWholeReader,
+  copyReaderSelection,
   EmptyState,
   IconButton,
   isImeKey,
@@ -470,7 +470,7 @@ function FilePreview({
     if (content) selectAllInReader(event, content);
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
-    if (source.current && data) copyWholeReader(event, data.content, source.current);
+    if (source.current && data) copyReaderSelection(event, data.content, source.current);
   };
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);

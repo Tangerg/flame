@@ -385,11 +385,17 @@ host. With the region focused, Ctrl/Cmd+A selects only its complete source; the
 browser owns the range and ordinary copy behavior.
 `selectAllInReader` gives custom read-only viewports that same boundary, leaving
 composition, modified commands, handled events and editable descendants with
-their existing owner. `copyWholeReader` writes its caller's text only for the
-complete native range produced by that command; other ranges and editable
-descendants retain native copy. Custom readers supply their presented content
-without line labels or controls, and virtualized output supplies its complete
-source. Neither helper adds selection state.
+their existing owner. `copyReaderSelection` writes its caller's text for the
+complete native range produced by that command. Unmarked partial ranges and
+editable descendants retain native copy. Virtual source readers mark each real
+line with its zero-based `data-reader-line` and put exactly that line's presented
+text inside it. Styling may split the text into spans; DOM UTF-16 offsets still
+address the same presented source. `copyReaderSelection` serializes those partial
+ranges through the complete source, preserving unmounted middle lines, Unicode,
+blank lines and newline boundaries. A `data-reader-source` root gives stable
+source boundaries without adding hidden full text. `readerSelectionLines` reads
+the current browser Range's endpoints for a virtualizer's finite retention policy,
+including a collapsed anchor. Neither helper stores or advances selection.
 Both helpers accept an optional content element inside the event owner. A named
 scroll viewport can therefore keep focus and editable-field ownership while
 selecting only its presented source, excluding paths and other reader framing.

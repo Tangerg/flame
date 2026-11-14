@@ -24,7 +24,7 @@ import {
   Metadata,
   RecordBody,
   RecordMeta,
-  copyWholeReader,
+  copyReaderSelection,
   RecordSummary,
   selectAllInReader,
 } from "@flame/ui";
@@ -634,7 +634,7 @@ function RecordedRows({
             selectAllInReader(event);
           }}
           onCopy={(event) =>
-            copyWholeReader(event, presented.map(rowText).join("\n"))
+            copyReaderSelection(event, presented.map(rowText).join("\n"))
           }
         >
           {/* Select All bounds its Range by this region's child offsets, which

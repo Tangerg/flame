@@ -25,6 +25,7 @@
     "@openuidev/lang-core": "1.1.0",
     "@openuidev/react-lang": "1.1.0",
     "@stylexjs/stylex": "^0.19.1",
+    "@tanstack/react-virtual": "3.14.26",
     "docx": "9.15.3",
     "exceljs": "4.4.0",
     "jpeg-js": "0.4.4",
