@@ -121,6 +121,21 @@ it("admits the next external drag after retiring an earlier Session", () => {
   expect(deliver).toHaveBeenCalledTimes(1);
 });
 
+it("does not let a successor receiver acquire a drag started by a retired receiver", () => {
+  const deliver = vi.fn();
+  const view = client.render(<Receiver key="original" deliver={deliver} />);
+  const original = enter();
+  act(() => client.composer.store.getState().loadSession("successor-draft"));
+  view.rerender(<Receiver key="successor" deliver={deliver} />);
+  const successor = screen.getByTestId("receiver");
+  fireEvent.dragOver(successor, { dataTransfer: original.transfer });
+  fireEvent.drop(successor, { dataTransfer: original.transfer });
+  expect(deliver).not.toHaveBeenCalled();
+  const next = enter();
+  fireEvent.drop(next.receiver, { dataTransfer: next.transfer });
+  expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
+});
+
 it("clears cancellation and permits a later drag without a depth counter", async () => {
   const deliver = vi.fn();
   client.render(<Receiver deliver={deliver} />);

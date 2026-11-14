@@ -757,7 +757,8 @@ External files use PDD's external adapter with one Composer target and one monit
 for the generic file cue. The target extracts files only at drop and enters the
 existing image intake. Picker and paste keep that same attachment owner. A captured
 intake retires with its Session, endpoint, Runtime generation or disposed owner;
-replacing the receiver cannot adopt an already observed drag. Native cancellation,
+new monitors can observe a running drag but cannot acquire its files. Only a drag
+beginning after registration grants the target file intake. Native cancellation,
 hiding and unmount clean up the receiver. The generic cue promises only that
 supported images will be attached; file type filtering happens after drop. PDD's
 unhandled-drop utility prevents native file navigation without delivering files.

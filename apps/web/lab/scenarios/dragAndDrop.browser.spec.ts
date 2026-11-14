@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./test";
+import { type mountFileDropReceiver as mountReceiver } from "./fileDropReceiver";
 import { expectLabReady } from "../readiness";
 
 async function files(page: Page, image = true) {
@@ -66,14 +67,40 @@ for (const browserName of ["chromium", "webkit"] as const) {
         visualClient.composer.store.getState().loadSession("successor-draft");
       });
       await expect(cue).toHaveCount(0);
-      await surface.dispatchEvent("dragover", { dataTransfer: retired });
-      await surface.dispatchEvent("drop", { dataTransfer: retired });
+      await page.evaluate(async () => {
+        const runtimePath = "/lab/scenarios/fixtureRuntime.tsx";
+        const receiverPath = "/lab/scenarios/fileDropReceiver.tsx";
+        const [{ visualClient }, { mountFileDropReceiver }] = await Promise.all([
+          import(runtimePath) as Promise<typeof import("./fixtureRuntime")>,
+          import(receiverPath) as Promise<{
+            mountFileDropReceiver: typeof mountReceiver;
+          }>,
+        ]);
+        const container = document.createElement("div");
+        Object.assign(container.style, { position: "fixed", top: "120px", right: "24px" });
+        document.body.append(container);
+        const dispose = mountFileDropReceiver(container, visualClient);
+        container.addEventListener(
+          "retire-file-drop-receiver",
+          () => {
+            dispose();
+            container.remove();
+          },
+          { once: true },
+        );
+      });
+      const successor = page.getByTestId("successor-file-receiver");
+      await expect(successor).toBeVisible();
+      await successor.dispatchEvent("dragover", { dataTransfer: retired });
+      await successor.dispatchEvent("drop", { dataTransfer: retired });
       await expect(attached).toHaveCount(0);
       const fresh = await files(page);
-      await surface.dispatchEvent("dragenter", { dataTransfer: fresh, relatedTarget: null });
-      await surface.dispatchEvent("dragover", { dataTransfer: fresh });
-      await surface.dispatchEvent("drop", { dataTransfer: fresh });
+      await successor.dispatchEvent("dragenter", { dataTransfer: fresh, relatedTarget: null });
+      await successor.dispatchEvent("dragover", { dataTransfer: fresh });
+      await successor.dispatchEvent("drop", { dataTransfer: fresh });
       await expect(attached).toHaveCount(1);
+      await successor.dispatchEvent("retire-file-drop-receiver", { bubbles: true });
+      await expect(successor).toHaveCount(0);
       await transfer.dispose();
       await textOnly.dispose();
       await outside.dispose();

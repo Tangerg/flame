@@ -1,4 +1,4 @@
-import { useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useMemo, useState, type RefObject } from "react";
 import { dropTargetForExternal } from "@atlaskit/pragmatic-drag-and-drop/adapter/drop-target-for-external";
 import { monitorForExternal } from "@atlaskit/pragmatic-drag-and-drop/adapter/monitor-for-external";
 import { type ExternalDragPayload } from "@atlaskit/pragmatic-drag-and-drop/adapter/external-adapter-types";
@@ -27,32 +27,35 @@ export function useComposerFileDrop(
     [intake, visible, acceptsImages],
   );
   const [dragging, setDragging] = useState<object | null>(null);
-  const seen = useRef<ExternalDragPayload | null>(null);
   useLayoutEffect(() => {
     const element = target.current;
     if (!element || !visible || !intake.current()) return;
-    let active = true;
+    let phase: "registering" | "listening" | "retired" = "registering";
     let observed: ExternalDragPayload | null = null;
     const current = () =>
-      active && element.isConnected && !element.closest("[hidden], [inert]") && intake.current();
+      phase !== "retired" &&
+      element.isConnected &&
+      !element.closest("[hidden], [inert]") &&
+      intake.current();
     const stopMonitor = monitorForExternal({
       canMonitor(args) {
         if (!current() || !containsFiles(args)) return false;
-        // A replacement receiver can observe the old drag without acquiring its files.
-        if (seen.current !== args.source) seen.current = observed = args.source;
+        // PDD also evaluates new monitors during an active drag; that observation grants no files.
+        if (phase === "listening") observed = args.source;
         preventUnhandled.start();
         return true;
       },
-      onDragStart() {
-        if (!current()) return;
+      onDragStart({ source }) {
+        if (!current() || observed !== source) return;
         setDragging(registration);
       },
       onDrop() {
-        if (!active) return;
+        if (phase === "retired") return;
         setDragging(null);
         preventUnhandled.stop();
       },
     });
+    phase = "listening";
     const stopTarget = dropTargetForExternal({
       element,
       canDrop: (args) => current() && observed === args.source && containsFiles(args),
@@ -63,7 +66,7 @@ export function useComposerFileDrop(
       },
     });
     return () => {
-      active = false;
+      phase = "retired";
       stopTarget();
       stopMonitor();
       preventUnhandled.stop();
