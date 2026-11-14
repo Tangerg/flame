@@ -175,7 +175,7 @@ function SearchOverlayContent({
 
   return (
     <Autocomplete.Root
-      inline
+      inline={feedback == null}
       open={open && feedback == null}
       mode="none"
       items={rows}
