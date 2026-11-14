@@ -15,7 +15,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await folder.focus();
       await folder.press("ArrowRight");
       await expect(folder).toHaveAttribute("aria-expanded", "true");
-      await expect(tree.getByRole("treeitem")).not.toHaveCount(2);
+      await expect(tree.locator('[role="treeitem"][aria-level="2"]').first()).toBeVisible();
       await folder.press("ArrowRight");
       const child = tree.locator('[role="treeitem"]:focus');
       await expect(child).toHaveAttribute("aria-level", "2");

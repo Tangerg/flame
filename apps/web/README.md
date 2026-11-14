@@ -787,8 +787,11 @@ filesystem reader and cache; the loader reads its accepted snapshot without I/O.
 Only reachable expanded directories subscribe to reads. Unread, pending, failed,
 ready, refreshing and stale directories retain their distinct meaning, including
 accepted empty lists. Status and Retry are presentation beside real entries.
-File activation handles Enter, Space and click before navigation; arrows only move
-within the tree. A collapsed or removed focus moves to its surviving ancestor in
+File activation handles Enter, Space and click before navigation. Right expands a
+closed directory or enters its first accepted child. Leaves and expanded directories
+without accepted children keep focus, including pending, failed and empty first
+reads. Arriving children do not advance focus without another command.
+A collapsed or removed focus moves to its surviving ancestor in
 the same model, without reclaiming focus from another control. Reopening keeps
 that current ancestor rather than reviving an invisible cursor. Tree focus commits
 to existing rows synchronously, so a retired navigation cannot later steal focus.

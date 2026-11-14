@@ -2240,6 +2240,50 @@ describe("file read refresh continuity", () => {
 describe("workspace file tree keyboard model", () => {
   const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
 
+  it("keeps Right within its branch while children load and after reaching a leaf", async () => {
+    const read = Promise.withResolvers<WorkspaceFileEntry[]>();
+    listFiles.mockReturnValueOnce(read.promise);
+    const onSelectFile = vi.fn();
+    mount(
+      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
+    );
+    const folder = screen.getByRole("treeitem", { name: "src" });
+    act(() => folder.focus());
+    pressTreeKey(folder, "ArrowRight");
+    await waitFor(() => expect(listFiles).toHaveBeenCalledOnce());
+    pressTreeKey(folder, "ArrowRight");
+    expect(document.activeElement).toBe(folder);
+
+    await act(async () => read.resolve([file]));
+    const child = await screen.findByRole("treeitem", { name: "main.go" });
+    expect(document.activeElement).toBe(folder);
+    pressTreeKey(folder, "ArrowRight");
+    expect(document.activeElement).toBe(child);
+    pressTreeKey(child, "ArrowRight");
+    expect(document.activeElement).toBe(child);
+    expect(onSelectFile).not.toHaveBeenCalled();
+  });
+
+  it.each(["empty", "failed"] as const)(
+    "keeps Right within an expanded directory (%s result)",
+    async (outcome) => {
+      const read = Promise.withResolvers<WorkspaceFileEntry[]>();
+      listFiles.mockReturnValueOnce(read.promise);
+      mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} onReveal={() => {}} />);
+      const folder = screen.getByRole("treeitem", { name: "src" });
+      act(() => folder.focus());
+      pressTreeKey(folder, "ArrowRight");
+      await waitFor(() => expect(listFiles).toHaveBeenCalledOnce());
+      await act(async () => {
+        if (outcome === "empty") read.resolve([]);
+        else read.reject(new Error("directory read failed"));
+      });
+      await waitFor(() => expect(folder.getAttribute("aria-busy")).toBeNull());
+      pressTreeKey(folder, "ArrowRight");
+      expect(document.activeElement).toBe(folder);
+    },
+  );
+
   it("moves, opens and closes folders the way a tree does", async () => {
     const onSelectFile = vi.fn();
     mount(

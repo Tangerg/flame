@@ -337,7 +337,21 @@ export function FileTree({
     hotkeys: {
       focusNextItem: { hotkey: "ArrowDown", isEnabled: ownsTreeFocus },
       focusPreviousItem: { hotkey: "ArrowUp", isEnabled: ownsTreeFocus },
-      expandOrDown: { hotkey: "ArrowRight", isEnabled: ownsTreeFocus, preventDefault: true },
+      expandOrDown: {
+        hotkey: "ArrowRight",
+        isEnabled: ownsTreeFocus,
+        preventDefault: true,
+        handler: (_event, tree) => {
+          const item = tree.getFocusedItem();
+          if (!item.isFolder()) return;
+          if (!item.isExpanded()) {
+            item.expand();
+            return;
+          }
+          item.getChildren()[0]?.setFocused();
+          tree.updateDomFocus();
+        },
+      },
       collapseOrUp: { hotkey: "ArrowLeft", isEnabled: ownsTreeFocus, preventDefault: true },
       focusFirstItem: { hotkey: "Home", isEnabled: ownsTreeFocus, preventDefault: true },
       focusLastItem: { hotkey: "End", isEnabled: ownsTreeFocus, preventDefault: true },
