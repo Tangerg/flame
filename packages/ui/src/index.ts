@@ -168,4 +168,9 @@ export {
   type PixelSize,
 } from "./image-dimensions";
 
-export { RemovalFocus, useRemovalFocus, handoffFocus } from "./focus";
+export {
+  FocusWitness,
+  RemovalFocus,
+  useRemovalFocus,
+  handoffFocus,
+} from "./focus";

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { copyText, useCopyAttempt, useContentVisible } from "@flame/ui";
+import { copyText, useCopyAttempt, useContentVisible, FocusWitness } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { useComposer } from "@/features/composer/public/composer";
 import { type ComposerAccess } from "@/features/composer/public/composer";
@@ -139,7 +139,7 @@ function PersistenceRetry({
   label: string;
 }) {
   const button = useRef<HTMLButtonElement>(null);
-  const capture = useRef<{ composer: ComposerAccess; restore(): void } | null>(null);
+  const capture = useRef<{ witness: FocusWitness; restore(): void } | null>(null);
   const visible = useContentVisible();
   const presentation = useRef({ composer, visible });
   useLayoutEffect(() => {
@@ -150,13 +150,9 @@ function PersistenceRetry({
       const node = button.current;
       const original = capture.current;
       capture.current = null;
-      if (
-        node &&
-        node.ownerDocument.activeElement === node &&
-        presentation.current.visible &&
-        original?.composer === presentation.current.composer
-      )
+      if (node && node.ownerDocument.activeElement === node && original?.witness.take())
         original.restore();
+      else original?.witness.retire();
     },
     [],
   );
@@ -166,8 +162,13 @@ function PersistenceRetry({
       tone="accent"
       aria-disabled={pending || undefined}
       onMouseDown={(event) => event.preventDefault()}
-      onFocus={() => {
-        capture.current = { composer, restore: composer.captureFocus() };
+      onFocus={(event) => {
+        capture.current?.witness.retire();
+        const witness = FocusWitness.capture(
+          event.currentTarget,
+          () => presentation.current.visible && presentation.current.composer === composer,
+        );
+        capture.current = witness ? { witness, restore: composer.captureFocus() } : null;
       }}
       onClick={composer.retryPersistence}
     >

@@ -18,7 +18,7 @@ import { type ComposerSubmission } from "@/features/composer/application/state";
 import { Slot } from "@/extensions/host/Slot";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 import { ComposerPersistenceNotice } from "@/features/composer/ui/ComposerPersistenceNotice";
-import { ComposerDropCue, useComposerImageDrop } from "@/features/composer/ui/ComposerImageDrop";
+import { ComposerFileDropCue, useComposerFileDrop } from "@/features/composer/ui/ComposerFileDrop";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -87,7 +87,7 @@ export function Composer({
     onAddPaste,
     acceptsImages,
   });
-  const dropping = useComposerImageDrop(handleDrop);
+  const dropping = useComposerFileDrop(surfaceRef, acceptsImages, handleDrop);
   return (
     <AgentComposerSurface
       ref={surfaceRef}
@@ -95,7 +95,7 @@ export function Composer({
       data-dropping={dropping ? "" : undefined}
       className={stylex.props(composerStyles.surface).className}
     >
-      {dropping && <ComposerDropCue acceptsImages={acceptsImages} />}
+      {dropping && <ComposerFileDropCue acceptsImages={acceptsImages} />}
       <SuggestionPopup
         open={suggestions.open}
         onDismiss={suggestions.dismiss}

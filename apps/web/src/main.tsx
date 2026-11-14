@@ -92,6 +92,7 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
     },
     connection.access.endpoint.currentRuntimeEndpoint,
     connection.scope,
+    connection.stream,
   );
   const workspace = createWorkspace(
     connection.client,

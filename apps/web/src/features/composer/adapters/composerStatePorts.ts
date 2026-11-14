@@ -1,5 +1,10 @@
+import { useMemo, useSyncExternalStore } from "react";
 import { type AgentSessions } from "@/features/agent/public/services";
-import { type RuntimeServerScope } from "@/features/connection/public/services";
+import {
+  followRuntimeGeneration,
+  type RuntimeStream,
+  type RuntimeServerScope,
+} from "@/features/connection/public/services";
 import { type ComposerStatePort } from "@/features/composer/application/state";
 import { createComposerStore } from "@/features/composer/adapters/composerStore";
 import { joinDraftParts } from "@/features/composer/domain/draft";
@@ -7,15 +12,27 @@ export function createComposer(
   sessions: AgentSessions,
   endpoint: () => string,
   scope: RuntimeServerScope,
+  stream: RuntimeStream,
 ) {
   const owner = createComposerStore();
   const useComposerStore = owner.store;
   const activateComposerStorage = owner.activate;
   let stopSessionSync: (() => void) | null = null;
   let disposed = false;
-  let focusScope = {};
-  const stopFocusScope = useComposerStore.subscribe((state, previous) => {
-    if (state.composer.activeSessionId !== previous.composer.activeSessionId) focusScope = {};
+  let inputScope = {};
+  const inputScopeListeners = new Set<() => void>();
+  const subscribeInputScope = (listener: () => void) => {
+    inputScopeListeners.add(listener);
+    return () => {
+      inputScopeListeners.delete(listener);
+    };
+  };
+  const advanceInputScope = () => {
+    inputScope = {};
+    inputScopeListeners.forEach((listener) => listener());
+  };
+  const stopInputScope = useComposerStore.subscribe((state, previous) => {
+    if (state.composer.activeSessionId !== previous.composer.activeSessionId) advanceInputScope();
   });
 
   let focusTarget: {
@@ -46,11 +63,11 @@ export function createComposer(
       const target = focusTarget;
       const document = target?.element?.ownerDocument ?? window.document;
       const origin = document.activeElement;
-      const source = focusScope;
+      const source = inputScope;
       return () => {
         if (
           !disposed &&
-          focusScope === source &&
+          inputScope === source &&
           document.activeElement === origin &&
           focusTarget === target
         )
@@ -111,6 +128,28 @@ export function createComposer(
     useAttachmentsReady: () => useComposerStore((state) => state.composer.draft.attachmentsReady),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
     useAddImageFiles: () => useComposerStore((state) => state.addImageFiles),
+    useImageIntake: () => {
+      const source = useSyncExternalStore(
+        subscribeInputScope,
+        () => inputScope,
+        () => inputScope,
+      );
+      return useMemo(() => {
+        const targetEndpoint = endpoint();
+        const session = useComposerStore.getState().composer.activeSessionId;
+        const current = () =>
+          !disposed &&
+          inputScope === source &&
+          endpoint() === targetEndpoint &&
+          useComposerStore.getState().composer.activeSessionId === session;
+        return {
+          current,
+          addFiles(files: File[]) {
+            if (current()) useComposerStore.getState().addImageFiles(files);
+          },
+        };
+      }, [source]);
+    },
     useRemoveImage: () => useComposerStore((state) => state.removeImage),
     useAddPaste: () => useComposerStore((state) => state.addPaste),
     useRemovePaste: () => useComposerStore((state) => state.removePaste),
@@ -127,9 +166,11 @@ export function createComposer(
   function dispose() {
     if (disposed) return;
     disposed = true;
+    advanceInputScope();
+    inputScopeListeners.clear();
     focusTarget = null;
     focusPresentation = null;
-    stopFocusScope();
+    stopInputScope();
     stopSessionSync?.();
     stopSessionSync = null;
     owner.dispose();
@@ -146,16 +187,18 @@ export function createComposer(
       const composer = useComposerStore.getState();
       composer.loadSession(activeSessionId);
     };
+    const stopGeneration = followRuntimeGeneration(stream, advanceInputScope);
     const stopLifecycle = sessions.subscribeLifecycle(sync);
     const stopDeletion = sessions.subscribeDeleted((sessionId) => {
       activateComposerStorage(endpoint());
       useComposerStore.getState().discardSession(sessionId);
     });
     const stopScope = scope.subscribeReplacement(() => {
-      focusScope = {};
+      advanceInputScope();
       sync(sessions.getLifecycleSnapshot());
     });
     const stop = () => {
+      stopGeneration();
       stopLifecycle();
       stopDeletion();
       stopScope();

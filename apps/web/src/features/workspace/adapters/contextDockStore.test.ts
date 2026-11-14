@@ -104,7 +104,7 @@ describe("the open tab set", () => {
     dock().adoptDockLocation("diff");
     dock().adoptDockLocation("search");
 
-    dock().reorderDockTab("skills", 2);
+    expect(dock().reorderDockTab("skills", 2)).toEqual({ position: 3, total: 3 });
     expect(dock().dockViewIds).toEqual(["diff", "search", "skills"]);
   });
 
@@ -112,15 +112,24 @@ describe("the open tab set", () => {
     dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
 
-    dock().reorderDockTab("diff", 99);
+    expect(dock().reorderDockTab("diff", 99)).toBeNull();
     expect(dock().dockViewIds).toEqual(["skills", "diff"]);
 
-    dock().reorderDockTab("skills", 99);
+    expect(dock().reorderDockTab("skills", 99)).toEqual({ position: 2, total: 2 });
     expect(dock().dockViewIds).toEqual(["diff", "skills"]);
 
-    dock().reorderDockTab("nope", 0);
+    expect(dock().reorderDockTab("nope", 0)).toBeNull();
     expect(dock().dockViewIds).toEqual(["diff", "skills"]);
   });
+  it.each([NaN, Infinity, -Infinity, 1.5])(
+    "refuses a non-integer target %s without moving the tab",
+    (index) => {
+      dock().adoptDockLocation("skills");
+      dock().adoptDockLocation("diff");
+      expect(dock().reorderDockTab("diff", index)).toBeNull();
+      expect(dock().dockViewIds).toEqual(["skills", "diff"]);
+    },
+  );
 });
 
 describe("what a re-open returns to", () => {

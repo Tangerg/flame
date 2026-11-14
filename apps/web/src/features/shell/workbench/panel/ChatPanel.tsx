@@ -195,7 +195,11 @@ function DockHeader({
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
         reorder={{
-          onMove: workspaceAccess.navigation.reorderDockView.bind(workspaceAccess.navigation),
+          onMove: (id, toIndex) => {
+            const result = workspaceAccess.navigation.reorderDockView(id, toIndex);
+            const tab = tabs.find((tab) => tab.id === id);
+            return result && tab ? t("dock.tabs.moved", { title: tab.title, ...result }) : null;
+          },
           moveLeftLabel: t("dock.tabs.moveLeft"),
           moveRightLabel: t("dock.tabs.moveRight"),
         }}

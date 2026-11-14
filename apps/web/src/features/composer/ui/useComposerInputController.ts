@@ -33,7 +33,10 @@ import {
 } from "@/features/composer/application/composerInputEvents";
 import { useCompositionCommitGuard } from "@/features/composer/ui/useCompositionCommitGuard";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { type ComposerSubmission } from "@/features/composer/application/state";
+import {
+  type ComposerSubmission,
+  type ComposerImageIntake,
+} from "@/features/composer/application/state";
 
 interface Args {
   value: string;
@@ -182,14 +185,14 @@ export function useComposerInputController({
     }
   };
 
-  const handleDrop = (files: File[]): void => {
+  const handleDrop = (files: File[], intake: ComposerImageIntake): void => {
     composition.clear();
-    if (files.length === 0) return;
+    if (!files.length) return;
     if (!acceptsImages) {
       messages.notify("error", t("composer.attachImage.unsupported"));
       return;
     }
-    onAddImages(files);
+    intake.addFiles(files);
   };
 
   const clearCompositionCommit = (): void => {

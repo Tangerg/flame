@@ -738,6 +738,24 @@ widths retain their coalesced update; an unchanged width publishes nothing.
 Ref cleanup cancels sampling, including retirement during a synchronous commit.
 The saved Dock ratio remains unchanged. One layout-width read per active animation
 frame preserves this capacity timing under both viewport and sidebar changes.
+Native Dock dragging uses the PDD element adapter. Its typed payload binds the
+registered strip and a currently present tab; plain text and another strip cannot
+supply an alternative source. Drop and keyboard menu moves call the same navigation
+command, whose store alone advances tab order. The live announcement reads the
+committed position. Base UI continues owning tab keys and menu closing. The public final-focus
+callback settles the captured focus witness synchronously, so a later focus
+choice cannot lose to a queued return. Actual tab removal uses the shared
+removal witness; the strip has no separate animation-frame return task.
+
+External files use PDD's external adapter with one Composer target and one monitor
+for the generic file cue. The target extracts files only at drop and enters the
+existing image intake. Picker and paste keep that same attachment owner. A captured
+intake retires with its Session, endpoint, Runtime generation or disposed owner;
+replacing the receiver cannot adopt an already observed drag. Native cancellation,
+hiding and unmount clean up the receiver. The generic cue promises only that
+supported images will be attached; file type filtering happens after drop. PDD's
+unhandled-drop utility prevents native file navigation without delivering files.
+
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.

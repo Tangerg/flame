@@ -111,6 +111,7 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
     },
     runtime.endpoint.currentRuntimeEndpoint,
     scope,
+    stream,
   );
   const workspace = createWorkspace(
     runtimeClient,

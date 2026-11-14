@@ -110,6 +110,7 @@ export function createTestClient(
     },
     runtime.endpoint.currentRuntimeEndpoint,
     scope,
+    stream,
   );
   if (options.start !== false) composer.start();
   const host = options.host ?? createBrowserHost();

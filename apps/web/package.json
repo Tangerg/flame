@@ -48,6 +48,7 @@
     "lab:measure": "playwright test --config playwright.lab.config.ts --project=performance"
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "4.0.0",
     "@base-ui/react": "^1.9.0",
     "@flame/brand-assets": "*",
     "@flame/component-sdk": "*",

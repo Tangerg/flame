@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/application/navigation";
 import {
+  type DockTabPosition,
   type WorkspaceInspection,
   type WorkspaceViewMemory,
 } from "@/features/workspace/application/navigationState";
@@ -85,7 +86,7 @@ interface ContextDockActions {
   closeDockTab: (id: string) => string | null;
   closeOtherDockTabs: (id: string) => void;
   closeAllDockTabs: () => void;
-  reorderDockTab: (id: string, toIndex: number) => void;
+  reorderDockTab: (id: string, toIndex: number) => DockTabPosition | null;
   dockTabToShow: (defaultViewId: string) => string;
   focusFile: (path: string) => void;
   setFileViewer: (viewer: WorkspaceFileViewer | null) => void;
@@ -190,17 +191,18 @@ export function createContextDockStore() {
             state.dockViewIds.includes(id) ? { dockViewIds: [id], lastViewId: id } : {},
           ),
         closeAllDockTabs: () => set({ dockViewIds: [], lastViewId: null }),
-        reorderDockTab: (id, toIndex) =>
-          set((state) => {
-            const from = state.dockViewIds.indexOf(id);
-            if (from < 0) return {};
-            const to = Math.max(0, Math.min(state.dockViewIds.length - 1, toIndex));
-            if (from === to) return {};
-            const dockViewIds = [...state.dockViewIds];
-            dockViewIds.splice(from, 1);
-            dockViewIds.splice(to, 0, id);
-            return { dockViewIds };
-          }),
+        reorderDockTab: (id, toIndex) => {
+          const state = get();
+          const from = state.dockViewIds.indexOf(id);
+          if (from < 0 || !Number.isInteger(toIndex)) return null;
+          const to = Math.max(0, Math.min(state.dockViewIds.length - 1, toIndex));
+          if (from === to) return null;
+          const dockViewIds = [...state.dockViewIds];
+          dockViewIds.splice(from, 1);
+          dockViewIds.splice(to, 0, id);
+          set({ dockViewIds });
+          return { position: to + 1, total: dockViewIds.length };
+        },
         dockTabToShow: (defaultViewId) => {
           const { dockViewIds, lastViewId } = get();
           if (dockViewIds.length === 0) return defaultViewId;

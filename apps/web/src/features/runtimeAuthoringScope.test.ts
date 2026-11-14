@@ -108,7 +108,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
     subscribeDeleted: (listener: (id: string) => void) =>
       subscribeDeletedAgentSession(agent.dependencies, listener),
   };
-  const composer = createComposer(sessions, () => endpoint, scope);
+  const composer = createComposer(sessions, () => endpoint, scope, stream);
   const workspace = createWorkspace(
     client,
     navigation,

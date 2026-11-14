@@ -31,6 +31,11 @@ export type ComposerLegacyDraftState =
   | { status: "available" | "blocked" | "importing" }
   | { status: "failed"; cause: unknown; canImport: boolean };
 
+export interface ComposerImageIntake {
+  current(): boolean;
+  addFiles(files: File[]): void;
+}
+
 export interface ComposerStatePort {
   focus(selectionEnd?: number): void;
   captureFocus(): () => void;
@@ -55,6 +60,7 @@ export interface ComposerStatePort {
   useAttachmentsReady(): boolean;
   usePastes(): readonly PastedText[];
   useAddImageFiles(): (files: File[]) => void;
+  useImageIntake(): ComposerImageIntake;
   useRemoveImage(): (id: string) => void;
   useAddPaste(): (text: string) => void;
   useRemovePaste(): (id: string) => void;

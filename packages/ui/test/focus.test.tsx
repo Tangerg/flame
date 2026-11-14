@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
+  FocusWitness,
   RemovalFocus,
   handoffFocus,
   useRemovalFocus,
@@ -171,4 +172,20 @@ it("rejects a changed business source after layout commits and before passive re
   view.rerender(<Scene scope="successor" open={false} />);
   expect(document.activeElement).toBe(document.body);
   expect(resolve).not.toHaveBeenCalled();
+});
+
+it("settles a held-focus delivery before a later native choice", () => {
+  const { source, button, target } = controls();
+  const witness = FocusWitness.capture(source, () => true)!;
+  expect(witness.restore(() => target)).toBe(true);
+  button.focus();
+  expect(witness.restore(() => target)).toBe(false);
+  expect(document.activeElement).toBe(button);
+});
+
+it("can claim original focus exactly once without looking up a successor target", () => {
+  const { source } = controls();
+  const witness = FocusWitness.capture(source, () => true)!;
+  expect(witness.take()).toBe(true);
+  expect(witness.take()).toBe(false);
 });

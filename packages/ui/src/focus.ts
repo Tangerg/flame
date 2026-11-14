@@ -37,8 +37,7 @@ export function handoffFocus(
   return target.ownerDocument.activeElement === target;
 }
 
-export class RemovalFocus {
-  readonly #source: HTMLElement;
+export class FocusWitness {
   readonly #node: HTMLElement;
   readonly #current: () => boolean;
   #settled = false;
@@ -46,7 +45,7 @@ export class RemovalFocus {
   static capture(
     source: HTMLElement,
     current: () => boolean,
-  ): RemovalFocus | null {
+  ): FocusWitness | null {
     const focused = source.ownerDocument.activeElement;
     if (
       !source.isConnected ||
@@ -55,24 +54,19 @@ export class RemovalFocus {
       !current()
     )
       return null;
-    return new RemovalFocus(source, focused as HTMLElement, current);
+    return new FocusWitness(focused as HTMLElement, current);
   }
-
-  private constructor(
-    source: HTMLElement,
-    node: HTMLElement,
-    current: () => boolean,
-  ) {
-    this.#source = source;
+  private constructor(node: HTMLElement, current: () => boolean) {
     this.#node = node;
     this.#current = current;
     node.ownerDocument.addEventListener("focusin", this.#laterFocus, true);
   }
-
+  get removed(): boolean {
+    return !this.#node.isConnected;
+  }
   #laterFocus = (event: FocusEvent) => {
     if (event.target !== this.#node) this.retire();
   };
-
   retire = (): void => {
     this.#settled = true;
     this.#node.ownerDocument.removeEventListener(
@@ -81,23 +75,50 @@ export class RemovalFocus {
       true,
     );
   };
-
-  restore(resolve: () => HTMLElement | null | undefined): boolean {
+  take(): boolean {
     if (this.#settled) return false;
     this.retire();
     const document = this.#node.ownerDocument;
+    return (
+      this.#current() &&
+      (document.activeElement === this.#node ||
+        (!this.#node.isConnected && document.activeElement === document.body))
+    );
+  }
+  restore(resolve: () => HTMLElement | null | undefined): boolean {
+    if (!this.take()) return false;
+    const target = resolve();
     if (
-      this.#source.isConnected ||
-      this.#node.isConnected ||
-      !this.#current() ||
-      document.activeElement !== document.body
+      target?.ownerDocument !== this.#node.ownerDocument ||
+      !availableFocusTarget(target)
     )
       return false;
-    const target = resolve();
-    if (target?.ownerDocument !== document || !availableFocusTarget(target))
-      return false;
     target.focus({ preventScroll: true });
-    return document.activeElement === target;
+    return target.ownerDocument.activeElement === target;
+  }
+}
+
+export class RemovalFocus {
+  readonly #source: HTMLElement;
+  readonly #focus: FocusWitness;
+  static capture(
+    source: HTMLElement,
+    current: () => boolean,
+  ): RemovalFocus | null {
+    const focus = FocusWitness.capture(source, current);
+    return focus ? new RemovalFocus(source, focus) : null;
+  }
+  private constructor(source: HTMLElement, focus: FocusWitness) {
+    this.#source = source;
+    this.#focus = focus;
+  }
+  retire = (): void => this.#focus.retire();
+  restore(resolve: () => HTMLElement | null | undefined): boolean {
+    if (this.#source.isConnected || !this.#focus.removed) {
+      this.retire();
+      return false;
+    }
+    return this.#focus.restore(resolve);
   }
 }
 

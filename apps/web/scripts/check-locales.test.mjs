@@ -119,6 +119,22 @@ for (const path of [
   });
 }
 
+test("keyboard protocol values remain technical while labels in the same configuration require translation", (t) => {
+  const tree = fixture(t);
+  tree.source(
+    "features/example/ui/Tree.tsx",
+    'export const tree = { hotkeys: { first: { hotkey: "Home" }, last: { hotkey: "End" } } };',
+  );
+  passes(tree.run());
+  tree.source(
+    "features/example/ui/Tree.tsx",
+    'export const tree = { hotkeys: { first: { hotkey: "Home", label: "Go home" } } };',
+  );
+  fails(tree.run(), /copy in a lookup table/);
+  tree.source("features/example/ui/Tree.tsx", 'export const row = { hotkey: "Go home" };');
+  fails(tree.run(), /copy in a lookup table/);
+});
+
 test("proper identities and StyleX declarations are not rendered lookup copy", (t) => {
   const tree = fixture(t);
   tree.source(

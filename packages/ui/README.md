@@ -691,8 +691,8 @@ element or a resolver returning the current target or null. The resolver runs on
 when restoration is eligible, after removal, so a filtered-out trigger can return
 to its consumer's persistent search field. `canRestoreFocus` qualifies the captured
 business source; hiding, a retired source, later focus (even if it subsequently
-blurs), or an unavailable destination prevents restoration. `RemovalFocus` owns
-this once-only witness; `useRemovalFocus` binds its layout capture and passive
+blurs), or an unavailable destination prevents restoration. `FocusWitness` owns the captured source, later-focus guard and once-only
+delivery. `RemovalFocus` additionally requires physical removal of its boundary; `useRemovalFocus` binds its layout capture and passive
 settlement. Synchronous retry replacement uses the separate `handoffFocus`
 guarantee before replacing the error view.
 

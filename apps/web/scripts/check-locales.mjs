@@ -272,6 +272,16 @@ function sourceCopy(path, source) {
         : literal.isTemplateLiteral() && literal.node.expressions.length === 0
           ? literal.node.quasis[0].value.cooked
           : undefined;
+      const propertyName = property.node.key.name ?? property.node.key.value;
+      if (
+        propertyName === "hotkey" &&
+        property.findParent(
+          (parent) =>
+            parent.isObjectProperty() &&
+            (parent.node.key.name ?? parent.node.key.value) === "hotkeys",
+        )
+      )
+        return;
       if (typeof value !== "string" || CLASS_LIST.test(value) || ownKey(property, value)) return;
       if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
         const key = source.slice(property.node.key.start, property.node.key.end);
