@@ -193,6 +193,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     rows,
     matching,
     openDocument,
+    canRestoreFocus,
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const instructions = useRef<HTMLElement>(null);
@@ -325,6 +326,7 @@ export function Skills({ context }: { context: ComponentContext }) {
         <RecordForm
           aria-label={t("review.label")}
           opener={review.opener}
+          canRestoreFocus={canRestoreFocus}
           data-focus-unit=""
         >
           <RecordTitle>
@@ -450,6 +452,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                 item={item}
                 review={snapshot!.type === "review"}
                 focusAfterRemoval={searchField}
+                canRestoreFocus={canRestoreFocus}
                 t={t}
                 read={
                   snapshot!.type === "available"

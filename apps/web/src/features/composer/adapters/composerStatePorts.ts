@@ -13,6 +13,10 @@ export function createComposer(
   const activateComposerStorage = owner.activate;
   let stopSessionSync: (() => void) | null = null;
   let disposed = false;
+  let focusScope = {};
+  const stopFocusScope = useComposerStore.subscribe((state, previous) => {
+    if (state.composer.activeSessionId !== previous.composer.activeSessionId) focusScope = {};
+  });
 
   let focusTarget: {
     element: HTMLTextAreaElement | null;
@@ -39,10 +43,18 @@ export function createComposer(
   const access: ComposerStatePort = {
     focus,
     captureFocus: () => {
-      const origin = document.activeElement;
       const target = focusTarget;
+      const document = target?.element?.ownerDocument ?? window.document;
+      const origin = document.activeElement;
+      const source = focusScope;
       return () => {
-        if (document.activeElement === origin && focusTarget === target) focus();
+        if (
+          !disposed &&
+          focusScope === source &&
+          document.activeElement === origin &&
+          focusTarget === target
+        )
+          focus();
       };
     },
     registerFocusTarget: (element, synchronizeSelection) => {
@@ -117,6 +129,7 @@ export function createComposer(
     disposed = true;
     focusTarget = null;
     focusPresentation = null;
+    stopFocusScope();
     stopSessionSync?.();
     stopSessionSync = null;
     owner.dispose();
@@ -138,7 +151,10 @@ export function createComposer(
       activateComposerStorage(endpoint());
       useComposerStore.getState().discardSession(sessionId);
     });
-    const stopScope = scope.subscribeReplacement(() => sync(sessions.getLifecycleSnapshot()));
+    const stopScope = scope.subscribeReplacement(() => {
+      focusScope = {};
+      sync(sessions.getLifecycleSnapshot());
+    });
     const stop = () => {
       stopLifecycle();
       stopDeletion();

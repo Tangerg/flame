@@ -9,6 +9,7 @@ export function MemoryFeedback({
   pending,
   reconcile,
   result: destination,
+  canRestoreFocus,
   t,
 }: {
   feedback?: Feedback;
@@ -16,6 +17,7 @@ export function MemoryFeedback({
   pending: boolean;
   reconcile(): void;
   result?: RefObject<HTMLElement | null>;
+  canRestoreFocus(): boolean;
   t: Translate;
 }) {
   const own = useRef<HTMLElement>(null);
@@ -56,7 +58,12 @@ export function MemoryFeedback({
       {original?.source === "record" ? (
         <Toolbar label={t("feedback.original.label")}>
           {key}
-          <MemoryAction result={result} pending={pending} onClick={reconcile}>
+          <MemoryAction
+            canRestoreFocus={canRestoreFocus}
+            result={result}
+            pending={pending}
+            onClick={reconcile}
+          >
             {t("feedback.check")}
           </MemoryAction>
         </Toolbar>

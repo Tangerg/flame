@@ -15,6 +15,7 @@ import { type MemoryItem } from "./types";
 type DeleteConfirmationProps = {
   item: MemoryItem;
   opener: () => HTMLElement | null;
+  canRestoreFocus(): boolean;
   feedback: ReactNode;
   pending: boolean;
   locked: boolean;
@@ -28,6 +29,7 @@ type DeleteConfirmationProps = {
 export function MemoryDeleteConfirmation({
   item,
   opener,
+  canRestoreFocus,
   feedback,
   pending,
   locked,
@@ -41,6 +43,7 @@ export function MemoryDeleteConfirmation({
     <RecordForm
       aria-label={t("delete.confirm.label")}
       opener={opener}
+      canRestoreFocus={canRestoreFocus}
       data-focus-unit=""
     >
       <RecordGroup>

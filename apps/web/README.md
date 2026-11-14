@@ -256,7 +256,12 @@ restore the saved collection before authoring changes; subsequent authoring keep
 the unread bytes intact and requires explicit recovery. Copy draft text captures
 the unconfirmed text and separate pasted-text records on request, including
 inactive targets, without copying connection credentials or claiming images are
-durable. A late copy cannot confirm a later draft.
+durable. A late copy cannot confirm a later draft. Recovery reads its text synchronously
+in the click and starts clipboard I/O in that same activation. Its persistent
+diagnostics and ordinary short copy feedback share `useCopyAttempt` qualification.
+The Retry presentation captures its original input on focus and returns it in
+pre-exit layout cleanup only while Retry still holds focus. A stable ref merely
+binds the button; a failed retry or a ref rebind cannot return focus.
 
 Normal storage reads accept only the current IndexedDB shape. The previous
 `flame.composer:<encoded endpoint>` localStorage value is never read as a fallback,

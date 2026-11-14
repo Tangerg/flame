@@ -10,6 +10,7 @@ import {
   type KeyboardEventHandler,
   type Ref,
 } from "react";
+import { isPressedReadingTarget } from "./reading-unit";
 import { useContentVisible } from "./content-visibility";
 import { space } from "./tokens.stylex";
 
@@ -122,10 +123,7 @@ export function ScrollRegion({
         return;
       }
       const placement = horizontalPlacement(region, focused);
-      const pointerFocus =
-        pressed &&
-        (focused.contains(pressed) ||
-          pressed.closest("label, [data-focus-proxy]")?.contains(focused));
+      const pointerFocus = isPressedReadingTarget(focused, pressed);
       // Moving a pressed control before pointerup can swallow its activation.
       if (placement.displacement && !pointerFocus)
         region.scrollTo({

@@ -598,8 +598,8 @@ describe("ModalDialog body results", () => {
 
   it("reserves the dialog body scroll padding when choosing a fitting result", async () => {
     const { body, group, refresh, settle } = await openEditor();
-    body.style.scrollPaddingBlockStart = "12px";
-    body.style.scrollPaddingBlockEnd = "12px";
+    body.style.scrollPaddingTop = "12px";
+    body.style.scrollPaddingBottom = "12px";
     rectangles.set(group, new DOMRect(0, 370, 600, 280));
     rectangles.set(refresh, new DOMRect(480, 370, 100, 32));
     settle("The model catalog is unavailable.");

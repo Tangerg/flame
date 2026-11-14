@@ -689,12 +689,23 @@ focus on the document body. Restoration follows the DOM commit so the opener
 can be enabled again; another control's focus is preserved. The opener may be an
 element or a resolver returning the current target or null. The resolver runs only
 when restoration is eligible, after removal, so a filtered-out trigger can return
-to its consumer's persistent search field. `FormActions` groups
+to its consumer's persistent search field. `canRestoreFocus` qualifies the captured
+business source; hiding, a retired source, later focus (even if it subsequently
+blurs), or an unavailable destination prevents restoration. `RemovalFocus` owns
+this once-only witness; `useRemovalFocus` binds its layout capture and passive
+settlement. Synchronous retry replacement uses the separate `handoffFocus`
+guarantee before replacing the error view.
+
+`FormActions` groups
 inline editor actions, with `auxiliaryAction` leading and children trailing;
 cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.
 The parent form or record composition owns spacing before the actions;
 `FormActions` adds no outer inset or separator.
+`isPressedReadingTarget`, `readingViewportBounds` and the shared reading-frame
+geometry keep labels, focus proxies and scroll padding consistent. Panel, modal,
+horizontal reader and transcript retain their actual viewport and axis ownership.
+
 Reading owners use the outermost declared `data-focus-unit` that fits their
 available frame, without crossing the current body boundary. Nested actions or
 fields remain the fallback when the complete task is too tall, followed by the
@@ -767,3 +778,9 @@ native WebKit appearance; focus and invalid borders remain with `FIELD_SURFACE`.
 Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
 editors consume `RecordForm`, `FormField`, and `FormActions` rather than defining
 another set of row insets, field spacing, and footer alignment.
+
+`useCopyAttempt` qualifies each copy by its captured source, latest attempt and
+visible mounted lifetime. It owns no text, persistence confirmation, timer or
+feedback policy. `useCopyFeedback` uses that same qualification for both clipboard
+completion and its short feedback timer. Persistent recovery diagnostics can keep
+the previous result during another attempt without sharing that timer policy.

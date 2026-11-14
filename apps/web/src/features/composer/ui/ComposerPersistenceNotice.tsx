@@ -1,8 +1,9 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { copyText } from "@flame/ui";
+import { copyText, useCopyAttempt, useContentVisible } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { useComposer } from "@/features/composer/public/composer";
+import { type ComposerAccess } from "@/features/composer/public/composer";
 import { type ComposerPersistenceState } from "@/features/composer/application/state";
 import { useT } from "@/lib/i18n/index";
 import { SystemMessage, TextButton } from "@/ui/index";
@@ -10,11 +11,6 @@ import { SystemMessage, TextButton } from "@/ui/index";
 const styles = stylex.create({
   actions: { display: "flex", flexWrap: "wrap", gap: space.s3, marginTop: space.s1 },
 });
-
-interface CopyOwner {
-  active: boolean;
-  attempt: object | null;
-}
 
 export function ComposerPersistenceNotice() {
   return (
@@ -29,8 +25,7 @@ function CurrentDraftNotice() {
   const composer = useComposer();
   const persistence = composer.usePersistenceState();
   const t = useT();
-  const copyOwner = useRef<CopyOwner>({ active: false, attempt: null });
-  const returnFromRetry = useRef<(() => void) | null>(null);
+  const beginCopy = useCopyAttempt(persistence);
   const [copyResult, setCopyResult] = useState<{
     source: ComposerPersistenceState;
     accepted: boolean | null;
@@ -39,36 +34,15 @@ function CurrentDraftNotice() {
     setCopyResult({ source: persistence, accepted: null });
   }
 
-  useLayoutEffect(() => {
-    const owner: CopyOwner = { active: true, attempt: null };
-    copyOwner.current = owner;
-    return () => {
-      owner.active = false;
-    };
-  }, [persistence]);
-
-  const bindRetry = useCallback((button: HTMLButtonElement | null) => {
-    if (!button) return;
-    return () => {
-      if (button.ownerDocument.activeElement === button) returnFromRetry.current?.();
-    };
-  }, []);
-
   if (persistence.status === "saved" || (persistence.status === "pending" && !persistence.retrying))
     return null;
 
   const copyDrafts = async () => {
-    const owner = copyOwner.current;
-    const attempt = (owner.attempt = {});
-    let accepted = false;
-    try {
-      accepted = await copyText(composer.getRecoveryDrafts());
-    } catch {
-      accepted = false;
-    }
-    if (owner.active && owner.attempt === attempt) {
-      setCopyResult({ source: persistence, accepted });
-    }
+    const current = beginCopy();
+    if (!current) return;
+    const text = composer.getRecoveryDrafts();
+    const accepted = await copyText(text);
+    if (current()) setCopyResult({ source: persistence, accepted });
   };
   const copied = copyResult.source === persistence ? copyResult.accepted : null;
   const message =
@@ -92,18 +66,11 @@ function CurrentDraftNotice() {
       <div {...stylex.props(styles.actions)}>
         {(persistence.status === "failed" ||
           (persistence.status === "pending" && persistence.retrying)) && (
-          <TextButton
-            ref={bindRetry}
-            tone="accent"
-            aria-disabled={persistence.status === "pending" || undefined}
-            onMouseDown={(event) => event.preventDefault()}
-            onFocus={() => {
-              returnFromRetry.current = composer.captureFocus();
-            }}
-            onClick={composer.retryPersistence}
-          >
-            {t("common.retry")}
-          </TextButton>
+          <PersistenceRetry
+            composer={composer}
+            pending={persistence.status === "pending"}
+            label={t("common.retry")}
+          />
         )}
         <TextButton tone="accent" onClick={() => void copyDrafts()}>
           {t(copied ? "composer.persistence.copied" : "composer.persistence.copy")}
@@ -118,27 +85,18 @@ function LegacyDraftNotice() {
   const composer = useComposer();
   const state = composer.useLegacyDraftState();
   const t = useT();
-  const attempt = useRef<object | null>(null);
+  const beginCopy = useCopyAttempt(state);
   const [copied, setCopied] = useState<{ source: typeof state; result: boolean | null }>({
     source: state,
     result: null,
   });
-  useLayoutEffect(
-    () => () => {
-      attempt.current = null;
-    },
-    [state],
-  );
   if (state.status === "none") return null;
   const copy = async () => {
-    const identity = (attempt.current = {});
-    let accepted = false;
-    try {
-      accepted = await copyText(composer.getLegacyDraftBackup());
-    } catch {
-      accepted = false;
-    }
-    if (attempt.current === identity) setCopied({ source: state, result: accepted });
+    const current = beginCopy();
+    if (!current) return;
+    const text = composer.getLegacyDraftBackup();
+    const accepted = await copyText(text);
+    if (current()) setCopied({ source: state, result: accepted });
   };
   const result = copied.source === state ? copied.result : null;
   return (
@@ -168,5 +126,52 @@ function LegacyDraftNotice() {
       </div>
       {result === false && <p>{t("composer.persistence.copyFailed")}</p>}
     </SystemMessage>
+  );
+}
+
+function PersistenceRetry({
+  composer,
+  pending,
+  label,
+}: {
+  composer: ComposerAccess;
+  pending: boolean;
+  label: string;
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const capture = useRef<{ composer: ComposerAccess; restore(): void } | null>(null);
+  const visible = useContentVisible();
+  const presentation = useRef({ composer, visible });
+  useLayoutEffect(() => {
+    presentation.current = { composer, visible };
+  });
+  useLayoutEffect(
+    () => () => {
+      const node = button.current;
+      const original = capture.current;
+      capture.current = null;
+      if (
+        node &&
+        node.ownerDocument.activeElement === node &&
+        presentation.current.visible &&
+        original?.composer === presentation.current.composer
+      )
+        original.restore();
+    },
+    [],
+  );
+  return (
+    <TextButton
+      ref={button}
+      tone="accent"
+      aria-disabled={pending || undefined}
+      onMouseDown={(event) => event.preventDefault()}
+      onFocus={() => {
+        capture.current = { composer, restore: composer.captureFocus() };
+      }}
+      onClick={composer.retryPersistence}
+    >
+      {label}
+    </TextButton>
   );
 }

@@ -6,12 +6,11 @@ import {
   describeApprovalSubject,
 } from "@/features/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
-import { useId, useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef, type RefObject } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { useContentVisible } from "@/ui/index";
-import { Badge, IconButton, vocab } from "@flame/ui";
+import { Badge, IconButton, vocab, useRemovalFocus } from "@flame/ui";
 import { type Tone } from "@flame/ui/badge";
 import {
   forgetApprovalRule,
@@ -93,22 +92,10 @@ export function RulesRow() {
   });
   const descriptionPrefix = useId();
   const titleId = `${descriptionPrefix}-title`;
-  const visible = useContentVisible();
   const context = useRef<HTMLDivElement>(null);
-  const heldFocus = useRef<{ element: HTMLElement; index: number } | null>(null);
+  const source = useRef({ agentAccess, sessionId });
   useLayoutEffect(() => {
-    const region = context.current;
-    const held = heldFocus.current;
-    if (!region || !held) return;
-    const actions = [...region.querySelectorAll<HTMLElement>("[data-rule-forget]")];
-    if (held.element.isConnected) {
-      held.index = actions.indexOf(held.element);
-      return;
-    }
-    heldFocus.current = null;
-    if (!visible || region.ownerDocument.activeElement !== region.ownerDocument.body) return;
-    const next = actions[Math.min(Math.max(held.index, 0), actions.length - 1)] ?? region;
-    next.focus();
+    source.current = { agentAccess, sessionId };
   });
 
   return (
@@ -118,25 +105,7 @@ export function RulesRow() {
       sub={t("approvals.rules.sub")}
       align="stacked"
     >
-      <div
-        ref={context}
-        role="group"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        data-focus-inset=""
-        onFocusCapture={(event) => {
-          const actions = [
-            ...event.currentTarget.querySelectorAll<HTMLElement>("[data-rule-forget]"),
-          ];
-          heldFocus.current = {
-            element: event.target,
-            index: actions.indexOf(event.target),
-          };
-        }}
-        onBlurCapture={(event) => {
-          if (event.relatedTarget !== null) heldFocus.current = null;
-        }}
-      >
+      <div ref={context} role="group" aria-labelledby={titleId} tabIndex={-1} data-focus-inset="">
         <DataView
           items={data}
           isLoading={isPending}
@@ -152,12 +121,16 @@ export function RulesRow() {
           {(rows) => (
             <div {...stylex.props(r.list)}>
               <div {...stylex.props(ss.end)}>
-                <TextButton
-                  pending={busy}
+                <ClearRules
+                  context={context}
+                  busy={busy}
+                  current={() =>
+                    source.current.agentAccess === agentAccess &&
+                    source.current.sessionId === sessionId
+                  }
                   onClick={() => run(() => forgetApprovalRules(agentAccess, rows))}
-                >
-                  {t("approvals.clearAll")}
-                </TextButton>
+                  label={t("approvals.clearAll")}
+                />
               </div>
               {rows.map((rule, index) => {
                 const descriptionId = `${descriptionPrefix}-${index}`;
@@ -188,16 +161,16 @@ export function RulesRow() {
                         {rule.dir ? <span>{rule.dir}</span> : null}
                       </div>
                     </div>
-                    <IconButton
-                      data-rule-forget=""
-                      icon={iconGlyph("x")}
-                      size="xs"
-                      quiet
-                      styles={vocab.hold}
-                      aria-label={t("approvals.forget", { tool: rule.modelName })}
-                      aria-describedby={descriptionId}
-                      aria-busy={busy}
-                      pending={busy}
+                    <RuleForget
+                      context={context}
+                      index={index}
+                      current={() =>
+                        source.current.agentAccess === agentAccess &&
+                        source.current.sessionId === sessionId
+                      }
+                      name={t("approvals.forget", { tool: rule.modelName })}
+                      descriptionId={descriptionId}
+                      busy={busy}
                       onClick={() => run(() => forgetApprovalRule(agentAccess, rule.id))}
                     />
                   </div>
@@ -208,5 +181,72 @@ export function RulesRow() {
         </DataView>
       </div>
     </SettingRow>
+  );
+}
+
+function RuleForget({
+  context,
+  index,
+  current,
+  name,
+  descriptionId,
+  busy,
+  onClick,
+}: {
+  context: RefObject<HTMLDivElement | null>;
+  index: number;
+  current(): boolean;
+  name: string;
+  descriptionId: string;
+  busy: boolean;
+  onClick(): void;
+}) {
+  const action = useRef<HTMLButtonElement>(null);
+  useRemovalFocus(
+    action,
+    () => {
+      const region = context.current;
+      if (!region) return null;
+      const actions = region.querySelectorAll<HTMLElement>("[data-rule-forget]");
+      return actions[Math.min(index, actions.length - 1)] ?? region;
+    },
+    current,
+  );
+  return (
+    <IconButton
+      ref={action}
+      data-rule-forget=""
+      icon={iconGlyph("x")}
+      size="xs"
+      quiet
+      styles={vocab.hold}
+      aria-label={name}
+      aria-describedby={descriptionId}
+      aria-busy={busy}
+      pending={busy}
+      onClick={onClick}
+    />
+  );
+}
+
+function ClearRules({
+  context,
+  current,
+  busy,
+  onClick,
+  label,
+}: {
+  context: RefObject<HTMLDivElement | null>;
+  current(): boolean;
+  busy: boolean;
+  onClick(): void;
+  label: string;
+}) {
+  const action = useRef<HTMLButtonElement>(null);
+  useRemovalFocus(action, () => context.current, current);
+  return (
+    <TextButton ref={action} pending={busy} onClick={onClick}>
+      {label}
+    </TextButton>
   );
 }

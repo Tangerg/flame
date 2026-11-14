@@ -667,6 +667,41 @@ describe("draft persistence recovery", () => {
     expect(screen.queryByText(t("composer.persistence.copyFailed"))).toBeNull();
   });
 
+  it("starts clipboard I/O in the click and retains diagnostics while only the latest attempt may settle", async () => {
+    const older = Promise.withResolvers<void>();
+    const latest = Promise.withResolvers<void>();
+    const next = Promise.withResolvers<void>();
+    const write = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(latest.promise)
+      .mockReturnValueOnce(next.promise);
+    const recovery = vi.spyOn(testClient.composer.access, "getRecoveryDrafts");
+    wrap(<DraftComposer />);
+    refuseDraftWrites();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "keep the original recovery text" },
+    });
+    await screen.findByRole("button", { name: "Retry" });
+    const source = testClient.composer.store.getState().persistenceState;
+    const copy = screen.getByRole("button", { name: "Copy draft text" });
+    fireEvent.click(copy);
+    expect(recovery).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0]![0]).toContain("keep the original recovery text");
+    fireEvent.click(copy);
+    await act(async () => latest.reject(new Error("clipboard refused")));
+    expect(screen.getByText(t("composer.persistence.copyFailed"))).toBeTruthy();
+    await act(async () => older.resolve());
+    expect(screen.queryByRole("button", { name: "Draft text copied" })).toBeNull();
+    expect(screen.getByText(t("composer.persistence.copyFailed"))).toBeTruthy();
+    fireEvent.click(copy);
+    expect(screen.getByText(t("composer.persistence.copyFailed"))).toBeTruthy();
+    await act(async () => next.resolve());
+    expect(screen.getByRole("button", { name: "Draft text copied" })).toBeTruthy();
+    expect(testClient.composer.store.getState().persistenceState).toBe(source);
+  });
+
   it("keeps unread current records intact and offers recovery after the user continues editing", async () => {
     const target = "https://draft-read-recovery.test";
     const database = new DraftDatabase();

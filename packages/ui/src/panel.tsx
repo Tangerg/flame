@@ -13,7 +13,13 @@ import {
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
 import { useContentVisible } from "./content-visibility";
-import { fitsStickyReadingFrame, readingUnitFor } from "./reading-unit";
+import {
+  fitsStickyReadingFrame,
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+  withinReadingFrame,
+} from "./reading-unit";
 import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
@@ -235,35 +241,20 @@ function panelViewport(panel: HTMLElement) {
   ) {
     const style = getComputedStyle(parent);
     if (style.overflowY !== "visible") {
-      const clipped = parent.getBoundingClientRect();
+      const clipped = readingViewportBounds(parent);
       // Native start alignment lands inside the border and the host's scroll padding.
       top = Math.max(
         top,
-        clipped.top +
-          (Number.parseFloat(style.borderTopWidth) || 0) +
-          (Number.parseFloat(style.scrollPaddingTop) || 0),
+        clipped.top + (Number.parseFloat(style.borderTopWidth) || 0),
       );
       bottom = Math.min(
         bottom,
-        clipped.bottom -
-          (Number.parseFloat(style.borderBottomWidth) || 0) -
-          (Number.parseFloat(style.scrollPaddingBottom) || 0),
+        clipped.bottom - (Number.parseFloat(style.borderBottomWidth) || 0),
       );
       width = Math.min(width, clipped.width);
     }
   }
   return { top, bottom, width, contentHeight: bounds.height };
-}
-
-function withinPanelFrame(bounds: DOMRect, frame: PanelFocusFrame) {
-  // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
-  return (
-    frame.bottom > frame.top &&
-    bounds.top >= frame.top - 0.5 &&
-    (bounds.height > frame.bottom - frame.top
-      ? bounds.top < frame.bottom
-      : bounds.bottom <= frame.bottom + 0.5)
-  );
 }
 
 export function PanelHost({
@@ -358,16 +349,15 @@ export function Panel({
     (target: Element | null) => {
       const frame = bodyFocusFrame(target);
       if (!frame || !target) return null;
-      const pressed = pressedTarget.current;
-      const pointerFocus =
-        pressed &&
-        (target.contains(pressed) ||
-          pressed.closest("label, [data-focus-proxy]")?.contains(target));
+      const pointerFocus = isPressedReadingTarget(
+        target,
+        pressedTarget.current,
+      );
       // Moving a pressed control before pointerup can swallow its activation.
       if (
         !pointerFocus &&
         frame.bottom > frame.top &&
-        !withinPanelFrame(frame.unit.getBoundingClientRect(), frame)
+        !withinReadingFrame(frame.unit.getBoundingClientRect(), frame)
       ) {
         frame.unit.scrollIntoView({ block: "start", inline: "nearest" });
         // Its queued scroll event must not retire this owner's reflow witness.
@@ -479,7 +469,7 @@ export function Panel({
         reader.scrollHeight > reader.clientHeight
       ) {
         const frame = bodyFocusFrame(reader);
-        if (frame && withinPanelFrame(reader.getBoundingClientRect(), frame))
+        if (frame && withinReadingFrame(reader.getBoundingClientRect(), frame))
           return;
       }
       retire();
@@ -515,7 +505,7 @@ export function Panel({
         frame.contentHeight !== reading.frame.contentHeight
       )
         return;
-      if (!withinPanelFrame(reading.target.getBoundingClientRect(), frame))
+      if (!withinReadingFrame(reading.target.getBoundingClientRect(), frame))
         retire();
     };
     const observer = new ResizeObserver(revealAfterLayout);

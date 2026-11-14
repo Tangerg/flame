@@ -1,15 +1,10 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import { BookOpen } from "@flame/icons/react";
 import { type Translate } from "@flame/component-sdk";
 
 import {
   Badge,
+  useRemovalFocus,
   FormSection,
   Disclosure,
   Facts,
@@ -24,6 +19,7 @@ export function SkillRow({
   item,
   review,
   focusAfterRemoval,
+  canRestoreFocus,
   read,
   feedback,
   children,
@@ -32,35 +28,14 @@ export function SkillRow({
   item: SkillRecord;
   review: boolean;
   focusAfterRemoval: RefObject<HTMLElement | null>;
+  canRestoreFocus(): boolean;
   read?: { disabled: boolean; onOpen: (origin: HTMLElement) => void };
   feedback?: ReactNode;
   children?: ReactNode;
   t: Translate;
 }) {
   const element = useRef<HTMLElement>(null);
-  const ownedFocus = useRef(false);
-  useLayoutEffect(() => {
-    const row = element.current;
-    if (!row) return;
-    ownedFocus.current = false;
-    return () => {
-      ownedFocus.current = row.contains(row.ownerDocument.activeElement);
-    };
-  }, []);
-  useEffect(() => {
-    const row = element.current;
-    if (!row) return;
-    return () => {
-      const next = focusAfterRemoval.current;
-      if (
-        !row.isConnected &&
-        ownedFocus.current &&
-        row.ownerDocument.activeElement === row.ownerDocument.body &&
-        next?.isConnected
-      )
-        next.focus();
-    };
-  }, [focusAfterRemoval]);
+  useRemovalFocus(element, () => focusAfterRemoval.current, canRestoreFocus);
   const summary = (
     <RecordSummary
       icon={BookOpen}

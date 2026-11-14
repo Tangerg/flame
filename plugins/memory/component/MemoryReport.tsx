@@ -45,6 +45,7 @@ export function MemoryReport({
   clearSearchAndFilters,
   feedback,
   resultFocus,
+  canRestoreFocus,
   initiator,
   t,
 }: {
@@ -63,6 +64,7 @@ export function MemoryReport({
   clearSearchAndFilters(): void;
   feedback: ReactNode;
   resultFocus: RefObject<HTMLElement | null>;
+  canRestoreFocus(): boolean;
   initiator: RefObject<HTMLElement | undefined>;
   t: Translate;
 }) {
@@ -152,6 +154,7 @@ export function MemoryReport({
                         <>
                           <MemoryAction
                             result={resultFocus}
+                            canRestoreFocus={canRestoreFocus}
                             initiator={initiator}
                             variant="soft"
                             size="md"
@@ -174,6 +177,7 @@ export function MemoryReport({
                           </MemoryAction>
                           <MemoryAction
                             result={resultFocus}
+                            canRestoreFocus={canRestoreFocus}
                             initiator={initiator}
                             variant="wash"
                             tone="negative"

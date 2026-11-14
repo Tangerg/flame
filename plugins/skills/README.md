@@ -112,7 +112,9 @@ feedback row without a separate target name.
 
 When an accepted read removes a focused catalog row, focus returns to the catalog
 search. Focus already moved to another control, including an open document, is
-preserved.
+preserved. The shared removal witness captures only actual held focus and
+settles after the DOM commit. Its source qualification rejects a replaced Runtime,
+workspace, catalog, signal or tracking collaborator; locale-only updates preserve it.
 
 The component consumes public Runtime Skills operations through `@flame/component-sdk`. Its declared namespace resource is tracked and exact rebuilds are checked. Disablement or uninstall withdraws presentation/resources and preserves canonical Skill business data.
 

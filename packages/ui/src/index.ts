@@ -114,14 +114,18 @@ export {
   type CodeSourceComponent,
   type CodeSourceProps,
 } from "./code-block";
-export { copyText, useCopyFeedback } from "./clipboard";
+export { copyText, useCopyFeedback, useCopyAttempt } from "./clipboard";
 export { isImeKey } from "./keyboard";
 export {
   copyReaderSelection,
   readerSelectionLines,
   selectAllInReader,
 } from "./reader-selection";
-export { readingUnitFor } from "./reading-unit";
+export {
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+} from "./reading-unit";
 export { PointerSession, type PointerOutcome } from "./pointer-session";
 export { scrollPan, useScrollPan } from "./scroll-pan";
 export { TaskListItem } from "./task-list-item";
@@ -163,3 +167,5 @@ export {
   imageSizeFromBytes,
   type PixelSize,
 } from "./image-dimensions";
+
+export { RemovalFocus, useRemovalFocus, handoffFocus } from "./focus";

@@ -1,3 +1,4 @@
+import { RemovalFocus } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type Ref, useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
@@ -355,26 +356,16 @@ export function FileTree({
     focused !== null && !visible.some((item) => item.getId() === focused)
       ? (visible.findLast((item) => focused.startsWith(`${item.getId()}/`)) ?? visible[0])
       : undefined;
-  const removal = useRef<{
-    node: HTMLElement;
-    cwd: string | undefined;
-    moved: boolean;
-    dispose(): void;
-  } | null>(null);
+  const removal = useRef<RemovalFocus | null>(null);
+  const currentCwd = useRef(cwd);
+  useLayoutEffect(() => {
+    currentCwd.current = cwd;
+  });
   const onRemoved = useCallback(
     (node: HTMLElement) => {
-      if (node.ownerDocument.activeElement !== node) return;
-      removal.current?.dispose();
-      const witness = {
-        node,
-        cwd,
-        moved: false,
-        dispose: () => node.ownerDocument.removeEventListener("focusin", moved, true),
-      };
-      const moved = () => {
-        witness.moved = true;
-      };
-      node.ownerDocument.addEventListener("focusin", moved, true);
+      const witness = RemovalFocus.capture(node, () => currentCwd.current === cwd);
+      if (!witness) return;
+      removal.current?.retire();
       removal.current = witness;
     },
     [cwd],
@@ -383,23 +374,11 @@ export function FileTree({
     if (fallback) fallback.setFocused();
     const witness = removal.current;
     removal.current = null;
-    if (!witness) return;
-    witness.dispose();
-    const target = tree.getFocusedItem()?.getElement();
-    if (
-      witness.cwd === cwd &&
-      !witness.node.isConnected &&
-      !witness.moved &&
-      target?.isConnected &&
-      !target.closest("[hidden], [inert]") &&
-      witness.node.ownerDocument.activeElement === witness.node.ownerDocument.body
-    ) {
-      target.focus({ preventScroll: true });
-    }
+    witness?.restore(() => tree.getFocusedItem()?.getElement());
   });
   useLayoutEffect(
     () => () => {
-      removal.current?.dispose();
+      removal.current?.retire();
       removal.current = null;
     },
     [],
