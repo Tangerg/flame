@@ -1,99 +1,69 @@
 package plugin
 
 import (
+	"bytes"
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/frame/portable"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// schemaNode is a read-only view of one schema within a method's input or
-// output document. It resolves local references and merges allOf members —
-// the shapes Go types reflect to — and nothing more; validation of values
-// stays with the contract.
+const terminalSchemaResource = "urn:flame:terminal-schema"
+
+// Frame has already admitted the callable schema and bounded reference work.
+// Presentation reads its conjunctions without assigning precedence to any of them.
 type schemaNode struct {
-	fields map[string]jsontext.Value
-	defs   map[string]jsontext.Value
+	parts []*jsonschema.Schema
 }
 
 func newSchemaNode(document jsontext.Value) (schemaNode, error) {
-	var fields map[string]jsontext.Value
-	if err := json.Unmarshal(document, &fields); err != nil {
-		return schemaNode{}, fmt.Errorf("schema: %w", err)
+	resource, err := jsonschema.UnmarshalJSON(bytes.NewReader(document))
+	if err != nil {
+		return schemaNode{}, fmt.Errorf("terminal schema: %w", err)
 	}
-	var defs map[string]jsontext.Value
-	if raw, ok := fields["$defs"]; ok {
-		if err := json.Unmarshal(raw, &defs); err != nil {
-			return schemaNode{}, fmt.Errorf("schema definitions: %w", err)
-		}
+	compiler := jsonschema.NewCompiler()
+	compiler.UseLoader(nil)
+	compiler.DefaultDraft(jsonschema.Draft2020)
+	if err := compiler.AddResource(terminalSchemaResource, resource); err != nil {
+		return schemaNode{}, fmt.Errorf("terminal schema: %w", err)
 	}
-	return schemaNode{fields: fields, defs: defs}.resolved(), nil
+	compiled, err := compiler.Compile(terminalSchemaResource)
+	if err != nil {
+		return schemaNode{}, fmt.Errorf("terminal schema: %w", err)
+	}
+	return conjoinedSchema(compiled), nil
 }
 
-func (n schemaNode) child(raw jsontext.Value) (schemaNode, bool) {
-	var fields map[string]jsontext.Value
-	if json.Unmarshal(raw, &fields) != nil {
-		return schemaNode{}, false
+func conjoinedSchema(schemas ...*jsonschema.Schema) schemaNode {
+	var node schemaNode
+	var collect func(*jsonschema.Schema)
+	collect = func(part *jsonschema.Schema) {
+		node.parts = append(node.parts, part)
+		if part.Ref != nil {
+			collect(part.Ref)
+		}
+		for _, member := range part.AllOf {
+			collect(member)
+		}
 	}
-	return schemaNode{fields: fields, defs: n.defs}.resolved(), true
+	for _, part := range schemas {
+		collect(part)
+	}
+	return node
 }
 
-// resolved follows a local $ref and folds allOf members into one view.
-func (n schemaNode) resolved() schemaNode {
-	for depth := 0; depth < 32; depth++ {
-		var ref string
-		if raw, ok := n.fields["$ref"]; !ok || json.Unmarshal(raw, &ref) != nil {
-			break
+func (n schemaNode) properties() map[string]schemaNode {
+	properties := make(map[string]schemaNode)
+	for _, part := range n.parts {
+		for name, property := range part.Properties {
+			current := properties[name]
+			current.parts = append(current.parts, conjoinedSchema(property).parts...)
+			properties[name] = current
 		}
-		fragment, local := strings.CutPrefix(ref, "#")
-		if !local {
-			break
-		}
-		fragment, err := url.PathUnescape(fragment)
-		pointer := jsontext.Pointer(fragment)
-		if err != nil || !pointer.IsValid() || pointer.Parent() != "/$defs" {
-			break
-		}
-		target, ok := n.defs[pointer.LastToken()]
-		if !ok {
-			break
-		}
-		var fields map[string]jsontext.Value
-		if json.Unmarshal(target, &fields) != nil {
-			break
-		}
-		n.fields = fields
-	}
-	var members []jsontext.Value
-	if raw, ok := n.fields["allOf"]; ok && json.Unmarshal(raw, &members) == nil {
-		merged := make(map[string]jsontext.Value, len(n.fields))
-		for key, value := range n.fields {
-			if key != "allOf" {
-				merged[key] = value
-			}
-		}
-		for _, member := range members {
-			if resolved, ok := n.child(member); ok {
-				for key, value := range resolved.fields {
-					if _, set := merged[key]; !set {
-						merged[key] = value
-					}
-				}
-			}
-		}
-		n.fields = merged
-	}
-	return n
-}
-
-func (n schemaNode) properties() map[string]jsontext.Value {
-	var properties map[string]jsontext.Value
-	if raw, ok := n.fields["properties"]; ok {
-		_ = json.Unmarshal(raw, &properties)
 	}
 	return properties
 }
@@ -105,11 +75,9 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 	}
 	current := n
 	for _, segment := range segments {
-		raw, ok := current.properties()[segment]
+		var ok bool
+		current, ok = current.properties()[segment]
 		if !ok {
-			return schemaNode{}, false
-		}
-		if current, ok = current.child(raw); !ok {
 			return schemaNode{}, false
 		}
 	}
@@ -117,33 +85,78 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 }
 
 func (n schemaNode) items() (schemaNode, bool) {
-	raw, ok := n.fields["items"]
-	if !ok {
+	if !n.isType(portable.TypeArray) {
 		return schemaNode{}, false
 	}
-	return n.child(raw)
+	var items []*jsonschema.Schema
+	for _, part := range n.parts {
+		if part.Items2020 != nil {
+			items = append(items, part.Items2020)
+		}
+	}
+	if len(items) == 0 {
+		return schemaNode{}, false
+	}
+	return conjoinedSchema(items...), true
 }
 
-func (n schemaNode) types() []string {
-	raw, ok := n.fields["type"]
-	if !ok {
-		return nil
+func (n schemaNode) acceptsType(kind portable.SchemaType) bool {
+	for _, part := range n.parts {
+		if part.Bool != nil && !*part.Bool {
+			return false
+		}
+		if part.Types == nil {
+			continue
+		}
+		allowed := part.Types.ToStrings()
+		if slices.Contains(allowed, string(kind)) {
+			continue
+		}
+		if kind == portable.TypeInteger && slices.Contains(allowed, string(portable.TypeNumber)) {
+			continue
+		}
+		return false
 	}
-	var single string
-	if json.Unmarshal(raw, &single) == nil {
-		return []string{single}
-	}
-	var several []string
-	_ = json.Unmarshal(raw, &several)
-	return slices.DeleteFunc(several, func(value string) bool { return value == "null" })
+	return true
 }
 
-// formKind reports how a person enters this property, or false when it is not
-// a scalar a single field can hold.
+func (n schemaNode) types() []portable.SchemaType {
+	types := slices.DeleteFunc(portable.ProfileSchema().Types, func(kind portable.SchemaType) bool {
+		return kind == portable.TypeNull || !n.acceptsType(kind)
+	})
+	if slices.Contains(types, portable.TypeNumber) {
+		types = slices.DeleteFunc(types, func(kind portable.SchemaType) bool { return kind == portable.TypeInteger })
+	}
+	return types
+}
+
+func (n schemaNode) isType(kind portable.SchemaType) bool {
+	return slices.Equal(n.types(), []portable.SchemaType{kind})
+}
+
 func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 	var options []string
-	if raw, ok := n.fields["enum"]; ok {
-		if json.Unmarshal(raw, &options) != nil || len(options) == 0 {
+	hasEnum := false
+	for _, part := range n.parts {
+		if part.Enum == nil {
+			continue
+		}
+		var current []string
+		for _, value := range part.Enum.Values {
+			text, ok := value.(string)
+			if !ok {
+				return "", nil, false
+			}
+			current = append(current, text)
+		}
+		if !hasEnum {
+			options, hasEnum = current, true
+		} else {
+			options = slices.DeleteFunc(options, func(value string) bool { return !slices.Contains(current, value) })
+		}
+	}
+	if hasEnum {
+		if len(options) == 0 || !n.acceptsType(portable.TypeString) {
 			return "", nil, false
 		}
 		return extension.TerminalFormChoice, options, true
@@ -153,13 +166,13 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 		return "", nil, false
 	}
 	switch types[0] {
-	case "string":
+	case portable.TypeString:
 		return extension.TerminalFormText, nil, true
-	case "integer":
+	case portable.TypeInteger:
 		return extension.TerminalFormInteger, nil, true
-	case "number":
+	case portable.TypeNumber:
 		return extension.TerminalFormNumber, nil, true
-	case "boolean":
+	case portable.TypeBoolean:
 		return extension.TerminalFormBoolean, nil, true
 	default:
 		return "", nil, false
@@ -168,8 +181,12 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 
 func (n schemaNode) required() []string {
 	var required []string
-	if raw, ok := n.fields["required"]; ok {
-		_ = json.Unmarshal(raw, &required)
+	for _, part := range n.parts {
+		for _, name := range part.Required {
+			if !slices.Contains(required, name) {
+				required = append(required, name)
+			}
+		}
 	}
 	return required
 }
