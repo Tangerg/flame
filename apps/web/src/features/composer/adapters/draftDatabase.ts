@@ -2,7 +2,9 @@ import { z } from "zod";
 import { type ComposerDraftText, type ComposerDraft } from "@/features/composer/domain/composer";
 
 const DATABASE = "flame.composer";
-const STORES = ["drafts", "pastes", "endpoints"];
+const DRAFT_STORE = "drafts";
+const PASTE_STORE = "pastes";
+const STORES = [DRAFT_STORE, PASTE_STORE];
 const pasteReference = z.object({ id: z.string().min(1), record: z.string().min(1) }).strict();
 const draftRecord = z
   .object({
@@ -23,14 +25,7 @@ const pasteRecord = z
     text: z.string(),
   })
   .strict();
-const endpointRecord = z.object({ endpoint: z.string(), imported: z.boolean() }).strict();
 type StoredPaste = z.infer<typeof pasteRecord>;
-
-export interface DraftRead {
-  drafts: ReadonlyMap<string, ComposerDraftText>;
-  initialized: boolean;
-  imported: boolean;
-}
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -68,12 +63,14 @@ export class DraftDatabase {
         let refused = false;
         request.onupgradeneeded = () => {
           const db = request.result;
-          db.createObjectStore("drafts", { keyPath: ["endpoint", "session"] }).createIndex(
+          db.createObjectStore(DRAFT_STORE, { keyPath: ["endpoint", "session"] }).createIndex(
             "endpoint",
             "endpoint",
           );
-          db.createObjectStore("pastes", { keyPath: "record" }).createIndex("endpoint", "endpoint");
-          db.createObjectStore("endpoints", { keyPath: "endpoint" });
+          db.createObjectStore(PASTE_STORE, { keyPath: "record" }).createIndex(
+            "endpoint",
+            "endpoint",
+          );
         };
         request.onblocked = () => {
           refused = true;
@@ -101,22 +98,19 @@ export class DraftDatabase {
     return this.connection;
   }
 
-  async read(endpoint: string): Promise<DraftRead> {
+  async read(endpoint: string): Promise<ReadonlyMap<string, ComposerDraftText>> {
     const db = await this.open();
     const transaction = db.transaction(STORES, "readonly");
     const done = completion(transaction, {});
-    const values = await Promise.all([
+    const [drafts, pastes] = await Promise.all([
       requestResult<unknown[]>(
-        transaction.objectStore("drafts").index("endpoint").getAll(endpoint),
+        transaction.objectStore(DRAFT_STORE).index("endpoint").getAll(endpoint),
       ),
       requestResult<unknown[]>(
-        transaction.objectStore("pastes").index("endpoint").getAll(endpoint),
+        transaction.objectStore(PASTE_STORE).index("endpoint").getAll(endpoint),
       ),
-      requestResult<unknown>(transaction.objectStore("endpoints").get(endpoint)),
       done,
     ]);
-    const [drafts, pastes, marker] = values;
-    const metadata = marker === undefined ? undefined : endpointRecord.parse(marker);
     const records = new Map(
       pastes.map((value) => {
         const record = pasteRecord.parse(value);
@@ -145,18 +139,10 @@ export class DraftDatabase {
       });
     }
     this.pastes.set(endpoint, retained);
-    return {
-      drafts: texts,
-      initialized: metadata !== undefined || drafts.length > 0,
-      imported: metadata?.imported ?? false,
-    };
+    return texts;
   }
 
-  async write(
-    endpoint: string,
-    drafts: ReadonlyMap<string, ComposerDraft>,
-    importing?: () => boolean,
-  ): Promise<void> {
+  async write(endpoint: string, drafts: ReadonlyMap<string, ComposerDraft>): Promise<void> {
     const db = await this.open();
     const prepared = [...drafts].map(([session, draft]) => {
       const previous = this.pastes.get(endpoint)?.get(session) ?? [];
@@ -180,82 +166,47 @@ export class DraftDatabase {
     const transaction = db.transaction(STORES, "readwrite");
     const failure: { cause?: unknown } = {};
     const done = completion(transaction, failure);
-    const draftStore = transaction.objectStore("drafts");
-    const pasteStore = transaction.objectStore("pastes");
-    const metadataStore = transaction.objectStore("endpoints");
+    const draftStore = transaction.objectStore(DRAFT_STORE);
+    const pasteStore = transaction.objectStore(PASTE_STORE);
     const abort = (cause: unknown) => {
       failure.cause = cause;
       transaction.abort();
     };
-    const write = () => {
-      for (const { session, value, pastes, added } of prepared) {
-        const request = draftStore.get([endpoint, session]);
-        request.onsuccess = () => {
-          try {
-            const previous =
-              request.result === undefined ? undefined : draftRecord.parse(request.result);
-            for (let index = 0; index < pastes.length; index++) {
-              const paste = pastes[index]!;
-              if (
-                !added.includes(paste) &&
-                !previous?.pastes.some((reference) => reference.record === paste.record)
-              ) {
-                const fresh = { ...paste, record: crypto.randomUUID() };
-                pastes[index] = fresh;
-                added.push(fresh);
-              }
-            }
-            for (const reference of previous?.pastes ?? []) {
-              if (!pastes.some((paste) => paste.record === reference.record))
-                pasteStore.delete(reference.record);
-            }
-            for (const paste of added) pasteStore.add(paste);
-            if (value || pastes.length)
-              draftStore.put({
-                endpoint,
-                session,
-                value,
-                pastes: pastes.map(({ id, record }) => ({ id, record })),
-              });
-            else draftStore.delete([endpoint, session]);
-          } catch (cause) {
-            abort(cause);
-          }
-        };
-      }
-      const marker = metadataStore.get(endpoint);
-      marker.onsuccess = () => {
+    for (const { session, value, pastes, added } of prepared) {
+      const request = draftStore.get([endpoint, session]);
+      request.onsuccess = () => {
         try {
           const previous =
-            marker.result === undefined ? undefined : endpointRecord.parse(marker.result);
-          metadataStore.put({
-            endpoint,
-            imported: Boolean(importing) || previous?.imported === true,
-          });
+            request.result === undefined ? undefined : draftRecord.parse(request.result);
+          for (let index = 0; index < pastes.length; index++) {
+            const paste = pastes[index]!;
+            if (
+              !added.includes(paste) &&
+              !previous?.pastes.some((reference) => reference.record === paste.record)
+            ) {
+              const fresh = { ...paste, record: crypto.randomUUID() };
+              pastes[index] = fresh;
+              added.push(fresh);
+            }
+          }
+          for (const reference of previous?.pastes ?? []) {
+            if (!pastes.some((paste) => paste.record === reference.record))
+              pasteStore.delete(reference.record);
+          }
+          for (const paste of added) pasteStore.add(paste);
+          if (value || pastes.length)
+            draftStore.put({
+              endpoint,
+              session,
+              value,
+              pastes: pastes.map(({ id, record }) => ({ id, record })),
+            });
+          else draftStore.delete([endpoint, session]);
         } catch (cause) {
           abort(cause);
         }
       };
-    };
-    if (importing) {
-      const marker = metadataStore.get(endpoint);
-      const count = draftStore.index("endpoint").count(endpoint);
-      let ready = 0;
-      const check = () => {
-        if (++ready !== 2) return;
-        if (marker.result !== undefined || count.result !== 0 || !importing()) {
-          abort(
-            new Error(
-              "existing drafts can only be imported into fresh draft storage before editing",
-            ),
-          );
-          return;
-        }
-        write();
-      };
-      marker.onsuccess = check;
-      count.onsuccess = check;
-    } else write();
+    }
     await done;
     let retained = this.pastes.get(endpoint);
     if (!retained) {

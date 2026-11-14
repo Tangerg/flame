@@ -840,9 +840,10 @@ test("code blocks stay readable and expose the wrap control", async ({
   context,
   page,
   browserName,
+  baseURL,
 }) => {
   await context.grantPermissions(clipboardPermissions(browserName), {
-    origin: "http://127.0.0.1:4174",
+    origin: new URL(baseURL!).origin,
   });
   await page.goto("/lab/fixture.html?fixture=agent&theme=light&state=long-content");
   await expectLabReady(page);
@@ -927,11 +928,16 @@ test("reading artifacts share a frame with aligned captions and source", async (
       languageFamily: languageStyle.fontFamily,
       languageSize: languageStyle.fontSize,
       languageTransform: languageStyle.textTransform,
-      sourcePadding: sourceStyle.paddingInlineStart,
+      sourceInset:
+        Number.parseFloat(sourceStyle.borderInlineStartWidth) +
+        Number.parseFloat(sourceStyle.paddingInlineStart),
       sourceMaxHeight: sourceStyle.maxHeight,
       sourceHeightLimit: `${Math.min(28 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize), innerHeight * 0.6)}px`,
       languageStart: language.getBoundingClientRect().left,
-      sourceStart: source.getBoundingClientRect().left + Number.parseFloat(sourceStyle.paddingLeft),
+      sourceStart:
+        source.getBoundingClientRect().left +
+        Number.parseFloat(sourceStyle.borderLeftWidth) +
+        Number.parseFloat(sourceStyle.paddingLeft),
       artifactFrames: Array.from(
         document.querySelectorAll('.shiki-block, [data-slot="mermaid-stage"]'),
       ).map((node) => {
@@ -954,7 +960,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
   expect.soft(geometry?.languageFamily).toBe(geometry?.bodyFamily);
   expect.soft(geometry?.languageSize).toBe("12px");
   expect.soft(geometry?.languageTransform).toBe("none");
-  expect.soft(geometry?.sourcePadding).toBe("12px");
+  expect.soft(geometry?.sourceInset).toBe(12);
   expect.soft(geometry?.sourceMaxHeight).toBe(geometry?.sourceHeightLimit);
   expect.soft(geometry?.languageStart).toBe(geometry?.sourceStart);
   expect(geometry!.artifactFrames.length).toBeGreaterThan(1);
@@ -968,9 +974,10 @@ for (const theme of ["light", "dark"] as const) {
     context,
     page,
     browserName,
+    baseURL,
   }) => {
     await context.grantPermissions(clipboardPermissions(browserName), {
-      origin: "http://127.0.0.1:4174",
+      origin: new URL(baseURL!).origin,
     });
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
     await expectLabReady(page);
@@ -1041,9 +1048,10 @@ for (const theme of ["light", "dark"] as const) {
     context,
     page,
     browserName,
+    baseURL,
   }) => {
     await context.grantPermissions(clipboardPermissions(browserName), {
-      origin: "http://127.0.0.1:4174",
+      origin: new URL(baseURL!).origin,
     });
     await page.goto(`/lab/fixture.html?fixture=agent&theme=${theme}&state=long-content`);
     await expectLabReady(page);

@@ -66,6 +66,15 @@ export function artifactDocument(html, base = "/") {
   return document;
 }
 
+function artifactDeclaration(note, importKind, specifier) {
+  const group = note.startsWith("@flame-lazy:") ? note.slice("@flame-lazy:".length) : undefined;
+  if (note !== "@flame-startup" && !Object.hasOwn(LAZY_BUDGETS, group))
+    throw new Error(`unknown artifact annotation: ${note}`);
+  if (!group && importKind !== "ImportExpression")
+    throw new Error("startup annotations require an immediate dynamic import");
+  return { specifier, kind: group ? "lazy" : "startup", ...(group ? { group } : {}) };
+}
+
 /** @returns {import("vite").Plugin} */
 export function artifactGraph() {
   let config;
@@ -153,20 +162,8 @@ export function artifactGraph() {
             for (const comment of notes) {
               if (notes.length !== 1 || source.type !== "StringLiteral")
                 throw new Error(`artifact annotation needs one literal import: ${id}`);
-              const note = comment.value.trim();
-              const group = note.startsWith("@flame-lazy:")
-                ? note.slice("@flame-lazy:".length)
-                : undefined;
-              if (note !== "@flame-startup" && !Object.hasOwn(LAZY_BUDGETS, group))
-                throw new Error(`unknown artifact annotation: ${note}`);
-              if (!group && node.type !== "ImportExpression")
-                throw new Error("startup annotations require an immediate dynamic import");
               consumed.add(comment);
-              imports.push({
-                specifier: source.value,
-                kind: group ? "lazy" : "startup",
-                ...(group ? { group } : {}),
-              });
+              imports.push(artifactDeclaration(comment.value.trim(), node.type, source.value));
             }
           }
           for (const [key, child] of Object.entries(node)) {

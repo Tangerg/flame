@@ -1,10 +1,13 @@
 import { expect, test } from "./test";
 import { expectLabReady } from "../readiness";
+import declaration from "../../../../plugins/brand/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+const brand = declaration.components.find((component) => component.id === "brand")!;
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`brand assets load without overflow ${theme} ${width}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       const locale = width === 320 ? "zh" : "en";
+      const title = locale === "zh" ? brand.localizedTitles.zh : brand.title;
       await page.goto(
         `/lab/fixture.html?fixture=workspace&state=settings&pane=brand&theme=${theme}&locale=${locale}`,
       );
@@ -12,7 +15,7 @@ for (const theme of ["light", "dark"]) {
       const panel = page.getByRole("tabpanel");
       await expect(
         panel.getByRole("heading", {
-          name: "Brand identity",
+          name: title,
           level: 1,
           exact: true,
         }),

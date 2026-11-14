@@ -66,6 +66,7 @@ export function Composer({
     mentions,
     slash,
     suggestions,
+    dismissSuggestions,
     navigation,
     knownPaths,
     placeholder,
@@ -98,7 +99,7 @@ export function Composer({
       {dropping && <ComposerFileDropCue acceptsImages={acceptsImages} />}
       <SuggestionPopup
         open={suggestions.open}
-        onDismiss={suggestions.dismiss}
+        onDismiss={dismissSuggestions}
         navigation={navigation}
         heading={t(mentions.open ? "composer.mention.heading" : "composer.slash.heading")}
         anchor={surfaceRef}
@@ -108,6 +109,7 @@ export function Composer({
               mentions={mentions}
               retryRef={retryRef}
               onReturnFocus={returnFocusToInput}
+              onDismiss={dismissSuggestions}
             />
           ) : undefined
         }

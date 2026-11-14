@@ -180,89 +180,101 @@ export function assertSourceClosure(root, entry, forbiddenEntries) {
   });
 }
 
+class SourceResolver {
+  constructor(src, project, expected) {
+    this.src = src;
+    this.project = project;
+    this.expected = expected;
+  }
+
+  localName(path) {
+    return relative(this.src, resolve(path)).split(sep).join("/");
+  }
+
+  workerTarget(path, name, worker) {
+    const request = name.startsWith("@/")
+      ? resolve(this.src, worker.slice(2))
+      : resolve(path, "..", worker);
+    const entry = this.expected.find(
+      (file) => file === request || file === `${request}.ts`,
+    );
+    if (!entry)
+      throw new Error(
+        `unresolved local worker: ${this.localName(path)} -> ${name}`,
+      );
+    return this.localName(entry);
+  }
+
+  sourceOwner(path) {
+    const resolved = resolve(path);
+    const original = realpathSync(resolved);
+    // Aliases and relative paths retain the resolved SDK's boundary.
+    if (frameJSONEntries.has(original)) return FRAME_JSON_EDGE;
+    if (original.startsWith(`${runtimeClientRoot}${sep}`))
+      return RUNTIME_CLIENT_EDGE;
+    if (resolved.startsWith(`${this.src}${sep}`))
+      return this.localName(resolved);
+  }
+
+  requireAsset(path, name) {
+    if (!name.startsWith(".") && !name.startsWith("@/")) return;
+    // Ambient Vite declarations cannot bless a missing source file as an asset.
+    const asset = name.startsWith("@/")
+      ? resolve(this.src, name.slice(2))
+      : resolve(path, "..", name);
+    if (/\.(?:[cm]?[jt]sx?)$/.test(name) || !existsSync(asset))
+      throw new Error(
+        `unresolved local import: ${this.localName(path)} -> ${name}`,
+      );
+  }
+
+  resolve(path, specifier) {
+    if (!specifier || !ts.isStringLiteralLikeNode(specifier)) return;
+    const name = specifier.text;
+    const worker = name.match(/^(.+)\?worker(?:&inline)?$/);
+    if (worker && (name.startsWith(".") || name.startsWith("@/")))
+      return this.workerTarget(path, name, worker[1]);
+    if (name === FRAME_JSON_EDGE) return FRAME_JSON_EDGE;
+    if (
+      name === RUNTIME_CLIENT_EDGE ||
+      name.startsWith(`${RUNTIME_CLIENT_EDGE}/`)
+    )
+      return RUNTIME_CLIENT_EDGE;
+    const symbol = this.project.checker.getSymbolAtLocation(specifier);
+    const declarations = (symbol?.declarations ?? []).map((handle) =>
+      handle.resolve(this.project),
+    );
+    const declaration = declarations.find(
+      (entry) => entry && ts.isSourceFile(entry),
+    );
+    if (declaration) return this.sourceOwner(declaration.fileName);
+    this.requireAsset(path, name);
+  }
+}
+
 export function readSourceGraph(root = process.cwd()) {
   const src = resolve(root, "src");
   return withSourceProject(root, (project, expected) => {
-    const { program, checker } = project;
+    const { program } = project;
+    const resolver = new SourceResolver(src, project, expected);
     const graph = {};
     const values = {};
-    const localName = (path) =>
-      relative(src, resolve(path)).split(sep).join("/");
     for (const path of expected) {
       const source = program.getSourceFile(path);
       if (!source) throw new Error(`TypeScript did not load ${path}`);
-      if (program.getSyntacticDiagnostics(path).length) {
+      if (program.getSyntacticDiagnostics(path).length)
         throw new Error(`cannot inspect malformed TypeScript: ${path}`);
-      }
       const dependencies = new Set();
       const runtimeDependencies = new Set();
       const emitted = runtimeSpecifiers(path);
       for (const specifier of importEdges(source)) {
-        if (!specifier || !ts.isStringLiteralLikeNode(specifier)) continue;
-        const name = specifier.text;
-        const worker = name.match(/^(.+)\?worker(?:&inline)?$/);
-        let target;
-        if (worker && (name.startsWith(".") || name.startsWith("@/"))) {
-          const request = name.startsWith("@/")
-            ? resolve(src, worker[1].slice(2))
-            : resolve(path, "..", worker[1]);
-          const entry = expected.find(
-            (file) => file === request || file === `${request}.ts`,
-          );
-          if (!entry) {
-            throw new Error(
-              `unresolved local worker: ${localName(path)} -> ${name}`,
-            );
-          }
-          target = localName(entry);
-        } else if (name === FRAME_JSON_EDGE) {
-          target = FRAME_JSON_EDGE;
-        } else if (
-          name === RUNTIME_CLIENT_EDGE ||
-          name.startsWith(`${RUNTIME_CLIENT_EDGE}/`)
-        ) {
-          target = RUNTIME_CLIENT_EDGE;
-        } else {
-          const symbol = checker.getSymbolAtLocation(specifier);
-          const declarations = (symbol?.declarations ?? []).map((handle) =>
-            handle.resolve(project),
-          );
-          const declaration = declarations.find(
-            (entry) => entry && ts.isSourceFile(entry),
-          );
-          if (declaration) {
-            const resolved = resolve(declaration.fileName);
-            // Relative paths and aliases must retain the SDK's ownership even
-            // though its implementation lives outside the frontend source tree.
-            if (frameJSONEntries.has(realpathSync(resolved))) {
-              target = FRAME_JSON_EDGE;
-            } else if (
-              realpathSync(resolved).startsWith(`${runtimeClientRoot}${sep}`)
-            ) {
-              target = RUNTIME_CLIENT_EDGE;
-            } else if (resolved.startsWith(`${src}${sep}`)) {
-              target = localName(resolved);
-            }
-          } else if (name.startsWith(".") || name.startsWith("@/")) {
-            // Asset modules resolve through ambient Vite declarations. They still
-            // have to name a real file; unresolved source imports never disappear.
-            const asset = name.startsWith("@/")
-              ? resolve(src, name.slice(2))
-              : resolve(path, "..", name);
-            if (/\.(?:[cm]?[jt]sx?)$/.test(name) || !existsSync(asset)) {
-              throw new Error(
-                `unresolved local import: ${localName(path)} -> ${name}`,
-              );
-            }
-          }
-        }
-        if (target) {
-          dependencies.add(target);
-          if (emitted.has(name)) runtimeDependencies.add(target);
-        }
+        const target = resolver.resolve(path, specifier);
+        if (!target) continue;
+        dependencies.add(target);
+        if (emitted.has(specifier.text)) runtimeDependencies.add(target);
       }
-      graph[localName(path)] = [...dependencies];
-      values[localName(path)] = [...runtimeDependencies];
+      graph[resolver.localName(path)] = [...dependencies];
+      values[resolver.localName(path)] = [...runtimeDependencies];
     }
     return { graph, values };
   });

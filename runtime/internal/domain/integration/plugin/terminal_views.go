@@ -307,8 +307,8 @@ func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, a
 func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllowed bool) error {
 	switch value.Source {
 	case extension.TerminalBindingValue:
-		if len(value.Literal.Bytes()) == 0 {
-			return fmt.Errorf("value binding has no value")
+		if err := property.validate(value.Literal.Bytes()); err != nil {
+			return fmt.Errorf("value binding: %w", err)
 		}
 	case extension.TerminalBindingRow:
 		if row == nil {

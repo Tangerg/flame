@@ -15,13 +15,9 @@ import { refuseDraftStorage } from "@/test/draftStorage";
 import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 const composer = () => testClient.composer.store.getState();
 
-let STORAGE_KEY: string;
-
 afterEach(() => vi.restoreAllMocks());
 
 beforeEach(async () => {
-  STORAGE_KEY = `flame.composer:${encodeURIComponent(testClient.runtime.endpoint.currentRuntimeEndpoint())}`;
-  localStorage.removeItem(STORAGE_KEY);
   composer().clear();
   await vi.waitUntil(() => composer().persistenceState.status === "saved");
 });
@@ -117,7 +113,6 @@ describe("the composer's drafts", () => {
     restored.store.getState().loadSession("s1");
     await vi.waitFor(() => expect(restored.store.getState().persistenceState.status).toBe("saved"));
     expect(restored.store.getState().composer.draft.value).toBe("  half a thought 保留  ");
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
   it("does not carry images into current storage", async () => {
@@ -127,8 +122,8 @@ describe("the composer's drafts", () => {
 
     await saved();
     const stored = await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint());
-    expect(stored.drafts.get("s1")?.value).toBe("look at this");
-    expect(JSON.stringify([...stored.drafts])).not.toContain("base64payload");
+    expect(stored.get("s1")?.value).toBe("look at this");
+    expect(JSON.stringify([...stored])).not.toContain("base64payload");
   });
 });
 
@@ -170,7 +165,7 @@ describe("transactional draft saving", () => {
       composer().addImages([{ mime: "image/png", data: "memory-only" }]);
       expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
       expect(
-        (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.get(
+        (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).get(
           "unsaved",
         )?.value,
       ).toBe("confirmed");
@@ -207,7 +202,7 @@ describe("transactional draft saving", () => {
     await saved();
     expect(sendInput).toHaveBeenCalledOnce();
     expect(
-      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.size,
+      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).size,
     ).toBe(0);
   });
 
@@ -227,8 +222,8 @@ describe("transactional draft saving", () => {
       testClient.composer.access.retryPersistence();
       await saved();
       const data = await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint());
-      expect(data.drafts.get("removed")).toBeUndefined();
-      expect(data.drafts.get("kept")?.value).toBe("keep me");
+      expect(data.get("removed")).toBeUndefined();
+      expect(data.get("kept")?.value).toBe("keep me");
     },
   );
 
@@ -314,8 +309,7 @@ describe("draft hydration", () => {
     });
     expect(restored.store.getState().composer.draft.value).toBe("new recovery text");
     expect(
-      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).drafts.get("")
-        ?.value,
+      (await persisted().read(testClient.runtime.endpoint.currentRuntimeEndpoint())).get("")?.value,
     ).toBe("confirmed");
     expect(restored.getRecoveryDrafts()).not.toContain("private cause");
     const readable = coldComposer();
@@ -328,107 +322,6 @@ describe("draft hydration", () => {
     readable.retryPersistence();
     await saved(readable);
     expect(readable.store.getState().composer.draft.value).toBe("confirmed");
-  });
-});
-
-describe("explicit previous-draft import", () => {
-  const endpoint = "https://legacy-drafts.test";
-  const key = `flame.composer:${encodeURIComponent(endpoint)}`;
-  const raw = JSON.stringify({
-    version: 0,
-    state: {
-      drafts: {
-        session: {
-          value: "  old text 保留  ",
-          pastes: [{ id: "old-paste", text: "/literal\r\n" }],
-        },
-      },
-    },
-  });
-  it("never decodes or writes a legacy envelope on the normal read path", async () => {
-    localStorage.setItem(key, "{malformed previous bytes");
-    const owner = coldComposer();
-    owner.activate(endpoint);
-    await saved(owner);
-    expect(owner.store.getState().legacyDraftState.status).toBe("available");
-    expect(owner.store.getState().composer.draft.value).toBe("");
-    owner.importLegacyDrafts();
-    await vi.waitFor(() =>
-      expect(owner.store.getState().legacyDraftState).toMatchObject({
-        status: "failed",
-        cause: expect.any(SyntaxError),
-      }),
-    );
-    expect(owner.getLegacyDraftBackup()).toBe("{malformed previous bytes");
-    expect((await persisted().read(endpoint)).initialized).toBe(false);
-  });
-  it("imports only on explicit intent, commits its decision and preserves the raw backup", async () => {
-    localStorage.setItem(key, raw);
-    const owner = coldComposer();
-    owner.activate(endpoint);
-    owner.store.getState().loadSession("session");
-    await saved(owner);
-    expect(owner.store.getState().composer.draft.value).toBe("");
-    owner.importLegacyDrafts();
-    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("none"));
-    expect(owner.store.getState().composer.draft).toMatchObject({
-      value: "  old text 保留  ",
-      pastes: [{ id: "old-paste", text: "/literal\r\n" }],
-    });
-    expect((await persisted().read(endpoint)).imported).toBe(true);
-    expect(localStorage.getItem(key)).toBe(raw);
-    const restored = coldComposer();
-    restored.activate(endpoint);
-    await saved(restored);
-    expect(restored.store.getState().legacyDraftState.status).toBe("none");
-  });
-  it("refuses import after current authoring and keeps both current records and raw backup accessible", async () => {
-    localStorage.setItem(key, raw);
-    const owner = coldComposer();
-    owner.activate(endpoint);
-    await saved(owner);
-    owner.store.getState().setValue("current authored text");
-    owner.importLegacyDrafts();
-    await saved(owner);
-    expect(owner.store.getState().legacyDraftState.status).toBe("blocked");
-    expect(owner.getLegacyDraftBackup()).toBe(raw);
-    expect((await persisted().read(endpoint)).imported).toBe(false);
-    expect((await persisted().read(endpoint)).drafts.get("")?.value).toBe("current authored text");
-  });
-  it("rechecks fresh storage transactionally if another owner has already saved", async () => {
-    localStorage.setItem(key, raw);
-    const owner = coldComposer();
-    owner.activate(endpoint);
-    await saved(owner);
-    const concurrent = coldComposer();
-    concurrent.activate(endpoint);
-    await saved(concurrent);
-    concurrent.store.getState().setValue("other owner already saved");
-    await saved(concurrent);
-    owner.importLegacyDrafts();
-    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("failed"));
-    expect((await persisted().read(endpoint)).drafts.get("")?.value).toBe(
-      "other owner already saved",
-    );
-    expect((await persisted().read(endpoint)).imported).toBe(false);
-    expect(owner.getLegacyDraftBackup()).toBe(raw);
-  });
-  it("keeps the original backup and no import decision after a refused transaction", async () => {
-    localStorage.setItem(key, raw);
-    const owner = coldComposer();
-    owner.activate(endpoint);
-    await saved(owner);
-    const cause = new DOMException("full", "QuotaExceededError");
-    const refusal = refuseDraftStorage("save", cause);
-    owner.importLegacyDrafts();
-    await vi.waitFor(() =>
-      expect(owner.store.getState().legacyDraftState).toMatchObject({ status: "failed", cause }),
-    );
-    expect(localStorage.getItem(key)).toBe(raw);
-    expect((await persisted().read(endpoint)).initialized).toBe(false);
-    refusal.restore();
-    owner.importLegacyDrafts();
-    await vi.waitFor(() => expect(owner.store.getState().legacyDraftState.status).toBe("none"));
   });
 });
 

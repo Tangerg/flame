@@ -47,7 +47,12 @@ import { chatStyles as ct } from "@/ui/agent/chatStyles";
 import { messageStyles as ms } from "@/features/chat/message/ui/messageStyles";
 import { vocab } from "@flame/ui";
 const qc = stylex.create({
-  request: { display: "flex", minHeight: 0, flexDirection: "column" },
+  request: {
+    display: "flex",
+    minHeight: 0,
+    maxHeight: "var(--composer-surface-limit, none)",
+    flexDirection: "column",
+  },
   reading: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" },
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
   settledLine: {

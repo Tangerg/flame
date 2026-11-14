@@ -9,6 +9,38 @@ export function responseDocumentLimit(configured = DEFAULT_DOCUMENT_BYTES): numb
   return configured;
 }
 
+async function readDocumentBytes(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  limit: number,
+  label: string,
+  requestId: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<Uint8Array> {
+  let content = new Uint8Array(0);
+  let used = 0;
+  signal?.throwIfAborted();
+  for (;;) {
+    const chunk = await reader.read();
+    signal?.throwIfAborted();
+    if (chunk.done) return content.subarray(0, used);
+    const needed = used + chunk.value.byteLength;
+    if (needed > limit)
+      throw new RpcTransportError(
+        `${label} exceeds its ${limit}-byte capacity`,
+        undefined,
+        requestId,
+      );
+    // Bound retained memory independently of the peer's chunk count.
+    if (needed > content.byteLength) {
+      const larger = new Uint8Array(Math.min(limit, Math.max(needed, content.byteLength * 2)));
+      larger.set(content);
+      content = larger;
+    }
+    content.set(chunk.value, used);
+    used = needed;
+  }
+}
+
 export async function readResponseDocument(
   response: Response,
   limit: number,
@@ -29,33 +61,15 @@ export async function readResponseDocument(
     void cancel(signal?.reason).catch(() => undefined);
   };
   signal?.addEventListener("abort", abort, { once: true });
-  let content = new Uint8Array(0);
-  let used = 0;
-  let complete = false;
+  let content: Uint8Array | undefined;
   let failure: { error: unknown } | undefined;
+  const recordCleanupFailure = (cleanup: unknown, operation: object) => {
+    if (!failure || !isPrimaryFailure(failure.error, cleanup))
+      onCleanupFailure?.(cleanup, operation);
+    failure = { error: failure ? retainCleanupFailure(failure.error, cleanup) : cleanup };
+  };
   try {
-    signal?.throwIfAborted();
-    for (;;) {
-      const chunk = await reader.read();
-      signal?.throwIfAborted();
-      if (chunk.done) break;
-      const needed = used + chunk.value.byteLength;
-      if (needed > limit)
-        throw new RpcTransportError(
-          `${label} exceeds its ${limit}-byte capacity`,
-          undefined,
-          requestId,
-        );
-      // Bound retained memory independently of the peer's chunk count.
-      if (needed > content.byteLength) {
-        const larger = new Uint8Array(Math.min(limit, Math.max(needed, content.byteLength * 2)));
-        larger.set(content);
-        content = larger;
-      }
-      content.set(chunk.value, used);
-      used = needed;
-    }
-    complete = true;
+    content = await readDocumentBytes(reader, limit, label, requestId, signal);
   } catch (cause) {
     if (cause instanceof RpcTransportError || signal?.aborted) {
       failure = { error: cause };
@@ -70,23 +84,19 @@ export async function readResponseDocument(
   } finally {
     signal?.removeEventListener("abort", abort);
     try {
-      if (!complete) await cancel(failure?.error);
+      if (content === undefined) await cancel(failure?.error);
     } catch (cleanup) {
-      if (!failure || !isPrimaryFailure(failure.error, cleanup))
-        onCleanupFailure?.(cleanup, cancellation);
-      failure = { error: failure ? retainCleanupFailure(failure.error, cleanup) : cleanup };
+      recordCleanupFailure(cleanup, cancellation);
     }
     try {
       reader.releaseLock();
     } catch (cleanup) {
-      if (!failure || !isPrimaryFailure(failure.error, cleanup))
-        onCleanupFailure?.(cleanup, reader);
-      failure = { error: failure ? retainCleanupFailure(failure.error, cleanup) : cleanup };
+      recordCleanupFailure(cleanup, reader);
     }
   }
   if (failure) throw failure.error;
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(content.subarray(0, used));
+    return new TextDecoder("utf-8", { fatal: true }).decode(content);
   } catch (cause) {
     const error = new RpcProtocolError(
       label,

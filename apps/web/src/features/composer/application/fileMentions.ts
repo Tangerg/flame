@@ -39,10 +39,26 @@ interface Args {
 
 type FileMentionStatus = "no-workspace" | "loading" | "error" | "empty" | "ready";
 
+interface FileMentionRetry {
+  status: "ready" | "pending";
+  run: () => void;
+}
+
 export interface FileMentions extends SuggestionList<string> {
   status: FileMentionStatus;
   failure: string | undefined;
-  retry: () => void;
+  retry: FileMentionRetry | undefined;
+}
+
+function mentionStatus(
+  cwd: string | undefined,
+  listing: ReturnType<typeof useWorkspaceListFiles>,
+  itemCount: number,
+): FileMentionStatus {
+  if (cwd === undefined) return "no-workspace";
+  if (listing.isError) return "error";
+  if (listing.data === undefined) return "loading";
+  return itemCount === 0 ? "empty" : "ready";
 }
 
 export function useFileMentions({ value, caret, cwd, apply }: Args): FileMentions {
@@ -62,16 +78,7 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     return files.map((file) => file.path);
   }, [open, mention, files]);
 
-  const status: FileMentionStatus =
-    cwd === undefined
-      ? "no-workspace"
-      : listing.isError
-        ? "error"
-        : files === undefined
-          ? "loading"
-          : items.length === 0
-            ? "empty"
-            : "ready";
+  const status = mentionStatus(cwd, listing, items.length);
 
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
 
@@ -93,7 +100,14 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   }, [mention]);
 
   const { refetch } = listing;
-  const retry = useCallback(() => void refetch(), [refetch]);
+  const runRetry = useCallback(() => void refetch({ cancelRefetch: false }), [refetch]);
+  // Settled-read history preserves Retry while refetch clears the current error.
+  const retry: FileMentionRetry | undefined =
+    open &&
+    cwd !== undefined &&
+    (listing.isError || (files === undefined && listing.isFetching && listing.isFetched))
+      ? { status: listing.isFetching ? "pending" : "ready", run: runRetry }
+      : undefined;
 
   return {
     key: candidateKey,

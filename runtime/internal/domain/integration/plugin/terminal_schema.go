@@ -143,34 +143,10 @@ func (n schemaNode) isType(kind portable.SchemaType) bool {
 }
 
 func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
-	var options []string
-	hasEnum := false
 	for _, part := range n.parts {
-		if part.Enum == nil {
-			continue
+		if part.Enum != nil {
+			return n.choiceForm(part.Enum.Values)
 		}
-		var current []string
-		for _, value := range part.Enum.Values {
-			if value == nil {
-				continue
-			}
-			text, ok := value.(string)
-			if !ok {
-				return "", nil, false
-			}
-			current = append(current, text)
-		}
-		if !hasEnum {
-			options, hasEnum = current, true
-		} else {
-			options = slices.DeleteFunc(options, func(value string) bool { return !slices.Contains(current, value) })
-		}
-	}
-	if hasEnum {
-		if len(options) == 0 || !n.acceptsType(portable.TypeString) {
-			return "", nil, false
-		}
-		return extension.TerminalFormChoice, options, true
 	}
 	types := n.inputTypes()
 	if len(types) != 1 {
@@ -188,6 +164,41 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 	default:
 		return "", nil, false
 	}
+}
+
+func (n schemaNode) choiceForm(values []any) (extension.TerminalFormKind, []string, bool) {
+	var options []string
+	for _, value := range values {
+		if value == nil || n.validateValue(value) != nil {
+			continue
+		}
+		text, ok := value.(string)
+		if !ok {
+			return "", nil, false
+		}
+		options = append(options, text)
+	}
+	if len(options) == 0 {
+		return "", nil, false
+	}
+	return extension.TerminalFormChoice, options, true
+}
+
+func (n schemaNode) validate(document jsontext.Value) error {
+	value, err := jsonschema.UnmarshalJSON(bytes.NewReader(document))
+	if err != nil {
+		return err
+	}
+	return n.validateValue(value)
+}
+
+func (n schemaNode) validateValue(value any) error {
+	for _, part := range n.parts {
+		if err := part.Validate(value); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (n schemaNode) required() []string {

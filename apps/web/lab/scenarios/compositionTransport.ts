@@ -5,7 +5,9 @@ import type {
   PluginClientComponent,
   PluginInstallation,
 } from "@flame/runtime-client/wire";
-import { componentExport } from "@flame/component-sdk/runtime-profile";
+import { type ComponentReference } from "@flame/component-sdk";
+import { componentExport, hostModuleProfile } from "@flame/component-sdk/runtime-profile";
+import moduleGraph from "../../../../examples/plugins/composition/provider/package/io.github.tangerg.flame/components/modules.generated.json";
 import {
   PROTOCOL,
   type CloseProof,
@@ -24,10 +26,31 @@ function mutation<T>(
   });
 }
 
-export function createCompositionTransport(
+export async function createCompositionTransport(
   installation: PluginInstallation,
   entry: PluginClientComponent,
 ) {
+  const { default: moduleSource } =
+    await import("../../../../examples/plugins/composition/provider/package/io.github.tangerg.flame/components/component.js?raw");
+  const bytes = new TextEncoder().encode(moduleSource);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = Array.from(new Uint8Array(hash), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const body = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
+  const source: ComponentReference = {
+    installationId: installation.id,
+    digest: installation.selected.digest,
+    componentId: entry.id,
+  };
+  function requireSource(request: ComponentReference) {
+    if (
+      request.installationId !== source.installationId ||
+      request.digest !== source.digest ||
+      request.componentId !== source.componentId
+    )
+      throw new Error("composition fixture cannot admit an unrecorded component");
+  }
   const session: PluginBrowserSession = {
     authority: { id: "lab-composition", epoch: "1" },
     realm: { id: "lab-document", epoch: "1" },
@@ -68,10 +91,11 @@ export function createCompositionTransport(
         configurationJson: JSON.stringify({
           export: entry.export,
           component: { id: entry.id },
-          sharedModules: [],
+          moduleProfile: hostModuleProfile,
+          sharedModules: moduleGraph.sharedSpecifiers,
         }),
         profile: "browser-js",
-        module: { path: entry.entry, digest: "d".repeat(64) },
+        module: { path: entry.entry, digest },
         imports: [],
         exports: [{ name: componentExport, contract: session.componentContract }],
       },
@@ -79,8 +103,10 @@ export function createCompositionTransport(
   };
   const prepared = Promise.withResolvers<ReadyReport>();
   const grants = new Map<string, UseGrant>();
-  let requested = false;
-  let ready: ReadyReport | undefined;
+  let preparation:
+    { status: "idle" | "pending" | "retired" } | { status: "ready"; report: ReadyReport } = {
+    status: "idle",
+  };
   let sealed = false;
   const client = {
     plugins: {
@@ -88,14 +114,12 @@ export function createCompositionTransport(
       acquireComponent: (request) =>
         mutation(async () => {
           if (sealed) throw new Error("composition fixture realm is closed");
-          if (
-            request.installationId !== installation.id ||
-            request.digest !== installation.selected.digest ||
-            request.componentId !== entry.id
-          )
-            throw new Error("composition fixture cannot admit an unrecorded component");
-          requested = true;
+          requireSource(request);
+          if (preparation.status === "retired")
+            throw new Error("composition fixture execution is retired");
+          if (preparation.status === "idle") preparation = { status: "pending" };
           const report = await prepared.promise;
+          if (sealed) throw new Error("composition fixture realm is closed");
           const grant: UseGrant = {
             id: request.operationId,
             operationId: request.operationId,
@@ -112,6 +136,12 @@ export function createCompositionTransport(
           return { ...structuredClone(grant), objects: [...grant.objects] };
         }, request.operationId),
       closeBrowserRealm: () => mutation(async () => void (sealed = true)),
+      readResource: async (request) => {
+        requireSource(request);
+        if (request.path !== entry.entry)
+          throw new Error("composition fixture cannot read an unrecorded resource");
+        return { body, mediaType: "text/javascript" };
+      },
       openResources: async () => {
         const closed = Promise.withResolvers<void>();
         return {
@@ -133,6 +163,7 @@ export function createCompositionTransport(
       | "acquireComponent"
       | "closeBrowserRealm"
       | "openResources"
+      | "readResource"
       | "resolvePoint"
     >,
   } as unknown as FlameClient;
@@ -151,7 +182,7 @@ export function createCompositionTransport(
         result = {
           authority: session.authority,
           realm: session.realm,
-          plans: requested && !ready && !sealed ? [plan] : [],
+          plans: preparation.status === "pending" && !sealed ? [plan] : [],
           fences: sealed ? [{ scopeId: plan.scopeId, scopeGeneration: plan.scopeGeneration }] : [],
         };
         break;
@@ -164,8 +195,8 @@ export function createCompositionTransport(
         };
         break;
       case "ready":
-        ready = message.input as ReadyReport;
-        prepared.resolve(ready);
+        preparation = { status: "ready", report: message.input as ReadyReport };
+        prepared.resolve(preparation.report);
         result = { decision: "accepted" };
         break;
       case "validateUse": {
@@ -176,6 +207,10 @@ export function createCompositionTransport(
       }
       case "prove": {
         const proof = message.input as CloseProof;
+        if (proof.scopeKind === "execution" && preparation.status !== "ready") {
+          preparation = { status: "retired" };
+          prepared.reject(new Error("composition fixture execution retired before publication"));
+        }
         result = {
           authority: session.authority,
           closeId: proof.closeId,

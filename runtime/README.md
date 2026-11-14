@@ -409,8 +409,12 @@ or settling a command. `plugins.changed` describes installation lifecycle.
 
 Terminal view admission derives required bindings, form kinds and choice
 intersections from every local reference sibling and `allOf` conjunct in the
-callable schema. List rows require an array shape. Frame owns schema admission
-and reference traversal limits; terminal hints remain read-only projections.
+callable schema. Finite enum choices use the compiled schema predicates,
+including constants, string constraints, negation and conditionals. List rows
+require an array shape. Frame owns schema admission and reference traversal
+limits; terminal hints remain read-only projections.
+Static bindings and literal form defaults must satisfy the bound property's
+schema at installation admission; numeric values retain their exact literals.
 Input forms can choose a non-null alternative. List output and its row records
 require object shapes, rows require an array and a present paging cursor requires
 a string. Optional object paths retain their absent-value semantics.

@@ -708,8 +708,8 @@ cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.
 The parent form or record composition owns spacing before the actions;
 `FormActions` adds no outer inset or separator.
-`isPressedReadingTarget`, `readingViewportBounds` and the shared reading-frame
-geometry keep labels, focus proxies and scroll padding consistent. Panel, modal,
+`isPressedReadingTarget`, `readingViewportBounds` and `withinReadingFrame` keep
+labels, focus proxies and scroll padding consistent. Panel, modal,
 horizontal reader and transcript retain their actual viewport and axis ownership.
 
 Reading owners use the outermost declared `data-focus-unit` that fits their

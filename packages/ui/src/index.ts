@@ -125,6 +125,7 @@ export {
   readingUnitFor,
   isPressedReadingTarget,
   readingViewportBounds,
+  withinReadingFrame,
 } from "./reading-unit";
 export { PointerSession, type PointerOutcome } from "./pointer-session";
 export { scrollPan, useScrollPan } from "./scroll-pan";

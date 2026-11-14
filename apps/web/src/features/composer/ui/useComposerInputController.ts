@@ -9,6 +9,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { handoffFocus, useContentVisible } from "@flame/ui";
 import { type AgentInput } from "@/features/agent/public/input";
 import { imageFiles } from "@/features/composer/public/input";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
@@ -57,6 +58,7 @@ export function useComposerInputController({
   onAddPaste,
   acceptsImages,
 }: Args) {
+  const visible = useContentVisible();
   const composerAccess = useComposer();
   const runtimeAccess = useRuntime();
 
@@ -116,12 +118,17 @@ export function useComposerInputController({
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
   const slash = useSlashSuggestions({ value, caret, apply: applyMention });
   const suggestions = mentions.open ? mentions : slash;
+  const dismissSuggestions = () => {
+    const retry = retryRef.current;
+    if (visible && retry && handoffFocus(retry, inputRef.current)) synchronizeCaret();
+    suggestions.dismiss();
+  };
   const listing = suggestions.open && (!mentions.open || mentions.status === "ready");
   const navigation = useSuggestionNavigation({
     open: suggestions.open,
     candidateKey: suggestions.open ? suggestions.key : null,
     count: listing ? suggestions.items.length : 0,
-    dismiss: suggestions.dismiss,
+    dismiss: dismissSuggestions,
     input,
   });
   const knownPaths = useKnownWorkspacePaths(cwd, value);
@@ -200,7 +207,7 @@ export function useComposerInputController({
   };
 
   const acceptSuggestion = () => {
-    if (navigation.activeIndex === null) suggestions.dismiss();
+    if (navigation.activeIndex === null) dismissSuggestions();
     else if (mentions.open) {
       const item = mentions.items[navigation.activeIndex];
       if (item !== undefined) mentions.accept(item);
@@ -218,20 +225,20 @@ export function useComposerInputController({
     }
     const key = composerKeyBindingKey(event.nativeEvent);
     const retry = retryRef.current;
-    if (retry && mentions.open && mentions.status === "error" && key === "tab") {
+    if (retry && mentions.retry && key === "tab") {
       event.preventDefault();
       retry.focus();
       return;
     }
     if (suggestions.open) {
       if (event.key === "Tab" && event.shiftKey) {
-        suggestions.dismiss();
+        dismissSuggestions();
         return;
       }
       switch (event.key) {
         case "Escape":
           event.preventDefault();
-          suggestions.dismiss();
+          dismissSuggestions();
           return;
         case "Tab":
         case "Enter":
@@ -266,6 +273,7 @@ export function useComposerInputController({
     mentions,
     slash,
     suggestions,
+    dismissSuggestions,
     navigation,
     knownPaths,
     placeholder,

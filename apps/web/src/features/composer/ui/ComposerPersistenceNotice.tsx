@@ -13,15 +13,6 @@ const styles = stylex.create({
 });
 
 export function ComposerPersistenceNotice() {
-  return (
-    <>
-      <CurrentDraftNotice />
-      <LegacyDraftNotice />
-    </>
-  );
-}
-
-function CurrentDraftNotice() {
   const composer = useComposer();
   const persistence = composer.usePersistenceState();
   const t = useT();
@@ -77,54 +68,6 @@ function CurrentDraftNotice() {
         </TextButton>
       </div>
       {copied === false && <p>{t("composer.persistence.copyFailed")}</p>}
-    </SystemMessage>
-  );
-}
-
-function LegacyDraftNotice() {
-  const composer = useComposer();
-  const state = composer.useLegacyDraftState();
-  const t = useT();
-  const beginCopy = useCopyAttempt(state);
-  const [copied, setCopied] = useState<{ source: typeof state; result: boolean | null }>({
-    source: state,
-    result: null,
-  });
-  if (state.status === "none") return null;
-  const copy = async () => {
-    const current = beginCopy();
-    if (!current) return;
-    const text = composer.getLegacyDraftBackup();
-    const accepted = await copyText(text);
-    if (current()) setCopied({ source: state, result: accepted });
-  };
-  const result = copied.source === state ? copied.result : null;
-  return (
-    <SystemMessage variant={state.status === "failed" ? "error" : "info"}>
-      {t(
-        state.status === "blocked"
-          ? "composer.legacy.blocked"
-          : state.status === "failed"
-            ? "composer.legacy.failed"
-            : state.status === "importing"
-              ? "composer.legacy.importing"
-              : "composer.legacy.available",
-      )}
-      <div {...stylex.props(styles.actions)}>
-        {(state.status === "available" || (state.status === "failed" && state.canImport)) && (
-          <TextButton
-            tone="accent"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={composer.importLegacyDrafts}
-          >
-            {t("composer.legacy.import")}
-          </TextButton>
-        )}
-        <TextButton tone="accent" onClick={() => void copy()}>
-          {t(result ? "composer.legacy.copied" : "composer.legacy.copy")}
-        </TextButton>
-      </div>
-      {result === false && <p>{t("composer.persistence.copyFailed")}</p>}
     </SystemMessage>
   );
 }

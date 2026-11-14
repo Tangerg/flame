@@ -267,17 +267,9 @@ The Retry presentation captures its original input on focus and returns it in
 pre-exit layout cleanup only while Retry still holds focus. A stable ref merely
 binds the button; a failed retry or a ref rebind cannot return focus.
 
-Normal storage reads accept only the current IndexedDB shape. The previous
-`flame.composer:<encoded endpoint>` localStorage value is never read as a fallback,
-rewritten or deleted. Presence detection offers an explicit **Import existing
-drafts** action; only that action parses the version-zero envelope. Import checks
-both an untouched in-memory owner and fresh current storage inside its transaction,
-and commits an import decision together with every imported Session and paste.
-An unsuccessful import retains the original backup and can be retried. Editing
-or existing current records prevents import from merging or overwriting them.
-**Copy previous draft backup** exports the original bytes, including when current
-storage is already in use. This is a one-time user-directed import, not a normal
-compatibility reader. Keep the old data as backup when using fresh storage.
+Draft storage accepts only the current IndexedDB shape. There is no older-format
+reader, import lifecycle or localStorage draft projection. Retain obsolete browser
+data separately when starting with fresh storage.
 
 The page installs an exit warning only while the Composer owner reports
 unconfirmed changes. Cancelling departure and persisted page transitions keep
@@ -331,8 +323,10 @@ after applying its actual native selection. Programmatic file and command
 entries therefore open suggestions even when focus does not produce a new
 selection event. Suggestion acceptance settles selection with the committed
 draft before following input, preserving the captured focus owner's eligibility.
-File-list failure exposes keyboard Retry and returns from its disappearing
-action only while that action still owns focus.
+The file-list query owns retry availability and phase. Its command stays
+focusable during refetch, and retry or dismissal hands focus over before changing
+the view. Pointer movement changes a highlighted suggestion; moving the popup
+beneath a stationary pointer does not.
 File and command suggestions dismiss on Shift+Tab without accepting a value,
 letting the browser return to the preceding control with the draft intact.
 One suggestion navigation owner holds the candidate identity and highlighted item.
@@ -414,7 +408,10 @@ of the conversation pane; editing retains its full budget. Portaled menus keep
 their opener's context, and material navigation shares that context with the
 conversation. Native blur and focus handoffs do not independently resize it.
 Reading navigation such as Jump therefore keeps its position through pointer
-focus and the first activation. The existing reading-focus
+focus and the first activation. Jump retains the current editing or reading
+budget instead of selecting a new one. Pending question cards consume the same
+surface height limit, keeping their answers locally scrollable and their footer
+reachable. The existing reading-focus
 owner retires pending follow for region focus, including a content resize that
 would otherwise rearm it. Returning from material therefore leaves the retained
 source readable without moving focus away from its logical Conversation region.
@@ -436,7 +433,12 @@ CSS size containment. Its `--reading-frame-height` uses the current container
 height and the same top and bottom clearances as scroll padding. Code and table
 readers consume that inherited budget during layout, without a measured pixel
 height feeding back into observed content. The existing resize observer reveals
-the retained focused reader during delivery. Native scroll notifications in that
+the retained focused reader during delivery and after sticky-header clearance
+publication. Ancestor clipping cannot replace the viewport's own visibility
+constraint. Reasoning readers consume the same height budget as code and tables.
+Their container accounts for its insets through Flex layout instead of repeating
+those insets in reader-height arithmetic.
+Native scroll notifications in that
 rendering update retain the witness; a later focus or deliberate wheel still
 retires it.
 Pointer entry retains its visible control while the press is active, even when

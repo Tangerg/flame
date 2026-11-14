@@ -86,6 +86,31 @@ func TestTerminalViewsProjectConjunctiveFormShapes(t *testing.T) {
 			paths: []string{"Value"}, kind: extension.TerminalFormInteger,
 		},
 		{
+			name:  "const narrows enum",
+			input: `{"type":"object","properties":{"Value":{"type":"string","enum":["first","shared"],"const":"shared"}}}`,
+			paths: []string{"Value"}, kind: extension.TerminalFormChoice, options: []string{"shared"},
+		},
+		{
+			name:  "pattern narrows enum",
+			input: `{"type":"object","properties":{"Value":{"type":"string","enum":["first","shared"],"allOf":[{"pattern":"^shared$"}]}}}`,
+			paths: []string{"Value"}, kind: extension.TerminalFormChoice, options: []string{"shared"},
+		},
+		{
+			name:  "negation narrows enum",
+			input: `{"type":"object","properties":{"Value":{"type":"string","enum":["first","shared"],"not":{"const":"first"}}}}`,
+			paths: []string{"Value"}, kind: extension.TerminalFormChoice, options: []string{"shared"},
+		},
+		{
+			name:  "conditional narrows enum",
+			input: `{"type":"object","properties":{"Value":{"type":"string","enum":["first","shared"],"if":{"const":"first"},"then":false}}}`,
+			paths: []string{"Value"}, kind: extension.TerminalFormChoice, options: []string{"shared"},
+		},
+		{
+			name:  "constant text entry",
+			input: `{"type":"object","properties":{"Value":{"type":"string","const":"shared"}}}`,
+			paths: []string{"Value"}, kind: extension.TerminalFormText,
+		},
+		{
 			name:  "nested local reference",
 			input: `{"type":"object","properties":{"Value":{"$ref":"#/$defs/holder/properties/Value"}},"$defs":{"holder":{"type":"object","properties":{"Value":{"type":"string"}}}}}`,
 			paths: []string{"Value"}, kind: extension.TerminalFormText,
@@ -114,6 +139,9 @@ func TestTerminalViewsRefuseUnrepresentableConjunctions(t *testing.T) {
 	for name, input := range map[string]string{
 		"disjoint enum choices": `{"type":"object","properties":{"Value":{"enum":["first"],"allOf":[{"enum":["second"]}]}}}`,
 		"incompatible types":    `{"type":"object","properties":{"Value":{"type":"number","enum":["first"]}}}`,
+		"enum excludes const":   `{"type":"object","properties":{"Value":{"type":"string","enum":["first"],"const":"second"}}}`,
+		"enum excludes pattern": `{"type":"object","properties":{"Value":{"type":"string","enum":["first"],"pattern":"^second$"}}}`,
+		"enum excludes length":  `{"type":"object","properties":{"Value":{"type":"string","enum":["first"],"minLength":6}}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := terminalSchemaRelease(t, input, terminalRowsSchema, "Value"); !errors.Is(err, ErrInvalid) {
@@ -221,6 +249,62 @@ func TestTerminalViewsKeepNullableInputChoices(t *testing.T) {
 	form := release.TerminalViews()[0].List.Input[0].Value.Form
 	if form.Kind != extension.TerminalFormChoice || !slices.Equal(form.Options, []string{"first", "second"}) {
 		t.Fatalf("nullable input choices = %+v", form)
+	}
+}
+
+func TestTerminalViewsRefuseInvalidLiteralBindings(t *testing.T) {
+	for _, test := range []struct {
+		name, schema string
+		value        any
+		defaultValue bool
+	}{
+		{name: "type", schema: `{"type":"string"}`, value: 42},
+		{name: "enum", schema: `{"type":"string","enum":["first","shared"]}`, value: "absent"},
+		{name: "required object member", schema: `{"type":"object","properties":{"Name":{"type":"string"}},"required":["Name"]}`, value: map[string]any{}},
+		{name: "numeric bound", schema: `{"type":"integer","minimum":1}`, value: 0},
+		{name: "form default", schema: `{"type":"string","enum":["first","shared"]}`, value: "absent", defaultValue: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := fmt.Sprintf(`{"type":"object","properties":{"Value":%s}}`, test.schema)
+			release, err := terminalSchemaRelease(t, input, terminalRowsSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			binding := Binding{Source: extension.TerminalBindingValue, Literal: literal(t, test.value)}
+			if test.defaultValue {
+				defaultBinding := binding
+				binding = Binding{Source: extension.TerminalBindingForm, Form: &FormField{Title: "Value", Default: &defaultBinding}}
+			}
+			declaration := release.Declaration()
+			declaration.TerminalViews[0].List.Input = []InputBinding{{Path: "Value", Value: binding}}
+			if _, err := NewRelease(release.Digest(), declaration); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("release error = %v, want refusal of an invalid literal binding", err)
+			}
+		})
+	}
+}
+
+func TestTerminalViewsKeepExactAndNullableLiteralBindings(t *testing.T) {
+	const identifier int64 = 9007199254740993
+	for _, test := range []struct {
+		name, schema string
+		value        any
+	}{
+		{name: "exact integer", schema: fmt.Sprintf(`{"type":"integer","minimum":%d,"maximum":%d}`, identifier, identifier), value: identifier},
+		{name: "nullable value", schema: `{"type":["string","null"]}`, value: nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := fmt.Sprintf(`{"type":"object","properties":{"Value":%s}}`, test.schema)
+			release, err := terminalSchemaRelease(t, input, terminalRowsSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			declaration := release.Declaration()
+			declaration.TerminalViews[0].List.Input = []InputBinding{{Path: "Value", Value: Binding{Source: extension.TerminalBindingValue, Literal: literal(t, test.value)}}}
+			if _, err := NewRelease(release.Digest(), declaration); err != nil {
+				t.Fatalf("valid literal binding was refused: %v", err)
+			}
+		})
 	}
 }
 

@@ -1,6 +1,11 @@
 import { type FocusEvent, type MouseEvent, useLayoutEffect } from "react";
 import { type StickToBottomInstance } from "use-stick-to-bottom";
-import { readingUnitFor, isPressedReadingTarget, readingViewportBounds } from "@flame/ui";
+import {
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+  withinReadingFrame,
+} from "@flame/ui";
 type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopScroll">;
 
 // Native zoom reports fractional CSS pixels.
@@ -63,6 +68,7 @@ function withinSafeReading(
   bounds = readingTargetBounds(target),
 ) {
   let { top, bottom } = readingViewportBounds(viewport);
+  if (!withinReadingFrame(bounds, { top, bottom })) return false;
   for (
     let parent = target.parentElement;
     parent && parent !== viewport;
@@ -193,10 +199,11 @@ export function useReadingFocusVisibility(
       observedScrollTopState.value = viewport.scrollTop;
     };
     const onResize = () => {
-      // The guard only expires; a late layout scroll is handled by onScroll itself.
+      // Sticky-header publishers can change clearance without resizing the focused reader.
       if (!resizeScrollFrameState.value)
         resizeScrollFrameState.value = window.requestAnimationFrame(() => {
           resizeScrollFrameState.value = 0;
+          reveal();
         });
       reveal();
     };

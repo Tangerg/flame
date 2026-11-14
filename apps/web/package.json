@@ -44,7 +44,7 @@
     "check:styles": "node scripts/check-dead-styles.mjs",
     "lab": "vite --config vite.lab.config.ts --open /lab/",
     "lab:build": "vite build --config vite.lab.config.ts && node scripts/check-lab-build.mjs",
-    "lab:verify": "playwright test --config playwright.lab.config.ts --project=light-en --project=dark-zh --project=interactions",
+    "lab:verify": "playwright test --config playwright.lab.config.ts --project=light-en --project=dark-zh --project=interactions --project=security",
     "lab:measure": "playwright test --config playwright.lab.config.ts --project=performance"
   },
   "dependencies": {

@@ -35,6 +35,36 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
+  it("reveals retained focus after a layout publisher releases sticky clearance", () => {
+    const s = scenario();
+    s.target.style.scrollMarginTop = "64px";
+    s.shape.height = 180;
+    s.resize(s.content, { deliverFrame: false });
+
+    s.target.style.scrollMarginTop = "0px";
+    s.frame();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(100);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps a fitting control inside the viewport when its ancestor clips its reserved margin", () => {
+    const s = scenario();
+    s.shape.top = 150;
+    s.shape.targetHeight = 44;
+    s.target.style.scrollMarginTop = "64px";
+    s.nested.style.overflowY = "clip";
+    vi.spyOn(s.nested, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, s.shape.top - s.viewport.scrollTop, 600, 44),
+    );
+    s.shape.height = 240;
+
+    s.resize();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+  });
+
   it("retires follow for returned region focus and a later resize without moving that focus", () => {
     const s = scenario();
     const conversation = screen.getByRole("region", { name: "Conversation" });

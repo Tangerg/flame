@@ -51,6 +51,24 @@ export class ComposerDraft {
     return this.imageAttachments.every((attachment) => attachment.status === "ready");
   }
 
+  hasSameText(other: ComposerDraft): boolean {
+    return (
+      this.value === other.value &&
+      this.pastes.length === other.pastes.length &&
+      this.pastes.every(
+        (paste, index) =>
+          paste.id === other.pastes[index]?.id && paste.text === other.pastes[index]?.text,
+      )
+    );
+  }
+
+  hasSameAttachments(other: ComposerDraft): boolean {
+    return (
+      this.imageAttachments.length === other.imageAttachments.length &&
+      this.imageAttachments.every((image, index) => image === other.imageAttachments[index])
+    );
+  }
+
   withValue(value: string): ComposerDraft {
     return value === this.value
       ? this

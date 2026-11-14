@@ -37,6 +37,7 @@ test("no two neighbouring controls share a tap under a coarse pointer", async ({
         label: string;
       }[] = [];
       for (const el of document.querySelectorAll(SELECTOR)) {
+        if (el.closest("[inert]")) continue;
         const style = getComputedStyle(el);
         if (style.visibility === "hidden" || style.display === "none") continue;
         if (style.pointerEvents === "none") continue;

@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"

@@ -15,6 +15,9 @@ npm run lab --workspace @flame/web
 ```
 
 Vite binds to `127.0.0.1:4174` and opens `/lab/`.
+Default server endpoints are owned by [`labServers.ts`](../labServers.ts).
+Browser scenarios use the current Playwright origin; built-policy checks use
+the configured preview server.
 
 Direct entry points:
 
@@ -386,7 +389,9 @@ return, both directly and within the production Agent fixture.
 The `interactions` project retains all migrated `*.browser.spec.ts` tests,
 including the WebKit suites. It uses the same lab's development server at
 `127.0.0.1:4174` because scripted protocol transitions import fixture modules.
-GenUI sandbox and Computer console tests use their existing isolated transports.
+The `security` project runs `*.security.spec.ts` against the built preview's
+document policies and opaque program frames. Computer console tests retain
+their isolated development transport.
 Both servers use `vite.lab.config.ts`, the same catalog, documents, providers and
 fixture owners. There is no separate visual app, browser configuration or
 compatibility route. Stop a manually running lab before starting verification.
