@@ -1,0 +1,16 @@
+{
+  "type": "visual",
+  "baseline": {
+    "type": "emptyTree"
+  },
+  "visual": {
+    "patch": "",
+    "manifest": [],
+    "truncated": true,
+    "budget": {
+      "files": 5000,
+      "rows": 1,
+      "bytes": 67108864
+    }
+  }
+}

@@ -58,6 +58,9 @@ func (d DiffRequest) Validate() error {
 	if strings.TrimSpace(d.Workspace) == "" {
 		return errors.New("workspace diff workspace is empty")
 	}
+	if d.Format != "" && d.Format != protocol.DiffFormatRows && d.Format != protocol.DiffFormatRaw {
+		return fmt.Errorf("workspace diff: unsupported terminal format %q", d.Format)
+	}
 	var limit *int
 	if rows := d.RowLimit.Rows(); rows > 0 {
 		limit = &rows

@@ -536,28 +536,11 @@ IME composition, reaches the host. A bounded task that closes on Escape claims i
 in capture on its own owner. `isImeKey` is the shared composition test for
 `isComposing` and the legacy `keyCode` 229.
 `IconButton` requires either
-`aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
-requires consumer-supplied region and column labels, including assistive text.
-Every code cell reserves the same nonselectable marker width so context, added
-and deleted source retain a common code column in both layouts. Source text and
-its original indentation remain separate from the decorative marker.
-With its region focused, Ctrl/Cmd+A selects only the rendered difference rows,
-excluding the caption, column headings and surrounding application; partial
-selection and copy remain native.
-A code row marked `noNewline` retains the patch termination marker beneath its
-source in both layouts, including native selection and copy.
-Adjacent deletion/addition runs pair by position in split layout, stopping at
-context and hunk boundaries. Extra lines keep their own side; unified layout
-retains source order. Both layouts mark changed words without changing source
-text or indentation. A platform word segmenter preserves Unicode graphemes;
-bounded token matching falls back to whole-line emphasis for complex lines.
-The emphasis uses an inherited-ink underline alongside existing semantic row
-washes and signs, so its meaning survives without color. Presentation does not
-change canonical rows, counts, navigation, read limits or accepted-result facts.
-Layout changes retain the first visible source-cell anchor in the existing
-scrolling surface. A pre-mutation DOM snapshot uses Panel's controls reference
-for the sticky boundary and restores that local geometry after row replacement.
-It does not move focus or handle source replacement as navigation.
+`aria-label` or `aria-labelledby`; `title` only overrides the tooltip.
+`CodeFrame` opts into the shared viewport-height budget with `bounded`; its
+caption measurement owns that geometry for bounded literal code. Workspace diffs
+leave vertical reading with their enclosing viewport.
+Workspace diff parsing and rendering belong to the installed Diff component.
 `ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
 reader valid inside a heading. Both forms retain native refs, attributes and the
 same scrolling and focus contract.
@@ -569,6 +552,9 @@ default. The DOM scroll position remains the only owner of the reading position.
 Consumers that retain their own scroll element use `scrollWithHorizontalArrow`
 after their local key handler to apply this same policy. Their markup, overflow,
 focusability and accessible name remain with the consumer.
+Renderers that own synchronized columns supply their public movement operation
+as the helper's second argument. The shared key policy then advances that owner
+without creating an outer DOM scroll position for the same movement.
 A fitting focused descendant is revealed within this reader's inner horizontal
 clip after keyboard or programmatic entry, and remains visible when the reader
 or control resizes. This moves only the reader's horizontal DOM position;

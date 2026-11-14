@@ -162,9 +162,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   }
   if (route.fixture === "workspace" && route.state === "dock-review") {
     await expect(page.locator("[data-diff-file]")).toHaveCount(1);
-    await expect(
-      page.getByRole("cell", { name: "const rail = railRef.current;", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("const rail = railRef.current;", { exact: true })).toBeVisible();
   }
   if (route.fixture === "workspace" && route.state === "settings") {
     await expect(page.getByRole("heading").first()).toBeVisible();

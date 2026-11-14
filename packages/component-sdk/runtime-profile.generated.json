@@ -1,8 +1,8 @@
 {
   "profile": "io.github.tangerg.flame/component-runtime@1",
   "browserTargets": [
-    "chrome131",
-    "safari17.4"
+    "chrome137",
+    "safari26"
   ],
   "modules": [
     "@flame/component-sdk",

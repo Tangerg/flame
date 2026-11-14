@@ -39,3 +39,10 @@ func TestDiffRowLimitSeparatesDefaultFromExplicitRows(t *testing.T) {
 		t.Fatalf("explicit row limit = %d, %v", limit.Rows(), err)
 	}
 }
+
+func TestDiffRequestRejectsTheVisualProjection(t *testing.T) {
+	request := DiffRequest{Workspace: "/workspace", Format: protocol.DiffFormatVisual}
+	if err := request.Validate(); err == nil {
+		t.Fatal("terminal accepted a visual-only projection")
+	}
+}

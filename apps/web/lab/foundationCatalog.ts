@@ -397,22 +397,6 @@ export const foundationStories: readonly LabStory[] = [
       import("./foundationReading").then((module) => ({ default: module.CalloutExample })),
   },
   {
-    id: "diff-table",
-    kind: "component",
-    panel: "foundation",
-    title: { en: "DiffTable", "zh-CN": "差异阅读 DiffTable" },
-    summary: {
-      en: "Compare the same recorded rows in unified and split layouts, retaining literal source.",
-      "zh-CN": "在合并与并排布局中对照同一份记录，保留原始源码及换行标记。",
-    },
-    group: groups.reading,
-    source: "packages/ui/src/diff-table.tsx",
-    width: READING_WIDTH,
-    height: READING_HEIGHT,
-    variants: [views.unified, views.split],
-    load: () => import("./foundationReading").then((module) => ({ default: module.DiffExample })),
-  },
-  {
     id: "image",
     kind: "component",
     panel: "foundation",

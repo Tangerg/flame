@@ -1,4 +1,4 @@
-const minimumMacOSVersion = "13.0";
+const minimumMacOSVersion = "14.0";
 const deploymentFlag = `-mmacosx-version-min=${minimumMacOSVersion}`;
 const externalLinkerFlags = [
   deploymentFlag,

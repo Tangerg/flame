@@ -68,10 +68,12 @@ export type WireTypeName =
   | "Diff"
   | "DiffBaseline"
   | "DiffBaselineType"
+  | "DiffBudget"
   | "DiffFormat"
   | "DiffMode"
   | "DiffRow"
   | "DiffRowType"
+  | "DiffRows"
   | "DiscoverResponse"
   | "DroppedRun"
   | "EmbeddingRole"
@@ -427,6 +429,7 @@ export type WireTypeName =
   | "UsageSummary"
   | "UsageSummaryRequest"
   | "UtilityRole"
+  | "VisualDiff"
   | "WatchSpec"
   | "WorkspaceAvailability"
   | "WorkspaceFileChange"
@@ -1034,12 +1037,32 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   DeleteSessionRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
-  Diff: object({
-    baseline: ref(() => CHECKS.DiffBaseline),
-    files: array(ref(() => CHECKS.FileDiff)),
-    patch: text(),
-    truncated: flag(),
-  }, ["baseline"]),
+  Diff: allOf([
+    object({
+      baseline: ref(() => CHECKS.DiffBaseline),
+      patch: text(),
+      rows: ref(() => CHECKS.DiffRows),
+      type: ref(() => CHECKS.DiffFormat),
+      visual: ref(() => CHECKS.VisualDiff),
+    }, []),
+    oneOf([
+      fields({
+        patch: absent(),
+        type: literal("rows"),
+        visual: absent(),
+      }, ["baseline", "rows", "type"]),
+      fields({
+        rows: absent(),
+        type: literal("raw"),
+        visual: absent(),
+      }, ["baseline", "patch", "type"]),
+      fields({
+        patch: absent(),
+        rows: absent(),
+        type: literal("visual"),
+      }, ["baseline", "type", "visual"]),
+    ]),
+  ]),
   DiffBaseline: allOf([
     object({
       commit: allOf([text(), pattern("^([0-9a-f]{40}|[0-9a-f]{64})$")]),
@@ -1059,7 +1082,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   DiffBaselineType: enumOf(["head", "mergeBase", "emptyTree"]),
-  DiffFormat: enumOf(["rows", "raw"]),
+  DiffBudget: object({
+    bytes: allOf([integer(), minimum("1")]),
+    files: allOf([integer(), minimum("1")]),
+    rows: allOf([integer(), minimum("1")]),
+  }, ["bytes", "files", "rows"]),
+  DiffFormat: enumOf(["rows", "raw", "visual"]),
   DiffMode: enumOf(["worktree", "base"]),
   DiffRow: allOf([
     object({
@@ -1095,6 +1123,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   DiffRowType: enumOf(["hunk", "context", "added", "deleted"]),
+  DiffRows: object({
+    budget: ref(() => CHECKS.DiffBudget),
+    files: array(ref(() => CHECKS.FileDiff)),
+    truncated: flag(),
+  }, ["budget", "files", "truncated"]),
   DiscoverResponse: object({
     capabilities: ref(() => CHECKS.ServerCapabilities),
     protocolVersion: text(),
@@ -4695,6 +4728,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
+  VisualDiff: object({
+    budget: ref(() => CHECKS.DiffBudget),
+    manifest: array(ref(() => CHECKS.WorkspaceFileChange)),
+    patch: text(),
+    truncated: flag(),
+  }, ["budget", "manifest", "patch", "truncated"]),
   WatchSpec: object({
     paths: allOf([array(text()), minItems(1), uniqueItems()]),
     watchId: text(),

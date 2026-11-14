@@ -10,7 +10,8 @@ func TestParseUnifiedDiffStopsBeforeAFileBeyondTheCountBudget(t *testing.T) {
 		"+++ b/b.txt\n" +
 		"@@ malformed\n")
 
-	files, truncated, err := parseUnifiedDiff(patch, 1, 5)
+	parsed, err := parseUnifiedDiff(patch, 1, 5, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatalf("parse beyond complete-file budget: %v", err)
 	}
@@ -28,7 +29,8 @@ func TestParseUnifiedDiffStopsBeforeAFileBeyondTheRowBudget(t *testing.T) {
 		"+two\n" +
 		"+three\n")
 
-	files, truncated, err := parseUnifiedDiff(patch, 1, 3)
+	parsed, err := parseUnifiedDiff(patch, 1, 3, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatalf("parse beyond complete-file row budget: %v", err)
 	}

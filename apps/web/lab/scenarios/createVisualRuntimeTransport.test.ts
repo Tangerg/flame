@@ -359,8 +359,8 @@ describe("visual Runtime transport", () => {
         usage.byScope.find((bucket) => bucket.key === "run")?.coverage.calls ?? 0,
       ).toBeGreaterThanOrEqual(usage.runs);
       const workspace = await client.workspaces.open({ path: "/Users/visual/scope" });
-      expect(await workspace.diff.get({ mode: "worktree", format: "rows" })).toEqual(REVIEW_DIFF);
-      expect(await workspace.diff.get({ mode: "base", format: "rows" })).toEqual(
+      expect(await workspace.diff.get({ mode: "worktree", format: "visual" })).toEqual(REVIEW_DIFF);
+      expect(await workspace.diff.get({ mode: "base", format: "visual" })).toEqual(
         BRANCH_REVIEW_DIFF,
       );
       expect((await workspace.skills.listDiscovered()).skills).toHaveLength(2);

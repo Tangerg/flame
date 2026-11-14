@@ -59,7 +59,10 @@ function horizontalPlacement(region: HTMLElement, target: Element) {
 }
 
 // Some native hosts do not pan a focused scroller with arrows, so the reader owns the transition.
-export function scrollWithHorizontalArrow(event: KeyboardEvent<HTMLElement>) {
+export function scrollWithHorizontalArrow(
+  event: KeyboardEvent<HTMLElement>,
+  scrollBy?: (delta: number) => void,
+) {
   if (
     event.defaultPrevented ||
     event.target !== event.currentTarget ||
@@ -72,12 +75,16 @@ export function scrollWithHorizontalArrow(event: KeyboardEvent<HTMLElement>) {
   )
     return;
   const region = event.currentTarget;
-  if (region.clientWidth <= 0 || region.scrollWidth <= region.clientWidth)
+  if (
+    region.clientWidth <= 0 ||
+    (!scrollBy && region.scrollWidth <= region.clientWidth)
+  )
     return;
   event.preventDefault();
   event.stopPropagation();
-  region.scrollLeft +=
-    region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+  const delta = region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+  if (scrollBy) scrollBy(delta);
+  else region.scrollLeft += delta;
 }
 
 export function ScrollRegion({

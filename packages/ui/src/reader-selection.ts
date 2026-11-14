@@ -13,7 +13,7 @@ function isEditableTarget(reader: HTMLElement, target: EventTarget): boolean {
 // it, so framing such as a reader's path label stays outside the selected range.
 export function selectAllInReader(
   event: KeyboardEvent<HTMLElement>,
-  content: Element = event.currentTarget,
+  content: Element | ShadowRoot = event.currentTarget,
 ): void {
   if (
     event.defaultPrevented ||
@@ -25,8 +25,8 @@ export function selectAllInReader(
   )
     return;
   const reader = event.currentTarget;
-  if (!reader.contains(content) || isEditableTarget(reader, event.target))
-    return;
+  const host = content instanceof ShadowRoot ? content.host : content;
+  if (!reader.contains(host) || isEditableTarget(reader, event.target)) return;
   const selection = reader.ownerDocument.getSelection();
   if (!selection) return;
   event.preventDefault();

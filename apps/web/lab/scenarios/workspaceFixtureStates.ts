@@ -30,6 +30,9 @@ export function isVisualSettingsPane(value: string | null): value is VisualSetti
 export const VISUAL_WORKSPACE_STATES = [
   "dock-light",
   "dock-review",
+  "dock-diff-evidence",
+  "dock-diff-budget",
+  "dock-diff-large",
   "dock-trajectory",
   "dock-runs",
   "dock-subagents",
@@ -61,6 +64,9 @@ export type VisualWorkspaceState = (typeof VISUAL_WORKSPACE_STATES)[number];
 export const VISUAL_WORKSPACE_STATE_TITLES: Readonly<Record<VisualWorkspaceState, LabText>> = {
   "dock-light": { en: "Files workspace", "zh-CN": "文件工作区" },
   "dock-review": { en: "Diff review", "zh-CN": "差异审阅" },
+  "dock-diff-evidence": { en: "Diff · source evidence", "zh-CN": "差异 · 原文边界" },
+  "dock-diff-budget": { en: "Diff · budget reached", "zh-CN": "差异 · 预算边界" },
+  "dock-diff-large": { en: "Diff · row budget", "zh-CN": "差异 · 行数上限" },
   "dock-trajectory": { en: "Session trajectory", "zh-CN": "会话轨迹" },
   "dock-runs": { en: "Run tree", "zh-CN": "运行树" },
   "dock-subagents": { en: "Subagents", "zh-CN": "子代理" },
@@ -99,6 +105,9 @@ export function isVisualWorkspaceState(value: string | null): value is VisualWor
 export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "file",
   "dock-review": "package:visual:diff",
+  "dock-diff-evidence": "package:visual:diff",
+  "dock-diff-budget": "package:visual:diff",
+  "dock-diff-large": "package:visual:diff",
   "dock-empty": "package:visual:diff",
   "dock-loading": "package:visual:diff",
   "dock-error": "package:visual:diff",

@@ -107,7 +107,8 @@ func TestDiffHunkRangesPreserveMultipleHunksAndWholeFileBudgets(t *testing.T) {
 	patch := []byte("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n" +
 		"@@ -1,2 +1,3 @@\n--- old\n+++ new\n+extra\n \n" +
 		"@@ -8 +9 @@\n-old\n+new\n\\ No newline at end of file\n")
-	files, truncated, err := parseUnifiedDiff(patch, 1, 8)
+	parsed, err := parseUnifiedDiff(patch, 1, 8, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil || truncated || len(files) != 1 {
 		t.Fatalf("multiple hunks = %+v, truncated=%t, %v", files, truncated, err)
 	}
@@ -116,7 +117,8 @@ func TestDiffHunkRangesPreserveMultipleHunksAndWholeFileBudgets(t *testing.T) {
 		file.Rows[6].LeftLine != 8 || file.Rows[7].RightLine != 9 || file.Rows[4].Code != "" || !file.Rows[7].NoNewline {
 		t.Fatalf("hunk ranges = %+v", file)
 	}
-	files, truncated, err = parseUnifiedDiff(patch, 1, 7)
+	parsed, err = parseUnifiedDiff(patch, 1, 7, true)
+	files, truncated = parsed.files, parsed.truncated
 	if err != nil || !truncated || len(files) != 0 {
 		t.Fatalf("partial file escaped budget: %+v, truncated=%t, %v", files, truncated, err)
 	}

@@ -61,8 +61,9 @@ activation and withdrawal retain their existing owners.
 
 The authored Component SDK runtime profile owns the browser compilation targets
 for components, this application and the Lab. The current support floor is Chrome
-131 or Safari/WebKit 17.4. The native macOS installation floor is separate: macOS
-13 needs software updates that provide the required WebKit capabilities. The
+137 or Safari/WebKit 26. Native composed selection ranges are required for
+precise clipboard projection from installed Shadow DOM readers. The native macOS installation floor is separate: macOS
+14 needs software updates that provide the required WebKit capabilities. The
 startup check tests capabilities, rather than inferring them from an OS version
 or user-agent string. Compilation does not polyfill runtime APIs.
 

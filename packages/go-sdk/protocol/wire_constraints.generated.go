@@ -246,7 +246,7 @@ func (g GetDiffRequest) validateWire() error {
 	return collectWireViolations("GetDiffRequest",
 		optionalPositiveNumber("limit", g.Limit),
 		closedEnum("mode", string(g.Mode), []string{"worktree", "base"}, true),
-		closedEnum("format", string(g.Format), []string{"rows", "raw"}, true),
+		closedEnum("format", string(g.Format), []string{"rows", "raw", "visual"}, true),
 		forbiddenWhen(wireFieldEquals(g, "format", "raw"), "limit", g),
 	)
 }
@@ -1773,6 +1773,24 @@ func (a ArtifactItem) validateWire() error {
 	)
 }
 
+func (d Diff) validateWire() error {
+	return collectWireViolations("Diff",
+		closedEnum("type", string(d.Type), []string{"rows", "raw", "visual"}, false),
+		requiredWhen(wireFieldEquals(d, "type", "rows"), "baseline", d),
+		requiredWhen(wireFieldEquals(d, "type", "rows"), "rows", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "rows"), "patch", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "rows"), "visual", d),
+		requiredWhen(wireFieldEquals(d, "type", "raw"), "baseline", d),
+		requiredWhen(wireFieldEquals(d, "type", "raw"), "patch", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "raw"), "rows", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "raw"), "visual", d),
+		requiredWhen(wireFieldEquals(d, "type", "visual"), "baseline", d),
+		requiredWhen(wireFieldEquals(d, "type", "visual"), "visual", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "visual"), "rows", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "visual"), "patch", d),
+	)
+}
+
 func (d DiffBaseline) validateWire() error {
 	return collectWireViolations("DiffBaseline",
 		optionalTextPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
@@ -2608,6 +2626,14 @@ func (g GrepMatch) validateWire() error {
 	return collectWireViolations("GrepMatch",
 		requiredText("path", g.Path),
 		positiveNumber("lineNumber", g.LineNumber),
+	)
+}
+
+func (d DiffBudget) validateWire() error {
+	return collectWireViolations("DiffBudget",
+		positiveNumber("files", d.Files),
+		positiveNumber("rows", d.Rows),
+		positiveNumber("bytes", d.Bytes),
 	)
 }
 

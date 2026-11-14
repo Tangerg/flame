@@ -104,6 +104,9 @@ func contractSamples() []contractSample {
 
 		// Workspace — Diff/DiffRow, file shapes, methods.
 		{"ws.diff.json", reflect.TypeFor[protocol.Diff]()},
+		{"ws.diff.visual.json", reflect.TypeFor[protocol.Diff]()},
+		{"ws.diff.raw.json", reflect.TypeFor[protocol.Diff]()},
+		{"ws.diff.truncated.json", reflect.TypeFor[protocol.Diff]()},
 		{"ws.fileChange.json", reflect.TypeFor[protocol.WorkspaceFileChange]()},
 		{"ws.grepResult.json", reflect.TypeFor[protocol.GrepResult]()},
 		{"ws.fileContent.json", reflect.TypeFor[protocol.FileContent]()},

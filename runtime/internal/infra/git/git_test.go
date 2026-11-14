@@ -75,7 +75,7 @@ func testChanges(ctx context.Context, dir string) ([]FileChange, error) {
 const testMaxDiffBytes = 64 << 20
 
 func testDiff(ctx context.Context, dir, path string, mode Mode) ([]DiffFile, error) {
-	result, err := Diff(ctx, dir, path, mode, 5_000, 5_000, testMaxDiffBytes)
+	result, err := Diff(ctx, dir, path, mode, Rows, 5_000, 5_000, testMaxDiffBytes)
 	return result.Files, err
 }
 
@@ -402,14 +402,15 @@ func TestListChangesIgnoresAmbientRepositoryRouting(t *testing.T) {
 
 func TestParseUnifiedDiffRejectsMalformedHunkHeader(t *testing.T) {
 	patch := "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -invalid +1 @@\n-old\n+new\n"
-	if _, _, err := parseUnifiedDiff([]byte(patch), 5_000, 5_000); err == nil {
+	if _, err := parseUnifiedDiff([]byte(patch), 5_000, 5_000, true); err == nil {
 		t.Fatal("parseUnifiedDiff accepted a malformed hunk header")
 	}
 }
 
 func TestParseUnifiedDiffStopsBeforeAnOversizedWholeFile(t *testing.T) {
 	patch := []byte("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -0,0 +1 @@\n+line\n")
-	files, truncated, err := parseUnifiedDiff(patch, 5, 1)
+	parsed, err := parseUnifiedDiff(patch, 5, 1, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +421,8 @@ func TestParseUnifiedDiffStopsBeforeAnOversizedWholeFile(t *testing.T) {
 
 func TestParseUnifiedDiffBoundsZeroRowFiles(t *testing.T) {
 	patch := []byte("diff --git a/a.bin b/a.bin\nBinary files a/a.bin and b/a.bin differ\ndiff --git a/b.bin b/b.bin\nBinary files a/b.bin and b/b.bin differ\n")
-	files, truncated, err := parseUnifiedDiff(patch, 1, 5)
+	parsed, err := parseUnifiedDiff(patch, 1, 5, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatal(err)
 	}

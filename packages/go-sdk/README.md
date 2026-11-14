@@ -52,6 +52,16 @@ the suffix of its range without reversing source order. Callers must use those
 coordinates for continuation; a budget that cannot hold a line returns no line
 instead of its former partial prefix. Rebuild Runtime and SDK consumers together.
 
+Workspace diff responses are explicitly tagged `rows`, `raw` or `visual`.
+Rows carry `rows.files`, `rows.truncated` and the actual `rows.budget`; complete
+raw carries an explicit `patch` string, including an empty patch. Visual carries
+one bounded patch, its authoritative manifest, truncation and actual budgets in
+`visual`. Missing payloads and mixed projections are refused. Rebuild Runtime,
+CLI, browser SDKs and installed components together; former flat `files` and
+`truncated` responses have no conversion path. The visual manifest owns file
+status, including untracked evidence that cannot be reconstructed from patch
+headers. An empty truncated manifest means no complete file fit the budget.
+
 `extension.ResultShape` owns the closed result-selector vocabulary and its
 admission. A `resultShape` selector carries a typed `shape`; `toolName` and
 `fileExtension` carry independent free `name` values. Runtime contract generation

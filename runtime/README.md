@@ -1644,9 +1644,23 @@ Root exit is observed independently of pipe EOF. It starts group retirement and
 a bounded output drain; the drain budget never limits a still-executing root.
 
 Workspace file selection converts resource paths into literal Git pathspecs at
-one adapter boundary, shared by file listings and raw/structured diffs. The patch
+one adapter boundary, shared by file listings and every diff projection. The patch
 parser consumes each hunk's declared left/right ranges before interpreting file
 metadata, so header-like source lines retain their file identity and line counts.
+
+Workspace diff reads have explicit rows, complete raw and visual projections.
+The visual projection captures the baseline, patch and authoritative manifest
+through one `completeDiff` operation; it does not promise an atomic filesystem
+snapshot against concurrent writes. The existing unified parser selects the
+accepted complete-file prefix and computes metadata without retaining rows.
+Rows use that same grammar and retain their real CLI behavior. Visual and rows
+share the 5,000-file / 5,000-row budgets (hunks count as rows); explicit row limits
+are positive and clamped to that maximum. Both return their actual budgets and
+whole-file truncation. All projections retain the 64 MiB capture safety bound;
+complete raw refuses row limits and fails on byte overflow. An oversized first
+file yields an empty visual patch and manifest with `truncated: true`, never a
+clean comparison. Raw, rows and visual wire payloads are mutually exclusive and
+all clients must migrate with the Runtime; there is no old-shape reader.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object

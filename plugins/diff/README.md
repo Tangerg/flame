@@ -16,17 +16,42 @@ target/focus replacement retires the render instance and joins SDK I/O.
 The general entry starts at a changed-file overview with aggregate text counts.
 A file-specific entry passes its normalized path to Runtime instead of searching
 a workspace-wide slice. Its independent Files command requests the workspace
-overview, retaining the current comparison. A structured read that reaches its
-row bound offers a path-scoped raw patch read through the existing public API.
-The raw read retains Runtime's byte bound and can fail independently; neither
-reader raises a limit or treats a partial result as a clean workspace. Raw patch
-headers show only known file identity, without invented status or line counts.
+overview, retaining the current comparison. Web requests only `format: "visual"`.
+Runtime captures its baseline, bounded patch and authoritative manifest in one read.
+The manifest owns status, rename provenance, binary evidence and known counts;
+Pierre only renders the accepted patch. No second rows, raw or changes request
+supplements that snapshot. File and row budgets select complete files through
+Runtime's existing parser, under the byte safety bound. Responses publish the
+actual budgets and truncation. An empty truncated manifest means no complete file
+fit, not a clean comparison. Web deliberately removes the former full raw reread;
+its Copy included patch action copies only the accepted bytes, including headers
+and EOF markers. CLI retains complete raw and bounded rows for its own consumers.
+
+The sole Web renderer is the exact `@pierre/diffs` release selected in the plugin
+manifest. It parses each accepted patch once through public `parsePatchFiles`,
+with explicit errors and line matching disabled. Parse failures retain the prior
+accepted read and surface the failure. Missing context remains missing; no
+reconstructed full files or expand-to-full-source requests are supplied.
+The bounded current-file workload uses Pierre without virtualization. Native
+selection therefore covers every presented line without a second hidden DOM.
+Flame's reader handles Select All and projects the native composed range into
+public parsed source lines for clipboard text. Gutters and EOF labels are excluded;
+partial UTF-16 offsets, blank lines, CRLF and the final source newline are preserved.
+When a selection crosses the EOF of one side into the other, the displayed rows
+remain separated. Split-layout selection follows the selected physical columns;
+the independent included-patch action always copies the same accepted patch.
+The public post-render handle binds selection to the rendered source and retires
+with it. Shared semantic CSS variables and the public i18n interface own appearance
+and all visible reader labels across the eight package catalogs. There is no
+private DOM rewrite or alternate renderer. Native composed-range support is part
+of the shared Chrome 137 / Safari 26 browser floor.
+
 File rows navigate to one reader;
 they do not expand every file's code into a single report. The comparison and
 refresh controls precede the list filter. In the reader, the current file, position,
 previous/next commands and layout stay in the shared persistent control zone.
 The accepted comparison, file/workspace scope, real baseline and read time stay
-beside that identity in both readers and the overview. Read time records client
+beside that identity in the reader and overview. Read time records client
 acceptance, not a repository revision. A pending or failed request retains these
 facts with the accepted content; only a successful response advances them.
 Display-locale changes reformat labels and dates without changing those accepted

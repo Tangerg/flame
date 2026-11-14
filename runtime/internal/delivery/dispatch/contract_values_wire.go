@@ -534,6 +534,14 @@ func registerWorkspaceValues(s *Shapes) {
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.DiffBudget](),
+		Constraints: []FieldConstraint{
+			{Field: "files", Kind: ConstraintPositive},
+			{Field: "rows", Kind: ConstraintPositive},
+			{Field: "bytes", Kind: ConstraintPositive},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ReadFileRequest](),
 		Constraints: []FieldConstraint{
 			{Field: "path", Kind: ConstraintNonEmpty},

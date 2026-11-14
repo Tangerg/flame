@@ -114,6 +114,13 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 	if value == nil {
 		return workspace.Diff{}, runtimeContractViolation("get workspace diff returned nil")
 	}
+	expected := request.Format
+	if expected == "" {
+		expected = protocol.DiffFormatRows
+	}
+	if value.Type != expected {
+		return workspace.Diff{}, runtimeContractViolation("get workspace diff returned %q for %q", value.Type, expected)
+	}
 	projected, err := projectDiff(*value)
 	if err != nil {
 		return workspace.Diff{}, runtimeContractViolation("get workspace diff returned an invalid projection: %v", err)
@@ -257,8 +264,20 @@ func projectChange(value protocol.WorkspaceFileChange) workspace.Change {
 }
 
 func projectDiff(value protocol.Diff) (workspace.Diff, error) {
-	result := workspace.Diff{Baseline: value.Baseline, Patch: value.Patch, Truncated: value.Truncated, Files: make([]workspace.FileDiff, 0, len(value.Files))}
-	for _, file := range value.Files {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)
+	}
+	result := workspace.Diff{Baseline: value.Baseline}
+	if value.Type == protocol.DiffFormatRaw {
+		result.Patch = *value.Patch
+		return result, nil
+	}
+	if value.Type != protocol.DiffFormatRows {
+		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: unsupported format %q", value.Type)
+	}
+	result.Truncated = value.Rows.Truncated
+	result.Files = make([]workspace.FileDiff, 0, len(value.Rows.Files))
+	for _, file := range value.Rows.Files {
 		result.Files = append(result.Files, workspace.FileDiff{
 			Change: projectChange(protocol.WorkspaceFileChange{
 				Path: file.Path, Status: file.Status, PreviousPath: file.PreviousPath,

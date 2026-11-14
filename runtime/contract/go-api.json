@@ -8818,6 +8818,11 @@
           "value": "\"rows\""
         },
         {
+          "name": "DiffFormatVisual",
+          "type": "DiffFormat",
+          "value": "\"visual\""
+        },
+        {
           "name": "DiffModeBase",
           "type": "DiffMode",
           "value": "\"base\""
@@ -11537,24 +11542,29 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Type",
+              "type": "DiffFormat",
+              "tag": "json:\"type\""
+            },
+            {
               "name": "Baseline",
               "type": "DiffBaseline",
               "tag": "json:\"baseline\""
             },
             {
-              "name": "Files",
-              "type": "[]FileDiff",
-              "tag": "json:\"files,omitempty\""
+              "name": "Rows",
+              "type": "*DiffRows",
+              "tag": "json:\"rows,omitzero\""
             },
             {
               "name": "Patch",
-              "type": "string",
-              "tag": "json:\"patch,omitempty\""
+              "type": "*string",
+              "tag": "json:\"patch,omitzero\""
             },
             {
-              "name": "Truncated",
-              "type": "bool",
-              "tag": "json:\"truncated,omitzero\""
+              "name": "Visual",
+              "type": "*VisualDiff",
+              "tag": "json:\"visual,omitzero\""
             }
           ]
         },
@@ -11578,6 +11588,27 @@
           "name": "DiffBaselineType",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "DiffBudget",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Files",
+              "type": "int",
+              "tag": "json:\"files\""
+            },
+            {
+              "name": "Rows",
+              "type": "int",
+              "tag": "json:\"rows\""
+            },
+            {
+              "name": "Bytes",
+              "type": "int",
+              "tag": "json:\"bytes\""
+            }
+          ]
         },
         {
           "name": "DiffFormat",
@@ -11629,6 +11660,27 @@
           "name": "DiffRowType",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "DiffRows",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Files",
+              "type": "[]FileDiff",
+              "tag": "json:\"files\""
+            },
+            {
+              "name": "Truncated",
+              "type": "bool",
+              "tag": "json:\"truncated\""
+            },
+            {
+              "name": "Budget",
+              "type": "DiffBudget",
+              "tag": "json:\"budget\""
+            }
+          ]
         },
         {
           "name": "DiscoverResponse",
@@ -18103,6 +18155,32 @@
               "name": "Model",
               "type": "string",
               "tag": "json:\"model,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "VisualDiff",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Patch",
+              "type": "string",
+              "tag": "json:\"patch\""
+            },
+            {
+              "name": "Manifest",
+              "type": "[]WorkspaceFileChange",
+              "tag": "json:\"manifest\""
+            },
+            {
+              "name": "Truncated",
+              "type": "bool",
+              "tag": "json:\"truncated\""
+            },
+            {
+              "name": "Budget",
+              "type": "DiffBudget",
+              "tag": "json:\"budget\""
             }
           ]
         },

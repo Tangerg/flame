@@ -171,13 +171,32 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
       name: `Changes in ${ACTIVE_FILE_PATH}`,
       exact: true,
     });
-    await expect(changes.getByRole("table")).toBeVisible();
+    await expect(changes.getByRole("region", { name: /^Scrollable diff for / })).toBeVisible();
     await expect(
-      changes.getByRole("cell", {
-        name: "const rail = railRef.current;",
+      changes.getByText("const rail = railRef.current;", {
         exact: true,
       }),
     ).toBeVisible();
+    return;
+  }
+  if (state === "dock-diff-evidence") {
+    const view = pluginView(page, "diff");
+    await expect(view.getByText("alpha中🙂omega", { exact: true })).toBeVisible();
+    await expect(view.getByText("No newline at end of file", { exact: true })).toHaveCount(2);
+    return;
+  }
+  if (state === "dock-diff-budget") {
+    await expect(
+      pluginView(page, "diff").getByText("No complete file fits this read’s budget.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    return;
+  }
+  if (state === "dock-diff-large") {
+    await expect(
+      pluginView(page, "diff").getByText("export const item4999 = 4999;", { exact: true }),
+    ).toBeAttached();
     return;
   }
   if (state === "dock-empty") {

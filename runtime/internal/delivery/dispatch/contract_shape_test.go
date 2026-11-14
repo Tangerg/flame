@@ -158,7 +158,7 @@ func TestEveryWireUnionIsRegistered(t *testing.T) {
 
 	want := []string{
 		"Activity", "ApprovalSubject", "ArtifactItem", "ArtifactOutcome", "TrajectoryEntry", "ToolRef",
-		"CancelRunResponse", "CapabilityRequirement", "ContentBlock", "DiffBaseline", "DiffRow", "Interrupt", "InterruptResponseValue", "Item", "ItemDelta",
+		"CancelRunResponse", "CapabilityRequirement", "ContentBlock", "Diff", "DiffBaseline", "DiffRow", "Interrupt", "InterruptResponseValue", "Item", "ItemDelta",
 		"ItemListScope", "MCPAuthorizationAttemptStatus", "MCPAuthorizationChange", "MCPConnection", "MCPConnectionInput", "MCPEnvironmentChange", "MCPHandshakeTimeout", "MCPHeadersChange", "MCPOrigin", "MCPServerState", "PluginComponent", "PluginInputState", "PluginRealization", "PluginRendererSelector", "PluginServerDeclaration", "PluginValueChange", "ProblemData", "ProviderConfigChange", "QuestionField", "RunAcceptance", "RunOutcome", "RuntimeEvent", "StreamEvent",
 	}
 	got := make([]string, 0, len(shapes.Unions()))

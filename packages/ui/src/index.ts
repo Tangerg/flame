@@ -94,11 +94,6 @@ export {
 export { Disclosure } from "./disclosure";
 export { ScrollRegion, scrollWithHorizontalArrow } from "./scroll-region";
 export {
-  type ComparisonRow,
-  type DiffTableLabels,
-  DiffTable,
-} from "./diff-table";
-export {
   type DiffFileSummary,
   DiffFilePath,
   DiffFileList,

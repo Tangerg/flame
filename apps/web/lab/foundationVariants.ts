@@ -36,8 +36,6 @@ export const foundationViews = {
   important: { id: "important", title: { en: "Important", "zh-CN": "重要" } },
   warning: { id: "warning", title: { en: "Warning", "zh-CN": "警告" } },
   caution: { id: "caution", title: { en: "Caution", "zh-CN": "注意" } },
-  unified: { id: "unified", title: { en: "Unified", "zh-CN": "合并视图" } },
-  split: { id: "split", title: { en: "Split", "zh-CN": "并排视图" } },
   thumbnail: { id: "thumbnail", title: { en: "Thumbnail and lightbox", "zh-CN": "缩略图与灯箱" } },
   viewport: { id: "viewport", title: { en: "Image viewport", "zh-CN": "图片视口" } },
 } as const satisfies Record<string, LabVariant>;

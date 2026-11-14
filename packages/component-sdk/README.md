@@ -314,8 +314,10 @@ are rebuilt together by `make generate`.
 `buildComponent` applies those browser targets to the author's supplied compiler;
 individual callers do not select a different target. The Web Host and Lab consume
 the same policy. The pure `@flame/component-sdk/browser-policy` projection supplies
-the early Host diagnosis without importing the SDK's application modules. Targets
-govern syntax transformation, not API polyfills or runtime capability guarantees.
+the early Host diagnosis without importing the SDK's application modules. The current floor is Chrome 137 / Safari 26. The Host diagnoses the standard
+`Selection.getComposedRanges({ shadowRoots })` contract before evaluation,
+including rejection of the former variadic API. Targets govern syntax
+transformation, not API polyfills or runtime capability guarantees.
 The shared-module profile version is unchanged by this compilation policy.
 
 The SDK owns shared-module externalization and the prebuilt ESM

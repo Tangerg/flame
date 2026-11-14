@@ -961,7 +961,7 @@ there is no fixture editor or parallel visual entry.
 The macOS browser CI job runs the existing `lab:verify` projects after normal
 generation and installs their pinned Chromium and WebKit engines. Interaction,
 accessibility and explicit WebKit scenarios share this gate; their failures fail
-CI. This WebKit revision is not proof of the Safari 17.4 minimum or the native
+CI. This WebKit revision is not proof of the Safari 26 minimum or the native
 Wails host. The optional measurement project below remains a separate explicit
 command and does not turn variable performance measurements into a functional gate.
 
