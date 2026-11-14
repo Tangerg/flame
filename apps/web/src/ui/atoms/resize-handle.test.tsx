@@ -64,6 +64,10 @@ function ControlledHarness({
   );
 }
 
+function startResize(target: Element, options: PointerEventInit = {}) {
+  return fireEvent.pointerDown(target, { button: 0, isPrimary: true, ...options });
+}
+
 function paneWidth(): string {
   return screen.getByTestId("container").style.getPropertyValue(PROPERTY);
 }
@@ -105,7 +109,7 @@ describe("ResizeHandle", () => {
     testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
-    fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
+    startResize(handle, { button: 0, clientX: 320 });
     expect(screen.getByTestId("container").hasAttribute("data-resizing")).toBe(true);
 
     fireEvent(window, new PointerEvent("pointermove", { clientX: 400 }));
@@ -123,7 +127,7 @@ describe("ResizeHandle", () => {
     testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
-    fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
+    startResize(handle, { button: 0, clientX: 320 });
     fireEvent(window, new PointerEvent("pointermove", { clientX: 320 }));
     fireEvent(window, new PointerEvent("pointerup"));
 
@@ -178,7 +182,7 @@ describe("ResizeHandle", () => {
     const { unmount } = testClient.render(<Harness onCommit={onCommit} />);
     const container = screen.getByTestId("container");
 
-    fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize panel" }), {
+    startResize(screen.getByRole("separator", { name: "Resize panel" }), {
       button: 0,
       clientX: 320,
     });
@@ -200,7 +204,7 @@ describe("ResizeHandle gesture settlement", () => {
       const handle = screen.getByRole("separator", { name: "Resize panel" });
       const pane = screen.getByTestId("container");
       pane.style.setProperty(PROPERTY, "320px", "important");
-      fireEvent.pointerDown(handle, { button: 0, pointerId: 7, clientX: 320 });
+      startResize(handle, { button: 0, pointerId: 7, clientX: 320 });
       fireEvent.pointerMove(window, { pointerId: 7, clientX: 450 });
       expect(paneWidth()).toBe("450px");
       if (reason === "Escape") fireEvent.keyDown(window, { key: "Escape" });
@@ -225,7 +229,7 @@ describe("ResizeHandle gesture settlement", () => {
     const onCommit = vi.fn();
     testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
-    fireEvent.pointerDown(handle, { button: 0, pointerId: 7, clientX: 320 });
+    startResize(handle, { button: 0, pointerId: 7, clientX: 320 });
     fireEvent.pointerMove(window, { pointerId: 8, clientX: 800 });
     fireEvent.pointerCancel(window, { pointerId: 8 });
     fireEvent.pointerUp(window, { pointerId: 8 });
@@ -235,22 +239,37 @@ describe("ResizeHandle gesture settlement", () => {
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(400, expect.any(Number));
   });
 
-  it("restores the starting property when unmounted after a preview", () => {
+  it("retires without restoring an old property when unmounted after a preview", () => {
     const onCommit = vi.fn();
     const { unmount } = testClient.render(<Harness onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
-    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
     unmount();
-    expect(pane.style.getPropertyValue(PROPERTY)).toBe("");
+    expect(pane.isConnected).toBe(false);
+    expect(pane.style.getPropertyValue(PROPERTY)).toBe("450px");
     fireEvent.pointerUp(window);
     expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("starts a keyboard takeover from the authoritative width after retiring a pointer preview", () => {
+    const onCommit = vi.fn();
+    testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
+    const handle = screen.getByRole("separator");
+    startResize(handle, { pointerId: 7, clientX: 320 });
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 450 });
+    expect(paneWidth()).toBe("450px");
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(paneWidth()).toBe("328px");
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(328, expect.any(Number));
+    fireEvent.pointerUp(window, { pointerId: 7 });
+    expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
   it("retires a drag when an external width replaces it", () => {
     const onCommit = vi.fn();
     const view = testClient.render(<Harness onCommit={onCommit} />);
-    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
     view.rerender(<Harness value={500} onCommit={onCommit} />);
     fireEvent.pointerUp(window);
@@ -263,7 +282,7 @@ describe("ResizeHandle gesture settlement", () => {
     const onCommit = vi.fn();
     const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
-    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
     expect(paneWidth()).toBe("450px");
 
@@ -286,13 +305,13 @@ describe("ResizeHandle gesture settlement", () => {
       .mockImplementation(() => containerWidth);
     try {
       const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
-      fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+      startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
       fireEvent.pointerMove(window, { clientX: 450 });
       expect(paneWidth()).toBe("450px");
 
       containerWidth = 1000;
       fireEvent.pointerMove(window, { clientX: 460 });
-      expect(paneWidth()).toBe("320px");
+      expect(paneWidth()).toBe("450px");
 
       view.rerender(<ControlledHarness value={500} onCommit={onCommit} />);
       expect(paneWidth()).toBe("500px");

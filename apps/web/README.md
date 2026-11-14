@@ -98,6 +98,13 @@ Unfingerprinted public appearance scripts, focus scripts and fonts remain
 revalidatable. A stale policy or altered registered file is refused; registering
 an arbitrary filename alone does not establish a content fingerprint.
 
+Resize handles preserve the layout owner's pixel limits and 8px/24px/Home/End
+commands. A shared `PointerSession` owns capture and termination. Only a valid
+completed gesture commits; cancellation restores its preview. An external width,
+container change, hidden scope or unmount retires the gesture without writing an
+old preview back. The resize owner observes its container and projects the current
+authoritative value after revoking the old gesture.
+
 The fixed, clipped application root owns the viewport frame. Reading surfaces own
 their scrolling, so native input focus cannot scroll the application chrome away.
 Workspace reading viewports reserve the shared inset focus perimeter with a

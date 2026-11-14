@@ -122,6 +122,8 @@ export {
   selectAllInReader,
 } from "./reader-selection";
 export { readingUnitFor } from "./reading-unit";
+export { PointerSession, type PointerOutcome } from "./pointer-session";
+export { scrollPan, useScrollPan } from "./scroll-pan";
 export { TaskListItem } from "./task-list-item";
 export {
   Callout,

@@ -4,7 +4,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
+import { PointerSession, useContentVisible } from "@flame/ui";
 const STEP_PX = 8;
 
 const COARSE_STEP_PX = 24;
@@ -34,6 +35,19 @@ export interface ResizeHandleProps extends Omit<
   resizingAttribute?: string;
 }
 
+interface ResizeScope {
+  readonly element: HTMLElement;
+  readonly edge: "start" | "end";
+  readonly property: string;
+  readonly value: number;
+  readonly width: number;
+  readonly min: number;
+  readonly max: number;
+  readonly formatted: string;
+  readonly attribute: string | undefined;
+  readonly visible: boolean;
+}
+
 export function ResizeHandle({
   edge,
   value,
@@ -47,11 +61,15 @@ export function ResizeHandle({
   resizingAttribute,
   ...props
 }: ResizeHandleProps) {
+  const visible = useContentVisible();
   const handleRef = useRef<HTMLDivElement>(null);
-  const gestureRef = useRef<{ cancel(): void } | null>(null);
-  const markedRef = useRef<HTMLElement | null>(null);
-
-  const paneRef = useRef({
+  const gesture = useRef<PointerSession | null>(null);
+  const marked = useRef<{ element: HTMLElement; attribute: string } | null>(null);
+  const observer = useRef<{ element: HTMLElement; observer: ResizeObserver } | null>(null);
+  const scope = useRef<ResizeScope | null>(null);
+  const pane = useRef({
+    edge,
+    value,
     container,
     property,
     read,
@@ -59,9 +77,106 @@ export function ResizeHandle({
     maxWidth,
     formatProperty,
     onCommit,
+    resizingAttribute,
+    visible,
   });
-  useEffect(() => {
-    paneRef.current = {
+  const detach = useCallback(() => {
+    if (marked.current) marked.current.element.removeAttribute(marked.current.attribute);
+    marked.current = null;
+  }, []);
+  const retire = useCallback(() => gesture.current?.retire(), []);
+  const mark = useCallback(
+    (element: HTMLElement) => {
+      detach();
+      const attribute = pane.current.resizingAttribute;
+      if (!attribute) return;
+      element.setAttribute(attribute, "");
+      marked.current = { element, attribute };
+    },
+    [detach],
+  );
+
+  const reflect = useCallback(
+    function reflectScope(): ResizeScope | null {
+      const handle = handleRef.current;
+      const current = pane.current;
+      const element = handle ? current.container(handle) : null;
+      if (!handle || !element) {
+        retire();
+        detach();
+        observer.current?.observer.disconnect();
+        observer.current = null;
+        scope.current = null;
+        return null;
+      }
+      const width = element.clientWidth;
+      const min = current.minWidth(width);
+      const max = current.maxWidth(width);
+      const next: ResizeScope = {
+        element,
+        edge: current.edge,
+        property: current.property,
+        value: current.value,
+        width,
+        min,
+        max,
+        formatted: current.formatProperty(clampWidth(current.value, min, max), width),
+        attribute: current.resizingAttribute,
+        visible: current.visible,
+      };
+      const previous = scope.current;
+      const changed =
+        previous !== null &&
+        (previous.element !== element ||
+          previous.edge !== next.edge ||
+          previous.property !== next.property ||
+          previous.value !== next.value ||
+          previous.width !== width ||
+          previous.min !== min ||
+          previous.max !== max ||
+          previous.formatted !== next.formatted ||
+          previous.attribute !== next.attribute ||
+          previous.visible !== next.visible);
+      if (changed || !current.visible) retire();
+      if (!previous || changed) scope.current = next;
+      if (!current.visible) {
+        detach();
+        observer.current?.observer.disconnect();
+        observer.current = null;
+        return scope.current;
+      }
+      if (observer.current?.element !== element) {
+        observer.current?.observer.disconnect();
+        const nextObserver = new element.ownerDocument.defaultView!.ResizeObserver(() =>
+          reflectScope(),
+        );
+        observer.current = { element, observer: nextObserver };
+        nextObserver.observe(element);
+      }
+      if (!gesture.current?.active) {
+        if (changed)
+          element.style.setProperty(
+            current.property,
+            next.formatted,
+            element.style.getPropertyPriority(current.property),
+          );
+        handle.setAttribute("aria-valuemin", String(min));
+        handle.setAttribute("aria-valuemax", String(max));
+        handle.setAttribute("aria-valuenow", String(clampWidth(current.value, min, max)));
+      }
+      return scope.current;
+    },
+    [retire, detach],
+  );
+
+  useLayoutEffect(
+    () => () => retire(),
+    [value, edge, property, resizingAttribute, visible, retire],
+  );
+  useLayoutEffect(() => {
+    pane.current = {
+      edge,
+      value,
       container,
       property,
       read,
@@ -69,200 +184,121 @@ export function ResizeHandle({
       maxWidth,
       formatProperty,
       onCommit,
+      resizingAttribute,
+      visible,
     };
+    reflect();
   });
-
-  const detach = useCallback(() => {
-    const marked = markedRef.current;
-    if (marked && resizingAttribute) marked.removeAttribute(resizingAttribute);
-    markedRef.current = null;
-  }, [resizingAttribute]);
-
-  const mark = useCallback(
-    (element: HTMLElement) => {
-      if (!resizingAttribute) return;
-      element.setAttribute(resizingAttribute, "");
-      markedRef.current = element;
-    },
-    [resizingAttribute],
-  );
-
-  const cancelGesture = useCallback(() => gestureRef.current?.cancel(), []);
-
-  useEffect(
+  useLayoutEffect(
     () => () => {
-      cancelGesture();
+      retire();
+      observer.current?.observer.disconnect();
+      observer.current = null;
       detach();
     },
-    [cancelGesture, detach, edge, property],
+    [retire, detach],
   );
-
-  useEffect(() => {
-    const handle = handleRef.current;
-    if (!gestureRef.current || !handle) return;
-    cancelGesture();
-    const pane = paneRef.current;
-    const element = pane.container(handle);
-    if (!element) return;
-    const containerWidth = element.clientWidth;
-    const width = clampWidth(value, pane.minWidth(containerWidth), pane.maxWidth(containerWidth));
-    element.style.setProperty(
-      pane.property,
-      pane.formatProperty(width, containerWidth),
-      element.style.getPropertyPriority(pane.property),
-    );
-  }, [cancelGesture, value]);
-
-  useEffect(() => {
-    const handle = handleRef.current;
-    const element = handle ? paneRef.current.container(handle) : null;
-    if (!handle || !element) return;
-    const sync = () => {
-      const pane = paneRef.current;
-      const min = pane.minWidth(element.clientWidth);
-      const max = pane.maxWidth(element.clientWidth);
-      handle.setAttribute("aria-valuemin", String(min));
-      handle.setAttribute("aria-valuemax", String(max));
-      handle.setAttribute("aria-valuenow", String(clampWidth(value, min, max)));
-    };
-    sync();
-    const observer = new ResizeObserver(sync);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [value]);
+  const bindHandle = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (handleRef.current !== node) retire();
+      handleRef.current = node;
+    },
+    [retire],
+  );
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (gesture.current?.active) return;
+      const admitted = reflect();
       const handle = handleRef.current;
-      const element = handle ? paneRef.current.container(handle) : null;
-      if (!handle || !element || event.button !== 0) return;
-      if (gestureRef.current) return;
-      event.preventDefault();
-      detach();
-
-      const pane = paneRef.current;
-      const pointerId = event.pointerId;
-      const startX = event.clientX;
-      const startWidth = pane.read(element);
-      const containerWidth = element.clientWidth;
-      const original = element.style.getPropertyValue(pane.property);
-      const priority = element.style.getPropertyPriority(pane.property);
+      if (!admitted?.visible || !handle) return;
+      const current = pane.current;
+      const { element } = admitted;
+      const startWidth = current.read(element);
+      const original = element.style.getPropertyValue(current.property);
+      const priority = element.style.getPropertyPriority(current.property);
       let width = startWidth;
       let moved = false;
-
-      const finish = (commit: boolean) => {
-        if (!gestureRef.current) return;
-        gestureRef.current = null;
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", canceled);
-        window.removeEventListener("keydown", keydown, true);
-        window.removeEventListener("blur", cancel);
-        handle.removeEventListener("lostpointercapture", canceled);
-        observer.disconnect();
-        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-        detach();
-        if (commit && moved && width !== startWidth) {
-          pane.onCommit(width, containerWidth);
-        } else {
-          if (original) element.style.setProperty(pane.property, original, priority);
-          else element.style.removeProperty(pane.property);
-          handle.setAttribute("aria-valuenow", String(paneRef.current.read(element)));
-        }
-      };
-      const cancel = () => finish(false);
-      const move = (moveEvent: PointerEvent) => {
-        if (moveEvent.pointerId !== pointerId) return;
-        if (
-          !element.isConnected ||
-          element.clientWidth !== containerWidth ||
-          paneRef.current.container(handle) !== element
-        ) {
-          cancel();
-          return;
-        }
-        const delta = edge === "end" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
-        if (delta === 0 && !moved) return;
-        moved = true;
-        width = clampWidth(
-          startWidth + delta,
-          pane.minWidth(containerWidth),
-          pane.maxWidth(containerWidth),
-        );
-        element.style.setProperty(pane.property, pane.formatProperty(width, containerWidth));
-        handle.setAttribute("aria-valuenow", String(width));
-      };
-      const up = (upEvent: PointerEvent) => {
-        if (upEvent.pointerId === pointerId) finish(element.clientWidth === containerWidth);
-      };
-      const canceled = (cancelEvent: PointerEvent) => {
-        if (cancelEvent.pointerId === pointerId) cancel();
-      };
-      const keydown = (keyEvent: KeyboardEvent) => {
-        if (keyEvent.key !== "Escape") return;
-        keyEvent.preventDefault();
-        keyEvent.stopPropagation();
-        cancel();
-      };
-      const observer = new ResizeObserver(() => {
-        if (element.clientWidth !== containerWidth) cancel();
+      let active: PointerSession | null = null;
+      active = PointerSession.start(handle, event, {
+        current: () =>
+          scope.current === admitted &&
+          pane.current.visible &&
+          handleRef.current === handle &&
+          handle.isConnected &&
+          element.isConnected &&
+          pane.current.container(handle) === element &&
+          element.clientWidth === admitted.width,
+        move(delta) {
+          const change = admitted.edge === "end" ? delta.x : -delta.x;
+          if (change === 0 && !moved) return;
+          moved = true;
+          width = clampWidth(startWidth + change, admitted.min, admitted.max);
+          element.style.setProperty(
+            current.property,
+            current.formatProperty(width, admitted.width),
+          );
+          handle.setAttribute("aria-valuenow", String(width));
+        },
+        finish(outcome) {
+          if (gesture.current === active) gesture.current = null;
+          detach();
+          if (outcome === "retire") return;
+          if (outcome === "complete" && moved && width !== startWidth) {
+            current.onCommit(width, admitted.width);
+            return;
+          }
+          if (original) element.style.setProperty(current.property, original, priority);
+          else element.style.removeProperty(current.property);
+          handle.setAttribute(
+            "aria-valuenow",
+            String(clampWidth(pane.current.value, admitted.min, admitted.max)),
+          );
+        },
       });
-      observer.observe(element);
-      gestureRef.current = { cancel };
-      handle.setPointerCapture(pointerId);
+      if (!active?.active) return;
+      gesture.current = active;
+      event.preventDefault();
       mark(element);
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", canceled);
-      window.addEventListener("keydown", keydown, true);
-      window.addEventListener("blur", cancel);
-      handle.addEventListener("lostpointercapture", canceled);
     },
-    [detach, edge, mark],
+    [reflect, detach, mark],
   );
 
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!RESIZE_KEYS.includes(event.key)) return;
-      cancelGesture();
-      const handle = handleRef.current;
-      const pane = paneRef.current;
-      const element = handle ? pane.container(handle) : null;
-      if (!handle || !element) return;
+      retire();
+      const admitted = reflect();
+      if (!admitted?.visible) return;
+      const current = pane.current;
       event.preventDefault();
-
-      const containerWidth = element.clientWidth;
-      const min = pane.minWidth(containerWidth);
-      const max = pane.maxWidth(containerWidth);
       const step = event.shiftKey ? COARSE_STEP_PX : STEP_PX;
-      const grows = event.key === (edge === "end" ? "ArrowRight" : "ArrowLeft");
+      const grows = event.key === (current.edge === "end" ? "ArrowRight" : "ArrowLeft");
       const next =
         event.key === "Home"
-          ? min
+          ? admitted.min
           : event.key === "End"
-            ? max
-            : clampWidth(pane.read(element) + (grows ? step : -step), min, max);
-
-      mark(element);
-      element.style.setProperty(pane.property, pane.formatProperty(next, containerWidth));
-      handle.setAttribute("aria-valuemin", String(min));
-      handle.setAttribute("aria-valuemax", String(max));
-      handle.setAttribute("aria-valuenow", String(next));
-      pane.onCommit(next, containerWidth);
+            ? admitted.max
+            : clampWidth(current.value + (grows ? step : -step), admitted.min, admitted.max);
+      mark(admitted.element);
+      admitted.element.style.setProperty(
+        current.property,
+        current.formatProperty(next, admitted.width),
+      );
+      handleRef.current?.setAttribute("aria-valuenow", String(next));
+      current.onCommit(next, admitted.width);
     },
-    [cancelGesture, edge, mark],
+    [retire, reflect, mark],
   );
-
   const releaseKeyboard = useCallback(() => {
-    if (gestureRef.current) return;
-    detach();
+    if (!gesture.current?.active) detach();
   }, [detach]);
 
   return (
     <Separator
       {...props}
       data-focus-inset=""
-      ref={handleRef}
+      ref={bindHandle}
       orientation="vertical"
       tabIndex={0}
       onPointerDown={onPointerDown}

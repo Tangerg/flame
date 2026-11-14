@@ -582,6 +582,14 @@ portal focus and keeps that capture closed when the owner returns. Ordinary
 dismissal retains Base UI's trigger return; an explicit final-focus policy stays
 with the caller. These are the same semantics used by transcript previews.
 
+`PointerSession` owns one primary pointer, capture, deltas and settlement in the
+actual target window. It settles before releasing capture: completion may commit
+once, cancellation restores a valid preview, and retirement only revokes the old
+operation. Source, visibility, viewport or external authority changes retire before
+new projections apply. Consumers provide the current-source qualification and
+business mutations. `useScrollPan` shares native scroll panning between images and
+diagrams; zoom, fit and keyboard commands retire it before taking over.
+
 `ImageViewport` owns fitting, anchored zoom, keyboard panning and pointer dragging
 for one captured `ImageSource`. Its flex frame owns its bounded scroll region and
 zoom tray. A source identity or viewport-size change resets the fit; the detached
