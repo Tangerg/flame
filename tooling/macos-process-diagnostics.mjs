@@ -22,7 +22,10 @@ for (;;) {
         line,
       ),
     );
-  await writeFile(join(output, "latest-processes.txt"), processes.join("\n"));
+  await writeFile(
+    join(output, "latest-processes.txt"),
+    `${processes.join("\n")}\n`,
+  );
   for (const line of processes) {
     const [pid, , rss, elapsed] = line.trim().split(/\s+/);
     const seconds = elapsed
@@ -32,7 +35,7 @@ for (;;) {
     if (sampled.has(pid) || seconds < 2 || (Number(rss) > 1024 && !officeStall))
       continue;
     sampled.add(pid);
-    await writeFile(join(output, `${pid}-process.txt`), line);
+    await writeFile(join(output, `${pid}-process.txt`), `${line}\n`);
     try {
       await execute(
         "/usr/bin/sample",
@@ -40,7 +43,10 @@ for (;;) {
         { timeout: 10_000 },
       );
     } catch (error) {
-      await writeFile(join(output, `${pid}-sample-error.txt`), String(error));
+      await writeFile(
+        join(output, `${pid}-sample-error.txt`),
+        `${String(error)}\n`,
+      );
     }
   }
   await delay(1000);
