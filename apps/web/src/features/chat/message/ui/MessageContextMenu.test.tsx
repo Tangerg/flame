@@ -247,9 +247,13 @@ describe("messageContextMenu", () => {
     expect(screen.queryByRole("menuitem", { name: "Restore to here" })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: "Copy plain text" }));
     await settleMenu();
-    expect(writeToClipboard).toHaveBeenCalledWith("inspect this child task", {
-      successLabel: "Copied as plain text",
-    });
+    expect(writeToClipboard).toHaveBeenCalledWith(
+      testClient.messages.show,
+      "inspect this child task",
+      {
+        successLabel: "Copied as plain text",
+      },
+    );
 
     await openFocusMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: "Edit in composer" }));

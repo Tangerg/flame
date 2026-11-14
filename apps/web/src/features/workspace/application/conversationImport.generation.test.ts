@@ -9,10 +9,10 @@ import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
 const mocks = vi.hoisted(() => ({
   sessionExport: true,
   invalidateAgentSessions: vi.fn().mockResolvedValue(undefined),
-  notifyError: vi.fn(),
+  notify: vi.fn(),
   rehydrateSessionView: vi.fn().mockResolvedValue(undefined),
   selectAgentSession: vi.fn(),
-  success: vi.fn(),
+  show: vi.fn(),
 }));
 
 vi.mock("@/features/connection/public/capabilities", () => ({
@@ -27,13 +27,6 @@ vi.mock("@/extensions/selectors/extensions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/extensions/selectors/extensions")>();
   return { ...actual, lookupExtensionByKey: vi.fn() };
 });
-vi.mock("@/features/notifications/public/notifications", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/features/notifications/public/notifications")>();
-  return { ...actual, notifyError: mocks.notifyError };
-});
-
-vi.mock("sonner", () => ({ toast: { success: mocks.success } }));
 
 const disposers: Array<() => void> = [];
 let files: FileTransferPort | null;
@@ -46,10 +39,12 @@ beforeEach(() => {
   Object.assign(testClient.agent.access, { rehydrateSessionView: mocks.rehydrateSessionView });
   mocks.sessionExport = true;
   mocks.invalidateAgentSessions.mockReset().mockResolvedValue(undefined);
-  mocks.notifyError.mockReset();
+  mocks.notify.mockReset();
   mocks.rehydrateSessionView.mockReset().mockResolvedValue(undefined);
   mocks.selectAgentSession.mockReset();
-  mocks.success.mockReset();
+  mocks.show.mockReset();
+  vi.spyOn(testClient.messages, "notify").mockImplementation(mocks.notify);
+  vi.spyOn(testClient.messages, "show").mockImplementation(mocks.show);
   files = null;
 });
 
@@ -69,7 +64,7 @@ describe("conversation import generation", () => {
     await testClient.workspace.access.conversationImport.importConversationJson();
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(artifact);
-    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
   });
 
@@ -93,7 +88,7 @@ describe("conversation import generation", () => {
     expect(successorImport).not.toHaveBeenCalled();
     expect(mocks.rehydrateSessionView).not.toHaveBeenCalled();
     expect(mocks.selectAgentSession).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
   });
 
   it("settles an in-flight import at replacement and rejects every late product effect", async () => {
@@ -118,7 +113,7 @@ describe("conversation import generation", () => {
     expect(mocks.rehydrateSessionView).not.toHaveBeenCalled();
     expect(mocks.invalidateAgentSessions).not.toHaveBeenCalled();
     expect(mocks.selectAgentSession).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
   });
 
   it("retires the import while rehydrate is pending before query repair or navigation", async () => {
@@ -145,7 +140,7 @@ describe("conversation import generation", () => {
     expect(settledAtReplacement).toBe(true);
     expect(mocks.invalidateAgentSessions).not.toHaveBeenCalled();
     expect(mocks.selectAgentSession).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
   });
 
   it("retires query repair before it can publish old import navigation", async () => {
@@ -171,7 +166,7 @@ describe("conversation import generation", () => {
 
     expect(settledAtReplacement).toBe(true);
     expect(mocks.selectAgentSession).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
   });
 
   it.each(["rehydration", "list"] as const)(
@@ -185,8 +180,8 @@ describe("conversation import generation", () => {
       await testClient.workspace.access.conversationImport.importConversationJson();
       expect(importConversation).toHaveBeenCalledOnce();
       expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
-      expect(mocks.success).not.toHaveBeenCalled();
-      expect(mocks.notifyError).toHaveBeenCalledOnce();
+      expect(mocks.show).not.toHaveBeenCalled();
+      expect(mocks.notify).toHaveBeenCalledOnce();
     },
   );
 
@@ -208,7 +203,8 @@ describe("conversation import generation", () => {
     choose(click.mock.instances[0] as HTMLInputElement, unreadable);
     await failed;
 
-    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith(
+      "error",
       "Couldn't read the selected file. Select it again or choose another JSON file.",
       { source: "import" },
     );
@@ -216,7 +212,7 @@ describe("conversation import generation", () => {
     expect(mocks.rehydrateSessionView).not.toHaveBeenCalled();
     expect(mocks.invalidateAgentSessions).not.toHaveBeenCalled();
     expect(mocks.selectAgentSession).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
 
     const artifact = validArtifact("imported");
     const retried = testClient.workspace.access.conversationImport.importConversationJson();
@@ -226,8 +222,8 @@ describe("conversation import generation", () => {
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
     expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("imported");
-    expect(mocks.success).toHaveBeenCalledOnce();
-    expect(mocks.notifyError).toHaveBeenCalledOnce();
+    expect(mocks.show).toHaveBeenCalledOnce();
+    expect(mocks.notify).toHaveBeenCalledOnce();
   });
 
   it("keeps a cancelled selection quiet", async () => {
@@ -241,9 +237,9 @@ describe("conversation import generation", () => {
     (click.mock.instances[0] as HTMLInputElement).dispatchEvent(new Event("cancel"));
     await cancelled;
 
-    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(importConversation).not.toHaveBeenCalled();
-    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.show).not.toHaveBeenCalled();
   });
 
   it("keeps a retired read failure quiet without blocking the successor import", async () => {
@@ -266,7 +262,7 @@ describe("conversation import generation", () => {
     read.reject(new DOMException("The I/O read operation failed.", "NotReadableError"));
     await drainMicrotasks();
 
-    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(retiredImport).not.toHaveBeenCalled();
 
     const artifact = validArtifact("successor-session");
@@ -277,8 +273,8 @@ describe("conversation import generation", () => {
 
     expect(successorImport).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
     expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("successor-session");
-    expect(mocks.success).toHaveBeenCalledOnce();
-    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.show).toHaveBeenCalledOnce();
+    expect(mocks.notify).not.toHaveBeenCalled();
   });
 
   it("owns repeated import intent as one picker and one mutation", async () => {

@@ -45,6 +45,7 @@ beforeEach(async () => {
     testClient.installedPlugins,
     testClient.theme,
     testClient.goals,
+    testClient.messages,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(

@@ -140,9 +140,6 @@ const KEY_PATTERN = /^\s*"([^"]+)":/gm;
 // and prettier's wrapped form, where the value sits on the next line.
 const PAIR_PATTERN = /"([^"]+)":\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')/g;
 const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;
-// A notify/toast call whose first argument opens a string literal.
-const LITERAL_COPY_PATTERN =
-  /\b(?:notifyError|notifyInfo|toast\.(?:success|error|info|warning|message))\(\s*[`"']/g;
 // `t("some.key")` — only literal keys can be checked against the catalog.
 const LITERAL_KEY_PATTERN = /\bt\(\s*"([^"]+)"/g;
 // A string or template holding two consecutive words: prose, not an identifier.
@@ -193,7 +190,7 @@ const VIEW_RING = /^(?:(?:plugins|pages|ui)\/|features\/.+\/ui\/)/;
 // Mechanism class lists remain outside the localized-copy contract.
 const CLASS_LIST = /[-:]/;
 
-function lookupCopy(path, source) {
+function sourceCopy(path, source) {
   const ast = parseSync(source, {
     filename: path,
     babelrc: false,
@@ -216,12 +213,34 @@ function lookupCopy(path, source) {
     binding?.path.parent.type === "ImportDeclaration" &&
     binding.path.parent.source.value === "@stylexjs/stylex";
   const failures = [];
+  const inView = VIEW_RING.test(sourceRelativePath(path));
+  const literalNotification = (value, call) => {
+    if (value?.type !== "StringLiteral" && value?.type !== "TemplateLiteral") return;
+    failures.push(
+      `${sourceRelativePath(path)}:${value.loc.start.line}: literal copy in ${call} — use t("key")`,
+    );
+  };
   traverse(ast, {
     CallExpression(call) {
       const callee = call.get("callee");
       if (callee.isMemberExpression()) {
         const object = callee.get("object");
         const member = callee.get("property");
+        if (member.isIdentifier({ name: "notify" })) {
+          literalNotification(call.node.arguments[1], "notify");
+        } else if (member.isIdentifier({ name: "show" })) {
+          const presentation = call.node.arguments[0];
+          if (presentation?.type === "ObjectExpression") {
+            for (const property of presentation.properties) {
+              if (
+                property.type === "ObjectProperty" &&
+                !property.computed &&
+                ["message", "description"].includes(property.key.name ?? property.key.value)
+              )
+                literalNotification(property.value, "show");
+            }
+          }
+        }
         if (
           object.isIdentifier() &&
           (member.isIdentifier({ name: "create" }) || member.isStringLiteral({ value: "create" }))
@@ -244,6 +263,7 @@ function lookupCopy(path, source) {
       }
     },
     ObjectProperty(property) {
+      if (!inView) return;
       let literal = property.get("value");
       while (literal.isTSAsExpression() || literal.isTSSatisfiesExpression())
         literal = literal.get("expression");
@@ -513,12 +533,6 @@ for (const path of sourceFiles(SRC_DIR)) {
   if (relative.startsWith("lib/i18n/locales/")) continue;
   const lineOf = (index) => source.slice(0, index).split("\n").length;
 
-  for (const match of source.matchAll(LITERAL_COPY_PATTERN)) {
-    failures.push(
-      `${relative}:${lineOf(match.index)}: literal copy in ${match[0].trim()} — use t("key")`,
-    );
-  }
-
   const code = withoutComments(source);
   for (const match of code.matchAll(LITERAL_KEY_PATTERN)) {
     // A plural key is named by its BASE: `t("plugins.errors", { count })` is what i18next
@@ -635,7 +649,8 @@ for (const path of sourceFiles(SRC_DIR)) {
     }
 
     // Rule 14 — a table of labels is still copy, wherever the component keeps it.
-    if (VIEW_RING.test(relative)) failures.push(...lookupCopy(path, source));
+    if (VIEW_RING.test(relative) || /\.\s*(?:notify|show)\s*\(/.test(source))
+      failures.push(...sourceCopy(path, source));
   }
 }
 

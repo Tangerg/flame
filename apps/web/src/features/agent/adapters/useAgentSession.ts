@@ -10,7 +10,6 @@ export interface AgentSessionDependencies {
 }
 import { type FlameClient } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import {
@@ -77,7 +76,10 @@ export function useAgentSession(
 
     const reportSynchronizationFailure = (error: unknown) => {
       if (error instanceof RpcConnectionError) reportConnectionLoss();
-      else notifyError(t("agent.synchronizationIncomplete"), { source: "session" });
+      else
+        agentAccess.notifications.notify("error", t("agent.synchronizationIncomplete"), {
+          source: "session",
+        });
     };
 
     const runPump = createAgentRunPump({
@@ -162,7 +164,9 @@ export function useAgentSession(
           throw new Error("accepted opening belongs to another Session");
         }
         if (observation.type === "retired") {
-          notifyInfo(t("agent.acceptedRunRetired"), { source: "session" });
+          agentAccess.notifications.notify("info", t("agent.acceptedRunRetired"), {
+            source: "session",
+          });
           const view = await refreshAgentSessionProjection(agentAccess, sessionId, {
             signal,
             canCommit: () => !cancelledState.value && !signal.aborted,

@@ -1,3 +1,4 @@
+import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { createImageExport } from "@/foundation/imageExport";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
@@ -45,8 +46,10 @@ export function createTestClient(
     start?: boolean;
     endpoint?: string;
     saveImage?: ImageExport;
+    messages?: NotificationFeed;
   } = {},
 ) {
+  const messages = options.messages ?? new NotificationFeed(() => {});
   const theme = createTheme(document, window);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
@@ -92,7 +95,7 @@ export function createTestClient(
     (() => {
       throw new Error("Runtime test client is not configured");
     });
-  const agent = createAgentFixture(client, navigation, runtime, stream, scope);
+  const agent = createAgentFixture(client, navigation, runtime, stream, scope, messages);
   if (options.start !== false) agent.start();
   const goals = createGoals((sessionId) =>
     agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
@@ -110,7 +113,15 @@ export function createTestClient(
   );
   if (options.start !== false) composer.start();
   const host = options.host ?? createBrowserHost();
-  const workspace = createWorkspace(client, navigation, host, () => false, agent.access, runtime);
+  const workspace = createWorkspace(
+    client,
+    navigation,
+    host,
+    () => false,
+    agent.access,
+    runtime,
+    messages,
+  );
   workspace.dock.activate(runtime.endpoint.currentRuntimeEndpoint());
   const directory = createWorkingDirectoryPicker(
     () => Promise.resolve(null),
@@ -123,6 +134,7 @@ export function createTestClient(
     workspace.access,
     "Flame",
     runtime.endpoint.currentRuntimeEndpoint,
+    messages,
   );
   const installedPlugins = createInstalledPlugins(
     client,
@@ -190,6 +202,7 @@ export function createTestClient(
     directory,
     selectors,
     notifications,
+    messages,
     installedPlugins,
     Wrapper,
     get sessionDependencies() {
@@ -213,6 +226,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      if (!options.messages) messages.dispose();
       goals.dispose();
       notifications.dispose();
       theme.dispose();

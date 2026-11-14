@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useComposer } from "@/features/composer/public/composer";
 import { useRuntime } from "@/features/connection/public/runtime";
 import {
@@ -20,7 +21,6 @@ import { useSlashSuggestions } from "@/features/composer/application/slashSugges
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { submitComposer } from "@/features/composer/public/submit";
 import {
   captureComposerFocus,
@@ -57,6 +57,7 @@ export function useComposerInputController({
   const composerAccess = useComposer();
   const runtimeAccess = useRuntime();
 
+  const { messages } = useNotifications();
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // The file-error Retry lives in the portaled popup, outside the textarea's
@@ -150,7 +151,8 @@ export function useComposerInputController({
     const files = imageFiles(event.clipboardData?.files);
     const text = event.clipboardData?.getData("text") ?? "";
     const intent = composerPasteIntent(files, text, acceptsImages);
-    if (files.length > 0 && !acceptsImages) notifyError(t("composer.attachImage.unsupported"));
+    if (files.length > 0 && !acceptsImages)
+      messages.notify("error", t("composer.attachImage.unsupported"));
     switch (intent.kind) {
       case "images":
         event.preventDefault();
@@ -170,7 +172,7 @@ export function useComposerInputController({
     composition.clear();
     if (files.length === 0) return;
     if (!acceptsImages) {
-      notifyError(t("composer.attachImage.unsupported"));
+      messages.notify("error", t("composer.attachImage.unsupported"));
       return;
     }
     onAddImages(files);

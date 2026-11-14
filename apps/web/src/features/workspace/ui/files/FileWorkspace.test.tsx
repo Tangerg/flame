@@ -14,7 +14,6 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import * as notifications from "@/features/notifications/public/notifications";
 
 import {
   closeWorkspaceFile,
@@ -2485,7 +2484,7 @@ describe("local file action feedback", () => {
     selection.current = { status: "ready", cwd: "/work/project" };
     vi.mocked(testClient.workspace.access.local.open).mockResolvedValue(false);
     vi.mocked(testClient.workspace.access.local.reveal).mockResolvedValue(false);
-    return vi.spyOn(notifications.useNotificationStore.getState(), "push");
+    return vi.spyOn(testClient.messages, "record");
   }
 
   it("reports a refused header reveal without replacing the reader or moving focus", async () => {

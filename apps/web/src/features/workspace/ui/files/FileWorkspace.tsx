@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
@@ -121,6 +122,7 @@ function initialWindow(line: number): LineWindow {
 }
 
 export function FileWorkspace() {
+  const { messages } = useNotifications();
   const workspaceAccess = useWorkspace();
 
   const t = useT();
@@ -132,10 +134,16 @@ export function FileWorkspace() {
   const returnFocus = useRef(false);
   const fileActions: LocalFileActions = {
     open(cwd, path) {
-      void run(() => openLocalFile(workspaceAccess, cwd, path), t("file.openFailed", { path }));
+      void run(
+        () => openLocalFile(messages, workspaceAccess, cwd, path),
+        t("file.openFailed", { path }),
+      );
     },
     reveal(cwd, path) {
-      void run(() => revealLocalFile(workspaceAccess, cwd, path), t("file.revealFailed", { path }));
+      void run(
+        () => revealLocalFile(messages, workspaceAccess, cwd, path),
+        t("file.revealFailed", { path }),
+      );
     },
     feedback(focusTarget) {
       if (feedback.state !== "error") return undefined;

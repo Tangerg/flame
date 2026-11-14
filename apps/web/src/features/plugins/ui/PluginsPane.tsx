@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { SharedEffectSettings } from "./SharedEffects";
 import { iconGlyph } from "@/ui/icons/index";
 import { PackageManager } from "@/features/plugins/ui/PackageManager";
@@ -189,15 +190,20 @@ const SOURCE_LABEL_KEYS: Record<PluginErrorSource, string> = {
 };
 
 function ErrorEntry({ err }: { err: PluginError }) {
+  const { messages } = useNotifications();
   const t = useT();
   const messageId = useId();
   const time = formatClock(err.timestamp);
   const source = t(SOURCE_LABEL_KEYS[err.source]);
   const copy = () =>
-    void writeToClipboard(`[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`, {
-      successLabel: t("plugins.errorCopied"),
-      failureLabel: t("plugins.copyFailed"),
-    });
+    void writeToClipboard(
+      messages.show,
+      `[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`,
+      {
+        successLabel: t("plugins.errorCopied"),
+        failureLabel: t("plugins.copyFailed"),
+      },
+    );
   return (
     <div {...stylex.props(pp.errorCard)}>
       <p id={messageId} {...stylex.props(pp.message, ss.label, typeStep.uiMd)}>

@@ -22,7 +22,7 @@ export function forkSessionAt(
       void invalidateAgentSessions();
     })
     .catch((error: unknown) => {
-      if (owner.isCurrent()) reportSessionError("fork", error);
+      if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "fork", error);
     });
 }
 

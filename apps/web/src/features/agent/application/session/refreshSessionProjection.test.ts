@@ -16,7 +16,6 @@ import {
 } from "@/features/agent/application/runtimeGateway";
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
 
-import { useNotificationStore } from "@/features/notifications/public/notifications";
 import {
   refreshAgentSessionProjection,
   revalidateAgentSessionProjection,
@@ -111,11 +110,11 @@ describe("refreshAgentSessionProjection", () => {
         loadSessionSnapshot: () => read.promise,
       } as unknown as AgentRuntimeGateway);
       const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
-      expect(useNotificationStore.getState().log).toHaveLength(0);
+      expect(testClient.messages.snapshot()).toHaveLength(0);
       if (superseded) writeNewerProjectionFact();
       read.resolve(material(terminal));
       await refreshing;
-      expect(useNotificationStore.getState().log).toHaveLength(0);
+      expect(testClient.messages.snapshot()).toHaveLength(0);
       const view = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
       expect(view.messages).toHaveLength(superseded ? 2 : 1);
       const input = view.messages.find((message) => message.id === "reserved_user_item")!;

@@ -9,18 +9,16 @@ prepareTestClient(() => {
 });
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
-const { record } = vi.hoisted(() => ({ record: vi.fn() }));
-
-vi.mock("@/features/notifications/public/notifications", () => ({
-  useNotificationStore: { getState: () => ({ push: record }) },
-}));
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
+import { type MockInstance } from "vitest";
+let record: MockInstance<NotificationFeed["record"]>;
 
 const open = vi.fn<(cwd: string, path: string) => Promise<boolean>>();
 const reveal = vi.fn<(cwd: string, path: string) => Promise<boolean>>();
 let dispose: () => void;
 
 beforeEach(() => {
-  record.mockReset();
+  record = vi.spyOn(testClient.messages, "record");
   open.mockReset().mockResolvedValue(true);
   reveal.mockReset().mockResolvedValue(true);
   dispose = stubInstance(testClient.workspace.access.local, {
@@ -38,7 +36,12 @@ describe.each([
 ])("local file $name", ({ run, host, other }) => {
   it("delivers the original target once and stays quiet on success", async () => {
     await expect(
-      run(testClient.workspace.access, "/work/project/", "/work/project/文件/logo.png"),
+      run(
+        testClient.messages,
+        testClient.workspace.access,
+        "/work/project/",
+        "/work/project/文件/logo.png",
+      ),
     ).resolves.toEqual({
       ok: true,
     });
@@ -51,7 +54,12 @@ describe.each([
   it("explains unavailable local access instead of treating false as success", async () => {
     host.mockResolvedValueOnce(false);
 
-    const result = await run(testClient.workspace.access, "/work/project", "assets/logo.png");
+    const result = await run(
+      testClient.messages,
+      testClient.workspace.access,
+      "/work/project",
+      "assets/logo.png",
+    );
 
     expect(record).toHaveBeenCalledOnce();
     expect(record.mock.calls[0]![0].message).toContain("assets/logo.png");
@@ -66,7 +74,7 @@ describe.each([
     host.mockRejectedValueOnce(new Error("Permission denied"));
 
     await expect(
-      run(testClient.workspace.access, "/work/project", "assets/logo.png"),
+      run(testClient.messages, testClient.workspace.access, "/work/project", "assets/logo.png"),
     ).resolves.toMatchObject({ ok: false });
 
     expect(record).toHaveBeenCalledOnce();
@@ -78,14 +86,24 @@ describe.each([
 it("keeps the original target when another host and action replace the current context", async () => {
   const first = Promise.withResolvers<boolean>();
   reveal.mockReturnValueOnce(first.promise);
-  const operation = revealLocalFile(testClient.workspace.access, "/work/old", "src/first.go");
+  const operation = revealLocalFile(
+    testClient.messages,
+    testClient.workspace.access,
+    "/work/old",
+    "src/first.go",
+  );
   const next = stubInstance(testClient.workspace.access.local, {
     available: () => true,
     open,
     reveal,
   });
   try {
-    await openLocalFile(testClient.workspace.access, "/work/new", "src/second.go");
+    await openLocalFile(
+      testClient.messages,
+      testClient.workspace.access,
+      "/work/new",
+      "src/second.go",
+    );
     first.reject(new Error("Original target no longer exists"));
     await operation;
 
@@ -102,7 +120,7 @@ it("still names the failed action and recovery when a rejection has no diagnosti
   open.mockRejectedValueOnce(null);
 
   await expect(
-    openLocalFile(testClient.workspace.access, "/work/project", "report.pdf"),
+    openLocalFile(testClient.messages, testClient.workspace.access, "/work/project", "report.pdf"),
   ).resolves.toMatchObject({ ok: false });
 
   expect(record).toHaveBeenCalledOnce();
@@ -118,7 +136,12 @@ it("handles a synchronous host refusal through the same feedback boundary", asyn
   });
 
   await expect(
-    revealLocalFile(testClient.workspace.access, "/work/project", "src/main.go"),
+    revealLocalFile(
+      testClient.messages,
+      testClient.workspace.access,
+      "/work/project",
+      "src/main.go",
+    ),
   ).resolves.toMatchObject({
     ok: false,
   });

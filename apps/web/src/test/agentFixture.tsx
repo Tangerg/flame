@@ -20,12 +20,14 @@ import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
 import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { createAgentDefaultSession } from "@/features/agent/adapters/agentDefaultSessionPort";
 import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createAgentFixture(
   client: () => FlameClient,
   navigation: Navigator,
   runtime: RuntimeAccess,
   stream: RuntimeStream,
   scope: RuntimeServerScope,
+  notifications: NotificationFeed,
 ) {
   const sessions = createAgentSessionStore();
   const projection = createAgentStore(sessions);
@@ -45,6 +47,7 @@ export function createAgentFixture(
     },
   );
   let dependencies: AgentDependencies = {
+    notifications,
     state: state.state,
     view: state.view,
     defaultSession,

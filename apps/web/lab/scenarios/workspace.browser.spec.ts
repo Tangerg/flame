@@ -1604,11 +1604,11 @@ for (const theme of ["light", "dark"] as const) {
       host.flameVisualNotify("Provider credentials were rejected", "error");
     });
 
-    const toast = page.locator("[data-sonner-toast]");
+    const toast = page.getByRole("dialog", { name: "Provider credentials were rejected" });
     await expect(toast).toContainText("Provider credentials were rejected");
     await expect(toast).toHaveAttribute("data-type", "error");
     await expect(toast).toHaveCSS("font-family", "monospace");
-    await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", theme);
+    await expect(toast).toHaveCSS("color-scheme", theme);
     await expect(toast).toHaveCSS("border-top-width", "0px");
 
     await expect.poll(() => toast.count(), { timeout: 6_000 }).toBe(0);

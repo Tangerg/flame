@@ -1,6 +1,6 @@
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type VisualClient } from "./client";
 import webPackageContent from "../../package.json?raw";
-import { notifyFrom } from "@/features/notifications/public/notifications";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { WorkspaceChangesAction } from "@/features/plugins/ui/WorkspaceChangesAction";
@@ -570,17 +570,19 @@ function workspaceDataPlugin(
   });
 }
 
-const visualNotifier = definePlugin({
-  name: "flame.visual.notifier",
-  setup(ctx) {
-    const host = window as unknown as {
-      flameVisualNotify?: (message: string, level: NotificationLevel) => void;
-    };
-    host.flameVisualNotify = (message, level) =>
-      notifyFrom(ctx.metadata.pluginName, message, level);
-    ctx.lifetime.defer(() => delete host.flameVisualNotify);
-  },
-});
+function createVisualNotifier(messages: NotificationFeed) {
+  return definePlugin({
+    name: "flame.visual.notifier",
+    setup(ctx) {
+      const host = window as unknown as {
+        flameVisualNotify?: (message: string, level: NotificationLevel) => void;
+      };
+      host.flameVisualNotify = (message, level) =>
+        messages.notify(level, message, { source: ctx.metadata.pluginName });
+      ctx.lifetime.defer(() => delete host.flameVisualNotify);
+    },
+  });
+}
 
 const visualShortcuts = definePlugin({
   name: "flame.visual.shortcuts",
@@ -768,7 +770,7 @@ export async function installVisualWorkspaceFixture(
     personalizationSettings,
     createInstalledPluginLoader(visual.installedPlugins),
     pluginManagementPane,
-    visualNotifier,
+    createVisualNotifier(visual.messages),
     visualShortcuts,
     workspaceDataPlugin(readDiff, runtimeClient, state),
     visualFileRenderers(runtimeClient),

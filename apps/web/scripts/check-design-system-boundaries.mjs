@@ -215,13 +215,18 @@ for (const [fileName, program] of [
   examined += 1;
   const insideControls = shared || rel.startsWith("ui/atoms/");
   const insideDesignSystem = shared || DESIGN_SYSTEM_RINGS.some((prefix) => rel.startsWith(prefix));
+  const insideFeaturePresentation = rel.startsWith("features/") && rel.endsWith(".tsx");
 
   function visit(node) {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const specifier = node.moduleSpecifier.text;
-      if (specifier.startsWith("@base-ui/react") && !insideDesignSystem) {
+      if (
+        specifier.startsWith("@base-ui/react") &&
+        !insideDesignSystem &&
+        !insideFeaturePresentation
+      ) {
         violations.push(
-          `${rel}:${lineOf(sourceFile, node)} imports Base UI outside the design system`,
+          `${rel}:${lineOf(sourceFile, node)} imports Base UI outside a control or feature presentation owner`,
         );
       }
     }
@@ -304,5 +309,5 @@ if (AGENT_CLASSES.size < MIN_AGENT_CLASSES) {
 }
 
 console.log(
-  `check-design-system-boundaries: ${examined} files read; native interaction and Base UI stay behind design-system rings, and ${AGENT_CLASSES.size} agent-* classes stay inside ui/agent`,
+  `check-design-system-boundaries: ${examined} files read; native interaction stays behind controls, Base UI stays at control or feature presentation owners, and ${AGENT_CLASSES.size} agent-* classes stay inside ui/agent`,
 );

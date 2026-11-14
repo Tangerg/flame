@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useComposer } from "@/features/composer/public/composer";
 import { useAgent } from "@/features/agent/public/agent";
 import { iconGlyph } from "@/ui/icons/index";
@@ -22,7 +23,6 @@ import { useApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { contributeLayout } from "@/extensions/contributeHelpers";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { useT } from "@/lib/i18n/index";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useAddComposerImageFiles } from "@/features/composer/public/attachments";
@@ -119,6 +119,7 @@ const MODE_ICON: Record<ApprovalMode, IconName> = {
 };
 
 function ApprovalModePill() {
+  const { messages } = useNotifications();
   const agentAccess = useAgent();
 
   const t = useT();
@@ -131,7 +132,7 @@ function ApprovalModePill() {
     try {
       await agentAccess.setApprovalMode(next);
     } catch (err) {
-      notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
+      messages.notify("error", rpcErrorText(err) ?? t("approvals.error.mode"));
     }
   };
   return (

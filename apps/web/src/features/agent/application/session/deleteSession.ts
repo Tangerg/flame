@@ -18,7 +18,7 @@ export function useDeleteSession(): (id: string) => Promise<void> {
         state.deleteSession(id);
         void invalidateAgentSessions();
       } catch (err) {
-        if (owner.isCurrent()) reportSessionError("delete", err);
+        if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "delete", err);
       }
     },
     [agentAccess],

@@ -31,7 +31,8 @@ import { createBuiltinPlugins } from "@/app/builtinPlugins";
 import { createClientHost } from "@/platform/clientHost";
 import { installExternalLinks } from "@/platform/externalLinks";
 import { t } from "@/lib/i18n/index";
-import { toast } from "sonner";
+import { WindowNotifications } from "@/features/notifications/toaster/window";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { ClientRenderer } from "@/app/renderer";
 import { bindClientPageLifecycle, bindDraftExitWarning } from "@/app/pageLifecycle";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
@@ -40,192 +41,218 @@ import { disposeHighlighter } from "@/lib/highlight/shiki";
 import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
-const host = createClientHost();
-const disposeExternalLinks = installExternalLinks(document, host.kind, (error, url) => {
-  console.error("[desktop] external link open failed:", error);
-  toast.error(t("link.openFailed"), { description: url, duration: Infinity, closeButton: true });
-});
-const theme = createTheme(document, window);
 
-const connection = createRuntimeConnection(
-  host,
-  runtimeRequestMeta,
-  createRuntimeMutationJournalStorage("flame.builtin.runtime"),
-);
+const root = createRoot(document.getElementById("root")!);
 
-const navigation = createAppNavigation();
+function startClient(messages: NotificationFeed, render: (content: ReactNode) => void): () => void {
+  let rootAttached = true;
+  const unmountRoot = () => {
+    if (!rootAttached) return;
+    rootAttached = false;
+    root.unmount();
+  };
+  const host = createClientHost();
+  const disposeExternalLinks = installExternalLinks(document, host.kind, (error, url) => {
+    console.error("[desktop] external link open failed:", error);
+    messages.show({
+      level: "error",
+      message: t("link.openFailed"),
+      description: url,
+      lifetime: "persistent",
+    });
+  });
+  const theme = createTheme(document, window);
 
-const agent = createAgent(
-  connection.client,
-  navigation.navigator,
-  connection.access,
-  connection.stream,
-  connection.scope,
-);
-const goals = createGoals((sessionId) =>
-  agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
-);
-const composer = createComposer(
-  {
-    getActiveSessionId: agent.access.getActiveSessionId,
-    getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
-    subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
-    subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
-    subscribeDeleted: agent.access.subscribeDeletedAgentSession,
-  },
-  connection.access.endpoint.currentRuntimeEndpoint,
-  connection.scope,
-);
-const workspace = createWorkspace(
-  connection.client,
-  navigation.navigator,
-  host,
-  connection.localWorkspaceAvailable,
-  agent.access,
-  connection.access,
-);
-const directory = createWorkingDirectoryPicker(
-  () => host.chooseWorkingDirectory(),
-  connection.localWorkspaceAvailable,
-  connection.access.endpoint.currentRuntimeEndpoint,
-);
-const notifications = createNotifications(
-  host,
-  agent.access,
-  workspace.access,
-  PRODUCT_NAME,
-  connection.access.endpoint.currentRuntimeEndpoint,
-);
-const installedPlugins = createInstalledPlugins(
-  connection.client,
-  connection.endpoint,
-  workspace.access,
-  theme.access,
-  (request) => host.saveFile(request),
-  (children) => (
-    <ApplicationContext>
-      <ApplicationSurface>{children}</ApplicationSurface>
-    </ApplicationContext>
-  ),
-);
-const plugins = createBuiltinPlugins(
-  connection,
-  navigation.navigator,
-  agent,
-  composer,
-  workspace,
-  directory,
-  notifications,
-  installedPlugins,
-  theme,
-  goals,
-);
-
-function ApplicationContext({ children }: { children: ReactNode }) {
-  return (
-    <GoalProvider value={goals.access}>
-      <ApplicationCalloutLabels>
-        <ThemeProvider value={theme.access}>
-          <RuntimeProvider value={connection.access}>
-            <agent.Provider>
-              <ComposerProvider value={composer.access}>
-                <WorkspaceProvider value={workspace.access}>
-                  <WorkingDirectoryProvider value={directory.access}>
-                    <ImageSaveProvider
-                      saveImage={(source) =>
-                        createImageExport(IMAGE_FILENAME_STEM, host.saveFile)(source)
-                      }
-                    >
-                      <NotificationProvider value={notifications.access}>
-                        <InstalledPluginsProvider value={installedPlugins.access}>
-                          {children}
-                        </InstalledPluginsProvider>
-                      </NotificationProvider>
-                    </ImageSaveProvider>
-                  </WorkingDirectoryProvider>
-                </WorkspaceProvider>
-              </ComposerProvider>
-            </agent.Provider>
-          </RuntimeProvider>
-        </ThemeProvider>
-      </ApplicationCalloutLabels>
-    </GoalProvider>
+  const connection = createRuntimeConnection(
+    host,
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage("flame.builtin.runtime"),
   );
+
+  const navigation = createAppNavigation();
+
+  const agent = createAgent(
+    connection.client,
+    navigation.navigator,
+    connection.access,
+    connection.stream,
+    connection.scope,
+    messages,
+  );
+  const goals = createGoals((sessionId) =>
+    agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
+  );
+  const composer = createComposer(
+    {
+      getActiveSessionId: agent.access.getActiveSessionId,
+      getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
+      subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
+      subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
+      subscribeDeleted: agent.access.subscribeDeletedAgentSession,
+    },
+    connection.access.endpoint.currentRuntimeEndpoint,
+    connection.scope,
+  );
+  const workspace = createWorkspace(
+    connection.client,
+    navigation.navigator,
+    host,
+    connection.localWorkspaceAvailable,
+    agent.access,
+    connection.access,
+    messages,
+  );
+  const directory = createWorkingDirectoryPicker(
+    () => host.chooseWorkingDirectory(),
+    connection.localWorkspaceAvailable,
+    connection.access.endpoint.currentRuntimeEndpoint,
+  );
+  const notifications = createNotifications(
+    host,
+    agent.access,
+    workspace.access,
+    PRODUCT_NAME,
+    connection.access.endpoint.currentRuntimeEndpoint,
+    messages,
+  );
+  const installedPlugins = createInstalledPlugins(
+    connection.client,
+    connection.endpoint,
+    workspace.access,
+    theme.access,
+    (request) => host.saveFile(request),
+    (children) => (
+      <ApplicationContext>
+        <ApplicationSurface>{children}</ApplicationSurface>
+      </ApplicationContext>
+    ),
+  );
+  const plugins = createBuiltinPlugins(
+    connection,
+    navigation.navigator,
+    agent,
+    composer,
+    workspace,
+    directory,
+    notifications,
+    installedPlugins,
+    theme,
+    goals,
+    messages,
+  );
+
+  function ApplicationContext({ children }: { children: ReactNode }) {
+    return (
+      <GoalProvider value={goals.access}>
+        <ApplicationCalloutLabels>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={connection.access}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <ImageSaveProvider
+                        saveImage={(source) =>
+                          createImageExport(IMAGE_FILENAME_STEM, host.saveFile)(source)
+                        }
+                      >
+                        <NotificationProvider value={notifications.access}>
+                          <InstalledPluginsProvider value={installedPlugins.access}>
+                            {children}
+                          </InstalledPluginsProvider>
+                        </NotificationProvider>
+                      </ImageSaveProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
+        </ApplicationCalloutLabels>
+      </GoalProvider>
+    );
+  }
+
+  const renderer = new ClientRenderer({
+    initializeClientHost: connection.initialize,
+    prepareWindowChrome: () => applyWindowChrome(host),
+    watchWindowChrome: () => watchWindowChrome(host),
+    mount() {
+      render(
+        <RootBoundary reload={installedPlugins.reload}>
+          <ApplicationContext>
+            <App plugins={plugins} navigation={navigation} />
+          </ApplicationContext>
+        </RootBoundary>,
+      );
+      return { unmount: unmountRoot };
+    },
+    mountStartupFailure(error) {
+      render(
+        <StartupFailure
+          scope={FAILURE_SCOPE.startup}
+          error={error}
+          reload={installedPlugins.reload}
+        />,
+      );
+      return { unmount: unmountRoot };
+    },
+    closeConnection: async () => {
+      const failures: unknown[] = [];
+      for (const dispose of [
+        () => messages.dispose(),
+        disposeExternalLinks,
+        goals.dispose,
+        notifications.dispose,
+        composer.dispose,
+        directory.dispose,
+        workspace.dispose,
+        agent.dispose,
+        navigation.dispose,
+        installedPlugins.dispose,
+        theme.dispose,
+        disposeHighlighter,
+      ]) {
+        try {
+          await dispose();
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+      if (failures.length) throw new AggregateError(failures, "Client owner disposal failed");
+      // The control channel must remain usable while any original plugin exit or
+      // acknowledgement is unconfirmed. A later controlled reload retries it.
+      await connection.dispose();
+    },
+    reportFailure(scope, error) {
+      console.error(`[desktop] ${scope} failed:`, error);
+    },
+  });
+
+  const teardown = () => {
+    void renderer.dispose().catch((error: unknown) => {
+      console.error("[desktop] teardown failed:", error);
+    });
+  };
+
+  const unbindPageLifecycle = bindClientPageLifecycle(window, teardown);
+  const stopDraftWarning = bindDraftExitWarning(window, composer);
+
+  void renderer.start().catch((error: unknown) => {
+    console.error("[desktop] startup failed:", error);
+  });
+
+  return () => {
+    rootAttached = false;
+    stopDraftWarning();
+    unbindPageLifecycle();
+    teardown();
+  };
 }
 
-const renderer = new ClientRenderer({
-  initializeClientHost: connection.initialize,
-  prepareWindowChrome: () => applyWindowChrome(host),
-  watchWindowChrome: () => watchWindowChrome(host),
-  mount() {
-    const container = document.getElementById("root");
-    const root = createRoot(container!);
-    root.render(
-      <RootBoundary reload={installedPlugins.reload}>
-        <ApplicationContext>
-          <App plugins={plugins} navigation={navigation} />
-        </ApplicationContext>
-      </RootBoundary>,
-    );
-    return root;
-  },
-  mountStartupFailure(error) {
-    const root = createRoot(document.getElementById("root")!);
-    root.render(
-      <StartupFailure
-        scope={FAILURE_SCOPE.startup}
-        error={error}
-        reload={installedPlugins.reload}
-      />,
-    );
-    return root;
-  },
-  closeConnection: async () => {
-    const failures: unknown[] = [];
-    for (const dispose of [
-      disposeExternalLinks,
-      goals.dispose,
-      notifications.dispose,
-      composer.dispose,
-      directory.dispose,
-      workspace.dispose,
-      agent.dispose,
-      navigation.dispose,
-      installedPlugins.dispose,
-      theme.dispose,
-      disposeHighlighter,
-    ]) {
-      try {
-        await dispose();
-      } catch (error) {
-        failures.push(error);
-      }
-    }
-    if (failures.length) throw new AggregateError(failures, "Client owner disposal failed");
-    // The control channel must remain usable while any original plugin exit or
-    // acknowledgement is unconfirmed. A later controlled reload retries it.
-    await connection.dispose();
-  },
-  reportFailure(scope, error) {
-    console.error(`[desktop] ${scope} failed:`, error);
-  },
-});
-
-const teardown = () => {
-  void renderer.dispose().catch((error: unknown) => {
-    console.error("[desktop] teardown failed:", error);
-  });
-};
-
-const unbindPageLifecycle = bindClientPageLifecycle(window, teardown);
-const stopDraftWarning = bindDraftExitWarning(window, composer);
-
-disposeOnHmr(() => {
-  stopDraftWarning();
-  unbindPageLifecycle();
-  teardown();
-});
-
-void renderer.start().catch((error: unknown) => {
-  console.error("[desktop] startup failed:", error);
-});
+root.render(
+  <RootBoundary reload={async () => window.location.reload()}>
+    <WindowNotifications start={startClient} />
+  </RootBoundary>,
+);
+disposeOnHmr(() => root.unmount());

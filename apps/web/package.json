@@ -48,12 +48,13 @@
     "lab:measure": "playwright test --config playwright.lab.config.ts --project=performance"
   },
   "dependencies": {
-    "@flame/brand-assets": "*",
     "@base-ui/react": "^1.9.0",
+    "@flame/brand-assets": "*",
     "@flame/component-sdk": "*",
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz",
     "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/core": "^3.1.1",
     "@opentelemetry/exporter-logs-otlp-http": "^0.301.1",
@@ -92,14 +93,12 @@
     "remark-parse": "11.0.0",
     "remend": "^1.4.0",
     "shiki": "^4.6.0",
-    "sonner": "^2.0.8",
     "tinykeys": "^4.0.1",
     "unified": "11.0.5",
     "unist-util-visit": "^5.2.0",
     "use-stick-to-bottom": "^1.1.6",
     "zod": "^4.6.7",
-    "zustand": "^5.1.0",
-    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz"
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

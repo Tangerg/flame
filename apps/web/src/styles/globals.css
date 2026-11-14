@@ -336,20 +336,26 @@ html.theme-dark {
   background: var(--app-drawer-surface);
 }
 
-.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"][data-floating] {
+body:has([data-slot="notification-toast"])
+  .agent-shell
+  [data-slot="composer-overlay"][data-floating] {
   --notification-composer-clearance: var(--notification-reading-space);
 }
 
-.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+body:has([data-slot="notification-toast"])
+  .agent-shell
+  [data-slot="composer-overlay"]:not([data-floating]) {
   --notification-empty-composer-limit: calc(100% - 2 * var(--notification-reading-space));
 }
 
 @container empty-conversation (max-height: 20rem) {
-  .agent-shell:has([data-sonner-toast]) [data-slot="empty-conversation-layout"] {
+  body:has([data-slot="notification-toast"]) .agent-shell [data-slot="empty-conversation-layout"] {
     --notification-empty-inset: 0px;
   }
 
-  .agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+  body:has([data-slot="notification-toast"])
+    .agent-shell
+    [data-slot="composer-overlay"]:not([data-floating]) {
     --notification-empty-composer-limit: calc(100% - var(--notification-min-reading-height));
     position: sticky;
     top: var(--notification-min-reading-height);

@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useId, useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { Popover } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
@@ -8,7 +8,7 @@ import { EmptyState, IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
   notificationBadgeText,
@@ -41,9 +41,9 @@ const styles = stylex.create({
 
 export function NotificationsBadge() {
   const t = useT();
-  const log = useNotificationStore((state) => state.log);
-  const dismiss = useNotificationStore((state) => state.dismiss);
-  const clearAll = useNotificationStore((state) => state.clearAll);
+  const { messages } = useNotifications();
+  const log = useSyncExternalStore(messages.subscribe, messages.snapshot, messages.snapshot);
+  const { dismiss, clearAll } = messages;
   const unread = unreadNotificationCount(log);
   const messageIdPrefix = useId();
   const historyRef = useRef<HTMLDivElement>(null);

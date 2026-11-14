@@ -6,6 +6,7 @@ import { createNotificationCentre } from "@/features/notifications/adapters/syst
 import { createSystemNotifier } from "@/features/notifications/systemNotifier";
 import { startSystemNotificationRouting } from "@/features/notifications/systemNotificationRouting";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createNotifications(
   host: Pick<
     ClientHost,
@@ -19,6 +20,7 @@ export function createNotifications(
   workspace: WorkspaceAccess,
   productName: string,
   endpoint: () => string,
+  messages: NotificationFeed,
 ) {
   const notifier = createSystemNotifier(
     createNotificationCentre(host, endpoint, (error) =>
@@ -28,6 +30,7 @@ export function createNotifications(
   const access: NotificationAccess = {
     notifier,
     productName,
+    messages,
   };
   let stop: (() => void) | null = null;
   let disposed = false;

@@ -65,7 +65,7 @@ function doCreate(
   return owner
     .runSessionCreate(key, () => createAndOpen({ owner, runtime, state, ...opts }))
     .catch((error: unknown) => {
-      if (owner.isCurrent()) reportSessionError("create", error);
+      if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "create", error);
       return null;
     });
 }

@@ -8,7 +8,6 @@ prepareTestClient(() => {
 });
 import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
 const submitted = vi.fn(() => true);
 
@@ -43,11 +42,6 @@ vi.mock("@/features/connection/public/serviceStatus", () => ({
   runtimeCommandsAvailable: () => true,
 }));
 
-vi.mock("@/features/notifications/public/notifications", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/features/notifications/public/notifications")>();
-  return { ...actual, notifyError: vi.fn() };
-});
 vi.mock("@/features/composer/public/extensionPoints", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/features/composer/public/extensionPoints")>();
@@ -176,7 +170,7 @@ describe("useComposerInputController — Enter after an IME commit", () => {
 
 describe("clipboard image admission", () => {
   it.each([true, false])("preserves the draft when image support is %s", (acceptsImages) => {
-    vi.mocked(notifyError).mockClear();
+    const notify = vi.spyOn(testClient.messages, "notify");
     const onAddImages = vi.fn();
     const onChange = vi.fn();
     const { result } = mount({ acceptsImages, onAddImages, onChange });
@@ -190,7 +184,7 @@ describe("clipboard image admission", () => {
     );
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(onAddImages).toHaveBeenCalledTimes(acceptsImages ? 1 : 0);
-    expect(notifyError).toHaveBeenCalledTimes(acceptsImages ? 0 : 1);
+    expect(notify).toHaveBeenCalledTimes(acceptsImages ? 0 : 1);
     expect(onChange).not.toHaveBeenCalled();
   });
 

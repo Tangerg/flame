@@ -225,6 +225,7 @@ class ComponentInstance {
             signal,
             component,
             this.sources.captureSessionId,
+            this.sources.notificationAccess.messages,
           )
         : () => {
             throw new Error("Client command registration requires clientEffect placement.");

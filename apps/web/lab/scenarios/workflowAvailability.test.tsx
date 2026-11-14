@@ -111,6 +111,7 @@ it("withdraws the Goal suggestion on a backend change without discarding the typ
         () => client,
         fixture.goals,
         fixture.installedPlugins.access.workflows,
+        fixture.messages,
       ),
     );
     fixture.render(

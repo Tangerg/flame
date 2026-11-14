@@ -1,3 +1,5 @@
+import { WindowNotifications } from "@/features/notifications/toaster/window";
+import type { ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
@@ -33,20 +35,31 @@ beforeEach(async () => {
     createVisualRuntimeTransport(runtime.snapshot, runtime.capabilities, runtime.readDiff),
     { capabilities: () => runtime.capabilities },
   );
-  visual = createVisualClient(() => client);
-  await installVisualWorkspaceFixture(visual, () => client, "dock-light", "light", runtime);
+  let renderContent!: (node: ReactNode) => void;
   render(
-    <visual.Wrapper>
-      <QueryClientProvider client={queryClient}>
-        <FontScaleProvider fontSize={14}>
-          <CodeHighlightProvider component={HighlightedCodeSource}>
-            <TooltipProvider>
-              <VisualWorkspaceFixture state="dock-light" />
-            </TooltipProvider>
-          </CodeHighlightProvider>
-        </FontScaleProvider>
-      </QueryClientProvider>
-    </visual.Wrapper>,
+    <WindowNotifications
+      start={(messages, update) => {
+        visual = createVisualClient(() => client, messages);
+        renderContent = update;
+        return () => {};
+      }}
+    />,
+  );
+  await installVisualWorkspaceFixture(visual, () => client, "dock-light", "light", runtime);
+  act(() =>
+    renderContent(
+      <visual.Wrapper>
+        <QueryClientProvider client={queryClient}>
+          <FontScaleProvider fontSize={14}>
+            <CodeHighlightProvider component={HighlightedCodeSource}>
+              <TooltipProvider>
+                <VisualWorkspaceFixture state="dock-light" />
+              </TooltipProvider>
+            </CodeHighlightProvider>
+          </FontScaleProvider>
+        </QueryClientProvider>
+      </visual.Wrapper>,
+    ),
   );
 });
 

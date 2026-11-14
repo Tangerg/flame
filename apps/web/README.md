@@ -285,6 +285,17 @@ Segment. Duplicate event folds, rejected batches and retired projection generati
 cannot publish another settlement. Cold reads and history refreshes stay quiet.
 Accepted cancellation receipts use the same committed transition projection.
 
+Each window starts notification producers only after its Base UI Toast Provider
+exposes the public command capability. One Provider owns the live queue, four-second
+ordinary lifetime, persistent errors and interaction pauses. All live messages remain
+readable in the bounded notification band; Action and localized Close controls use
+normal keyboard order. The window's notification feed owns its separate in-memory
+history. Closing a Toast never marks history read, and clearing history never closes
+live feedback. Cancelled departure, visibility changes and persisted page transitions
+retain this capability; actual window retirement revokes it before producer disposal.
+Feature presentations compose public Base UI primitives at their behavior owner;
+shared controls retain their token, accessibility and cross-host contracts.
+
 Session title editing captures the Session ID, revision, original title and command
 port when Rename opens. List refreshes cannot retarget that edit. Summary writes
 preserve the captured revision even when queued behind another write; Runtime owns

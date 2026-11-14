@@ -330,10 +330,11 @@ export async function installVisualAgentFixture(
       runtimeClient,
       visual.goals,
       visual.installedPlugins.access.workflows,
+      visual.messages,
     ),
     planProgress,
     subagentsView,
-    ...createToolRenderingPlugins(visual.workspace.access),
+    ...createToolRenderingPlugins(visual.workspace.access, visual.messages),
     await visualToolResults(runtimeClient, state === "genui-report"),
     fileListProvider(fileListState),
   );

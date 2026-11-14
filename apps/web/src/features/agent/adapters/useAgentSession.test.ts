@@ -25,7 +25,6 @@ import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/test/kernel";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -102,7 +101,7 @@ describe("useAgentSession driver lifecycle", () => {
 
   it("tells the user when restoring the mounted session projection fails", async () => {
     const { driver } = parkedDriver();
-    useNotificationStore.setState({ log: [] });
+    testClient.messages.clearAll();
     runtimeClient = () =>
       ({
         sessions: { snapshot: vi.fn().mockRejectedValue(new Error("snapshot rejected")) },
@@ -113,7 +112,7 @@ describe("useAgentSession driver lifecycle", () => {
     );
 
     await waitFor(() => {
-      expect(useNotificationStore.getState().log).toContainEqual(
+      expect(testClient.messages.snapshot()).toContainEqual(
         expect.objectContaining({ level: "error", plugin: "session" }),
       );
     });
@@ -716,7 +715,7 @@ describe("useAgentSession run timing guards", () => {
         runs: { recoverCommands: async () => [], cancel },
       }) as unknown as FlameClient;
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    useNotificationStore.setState({ log: [] });
+    testClient.messages.clearAll();
     const onConnectionLost = vi.fn();
     const { driver } = parkedDriver();
     testClient.renderHook(() =>
@@ -888,7 +887,7 @@ describe("useAgentSession durable recovery", () => {
   });
 
   it("refreshes a retired opening without attaching replacement material that reused its Run ID", async () => {
-    useNotificationStore.setState({ log: [] });
+    testClient.messages.clearAll();
     const replacement = runRef({
       id: "run_reused",
       sessionId: RID,
@@ -912,7 +911,7 @@ describe("useAgentSession durable recovery", () => {
     expect(subscribe).not.toHaveBeenCalled();
     expect(start).toHaveBeenCalledOnce();
     expect(testClient.agent.projection.store.getState().sessions[RID]!.view.messages).toEqual([]);
-    expect(useNotificationStore.getState().log).toContainEqual(
+    expect(testClient.messages.snapshot()).toContainEqual(
       expect.objectContaining({
         level: "info",
         plugin: "session",

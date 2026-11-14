@@ -171,8 +171,14 @@ for (const [label, path, code, diagnostic] of [
   [
     "literal notifications",
     "features/example/ui/Notice.tsx",
-    'notifyInfo("Action finished");',
-    /literal copy in notifyInfo/,
+    'messages.notify("info", "Action finished");',
+    /literal copy in notify/,
+  ],
+  [
+    "literal Toast presentations",
+    "features/example/ui/Notice.tsx",
+    'messages.show({level: "info", message: "Action finished"});',
+    /literal copy in show/,
   ],
   [
     "unknown translation keys",

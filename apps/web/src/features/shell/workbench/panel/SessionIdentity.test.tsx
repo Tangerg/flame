@@ -113,7 +113,9 @@ describe("SessionIdentity", () => {
     expect(itemLabels(menu)).toEqual(["Copy working directory", "Copy session ID"]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: label }));
 
-    expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith(text, { successLabel });
+    expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith(testClient.messages.show, text, {
+      successLabel,
+    });
     await vi.waitFor(() => expect(menu.isConnected).toBe(false));
   });
 
@@ -166,9 +168,13 @@ describe("SessionIdentity", () => {
       expect(document.activeElement).toBe(outside);
       const next = await openMenu(route, "Other work");
       fireEvent.click(within(next).getByRole("menuitem", { name: "Copy session ID" }));
-      expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith("session-other", {
-        successLabel: "Session ID copied",
-      });
+      expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith(
+        testClient.messages.show,
+        "session-other",
+        {
+          successLabel: "Session ID copied",
+        },
+      );
     },
   );
 
@@ -182,9 +188,13 @@ describe("SessionIdentity", () => {
     expect(screen.getByRole("menu", { name: "Shipped notes" })).toBe(menu);
     expect(moreButton("Shipped notes")).toBeTruthy();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Copy session ID" }));
-    expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith("session-release", {
-      successLabel: "Session ID copied",
-    });
+    expect(writeToClipboard).toHaveBeenCalledExactlyOnceWith(
+      testClient.messages.show,
+      "session-release",
+      {
+        successLabel: "Session ID copied",
+      },
+    );
   });
 
   it.each(["context", "dropdown"] as const)(

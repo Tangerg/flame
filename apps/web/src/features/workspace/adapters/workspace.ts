@@ -12,6 +12,7 @@ import { createLocalWorkspaceActions } from "@/features/workspace/adapters/local
 import { runtimeWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createWorkspace(
   client: () => FlameClient,
   navigation: Navigator,
@@ -19,6 +20,7 @@ export function createWorkspace(
   canAccessLocalWorkspace: () => boolean,
   agent: AgentAccess,
   runtime: RuntimeAccess,
+  notifications: NotificationFeed,
 ) {
   const dock = createContextDockStore();
   const layout = createShellLayoutStore();
@@ -28,7 +30,7 @@ export function createWorkspace(
     layout,
     runtime.endpoint.currentRuntimeEndpoint,
   );
-  const conversationImport = createConversationImport(agent, runtime);
+  const conversationImport = createConversationImport(agent, runtime, notifications);
   const access: WorkspaceAccess = {
     navigation: navigationState,
     local: createLocalWorkspaceActions(host, canAccessLocalWorkspace),

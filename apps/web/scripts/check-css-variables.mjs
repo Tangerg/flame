@@ -22,9 +22,9 @@ const DIST = join(ROOT, "dist", "assets");
  *
  * The value is the file that sets it, and the guard checks that the file still names it — so
  * this list cannot rot into a set of excuses for variables whose setter was deleted. Base UI
- * writes its own three onto the positioner element, which no file of ours can be pointed at.
+ * writes its public geometry properties onto its own elements.
  */
-const BASE_UI = Symbol("set by Base UI's Positioner");
+const BASE_UI = Symbol("set by Base UI primitives");
 const RUNTIME_SET = new Map([
   ["--agent-overflow-distance", "src/ui/agent/overflow-label.tsx"],
   ["--agent-overflow-duration", "src/ui/agent/overflow-label.tsx"],
@@ -33,6 +33,7 @@ const RUNTIME_SET = new Map([
   ["--anchor-width", BASE_UI],
   ["--available-height", BASE_UI],
   ["--available-width", BASE_UI],
+  ["--collapsible-panel-height", BASE_UI],
 ]);
 
 let sheets;
