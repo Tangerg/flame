@@ -56,6 +56,17 @@ export interface FileMentions extends SuggestionList<string> {
   retry: FileMentionRetry | undefined;
 }
 
+function mentionStatus(
+  cwd: string | undefined,
+  listing: ReturnType<typeof useWorkspaceListFiles>,
+  itemCount: number,
+): FileMentionStatus {
+  if (cwd === undefined) return "no-workspace";
+  if (listing.isError) return "error";
+  if (listing.data === undefined) return "loading";
+  return itemCount === 0 ? "empty" : "ready";
+}
+
 export function useFileMentions({ value, caret, cwd, apply }: Args): FileMentions {
   const [dismissedStart, setDismissedStart] = useState<number | null>(null);
 
@@ -73,16 +84,7 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     return files.map((file) => file.path);
   }, [open, mention, files]);
 
-  const status: FileMentionStatus =
-    cwd === undefined
-      ? "no-workspace"
-      : listing.isError
-        ? "error"
-        : files === undefined
-          ? "loading"
-          : items.length === 0
-            ? "empty"
-            : "ready";
+  const status = mentionStatus(cwd, listing, items.length);
 
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
   const { index, setIndex } = useSuggestionIndex(candidateKey, items.length);

@@ -33,7 +33,7 @@ whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
 header normalization must never replace a captured command key or replay cursor.
 Unrepresentable values are refused before opening Fetch.
 
-Consumers use explicit public entries: the main API, `json`, `wire`, `methods`,
+Consumers use explicit public entries: the main API, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
 and unit tests are not exports. `testing` supplies the deliberate memory-transport
 fixture and sample index. Its raw sample JSON is an exact generated copy of
@@ -47,8 +47,8 @@ params, { signal })` returns canonical JSON with the original numeric lexemes,
 wide integers, null and missing members retained. It uses the same request,
 generated validation and cancellation path. It accepts only unary queries;
 commands and streams keep their existing lifecycle APIs. Use `parseJSON`,
-`stringifyJSON`, `bigint` and `ExactNumber` to inspect or return exact data.
-The `json` entry owns only that pure data mechanism. Its dependency closure
+`stringifyJSON`, `bigint` and `ExactNumber` from `@frame/sdk/json` to inspect or return exact data.
+That Frame entry owns the pure data mechanism. Its dependency closure
 cannot enter Runtime calls, protocol records or validation; neutral application
 input and presentation code may consume it without importing the client API.
 

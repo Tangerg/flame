@@ -29,7 +29,7 @@
 21 apps/web/vite.config.ts:name
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
 22 packages/runtime-client/src/client.ts:request
-24 packages/runtime-client/src/transports/http.ts:drainStream
+23 packages/runtime-client/src/transports/http.ts:drainStream
 29 packages/runtime-client/src/transports/http.ts:sendRequest
 30 packages/ui/src/button.tsx:dress
 21 packages/ui/src/disclosure.tsx:<anonymous>
@@ -80,5 +80,4 @@
 23 plugins/tool-results/component/component.tsx:webPage
 46 plugins/trajectory/component/report.tsx:Observation
 31 plugins/trajectory/component/report.tsx:statusTone
-23 tooling/source-graph.mjs:<anonymous>
 26 tooling/workspace.mjs:main

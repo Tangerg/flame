@@ -125,8 +125,7 @@ export function analyzeArtifactGraph(graph) {
     used: size(startup[kind]),
     ceiling,
   }));
-  const features = [];
-  for (const [group, policy] of Object.entries(LAZY_BUDGETS)) {
+  function analyzeLazyGroup(group, policy) {
     const declarations = graph.declarations.filter(
       (entry) => entry.kind === "lazy" && entry.group === group,
     );
@@ -195,9 +194,12 @@ export function analyzeArtifactGraph(graph) {
       used: size(increment),
       ceiling: policy.ceiling,
     };
-    features.push(feature);
-    budgets.push(feature);
+    return feature;
   }
+  const features = Object.entries(LAZY_BUDGETS).map(([group, policy]) =>
+    analyzeLazyGroup(group, policy),
+  );
+  budgets.push(...features);
   return {
     bootstrap: { js: [...bootstrap.js], css: [...bootstrap.css] },
     startup: { js: [...startup.js], css: [...startup.css] },

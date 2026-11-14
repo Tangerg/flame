@@ -14,6 +14,12 @@ Desktop supplies its embedded subtree. Private manifest paths are never served.
 HTML is `no-store` with a fresh 200 response, so revalidation cannot pair a new
 nonce header with an old body. The independent opaque program page remains
 embeddable under its own policy; it does not acquire the main document's deny rule.
+Policy admission rejects unknown or duplicate JSON members, contradictory document
+roles and noncanonical digests. Artifact identities own validation and byte matching;
+document delivery owns each nonce and its paired headers and body. Unavailable
+declared artifact reads return 503 with no-store on unexpected I/O failure.
+Missing and unpublished paths remain 404, including refused lookups outside the
+captured filesystem authority.
 
 `RunnerExecutable` resolves the distribution's sibling `frame-runner` executable.
 The original runner owns process creation, fencing and wait proofs; Runtime never

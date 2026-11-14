@@ -1,9 +1,12 @@
 package webassets
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
+	"errors"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +14,102 @@ import (
 	"testing"
 	"testing/fstest"
 )
+
+type unreadableArtifact struct{ fs.File }
+
+func (unreadableArtifact) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+
+type unclosableArtifact struct{ fs.File }
+
+func (f unclosableArtifact) Close() error { return errors.Join(f.File.Close(), fs.ErrPermission) }
+
+func TestUnpublishedPathsConcealSourceRefusals(t *testing.T) {
+	files := distribution(t)
+	h, err := New(func(name string) (fs.File, error) {
+		if name == "unpublished.txt" {
+			return nil, errors.New("private source refusal")
+		}
+		return files.Open(name)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := request(h, http.MethodGet, "/unpublished.txt", nil)
+	if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "private source refusal") {
+		t.Fatalf("unpublished source refusal = %d %q", response.Code, response.Body.String())
+	}
+}
+
+func TestArtifactReadFailuresRemainUnavailableAndCannotBecomeNotFound(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		open func(fstest.MapFS) (fs.File, error)
+	}{
+		{"open", func(fstest.MapFS) (fs.File, error) { return nil, fs.ErrPermission }},
+		{"read", func(files fstest.MapFS) (fs.File, error) {
+			file, err := files.Open("assets/app.js")
+			return unreadableArtifact{file}, err
+		}},
+		{"close", func(files fstest.MapFS) (fs.File, error) {
+			file, err := files.Open("assets/app.js")
+			return unclosableArtifact{file}, err
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			files := distribution(t)
+			h, err := New(func(name string) (fs.File, error) {
+				if name == "assets/app.js" {
+					return test.open(files)
+				}
+				return files.Open(name)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			response := request(h, http.MethodGet, "/assets/app.js", nil)
+			if response.Code != http.StatusServiceUnavailable || response.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("artifact failure = %d, cache = %q", response.Code, response.Header().Get("Cache-Control"))
+			}
+			if missing := request(h, http.MethodGet, "/missing.js", nil); missing.Code != http.StatusNotFound {
+				t.Fatalf("missing artifact status = %d", missing.Code)
+			}
+			if directory := request(h, http.MethodGet, "/assets", map[string]string{"Accept": "text/html"}); directory.Code != http.StatusNotFound {
+				t.Fatalf("directory status = %d", directory.Code)
+			}
+			if route := request(h, http.MethodGet, "/session/record", map[string]string{"Accept": "text/html"}); route.Code != http.StatusOK {
+				t.Fatalf("application route status = %d", route.Code)
+			}
+		})
+	}
+}
+
+func TestPolicyRefusesDuplicateDeclarationsAndNoncanonicalDigests(t *testing.T) {
+	t.Run("duplicate version", func(t *testing.T) {
+		files := distribution(t)
+		files[policyFile].Data = bytes.Replace(files[policyFile].Data, []byte(`"version":1`), []byte(`"version":0,"version":1`), 1)
+		if _, err := New(files.Open); err == nil {
+			t.Fatal("accepted competing policy version declarations")
+		}
+	})
+	t.Run("noncanonical digest", func(t *testing.T) {
+		files := distribution(t)
+		var p policy
+		if err := json.Unmarshal(files[policyFile].Data, &p); err != nil {
+			t.Fatal(err)
+		}
+		file := p.Files["assets/app.js"]
+		file.SHA256 = strings.ToUpper(file.SHA256)
+		p.Files["assets/app.js"] = file
+		data, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[policyFile].Data = data
+		if _, err := New(files.Open); err == nil {
+			t.Fatal("accepted an identity that cannot match the served bytes")
+		}
+	})
+}
 
 func distribution(t *testing.T) fstest.MapFS {
 	t.Helper()

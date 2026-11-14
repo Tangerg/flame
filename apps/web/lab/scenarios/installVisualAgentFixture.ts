@@ -220,15 +220,10 @@ const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameCli
     },
   });
 
-export async function installVisualAgentFixture(
-  visual: VisualClient,
-  runtimeClient: () => FlameClient,
-  state: VisualAgentState,
-  commandOutput: string | undefined,
+function seedCommandOutput(
   snapshot: RuntimeAgentSessionSnapshot,
-  capabilities: ServerCapabilities,
-  fileListState?: VisualFileListState,
-): Promise<AgentSessionView> {
+  commandOutput: string | undefined,
+) {
   if (commandOutput !== undefined) {
     const command = snapshot.items.find(
       (item) => item.type === "toolCall" && item.tool.name === "shell",
@@ -247,6 +242,18 @@ export async function installVisualAgentFixture(
         : item,
     );
   }
+}
+
+export async function installVisualAgentFixture(
+  visual: VisualClient,
+  runtimeClient: () => FlameClient,
+  state: VisualAgentState,
+  commandOutput: string | undefined,
+  snapshot: RuntimeAgentSessionSnapshot,
+  capabilities: ServerCapabilities,
+  fileListState?: VisualFileListState,
+): Promise<AgentSessionView> {
+  seedCommandOutput(snapshot, commandOutput);
   const projectless = state === "empty" || state === "runtime-down";
   const goalAuthor = {
     installationId: "ed7c6993-768d-454d-adf8-34fbdb263c87",

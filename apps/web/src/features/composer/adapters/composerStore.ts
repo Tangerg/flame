@@ -253,18 +253,8 @@ export function createComposerStore() {
       if (sessionId !== false) {
         const before = beforeState.composer.activate(sessionId).draft;
         const after = next.composer.activate(sessionId).draft;
-        const textChanged =
-          forceText ||
-          before.value !== after.value ||
-          before.pastes.length !== after.pastes.length ||
-          before.pastes.some(
-            (paste, index) =>
-              paste.id !== after.pastes[index]?.id || paste.text !== after.pastes[index]?.text,
-          );
-        const authored =
-          textChanged ||
-          before.imageAttachments.length !== after.imageAttachments.length ||
-          before.imageAttachments.some((image, index) => image !== after.imageAttachments[index]);
+        const textChanged = forceText || !before.hasSameText(after);
+        const authored = textChanged || !before.hasSameAttachments(after);
         if (authored) {
           owner.touched.add(sessionId);
           if (next.legacyDraftState.status === "available")
