@@ -897,7 +897,9 @@ it("retains the captured review through a held current-surface read", async () =
     expect(screen.queryByText(/captured target changed/)).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
     const later = screen.getByRole("button", { name: "Refresh outcomes" });
+    await waitFor(() => expect(later.hasAttribute("disabled")).toBe(false));
     act(() => later.focus());
+    expect(document.activeElement).toBe(later);
     await act(async () => held.release());
 
     await screen.findByText(/captured target changed/);
@@ -961,7 +963,9 @@ it("returns to status from review during a held current-surface read without cla
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh status" }));
     expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
     const later = screen.getByRole("button", { name: "Refresh outcomes" });
+    await waitFor(() => expect(later.hasAttribute("disabled")).toBe(false));
     act(() => later.focus());
+    expect(document.activeElement).toBe(later);
     await act(async () => held.release());
 
     const restored = await screen.findByRole<HTMLTextAreaElement>("textbox", {
@@ -1210,7 +1214,11 @@ it.each(["editor", "outside action"])(
     expect(document.activeElement).toBe(decline);
     fireEvent.click(decline);
     const outside = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh outcomes" });
-    if (destination === "outside action") outside.focus();
+    await waitFor(() => expect(outside.disabled).toBe(false));
+    if (destination === "outside action") {
+      act(() => outside.focus());
+    }
+    expect(document.activeElement).toBe(destination === "editor" ? decline : outside);
     await act(async () => release());
     await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
     expect(document.activeElement).toBe(destination === "editor" ? editor : outside);
