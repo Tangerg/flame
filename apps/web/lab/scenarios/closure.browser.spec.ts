@@ -20,7 +20,7 @@ import { catalog } from "../catalog";
 import { previewURL, readSelection } from "../selection";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
-const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
+const VISUAL_URL = "/lab/fixture.html";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] as const;
 
@@ -1297,9 +1297,13 @@ test("Chinese IME Latin commit does not turn its plain Enter into send", async (
   await expect(page.locator("html")).toHaveAttribute("data-visual-sent-input", /中文 english/);
 });
 
-test("message copy writes through the production clipboard path", async ({ context, page }) => {
+test("message copy writes through the production clipboard path", async ({
+  context,
+  page,
+  baseURL,
+}) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:4174",
+    origin: new URL(baseURL!).origin,
   });
   await openFixture(page, {
     fixture: "agent",
@@ -1718,6 +1722,7 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
       return {
         overlap: viewport.getBoundingClientRect().bottom - composer.getBoundingClientRect().top,
         overlay: Number.parseFloat(style.getPropertyValue("--composer-overlay")),
+        clearance: Number.parseFloat(style.scrollPaddingBottom),
         fadesOutAt: last?.[1] === undefined ? 0 : Number.parseFloat(last[1]),
       };
     });
@@ -1725,7 +1730,8 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
     expect(geometry).not.toBeNull();
     expect(geometry!.overlap).toBeGreaterThan(24);
     expect(geometry!.overlay).toBeGreaterThanOrEqual(geometry!.overlap);
-    expect(geometry!.fadesOutAt).toBeCloseTo(geometry!.overlay, 0);
+    expect(geometry!.fadesOutAt).toBeGreaterThanOrEqual(geometry!.overlay);
+    expect(geometry!.fadesOutAt).toBeLessThanOrEqual(geometry!.clearance);
   });
 }
 
@@ -2081,6 +2087,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await expect(retry).toBeFocused();
         const attempts = () =>
           page.evaluate(() => Number(document.documentElement.dataset.visualFileListAttempts));
+        await expect(retry).toBeEnabled();
         const beforeRetry = await attempts();
         await retry.press("Enter");
         await expect.poll(attempts).toBeGreaterThan(beforeRetry);
@@ -2095,6 +2102,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
         await input.press("Space");
         await input.press("Backspace");
         await expect(retry).toBeVisible();
+        await expect(retry).toBeEnabled();
         const beforePointerRetry = await attempts();
         await retry.click();
         await expect.poll(attempts).toBeGreaterThan(beforePointerRetry);
@@ -2252,11 +2260,13 @@ for (const browserName of ["chromium", "webkit"] as const) {
               await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
               const bounds = row.getBoundingClientRect();
               const box = scroller.getBoundingClientRect();
-              const top = box.top + scroller.clientTop;
-              const bottom = top + scroller.clientHeight;
+              const style = getComputedStyle(scroller);
+              // clientHeight rounds away visible fractional pixels at constrained heights.
+              const top = box.top + Number.parseFloat(style.borderTopWidth);
+              const bottom = box.bottom - Number.parseFloat(style.borderBottomWidth);
               readings.push({
                 bounds: bounds.toJSON(),
-                viewport: { top, bottom, height: scroller.clientHeight },
+                viewport: { top, bottom, height: bottom - top },
                 scrollTop: scroller.scrollTop,
                 scrollHeight: scroller.scrollHeight,
                 clipped: bounds.top < top - 0.5 || bounds.bottom > bottom + 0.5,

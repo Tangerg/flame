@@ -63,6 +63,12 @@ function withinSafeReading(
   bounds = readingTargetBounds(target),
 ) {
   let { top, bottom } = safeReadingBounds(viewport);
+  // An ancestor's smaller clip cannot turn an obscured, fitting target into an oversized one.
+  if (
+    bounds.top < top - EDGE_TOLERANCE ||
+    (bounds.height <= bottom - top && bounds.bottom > bottom + EDGE_TOLERANCE)
+  )
+    return false;
   for (
     let parent = target.parentElement;
     parent && parent !== viewport;
@@ -195,10 +201,11 @@ export function useReadingFocusVisibility(
       observedScrollTopState.value = viewport.scrollTop;
     };
     const onResize = () => {
-      // The guard only expires; a late layout scroll is handled by onScroll itself.
+      // Sticky-header publishers can change clearance without resizing the focused reader.
       if (!resizeScrollFrameState.value)
         resizeScrollFrameState.value = window.requestAnimationFrame(() => {
           resizeScrollFrameState.value = 0;
+          reveal();
         });
       reveal();
     };

@@ -6,7 +6,7 @@ import {
   type VisualWorkIndexState,
 } from "./shellFixtureStates";
 import { expectLabReady } from "../readiness";
-const VISUAL_URL = "http://127.0.0.1:4174/lab/fixture.html";
+const VISUAL_URL = "/lab/fixture.html";
 
 interface ShellRoute {
   theme: VisualShellTheme;

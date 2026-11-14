@@ -399,9 +399,12 @@ export function ChatPanel({ onSend, ref }: Props) {
       onFocusCapture={({ currentTarget, target }) => {
         // Portaled menus keep their opener's reading context through native focus handoffs.
         if (!currentTarget.contains(target)) return;
+        const editing = target.closest('[data-slot="composer-scrollport"]');
+        // Jump navigates the current frame without changing its editing or reading budget.
+        if (!editing && target.closest('[data-slot="composer-overlay"]')) return;
         currentTarget.style.setProperty(
           "--composer-reading-limit",
-          target.closest('[data-slot="composer-scrollport"]') ? "100%" : "calc(100% / 3)",
+          editing ? "100%" : "calc(100% / 3)",
         );
       }}
     >

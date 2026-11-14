@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { LAB_DEVELOPMENT_SERVER, LAB_PREVIEW_SERVER } from "./labServers.ts";
 
 export default defineConfig({
   testDir: "./lab",
@@ -10,7 +11,7 @@ export default defineConfig({
   outputDir: "../../out/web/lab-results",
   reporter: [["line"], ["html", { outputFolder: "../../out/web/lab-report", open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4175",
+    baseURL: LAB_PREVIEW_SERVER.origin,
     browserName: "chromium",
     colorScheme: "light",
     deviceScaleFactor: 1,
@@ -21,14 +22,16 @@ export default defineConfig({
   },
   webServer: [
     {
+      name: LAB_DEVELOPMENT_SERVER.name,
       command: "vite --config vite.lab.config.ts",
-      url: "http://127.0.0.1:4174/lab/",
+      url: `${LAB_DEVELOPMENT_SERVER.origin}/lab/`,
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
+      name: LAB_PREVIEW_SERVER.name,
       command: "npm run lab:build && vite preview --config vite.lab.config.ts",
-      url: "http://127.0.0.1:4175/lab/",
+      url: `${LAB_PREVIEW_SERVER.origin}/lab/`,
       reuseExistingServer: false,
       timeout: 180_000,
     },
@@ -40,7 +43,12 @@ export default defineConfig({
       name: "interactions",
       testMatch: "**/*.browser.spec.ts",
       timeout: 30_000,
-      use: { baseURL: "http://127.0.0.1:4174" },
+      use: { baseURL: LAB_DEVELOPMENT_SERVER.origin },
+    },
+    {
+      name: "security",
+      testMatch: "**/*.security.spec.ts",
+      timeout: 30_000,
     },
     {
       name: "performance",

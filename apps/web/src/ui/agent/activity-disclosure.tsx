@@ -283,6 +283,7 @@ export function AgentActivityDisclosure({
       <div
         ref={headerRef}
         data-slot="agent-activity-header"
+        data-focus-unit=""
         className={cn(
           stylex.props(
             reveal.host,

@@ -184,11 +184,15 @@ test("a virtual output search locates text across ANSI spans without changing ro
 });
 
 async function expectVerticalContinuation(page: Page, inner: Locator, outer: Locator) {
+  const outerTop = () => outer.evaluate((node) => node.scrollTop);
   const outerBox = (await outer.boundingBox())!;
   await page.mouse.move(outerBox.x + 10, outerBox.y + 10);
-  await page.mouse.wheel(0, -120);
+  const initialTop = await outerTop();
+  if (initialTop > 0) {
+    await page.mouse.wheel(0, -120);
+    await expect.poll(outerTop).toBeLessThan(initialTop);
+  }
   await inner.scrollIntoViewIfNeeded();
-  const outerTop = () => outer.evaluate((node) => node.scrollTop);
   const pointInside = async () => {
     const box = (await inner.boundingBox())!;
     const viewport = (await outer.boundingBox())!;
@@ -201,16 +205,17 @@ async function expectVerticalContinuation(page: Page, inner: Locator, outer: Loc
     expect(bottom - top).toBeGreaterThan(10);
     await page.mouse.move(box.x + box.width / 2, (top + bottom) / 2);
   };
-  await inner.evaluate((node) => {
-    node.scrollTop = node.scrollHeight;
-  });
+  await inner.press("End");
+  await expect(inner).toBeFocused();
+  await expect
+    .poll(() => inner.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
+    .toBeLessThanOrEqual(1);
   await pointInside();
   const beforeDown = await outerTop();
   await page.mouse.wheel(0, 160);
   await expect.poll(outerTop).toBeGreaterThan(beforeDown);
-  await inner.evaluate((node) => {
-    node.scrollTop = 0;
-  });
+  await inner.press("Home");
+  await expect.poll(() => inner.evaluate((node) => node.scrollTop)).toBe(0);
   await pointInside();
   const beforeUp = await outerTop();
   await page.mouse.wheel(0, -160);

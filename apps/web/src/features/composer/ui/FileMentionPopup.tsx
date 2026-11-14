@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type RefObject, useCallback } from "react";
+import { type RefObject } from "react";
 import { basename } from "@/lib/path";
 import { Icon } from "@/ui/index";
 import { OptionRow } from "@/ui/index";
@@ -21,25 +21,19 @@ interface Props {
 
 export function FileMentionPopup({ mentions, anchor, retryRef, onReturnFocus }: Props) {
   const t = useT();
-  // React 19 detaches refs before removing the node, so a Retry that still
-  // holds focus when loading or dismissal unmounts it hands focus back.
-  const bindRetry = useCallback(
-    (button: HTMLButtonElement | null) => {
-      retryRef.current = button;
-      if (!button) return;
-      return () => {
-        retryRef.current = null;
-        if (button.ownerDocument.activeElement === button) onReturnFocus();
-      };
-    },
-    [retryRef, onReturnFocus],
-  );
+  const retryAction = mentions.retry;
+  // Base UI recovers removed focus targets; hand focus over before an intent removes Retry.
+  function dismiss() {
+    const retry = retryRef.current;
+    if (retry && retry.ownerDocument.activeElement === retry) onReturnFocus();
+    mentions.dismiss();
+  }
   return (
     <SuggestionPopup
       open={mentions.open}
       heading={t("composer.mention.heading")}
       index={mentions.index}
-      onDismiss={mentions.dismiss}
+      onDismiss={dismiss}
       anchor={anchor}
       status={
         mentions.status === "ready" ? undefined : (
@@ -50,20 +44,24 @@ export function FileMentionPopup({ mentions, anchor, retryRef, onReturnFocus }: 
                 <span {...stylex.props(vocab.muted, typeStep.uiXs)}>{mentions.failure}</span>
               )}
             </span>
-            {mentions.status === "error" && (
+            {retryAction && (
               <TextButton
-                ref={bindRetry}
+                ref={retryRef}
                 tone="accent"
+                pending={retryAction.status === "pending"}
                 className={stylex.props(vocab.hold).className}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={mentions.retry}
+                onClick={() => {
+                  onReturnFocus();
+                  retryAction.run();
+                }}
                 onKeyDown={(event) => {
                   if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
                   if (event.shiftKey) {
                     event.preventDefault();
                     onReturnFocus();
                   } else {
-                    mentions.dismiss();
+                    dismiss();
                   }
                 }}
               >
@@ -86,7 +84,7 @@ export function FileMentionPopup({ mentions, anchor, retryRef, onReturnFocus }: 
             selected={i === mentions.index}
             aria-label={path}
             title={path}
-            onMouseEnter={() => mentions.setIndex(i)}
+            onMouseMove={() => mentions.setIndex(i)}
             onMouseDown={(event) => {
               event.preventDefault();
               mentions.accept(path);

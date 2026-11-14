@@ -55,7 +55,7 @@ export async function createCompositionFixture(
     },
   };
   const count = sample.frames;
-  const transport = createCompositionTransport(installation, entry);
+  const transport = await createCompositionTransport(installation, entry);
   const runtime = transport.client;
   const modules = new ComponentModules(wrap);
   let lifetime!: ContributionScope;

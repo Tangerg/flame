@@ -304,8 +304,10 @@ after applying its actual native selection. Programmatic file and command
 entries therefore open suggestions even when focus does not produce a new
 selection event. Suggestion acceptance settles selection with the committed
 draft before following input, preserving the captured focus owner's eligibility.
-File-list failure exposes keyboard Retry and returns from its disappearing
-action only while that action still owns focus.
+The file-list query owns retry availability and phase. Its command stays
+focusable during refetch, and retry or dismissal hands focus over before changing
+the view. Pointer movement changes a highlighted suggestion; moving the popup
+beneath a stationary pointer does not.
 File and command suggestions dismiss on Shift+Tab without accepting a value,
 letting the browser return to the preceding control with the draft intact.
 
@@ -378,7 +380,10 @@ of the conversation pane; editing retains its full budget. Portaled menus keep
 their opener's context, and material navigation shares that context with the
 conversation. Native blur and focus handoffs do not independently resize it.
 Reading navigation such as Jump therefore keeps its position through pointer
-focus and the first activation. The existing reading-focus
+focus and the first activation. Jump retains the current editing or reading
+budget instead of selecting a new one. Pending question cards consume the same
+surface height limit, keeping their answers locally scrollable and their footer
+reachable. The existing reading-focus
 owner retires pending follow for region focus, including a content resize that
 would otherwise rearm it. Returning from material therefore leaves the retained
 source readable without moving focus away from its logical Conversation region.
@@ -400,7 +405,10 @@ CSS size containment. Its `--reading-frame-height` uses the current container
 height and the same top and bottom clearances as scroll padding. Code and table
 readers consume that inherited budget during layout, without a measured pixel
 height feeding back into observed content. The existing resize observer reveals
-the retained focused reader during delivery. Native scroll notifications in that
+the retained focused reader during delivery and after sticky-header clearance
+publication. Ancestor clipping cannot replace the viewport's own visibility
+constraint. Reasoning readers consume the same height budget as code and tables.
+Native scroll notifications in that
 rendering update retain the witness; a later focus or deliberate wheel still
 retires it.
 Pointer entry retains its visible control while the press is active, even when

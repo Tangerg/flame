@@ -80,9 +80,11 @@ for (const story of catalog.stories) {
             entry.variantId === "file-list-loading"
           ) {
             await expect(page.getByRole("textbox")).toHaveValue("@store");
-            await expect(page.getByRole("status")).toHaveText(
-              chinese ? "正在加载项目文件…" : "Loading project files…",
-            );
+            await expect(
+              page
+                .getByRole("dialog", { name: chinese ? "文件" : "Files", exact: true })
+                .getByRole("status"),
+            ).toHaveText(chinese ? "正在加载项目文件…" : "Loading project files…");
           }
           if (entry.storyId === "business-workspace-scenarios") {
             if (entry.variantId === "dock-usage-reports") {

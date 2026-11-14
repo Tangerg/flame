@@ -1,47 +1,15 @@
 import { sharedRuntimePackages } from "./shared-runtime.mjs";
-import { defineConfig, type Plugin } from "vite";
-import { readFile } from "node:fs/promises";
+import { defineConfig } from "vite";
 import { pluginModules } from "./pluginModules.vite.mjs";
 import { webArtifacts } from "./webArtifacts.vite.mjs";
 import { BROWSER_TARGETS } from "@flame/component-sdk/build";
 import react from "@vitejs/plugin-react";
 import { stylexPlugin } from "./stylex.vite.mjs";
 import path from "node:path";
-
-const compositionEntry = "io.github.tangerg.flame/components/component.js";
-const compositionResource = `v2/plugin-resources/baseline/${compositionEntry}`;
-const compositionSource = new URL(
-  `../../examples/plugins/composition/provider/package/${compositionEntry}`,
-  import.meta.url,
-);
-
-function compositionResourcePlugin(): Plugin {
-  return {
-    name: "lab-composition-resource",
-    configureServer(server) {
-      server.middlewares.use(async (request, response, next) => {
-        if (request.url !== `/${compositionResource}`) return next();
-        try {
-          response.setHeader("Content-Type", "text/javascript");
-          response.setHeader("Cache-Control", "no-store");
-          response.end(await readFile(compositionSource));
-        } catch (error) {
-          next(error);
-        }
-      });
-    },
-    async generateBundle() {
-      this.emitFile({
-        type: "asset",
-        fileName: compositionResource,
-        source: await readFile(compositionSource),
-      });
-    },
-  };
-}
+import { LAB_DEVELOPMENT_SERVER, LAB_PREVIEW_SERVER } from "./labServers.ts";
 
 export default defineConfig({
-  plugins: [react(), stylexPlugin(), pluginModules(), compositionResourcePlugin(), webArtifacts()],
+  plugins: [react(), stylexPlugin(), pluginModules(), webArtifacts()],
   resolve: {
     dedupe: sharedRuntimePackages,
     alias: {
@@ -55,8 +23,8 @@ export default defineConfig({
     include: ["@flame/icons/react", "shiki/core", "shiki/engine/javascript"],
   },
   server: {
-    host: "127.0.0.1",
-    port: 4174,
+    host: LAB_DEVELOPMENT_SERVER.host,
+    port: LAB_DEVELOPMENT_SERVER.port,
     strictPort: true,
   },
   build: {
@@ -72,8 +40,8 @@ export default defineConfig({
     },
   },
   preview: {
-    host: "127.0.0.1",
-    port: 4175,
+    host: LAB_PREVIEW_SERVER.host,
+    port: LAB_PREVIEW_SERVER.port,
     strictPort: true,
   },
 });

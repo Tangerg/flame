@@ -30,7 +30,7 @@ export function SlashSuggestions({ slash, anchor }: Props) {
           id={suggestionOptionId(i)}
           tabIndex={-1}
           selected={i === slash.index}
-          onMouseEnter={() => slash.setIndex(i)}
+          onMouseMove={() => slash.setIndex(i)}
           onMouseDown={(event) => {
             event.preventDefault();
             slash.accept(command);

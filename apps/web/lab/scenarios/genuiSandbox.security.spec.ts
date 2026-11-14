@@ -2,11 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { rolldown } from "rolldown";
 import { resolve } from "node:path";
 
-const origin = "http://127.0.0.1:4175";
-const documentURL = `${origin}/lab/`;
+const documentPath = "/lab/";
 
 async function openHost(page: Page) {
-  const response = await page.goto(documentURL);
+  const response = await page.goto(documentPath);
   expect(response?.status()).toBe(200);
   const headers = response!.headers();
   expect(headers["content-security-policy"]).toContain("'strict-dynamic'");
@@ -132,7 +131,7 @@ test("nonce delivery blocks injected parser scripts and never revalidates an old
       directives.push(event.effectiveDirective),
     );
   });
-  await page.route(documentURL, async (route) => {
+  await page.route(documentPath, async (route) => {
     const response = await route.fetch();
     const body = (await response.text()).replace(
       "</head>",
@@ -145,8 +144,8 @@ test("nonce delivery blocks injected parser scripts and never revalidates an old
     .poll(() => page.evaluate(() => Reflect.get(window, "__cspProbeDirectives")))
     .toContain("script-src-elem");
   expect(await page.evaluate(() => "__untrustedInlineRan" in window)).toBe(false);
-  const previous = await request.get(documentURL);
-  const current = await request.get(documentURL, {
+  const previous = await request.get(documentPath);
+  const current = await request.get(documentPath, {
     headers: { "If-None-Match": "*", "If-Modified-Since": "Wed, 31 Dec 2099 23:59:59 GMT" },
   });
   expect(current.status()).toBe(200);
@@ -179,7 +178,7 @@ test("the main application refuses same-origin framing without blocking the prog
         frame.src = url;
         document.body.append(frame);
       }),
-    documentURL,
+    documentPath,
   );
   expect(embedded).toBe(false);
   const program = await showProgram(page, "Allowed local program", "<p>Independent program</p>");

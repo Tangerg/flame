@@ -189,8 +189,7 @@ export function useComposerInputController({
     const retry = retryRef.current;
     if (
       retry &&
-      mentions.open &&
-      mentions.status === "error" &&
+      mentions.retry &&
       event.key === "Tab" &&
       !event.shiftKey &&
       !event.altKey &&

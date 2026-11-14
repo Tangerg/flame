@@ -11,18 +11,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { activeMention, useFileMentions } from "@/features/composer/application/fileMentions";
 import { draftMentions } from "@/features/composer/application/draftContext";
 const workspaceFiles = vi.hoisted(() => ({
-  current: [] as Array<{ path: string }>,
+  current: [] as Array<{ path: string }> | undefined,
+  isError: false,
+  isFetching: false,
+  isFetched: true,
+  error: undefined as Error | undefined,
+  refetch: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@/features/workspace/public/queries", () => ({
   useWorkspaceListFiles: () => ({
     data: workspaceFiles.current,
-    isError: false,
-    refetch: () => Promise.resolve(),
+    isError: workspaceFiles.isError,
+    isFetching: workspaceFiles.isFetching,
+    isFetched: workspaceFiles.isFetched,
+    error: workspaceFiles.error,
+    refetch: workspaceFiles.refetch,
   }),
 }));
 
 beforeEach(() => {
+  workspaceFiles.isError = false;
+  workspaceFiles.isFetching = false;
+  workspaceFiles.isFetched = true;
+  workspaceFiles.error = undefined;
+  workspaceFiles.refetch.mockClear();
   workspaceFiles.current = [
     { path: "src/apple.ts" },
     { path: "src/banana.ts" },
@@ -138,10 +151,46 @@ describe("useFileMentions status", () => {
   });
 
   it("reports a listing that has not arrived as loading", () => {
-    workspaceFiles.current = undefined as unknown as Array<{ path: string }>;
+    workspaceFiles.current = undefined;
     const { result } = testClient.renderHook(() =>
       useFileMentions({ value: "@a", caret: 2, cwd: "/repo", apply }),
     );
     expect(result.current.status).toBe("loading");
+  });
+
+  it("retains the retry action across its pending read and retires it on success", () => {
+    workspaceFiles.current = undefined;
+    workspaceFiles.isError = true;
+    workspaceFiles.error = new Error("listing failed");
+    const { result, rerender } = testClient.renderHook(() =>
+      useFileMentions({ value: "@a", caret: 2, cwd: "/repo", apply }),
+    );
+    expect(result.current.retry?.status).toBe("ready");
+    act(() => result.current.retry?.run());
+    expect(workspaceFiles.refetch).toHaveBeenCalledWith({ cancelRefetch: false });
+
+    workspaceFiles.isError = false;
+    workspaceFiles.error = undefined;
+    workspaceFiles.isFetching = true;
+    rerender();
+    expect(result.current.status).toBe("loading");
+    expect(result.current.retry?.status).toBe("pending");
+
+    workspaceFiles.current = [{ path: "a.ts" }];
+    workspaceFiles.isFetching = false;
+    rerender();
+    expect(result.current.status).toBe("ready");
+    expect(result.current.retry).toBeUndefined();
+  });
+
+  it("offers no retry before the first read has settled", () => {
+    workspaceFiles.current = undefined;
+    workspaceFiles.isFetching = true;
+    workspaceFiles.isFetched = false;
+    const { result } = testClient.renderHook(() =>
+      useFileMentions({ value: "@a", caret: 2, cwd: "/repo", apply }),
+    );
+    expect(result.current.status).toBe("loading");
+    expect(result.current.retry).toBeUndefined();
   });
 });

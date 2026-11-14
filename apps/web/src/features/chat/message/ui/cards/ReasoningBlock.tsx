@@ -42,7 +42,7 @@ const rb = stylex.create({
   // Kept while shut: Collapsible retains this node, so dropping the window loses the scroll position.
   scroller: {
     position: "relative",
-    maxHeight: "calc(var(--spacing) * 60)",
+    maxHeight: `min(calc(var(--spacing) * 60), calc(var(--reading-frame-height, 100dvh) - ${space.s3} - ${space.s1_5}))`,
     overflowX: "hidden",
     overflowY: "auto",
     paddingRight: space.s2,
