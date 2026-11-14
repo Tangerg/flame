@@ -326,6 +326,7 @@ html.theme-dark {
 }
 
 .agent-shell {
+  --sidebar-layout-width: var(--sidebar-preview-width, var(--sidebar-width));
   position: relative;
   display: flex;
   width: 100%;
@@ -388,7 +389,7 @@ body:has([data-slot="notification-toast"])
 }
 
 .agent-drawer-gap {
-  width: var(--sidebar-width);
+  width: var(--sidebar-layout-width);
   flex-shrink: 0;
   transition: width var(--dur-drawer) var(--ease-drawer);
 }
@@ -403,7 +404,7 @@ body:has([data-slot="notification-toast"])
   left: 0;
   z-index: var(--layer-drawer);
   display: flex;
-  width: var(--sidebar-width);
+  width: var(--sidebar-layout-width);
   height: 100dvh;
   visibility: visible;
   transition:
@@ -412,7 +413,7 @@ body:has([data-slot="notification-toast"])
     visibility 0s linear 0s;
 }
 .agent-shell[data-sidebar="collapsed"] .agent-drawer {
-  left: calc(var(--sidebar-width) * -1);
+  left: calc(var(--sidebar-layout-width) * -1);
   visibility: hidden;
   transition:
     left var(--dur-drawer) var(--ease-drawer),
@@ -536,7 +537,7 @@ body:has([data-slot="notification-toast"])
 .agent-pane-resizer {
   position: absolute;
   inset-block: 0;
-  inset-inline-end: var(--dock-measure);
+  inset-inline-end: var(--dock-layout-width);
   z-index: var(--layer-resizer);
   width: 10px;
   transform: translateX(5px);
@@ -549,7 +550,7 @@ body:has([data-slot="notification-toast"])
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
-  inset-inline-end: var(--dock-measure);
+  inset-inline-end: var(--dock-layout-width);
   z-index: var(--layer-resizer);
   pointer-events: none;
 }
@@ -622,6 +623,7 @@ body:has([data-slot="notification-toast"])
 }
 
 .agent-dock-row {
+  --dock-layout-width: var(--dock-preview-width, var(--dock-measure));
   position: relative;
 }
 
@@ -630,7 +632,7 @@ body:has([data-slot="notification-toast"])
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 0 0 var(--dock-measure);
+  flex: 0 0 var(--dock-layout-width);
   flex-direction: column;
   overflow: hidden;
   contain: layout paint;
@@ -648,7 +650,7 @@ body:has([data-slot="notification-toast"])
 }
 /* Clipping folds the Dock; retained readers keep their measured width throughout the motion. */
 .agent-dock-row:not([data-presentation="main"]) .agent-context-dock > * {
-  min-inline-size: var(--dock-measure);
+  min-inline-size: var(--dock-layout-width);
 }
 .agent-dock-row[data-resizing] .agent-context-dock,
 .agent-dock-row[data-dock="collapsed"]:not([data-dock-available]) .agent-context-dock {

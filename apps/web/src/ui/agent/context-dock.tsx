@@ -198,7 +198,7 @@ function DockTab({
   );
 }
 
-export const DOCK_MEASURE_PROPERTY = "--dock-measure";
+const DOCK_MEASURE_PROPERTY = "--dock-measure";
 
 export function AgentDockRow({
   open,
@@ -229,8 +229,17 @@ export function AgentDockRow({
   );
 }
 
-export function AgentDockResizer(props: Omit<ResizeHandleProps, "edge" | "className">) {
-  return <ResizeHandle {...props} edge="start" className="agent-pane-resizer" />;
+export function AgentDockResizer(
+  props: Omit<ResizeHandleProps, "edge" | "className" | "previewProperty">,
+) {
+  return (
+    <ResizeHandle
+      {...props}
+      edge="start"
+      previewProperty="--dock-preview-width"
+      className="agent-pane-resizer"
+    />
+  );
 }
 
 function reflectDockTabOverflow(element: HTMLElement): void {

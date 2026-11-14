@@ -11,55 +11,36 @@ import { type CSSProperties } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResizeHandle } from "@/ui/atoms/resize-handle";
 const PROPERTY = "--pane-width";
+const PREVIEW_PROPERTY = "--pane-preview-width";
 
 function Harness({
   edge = "end",
   value = 320,
+  resizable = true,
   onCommit,
 }: {
   edge?: "start" | "end";
   value?: number;
-  onCommit: (width: number, containerWidth: number) => void;
-}) {
-  return (
-    <div data-testid="container">
-      <ResizeHandle
-        aria-label="Resize panel"
-        edge={edge}
-        value={value}
-        container={(handle) => handle.parentElement}
-        property={PROPERTY}
-        read={(container) => Number.parseFloat(container.style.getPropertyValue(PROPERTY)) || value}
-        minWidth={() => 240}
-        maxWidth={() => 800}
-        onCommit={onCommit}
-        resizingAttribute="data-resizing"
-      />
-    </div>
-  );
-}
-
-function ControlledHarness({
-  value,
-  onCommit,
-}: {
-  value: number;
+  resizable?: boolean;
   onCommit: (width: number, containerWidth: number) => void;
 }) {
   return (
     <div data-testid="container" style={{ [PROPERTY]: `${value}px` } as CSSProperties}>
-      <ResizeHandle
-        aria-label="Resize panel"
-        edge="end"
-        value={value}
-        container={(handle) => handle.parentElement}
-        property={PROPERTY}
-        read={(container) => Number.parseFloat(container.style.getPropertyValue(PROPERTY))}
-        minWidth={() => 240}
-        maxWidth={() => 800}
-        onCommit={onCommit}
-        resizingAttribute="data-resizing"
-      />
+      {resizable && (
+        <ResizeHandle
+          aria-label="Resize panel"
+          edge={edge}
+          value={value}
+          container={(handle) => handle.parentElement}
+          previewProperty={PREVIEW_PROPERTY}
+          read={(container) =>
+            Number.parseFloat(container.style.getPropertyValue(PROPERTY)) || value
+          }
+          minWidth={() => 240}
+          maxWidth={() => 800}
+          onCommit={onCommit}
+        />
+      )}
     </div>
   );
 }
@@ -69,7 +50,8 @@ function startResize(target: Element, options: PointerEventInit = {}) {
 }
 
 function paneWidth(): string {
-  return screen.getByTestId("container").style.getPropertyValue(PROPERTY);
+  const style = screen.getByTestId("container").style;
+  return style.getPropertyValue(PREVIEW_PROPERTY) || style.getPropertyValue(PROPERTY);
 }
 
 describe("ResizeHandle", () => {
@@ -92,7 +74,7 @@ describe("ResizeHandle", () => {
           edge="end"
           value={500}
           container={(handle) => handle.parentElement}
-          property={PROPERTY}
+          previewProperty={PREVIEW_PROPERTY}
           read={() => 375}
           minWidth={() => 240}
           maxWidth={() => 800}
@@ -114,6 +96,7 @@ describe("ResizeHandle", () => {
 
     fireEvent(window, new PointerEvent("pointermove", { clientX: 400 }));
     expect(paneWidth()).toBe("400px");
+    expect(screen.getByTestId("container").style.getPropertyValue(PROPERTY)).toBe("320px");
     expect(handle.getAttribute("aria-valuenow")).toBe("400");
     expect(onCommit).not.toHaveBeenCalled();
 
@@ -132,7 +115,7 @@ describe("ResizeHandle", () => {
     fireEvent(window, new PointerEvent("pointerup"));
 
     expect(onCommit).not.toHaveBeenCalled();
-    expect(paneWidth()).toBe("");
+    expect(paneWidth()).toBe("320px");
   });
 
   it("grows toward the pane, whichever edge it sits on", () => {
@@ -162,6 +145,38 @@ describe("ResizeHandle", () => {
     expect(onCommit).toHaveBeenLastCalledWith(240, expect.any(Number));
     fireEvent.keyDown(handle, { key: "End" });
     expect(onCommit).toHaveBeenLastCalledWith(800, expect.any(Number));
+  });
+
+  it.each([
+    { altKey: true },
+    { ctrlKey: true },
+    { metaKey: true },
+    { isComposing: true },
+    { keyCode: 229 },
+  ])("leaves modified and composition keys to their owner %j", (input) => {
+    const onCommit = vi.fn();
+    testClient.render(<Harness onCommit={onCommit} />);
+    const handle = screen.getByRole("separator");
+    const event = new KeyboardEvent("keydown", {
+      ...input,
+      key: "ArrowRight",
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(handle, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(paneWidth()).toBe("320px");
+  });
+
+  it("does not deliver an already consumed resize key", () => {
+    const onCommit = vi.fn();
+    testClient.render(<Harness onCommit={onCommit} />);
+    const handle = screen.getByRole("separator");
+    handle.addEventListener("keydown", (event) => event.preventDefault(), { once: true });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(paneWidth()).toBe("320px");
   });
 
   it("holds the resizing mark across key repeats and releases it on blur", () => {
@@ -233,35 +248,38 @@ describe("ResizeHandle gesture settlement", () => {
     fireEvent.pointerMove(window, { pointerId: 8, clientX: 800 });
     fireEvent.pointerCancel(window, { pointerId: 8 });
     fireEvent.pointerUp(window, { pointerId: 8 });
-    expect(paneWidth()).toBe("");
+    expect(paneWidth()).toBe("320px");
     fireEvent.pointerMove(window, { pointerId: 7, clientX: 400 });
     fireEvent.pointerUp(window, { pointerId: 7 });
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(400, expect.any(Number));
   });
 
-  it("retires without restoring an old property when unmounted after a preview", () => {
+  it("removes a retiring handle's preview without changing its retained layout", () => {
     const onCommit = vi.fn();
-    const { unmount } = testClient.render(<Harness onCommit={onCommit} />);
+    const view = testClient.render(<Harness onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
     startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
-    unmount();
-    expect(pane.isConnected).toBe(false);
-    expect(pane.style.getPropertyValue(PROPERTY)).toBe("450px");
+    view.rerender(<Harness resizable={false} onCommit={onCommit} />);
+    expect(pane.isConnected).toBe(true);
+    expect(pane.style.getPropertyValue(PROPERTY)).toBe("320px");
+    expect(pane.style.getPropertyValue(PREVIEW_PROPERTY)).toBe("");
     fireEvent.pointerUp(window);
     expect(onCommit).not.toHaveBeenCalled();
   });
 
   it("starts a keyboard takeover from the authoritative width after retiring a pointer preview", () => {
     const onCommit = vi.fn();
-    testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
+    const view = testClient.render(<Harness value={320} onCommit={onCommit} />);
     const handle = screen.getByRole("separator");
     startResize(handle, { pointerId: 7, clientX: 320 });
     fireEvent.pointerMove(window, { pointerId: 7, clientX: 450 });
     expect(paneWidth()).toBe("450px");
     fireEvent.keyDown(handle, { key: "ArrowRight" });
-    expect(paneWidth()).toBe("328px");
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(328, expect.any(Number));
+    expect(paneWidth()).toBe("320px");
+    view.rerender(<Harness value={328} onCommit={onCommit} />);
+    expect(paneWidth()).toBe("328px");
     fireEvent.pointerUp(window, { pointerId: 7 });
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
@@ -278,15 +296,32 @@ describe("ResizeHandle gesture settlement", () => {
     expect(screen.getByRole("separator").getAttribute("aria-valuenow")).toBe("500");
   });
 
+  it("starts from the accepted width after a retained document retires its preview", () => {
+    const onCommit = vi.fn();
+    const view = testClient.render(<Harness value={320} onCommit={onCommit} />);
+    const handle = screen.getByRole("separator");
+    startResize(handle, { pointerId: 7, clientX: 320 });
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 450 });
+    fireEvent(window, new PageTransitionEvent("pagehide", { persisted: true }));
+    fireEvent.pointerUp(window, { pointerId: 7 });
+    expect(onCommit).not.toHaveBeenCalled();
+
+    view.rerender(<Harness value={320} onCommit={onCommit} />);
+    startResize(handle, { pointerId: 8, clientX: 320 });
+    fireEvent.pointerMove(window, { pointerId: 8, clientX: 328 });
+    fireEvent.pointerUp(window, { pointerId: 8 });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(328, expect.any(Number));
+  });
+
   it("keeps a controlled parent's committed width over the retired preview", () => {
     const onCommit = vi.fn();
-    const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
+    const view = testClient.render(<Harness value={320} onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
     startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
     expect(paneWidth()).toBe("450px");
 
-    view.rerender(<ControlledHarness value={500} onCommit={onCommit} />);
+    view.rerender(<Harness value={500} onCommit={onCommit} />);
 
     expect(paneWidth()).toBe("500px");
     expect(pane.hasAttribute("data-resizing")).toBe(false);
@@ -304,16 +339,16 @@ describe("ResizeHandle gesture settlement", () => {
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockImplementation(() => containerWidth);
     try {
-      const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
+      const view = testClient.render(<Harness value={320} onCommit={onCommit} />);
       startResize(screen.getByRole("separator"), { button: 0, clientX: 320 });
       fireEvent.pointerMove(window, { clientX: 450 });
       expect(paneWidth()).toBe("450px");
 
       containerWidth = 1000;
       fireEvent.pointerMove(window, { clientX: 460 });
-      expect(paneWidth()).toBe("450px");
+      expect(paneWidth()).toBe("320px");
 
-      view.rerender(<ControlledHarness value={500} onCommit={onCommit} />);
+      view.rerender(<Harness value={500} onCommit={onCommit} />);
       expect(paneWidth()).toBe("500px");
       fireEvent.pointerUp(window);
       expect(onCommit).not.toHaveBeenCalled();

@@ -32,6 +32,16 @@ async function wheelTakeover(page: Page, viewport: Locator) {
     .toBeGreaterThan(accepted[0]!);
 }
 
+async function resizeBy(page: Page, handle: Locator, delta: number) {
+  const box = (await handle.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + delta, y, { steps: 4 });
+  return { x, y };
+}
+
 for (const browserName of ["chromium", "webkit"] as const) {
   test.extend({ browserName })(
     `${browserName} diagram pan cancels and yields to native wheel scrolling and Fit`,
@@ -130,4 +140,78 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await expect(persisted).toHaveText((await handle.getAttribute("aria-valuemax"))!);
     },
   );
+
+  for (const layout of [
+    {
+      name: "sidebar",
+      fixture: "shell&state=populated",
+      handle: "Resize the work index",
+      owner: ".agent-shell",
+      surface: ".agent-drawer-gap",
+      property: "--sidebar-width",
+      preference: "persisted-sidebar-width",
+      direction: 1,
+    },
+    {
+      name: "Dock",
+      fixture: "workspace&state=dock-light",
+      handle: "Resize right workspace",
+      owner: ".agent-dock-row",
+      surface: ".agent-context-dock",
+      property: "--dock-measure",
+      preference: "persisted-dock-ratio",
+      direction: -1,
+    },
+  ]) {
+    test.extend({ browserName })(
+      `${browserName} ${layout.name} keeps accepted layout separate from a retired preview`,
+      async ({ page }) => {
+        await page.goto(`/lab/fixture.html?fixture=${layout.fixture}&theme=light`);
+        await expectLabReady(page);
+        const handle = page.getByRole("separator", { name: layout.handle });
+        const owner = page.locator(layout.owner);
+        const surface = page.locator(layout.surface);
+        const preference = page.getByTestId(layout.preference);
+        const before = await preference.textContent();
+        const accepted = Number(await handle.getAttribute("aria-valuenow"));
+        const minimum = Number(await handle.getAttribute("aria-valuemin"));
+        const delta = accepted - minimum >= 32 ? -24 : 24;
+        await expect
+          .poll(async () => (await surface.boundingBox())!.width)
+          .toBeCloseTo(accepted, 0);
+        const position = await resizeBy(page, handle, delta * layout.direction);
+        await expect(handle).toHaveAttribute("aria-valuenow", String(accepted + delta));
+        await expect(preference).toHaveText(before!);
+        expect(
+          await owner.evaluate(
+            (node, property) => node.style.getPropertyValue(property),
+            layout.property,
+          ),
+        ).toBe(`${accepted}px`);
+        await expect
+          .poll(async () => (await surface.boundingBox())!.width)
+          .toBeCloseTo(accepted + delta, 0);
+
+        await page.evaluate(() =>
+          window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })),
+        );
+        await expect(owner).not.toHaveAttribute("data-resizing");
+        await expect(handle).toHaveAttribute("aria-valuenow", String(accepted));
+        await expect
+          .poll(async () => (await surface.boundingBox())!.width)
+          .toBeCloseTo(accepted, 0);
+        await page.mouse.move(position.x + 2 * delta * layout.direction, position.y);
+        await page.mouse.up();
+        await expect(preference).toHaveText(before!);
+
+        await resizeBy(page, handle, delta * layout.direction);
+        await page.mouse.up();
+        await expect(preference).not.toHaveText(before!);
+        await expect(handle).toHaveAttribute("aria-valuenow", String(accepted + delta));
+        await expect
+          .poll(async () => (await surface.boundingBox())!.width)
+          .toBeCloseTo(accepted + delta, 0);
+      },
+    );
+  }
 }

@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useCallback, useLayoutEffect, useRef } from "react";
-import { PointerSession, useContentVisible } from "@flame/ui";
+import { isImeKey, PointerSession, useContentVisible } from "@flame/ui";
 const STEP_PX = 8;
 
 const COARSE_STEP_PX = 24;
@@ -26,25 +26,21 @@ export interface ResizeHandleProps extends Omit<
   edge: "start" | "end";
   value: number;
   container: (handle: HTMLElement) => HTMLElement | null;
-  property: string;
+  previewProperty: string;
   read: (container: HTMLElement) => number;
   minWidth: (containerWidth: number) => number;
   maxWidth: (containerWidth: number) => number;
-  formatProperty?: (width: number, containerWidth: number) => string;
   onCommit: (width: number, containerWidth: number) => void;
-  resizingAttribute?: string;
 }
 
 interface ResizeScope {
   readonly element: HTMLElement;
   readonly edge: "start" | "end";
-  readonly property: string;
+  readonly previewProperty: string;
   readonly value: number;
   readonly width: number;
   readonly min: number;
   readonly max: number;
-  readonly formatted: string;
-  readonly attribute: string | undefined;
   readonly visible: boolean;
 }
 
@@ -52,46 +48,43 @@ export function ResizeHandle({
   edge,
   value,
   container,
-  property,
+  previewProperty,
   read,
   minWidth,
   maxWidth,
-  formatProperty = defaultFormatProperty,
   onCommit,
-  resizingAttribute,
   ...props
 }: ResizeHandleProps) {
   const visible = useContentVisible();
   const handleRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<PointerSession | null>(null);
-  const marked = useRef<{ element: HTMLElement; attribute: string } | null>(null);
+  const marked = useRef<{ element: HTMLElement; property: string } | null>(null);
   const observer = useRef<{ element: HTMLElement; observer: ResizeObserver } | null>(null);
   const scope = useRef<ResizeScope | null>(null);
   const pane = useRef({
     edge,
     value,
     container,
-    property,
+    previewProperty,
     read,
     minWidth,
     maxWidth,
-    formatProperty,
     onCommit,
-    resizingAttribute,
     visible,
   });
   const detach = useCallback(() => {
-    if (marked.current) marked.current.element.removeAttribute(marked.current.attribute);
+    if (marked.current) {
+      marked.current.element.style.removeProperty(marked.current.property);
+      marked.current.element.removeAttribute("data-resizing");
+    }
     marked.current = null;
   }, []);
   const retire = useCallback(() => gesture.current?.retire(), []);
   const mark = useCallback(
     (element: HTMLElement) => {
       detach();
-      const attribute = pane.current.resizingAttribute;
-      if (!attribute) return;
-      element.setAttribute(attribute, "");
-      marked.current = { element, attribute };
+      element.setAttribute("data-resizing", "");
+      marked.current = { element, property: pane.current.previewProperty };
     },
     [detach],
   );
@@ -115,13 +108,11 @@ export function ResizeHandle({
       const next: ResizeScope = {
         element,
         edge: current.edge,
-        property: current.property,
+        previewProperty: current.previewProperty,
         value: current.value,
         width,
         min,
         max,
-        formatted: current.formatProperty(clampWidth(current.value, min, max), width),
-        attribute: current.resizingAttribute,
         visible: current.visible,
       };
       const previous = scope.current;
@@ -145,12 +136,6 @@ export function ResizeHandle({
         nextObserver.observe(element);
       }
       if (!gesture.current?.active) {
-        if (changed)
-          element.style.setProperty(
-            current.property,
-            next.formatted,
-            element.style.getPropertyPriority(current.property),
-          );
         handle.setAttribute("aria-valuemin", String(min));
         handle.setAttribute("aria-valuemax", String(max));
         handle.setAttribute("aria-valuenow", String(clampWidth(current.value, min, max)));
@@ -160,22 +145,17 @@ export function ResizeHandle({
     [retire, detach],
   );
 
-  useLayoutEffect(
-    () => () => retire(),
-    [value, edge, property, resizingAttribute, visible, retire],
-  );
+  useLayoutEffect(() => () => retire(), [value, edge, previewProperty, visible, retire]);
   useLayoutEffect(() => {
     pane.current = {
       edge,
       value,
       container,
-      property,
+      previewProperty,
       read,
       minWidth,
       maxWidth,
-      formatProperty,
       onCommit,
-      resizingAttribute,
       visible,
     };
     reflect();
@@ -206,8 +186,6 @@ export function ResizeHandle({
       const current = pane.current;
       const { element } = admitted;
       const startWidth = current.read(element);
-      const original = element.style.getPropertyValue(current.property);
-      const priority = element.style.getPropertyPriority(current.property);
       let width = startWidth;
       let moved = false;
       let active: PointerSession | null = null;
@@ -225,26 +203,18 @@ export function ResizeHandle({
           if (change === 0 && !moved) return;
           moved = true;
           width = clampWidth(startWidth + change, admitted.min, admitted.max);
-          element.style.setProperty(
-            current.property,
-            current.formatProperty(width, admitted.width),
-          );
+          element.style.setProperty(admitted.previewProperty, `${width}px`);
           handle.setAttribute("aria-valuenow", String(width));
         },
         finish(outcome) {
           if (gesture.current === active) gesture.current = null;
           detach();
-          if (outcome === "retire") return;
-          if (outcome === "complete" && moved && width !== startWidth) {
-            current.onCommit(width, admitted.width);
-            return;
-          }
-          if (original) element.style.setProperty(current.property, original, priority);
-          else element.style.removeProperty(current.property);
           handle.setAttribute(
             "aria-valuenow",
             String(clampWidth(pane.current.value, admitted.min, admitted.max)),
           );
+          if (outcome === "complete" && moved && width !== startWidth)
+            current.onCommit(width, admitted.width);
         },
       });
       if (!active?.active) return;
@@ -257,7 +227,15 @@ export function ResizeHandle({
 
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (!RESIZE_KEYS.includes(event.key)) return;
+      if (
+        event.defaultPrevented ||
+        isImeKey(event.nativeEvent) ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        !RESIZE_KEYS.includes(event.key)
+      )
+        return;
       retire();
       const admitted = reflect();
       if (!admitted?.visible) return;
@@ -272,11 +250,6 @@ export function ResizeHandle({
             ? admitted.max
             : clampWidth(current.value + (grows ? step : -step), admitted.min, admitted.max);
       mark(admitted.element);
-      admitted.element.style.setProperty(
-        current.property,
-        current.formatProperty(next, admitted.width),
-      );
-      handleRef.current?.setAttribute("aria-valuenow", String(next));
       current.onCommit(next, admitted.width);
     },
     [retire, reflect, mark],
@@ -298,10 +271,6 @@ export function ResizeHandle({
       onBlur={releaseKeyboard}
     />
   );
-}
-
-function defaultFormatProperty(width: number): string {
-  return `${width}px`;
 }
 
 function clampWidth(width: number, minWidth: number, maxWidth: number): number {
