@@ -908,12 +908,5 @@
   "composer.image.failed": "無法讀取 {{name}}，請移除後重新選擇。",
   "composer.image.ready": "{{name}} 已就緒",
   "composer.persistence.loading": "正在讀取已儲存的草稿。讀取期間的新編輯會保留在這裡。",
-  "composer.persistence.pending": "正在此裝置上儲存草稿變更…",
-  "composer.legacy.available": "舊儲存空間中有草稿。請在編輯前明確匯入，以使用新的草稿儲存空間。",
-  "composer.legacy.import": "匯入既有草稿至新儲存空間",
-  "composer.legacy.blocked": "舊草稿備份已保留。新儲存空間已在使用，無法覆寫匯入；可複製備份，供匯入至全新儲存空間。",
-  "composer.legacy.failed": "無法讀取或匯入舊草稿備份。原始備份未變更。",
-  "composer.legacy.importing": "正在匯入既有草稿… 原始備份會保留。",
-  "composer.legacy.copy": "複製舊草稿備份",
-  "composer.legacy.copied": "已複製舊草稿備份"
+  "composer.persistence.pending": "正在此裝置上儲存草稿變更…"
 }

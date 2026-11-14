@@ -950,12 +950,5 @@
   "composer.image.failed": "Impossible de lire {{name}}. Supprimez l’image et sélectionnez-la à nouveau.",
   "composer.image.ready": "Image prête : {{name}}",
   "composer.persistence.loading": "Chargement des brouillons enregistrés. Les nouvelles modifications restent ici pendant le chargement.",
-  "composer.persistence.pending": "Enregistrement des modifications du brouillon sur cet appareil…",
-  "composer.legacy.available": "Des brouillons sont présents dans l’ancien stockage. Importez-les avant toute modification pour utiliser le nouveau stockage de brouillons.",
-  "composer.legacy.import": "Importer les brouillons existants",
-  "composer.legacy.blocked": "La sauvegarde des anciens brouillons est conservée. Le nouveau stockage est déjà utilisé ; copiez la sauvegarde pour l’importer dans un stockage vide.",
-  "composer.legacy.failed": "Impossible de lire ou d’importer la sauvegarde des anciens brouillons. L’original reste inchangé.",
-  "composer.legacy.importing": "Importation des brouillons existants… La sauvegarde d’origine sera conservée.",
-  "composer.legacy.copy": "Copier la sauvegarde des anciens brouillons",
-  "composer.legacy.copied": "Sauvegarde des anciens brouillons copiée"
+  "composer.persistence.pending": "Enregistrement des modifications du brouillon sur cet appareil…"
 }

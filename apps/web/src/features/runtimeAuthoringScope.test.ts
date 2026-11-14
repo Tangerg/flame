@@ -176,14 +176,14 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(dock().fileViewer).toBeNull();
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    expect((await storage.read(targets.targetA)).drafts).toEqual(storedA.drafts);
+    expect(await storage.read(targets.targetA)).toEqual(storedA);
 
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-B.ts", 24);
     await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
-    expect((await storage.read(targets.targetB)).drafts.get("shared")?.value).toBe("draft on B");
-    expect((await storage.read(targets.targetA)).drafts.get("shared")?.value).toBe("draft on A");
+    expect((await storage.read(targets.targetB)).get("shared")?.value).toBe("draft on B");
+    expect((await storage.read(targets.targetA)).get("shared")?.value).toBe("draft on A");
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetA);
@@ -225,7 +225,7 @@ describe("Runtime target authoring ownership", () => {
     await vi.waitFor(() => expect(testClient.composer.hasUnconfirmedDrafts()).toBe(false));
     const storage = new DraftDatabase();
     disposers.push(() => storage.close());
-    expect((await storage.read(targets.targetA)).drafts.get("shared")?.value).toBe(
+    expect((await storage.read(targets.targetA)).get("shared")?.value).toBe(
       "retained during token refresh or process restart",
     );
   });

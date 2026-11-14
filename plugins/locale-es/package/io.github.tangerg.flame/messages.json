@@ -950,12 +950,5 @@
   "composer.image.failed": "No se pudo leer {{name}}. Elimínala y vuelve a seleccionarla.",
   "composer.image.ready": "Imagen lista: {{name}}",
   "composer.persistence.loading": "Cargando los borradores guardados. Las nuevas ediciones se conservan aquí durante la carga.",
-  "composer.persistence.pending": "Guardando los cambios del borrador en este dispositivo…",
-  "composer.legacy.available": "Hay borradores en el almacenamiento anterior. Impórtalos antes de editar para usar el nuevo almacenamiento de borradores.",
-  "composer.legacy.import": "Importar borradores existentes",
-  "composer.legacy.blocked": "Se conserva la copia de los borradores anteriores. El nuevo almacenamiento ya está en uso; copia el respaldo para importarlo en un almacenamiento vacío.",
-  "composer.legacy.failed": "No se pudo leer o importar la copia de los borradores anteriores. El original no ha cambiado.",
-  "composer.legacy.importing": "Importando borradores existentes… Se conservará la copia original.",
-  "composer.legacy.copy": "Copiar respaldo de borradores anteriores",
-  "composer.legacy.copied": "Respaldo de borradores anteriores copiado"
+  "composer.persistence.pending": "Guardando los cambios del borrador en este dispositivo…"
 }

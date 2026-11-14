@@ -520,7 +520,7 @@ describe("draft persistence recovery", () => {
     expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
     expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("keep this new draft");
     const unchanged = new DraftDatabase();
-    expect((await unchanged.read(target)).drafts.get("")?.value).toBe("original confirmed draft");
+    expect((await unchanged.read(target)).get("")?.value).toBe("original confirmed draft");
     unchanged.close();
   });
 
@@ -561,44 +561,6 @@ describe("draft persistence recovery", () => {
     expect(screen.getByRole<HTMLTextAreaElement>("textbox").value).toBe("unconfirmed A");
     expect(screen.queryByRole("button", { name: "Draft text copied" })).toBeNull();
     expect(screen.getByRole("button", { name: "Copy draft text" })).toBeTruthy();
-  });
-
-  it("imports previous drafts only on an explicit action and keeps the mounted input", async () => {
-    const target = "https://explicit-import.test";
-    const key = `flame.composer:${encodeURIComponent(target)}`;
-    const raw = JSON.stringify({
-      version: 0,
-      state: { drafts: { "": { value: "  previous draft 保留  ", pastes: [] } } },
-    });
-    localStorage.setItem(key, raw);
-    testClient.composer.activate(target);
-    wrap(<DraftComposer />);
-    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
-    const importDrafts = await screen.findByRole("button", { name: t("composer.legacy.import") });
-    expect(input.value).toBe("");
-    input.focus();
-    fireEvent.mouseDown(importDrafts);
-    fireEvent.click(importDrafts);
-    await waitFor(() => expect(input.value).toBe("  previous draft 保留  "));
-    expect(screen.getByRole("textbox")).toBe(input);
-    expect(document.activeElement).toBe(input);
-    expect(localStorage.getItem(key)).toBe(raw);
-    expect(screen.queryByRole("button", { name: t("composer.legacy.import") })).toBeNull();
-  });
-
-  it("offers exact previous backup copying when new authoring blocks import", async () => {
-    const target = "https://blocked-import.test";
-    const raw = "{unparsed backup bytes 保留";
-    localStorage.setItem(`flame.composer:${encodeURIComponent(target)}`, raw);
-    const copy = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
-    testClient.composer.activate(target);
-    wrap(<DraftComposer />);
-    await screen.findByRole("button", { name: t("composer.legacy.import") });
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "current draft" } });
-    expect(screen.queryByRole("button", { name: t("composer.legacy.import") })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: t("composer.legacy.copy") }));
-    await screen.findByRole("button", { name: t("composer.legacy.copied") });
-    expect(copy).toHaveBeenCalledExactlyOnceWith(raw);
   });
 });
 

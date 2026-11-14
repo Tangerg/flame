@@ -908,12 +908,5 @@
   "composer.image.failed": "{{name}}을(를) 읽을 수 없습니다. 삭제한 후 다시 선택하세요.",
   "composer.image.ready": "{{name}} 준비 완료",
   "composer.persistence.loading": "저장된 초안을 읽는 중입니다. 읽는 동안 새로 편집한 내용은 여기에 유지됩니다.",
-  "composer.persistence.pending": "이 기기에 초안 변경 내용을 저장하는 중…",
-  "composer.legacy.available": "이전 저장소에 초안이 있습니다. 새 초안 저장소를 사용하려면 편집하기 전에 가져오세요.",
-  "composer.legacy.import": "기존 초안 가져오기",
-  "composer.legacy.blocked": "이전 초안 백업은 보존됩니다. 새 저장소는 이미 사용 중이므로 백업을 복사해 비어 있는 저장소로 가져오세요.",
-  "composer.legacy.failed": "이전 초안 백업을 읽거나 가져올 수 없습니다. 원본 백업은 변경되지 않았습니다.",
-  "composer.legacy.importing": "기존 초안을 가져오는 중… 원본 백업은 보존됩니다.",
-  "composer.legacy.copy": "이전 초안 백업 복사",
-  "composer.legacy.copied": "이전 초안 백업 복사됨"
+  "composer.persistence.pending": "이 기기에 초안 변경 내용을 저장하는 중…"
 }

@@ -10,24 +10,16 @@ import {
   type ComposerDraftReplacement,
   type ComposerModelPreference,
   type ComposerPersistenceState,
-  type ComposerLegacyDraftState,
   type ComposerSubmission,
 } from "@/features/composer/application/state";
 import { Composer, ComposerDraft } from "@/features/composer/domain/composer";
-import {
-  decodeLegacyComposer,
-  persistedComposerDrafts,
-} from "@/features/composer/adapters/persistedDrafts";
 import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 const SAVED: ComposerPersistenceState = { status: "saved" };
-const NONE: ComposerLegacyDraftState = { status: "none" };
-const legacyKey = (endpoint: string) => `flame.composer:${encodeURIComponent(endpoint)}`;
 
 interface ComposerState {
   composer: Composer;
   modelPreference: ComposerModelPreference;
   persistenceState: ComposerPersistenceState;
-  legacyDraftState: ComposerLegacyDraftState;
 }
 interface ComposerActions {
   setValue(value: string): void;
@@ -52,10 +44,9 @@ interface Target {
   endpoint: string | null;
   state: ComposerState;
   hydrated: boolean;
-  initialized: boolean;
   reading: boolean;
   writing: boolean;
-  touched: Set<string>;
+  authored: boolean;
   textTouched: Set<string>;
   dirty: Map<string, ComposerDraft>;
 }
@@ -76,16 +67,14 @@ export function createComposerStore() {
     composer: Composer.empty(),
     modelPreference: { kind: "session" },
     persistenceState: SAVED,
-    legacyDraftState: NONE,
   });
   const target = (endpoint: string | null): Target => ({
     endpoint,
     state: emptyState(),
     hydrated: endpoint === null,
-    initialized: false,
     reading: false,
     writing: false,
-    touched: new Set(),
+    authored: false,
     textTouched: new Set(),
     dirty: new Map(),
   });
@@ -103,10 +92,6 @@ export function createComposerStore() {
     owner.state = { ...owner.state, persistenceState: state };
     present(owner);
   }
-  function legacy(owner: Target, state: ComposerLegacyDraftState) {
-    owner.state = { ...owner.state, legacyDraftState: state };
-    present(owner);
-  }
   async function flush(owner: Target) {
     if (
       disposed ||
@@ -122,7 +107,6 @@ export function createComposerStore() {
     const batch = new Map(owner.dirty);
     try {
       await database.write(owner.endpoint, batch);
-      owner.initialized = true;
       for (const [session, draft] of batch)
         if (owner.dirty.get(session) === draft) owner.dirty.delete(session);
       persistence(owner, owner.dirty.size ? { status: "pending" } : SAVED);
@@ -141,49 +125,16 @@ export function createComposerStore() {
       const loaded = await database.read(owner.endpoint);
       if (disposed) return;
       owner.hydrated = true;
-      owner.initialized = loaded.initialized;
       owner.state = {
         ...owner.state,
-        composer: owner.state.composer.hydrateDrafts(loaded.drafts, owner.textTouched),
+        composer: owner.state.composer.hydrateDrafts(loaded, owner.textTouched),
       };
-      try {
-        const raw = localStorage.getItem(legacyKey(owner.endpoint));
-        owner.state = {
-          ...owner.state,
-          legacyDraftState:
-            raw !== null && !loaded.imported
-              ? { status: loaded.initialized || owner.touched.size > 0 ? "blocked" : "available" }
-              : NONE,
-        };
-      } catch (cause) {
-        owner.state = {
-          ...owner.state,
-          legacyDraftState: {
-            status: "failed",
-            cause,
-            canImport: !loaded.initialized && !owner.touched.size,
-          },
-        };
-      }
       persistence(owner, owner.dirty.size ? { status: "pending" } : SAVED);
       void flush(owner);
     } catch (cause) {
-      try {
-        if (localStorage.getItem(legacyKey(owner.endpoint)) !== null) {
-          owner.state = {
-            ...owner.state,
-            legacyDraftState: { status: "failed", cause, canImport: false },
-          };
-        }
-      } catch (backupCause) {
-        owner.state = {
-          ...owner.state,
-          legacyDraftState: { status: "failed", cause: backupCause, canImport: false },
-        };
-      }
       persistence(
         owner,
-        owner.touched.size
+        owner.authored
           ? { status: "recovery-required", cause }
           : { status: "failed", operation: "read", cause },
       );
@@ -256,11 +207,7 @@ export function createComposerStore() {
         const textChanged = forceText || !before.hasSameText(after);
         const authored = textChanged || !before.hasSameAttachments(after);
         if (authored) {
-          owner.touched.add(sessionId);
-          if (next.legacyDraftState.status === "available")
-            next.legacyDraftState = { status: "blocked" };
-          else if (next.legacyDraftState.status === "failed" && next.legacyDraftState.canImport)
-            next.legacyDraftState = { ...next.legacyDraftState, canImport: false };
+          owner.authored = true;
           if (
             beforeState.persistenceState.status === "failed" &&
             beforeState.persistenceState.operation === "read"
@@ -432,58 +379,6 @@ export function createComposerStore() {
       void flush(current);
     }
   }
-  async function importLegacyDrafts() {
-    const owner = current;
-    const state = owner.state.legacyDraftState;
-    if (
-      disposed ||
-      owner.endpoint === null ||
-      !owner.hydrated ||
-      owner.initialized ||
-      owner.touched.size ||
-      owner.writing ||
-      !(state.status === "available" || (state.status === "failed" && state.canImport))
-    )
-      return;
-    legacy(owner, { status: "importing" });
-    owner.writing = true;
-    try {
-      const raw = localStorage.getItem(legacyKey(owner.endpoint));
-      if (raw === null) throw new Error("the existing draft backup is no longer available");
-      const imported = decodeLegacyComposer(raw);
-      const drafts = new Map(
-        [...imported.durableDraftTexts()].map(([session]) => [
-          session,
-          imported.activate(session).draft,
-        ]),
-      );
-      await database.write(
-        owner.endpoint,
-        drafts,
-        () => !disposed && !owner.initialized && owner.touched.size === 0,
-      );
-      if (disposed) return;
-      owner.initialized = true;
-      owner.state = {
-        ...owner.state,
-        composer: owner.state.composer.hydrateDrafts(
-          imported.durableDraftTexts(),
-          owner.textTouched,
-        ),
-        legacyDraftState: NONE,
-      };
-      persistence(owner, owner.dirty.size ? { status: "pending" } : SAVED);
-    } catch (cause) {
-      legacy(owner, {
-        status: "failed",
-        cause,
-        canImport: !owner.initialized && owner.touched.size === 0,
-      });
-    } finally {
-      owner.writing = false;
-    }
-    void flush(owner);
-  }
   const unconfirmed = () =>
     [...targets.values()].filter(
       (owner) =>
@@ -495,11 +390,6 @@ export function createComposerStore() {
     store: useComposerStore,
     activate,
     retryPersistence,
-    importLegacyDrafts: () => {
-      void importLegacyDrafts();
-    },
-    getLegacyDraftBackup: () =>
-      current.endpoint === null ? "" : (localStorage.getItem(legacyKey(current.endpoint)) ?? ""),
     hasUnconfirmedDrafts: () => unconfirmed().length > 0,
     subscribePersistence: (listener: () => void) => {
       persistenceListeners.add(listener);
@@ -512,7 +402,7 @@ export function createComposerStore() {
         {
           targets: unconfirmed().map((owner) => ({
             active: owner === current,
-            drafts: persistedComposerDrafts(owner.state.composer),
+            drafts: Object.fromEntries(owner.state.composer.durableDraftTexts()),
           })),
         },
         null,

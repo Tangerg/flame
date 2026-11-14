@@ -251,17 +251,9 @@ the unconfirmed text and separate pasted-text records on request, including
 inactive targets, without copying connection credentials or claiming images are
 durable. A late copy cannot confirm a later draft.
 
-Normal storage reads accept only the current IndexedDB shape. The previous
-`flame.composer:<encoded endpoint>` localStorage value is never read as a fallback,
-rewritten or deleted. Presence detection offers an explicit **Import existing
-drafts** action; only that action parses the version-zero envelope. Import checks
-both an untouched in-memory owner and fresh current storage inside its transaction,
-and commits an import decision together with every imported Session and paste.
-An unsuccessful import retains the original backup and can be retried. Editing
-or existing current records prevents import from merging or overwriting them.
-**Copy previous draft backup** exports the original bytes, including when current
-storage is already in use. This is a one-time user-directed import, not a normal
-compatibility reader. Keep the old data as backup when using fresh storage.
+Draft storage accepts only the current IndexedDB shape. There is no older-format
+reader, import lifecycle or localStorage draft projection. Retain obsolete browser
+data separately when starting with fresh storage.
 
 The page installs an exit warning only while the Composer owner reports
 unconfirmed changes. Cancelling departure and persisted page transitions keep

@@ -929,12 +929,5 @@
   "composer.image.failed": "{{name}} konnte nicht gelesen werden. Entferne das Bild und wähle es erneut aus.",
   "composer.image.ready": "{{name}} ist bereit",
   "composer.persistence.loading": "Gespeicherte Entwürfe werden geladen. Neue Änderungen bleiben währenddessen hier erhalten.",
-  "composer.persistence.pending": "Entwurfsänderungen werden auf diesem Gerät gespeichert…",
-  "composer.legacy.available": "Im bisherigen Speicher sind Entwürfe vorhanden. Importiere sie vor dem Bearbeiten in den neuen Entwurfsspeicher.",
-  "composer.legacy.import": "Vorhandene Entwürfe importieren",
-  "composer.legacy.blocked": "Die bisherige Entwurfssicherung bleibt erhalten. Der neue Speicher wird bereits verwendet; kopiere die Sicherung, um sie in einen leeren Speicher zu importieren.",
-  "composer.legacy.failed": "Die bisherige Entwurfssicherung konnte nicht gelesen oder importiert werden. Das Original bleibt unverändert.",
-  "composer.legacy.importing": "Vorhandene Entwürfe werden importiert… Die ursprüngliche Sicherung bleibt erhalten.",
-  "composer.legacy.copy": "Bisherige Entwurfssicherung kopieren",
-  "composer.legacy.copied": "Bisherige Entwurfssicherung kopiert"
+  "composer.persistence.pending": "Entwurfsänderungen werden auf diesem Gerät gespeichert…"
 }
