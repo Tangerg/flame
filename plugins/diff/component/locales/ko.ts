@@ -58,6 +58,7 @@ export const ko: Record<string, string> = {
   "file.status.renamed": "이름 변경됨",
   "file.status.untracked": "추적되지 않음",
   "reader.region": "{{path}}의 스크롤 가능한 diff",
+  "reader.loading": "차이점 불러오는 중…",
   "details.title": "비교 세부 정보",
   "details.emptyTree":
     "아직 커밋이 없습니다. 변경 사항은 빈 트리와 비교됩니다.",

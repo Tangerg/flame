@@ -57,6 +57,7 @@ export const zh: Record<string, string> = {
   "file.status.renamed": "已重命名",
   "file.status.untracked": "未跟踪",
   "reader.region": "{{path}} 的可滚动 diff",
+  "reader.loading": "正在加载差异…",
   "details.title": "比较详情",
   "details.emptyTree": "尚无提交。更改将与空树进行比较。",
   "details.worktree": "相对 HEAD 的更改，包括已暂存、未暂存和未跟踪的文件。",

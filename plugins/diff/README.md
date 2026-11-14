@@ -34,6 +34,13 @@ accepted read and surface the failure. Missing context remains missing; no
 reconstructed full files or expand-to-full-source requests are supplied.
 The bounded current-file workload uses Pierre without virtualization. Native
 selection therefore covers every presented line without a second hidden DOM.
+Pierre's public worker pool owns one worker and one cached diff for this reader.
+Its portable script is captured as text inside the same approved component entry;
+there is no additional script request or CSP exception. Syntax tokenization stays
+off the interaction thread. The reader publishes code only after the public
+highlight cache is ready, so asynchronous token replacement cannot invalidate a
+native selection. Changing the captured file or retiring its reader terminates
+the old pool and its pending work.
 Flame's reader handles Select All and projects the native composed range into
 public parsed source lines for clipboard text. Gutters and EOF labels are excluded;
 partial UTF-16 offsets, blank lines, CRLF and the final source newline are preserved.

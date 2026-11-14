@@ -64,6 +64,7 @@ export const es: Record<string, string> = {
   "file.status.renamed": "Renombrado",
   "file.status.untracked": "Sin seguimiento",
   "reader.region": "Diff desplazable de {{path}}",
+  "reader.loading": "Cargando diferencias…",
   "details.title": "Detalles de la comparación",
   "details.emptyTree":
     "Aún no hay commits. Los cambios se comparan con un árbol vacío.",

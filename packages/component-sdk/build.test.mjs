@@ -9,6 +9,51 @@ import { parseSync } from "rolldown/utils";
 import { buildComponent } from "./build.mjs";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
 
+test("captures private raw text without evaluating its imports or fetching another module", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-component-text-"));
+  try {
+    const source =
+      '\uFEFFthrow new Error("not executable text: 中文🙂");\r\nimport("unavailable");\n';
+    await writeFile(join(directory, "private.js"), source);
+    const input = join(directory, "entry.js");
+    await writeFile(
+      input,
+      'export { default as source } from "./private.js?raw";',
+    );
+    const output = join(directory, "output");
+    await buildComponent({ input, directory: output, compiler: rolldown });
+    const bytes = await readFile(join(output, "component.js"));
+    const component = await import(
+      `data:text/javascript;base64,${bytes.toString("base64")}`
+    );
+    assert.equal(component.source, source);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("refuses invalid UTF-8 text instead of changing its captured contents", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-component-text-"));
+  try {
+    await writeFile(join(directory, "private.js"), Buffer.from([0xff]));
+    const input = join(directory, "entry.js");
+    await writeFile(
+      input,
+      'export { default as source } from "./private.js?raw";',
+    );
+    await assert.rejects(
+      buildComponent({
+        input,
+        directory: join(directory, "output"),
+        compiler: rolldown,
+      }),
+      /encoded data was not valid|encoding utf-8/i,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("builds private resources for the shared Host target and preserves disposal", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-target-"));
   try {

@@ -60,6 +60,7 @@ export const en: Record<string, string> = {
   "file.status.renamed": "Renamed",
   "file.status.untracked": "Untracked",
   "reader.region": "Scrollable diff for {{path}}",
+  "reader.loading": "Loading diff…",
   "details.title": "Comparison details",
   "details.emptyTree":
     "No commits yet. Changes are compared with an empty tree.",

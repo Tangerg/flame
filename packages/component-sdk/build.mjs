@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import profile from "./runtime-profile.generated.json" with { type: "json" };
 export const HOST_MODULES = Object.freeze(profile.modules);
@@ -21,6 +21,26 @@ export async function buildComponent({ input, directory, compiler }) {
       define: { "process.env.NODE_ENV": JSON.stringify("production") },
     },
     plugins: [
+      {
+        name: "flame-component-text",
+        async resolveId(source, importer) {
+          if (!source.endsWith("?raw")) return;
+          const resolved = await this.resolve(source.slice(0, -4), importer);
+          if (!resolved || resolved.external)
+            throw new Error(
+              "component text imports must resolve to private files",
+            );
+          return `${resolved.id}?raw`;
+        },
+        async load(id) {
+          if (!id.endsWith("?raw")) return;
+          const source = new TextDecoder("utf-8", {
+            fatal: true,
+            ignoreBOM: true,
+          }).decode(await readFile(id.slice(0, -4)));
+          return `export default ${JSON.stringify(source)};`;
+        },
+      },
       {
         name: "flame-component-import-graph",
         moduleParsed(info) {

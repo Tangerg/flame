@@ -176,7 +176,8 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       "review: open file",
       await measure(page, session, async () => {
         await diffFiles.first().click();
-        await expect(diff.getByRole("region", { name: /^Scrollable diff for / })).toHaveCount(1);
+        const reader = diff.getByRole("region", { name: /^Scrollable diff for / });
+        await expect(reader.getByText(/^export const value1 = /).first()).toBeVisible();
       }),
     );
     record(

@@ -58,6 +58,7 @@ export const ja: Record<string, string> = {
   "file.status.renamed": "名前変更",
   "file.status.untracked": "未追跡",
   "reader.region": "{{path}} のスクロール可能な diff",
+  "reader.loading": "差分を読み込み中…",
   "details.title": "比較の詳細",
   "details.emptyTree":
     "まだコミットがありません。変更は空のツリーと比較されます。",

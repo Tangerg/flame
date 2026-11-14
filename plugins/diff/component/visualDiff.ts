@@ -1,6 +1,8 @@
 import { parsePatchFiles, type FileDiffMetadata } from "@pierre/diffs";
 import type { Diff } from "@flame/runtime-client/wire";
 
+let nextRead = 0;
+
 export function parseVisualDiff(diff: Diff) {
   if (diff.type !== "visual")
     throw new Error("workspace diff: expected the visual projection");
@@ -8,6 +10,7 @@ export function parseVisualDiff(diff: Diff) {
     throw new Error("workspace diff: nonempty patch has no manifest");
   const rendered = new Map<string, FileDiffMetadata>();
   for (const patch of parsePatchFiles(diff.visual.patch, {
+    cacheKeyPrefix: String(++nextRead),
     throwOnError: true,
     disableLineMatching: true,
   })) {

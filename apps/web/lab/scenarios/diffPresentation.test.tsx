@@ -19,6 +19,22 @@ import {
   type GetDiffRequest,
 } from "@flame/runtime-client/wire";
 import { WorkspaceDiff } from "../../../../plugins/diff/component/component";
+// Worker preparation and native selection run in the real browser suite.
+vi.mock("../../../../plugins/diff/component/PreparedDiff", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../../plugins/diff/component/PreparedDiff")>();
+  const { FileDiff } = await import("@pierre/diffs/react");
+  return {
+    ...actual,
+    PreparedDiff: ({ file, options }: Parameters<typeof actual.PreparedDiff>[0]) => (
+      <FileDiff
+        fileDiff={file}
+        options={{ ...options, ...actual.DIFF_RENDERING_OPTIONS }}
+        disableWorkerPool
+      />
+    ),
+  };
+});
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";

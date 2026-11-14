@@ -5,7 +5,6 @@ import {
   type FileDiffMetadata,
   type FileDiff as DiffInstance,
 } from "@pierre/diffs";
-import { FileDiff } from "@pierre/diffs/react";
 import {
   CodeCaption,
   CodeFrame,
@@ -16,8 +15,9 @@ import {
 } from "@flame/ui";
 import type { Translate } from "@flame/component-sdk";
 import { copyDiffSelection } from "./diffSelection";
+import { DIFF_RENDERING_OPTIONS, PreparedDiff } from "./PreparedDiff";
 
-registerCustomCSSVariableTheme("flame-workspace-diff", {
+registerCustomCSSVariableTheme(DIFF_RENDERING_OPTIONS.theme, {
   foreground: "var(--color-text)",
   background: "var(--color-sunken)",
   "token-comment": "var(--color-text-muted)",
@@ -91,8 +91,6 @@ export function DiffReader({
       diffStyle: layout,
       disableFileHeader: true,
       stickyHeader: false,
-      theme: "flame-workspace-diff",
-      preferredHighlighter: "shiki-js" as const,
       hunkSeparators: "metadata" as const,
       parseDiffOptions: { disableLineMatching: true },
       unsafeCSS: appearance,
@@ -118,8 +116,9 @@ export function DiffReader({
       <ScrollRegion
         label={t("reader.region", { path: file.name })}
         onKeyDown={(event) => {
-          if (visible && root.current) {
-            selectAllInReader(event, root.current.node);
+          if (!visible) return;
+          selectAllInReader(event, root.current?.node ?? event.currentTarget);
+          if (root.current) {
             const { renderer } = root.current;
             scrollWithHorizontalArrow(event, (delta) => {
               renderer.setCodeScrollLeft(renderer.getCodeScrollLeft() + delta);
@@ -131,7 +130,11 @@ export function DiffReader({
             copyDiffSelection(event, root.current.node, root.current.file);
         }}
       >
-        <FileDiff fileDiff={file} options={options} disableWorkerPool />
+        <PreparedDiff
+          file={file}
+          options={options}
+          loadingLabel={t("reader.loading")}
+        />
       </ScrollRegion>
     </CodeFrame>
   );

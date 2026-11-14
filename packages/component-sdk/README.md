@@ -323,7 +323,11 @@ The shared-module profile version is unchanged by this compilation policy.
 The SDK owns shared-module externalization and the prebuilt ESM
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies and dynamic imports are
-bundled into one entry; PNG imports inline their bytes. Frame verifies the captured entry
+bundled into one entry; PNG imports inline their bytes. A private `?raw` import
+captures UTF-8 text as a string in that same entry, without evaluating the source
+or creating a runtime module request. Invalid UTF-8 is rejected. This lets an
+installed component include a self-contained worker script within its approved
+bytes. Frame verifies the captured entry
 bytes against the approved digest before evaluating them. `HOST_MODULES` names shared React,
 React DOM, JSX runtimes, SDK, Runtime-client, Frame exact JSON and UI modules;
 UI subpath imports are also external. The workbench derives its import map from

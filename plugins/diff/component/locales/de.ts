@@ -63,6 +63,7 @@ export const de: Record<string, string> = {
   "file.status.renamed": "Umbenannt",
   "file.status.untracked": "Nicht verfolgt",
   "reader.region": "Scrollbarer Diff für {{path}}",
+  "reader.loading": "Änderungen werden geladen…",
   "details.title": "Vergleichsdetails",
   "details.emptyTree":
     "Noch keine Commits. Änderungen werden mit einem leeren Baum verglichen.",

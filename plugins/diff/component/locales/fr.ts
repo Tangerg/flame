@@ -65,6 +65,7 @@ export const fr: Record<string, string> = {
   "file.status.renamed": "Renommé",
   "file.status.untracked": "Non suivi",
   "reader.region": "Diff défilable pour {{path}}",
+  "reader.loading": "Chargement des différences…",
   "details.title": "Détails de la comparaison",
   "details.emptyTree":
     "Aucun commit pour le moment. Les modifications sont comparées à un arbre vide.",

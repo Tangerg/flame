@@ -37,6 +37,81 @@ async function copied(reader: Locator) {
 
 for (const browserName of ["chromium", "webkit"] as const) {
   test.extend({ browserName })(
+    `${browserName} publishes selectable diff code after worker preparation and retires the worker`,
+    async ({ page }) => {
+      await page.addInitScript(() => {
+        const NativeWorker = window.Worker;
+        const pending: Array<() => void> = [];
+        let released = false;
+        (window as unknown as { releaseDiffHighlight(): void }).releaseDiffHighlight = () => {
+          released = true;
+          pending.splice(0).forEach((send) => send());
+        };
+        window.Worker = class extends NativeWorker {
+          override postMessage(
+            message: unknown,
+            transfer?: Transferable[] | StructuredSerializeOptions,
+          ) {
+            const send = () => {
+              if (Array.isArray(transfer)) super.postMessage(message, transfer);
+              else super.postMessage(message, transfer);
+            };
+            if (
+              !released &&
+              typeof message === "object" &&
+              message !== null &&
+              "type" in message &&
+              message.type === "diff"
+            )
+              pending.push(send);
+            else send();
+          }
+        };
+      });
+      const started = page.waitForEvent("worker", (worker) => worker.url().startsWith("blob:"));
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-review&theme=light&locale=en",
+      );
+      await expectLabReady(page);
+      const worker = await started;
+      const reader = page.getByRole("region", {
+        name: `Scrollable diff for ${ACTIVE_DIFF_FILE}`,
+        exact: true,
+      });
+      await expect(reader).toBeVisible();
+      await expect(reader.getByRole("status")).toHaveText("Loading diff…");
+      await expect(reader.getByText("const rail = railRef.current;", { exact: true })).toHaveCount(
+        0,
+      );
+      await reader.focus();
+      await reader.press("ControlOrMeta+a");
+      const pendingSelection = await reader.evaluate((node) => {
+        const selection = node.ownerDocument.getSelection()!;
+        return {
+          inside: node.contains(selection.anchorNode) && node.contains(selection.focusNode),
+          text: selection.toString(),
+        };
+      });
+      expect(pendingSelection).toEqual({
+        inside: true,
+        text: expect.stringMatching(/^Loading diff…\n?$/),
+      });
+      const tokens = reader.locator('[data-code] [data-line] span[style*="color:"]');
+      await expect(tokens).toHaveCount(0);
+      await page.evaluate(() =>
+        (window as unknown as { releaseDiffHighlight(): void }).releaseDiffHighlight(),
+      );
+      await expect(tokens.first()).toBeVisible();
+      await selectText(reader.getByText("const rail = railRef.current;", { exact: true }), 3, 14);
+      expect(await copied(reader)).toBe("st rail = r");
+      const closed = new Promise<void>((resolve) => worker.once("close", () => resolve()));
+      await page.getByRole("button", { name: "Show changed files", exact: true }).click();
+      await closed;
+      await expect(reader).toBeHidden();
+    },
+  );
+
+  test.extend({ browserName })(
     `${browserName} keeps a native diff selection inside its reader`,
     async ({ page }) => {
       await page.goto("/lab/fixture.html?fixture=workspace&state=dock-review&theme=light");
