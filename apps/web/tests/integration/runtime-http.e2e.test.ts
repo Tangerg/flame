@@ -13,15 +13,14 @@ import { lstat, mkdir, readFile, realpath, symlink, writeFile } from "node:fs/pr
 import {
   createServer as createHttpServer,
   type IncomingMessage,
-  request as requestHttp,
   type ServerResponse,
 } from "node:http";
 import { createConnection, createServer as createNetServer } from "node:net";
 import { dirname, join } from "node:path";
-import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -36,11 +35,7 @@ import { RpcError } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
 import { createSidecarClient } from "@flame/runtime-client";
 import { createHttpTransport } from "@flame/runtime-client";
-import {
-  isWireStreamingMethodName,
-  wireMethodRequiresIdempotency,
-  type WireMethodName,
-} from "@flame/runtime-client/methods";
+import { wireMethodRequiresIdempotency, type WireMethodName } from "@flame/runtime-client/methods";
 import {
   PROTOCOL_VERSION,
   type MCPServerID,
@@ -49,8 +44,6 @@ import {
   type RunEvent,
   type RuntimeEvent,
 } from "@flame/runtime-client/wire";
-// @vitest-environment-options { "url": "http://localhost:5173/" }
-// Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 
 const execFileAsync = promisify(execFile);
 
@@ -67,6 +60,10 @@ const compactionSummaryMarker = "E2E_COMPACTION_SUMMARY";
 const compactionRecoveryMarker = "E2E_COMPACTION_RECOVERY";
 
 const unavailableProviderStatus = 503;
+
+const runtimeNotReadyStatus = 503;
+
+const readinessPollMilliseconds = 100;
 
 const unconfirmedModelOutcome = {
   type: "lost",
@@ -245,61 +242,6 @@ function faultUnaryResponse(
   };
   return { attempts: () => attempts, fetch: faultFetch };
 }
-
-const isolatedFetch: typeof fetch = async (input, init) => {
-  const payload =
-    typeof init?.body === "string" ? (JSON.parse(init.body) as { method?: string }) : {};
-  const streaming = payload.method && isWireStreamingMethodName(payload.method as WireMethodName);
-  const headers = new Headers(init?.headers);
-  headers.set("Connection", "close");
-  const url =
-    typeof input === "string" || input instanceof URL ? new URL(input) : new URL(input.url);
-  return new Promise<Response>((resolve, reject) => {
-    const request = requestHttp(
-      url,
-      {
-        method: init?.method,
-        headers: Object.fromEntries(headers.entries()),
-        signal: init?.signal ?? undefined,
-      },
-      (response) => {
-        const responseHeaders = new Headers();
-        for (const [name, value] of Object.entries(response.headers)) {
-          if (Array.isArray(value)) {
-            for (const item of value) responseHeaders.append(name, item);
-          } else if (value !== undefined) {
-            responseHeaders.set(name, value);
-          }
-        }
-        const responseOptions = {
-          status: response.statusCode ?? 500,
-          statusText: response.statusMessage,
-          headers: responseHeaders,
-        };
-        if (streaming) {
-          // Keep real socket failures on the native stream. The browser polyfill
-          // leaves a rejected cancel() promise after SIGKILL followed by client.close().
-          // Node and lib.dom declare incompatible BYOB overloads for the same Web API.
-          const body = Readable.toWeb(response) as unknown as ReadableStream<Uint8Array>;
-          resolve(new Response(body, responseOptions));
-          return;
-        }
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.once("error", reject);
-        response.once("end", () => {
-          resolve(new Response(Buffer.concat(chunks), responseOptions));
-        });
-      },
-    );
-    request.once("error", reject);
-    if (typeof init?.body === "string" || init?.body instanceof Uint8Array) {
-      request.end(init.body);
-    } else {
-      request.end();
-    }
-  });
-};
 
 function faultStreamOpening(method: string): { attempts: () => number; fetch: typeof fetch } {
   let attempts = 0;
@@ -701,16 +643,97 @@ async function waitUntilReady(
   processError: () => string,
   readyBefore = Date.now() + processStartupMilliseconds,
 ): Promise<void> {
+  const signal = AbortSignal.timeout(Math.max(0, readyBefore - Date.now()));
   while (Date.now() < readyBefore) {
     try {
-      const response = await fetch(`${baseUrl}/v2/health/ready`);
+      const response = await fetch(`${baseUrl}/v2/health/ready`, { signal });
       await response.arrayBuffer();
       if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 100));
+      if (response.status !== runtimeNotReadyStatus)
+        throw new Error(`unexpected runtime readiness status ${response.status}`);
+    } catch (cause) {
+      if (signal.aborted)
+        throw new Error(`runtime did not become ready: ${processError()}`, { cause });
+      if (!(
+        cause instanceof TypeError &&
+        cause.cause instanceof Error &&
+        "code" in cause.cause &&
+        cause.cause.code === "ECONNREFUSED"
+      ))
+        throw cause;
+    }
+    await new Promise((resolve) => setTimeout(resolve, readinessPollMilliseconds));
   }
   throw new Error(`runtime did not become ready: ${processError()}`);
 }
+
+describe("Runtime process readiness", () => {
+  const endpoint = "http://runtime.invalid";
+  const output = () => "captured process output";
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it.each([401, 500])("propagates unexpected HTTP status %d", async (status) => {
+    vi.useFakeTimers();
+    const request = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status }));
+    const result = expect(waitUntilReady(endpoint, output)).rejects.toThrow(
+      `unexpected runtime readiness status ${status}`,
+    );
+    await Promise.all([result, vi.runAllTimersAsync()]);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it("preserves an unexpected network failure instead of turning it into a startup timeout", async () => {
+    vi.useFakeTimers();
+    const failure = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("permission denied"), { code: "EACCES" }),
+    });
+    const request = vi.spyOn(globalThis, "fetch").mockRejectedValue(failure);
+    const result = expect(waitUntilReady(endpoint, output)).rejects.toBe(failure);
+    await Promise.all([result, vi.runAllTimersAsync()]);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it("waits through a refused connection and an initializing response until ready", async () => {
+    vi.useFakeTimers();
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(
+        new TypeError("fetch failed", {
+          cause: Object.assign(new Error("connection refused"), { code: "ECONNREFUSED" }),
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: runtimeNotReadyStatus }))
+      .mockResolvedValueOnce(new Response());
+    const result = expect(waitUntilReady(endpoint, output)).resolves.toBeUndefined();
+    await Promise.all([result, vi.runAllTimersAsync()]);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+
+  it("aborts a stalled request at the original startup deadline and retains process evidence", async () => {
+    const requestTimeoutMilliseconds = 1_000;
+    let signal: AbortSignal | undefined;
+    const request = vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+      signal = init?.signal ?? undefined;
+      if (!signal) throw new Error("readiness request has no cancellation owner");
+      const original = signal;
+      return new Promise<Response>((_resolve, reject) => {
+        original.addEventListener("abort", () => reject(original.reason), { once: true });
+      });
+    });
+    await expect(
+      waitUntilReady(endpoint, output, Date.now() + requestTimeoutMilliseconds),
+    ).rejects.toMatchObject({
+      message: "runtime did not become ready: captured process output",
+      cause: { name: "TimeoutError" },
+    });
+    expect(signal?.aborted).toBe(true);
+    expect(request).toHaveBeenCalledOnce();
+  });
+});
 
 async function nextRuntimeEvent(
   iterator: AsyncIterator<RuntimeEvent>,
@@ -993,7 +1016,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   };
 
   const createRuntimeClient = () =>
-    createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+    createFlameClient(createHttpTransport({ baseUrl }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
@@ -1003,7 +1026,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     });
 
   const createSharedClient = () =>
-    createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+    createFlameClient(createHttpTransport({ baseUrl }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
@@ -1614,7 +1637,7 @@ for await (const line of lines) {
     expect(discovery.capabilities.streamingMethods).toContain("runtime.subscribe");
 
     const staleStoreTitle = "must not enter replacement Runtime";
-    const staleStoreResponse = await isolatedFetch(`${baseUrl}/v2/rpc`, {
+    const staleStoreResponse = await fetch(`${baseUrl}/v2/rpc`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -1916,7 +1939,7 @@ for await (const line of lines) {
       const evidence = structuredClone([...entries]);
       await first.close();
       now += negotiated!.limits.idempotency.retentionSeconds * 1_000;
-      cold = createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+      cold = createFlameClient(createHttpTransport({ baseUrl }), {
         requestMeta,
         capabilities: () => negotiated,
         mutationStorage,
@@ -4592,7 +4615,7 @@ for await (const line of lines) {
       { method: "feedback.create", params: {} },
       { method: "usage.summary", params: { sinceDays: -1 } },
     ] satisfies Array<{ method: WireMethodName; params: unknown }>) {
-      const response = await isolatedFetch(`${baseUrl}/v2/rpc`, {
+      const response = await fetch(`${baseUrl}/v2/rpc`, {
         method: "POST",
         headers: {
           Accept: "application/json",

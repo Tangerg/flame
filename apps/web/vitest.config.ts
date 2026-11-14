@@ -6,9 +6,7 @@ import { stylexTransform } from "./stylex.vite.mjs";
 
 const runtimeLifecycleTest = "tests/integration/runtime-http.e2e.test.ts";
 
-// We don't extend vite.config.ts here because that config pulls in the Wails
-// runtime + several browser-only plugins; tests run in happy-dom and only
-// need the path alias.
+// The application config starts Wails/browser lifetimes that neither test host owns.
 export default defineConfig({
   // Same transform the app and the fixtures get: without it `stylex.defineVars` reaches the
   // test runtime uncompiled and throws at import, taking every file that touches a migrated
@@ -21,14 +19,14 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "happy-dom",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
     projects: [
       {
         extends: true,
         test: {
           name: "frontend",
+          environment: "happy-dom",
+          setupFiles: ["./src/test/setup.ts"],
           fileParallelism: false,
           // Fixture validity and portable component contracts do not require a browser;
           // Playwright owns rendered geometry and appearance.
@@ -45,6 +43,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "runtime",
+          environment: "node",
           include: [runtimeLifecycleTest],
           globalSetup: ["./tests/integration/runtime-http.setup.ts"],
           sequence: { groupOrder: 1 },

@@ -1080,6 +1080,10 @@ Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `../../tooling/integration`. All UI visual fixtures, capture cases and browser checks live in [`lab`](lab/README.md).
 Frontend test files run serially so competing module transforms cannot consume
 another file's DOM assertion deadline.
+Only the frontend project uses Happy DOM and UI setup. Runtime HTTP integration
+uses Node's native Fetch and streams, so a DOM emulator cannot replace the
+client's transport lifetime or cancellation behavior. Startup probes retry only
+connection refusal and the declared not-ready status within the original deadline.
 The Runtime test project prepares disposable binaries and packages before suite
 startup deadlines begin. Project setup owns those artifacts and their final
 removal; the suite joins every process before project teardown reclaims the files.
