@@ -222,8 +222,6 @@ export function AgentActivityDisclosure({
   const ownSummaryId = useId();
   const triggerId = summaryId ?? ownSummaryId;
   const framed = shell !== "line" && icon !== undefined;
-  const [revealed, setRevealed] = useState(open);
-  if (open && !revealed) setRevealed(true);
   const headerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -395,7 +393,7 @@ export function AgentActivityDisclosure({
                 contentClassName,
               )}
             >
-              {revealed && <ContentVisibility visible={open}>{children}</ContentVisibility>}
+              <ActivityBody open={open}>{children}</ActivityBody>
             </div>
           </div>
         </Collapsible.Panel>
@@ -433,4 +431,10 @@ function TriggerShell({
       {children}
     </Collapsible.Trigger>
   );
+}
+
+function ActivityBody({ open, children }: { open: boolean; children: ReactNode }) {
+  const [revealed, setRevealed] = useState(open);
+  if (open && !revealed) setRevealed(true);
+  return revealed ? <ContentVisibility visible={open}>{children}</ContentVisibility> : null;
 }

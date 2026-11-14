@@ -220,6 +220,17 @@ function sourceCopy(path, source) {
       `${sourceRelativePath(path)}:${value.loc.start.line}: literal copy in ${call} — use t("key")`,
     );
   };
+  const notificationPresentation = (presentation) => {
+    if (presentation?.type !== "ObjectExpression") return;
+    for (const property of presentation.properties) {
+      if (
+        property.type === "ObjectProperty" &&
+        !property.computed &&
+        ["message", "description"].includes(property.key.name ?? property.key.value)
+      )
+        literalNotification(property.value, "show");
+    }
+  };
   traverse(ast, {
     CallExpression(call) {
       const callee = call.get("callee");
@@ -229,17 +240,7 @@ function sourceCopy(path, source) {
         if (member.isIdentifier({ name: "notify" })) {
           literalNotification(call.node.arguments[1], "notify");
         } else if (member.isIdentifier({ name: "show" })) {
-          const presentation = call.node.arguments[0];
-          if (presentation?.type === "ObjectExpression") {
-            for (const property of presentation.properties) {
-              if (
-                property.type === "ObjectProperty" &&
-                !property.computed &&
-                ["message", "description"].includes(property.key.name ?? property.key.value)
-              )
-                literalNotification(property.value, "show");
-            }
-          }
+          notificationPresentation(call.node.arguments[0]);
         }
         if (
           object.isIdentifier() &&

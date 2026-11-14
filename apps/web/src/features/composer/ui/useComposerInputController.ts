@@ -199,23 +199,26 @@ export function useComposerInputController({
     composition.clear();
   };
 
+  const acceptSuggestion = () => {
+    if (navigation.activeIndex === null) suggestions.dismiss();
+    else if (mentions.open) {
+      const item = mentions.items[navigation.activeIndex];
+      if (item !== undefined) mentions.accept(item);
+    } else {
+      const item = slash.items[navigation.activeIndex];
+      if (item !== undefined) slash.accept(item);
+    }
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     const compositionIntent = composition.keyIntent(event.nativeEvent);
     if (compositionIntent !== null) {
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
     }
+    const key = composerKeyBindingKey(event.nativeEvent);
     const retry = retryRef.current;
-    if (
-      retry &&
-      mentions.open &&
-      mentions.status === "error" &&
-      event.key === "Tab" &&
-      !event.shiftKey &&
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
+    if (retry && mentions.open && mentions.status === "error" && key === "tab") {
       event.preventDefault();
       retry.focus();
       return;
@@ -234,14 +237,7 @@ export function useComposerInputController({
         case "Enter":
           if (event.shiftKey) break;
           event.preventDefault();
-          if (navigation.activeIndex === null) suggestions.dismiss();
-          else if (mentions.open) {
-            const item = mentions.items[navigation.activeIndex];
-            if (item !== undefined) mentions.accept(item);
-          } else {
-            const item = slash.items[navigation.activeIndex];
-            if (item !== undefined) slash.accept(item);
-          }
+          acceptSuggestion();
           return;
         case "ArrowUp":
         case "ArrowDown":
@@ -251,10 +247,7 @@ export function useComposerInputController({
           return;
       }
     }
-    const binding = lookupExtensionByKey(
-      COMPOSER_KEY_BINDING,
-      composerKeyBindingKey(event.nativeEvent),
-    );
+    const binding = lookupExtensionByKey(COMPOSER_KEY_BINDING, key);
     if (!binding) return;
     const handled = binding.handler({
       value,

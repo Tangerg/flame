@@ -127,16 +127,7 @@ export function ResizeHandle({
       const previous = scope.current;
       const changed =
         previous !== null &&
-        (previous.element !== element ||
-          previous.edge !== next.edge ||
-          previous.property !== next.property ||
-          previous.value !== next.value ||
-          previous.width !== width ||
-          previous.min !== min ||
-          previous.max !== max ||
-          previous.formatted !== next.formatted ||
-          previous.attribute !== next.attribute ||
-          previous.visible !== next.visible);
+        (Object.keys(next) as (keyof ResizeScope)[]).some((key) => previous[key] !== next[key]);
       if (changed || !current.visible) retire();
       if (!previous || changed) scope.current = next;
       if (!current.visible) {

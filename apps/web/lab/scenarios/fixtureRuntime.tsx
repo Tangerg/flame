@@ -67,6 +67,26 @@ const root = createRoot(container);
 
 export let visualClient: VisualClient;
 
+function fixtureAppearance(query: URLSearchParams) {
+  const requestedFontSize = query.get("font-size");
+  const fontSize = requestedFontSize === null ? undefined : Number(requestedFontSize);
+  const density = UI_DENSITY_MODES.find((mode) => mode === query.get("density"));
+  const uiFont = query.get("ui-font");
+  const smoothing = query.get("smoothing");
+  const requestedRadius = query.get("radius");
+  const radiusScale = requestedRadius === null ? undefined : Number(requestedRadius);
+  return {
+    theme: fixtureTheme(query.get("theme")),
+    motionScale: fixtureMotionScale(query.get("motion")),
+    ...(fontSize !== undefined && Number.isFinite(fontSize) ? { fontSize } : {}),
+    ...(density ? { density } : {}),
+    colors: fixtureColors(query),
+    ...(uiFont ? { uiFont } : {}),
+    ...(radiusScale !== undefined && Number.isFinite(radiusScale) ? { radiusScale } : {}),
+    ...(smoothing === null ? {} : { fontSmoothing: smoothing !== "off" }),
+  };
+}
+
 function startFixture(messages: NotificationFeed, render: (node: ReactNode) => void): () => void {
   const VISUAL_CLOCK_STARTED_AT = performance.now();
 
@@ -91,7 +111,8 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
         ? requestedFileListState
         : undefined;
 
-    const theme = fixtureTheme(query.get("theme"));
+    const { colors, ...appearance } = fixtureAppearance(query);
+    const { theme, motionScale } = appearance;
 
     const sidebarOpen = query.get("sidebar") !== "collapsed";
 
@@ -110,14 +131,9 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
     const requestedFixture = query.get("fixture");
 
     const fixture =
-      requestedFixture === "agent" ||
-      requestedFixture === "workspace" ||
-      requestedFixture === "shell" ||
-      requestedFixture === "computer" ||
-      requestedFixture === "composition" ||
-      requestedFixture === "atoms"
-        ? requestedFixture
-        : "foundation";
+      ["agent", "workspace", "shell", "computer", "composition", "atoms"].find(
+        (kind) => kind === requestedFixture,
+      ) ?? "foundation";
 
     const requestedState = query.get("state");
 
@@ -136,8 +152,6 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       : "dock-review";
 
     const rootElement = document.documentElement;
-
-    const motionScale = fixtureMotionScale(query.get("motion"));
 
     function extendRecordedSource(snapshot: RuntimeAgentSessionSnapshot) {
       if (!query.has("long-result")) return;
@@ -158,32 +172,11 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       };
     }
 
-    const requestedFontSize = query.get("font-size");
-
-    const requestedDensity = query.get("density");
-
-    const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
-
-    const colors = fixtureColors(query);
-
     const requestedFullView = query.get("full-view") ?? undefined;
 
     const requestedReviewFiles = Number(query.get("review-files")) || undefined;
 
     const requestedLocale = query.get("locale") ?? FIXTURE_DEFAULT_LOCALE;
-
-    const requestedUiFont = query.get("ui-font") ?? undefined;
-
-    const requestedSmoothing = query.get("smoothing");
-
-    const fontSmoothing = requestedSmoothing === null ? undefined : requestedSmoothing !== "off";
-
-    const requestedRadius = Number(query.get("radius"));
-
-    const radiusScale =
-      Number.isFinite(requestedRadius) && query.get("radius") !== null
-        ? requestedRadius
-        : undefined;
 
     rootElement.classList.remove("theme-light", "theme-dark");
 
@@ -196,9 +189,9 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
     if (motionScale === 0) rootElement.dataset.motion = "off";
     else delete rootElement.dataset.motion;
 
-    if (requestedFontSize !== null && Number.isFinite(Number(requestedFontSize))) {
+    if (appearance.fontSize !== undefined) {
       for (const [property, value] of Object.entries(
-        uiTypeLadderCssVariables(Number(requestedFontSize)),
+        uiTypeLadderCssVariables(appearance.fontSize),
       )) {
         rootElement.style.setProperty(property, value);
       }
@@ -448,18 +441,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
 
     const node = await fixtureNode();
 
-    visualClient.theme.store.setState({
-      theme,
-      motionScale,
-      ...(requestedFontSize !== null && Number.isFinite(Number(requestedFontSize))
-        ? { fontSize: Number(requestedFontSize) }
-        : {}),
-      ...(density ? { density } : {}),
-      ...colors,
-      ...(requestedUiFont ? { uiFont: requestedUiFont } : {}),
-      ...(radiusScale !== undefined ? { radiusScale } : {}),
-      ...(fontSmoothing !== undefined ? { fontSmoothing } : {}),
-    });
+    visualClient.theme.store.setState({ ...appearance, ...colors });
 
     visualClient.theme.start();
 
