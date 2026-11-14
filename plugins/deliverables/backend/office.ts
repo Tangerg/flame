@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Refusal } from "@flame/backend-sdk/mcp";
@@ -8,9 +8,25 @@ import { LIMITS } from "../contracts/limits";
 import type { PrivateDirectory } from "./confinement";
 import release from "./office-release.json";
 
+const PROFILE = `<?xml version="1.0" encoding="UTF-8"?>
+<oor:items xmlns:oor="http://openoffice.org/2001/registry">
+<item oor:path="/org.openoffice.Office.Common/Security/Scripting">
+<prop oor:name="DisableMacrosExecution" oor:op="fuse"><value>true</value></prop>
+<prop oor:name="DisableActiveContent" oor:op="fuse"><value>true</value></prop>
+</item>
+<item oor:path="/org.openoffice.Office.Calc/Content/Update">
+<prop oor:name="Link" oor:op="fuse"><value>1</value></prop>
+</item>
+<item oor:path="/org.openoffice.Office.Calc/Formula/Load">
+<prop oor:name="OOXMLRecalcMode" oor:op="fuse"><value>0</value></prop>
+</item>
+</oor:items>`;
+
 export class Office {
   readonly executable: string;
   readonly identity?: { name: string; version: string };
+  readonly recalculation =
+    "OOXMLRecalcMode=0 (always on load) in a private LibreOffice profile";
   readonly #program?: string;
 
   private constructor(executable: string, program?: string) {
@@ -79,45 +95,62 @@ export class Office {
     return new Office(executable, program);
   }
 
-  arguments(
+  async prepareConversion(
     directory: PrivateDirectory,
     source: string,
     format: "pdf" | "xlsx",
-  ): string[] {
+  ): Promise<{ arguments: string[]; outputPath: string }> {
     const profile = join(directory.home, "libreoffice");
+    await mkdir(profile, { mode: 0o700 });
+    await mkdir(join(profile, "user"), { mode: 0o700 });
+    await writeFile(
+      join(profile, "user", "registrymodifications.xcu"),
+      PROFILE,
+      {
+        mode: 0o600,
+        flag: "wx",
+      },
+    );
+    const outputPath = join(directory.output, `source.${format}`);
     if (this.#program)
-      return [
-        "--program-directory",
-        this.#program,
-        "--input-path",
+      return {
+        outputPath,
+        arguments: [
+          "--program-directory",
+          this.#program,
+          "--input-path",
+          source,
+          "--output-path",
+          outputPath,
+          "--profile-directory",
+          profile,
+          "--max-output-bytes",
+          String(LIMITS.fileBytes),
+          // Keep embedded images at print resolution; page previews have their own bounds.
+          "--max-image-resolution",
+          "300",
+          "--format",
+          format,
+          "--recalculate",
+          format === "xlsx" ? "true" : "false",
+        ],
+      };
+    return {
+      outputPath,
+      arguments: [
+        `-env:UserInstallation=${pathToFileURL(profile).href}`,
+        "--headless",
+        "--invisible",
+        "--nodefault",
+        "--nolockcheck",
+        "--norestore",
+        "--convert-to",
+        format === "xlsx" ? "xlsx:Calc MS Excel 2007 XML" : format,
+        "--outdir",
+        directory.output,
         source,
-        "--output-path",
-        join(directory.output, `source.${format}`),
-        "--profile-directory",
-        profile,
-        "--max-output-bytes",
-        String(LIMITS.fileBytes),
-        // Keep embedded images at print resolution; page previews have their own bounds.
-        "--max-image-resolution",
-        "300",
-        "--format",
-        format,
-        "--recalculate",
-        format === "xlsx" ? "true" : "false",
-      ];
-    return [
-      `-env:UserInstallation=${pathToFileURL(profile).href}`,
-      "--headless",
-      "--invisible",
-      "--nodefault",
-      "--nolockcheck",
-      "--norestore",
-      "--convert-to",
-      format === "xlsx" ? "xlsx:Calc MS Excel 2007 XML" : format,
-      "--outdir",
-      directory.output,
-      source,
-    ];
+      ],
+    };
   }
 
   verify(stdout: string): void {

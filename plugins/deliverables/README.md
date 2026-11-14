@@ -232,6 +232,9 @@ report identifies the pinned LibreOffice core and native package versions.
 
 The private LibreOffice profile disables macros, active content and external-link
 updates and sets `OOXMLRecalcMode=0`, the engine's always-recalculate-on-load mode.
+The Office adapter prepares that profile and captures its invocation and output
+paths together. The rendering owner retains confinement, resource limits and
+cleanup of the invocation directory.
 macOS workbook conversion also explicitly requests LibreOfficeKit recalculation.
 An ordinary conversion with the engine's default profile can retain stale caches.
 The macOS PDF export limits embedded images to 300 DPI; page preview dimensions

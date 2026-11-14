@@ -88,6 +88,11 @@ business owner under Frame admission. If that owner has already settled, its
 earlier catalog snapshot requires no restoration and cannot authorize original
 execution. Current catalog acquisition proceeds through its ordinary plan;
 storage failures and unavailable original sources remain explicit failures.
+The original acquisition context and Frame Host lifetime own cancellation.
+An SDK cleanup cancellation marker cannot end either live owner or erase a
+confirmed transport refusal. Frame channel write closures are translated at the
+MCP transport boundary; storage failures and unconfirmed recovery or release
+evidence remain inconclusive.
 
 Unknown catalog pricing preserves unknown cost, including an empty rate schedule
 with reported zero usage. Model listings expose effective base-band cache rates:

@@ -30,6 +30,17 @@ type processConnection struct {
 	session   *sdk.ClientSession
 }
 
+type frameWriter struct{ io.WriteCloser }
+
+func (w frameWriter) Write(data []byte) (int, error) {
+	n, err := w.WriteCloser.Write(data)
+	if errors.Is(err, frame.ErrClosed) {
+		// A channel can close before the MCP reader observes EOF.
+		err = errors.Join(sdk.ErrConnectionClosed, err)
+	}
+	return n, err
+}
+
 func (s *ProcessSource) Profile() frame.Profile { return pluginmcp.ProcessProfile }
 
 func (s *ProcessSource) Prepare(setup *frame.Setup, metadata process.ExportMetadata, maximum int) (process.Connection, error) {
@@ -77,7 +88,7 @@ func (c *processConnection) Connect(ctx context.Context, channel io.ReadWriteClo
 	if err != nil {
 		return nil, err
 	}
-	session, err := client.Connect(ctx, &sdk.IOTransport{Reader: channel, Writer: channel, MaxLineLength: c.maximum}, nil)
+	session, err := client.Connect(ctx, &sdk.IOTransport{Reader: channel, Writer: frameWriter{channel}, MaxLineLength: c.maximum}, nil)
 	c.session = session
 	if err != nil {
 		return nil, err

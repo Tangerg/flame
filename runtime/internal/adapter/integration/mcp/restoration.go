@@ -51,7 +51,7 @@ func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activat
 		return nil
 	}
 	if err != nil {
-		return failedRestoration(ctx, original, evidence.snapshot(), errors.Join(err, s.host.Admission().RecoveryError()))
+		return s.failedRestoration(ctx, original, evidence.snapshot(), errors.Join(err, s.host.Admission().RecoveryError()))
 	}
 	_, err = use.Close(context.WithoutCancel(ctx))
 	return err
@@ -70,14 +70,17 @@ func (e *restorationFailure) Error() string {
 }
 func (e *restorationFailure) Unwrap() error { return e.cause }
 
-func failedRestoration(ctx context.Context, original plugin.Activation, attempted frame.BindingSnapshot, cause error) error {
+func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activation, attempted frame.BindingSnapshot, cause error) error {
 	identity, err := attempted.Identity()
+	lifetime := s.owner.Context()
+	waitErr, lifetimeErr := ctx.Err(), lifetime.Err()
 	return &restorationFailure{
 		binding: original.Identity,
-		// Frame read this exact original graph from its accepted business owner.
-		// Cancellation still ends only the wait, without settling preparation.
-		completed: ctx.Err() == nil && err == nil && identity == original.Identity,
-		cause:     plugins.FrameworkError(cause),
+		// SDK cleanup can report cancellation without ending the admitted wait
+		// or its Host. Only those original lifetimes may cancel this conclusion.
+		completed: waitErr == nil && lifetimeErr == nil && err == nil && identity == original.Identity,
+		cause: plugins.FrameworkError(errors.Join(cause, waitErr, context.Cause(ctx),
+			lifetimeErr, context.Cause(lifetime))),
 	}
 }
 
@@ -96,8 +99,7 @@ func (p *Pool) RestorationFailure(id mcpserver.ID, activation plugin.Activation)
 		return false, nil
 	}
 	cause := current.cause
-	if !failure.completed || errors.Is(cause, context.Canceled) || errors.Is(cause, context.DeadlineExceeded) ||
-		errors.Is(cause, frame.ErrRecoveryRequired) || errors.Is(cause, runner.ErrUnknown) || errors.Is(cause, frame.ErrUnconfirmedRelease) {
+	if !failure.completed || errors.Is(cause, frame.ErrRecoveryRequired) || errors.Is(cause, runner.ErrUnknown) || errors.Is(cause, frame.ErrUnconfirmedRelease) {
 		return false, cause
 	}
 	// Only the original MCP connection or an authoritative source refusal proves

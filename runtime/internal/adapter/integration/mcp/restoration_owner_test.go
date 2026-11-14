@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -18,17 +19,24 @@ import (
 func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 	storageFailure := errors.New("original owner cannot be read")
 	for _, test := range []struct {
-		name         string
-		ownerFailure error
-		missing      bool
-		disabled     bool
-		canceled     bool
-		definite     bool
-		cause        error
+		name          string
+		recordFailure error
+		setupFailure  error
+		closedChannel bool
+		hostCloses    bool
+		missing       bool
+		disabled      bool
+		canceled      bool
+		definite      bool
+		cause         error
 	}{
 		{name: "original connection closed", definite: true, cause: sdk.ErrConnectionClosed},
+		{name: "original Frame channel closed", closedChannel: true, definite: true, cause: sdk.ErrConnectionClosed},
+		{name: "preparation storage owner closed", setupFailure: frame.ErrClosed, cause: frame.ErrClosed},
+		{name: "Frame host closed during preparation", setupFailure: frame.ErrClosed, hostCloses: true, cause: frame.ErrClosed},
 		{name: "original source disabled", disabled: true, definite: true, cause: plugin.ErrUnavailable},
-		{name: "original owner unavailable", ownerFailure: storageFailure, cause: storageFailure},
+		{name: "original business owner unavailable", recordFailure: storageFailure, cause: storageFailure},
+		{name: "original business owner closed", recordFailure: frame.ErrClosed, cause: frame.ErrClosed},
 		{name: "original record settled", missing: true},
 		{name: "caller stopped waiting", canceled: true, cause: context.Canceled},
 	} {
@@ -36,8 +44,8 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 			admission := frame.NewAdmission()
 			var retained []plugin.Activation
 			permission, err := NewCatalogPermission(admission, func(context.Context) ([]plugin.Activation, error) {
-				if test.ownerFailure != nil {
-					return nil, test.ownerFailure
+				if test.recordFailure != nil {
+					return nil, test.recordFailure
 				}
 				if test.missing {
 					return nil, nil
@@ -47,24 +55,35 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			host, err := frame.NewHost(context.Background(), frame.HostConfig{Admission: admission, ReadAcceptedBinding: permission.Read})
+			owner := frame.NewLifetime(context.Background())
+			host, err := frame.NewHost(context.Background(), frame.HostConfig{Lifetime: owner, Admission: admission, ReadAcceptedBinding: permission.Read})
 			if err != nil {
 				t.Fatal(err)
 			}
-			owner := frame.NewLifetime(context.Background())
 			t.Cleanup(func() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				if outcome, err := owner.Close(ctx); !outcome.Released {
-					t.Errorf("original use owner did not retire: %+v, %v", outcome, err)
-				}
 				if outcome, err := host.Close(ctx); !outcome.Released {
 					t.Errorf("original Frame instance did not retire: %+v, %v", outcome, err)
 				}
 			})
 			definition, err := frame.Define(frame.Definition{Revision: value.Hash([]byte("retained connection")), Units: []frame.Unit{{
 				Declaration: frame.UnitDeclaration{ID: "backend", Profile: frame.NativeGo},
-				Setup: func(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
+				Setup: func(ctx context.Context, _ *frame.Setup) ([]frame.ExportValue, error) {
+					if test.hostCloses {
+						owner.BeginClose(frame.ErrClosed)
+						<-owner.Context().Done()
+					}
+					if test.setupFailure != nil {
+						return nil, test.setupFailure
+					}
+					if test.closedChannel {
+						reader, _ := io.Pipe()
+						channel := closedFrameChannel{reader}
+						defer channel.Close()
+						connection := &processConnection{maximum: sdk.DefaultMaxLineLength}
+						return connection.Connect(ctx, channel)
+					}
 					return nil, sdk.ErrConnectionClosed
 				},
 			}}})
@@ -128,8 +147,16 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 			if err := attempt.Run(); !errors.Is(err, test.cause) {
 				t.Fatalf("restore lost original failure: %v; want %v", err, test.cause)
 			}
+			if test.closedChannel && (ctx.Err() != nil || owner.Context().Err() != nil) {
+				t.Fatal("a refused channel write ended an original acquisition owner")
+			}
 			if definite, err := pool.RestorationFailure(name, original); definite != test.definite || !errors.Is(err, test.cause) {
 				t.Fatalf("restore conclusion = %t, %v; want %t, %v", definite, err, test.definite, test.cause)
+			}
+			if test.hostCloses {
+				if _, err := pool.RestorationFailure(name, original); !errors.Is(err, context.Canceled) {
+					t.Fatalf("closing original owner lost its cancellation: %v", err)
+				}
 			}
 			if err := connections.shutdown(t.Context()); err != nil {
 				t.Fatal(err)
@@ -137,3 +164,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 		})
 	}
 }
+
+type closedFrameChannel struct{ *io.PipeReader }
+
+func (closedFrameChannel) Write([]byte) (int, error) { return 0, frame.ErrClosed }

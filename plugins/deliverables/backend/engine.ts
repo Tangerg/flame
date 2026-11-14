@@ -64,20 +64,6 @@ const GENERAL_ROOTS = new Set([
   "/Applications",
   "/etc",
 ]);
-const OFFICE_PROFILE = `<?xml version="1.0" encoding="UTF-8"?>
-<oor:items xmlns:oor="http://openoffice.org/2001/registry">
-<item oor:path="/org.openoffice.Office.Common/Security/Scripting">
-<prop oor:name="DisableMacrosExecution" oor:op="fuse"><value>true</value></prop>
-<prop oor:name="DisableActiveContent" oor:op="fuse"><value>true</value></prop>
-</item>
-<item oor:path="/org.openoffice.Office.Calc/Content/Update">
-<prop oor:name="Link" oor:op="fuse"><value>1</value></prop>
-</item>
-<item oor:path="/org.openoffice.Office.Calc/Formula/Load">
-<prop oor:name="OOXMLRecalcMode" oor:op="fuse"><value>0</value></prop>
-</item>
-</oor:items>`;
-
 function within(root: string, path: string): boolean {
   const suffix = relative(root, path);
   return (
@@ -328,11 +314,14 @@ export class Engine {
         engines.push(await this.#version("pdftoppm", tools, directory, owned));
         let pdfBytes = input;
         if (format !== "pdf") {
-          await this.#office(directory, tools.office!, source, "pdf", owned);
-          pdfBytes = await readOutput(
-            join(directory.output, "source.pdf"),
-            LIMITS.fileBytes,
+          const outputPath = await this.#office(
+            directory,
+            tools.office!,
+            source,
+            "pdf",
+            owned,
           );
+          pdfBytes = await readOutput(outputPath, LIMITS.fileBytes);
         }
         pdf(pdfBytes);
         const inputPDF =
@@ -507,11 +496,14 @@ export class Engine {
         const engine = await this.#version("office", tools, directory, owned);
         const source = join(directory.input, "source.xlsx");
         await writeFile(source, input, { flag: "wx", mode: 0o600 });
-        await this.#office(directory, tools.office!, source, "xlsx", owned);
-        const output = await readOutput(
-          join(directory.output, "source.xlsx"),
-          LIMITS.fileBytes,
+        const outputPath = await this.#office(
+          directory,
+          tools.office!,
+          source,
+          "xlsx",
+          owned,
         );
+        const output = await readOutput(outputPath, LIMITS.fileBytes);
         if (output[0] !== 0x50 || output[1] !== 0x4b)
           throw new Refusal(
             "engine_output_invalid",
@@ -524,8 +516,7 @@ export class Engine {
             engines: [engine],
             sourceSha256: digest(input),
             outputSha256: digest(output),
-            recalculation:
-              "OOXMLRecalcMode=0 (always on load) in a private LibreOffice profile",
+            recalculation: tools.office!.recalculation,
             externalLinks: "disabled",
             checks: [
               {
@@ -776,14 +767,6 @@ export class Engine {
       for (const child of ["cache", "config", "data"])
         await privateDirectory(join(directory.home, child));
       await privateDirectory(join(directory.home, "cache", "fontconfig"));
-      const profile = join(directory.home, "libreoffice");
-      await privateDirectory(profile);
-      await privateDirectory(join(profile, "user"));
-      await writeFile(
-        join(profile, "user", "registrymodifications.xcu"),
-        OFFICE_PROFILE,
-        { mode: 0o600, flag: "wx" },
-      );
       return directory;
     } catch (cause) {
       try {
@@ -876,12 +859,18 @@ export class Engine {
     format: "pdf" | "xlsx",
     signal: AbortSignal,
   ) {
+    const conversion = await office.prepareConversion(
+      directory,
+      source,
+      format,
+    );
     const output = await this.#command(
       directory,
       office.executable,
-      office.arguments(directory, source, format),
+      conversion.arguments,
       signal,
     );
     office.verify(output.stdout);
+    return conversion.outputPath;
   }
 }

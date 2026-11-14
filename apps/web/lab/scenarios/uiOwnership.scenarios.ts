@@ -24,27 +24,20 @@ async function readAcross(page: Page, reader: Locator, first: Locator, last: Loc
   ] as const) {
     let keyDowns = 0;
     const start = await reader.evaluate((node) => node.scrollLeft);
+    const hiddenEdge = async () => (await hidden(target))[side];
     try {
       try {
         await expect(async () => {
           keyDowns++;
           // Releasing between repeats interrupts native scrolling animations.
           await page.keyboard.down(key);
-          expect((await hidden(target))[side]).toBeLessThanOrEqual(0.5);
+          expect(await hiddenEdge()).toBeLessThanOrEqual(0.5);
         }).toPass({ intervals: [50], timeout: 5_000 });
       } finally {
         await page.keyboard.up(key);
       }
-      await expect
-        .poll(() =>
-          reader.evaluate(
-            (node, end) =>
-              Math.abs(node.scrollLeft - (end ? node.scrollWidth - node.clientWidth : 0)),
-            key === "ArrowRight",
-          ),
-        )
-        .toBeLessThanOrEqual(0.5);
-      expect((await hidden(target))[side]).toBeLessThanOrEqual(0.5);
+      // Native scrollbar geometry does not provide a portable maximum offset.
+      await expect.poll(hiddenEdge).toBeLessThanOrEqual(0.5);
     } finally {
       await test.info().attach(`${key}-reading.json`, {
         body: JSON.stringify({

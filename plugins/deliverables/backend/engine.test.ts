@@ -17,6 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { setTimeout as nativeDelay } from "node:timers/promises";
 import { basename, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Engine } from "./engine";
 import {
@@ -110,11 +111,7 @@ function absent(): never {
   throw Object.assign(new Error("process absent"), { code: "ESRCH" });
 }
 
-function simulate(
-  command: string,
-  args: readonly string[],
-  options: SpawnOptions,
-) {
+function simulate(command: string, args: readonly string[]) {
   const child = new EventEmitter() as EventEmitter & {
     pid: number;
     stdout: PassThrough;
@@ -159,16 +156,21 @@ function simulate(
           ? argv[argv.indexOf("--input-path") + 1]!
           : argv.at(-1)!;
         source = await readFile(path);
-        profile = await readFile(
-          join(
-            String(options.cwd),
-            "home",
-            "libreoffice",
-            "user",
-            "registrymodifications.xcu",
-          ),
-          "utf8",
+        const profilePath = native
+          ? argv[argv.indexOf("--profile-directory") + 1]!
+          : fileURLToPath(
+              argv
+                .find((arg) => arg.startsWith("-env:UserInstallation="))!
+                .slice("-env:UserInstallation=".length),
+            );
+        const profileFile = join(
+          profilePath,
+          "user",
+          "registrymodifications.xcu",
         );
+        expect((await lstat(profilePath)).mode & 0o777).toBe(0o700);
+        expect((await lstat(profileFile)).mode & 0o777).toBe(0o600);
+        profile = await readFile(profileFile, "utf8");
         const format =
           argv[argv.indexOf(native ? "--format" : "--convert-to") + 1]!;
         const output = native
@@ -298,6 +300,8 @@ describe("professional rendering owner", () => {
       }),
     );
     expect(profile).toContain('oor:name="DisableMacrosExecution"');
+    expect(profile).toContain('oor:name="DisableActiveContent"');
+    expect(profile).toContain('oor:name="Link" oor:op="fuse"><value>1</value>');
     expect(profile).toContain(
       'oor:name="OOXMLRecalcMode" oor:op="fuse"><value>0</value>',
     );

@@ -16,6 +16,7 @@ import (
 )
 
 func TestRestorationFailureBelongsToTheExactCurrentAttempt(t *testing.T) {
+	installed := &Installed{owner: frame.NewLifetime(t.Context())}
 	installation := testsupport.InstallationID(t)
 	dependency := plugin.Dependency{InstallationID: installation, Digest: testsupport.Digest("release")}
 	original := testsupport.ServerActivation("original", "contributor", dependency)
@@ -34,7 +35,7 @@ func TestRestorationFailureBelongsToTheExactCurrentAttempt(t *testing.T) {
 	var calls int
 	attempt, err := connections.beginConnect(t.Context(), name, func(ctx context.Context, _ mcpserver.ID) (*launchPermit, error) {
 		calls++
-		return nil, failedRestoration(ctx, original, binding, cause)
+		return nil, installed.failedRestoration(ctx, original, binding, cause)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -72,42 +73,52 @@ func TestRestorationFailureBelongsToTheExactCurrentAttempt(t *testing.T) {
 	}
 }
 
-func TestRestorationProbePreservesUnconfirmedActivation(t *testing.T) {
+func TestRestorationConclusionUsesItsOwnersAndPreservesUncertainty(t *testing.T) {
 	activation := testsupport.ServerActivation("original", "contributor", plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")})
 	binding, err := plugins.DecodeActivation(activation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name      string
-		attempted frame.BindingSnapshot
-		cause     error
-		outer     error
-		cancel    bool
+		name         string
+		attempted    frame.BindingSnapshot
+		cause        error
+		outer        error
+		cancel       bool
+		hostCanceled bool
+		definite     bool
 	}{
 		{name: "admission read", cause: errors.New("activation read failed")},
 		{name: "preparation read", attempted: binding, cause: errors.New("activation storage read failed")},
 		{name: "caller cancellation", attempted: binding, cause: context.Canceled, cancel: true},
+		{name: "caller cancellation with closed connection", attempted: binding, cause: sdk.ErrConnectionClosed, cancel: true},
 		{name: "recovery barrier", attempted: binding, cause: frame.ErrRecoveryRequired},
 		{name: "runner uncertainty", attempted: binding, cause: runner.ErrUnknown},
 		{name: "unavailable and unknown", attempted: binding, cause: errors.Join(frame.ErrUnavailable, runner.ErrUnknown)},
 		{name: "stale and recovery required", attempted: binding, cause: errors.Join(frame.ErrStaleBinding, frame.ErrRecoveryRequired)},
-		{name: "closed connection and cancellation", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, context.Canceled)},
-		{name: "outer cancellation", attempted: binding, cause: sdk.ErrConnectionClosed, outer: context.Canceled},
+		{name: "SDK cleanup cancellation", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, context.Canceled), definite: true},
+		{name: "SDK cleanup deadline", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, context.DeadlineExceeded), definite: true},
+		{name: "outer cancellation marker", attempted: binding, cause: sdk.ErrConnectionClosed, outer: context.Canceled, definite: true},
+		{name: "Host cancellation", attempted: binding, cause: sdk.ErrConnectionClosed, hostCanceled: true},
 		{name: "outer recovery required", attempted: binding, cause: sdk.ErrConnectionClosed, outer: frame.ErrRecoveryRequired},
 		{name: "closed connection and unconfirmed release", attempted: binding, cause: errors.Join(sdk.ErrConnectionClosed, frame.ErrUnconfirmedRelease)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			installed := &Installed{owner: frame.NewLifetime(t.Context())}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			if test.cancel {
 				cancel()
 			}
+			if test.hostCanceled {
+				installed.owner.BeginClose(frame.ErrClosed)
+				<-installed.owner.Context().Done()
+			}
 			name := testsupport.InstallationMCPServer(activation.Dependencies[0].InstallationID, "contributor")
 			connections := &connections{lifetime: t.Context()}
 			pool := &Pool{inner: connections}
 			attempt, err := connections.beginConnect(t.Context(), name, func(context.Context, mcpserver.ID) (*launchPermit, error) {
-				return nil, errors.Join(failedRestoration(ctx, activation, test.attempted, test.cause), test.outer)
+				return nil, errors.Join(installed.failedRestoration(ctx, activation, test.attempted, test.cause), test.outer)
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -116,8 +127,8 @@ func TestRestorationProbePreservesUnconfirmedActivation(t *testing.T) {
 				t.Fatalf("attempt lost its original cause: %v", err)
 			}
 			definite, err := pool.RestorationFailure(name, activation)
-			if definite || !errors.Is(err, test.cause) || (test.outer != nil && !errors.Is(err, test.outer)) {
-				t.Fatalf("inconclusive original attempt became a definite source loss: definite=%t, %v", definite, err)
+			if definite != test.definite || !errors.Is(err, test.cause) || (test.outer != nil && !errors.Is(err, test.outer)) {
+				t.Fatalf("restoration conclusion = %t, %v; want definite=%t", definite, err, test.definite)
 			}
 			if err := connections.shutdown(t.Context()); err != nil {
 				t.Fatal(err)
