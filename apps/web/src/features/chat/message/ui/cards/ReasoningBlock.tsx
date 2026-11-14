@@ -36,13 +36,18 @@ const rb = stylex.create({
   glimpseTail: { justifyContent: "flex-end" },
   glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   aside: {
-    marginTop: space.s3,
+    display: "flex",
+    minHeight: 0,
+    maxHeight: "var(--reading-frame-height, none)",
+    flexDirection: "column",
+    paddingTop: space.s3,
     paddingBottom: space.s1_5,
   },
   // Kept while shut: Collapsible retains this node, so dropping the window loses the scroll position.
   scroller: {
     position: "relative",
-    maxHeight: `min(calc(var(--spacing) * 60), calc(var(--reading-frame-height, 100dvh) - ${space.s3} - ${space.s1_5}))`,
+    minHeight: 0,
+    maxHeight: "calc(var(--spacing) * 60)",
     overflowX: "hidden",
     overflowY: "auto",
     paddingRight: space.s2,
