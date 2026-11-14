@@ -186,7 +186,7 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 		if err != nil {
 			return err
 		}
-		if cursor, ok := input.property(list.Paging.Input); !ok || !cursor.isType(portable.TypeString) {
+		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.inputTypes(), []portable.SchemaType{portable.TypeString}) {
 			return fmt.Errorf("paging input %q must be a string input property", list.Paging.Input)
 		}
 		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(portable.TypeString) {
@@ -210,6 +210,9 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	if err != nil {
 		return schemaNode{}, err
 	}
+	if !output.isType(portable.TypeObject) {
+		return schemaNode{}, fmt.Errorf("list output must be an object")
+	}
 	rows, ok := output.property(list.Rows)
 	if !ok {
 		return schemaNode{}, fmt.Errorf("rows %q is not an output property", list.Rows)
@@ -217,6 +220,9 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	row, ok := rows.items()
 	if !ok {
 		return schemaNode{}, fmt.Errorf("rows %q is not an array", list.Rows)
+	}
+	if !row.isType(portable.TypeObject) {
+		return schemaNode{}, fmt.Errorf("rows %q must contain objects", list.Rows)
 	}
 	if _, ok := row.property(list.Key); !ok {
 		return schemaNode{}, fmt.Errorf("key %q is not a row property", list.Key)
@@ -276,6 +282,9 @@ func terminalMethod(contract *plugincontract.Capability, name string) (*portable
 // what its target can supply, and that every required property on each bound
 // object is bound. row is nil when no row is selected.
 func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, alsoBound []string) error {
+	if !input.acceptsType(portable.TypeObject) {
+		return fmt.Errorf("terminal input must accept an object")
+	}
 	paths := slices.Clone(alsoBound)
 	for _, binding := range bindings {
 		if slices.ContainsFunc(paths, func(path string) bool {

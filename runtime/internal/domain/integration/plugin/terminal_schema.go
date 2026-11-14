@@ -75,6 +75,9 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 	}
 	current := n
 	for _, segment := range segments {
+		if !current.acceptsType(portable.TypeObject) {
+			return schemaNode{}, false
+		}
 		var ok bool
 		current, ok = current.properties()[segment]
 		if !ok {
@@ -122,12 +125,17 @@ func (n schemaNode) acceptsType(kind portable.SchemaType) bool {
 
 func (n schemaNode) types() []portable.SchemaType {
 	types := slices.DeleteFunc(portable.ProfileSchema().Types, func(kind portable.SchemaType) bool {
-		return kind == portable.TypeNull || !n.acceptsType(kind)
+		return !n.acceptsType(kind)
 	})
 	if slices.Contains(types, portable.TypeNumber) {
 		types = slices.DeleteFunc(types, func(kind portable.SchemaType) bool { return kind == portable.TypeInteger })
 	}
 	return types
+}
+
+// Entered values can choose the non-null alternative; observed values cannot.
+func (n schemaNode) inputTypes() []portable.SchemaType {
+	return slices.DeleteFunc(n.types(), func(kind portable.SchemaType) bool { return kind == portable.TypeNull })
 }
 
 func (n schemaNode) isType(kind portable.SchemaType) bool {
@@ -143,6 +151,9 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 		}
 		var current []string
 		for _, value := range part.Enum.Values {
+			if value == nil {
+				continue
+			}
 			text, ok := value.(string)
 			if !ok {
 				return "", nil, false
@@ -161,7 +172,7 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 		}
 		return extension.TerminalFormChoice, options, true
 	}
-	types := n.types()
+	types := n.inputTypes()
 	if len(types) != 1 {
 		return "", nil, false
 	}
