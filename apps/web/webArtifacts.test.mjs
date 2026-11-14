@@ -4,17 +4,20 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { build } from "vite";
 import { parse } from "parse5";
-import { stylexPlugin } from "./stylex.vite.mjs";
+import * as stylex from "@stylexjs/stylex";
+import { vocab } from "@flame/ui";
+import { STYLEX_CONDITIONS, stylexPlugin } from "./stylex.vite.mjs";
 import { webArtifacts } from "./webArtifacts.vite.mjs";
 import { NONCE_PLACEHOLDER, WEB_POLICY_FILE, documentResponse } from "./webPolicy.mjs";
 
 const require = createRequire(import.meta.url);
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-async function fixture(t, color = "#fb6e30", extra = [], cssCodeSplit = true) {
+async function fixture(t, color = "#fb6e30", extra = [], cssCodeSplit = true, sharedUi = false) {
   const root = await mkdtemp(join(tmpdir(), "flame-web-policy-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, "public"));
@@ -25,7 +28,9 @@ async function fixture(t, color = "#fb6e30", extra = [], cssCodeSplit = true) {
     ),
     writeFile(
       join(root, "main.jsx"),
-      `import * as stylex from '@stylexjs/stylex'; import './base.css'; const styles = stylex.create({ proof: { color: '${color}' } }); document.body.className = stylex.props(styles.proof).className;`,
+      sharedUi
+        ? `import * as stylex from '@stylexjs/stylex'; import { vocab } from '@flame/ui'; import '@flame/ui/styles.css'; import './base.css'; const styles = stylex.create({ proof: { color: '${color}', display: 'flex' } }); document.body.className = stylex.props(vocab.column, styles.proof).className;`
+        : `import * as stylex from '@stylexjs/stylex'; import './base.css'; const styles = stylex.create({ proof: { color: '${color}' } }); document.body.className = stylex.props(styles.proof).className;`,
     ),
     writeFile(join(root, "base.css"), 'body{margin:0;background-image:url("./proof.svg")}'),
     writeFile(
@@ -44,8 +49,24 @@ async function fixture(t, color = "#fb6e30", extra = [], cssCodeSplit = true) {
     configFile: false,
     root,
     logLevel: "silent",
-    plugins: [stylexPlugin(), webArtifacts(), ...extra],
-    resolve: { alias: { "@stylexjs/stylex": require.resolve("@stylexjs/stylex") } },
+    plugins: [
+      stylexPlugin(),
+      {
+        name: "fixture-shared-ui",
+        resolveId(source) {
+          if (source === "@flame/ui" || source.startsWith("@flame/ui/"))
+            return this.resolve(source, fileURLToPath(import.meta.url), { skipSelf: true });
+        },
+      },
+      webArtifacts(),
+      ...extra,
+    ],
+    resolve: {
+      conditions: STYLEX_CONDITIONS,
+      alias: {
+        "@stylexjs/stylex": require.resolve("@stylexjs/stylex"),
+      },
+    },
     build: {
       write: false,
       minify: false,
@@ -173,6 +194,18 @@ test("StyleX publishes independent complete content-addressed CSS without mutati
     assert(base);
     assert(!base.source.includes("fb6e30") && !base.source.includes("3b82f6"));
   }
+});
+
+test("shared and application atomic styles are published once by the same compiler", async (t) => {
+  const { files } = await fixture(t, "#fb6e30", [], true, true);
+  const css = Object.values(files)
+    .filter((file) => file.type === "asset" && file.fileName.endsWith(".css"))
+    .map((file) => file.source)
+    .join("\n");
+  const classes = stylex.props(vocab.column).className.split(" ");
+  for (const name of classes)
+    assert.equal(css.match(new RegExp(`\\.${name}\\b`, "g"))?.length, 1, name);
+  assert.match(css, /box-sizing:\s*border-box/);
 });
 
 for (const cssCodeSplit of [true, false])

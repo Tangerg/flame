@@ -5,7 +5,7 @@ import { pluginModules } from "./pluginModules.vite.mjs";
 import { webArtifacts } from "./webArtifacts.vite.mjs";
 import { BROWSER_TARGETS } from "@flame/component-sdk/build";
 import react from "@vitejs/plugin-react";
-import { stylexPlugin } from "./stylex.vite.mjs";
+import { STYLEX_CONDITIONS, stylexPlugin } from "./stylex.vite.mjs";
 import path from "node:path";
 
 const compositionEntry = "io.github.tangerg.flame/components/component.js";
@@ -43,6 +43,7 @@ function compositionResourcePlugin(): Plugin {
 export default defineConfig({
   plugins: [react(), stylexPlugin(), pluginModules(), compositionResourcePlugin(), webArtifacts()],
   resolve: {
+    conditions: STYLEX_CONDITIONS,
     dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

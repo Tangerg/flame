@@ -94,6 +94,10 @@ Immutable caching requires a build-owned content fingerprint and verification of
 the served bytes against the final distribution digest. JS uses the bundler's
 actual hash-placeholder provenance; emitted assets use SHA-256 names. StyleX emits
 one complete stylesheet before asset hashing instead of rewriting named CSS or JS.
+Web, Lab and unit tests select the shared UI's `stylex` export condition, so the same
+transform compiles shared and application atomic styles once. The shared CSS import
+then supplies document rules; standalone consumers retain the complete precompiled
+stylesheet through the ordinary package exports.
 Unfingerprinted public appearance scripts, focus scripts and fonts remain
 revalidatable. A stale policy or altered registered file is refused; registering
 an arbitrary filename alone does not establish a content fingerprint.

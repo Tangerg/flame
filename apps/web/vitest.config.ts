@@ -2,7 +2,7 @@
 import { sharedRuntimePackages } from "./shared-runtime.mjs";
 import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
-import { stylexTransform } from "./stylex.vite.mjs";
+import { STYLEX_CONDITIONS, stylexTransform } from "./stylex.vite.mjs";
 
 const runtimeLifecycleTest = "tests/integration/runtime-http.e2e.test.ts";
 
@@ -15,6 +15,7 @@ export default defineConfig({
   // component with it.
   plugins: [stylexTransform()],
   resolve: {
+    conditions: STYLEX_CONDITIONS,
     dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

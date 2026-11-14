@@ -1,10 +1,13 @@
 import path from "node:path";
+import { defaultClientConditions } from "vite";
 import stylex from "@stylexjs/unplugin";
 
 /**
  * One transform owns both generated class names and their CSS. App, visual
  * fixtures and tests share its resolution policy so theme identities cannot drift.
  */
+export const STYLEX_CONDITIONS = ["stylex", ...defaultClientConditions];
+
 const root = path.resolve(import.meta.dirname);
 const options = {
   dev: false,

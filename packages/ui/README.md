@@ -8,6 +8,12 @@ and the code-wrap preference setter, are private implementation details.
 
 `@flame/ui` owns the shared presentation vocabulary used by Desktop and portable views: Base UI interaction primitives, token-dressed controls, typography, icon layout, document focus rules and compact panel composition, record disclosures, facts, metrics and readable tables. `@flame/icons` remains the owner of drawings, optical masters, SVG exports and discovery metadata. Product icon-name mappings remain with their consumer.
 
+The `stylex` package export condition supplies the authored components and document
+CSS to a host that already compiles StyleX. That host compiles shared and local
+atomic styles together. Normal exports supply built ESM and complete CSS for
+consumers without a StyleX compiler. Both distributions come from the same sources;
+a host selects one profile for its complete module graph.
+
 Appearance preferences and theme selection belong to the application. Installed
 components use the actual shared React/UI provider context and controlled font scale;
 the library never chooses or persists a theme. The former HTML guest projection,
