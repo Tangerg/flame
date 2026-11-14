@@ -9,6 +9,7 @@ import {
   Metadata,
   RecordTitle,
   Select,
+  Segmented,
   Slider,
   Switch,
   TextArea,
@@ -19,7 +20,6 @@ import type { ComponentRenderProps } from "@openuidev/react-lang";
 import type { DisplayProps } from "../contracts/catalog";
 import { validateField, type ValidationIssue } from "../contracts/document";
 import { useGenUIInteraction } from "./interaction";
-import { moveChoice } from "./layout";
 import { useLocalValue } from "./state";
 
 type Translated = { t: Translate };
@@ -183,40 +183,15 @@ export function RadioGroupView({
   return (
     <FieldFrame field={props.field} issue={issue} errorId={errorId} t={t}>
       <FormGroup label={props.label}>
-        <div
-          role="radiogroup"
-          aria-label={props.label}
+        <Segmented
+          value={value}
+          onChange={setValue}
+          options={props.options}
+          ariaLabel={props.label}
+          disabled={blocked}
           aria-invalid={issue !== undefined}
           aria-describedby={issue ? errorId : undefined}
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "calc(var(--spacing) * 2)",
-          }}
-        >
-          {props.options.map((option, index) => (
-            <Button
-              key={option.value}
-              role="radio"
-              aria-checked={value === option.value}
-              tabIndex={
-                value === option.value || (!value && index === 0) ? 0 : -1
-              }
-              active={value === option.value}
-              variant="outline"
-              disabled={blocked}
-              onClick={() => setValue(option.value)}
-              onKeyDown={(event) => {
-                if (!blocked)
-                  moveChoice(event, (next) =>
-                    setValue(props.options[next]!.value),
-                  );
-              }}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </div>
+        />
       </FormGroup>
     </FieldFrame>
   );

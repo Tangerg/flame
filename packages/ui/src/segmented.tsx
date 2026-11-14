@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type AriaAttributes } from "react";
 import { motion as anim } from "motion/react";
 import { ItemHighlight } from "./item-highlight";
 import * as stylex from "@stylexjs/stylex";
@@ -69,7 +69,11 @@ export function Segmented<T extends string | number>({
   ariaLabel,
   className,
   disabled,
-}: {
+  ...aria
+}: Pick<
+  AriaAttributes,
+  "aria-invalid" | "aria-describedby" | "aria-labelledby"
+> & {
   value: T;
   options: readonly SegmentedOption<T>[];
   onChange: (value: T) => void;
@@ -81,6 +85,7 @@ export function Segmented<T extends string | number>({
   const root = stylex.props(styles.root);
   return (
     <RadioGroup
+      {...aria}
       data-slot="segmented"
       aria-label={ariaLabel}
       value={value}

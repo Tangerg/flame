@@ -153,35 +153,43 @@ function ApprovalModePill() {
         <div aria-hidden {...stylex.props(toolbarStyles.menuHeading, typeStep.uiSm)}>
           {t("approvals.mode.aria")}
         </div>
-        {modes.map((policy) => (
-          <DropdownMenu.Item
-            key={policy.mode}
-            onClick={() => void onSelect(policy.mode)}
-            layout="pick"
-            styles={toolbarStyles.describedRow}
-          >
-            <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
-              <Icon
-                name={MODE_ICON[policy.mode]}
-                size="md"
-                className={stylex.props(toolbarStyles.optionGlyph).className}
-              />
-            </span>
-            <span {...stylex.props(vocab.min)}>
-              <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
-                {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
-              </span>
-              <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
-                {describeApprovalMode(policy, t)}
-              </span>
-            </span>
-            {policy.mode === mode && (
+        <DropdownMenu.RadioGroup
+          value={mode}
+          onValueChange={(next) => {
+            const policy = modes.find((policy) => policy.mode === next);
+            if (policy) void onSelect(policy.mode);
+          }}
+        >
+          {modes.map((policy) => (
+            <DropdownMenu.RadioItem
+              key={policy.mode}
+              value={policy.mode}
+              layout="pick"
+              styles={toolbarStyles.describedRow}
+            >
               <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
-                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+                <Icon
+                  name={MODE_ICON[policy.mode]}
+                  size="md"
+                  className={stylex.props(toolbarStyles.optionGlyph).className}
+                />
               </span>
-            )}
-          </DropdownMenu.Item>
-        ))}
+              <span {...stylex.props(vocab.min)}>
+                <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
+                  {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
+                </span>
+                <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
+                  {describeApprovalMode(policy, t)}
+                </span>
+              </span>
+              <DropdownMenu.RadioItemIndicator>
+                <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
+                  <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+                </span>
+              </DropdownMenu.RadioItemIndicator>
+            </DropdownMenu.RadioItem>
+          ))}
+        </DropdownMenu.RadioGroup>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

@@ -56,6 +56,12 @@ Its mark retains the shared focus and disabled behavior, with a centered target
 using the existing control-size and pointer-target roles. Ordinary form labels
 keep their existing presentation.
 
+`Tabs` owns horizontal Base UI tab navigation, token-dressed controls and retained
+panels. Its controlled value belongs to the consumer; arrow focus activates the
+corresponding panel. Hidden panels keep drafts mounted and use `ContentVisibility`
+to retire descendant popups. `Segmented` supplies single-choice radio semantics,
+including invalid and description associations for consumer-owned validation.
+
 `Tooltip` and `RichTooltip` accept the primitive's `disabled` state. Consumers
 that reveal a label only while it is truncated keep the same trigger mounted
 and disable its tooltip when the complete text fits. Plain `Tooltip` labels wrap

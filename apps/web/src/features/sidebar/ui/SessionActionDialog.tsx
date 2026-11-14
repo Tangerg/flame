@@ -1,4 +1,4 @@
-import { createElement, Suspense } from "react";
+import { createElement, Suspense, type RefObject } from "react";
 import { type CapturedSession } from "@flame/component-sdk";
 import { type SessionActionSpec } from "@/features/navigation/public/sessionActions";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
@@ -9,10 +9,12 @@ export function SessionActionDialog({
   action,
   session,
   close,
+  finalFocus,
 }: {
   action: SessionActionSpec;
   session: CapturedSession;
   close(): void;
+  finalFocus: RefObject<HTMLElement | null>;
 }) {
   const t = useT();
   const title = presentationTitle(action.title, action.localizedTitles, useLocale());
@@ -23,6 +25,7 @@ export function SessionActionDialog({
       description={session.title.trim() || t("session.untitled")}
       closeLabel={t("common.close")}
       size="lg"
+      finalFocus={finalFocus}
       onOpenChange={(open) => {
         if (!open) close();
       }}

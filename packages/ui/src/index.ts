@@ -133,6 +133,7 @@ export { Select } from "./select";
 export { vocab, gap } from "./vocabulary";
 export { toneInk } from "./tone-ink";
 export { Segmented, type SegmentedOption } from "./segmented";
+export { Tabs } from "./tabs";
 export { ActionMenu, type ActionMenuItem } from "./action-menu";
 export { ARTIFACT_SURFACE } from "./artifact-surface";
 export { HoverTrack, ItemHighlight, useHoverTrackItem } from "./item-highlight";
