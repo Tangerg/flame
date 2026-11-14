@@ -1,8 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  useWorkspaceListFiles,
-  useWorkspaceFileMatches,
-} from "@/features/workspace/public/queries";
+import { useWorkspaceListFiles, useWorkspaceFileLists } from "@/features/workspace/public/queries";
 import {
   formatFileReference,
   mentionCandidates,
@@ -118,7 +115,7 @@ export function useKnownWorkspacePaths(
     () => [...new Set(mentionCandidates(value).map((mention) => mention.path))],
     [value],
   );
-  const matches = useWorkspaceFileMatches(
+  const matches = useWorkspaceFileLists(
     cwd === undefined ? [] : paths.map((path) => mentionRequest(cwd, path)),
   );
   return new Set(

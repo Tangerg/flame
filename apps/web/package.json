@@ -56,6 +56,8 @@
     "@flame/ui": "*",
     "@floating-ui/react": "0.27.20",
     "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz",
+    "@headless-tree/core": "1.8.0",
+    "@headless-tree/react": "1.8.0",
     "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/core": "^3.1.1",
     "@opentelemetry/exporter-logs-otlp-http": "^0.301.1",

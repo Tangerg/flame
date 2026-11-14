@@ -743,6 +743,18 @@ File roots, expanded directories and selected file bodies retain first-result
 loading while their query is pending, including a paused request. Accepted empty
 lists and readable content keep their meaning during later pauses. Query data,
 network admission, retry and navigation retain their existing owners.
+File trees use Headless Tree's synchronous model for navigation and a controlled
+projection of workspace expansion and the activated file. Query remains the only
+filesystem reader and cache; the loader reads its accepted snapshot without I/O.
+Only reachable expanded directories subscribe to reads. Unread, pending, failed,
+ready, refreshing and stale directories retain their distinct meaning, including
+accepted empty lists. Status and Retry are presentation beside real entries.
+File activation handles Enter, Space and click before navigation; arrows only move
+within the tree. A collapsed or removed focus moves to its surviving ancestor in
+the same model, without reclaiming focus from another control. Reopening keeps
+that current ancestor rather than reviving an invisible cursor. Tree focus commits
+to existing rows synchronously, so a retired navigation cannot later steal focus.
+
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;
 unsupported classification still removes it. Back and Copy path remain available

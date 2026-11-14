@@ -11,7 +11,6 @@ export { FilePath } from "@/ui/atoms/file-path";
 export { Divider } from "@/ui/atoms/divider";
 export { TextLink } from "@/ui/atoms/text-link";
 export { reveal } from "@/ui/atoms/reveal";
-export { Tree } from "@/ui/atoms/tree";
 export { HiddenFileInput } from "@/ui/atoms/hidden-file-input";
 export { Kbd } from "@/ui/atoms/kbd";
 export { Loader } from "@/ui/atoms/loader";

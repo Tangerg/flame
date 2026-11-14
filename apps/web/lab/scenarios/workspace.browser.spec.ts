@@ -462,7 +462,7 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
 test("files browse and preview share one dock tab", async ({ page }) => {
   await openWorkspace(page, { state: "dock-files" });
   const dock = page.locator(".agent-context-dock");
-  const fileName = ACTIVE_FILE_PATH.split("/").at(-1)!;
+  const fileName = /^DockResizer\.tsx\b/;
   await dock.getByRole("treeitem", { name: "apps", exact: true }).click();
   await dock.getByRole("treeitem", { name: fileName, exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");

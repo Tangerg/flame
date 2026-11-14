@@ -278,7 +278,7 @@ function FileBrowser({
     if (item) restoreFocus(item);
   }, [query.data, restoreFocus]);
   // A failed refresh of this query's accepted files keeps them, and the tree's cursor, in place.
-  const retained = query.data !== undefined && query.data.length > 0;
+  const retained = query.data !== undefined;
   const refreshFeedback =
     retained && query.error != null ? (
       query.isFetching ? (

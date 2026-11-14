@@ -5,7 +5,7 @@ export {
   WORKSPACE_READ_FILE_KEY,
   useWorkspaceFileChanges,
   useWorkspaceListFiles,
-  useWorkspaceFileMatches,
+  useWorkspaceFileLists,
   useWorkspaceProjects,
 } from "@/features/workspace/application/workspaceQueries";
 export type { WorkspaceProjectSummary } from "@/features/workspace/application/workspaceQueries";
