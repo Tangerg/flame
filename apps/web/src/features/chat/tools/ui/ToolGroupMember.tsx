@@ -26,7 +26,7 @@ import {
 interface Props {
   tool: ToolCall;
   expanded: boolean;
-  onToggleExpand: () => void;
+  onExpandedChange: (expanded: boolean) => void;
 }
 
 const gm = stylex.create({
@@ -61,7 +61,7 @@ const gm = stylex.create({
   meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 });
 
-export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
+export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
   const headline = headlineToolMetaItem(model.metaItems);
@@ -111,7 +111,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
             type="button"
             aria-expanded={expanded}
             aria-controls={disclosed ? bodyId : undefined}
-            onClick={onToggleExpand}
+            onClick={() => onExpandedChange(!expanded)}
             className={rowClassName}
           >
             {summary}

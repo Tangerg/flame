@@ -2355,6 +2355,13 @@ it("keeps invalid-field focus inside the submitted form and its visible view", a
   });
   const current = screen.getByRole("textbox", { name: "Current draft" });
   expect(window.document.activeElement).toBe(current);
+  const outside = screen.getByRole("textbox", { name: "Other draft" });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(screen.getByRole("form", { name: "Save local" }));
+    outside.focus();
+  });
+  expect(window.document.activeElement).toBe(outside);
   fireEvent.change(current, { target: { value: "Ready" } });
   submit.focus();
   await act(async () => {

@@ -50,7 +50,7 @@ function call(tool: Partial<ToolCall>): ToolCall {
 
 function member(tool: Partial<ToolCall>) {
   return testClient.render(
-    <ToolGroupMember tool={call(tool)} expanded={false} onToggleExpand={() => {}} />,
+    <ToolGroupMember tool={call(tool)} expanded={false} onExpandedChange={() => {}} />,
   );
 }
 
@@ -81,8 +81,8 @@ describe("ToolGroupMember", () => {
     });
     testClient.render(
       <>
-        <ToolGroupMember tool={notes} expanded onToggleExpand={() => {}} />
-        <ToolGroupMember tool={broken} expanded={false} onToggleExpand={() => {}} />
+        <ToolGroupMember tool={notes} expanded onExpandedChange={() => {}} />
+        <ToolGroupMember tool={broken} expanded={false} onExpandedChange={() => {}} />
       </>,
     );
 
@@ -141,7 +141,7 @@ describe("ToolGroupMember", () => {
           skill("resource 1", "read_skill_resource"),
           skill("resource 2", "read_skill_resource", 81),
         ].map((tool) => (
-          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onToggleExpand={() => {}} />
+          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onExpandedChange={() => {}} />
         ))}
       </>,
     );
@@ -174,7 +174,7 @@ describe("ToolGroupMember", () => {
     testClient.render(
       <>
         {[browse("browse 1", 8192, 128), browse("browse 2", 8320, 8192)].map((tool) => (
-          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onToggleExpand={() => {}} />
+          <ToolGroupMember key={tool.id} tool={tool} expanded={false} onExpandedChange={() => {}} />
         ))}
       </>,
     );

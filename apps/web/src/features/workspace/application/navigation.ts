@@ -92,10 +92,10 @@ export function useExpandedWorkspaceToolIds(): Set<string> {
   return workspaceAccess.navigation.useExpandedToolIds();
 }
 
-export function useToggleWorkspaceTool(): (id: string) => void {
+export function useSetWorkspaceToolExpanded(): (id: string, expanded: boolean) => void {
   const workspaceAccess = useWorkspace();
 
-  return workspaceAccess.navigation.useToggleTool();
+  return workspaceAccess.navigation.useSetToolExpanded();
 }
 
 export function useSidebarDrawer(): WorkspaceDrawer {

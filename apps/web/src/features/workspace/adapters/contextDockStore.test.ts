@@ -31,7 +31,7 @@ describe("the round trip", () => {
     dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().setFileViewer({ path: "a/b.ts", line: 12 });
-    dock().toggleExpandedTool("tool_1");
+    dock().setToolExpanded("tool_1", true);
 
     const key = testClient.workspace.dock.store.persist.getOptions().name!;
     const payload = localStorage.getItem(key) ?? "null";
@@ -240,7 +240,7 @@ describe("per-session scopes", () => {
     dock().adoptDockLocation("diff");
     dock().focusFile("src/runtime.ts");
     dock().setFileViewer({ path: "src/runtime.ts", line: 42 });
-    dock().toggleExpandedTool("call-from-retired-renderer");
+    dock().setToolExpanded("call-from-retired-renderer", true);
 
     await vi.waitFor(() =>
       expect(
@@ -275,11 +275,13 @@ describe("per-session scopes", () => {
 });
 
 describe("tool disclosure inside a scope", () => {
-  it("toggles a tool open and shut", () => {
-    dock().toggleExpandedTool("call-1");
+  it("applies explicit tool expansion requests idempotently", () => {
+    dock().setToolExpanded("call-1", true);
+    dock().setToolExpanded("call-1", true);
     expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));
 
-    dock().toggleExpandedTool("call-1");
+    dock().setToolExpanded("call-1", false);
+    dock().setToolExpanded("call-1", false);
     expect(dock().expandedToolIds).toEqual(new Set());
   });
 

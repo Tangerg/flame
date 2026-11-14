@@ -25,6 +25,8 @@ export interface InteractionEffects {
   open(url: string): void;
 }
 
+export type ActionIssues = ReturnType<Presentation["validateAction"]>;
+
 type Binding = Omit<CallPluginRequest, "input">;
 type Review = {
   binding: Binding;
@@ -147,23 +149,24 @@ export class InteractionController {
     );
   }
 
-  async execute(actionId: string): Promise<void> {
-    if (this.blocked) return;
+  async execute(actionId: string): Promise<ActionIssues> {
+    if (this.blocked) return [];
+    let issues: ActionIssues = [];
     await this.#guard(actionId, async () => {
       const action = this.#presentation
         .snapshot()
         .actions.find((value) => value.id === actionId);
       if (!action) throw new Error("genui: action is not declared");
-      if (
-        this.#presentation.validateAction(
-          actionId,
-          this.#state.readState,
-          this.#state.readOperation,
-        ).length
-      )
+      issues = this.#presentation.validateAction(
+        actionId,
+        this.#state.readState,
+        this.#state.readOperation,
+      );
+      if (issues.length)
         throw new Error("genui: correct invalid form values before submitting");
       await this.#steps(action, 0);
     });
+    return this.#context.signal.aborted ? [] : issues;
   }
 
   reset(fields?: string[]): void {

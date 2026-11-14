@@ -234,7 +234,7 @@ export function QuestionCard({
         icon="question"
         shell="line"
         open={settledOpen}
-        onToggle={() => setSettledOpen((open) => !open)}
+        onOpenChange={setSettledOpen}
         label={
           <span {...stylex.props(qc.settledLine, vocab.truncate)}>
             <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>

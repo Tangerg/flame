@@ -26,7 +26,7 @@ export {
   useWorkspaceInspection,
   returnFromWorkspaceInspection,
   useExpandedWorkspaceToolIds,
-  useToggleWorkspaceTool,
+  useSetWorkspaceToolExpanded,
   useWorkspaceFileViewer,
   useWorkspaceSettingsPaneTarget,
   resolveInspectionReturnDock,

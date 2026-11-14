@@ -11,7 +11,6 @@ export interface ToolGroupModel {
   count: number;
   needsAttention: boolean;
   expanded: boolean;
-  nextPinned: boolean;
 }
 
 export function toolGroupModel(
@@ -27,6 +26,5 @@ export function toolGroupModel(
     count: tools.length,
     needsAttention,
     expanded,
-    nextPinned: !expanded,
   };
 }

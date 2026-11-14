@@ -21,7 +21,7 @@ import {
   openWorkspaceSubagentRun,
   useWorkspaceSubagentRunId,
   useExpandedWorkspaceToolIds,
-  useToggleWorkspaceTool,
+  useSetWorkspaceToolExpanded,
   useWorkspaceInspection,
 } from "@/features/workspace/public/navigation";
 import { ScrollArea } from "@/ui/index";
@@ -402,11 +402,11 @@ function SubagentTranscript({
     },
   );
   const expandedIds = useExpandedWorkspaceToolIds();
-  const onToggleExpand = useToggleWorkspaceTool();
+  const onExpandedChange = useSetWorkspaceToolExpanded();
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
   const ctx = useMemo<BlockCtx>(
-    () => ({ sessionId: entry.narrative.run.sessionId, expandedIds, onToggleExpand, textReveal }),
-    [entry.narrative.run.sessionId, expandedIds, onToggleExpand, textReveal],
+    () => ({ sessionId: entry.narrative.run.sessionId, expandedIds, onExpandedChange, textReveal }),
+    [entry.narrative.run.sessionId, expandedIds, onExpandedChange, textReveal],
   );
   const measured = useContentVisible() && !hidden;
   useReadingFocusVisibility({ scrollRef, contentRef, state, stopScroll }, measured);

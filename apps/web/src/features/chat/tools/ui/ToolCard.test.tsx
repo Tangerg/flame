@@ -53,7 +53,7 @@ function call(tool: Partial<ToolCall>): ToolCall {
 
 function card(tool: Partial<ToolCall>) {
   return testClient.render(
-    <ToolCard tool={call(tool)} expanded={false} onToggleExpand={() => {}} />,
+    <ToolCard tool={call(tool)} expanded={false} onExpandedChange={() => {}} />,
   );
 }
 
@@ -65,7 +65,7 @@ function rows(tools: ToolCall[], expandedId?: string) {
           key={tool.id}
           tool={tool}
           expanded={tool.id === expandedId}
-          onToggleExpand={() => {}}
+          onExpandedChange={() => {}}
         />
       ))}
     </>

@@ -111,9 +111,10 @@ describe("ReasoningBlock disclosure policy", () => {
     const trigger = screen.getByRole("button", { name: /Thought/ });
 
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    const shut = document.getElementById(trigger.getAttribute("aria-controls") ?? "");
-    expect(shut, "the region a shut trigger names has to exist").not.toBeNull();
-    expect(shut!.textContent).toBe("");
+    const shut = screen.getByRole("region", { hidden: true });
+    expect(trigger.getAttribute("aria-controls")).toBeNull();
+    expect(shut.hidden).toBe(true);
+    expect(shut.textContent).toBe("");
 
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
@@ -135,6 +136,7 @@ describe("ReasoningBlock disclosure policy", () => {
 
   it("sets expanded reasoning apart as an indented aside instead of a card", () => {
     renderReasoning("running", "Inspect the protocol boundary");
+    fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
 
     const activity = screen.getByRole("button", { name: /Thinking/ }).closest("[data-shell]");
     const body = screen.getByRole("region");

@@ -114,7 +114,7 @@ export function createWorkspaceNavigation(
     remember: (change) => useContextDockStore.getState().remember(change),
     useSettingsPaneTarget: () => navigation.use((location) => location.settings),
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
-    useToggleTool: () => useContextDockStore((state) => state.toggleExpandedTool),
+    useSetToolExpanded: () => useContextDockStore((state) => state.setToolExpanded),
     useSidebarDrawer: () => ({
       collapsed: useShellLayoutStore((state) => state.sidebarCollapsed),
       toggle: useShellLayoutStore((state) => state.toggleSidebar),

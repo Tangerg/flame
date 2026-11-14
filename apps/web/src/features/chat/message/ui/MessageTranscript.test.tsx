@@ -25,7 +25,7 @@ vi.mock("@/features/chat/message/ui/MessageTurn", async (importOriginal) => {
 const CTX: BlockCtx = {
   sessionId: "session",
   expandedIds: new Set(),
-  onToggleExpand: () => {},
+  onExpandedChange: () => {},
   textReveal: "instant",
 };
 

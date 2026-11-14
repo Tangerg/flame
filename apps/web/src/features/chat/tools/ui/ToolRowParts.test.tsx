@@ -82,7 +82,7 @@ function call(tool: Partial<ToolCall> = {}): ToolCall {
 }
 
 function row(Row: Consumer, tool: ToolCall) {
-  return <Row tool={tool} expanded={false} onToggleExpand={() => {}} />;
+  return <Row tool={tool} expanded={false} onExpandedChange={() => {}} />;
 }
 
 function deferred() {
@@ -251,7 +251,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
     });
     const tool = call({ result: "captured output" });
     const toggle = vi.fn();
-    const { container } = testClient.render(<Row tool={tool} expanded onToggleExpand={toggle} />);
+    const { container } = testClient.render(<Row tool={tool} expanded onExpandedChange={toggle} />);
     const result = await screen.findByRole("region", { name: "Result" });
     const disclosure = container.querySelector("button[aria-expanded]");
     fireEvent.click(screen.getByRole("button", { name: "Copy arguments" }));

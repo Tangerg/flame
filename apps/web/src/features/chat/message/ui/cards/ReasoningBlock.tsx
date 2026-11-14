@@ -58,7 +58,6 @@ export function ReasoningBlock({ text, status }: Props) {
   const t = useT();
   const streaming = status === "running";
   const [isOpen, setOpen] = useState(false);
-  const toggle = useCallback(() => setOpen((value) => !value), []);
 
   const startedAt = useRef<number | null>(null);
   const [thoughtMillis, setThoughtMillis] = useState<number | null>(null);
@@ -147,7 +146,7 @@ export function ReasoningBlock({ text, status }: Props) {
         )
       }
       open={isOpen}
-      onToggle={toggle}
+      onOpenChange={setOpen}
       contentClassName={stylex.props(rb.aside).className}
     >
       <div

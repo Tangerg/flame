@@ -924,10 +924,19 @@ the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code
 copying retains the complete original SVG text.
 
+Activity disclosures compose Base UI Collapsible directly. Consumers request an
+explicit open value; the workspace command owns each tool's expanded state.
+Base UI owns trigger/panel associations and the closing lifetime. The activity
+keeps only its first-reveal history and the existing reading clearance.
 Collapsing disclosures share one scroll lock per containing viewport. The first
 animation captures the original scrollbar, padding and reading position; later
 animations retain that same lock. Completion, cancellation, reopening and unmount
 release only their own lease. The final release restores the captured styles.
+
+Search overlays use inline Base UI Autocomplete for externally filtered choices,
+highlighting and activation. The surrounding Dialog alone owns dismissal and
+focus isolation. A captured command is delivered once after Dialog completion;
+canceling, reopening or unmounting retires an undelivered command.
 
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
