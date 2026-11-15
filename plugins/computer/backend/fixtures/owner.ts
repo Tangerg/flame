@@ -1,9 +1,9 @@
-import { writeFile } from "node:fs/promises";
 import { Engine } from "../engine";
 
-const [fixture, ownershipPath, log, ready] = process.argv.slice(2);
-if (!fixture || !ownershipPath || !log || !ready)
-  throw new Error("fixture arguments are required");
+const [fixture, ownershipPath, log] = process.argv.slice(2);
+const notify = process.send?.bind(process);
+if (!fixture || !ownershipPath || !log || !notify)
+  throw new Error("fixture arguments and an IPC channel are required");
 const engine = await Engine.connect(
   {
     command: process.execPath,
@@ -13,14 +13,16 @@ const engine = await Engine.connect(
   },
   {
     signal: new AbortController().signal,
-    onElicitation: async () => ({ action: "cancel" }),
+    onElicitation: async (request) => {
+      notify(request);
+      return await new Promise<never>(() => {});
+    },
     onRetired() {},
   },
 );
-await writeFile(ready, "ready", "utf8");
 await engine.call(
   "js",
-  { code: "hold" },
+  { code: "approval" },
   {
     sessionId: "crashing-control-session",
     turnId: "crashing-control-turn",

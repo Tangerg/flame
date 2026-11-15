@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.12-dev.20261113.t0ff39af3f896
 	github.com/Tangerg/flame/packages/local-runtime v0.1.5-dev.20261114.tce557d2d26a4
-	github.com/Tangerg/flame/runtime v0.1.43-dev.20261115.t545867277e9e
+	github.com/Tangerg/flame/runtime v0.1.45-dev.20261115.tf670c1e15c4c
 	github.com/Tangerg/frame v0.2.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.0
 	github.com/Tangerg/oolong/extensions/latex v0.28.0

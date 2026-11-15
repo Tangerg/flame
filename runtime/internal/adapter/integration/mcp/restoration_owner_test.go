@@ -32,6 +32,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 	}{
 		{name: "original connection closed", definite: true, cause: sdk.ErrConnectionClosed},
 		{name: "original Frame channel closed", closedChannel: true, definite: true, cause: sdk.ErrConnectionClosed},
+		{name: "original process unavailable", setupFailure: frame.ErrUnavailable, definite: true, cause: plugin.ErrUnavailable},
 		{name: "preparation storage owner closed", setupFailure: frame.ErrClosed, cause: frame.ErrClosed},
 		{name: "Frame host closed during preparation", setupFailure: frame.ErrClosed, hostCloses: true, cause: frame.ErrClosed},
 		{name: "original source disabled", disabled: true, definite: true, cause: plugin.ErrUnavailable},

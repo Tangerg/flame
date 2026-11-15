@@ -1,6 +1,7 @@
 import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
+import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -866,7 +867,6 @@ it("a crashed backend cannot launch beside its surviving engine", async () => {
   cleanups.push(() => rm(directory, { recursive: true, force: true }));
   const ownershipPath = join(directory, "engine-ownership.json");
   const log = join(directory, "engine.jsonl");
-  const ready = join(directory, "ready");
   const bundle = await rolldown({
     input: fileURLToPath(new URL("./fixtures/owner.ts", import.meta.url)),
     platform: "node",
@@ -878,27 +878,32 @@ it("a crashed backend cannot launch beside its surviving engine", async () => {
   } finally {
     await bundle.close();
   }
-  const owner = spawn(
-    process.execPath,
-    [entry, fixture, ownershipPath, log, ready],
-    { stdio: ["ignore", "ignore", "pipe"] },
-  );
+  const owner = spawn(process.execPath, [entry, fixture, ownershipPath, log], {
+    stdio: ["ignore", "ignore", "pipe", "ipc"],
+  });
   let diagnostics = "";
-  owner.stderr.setEncoding("utf8");
-  owner.stderr.on("data", (text: string) => {
+  owner.stderr!.setEncoding("utf8");
+  owner.stderr!.on("data", (text: string) => {
     diagnostics = (diagnostics + text).slice(-8192);
   });
   const ownerClosed = new Promise<void>((resolve) =>
     owner.once("close", () => resolve()),
   );
-  let enginePid: number | undefined;
   cleanups.push(async () => {
     if (owner.exitCode === null && owner.signalCode === null)
       owner.kill("SIGKILL");
     await ownerClosed;
-    if (enginePid) {
+    let ownership: { pid: number | null };
+    try {
+      ownership = JSON.parse(await readFile(ownershipPath, "utf8"));
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT")
+        return;
+      throw error;
+    }
+    if (ownership.pid !== null) {
       try {
-        process.kill(-enginePid, "SIGKILL");
+        process.kill(-ownership.pid, "SIGKILL");
       } catch (error) {
         if (!(
           error instanceof Error &&
@@ -909,19 +914,21 @@ it("a crashed backend cannot launch beside its surviving engine", async () => {
       }
     }
   });
-  await expect
-    .poll(async () => {
-      if (owner.exitCode !== null) throw new Error(diagnostics);
-      return await readFile(ready, "utf8");
-    })
-    .toBe("ready");
-  await expect
-    .poll(async () => (await readFile(log, "utf8")).includes('"name":"js"'))
-    .toBe(true);
+  const [request] = await Promise.race([
+    once(owner, "message"),
+    ownerClosed.then(() => {
+      throw new Error(
+        "fixture owner exited before request admission: " + diagnostics,
+      );
+    }),
+  ]);
   const record = JSON.parse(await readFile(ownershipPath, "utf8")) as {
     pid: number;
   };
-  enginePid = record.pid;
+  expect(request).toMatchObject({
+    message: "Allow the fixture to use its test window?",
+  });
+  expect((await readFile(log, "utf8")).includes('"name":"js"')).toBe(true);
   owner.kill("SIGKILL");
   await ownerClosed;
   expect(() => process.kill(-record.pid, 0)).not.toThrow();

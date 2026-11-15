@@ -201,7 +201,7 @@ func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (_ *BorrowedS
 	if !found || !descriptor.Enabled {
 		return nil, ErrUnavailable
 	}
-	session, err := p.inner.serviceSession(ctx, descriptor)
+	session, err := p.inner.waitSession(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}
