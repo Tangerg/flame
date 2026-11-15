@@ -481,91 +481,98 @@ for (const browserName of ["chromium", "webkit"] as const) {
           )
           .toBeLessThanOrEqual(0.5);
         // Screencast frames are what the browser presented; sampling is throttled (WebKit ≤ 25fps).
+        const originals: Buffer[] = [];
+        const frames: {
+          timestamp: number;
+          viewportWidth: number;
+          viewportHeight: number;
+          attachment: string;
+        }[] = [];
+        await page.screencast.start({
+          size: { width: 1120, height: 755 },
+          quality: 100,
+          onFrame: ({ data, timestamp, viewportWidth, viewportHeight }) => {
+            let index = originals.findIndex((original) => original.equals(data));
+            if (index < 0) index = originals.push(data) - 1;
+            frames.push({
+              timestamp,
+              viewportWidth,
+              viewportHeight,
+              attachment: `code-reading-resize-frame-${index}.jpg`,
+            });
+          },
+        });
         const captureResize = async (size: { width: number; height: number }, label: string) => {
-          const originals: Buffer[] = [];
-          const frames: {
-            timestamp: number;
-            viewportWidth: number;
-            viewportHeight: number;
-            attachment: string;
-          }[] = [];
-          let requestedAt = 0;
-          let acknowledgedAt = 0;
-          await page.screencast.start({
-            size: { width: 1120, height: 755 },
-            quality: 100,
-            onFrame: ({ data, timestamp, viewportWidth, viewportHeight }) => {
-              let index = originals.findIndex((original) => original.equals(data));
-              if (index < 0) index = originals.push(data) - 1;
-              frames.push({
-                timestamp,
-                viewportWidth,
-                viewportHeight,
-                attachment: `code-reading-${label}-frame-${index}.jpg`,
-              });
-            },
-          });
+          const firstFrame = frames.length;
+          const requestedAt = Date.now();
+          let acknowledgedAt: number | undefined;
           try {
-            requestedAt = Date.now();
             await page.setViewportSize(size);
             acknowledgedAt = Date.now();
             await expectReading(label);
+            await capture(`resize-${label}`);
             await expect
               .poll(() =>
-                frames.some(
-                  (frame) =>
-                    frame.timestamp >= requestedAt &&
-                    frame.viewportWidth === size.width &&
-                    frame.viewportHeight === size.height,
-                ),
+                frames
+                  .slice(firstFrame)
+                  .some(
+                    (frame) =>
+                      frame.timestamp >= requestedAt &&
+                      frame.viewportWidth === size.width &&
+                      frame.viewportHeight === size.height,
+                  ),
               )
               .toBe(true);
           } finally {
-            try {
-              await page.screencast.stop();
-            } finally {
-              const presented = originals.slice();
-              const index = frames.slice();
-              for (const [position, body] of presented.entries()) {
-                await testInfo.attach(`code-reading-${label}-frame-${position}.jpg`, {
-                  body,
-                  contentType: "image/jpeg",
-                });
-              }
-              await testInfo.attach(`code-reading-${label}-frames`, {
-                body: JSON.stringify({ requestedAt, acknowledgedAt, frames: index }),
-                contentType: "application/json",
-              });
-            }
+            await testInfo.attach(`code-reading-${label}-frames`, {
+              body: JSON.stringify({
+                requestedAt,
+                acknowledgedAt,
+                frames: frames.slice(firstFrame),
+              }),
+              contentType: "application/json",
+            });
           }
         };
 
-        for (const size of [
-          { width: 560, height: 377 },
-          { width: 373, height: 251 },
-        ]) {
-          await captureResize(size, String(size.width));
-        }
-        await capture("short");
-        await source.press("End");
-        await expect
-          .poll(() =>
-            source.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
-          )
-          .toBeLessThanOrEqual(1);
-        await source.hover();
-        const beforeWheel = await source.evaluate((node) => node.scrollTop);
-        const outerTop = await transcript.evaluate((node) => node.scrollTop);
-        await page.mouse.wheel(0, -60);
-        await expect
-          .poll(() => source.evaluate((node) => node.scrollTop))
-          .toBeLessThan(beforeWheel);
-        expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
-        for (const size of [
-          { width: 504, height: 316 },
-          { width: 373, height: 251 },
-        ]) {
-          await captureResize(size, `wheel-${size.width}`);
+        try {
+          for (const size of [
+            { width: 560, height: 377 },
+            { width: 373, height: 251 },
+          ]) {
+            await captureResize(size, String(size.width));
+          }
+          await source.press("End");
+          await expect
+            .poll(() =>
+              source.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop),
+            )
+            .toBeLessThanOrEqual(1);
+          await source.hover();
+          const beforeWheel = await source.evaluate((node) => node.scrollTop);
+          const outerTop = await transcript.evaluate((node) => node.scrollTop);
+          await page.mouse.wheel(0, -60);
+          await expect
+            .poll(() => source.evaluate((node) => node.scrollTop))
+            .toBeLessThan(beforeWheel);
+          expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
+          for (const size of [
+            { width: 504, height: 316 },
+            { width: 373, height: 251 },
+          ]) {
+            await captureResize(size, `wheel-${size.width}`);
+          }
+        } finally {
+          try {
+            await page.screencast.stop();
+          } finally {
+            for (const [position, body] of originals.entries()) {
+              await testInfo.attach(`code-reading-resize-frame-${position}.jpg`, {
+                body,
+                contentType: "image/jpeg",
+              });
+            }
+          }
         }
         await capture("wheel-reflow");
         await expectSourcePerimeter();

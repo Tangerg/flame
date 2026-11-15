@@ -1,7 +1,8 @@
 export const CONTROL = [
   "button",
   "a[href]",
-  'input:not([type="hidden"])',
+  // The visible primitive owns interaction; its hidden form mirror is not another target.
+  'input:not([type="hidden"]):not([aria-hidden="true"])',
   "textarea",
   "select",
   '[role="button"]',

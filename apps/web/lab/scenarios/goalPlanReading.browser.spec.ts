@@ -41,7 +41,7 @@ for (const environment of [
       });
       const selection = readSelection(query.toString(), catalog);
       await page.goto(previewURL(catalog.story(selection.storyId), selection, "goal-plan-reading"));
-      await expectLabReady(page, { timeout: 5_000 });
+      await expectLabReady(page);
       await page.evaluate(() => document.fonts.ready);
     };
 

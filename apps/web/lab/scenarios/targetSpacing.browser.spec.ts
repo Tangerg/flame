@@ -1,6 +1,8 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 import { expectLabReady } from "../readiness";
+const MINIMUM_TARGET_SIZE = 24;
+const MAX_CONTROL_LABEL_LENGTH = 24;
 const ROUTES = [
   "fixture=atoms",
   "fixture=shell&state=populated",
@@ -13,54 +15,58 @@ const ROUTES = [
   "fixture=workspace&state=settings",
 ];
 
-test("an undersized control keeps 24px of clearance from its neighbours", async ({ page }) => {
-  const crowded: string[] = [];
-  let undersized = 0;
-
-  for (const route of ROUTES) {
+for (const route of ROUTES) {
+  test(`undersized controls keep ${MINIMUM_TARGET_SIZE}px of clearance in ${route}`, async ({
+    page,
+  }) => {
     await page.goto(`/lab/fixture.html?${route}&theme=light`);
     await expectLabReady(page);
-    await page.waitForTimeout(220);
+    await page.evaluate(() => document.fonts.ready);
 
-    const result = await page.evaluate((SELECTOR) => {
-      const boxes = [...document.querySelectorAll(SELECTOR)]
-        .filter((el) => !el.closest("[data-fixture-chrome]"))
-        .filter((el) => {
-          const style = getComputedStyle(el);
-          const r = el.getBoundingClientRect();
-          return r.width > 2 && r.height > 2 && style.visibility !== "hidden";
-        })
-        .map((el) => ({ el, r: el.getBoundingClientRect() }));
-      const label = (el: Element) =>
-        (el.getAttribute("aria-label") || el.textContent || el.tagName)
-          .trim()
-          .replace(/\s+/g, " ")
-          .slice(0, 24);
+    const result = await page.evaluate(
+      ({ selector, minimumTargetSize, maxLabelLength }) => {
+        const boxes = [...document.querySelectorAll(selector)]
+          .filter((el) => !el.closest("[data-fixture-chrome]"))
+          .filter((el) => {
+            const style = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && style.visibility !== "hidden";
+          })
+          .map((el) => ({ el, r: el.getBoundingClientRect() }));
+        const label = (el: Element) =>
+          (el.getAttribute("aria-label") || el.textContent || el.tagName)
+            .trim()
+            .replace(/\s+/g, " ")
+            .slice(0, maxLabelLength);
 
-      let small = 0;
-      const out: string[] = [];
-      for (const { el, r } of boxes) {
-        if (r.width >= 24 && r.height >= 24) continue;
-        if (el.closest('[data-slot="chat-rail"]')) continue;
-        small += 1;
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        for (const other of boxes) {
-          if (other.el === el || other.el.contains(el) || el.contains(other.el)) continue;
-          const nx = Math.max(other.r.left, Math.min(cx, other.r.right));
-          const ny = Math.max(other.r.top, Math.min(cy, other.r.bottom));
-          if (Math.hypot(nx - cx, ny - cy) < 12) {
-            out.push(`"${label(el)}" <-> "${label(other.el)}"`);
-            break;
+        const out: string[] = [];
+        for (const { el, r } of boxes) {
+          if (r.width >= minimumTargetSize && r.height >= minimumTargetSize) continue;
+          if (el.closest('[data-slot="chat-rail"]')) continue;
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          for (const other of boxes) {
+            if (other.el === el || other.el.contains(el) || el.contains(other.el)) continue;
+            const nx = Math.max(other.r.left, Math.min(cx, other.r.right));
+            const ny = Math.max(other.r.top, Math.min(cy, other.r.bottom));
+            if (Math.hypot(nx - cx, ny - cy) < minimumTargetSize / 2) {
+              out.push(`"${label(el)}" <-> "${label(other.el)}"`);
+              break;
+            }
           }
         }
-      }
-      return { small, out };
-    }, CONTROL);
-    undersized += result.small;
-    crowded.push(...result.out.map((pair) => `${route}  ${pair}`));
-  }
-
-  expect(undersized, "the sweep has to be looking at undersized controls").toBeGreaterThan(3);
-  expect(crowded, "undersized controls closer than 24px to a neighbour").toEqual([]);
-});
+        return { controls: boxes.length, crowded: out };
+      },
+      {
+        selector: CONTROL,
+        minimumTargetSize: MINIMUM_TARGET_SIZE,
+        maxLabelLength: MAX_CONTROL_LABEL_LENGTH,
+      },
+    );
+    expect(result.controls, "the fixture must expose real controls").toBeGreaterThan(0);
+    expect(
+      result.crowded,
+      `undersized controls closer than ${MINIMUM_TARGET_SIZE}px to a neighbour`,
+    ).toEqual([]);
+  });
+}

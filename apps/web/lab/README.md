@@ -396,6 +396,13 @@ Both servers use `vite.lab.config.ts`, the same catalog, documents, providers an
 fixture owners. There is no separate visual app, browser configuration or
 compatibility route. Stop a manually running lab before starting verification.
 
+Target-spacing checks qualify each fixture independently within the existing
+interaction deadline. Each document must expose actual controls; every undersized
+control retains the same clearance rule. The shared control selector excludes
+hidden native form mirrors, whose visible primitive owns the target. A document
+with only full-sized targets is valid. Font readiness replaces a fixed startup
+delay before measurement.
+
 The Workspace chrome scenario compares all eight dockable contribution names,
 four Settings names and the independent icon-gallery header with their public
 declarations in Chromium and WebKit. It checks complete row/text clipping bounds
@@ -874,8 +881,11 @@ what the browser painted. Each resize now also
 retains the public Playwright Screencast's original JPEGs and a callback index with
 presentation timestamps, viewport dimensions and the resize request/acknowledgement
 times. Only byte-identical JPEGs share an attachment. Capture starts from a settled
-reading entry, stops in `finally` and retains evidence on assertion failure. Each
-resize must yield a frame at the requested dimensions after acknowledgement.
+reading entry, spans all four resizes without resubscribing, stops in `finally`
+and retains evidence on assertion failure. Each resize must yield a frame at the
+requested dimensions after its request; acknowledgement is a separate timestamp.
+Each size also captures its settled PNG before awaiting that frame, rather than
+assuming animation callbacks alone publish compositor output.
 Sampling, including WebKit's 25 fps limit and inherited frames during viewport
 changes, does not establish every native compositor frame. A consumed internal wheel retains
 that context through another resize. The same task opens its captured trajectory

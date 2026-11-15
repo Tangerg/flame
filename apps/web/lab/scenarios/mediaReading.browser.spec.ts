@@ -221,13 +221,13 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
   };
   const portrait = await imageBounds();
   expect(portrait.width).toBeCloseTo(portrait.height * portrait.naturalRatio, 1);
-  expect(await gaps()).toEqual({ before: 20, after: 24 });
+  await expect.poll(gaps).toEqual({ before: 20, after: 24 });
 
   await installImage(sources.badBody);
   const unavailable = page.getByRole("img", { name: "Image unavailable", exact: true });
   await expect(unavailable).toBeVisible();
   await expect(preview).toHaveCount(0);
-  expect(await gaps()).toEqual({ before: 20, after: 24 });
+  await expect.poll(gaps).toEqual({ before: 20, after: 24 });
 
   for (const [viewportWidth, data] of [
     [1120, sources.landscape],
