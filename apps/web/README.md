@@ -824,7 +824,8 @@ file path and retires its popup and draft when the path changes.
 Provider retirement resets subscribed Query observers rather than removing their
 cache entries behind them. Accepted data clears, absence reports a read failure,
 and a returning provider can reach those same observers. Unsubscribed orphan
-entries are removed; hidden consumers resume through Query's normal subscription.
+entries reset before removal, clearing objects retained for continuous placeholders;
+hidden consumers resume through Query's normal subscription.
 
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;

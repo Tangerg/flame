@@ -114,6 +114,8 @@ class DataQueryOwner {
             this.#providers.get(key) === successor.get(key)
           );
         };
+        // Continuous placeholders can retain a removed Query object, so clear it before eviction.
+        void queryClient.resetQueries({ predicate: ownedQuery });
         queryClient.removeQueries({
           predicate: (query) => {
             const key = query.queryKey[0];
@@ -126,7 +128,6 @@ class DataQueryOwner {
             );
           },
         });
-        void queryClient.resetQueries({ predicate: ownedQuery });
       });
   }
 }

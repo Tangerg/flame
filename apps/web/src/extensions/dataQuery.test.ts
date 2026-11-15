@@ -281,40 +281,54 @@ describe("createParameterizedDataQuery", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps a hidden observer unsubscribed through provider removal and return", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce("original value")
-      .mockResolvedValue("returned value");
-    const plugin = definePlugin({
-      name: "test.hidden-returning-data-provider",
-      setup(ctx) {
-        ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
-      },
-    });
-    ownedHosts.push(await startKernel([plugin]));
-    const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = testClient.renderHook(
-      ({ subscribed }) => useResource({ id: "same" }, subscribed),
-      {
-        initialProps: { subscribed: true },
-        wrapper: productQueryWrapper,
-      },
-    );
-    await waitFor(() => expect(hook.result.current.data).toBe("original value"));
-    hook.rerender({ subscribed: false });
+  it.each([false, true])(
+    "keeps a hidden observer unsubscribed through provider removal and return (continuous=%s)",
+    async (continuous) => {
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce("original value")
+        .mockResolvedValue("returned value");
+      const plugin = definePlugin({
+        name: "test.hidden-returning-data-provider",
+        setup(ctx) {
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
+        },
+      });
+      ownedHosts.push(await startKernel([plugin]));
+      const useResource = createParameterizedDataQuery<{ id: string }, string>(
+        "resource",
+        continuous
+          ? {
+              keepWhenContinuous: (previous, next) => previous.id === next.id,
+            }
+          : undefined,
+      );
+      const hook = testClient.renderHook(
+        ({ subscribed }) => useResource({ id: "same" }, subscribed),
+        {
+          initialProps: { subscribed: true },
+          wrapper: productQueryWrapper,
+        },
+      );
+      await waitFor(() => expect(hook.result.current.data).toBe("original value"));
+      hook.rerender({ subscribed: false });
 
-    await act(async () => stopKernel(ownedHosts.pop()!));
-    await waitFor(() =>
-      expect(queryClient.getQueryCache().find({ queryKey: ["resource"] })).toBeUndefined(),
-    );
-    ownedHosts.push(await startKernel([plugin]));
-    expect(fetcher).toHaveBeenCalledOnce();
+      await act(async () => stopKernel(ownedHosts.pop()!));
+      await waitFor(() =>
+        expect(queryClient.getQueryCache().find({ queryKey: ["resource"] })).toBeUndefined(),
+      );
+      const returned = Promise.withResolvers<string>();
+      fetcher.mockImplementation(() => returned.promise);
+      ownedHosts.push(await startKernel([plugin]));
+      expect(fetcher).toHaveBeenCalledOnce();
 
-    hook.rerender({ subscribed: true });
-    await waitFor(() => expect(hook.result.current.data).toBe("returned value"));
-    expect(fetcher).toHaveBeenCalledTimes(2);
-  });
+      hook.rerender({ subscribed: true });
+      expect(hook.result.current.data).toBeUndefined();
+      await act(async () => returned.resolve("returned value"));
+      await waitFor(() => expect(hook.result.current.data).toBe("returned value"));
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it("preserves an in-flight read when another provider is contributed to the same Host", async () => {
     const stable = Promise.withResolvers<string>();
