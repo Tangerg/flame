@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useContentVisible } from "./content-visibility";
 
 export async function copyText(text: string): Promise<boolean> {
@@ -13,30 +13,31 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 type CopyMaterial = (material: string) => Promise<boolean>;
-interface CopySource {
-  source: unknown;
+interface CopyScope {
   active: boolean;
   attempt: object | null;
 }
 
 export function useCopyAttempt(source: unknown): () => (() => boolean) | null {
   const visible = useContentVisible();
-  const owner = useRef<CopySource>({ source, active: false, attempt: null });
+  // Returning to the same source must not revive commands from a retired incarnation.
+  const binding = useMemo<CopyScope>(
+    () => ({ active: false, attempt: null }),
+    [source, visible],
+  );
   useLayoutEffect(() => {
-    const binding: CopySource = { source, active: visible, attempt: null };
-    owner.current = binding;
+    binding.active = visible;
     return () => {
       binding.active = false;
       binding.attempt = null;
     };
-  }, [source, visible]);
+  }, [binding, visible]);
   return useCallback(() => {
-    const binding = owner.current;
-    if (!binding.active || binding.source !== source) return null;
+    if (!binding.active) return null;
     const attempt = {};
     binding.attempt = attempt;
     return () => binding.active && binding.attempt === attempt;
-  }, [source]);
+  }, [binding]);
 }
 
 export function useCopyFeedback(

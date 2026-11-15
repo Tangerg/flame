@@ -3,10 +3,16 @@ import {
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ContentVisibility, useCopyAttempt } from "../dist/index.js";
+import {
+  ContentVisibility,
+  useCopyAttempt,
+  useCopyFeedback,
+} from "../dist/index.js";
 
 afterEach(cleanup);
 
@@ -72,4 +78,57 @@ it("retires hidden scope attempts and admits a fresh attempt only after reveal",
   fireEvent.click(screen.getByRole("button"));
   expect(current()).toBe(false);
   expect(capture.mock.calls[1]![0]()).toBe(true);
+});
+
+it.each(["source replacement", "hide and reveal"])(
+  "does not revive a captured command after %s",
+  (retirement) => {
+    const first = {};
+    const second = {};
+    let visible = true;
+    const view = renderHook(({ source }) => useCopyAttempt(source), {
+      initialProps: { source: first },
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ContentVisibility visible={visible}>{children}</ContentVisibility>
+      ),
+    });
+    const original = view.result.current;
+    view.rerender({ source: first });
+    expect(original()!()).toBe(true);
+    if (retirement === "source replacement") view.rerender({ source: second });
+    else {
+      visible = false;
+      view.rerender({ source: first });
+    }
+    expect(original()).toBeNull();
+    visible = true;
+    view.rerender({ source: first });
+    const latest = view.result.current()!;
+    expect(latest()).toBe(true);
+    expect(original()).toBeNull();
+    expect(latest()).toBe(true);
+  },
+);
+
+it("does not write the clipboard through a retired copy callback after its text returns", async () => {
+  const write = vi
+    .fn<(text: string) => Promise<boolean>>()
+    .mockResolvedValue(true);
+  const view = renderHook(({ text }) => useCopyFeedback(text, 1500, write), {
+    initialProps: { text: "first" },
+  });
+  const original = view.result.current.copy;
+  view.rerender({ text: "second" });
+  view.rerender({ text: "first" });
+  let result: boolean | undefined;
+  await act(async () => {
+    result = await original();
+  });
+  expect(result).toBeUndefined();
+  expect(write).not.toHaveBeenCalled();
+  await act(async () => {
+    expect(await view.result.current.copy()).toBe(true);
+  });
+  expect(write).toHaveBeenCalledExactlyOnceWith("first");
+  expect(view.result.current.copied).toBe(true);
 });
