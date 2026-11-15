@@ -27,8 +27,9 @@ const clientShutdownTimeout = 2 * time.Second
 
 // startClient launches spec's server with its working directory at root,
 // wires its stdio to a JSON-RPC connection, and completes the LSP initialize
-// handshake. The returned client is ready for queries; the caller owns it and
-// must call close. ctx is component-owned rather than request-owned. The
+// handshake. Once a process starts, the caller owns the returned client even
+// when initialization fails; only its confirmed retirement permits replacement.
+// ctx is component-owned rather than request-owned. The
 // connection's read loop is detached from the launch attempt because it stays
 // warm until Servers closes it, while retaining the component trace values.
 func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, err error) {
@@ -98,7 +99,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, 
 	stream := jsonrpc2.NewBufferedStream(pipes, lspObjectCodec{})
 	c.conn = newConnection(connCtx, stream, jsonrpc2.AsyncHandler(c))
 	if childCloseErr != nil {
-		return nil, errors.Join(fmt.Errorf("lsp: close inherited pipe copies: %w", childCloseErr), c.close())
+		return c, fmt.Errorf("lsp: close inherited pipe copies: %w", childCloseErr)
 	}
 
 	// The handshake is synchronous within this call, so it rides ctx directly —
@@ -107,10 +108,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, 
 	initCtx, initCancel := context.WithTimeout(ctx, initializeTimeout)
 	defer initCancel()
 	if err := c.initialize(initCtx); err != nil {
-		if cleanupErr := c.close(); cleanupErr != nil {
-			return nil, errors.Join(err, cleanupErr)
-		}
-		return nil, err
+		return c, err
 	}
 	return c, nil
 }

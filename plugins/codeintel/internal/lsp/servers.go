@@ -205,14 +205,16 @@ func (s *Servers) launchClient(
 	}
 	if err != nil && c != nil {
 		err = errors.Join(err, c.close())
-		c = nil
+		if c.retire() == nil {
+			c = nil
+		}
 	}
 
 	s.mu.Lock()
 	if !s.closed {
 		pending.client = c
 		pending.err = err
-		if err != nil && s.slots[key] == pending {
+		if err != nil && c == nil && s.slots[key] == pending {
 			delete(s.slots, key)
 		}
 		close(pending.done)
@@ -232,15 +234,17 @@ func awaitClientStart(ctx context.Context, pending *clientSlot) (*client, error)
 	// Prefer a completed launch over a racing caller cancellation.
 	select {
 	case <-pending.done:
-		return pending.client, pending.err
 	default:
+		select {
+		case <-pending.done:
+		case <-ctx.Done():
+			return nil, errors.Join(ctx.Err(), context.Cause(ctx))
+		}
 	}
-	select {
-	case <-pending.done:
-		return pending.client, pending.err
-	case <-ctx.Done():
-		return nil, errors.Join(ctx.Err(), context.Cause(ctx))
+	if pending.err != nil {
+		return nil, pending.err
 	}
+	return pending.client, nil
 }
 
 // resolve makes file absolute against the workspace root.

@@ -34,6 +34,10 @@ version-bound transformation. External formatters and
 language servers own process groups and retire descendants on cancellation or
 shutdown. Missing optional formatters are unsupported operations; other failures
 remain visible alongside a successful edit.
+One startup slot owns process acquisition, initialization and rollback. Failed
+initialization permits another launch only after the original client confirms
+retirement; an uncertain cleanup keeps that slot fenced and remains visible at
+shutdown.
 The graceful-shutdown deadline also interrupts pending LSP stdio writes before
 child-process retirement and retains any connection-close failure.
 Request cancellation interrupts a blocked document notification or query dispatch

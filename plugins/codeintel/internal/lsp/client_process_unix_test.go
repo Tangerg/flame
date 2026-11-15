@@ -28,12 +28,17 @@ func TestFailedInitializationReclaimsServerDescendants(t *testing.T) {
 			t.Setenv("FLAME_LSP_DESCENDANT_PID", pidFile)
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
+			servers, err := NewServers(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = servers.Close() })
 			result := make(chan error, 1)
 			go func() {
-				_, err := startClient(ctx, ServerSpec{
+				_, err := servers.clientFor(t.Context(), root, ServerSpec{
 					Name: "process-test", Command: "/bin/sh",
 					Args: []string{"-c", `sleep 30 & echo $! > "$FLAME_LSP_DESCENDANT_PID"; ` + test.end},
-				}, root)
+				})
 				result <- err
 			}()
 
