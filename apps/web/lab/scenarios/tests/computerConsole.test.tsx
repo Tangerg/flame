@@ -94,6 +94,7 @@ function fixture(value = initial) {
   let resultGate: { promise: Promise<void>; arrived(): void } | undefined;
   let unavailableResult = false;
   let historyPageSize: number | undefined;
+  let historyGate: Promise<void> | undefined;
 
   function publish(next: Snapshot) {
     snapshot = structuredClone(next);
@@ -188,6 +189,7 @@ function fixture(value = initial) {
       return output(captured);
     }
     if (params.method === METHODS.history) {
+      if (historyGate) await historyGate;
       const start = Number((JSON.parse(params.input) as { before?: string }).before ?? 0);
       const entries = [...records.values()];
       const end = start + (historyPageSize ?? entries.length);
@@ -386,6 +388,14 @@ function fixture(value = initial) {
     },
     setHistoryPageSize(value: number) {
       historyPageSize = value;
+    },
+    holdHistory() {
+      const gate = Promise.withResolvers<void>();
+      historyGate = gate.promise;
+      return () => {
+        historyGate = undefined;
+        gate.resolve();
+      };
     },
   };
 }
@@ -866,6 +876,8 @@ it("returns an independently retired permission to status controls while review 
 
 it("retains the captured review through a held current-surface read", async () => {
   const setup = rig();
+  const releaseHistory = setup.server.holdHistory();
+  onTestFinished(releaseHistory);
   setup.mount();
   const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
     name: "Tool arguments (JSON)",
@@ -897,7 +909,11 @@ it("retains the captured review through a held current-surface read", async () =
     expect(screen.queryByText(/captured target changed/)).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
     const later = screen.getByRole("button", { name: "Refresh outcomes" });
+    expect(later.hasAttribute("disabled")).toBe(true);
+    await act(async () => releaseHistory());
+    await waitFor(() => expect(later.hasAttribute("disabled")).toBe(false));
     act(() => later.focus());
+    expect(document.activeElement).toBe(later);
     await act(async () => held.release());
 
     await screen.findByText(/captured target changed/);
@@ -921,7 +937,10 @@ it("retains the captured review through a held current-surface read", async () =
     );
     expect(setup.server.originals.size).toBe(0);
   } finally {
-    await act(async () => held.release());
+    await act(async () => {
+      releaseHistory();
+      held.release();
+    });
   }
 });
 
