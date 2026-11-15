@@ -2822,6 +2822,59 @@ describe("local file action feedback", () => {
 });
 
 describe("retained file workspace popups", () => {
+  it("starts each workspace's file at its requested window across a round trip", async () => {
+    selection.current = { status: "ready", cwd: "/work/one" };
+    readFile.mockImplementation(async (query) => {
+      const start = query.startLine ?? 1;
+      return lineWindow(start, start + 9, 1000);
+    });
+    openWorkspaceFile(testClient.workspace.access, "src/big.go");
+    const view = mount(<FileWorkspace />);
+    await waitFor(() => expect(row(1)).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /more/i }));
+    await waitFor(() => expect(row(11)).toBeTruthy());
+
+    for (const cwd of ["/work/two", "/work/one"]) {
+      selection.current = { status: "ready", cwd };
+      view.rerender(
+        <QueryClientProvider client={client}>
+          <FileWorkspace />
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(row(1)).toBeTruthy());
+      expect(row(11)).toBeNull();
+    }
+    expect(readFile).toHaveBeenCalledWith({ cwd: "/work/two", path: "src/big.go" });
+  });
+
+  it("retires a file's presentation and popup drafts across workspace round trips", async () => {
+    selection.current = { status: "ready", cwd: "/work/one" };
+    readFile.mockResolvedValue({ content: "# Guide", startLine: 1, endLine: 1, totalLines: 1 });
+    openWorkspaceFile(testClient.workspace.access, "docs/guide.md");
+    const view = mount(<FileWorkspace />);
+    await screen.findByTestId("rendered-markdown");
+    fireEvent.click(screen.getByRole("radio", { name: "Source" }));
+    fireEvent.click(screen.getByRole("button", { name: "Go to line" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Go to line" }), {
+      target: { value: "37" },
+    });
+
+    for (const cwd of ["/work/two", "/work/one"]) {
+      selection.current = { status: "ready", cwd };
+      view.rerender(
+        <QueryClientProvider client={client}>
+          <FileWorkspace />
+        </QueryClientProvider>,
+      );
+      await screen.findByTestId("rendered-markdown");
+      expect(screen.queryByRole("dialog")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Go to line" }));
+      expect(screen.getByRole<HTMLInputElement>("textbox", { name: "Go to line" }).value).toBe("");
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Go to line" }), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+  });
+
   it("retires an open row menu when another workspace has the same cached paths", async () => {
     selection.current = { status: "ready", cwd: "/work/one" };
     client.setQueryData([WORKSPACE_LIST_FILES_KEY, { cwd: "/work/two" }], [directory]);

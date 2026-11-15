@@ -53,6 +53,7 @@ import {
   isWorkspaceResolving,
   resolvedWorkspaceCwd,
   useActiveSessionWorkspace,
+  type ActiveSessionWorkspaceSelection,
 } from "@/features/agent/public/session";
 import {
   type WorkspaceFileContent,
@@ -130,6 +131,7 @@ export function FileWorkspace() {
   const t = useT();
   const { feedback, run, reset } = useAsyncFeedback();
   const viewer = useWorkspaceFileViewer();
+  const workspace = useActiveSessionWorkspace();
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousViewer = useRef(viewer);
@@ -200,10 +202,25 @@ export function FileWorkspace() {
     <div ref={panelRef} {...stylex.props(fp.workspace)}>
       <ContentVisibility visible={!viewer}>
         <div hidden={Boolean(viewer)} {...stylex.props(fp.workspace, viewer && fp.hidden)}>
-          <FileBrowser restoreFocus={restoreFocus} fileActions={fileActions} />
+          <FileBrowser
+            workspace={workspace}
+            restoreFocus={restoreFocus}
+            fileActions={fileActions}
+          />
         </div>
       </ContentVisibility>
-      {viewer && <FilePreview viewer={viewer} backRef={backRef} fileActions={fileActions} />}
+      {viewer && (
+        <FilePreview
+          key={JSON.stringify([
+            workspace.status,
+            workspace.status === "ready" ? workspace.cwd : workspace.sessionId,
+          ])}
+          workspace={workspace}
+          viewer={viewer}
+          backRef={backRef}
+          fileActions={fileActions}
+        />
+      )}
     </div>
   );
 }
@@ -263,16 +280,17 @@ class FileContentLayout extends Component<FileContentLayoutProps, unknown, HTMLE
 }
 
 function FileBrowser({
+  workspace,
   restoreFocus,
   fileActions,
 }: {
+  workspace: ActiveSessionWorkspaceSelection;
   restoreFocus: (item: HTMLElement) => void;
   fileActions: LocalFileActions;
 }) {
   const workspaceAccess = useWorkspace();
 
   const t = useT();
-  const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const visible = useContentVisible();
   const query = useWorkspaceListFiles(
@@ -379,10 +397,12 @@ function FileReadSummary({ file, partial }: { file: WorkspaceFileContent; partia
 }
 
 function FilePreview({
+  workspace,
   viewer,
   backRef,
   fileActions,
 }: {
+  workspace: ActiveSessionWorkspaceSelection;
   viewer: WorkspaceFileViewer;
   backRef: Ref<HTMLButtonElement>;
   fileActions: LocalFileActions;
@@ -391,7 +411,6 @@ function FilePreview({
 
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
-  const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
   const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
@@ -550,7 +569,7 @@ function FilePreview({
           {canRender && control}
           {data && !unsupported && (
             <GoToLine
-              key={JSON.stringify([cwd, viewer.path])}
+              key={viewer.path}
               onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)}
             />
           )}

@@ -117,15 +117,16 @@ class DataQueryOwner {
         queryClient.removeQueries({
           predicate: (query) => {
             const key = query.queryKey[0];
-            return ownedQuery(query) && typeof key === "string" && !successor.has(key);
+            // Mounted observers need their cache entry to receive a returning provider.
+            return (
+              ownedQuery(query) &&
+              typeof key === "string" &&
+              !successor.has(key) &&
+              query.getObserversCount() === 0
+            );
           },
         });
-        void queryClient.resetQueries({
-          predicate: (query) => {
-            const key = query.queryKey[0];
-            return ownedQuery(query) && typeof key === "string" && successor.has(key);
-          },
-        });
+        void queryClient.resetQueries({ predicate: ownedQuery });
       });
   }
 }

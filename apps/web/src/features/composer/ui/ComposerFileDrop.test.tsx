@@ -229,6 +229,21 @@ it("retires a rebound target even while its original element remains connected",
   fireEvent.dragOver(replacement, { dataTransfer: fresh });
   fireEvent.drop(replacement, { dataTransfer: fresh });
   expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
+
+  const returning = dragTransfer([image]);
+  fireEvent.dragEnter(replacement, { dataTransfer: returning, relatedTarget: null });
+  fireEvent.dragOver(replacement, { dataTransfer: returning });
+  view.rerender(<RetainedSurfaces replacement={false} />);
+  expect(replacement.isConnected).toBe(true);
+  fireEvent.dragOver(original, { dataTransfer: returning });
+  fireEvent.drop(original, { dataTransfer: returning });
+  expect(deliver).toHaveBeenCalledTimes(1);
+
+  const afterReturn = dragTransfer([image]);
+  fireEvent.dragEnter(original, { dataTransfer: afterReturn, relatedTarget: null });
+  fireEvent.dragOver(original, { dataTransfer: afterReturn });
+  fireEvent.drop(original, { dataTransfer: afterReturn });
+  expect(deliver).toHaveBeenCalledTimes(2);
 });
 
 it("clears cancellation and permits a later drag without a depth counter", async () => {

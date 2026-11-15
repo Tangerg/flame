@@ -1,6 +1,34 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "./test";
+import { expect, test, type Page } from "./test";
 import { expectLabReady } from "../readiness";
+import { type AgentSessionSummary } from "@/features/agent/public/session";
+
+async function relocateWorkspace(page: Page, cwd: string) {
+  return page.evaluate(async (cwd) => {
+    const runtimePath = "/lab/scenarios/fixtureRuntime.tsx";
+    const queryPath = "/src/lib/queryClient.ts";
+    const sessionPath = "/src/features/agent/public/session.ts";
+    const [{ visualClient }, { queryClient }, { AGENT_SESSIONS_KEY }] = await Promise.all([
+      import(runtimePath) as Promise<typeof import("./fixtureRuntime")>,
+      import(queryPath) as Promise<typeof import("@/lib/queryClient")>,
+      import(sessionPath) as Promise<typeof import("@/features/agent/public/session")>,
+    ]);
+    const id = visualClient.agent.access.getActiveSessionId();
+    const key = [AGENT_SESSIONS_KEY];
+    const sessions = queryClient.getQueryData<AgentSessionSummary[]>(key);
+    const current = sessions?.find((session) => session.id === id);
+    if (!sessions || !current) throw new Error("expected the fixture's active Session");
+    queryClient.setQueryData(
+      key,
+      sessions.map((session) =>
+        session.id === id
+          ? { ...session, workspace: { ...session.workspace, path: cwd } }
+          : session,
+      ),
+    );
+    return current.workspace.path;
+  }, cwd);
+}
 
 for (const browserName of ["chromium", "webkit"] as const) {
   test.extend({ browserName })(
@@ -44,6 +72,40 @@ for (const browserName of ["chromium", "webkit"] as const) {
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
       expect(audit.violations).toEqual([]);
+    },
+  );
+
+  test.extend({ browserName })(
+    `${browserName} workspace round trips retire preview mode and popup drafts`,
+    async ({ page }) => {
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
+      );
+      await expectLabReady(page);
+      await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
+      const source = page.getByRole("radio", { name: "Source", exact: true });
+      const preview = page.getByRole("radio", { name: "Preview", exact: true });
+      const goToLine = page.getByRole("button", { name: "Go to line", exact: true });
+      const field = page.getByRole("textbox", { name: "Go to line", exact: true });
+      await source.click();
+      await goToLine.click();
+      await field.fill("37");
+
+      const expectFreshPreview = async () => {
+        await expect(preview).toHaveAttribute("aria-checked", "true");
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await goToLine.click();
+        await expect(field).toHaveValue("");
+        await page.keyboard.press("Escape");
+        await expect(goToLine).toBeFocused();
+      };
+      const original = await relocateWorkspace(page, "/visual/relocated-workspace");
+      await expectFreshPreview();
+      await source.click();
+      await goToLine.click();
+      await field.fill("44");
+      await relocateWorkspace(page, original);
+      await expectFreshPreview();
     },
   );
 

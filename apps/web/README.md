@@ -776,6 +776,8 @@ Effect reconnection starts with no cue and cannot acquire the preceding drag;
 the next external drag can enter the new receiver normally. The hook's callback
 ref binds the actual surface node, so replacing that node retires its receiver
 and cue before registering the replacement. The replacement requires a fresh drag.
+Returning to a still-connected former target creates a new registration and
+cannot reacquire a drag from either retired binding.
 
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
@@ -813,10 +815,16 @@ File previews retain the browser's DOM and project its logical visibility throug
 `ContentVisibility`, so row menus retire before returning to the tree. Root and
 expanded-directory Query observers unsubscribe while the browser is hidden and
 resume their normal read lifecycle on return, preserving accepted data and rows.
-Workspace changes replace the tree's interaction scope even when the new Query
-already has identical paths cached. Go to line belongs to the exact workspace
-and file path; changing either retires its popup and draft without replacing the
-reader for ordinary line navigation.
+Workspace changes replace the tree's and preview's interaction scopes even when
+the new Query already has identical paths cached. Pagination, presentation mode
+and popup drafts belong to that workspace; returning does not revive them.
+File changes within one workspace retain the reader. Go to line belongs to that
+file path and retires its popup and draft when the path changes.
+
+Provider retirement resets subscribed Query observers rather than removing their
+cache entries behind them. Accepted data clears, absence reports a read failure,
+and a returning provider can reach those same observers. Unsubscribed orphan
+entries are removed; hidden consumers resume through Query's normal subscription.
 
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;
