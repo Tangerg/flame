@@ -128,14 +128,20 @@ export function useRemovalFocus(
   current: (source: HTMLElement) => boolean = () => true,
 ) {
   const visible = useContentVisible();
-  const binding = useRef({ target, current, visible });
+  const binding = useRef<{
+    target: typeof target;
+    current: typeof current;
+    visible: boolean;
+    node: HTMLElement | null;
+  }>({ target, current, visible, node: null });
   const witness = useRef<RemovalFocus | null>(null);
   useLayoutEffect(() => {
-    binding.current = { target, current, visible };
+    binding.current = { target, current, visible, node: source.current };
   });
   useLayoutEffect(() => {
     return () => {
-      const node = source.current;
+      // An ancestor ref may detach before this owner's layout cleanup.
+      const node = binding.current.node;
       witness.current?.retire();
       witness.current = node
         ? RemovalFocus.capture(

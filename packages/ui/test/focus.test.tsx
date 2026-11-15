@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type RefObject } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
@@ -150,6 +150,26 @@ it("captures the current node when a retained owner replaces its DOM binding", (
   view.rerender(<Task replaced />);
   expect(original.isConnected).toBe(false);
   expect(resolve).not.toHaveBeenCalled();
+  act(() => screen.getByRole("button", { name: "Current task" }).focus());
+  view.unmount();
+  expect(resolve).toHaveBeenCalledExactlyOnceWith();
+  expect(document.activeElement).toBe(target);
+});
+
+it("retains an attached ancestor boundary when its ref detaches before task cleanup", () => {
+  const target = document.createElement("button");
+  document.body.append(target);
+  const resolve = vi.fn(() => target);
+  function Task({ source }: { source: RefObject<HTMLElement | null> }) {
+    useRemovalFocus(source, resolve);
+    return <button>Current task</button>;
+  }
+  function Scene({ active }: { active: boolean }) {
+    const source = useRef<HTMLElement>(null);
+    return <section ref={source}>{active && <Task source={source} />}</section>;
+  }
+  const view = render(<Scene active={false} />);
+  view.rerender(<Scene active />);
   act(() => screen.getByRole("button", { name: "Current task" }).focus());
   view.unmount();
   expect(resolve).toHaveBeenCalledExactlyOnceWith();
