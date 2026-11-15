@@ -807,6 +807,11 @@ the same model, without reclaiming focus from another control. Reopening keeps
 that current ancestor rather than reviving an invisible cursor. Tree focus commits
 to existing rows synchronously, so a retired navigation cannot later steal focus.
 
+File previews retain the browser's DOM and project its logical visibility through
+`ContentVisibility`, so row menus retire before returning to the tree. Root and
+expanded-directory Query observers unsubscribe while the browser is hidden and
+resume their normal read lifecycle on return, preserving accepted data and rows.
+
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;
 unsupported classification still removes it. Back and Copy path remain available

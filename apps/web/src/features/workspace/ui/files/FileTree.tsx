@@ -1,4 +1,4 @@
-import { RemovalFocus } from "@flame/ui";
+import { RemovalFocus, useContentVisible } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type Ref, useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
@@ -305,7 +305,8 @@ export function FileTree({
   const changes = useWorkingTreeFiles();
   const memory = useWorkspaceViewMemory();
   const expanded = useMemo(() => memory.expandedDirs.map(entryId), [memory.expandedDirs]);
-  const snapshot = useFileTreeData(entries, cwd, memory.expandedDirs);
+  const contentVisible = useContentVisible();
+  const snapshot = useFileTreeData(entries, cwd, memory.expandedDirs, contentVisible);
   const rootId = `root:${useId()}`;
   const tree = useTree<WorkspaceFileEntry>({
     rootItemId: rootId,

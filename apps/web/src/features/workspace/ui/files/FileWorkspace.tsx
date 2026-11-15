@@ -3,7 +3,6 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
-  Activity,
   Component,
   Fragment,
   useCallback,
@@ -32,6 +31,7 @@ import { TextButton } from "@/ui/index";
 import { Icon, fileIconName } from "@/ui/index";
 import {
   Button,
+  ContentVisibility,
   copyReaderSelection,
   EmptyState,
   IconButton,
@@ -39,6 +39,7 @@ import {
   selectAllInReader,
   TextField,
   useCopyFeedback,
+  useContentVisible,
   vocab,
 } from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -74,6 +75,7 @@ const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
   workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
+  hidden: { display: "none" },
   identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
   identityIcon: { flexShrink: 0, color: color.fgFaint },
   // The header never shrinks, so a long name is bounded here; the reader shows the full path.
@@ -196,9 +198,11 @@ export function FileWorkspace() {
   }, [viewer, restoreFocus]);
   return (
     <div ref={panelRef} {...stylex.props(fp.workspace)}>
-      <Activity mode={viewer ? "hidden" : "visible"}>
-        <FileBrowser restoreFocus={restoreFocus} fileActions={fileActions} />
-      </Activity>
+      <ContentVisibility visible={!viewer}>
+        <div hidden={Boolean(viewer)} {...stylex.props(fp.workspace, viewer && fp.hidden)}>
+          <FileBrowser restoreFocus={restoreFocus} fileActions={fileActions} />
+        </div>
+      </ContentVisibility>
       {viewer && <FilePreview viewer={viewer} backRef={backRef} fileActions={fileActions} />}
     </div>
   );
@@ -270,7 +274,11 @@ function FileBrowser({
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
-  const query = useWorkspaceListFiles(isWorkspaceResolving(workspace) ? undefined : { cwd });
+  const visible = useContentVisible();
+  const query = useWorkspaceListFiles(
+    isWorkspaceResolving(workspace) ? undefined : { cwd },
+    visible,
+  );
   const scrollPort = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

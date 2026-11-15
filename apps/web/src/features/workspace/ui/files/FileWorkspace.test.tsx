@@ -2885,4 +2885,46 @@ describe("retained file workspace popups", () => {
       "true",
     );
   });
+
+  it("retires the tree menu when a file preview hides the retained browser", async () => {
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
+    });
+    mount(<FileWorkspace />);
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => row.focus());
+    fireEvent.contextMenu(row);
+    const menu = await screen.findByRole("menu");
+    await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+
+    act(() => openWorkspaceFile(testClient.workspace.access, file.path));
+    await screen.findByRole("button", { name: "Back to files" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    act(() => closeWorkspaceFile(testClient.workspace.access));
+    expect(screen.queryByRole("menu")).toBeNull();
+    await screen.findByRole("treeitem", { name: "main.go" });
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
+  });
+
+  it("pauses root and expanded directory reads behind a preview and resumes them on return", async () => {
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
+    });
+    mount(<FileWorkspace />);
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => openWorkspaceFile(testClient.workspace.access, file.path));
+    await screen.findByText("package main");
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    listFiles.mockClear();
+
+    await act(async () => client.invalidateQueries({ queryKey: [WORKSPACE_LIST_FILES_KEY] }));
+    expect(listFiles).not.toHaveBeenCalled();
+
+    act(() => closeWorkspaceFile(testClient.workspace.access));
+    await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(2));
+    expect(listFiles).toHaveBeenCalledWith({ cwd: undefined });
+    expect(listFiles).toHaveBeenCalledWith({ cwd: undefined, path: "src" });
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
+  });
 });

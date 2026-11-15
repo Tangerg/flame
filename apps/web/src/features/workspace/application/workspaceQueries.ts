@@ -84,9 +84,13 @@ export function workspaceFileListQuery(request: WorkspaceListFilesQuery) {
   );
 }
 
-export function useWorkspaceFileLists(requests: readonly WorkspaceListFilesQuery[]) {
+export function useWorkspaceFileLists(
+  requests: readonly WorkspaceListFilesQuery[],
+  subscribed = true,
+) {
   return useQueries({
     queries: requests.map(workspaceFileListQuery),
+    subscribed,
   });
 }
 

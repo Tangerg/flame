@@ -46,4 +46,42 @@ for (const browserName of ["chromium", "webkit"] as const) {
       expect(audit.violations).toEqual([]);
     },
   );
+
+  test.extend({ browserName })(
+    `${browserName} a file preview retires the retained tree menu`,
+    async ({ page }) => {
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
+      );
+      await expectLabReady(page);
+      const tree = page.getByRole("tree", { name: "Files", exact: true });
+      const folder = tree.getByRole("treeitem", { name: "apps", exact: true });
+      await folder.focus();
+      await folder.press("ArrowRight");
+      const file = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      await expect(file).toBeVisible();
+      const path = await file.getAttribute("title");
+      expect(path).toBeTruthy();
+      await file.focus();
+      await file.click({ button: "right" });
+      await expect(page.getByRole("menuitem", { name: "Copy path", exact: true })).toBeVisible();
+
+      await page.evaluate(async (path) => {
+        const runtimePath = "/lab/scenarios/fixtureRuntime.tsx";
+        const navigationPath = "/src/features/workspace/application/navigation.ts";
+        const [{ visualClient }, { openWorkspaceFile }] = await Promise.all([
+          import(runtimePath),
+          import(navigationPath),
+        ]);
+        openWorkspaceFile(visualClient.workspace.access, path);
+      }, path!);
+      const back = page.getByRole("button", { name: "Back to files", exact: true });
+      await expect(back).toBeFocused();
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await back.press("Enter");
+      await expect(file).toBeFocused();
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await expect(folder).toHaveAttribute("aria-expanded", "true");
+    },
+  );
 }

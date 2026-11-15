@@ -163,12 +163,13 @@ export function parameterizedQuery<P, T>(key: string, params: P | undefined) {
 export function createParameterizedDataQuery<P, T>(
   key: string,
   options?: ParameterizedQueryOptions<P, T>,
-): (params: P | undefined) => UseQueryResult<T> {
+): (params: P | undefined, subscribed?: boolean) => UseQueryResult<T> {
   const interval = options?.refetchInterval;
   const keep = options?.keepWhenContinuous;
-  return (params) =>
+  return (params, subscribed = true) =>
     useQuery({
       ...parameterizedQuery<P, T>(key, params),
+      subscribed,
       refetchInterval: interval ? (query) => interval(query.state.data) : undefined,
       placeholderData: keep
         ? (previous, previousQuery) => {

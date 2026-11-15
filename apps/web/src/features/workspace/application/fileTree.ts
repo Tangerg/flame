@@ -9,6 +9,7 @@ export function useFileTreeData(
   roots: readonly WorkspaceFileEntry[],
   cwd: string | undefined,
   expanded: readonly string[],
+  subscribed: boolean,
 ) {
   const client = useQueryClient();
   const opened = new Set(expanded);
@@ -22,7 +23,7 @@ export function useFileTreeData(
     }
   };
   collect(roots);
-  const results = useWorkspaceFileLists(requests);
+  const results = useWorkspaceFileLists(requests, subscribed);
   const directories = new Map(requests.map((request, index) => [request.path, results[index]!]));
   const entries = new Map(roots.map((entry) => [entry.path, entry]));
   for (const query of results) {
