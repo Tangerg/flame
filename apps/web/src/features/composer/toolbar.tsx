@@ -39,9 +39,10 @@ function ContextMenuButton() {
   const canAttach = useSelectedModel()?.acceptsInput("image") ?? false;
   const value = useComposerText();
   const setValue = useSetComposerText();
+  const insertionFocus = useRef<string | null>(null);
   const insert = (next: string) => {
+    insertionFocus.current = next;
     setValue(next);
-    requestAnimationFrame(() => focusComposer(composerAccess, next.length));
   };
 
   return (
@@ -57,7 +58,11 @@ function ContextMenuButton() {
           if (files.length > 0) addImageFiles(files);
         }}
       />
-      <DropdownMenu.Root>
+      <DropdownMenu.Root
+        onOpenChange={(open) => {
+          if (open) insertionFocus.current = null;
+        }}
+      >
         <DropdownMenu.Trigger
           render={
             <IconButton
@@ -68,7 +73,17 @@ function ContextMenuButton() {
             />
           }
         />
-        <DropdownMenu.Content align="start" sideOffset={6}>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={6}
+          finalFocus={() => {
+            const inserted = insertionFocus.current;
+            insertionFocus.current = null;
+            if (inserted === null) return true;
+            if (value === inserted) focusComposer(composerAccess, inserted.length);
+            return false;
+          }}
+        >
           <DropdownMenu.Item
             layout="glyph"
             disabled={!canAttach}

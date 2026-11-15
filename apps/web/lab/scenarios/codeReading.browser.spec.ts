@@ -490,7 +490,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
             attachment: string;
           }[] = [];
           let requestedAt = 0;
-          let resizedAt = 0;
+          let acknowledgedAt = 0;
           await page.screencast.start({
             size: { width: 1120, height: 755 },
             quality: 100,
@@ -508,8 +508,18 @@ for (const browserName of ["chromium", "webkit"] as const) {
           try {
             requestedAt = Date.now();
             await page.setViewportSize(size);
-            resizedAt = Date.now();
+            acknowledgedAt = Date.now();
             await expectReading(label);
+            await expect
+              .poll(() =>
+                frames.some(
+                  (frame) =>
+                    frame.timestamp >= requestedAt &&
+                    frame.viewportWidth === size.width &&
+                    frame.viewportHeight === size.height,
+                ),
+              )
+              .toBe(true);
           } finally {
             try {
               await page.screencast.stop();
@@ -523,19 +533,11 @@ for (const browserName of ["chromium", "webkit"] as const) {
                 });
               }
               await testInfo.attach(`code-reading-${label}-frames`, {
-                body: JSON.stringify({ requestedAt, resizedAt, frames: index }),
+                body: JSON.stringify({ requestedAt, acknowledgedAt, frames: index }),
                 contentType: "application/json",
               });
             }
           }
-          expect(
-            frames.some(
-              (frame) =>
-                frame.timestamp >= resizedAt &&
-                frame.viewportWidth === size.width &&
-                frame.viewportHeight === size.height,
-            ),
-          ).toBe(true);
         };
 
         for (const size of [

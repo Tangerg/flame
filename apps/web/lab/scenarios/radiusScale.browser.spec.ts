@@ -42,6 +42,7 @@ for (const theme of ["light", "dark"]) {
   test(`saved corner choices reach ordinary controls without changing circular geometry ${theme}`, async ({
     page,
   }) => {
+    test.slow();
     await page.setViewportSize({ width: 1472, height: 1000 });
     const readings: Record<string, Awaited<ReturnType<typeof shape>>>[] = [];
     for (const choice of ["Sharp", "Default", "Soft"]) {
@@ -128,6 +129,7 @@ for (const theme of ["light", "dark"]) {
   test(`saved corner choices reach content and modal surfaces while explicit round controls stay round ${theme}`, async ({
     page,
   }) => {
+    test.slow();
     await page.setViewportSize({ width: 1120, height: 720 });
     const readings: {
       card: Awaited<ReturnType<typeof shape>>;

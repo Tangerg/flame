@@ -411,7 +411,9 @@ for (const theme of ["light", "dark"] as const) {
     await objective.fill(
       "Review the full workspace and preserve every relevant contract.\n".repeat(80),
     );
-    expect((await objective.boundingBox())!.height).toBeGreaterThan(shortHeight);
+    await expect
+      .poll(async () => (await objective.boundingBox())!.height)
+      .toBeGreaterThan(shortHeight);
     expect(await objective.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
     await expect(objective).toBeInViewport({ ratio: 1 });
     await expect(save).toBeInViewport({ ratio: 1 });
@@ -2088,6 +2090,18 @@ test("large command output stays fully readable inside the tool card", async ({ 
   const output = command.getByRole("region", { name: "Tool output", exact: true });
   await expect(output).toContainText("build output line 49999");
   expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
+
+  const tail = await output.evaluate((node) => node.scrollTop);
+  await command.evaluate(async (node) => {
+    (node as HTMLElement).hidden = true;
+    // The hidden-layout observation must commit before the host becomes visible again.
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    (node as HTMLElement).hidden = false;
+  });
+  await expect(output).toContainText("build output line 49999");
+  await expect.poll(() => output.evaluate((node) => node.scrollTop)).toBe(tail);
 
   await output.focus();
   await expect(output).toBeFocused();

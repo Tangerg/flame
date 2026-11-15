@@ -67,7 +67,25 @@ for (const [width, fontSize, theme] of [
 
     await transcript.evaluate((node) => node.scrollTo(0, 0));
     const visible = (await reader.boundingBox())!;
-    await page.mouse.move(visible.x + visible.width / 2, visible.y + 80);
+    const pointer = await reader.evaluate((node) => {
+      const viewport = node.closest<HTMLElement>(".msg-scroll-viewport")!;
+      const frame = viewport.getBoundingClientRect();
+      const style = getComputedStyle(viewport);
+      const bounds = node.getBoundingClientRect();
+      const top = Math.max(bounds.top, frame.top + parseFloat(style.scrollPaddingTop));
+      const bottom = Math.min(bounds.bottom, frame.bottom - parseFloat(style.scrollPaddingBottom));
+      const x = (Math.max(bounds.left, frame.left) + Math.min(bounds.right, frame.right)) / 2;
+      const y = (top + bottom) / 2;
+      return {
+        x,
+        y,
+        visibleHeight: bottom - top,
+        hit: node.contains(document.elementFromPoint(x, y)),
+      };
+    });
+    expect(pointer.visibleHeight).toBeGreaterThan(0);
+    expect(pointer.hit).toBe(true);
+    await page.mouse.move(pointer.x, pointer.y);
     await page.mouse.wheel(0, 240);
     await expect.poll(() => transcript.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
     const explanation = page.getByText("The explanation continues after the recorded evidence.", {

@@ -18,8 +18,9 @@ func (i *interactionSession) checkpointMCPManifests() (map[domaintool.Group][]st
 	if deployments == nil {
 		return nil, errors.New("execution: checkpoint Tool manifests are unavailable")
 	}
-	manifests := make(map[domaintool.Group][]string, len(deployments.manifests))
-	for group, manifest := range deployments.manifests {
+	manifests := make(map[domaintool.Group][]string, len(deployments.toolGroups))
+	for group, tools := range deployments.toolGroups {
+		manifest := tools.manifest
 		references := make([]string, 0)
 		for _, executable := range append(slices.Clone(manifest.Visible), manifest.Deferred...) {
 			ref, err := toolset.Identify(executable)
@@ -68,10 +69,10 @@ func pendingCheckpointSources(session *interactionSession, checkpoint interactio
 	if deployments == nil {
 		return false
 	}
-	for group, manifest := range deployments.manifests {
+	for group, tools := range deployments.toolGroups {
 		for _, ref := range checkpoint.mcpManifests[group] {
 			source, _, _ := ref.MCP()
-			if slices.Contains(manifest.PendingMCP, source) {
+			if slices.Contains(tools.manifest.PendingMCP, source) {
 				return true
 			}
 		}
@@ -84,12 +85,12 @@ func (i *interactionSession) skillDiscoveryCommands() map[domaintool.Group]strin
 	defer i.state.mu.Unlock()
 	var commands map[domaintool.Group]string
 	if i.state.deployments != nil {
-		for group, manifest := range i.state.deployments.manifests {
-			if manifest.SkillDiscovery != "" {
+		for group, tools := range i.state.deployments.toolGroups {
+			if tools.manifest.SkillDiscovery != "" {
 				if commands == nil {
 					commands = make(map[domaintool.Group]string)
 				}
-				commands[group] = manifest.SkillDiscovery
+				commands[group] = tools.manifest.SkillDiscovery
 			}
 		}
 	}

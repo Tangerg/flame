@@ -1348,14 +1348,21 @@ function copyFrom(target: HTMLElement) {
   return { proceeded, setData };
 }
 
+const OUTPUT_LINE_HEIGHT = 20;
+
 function expandOutput(output: string) {
-  document.documentElement.style.setProperty("--leading-relaxed", "20px");
-  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  document.documentElement.style.setProperty("--leading-relaxed", `${OUTPUT_LINE_HEIGHT}px`);
   testClient.render(
     <>
       <p>Surrounding narrative</p>
       <RecordedResult context={capturedContext("shell", output)} />
     </>,
+  );
+  // Happy DOM has no layout; its ruler must share the fixture's declared line height.
+  const preview = screen.getByRole("region", { name: "Tool output preview" });
+  const ruler = preview.parentElement!.querySelector<HTMLElement>('span[aria-hidden="true"]')!;
+  vi.spyOn(ruler, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, 0, OUTPUT_LINE_HEIGHT),
   );
   fireEvent.click(screen.getByRole("button", { name: /earlier lines/ }));
   return screen.getByRole("region", { name: "Tool output" });
@@ -1374,7 +1381,7 @@ function findUniqueOutputLine() {
     within(screen.getByRole("search", { name: "Output search" })).queryByRole("status")
       ?.textContent;
   const expectRevealed = () => {
-    expect(reader.scrollTop).toBe(42 * 20 - 200);
+    expect(reader.scrollTop).toBe(42 * OUTPUT_LINE_HEIGHT - reader.clientHeight / 2);
     expect(reader.querySelector('[data-current-match] [data-output-line="42"]')?.textContent).toBe(
       "Boundary needle alpha",
     );
@@ -1382,12 +1389,12 @@ function findUniqueOutputLine() {
     expect(status()).toBe("1 of 1");
   };
   const expectScrolledAway = () => {
-    expect(reader.scrollTop).toBe(2000);
+    expect(reader.scrollTop).toBe(100 * OUTPUT_LINE_HEIGHT);
     expect(reader.querySelector('[data-output-line="100"]')).toBeTruthy();
     expect(reader.querySelector('[data-output-line="42"]')).toBeNull();
   };
   const scrollAway = () => {
-    reader.scrollTop = 2000;
+    reader.scrollTop = 100 * OUTPUT_LINE_HEIGHT;
     fireEvent.scroll(reader);
     expectScrolledAway();
   };
@@ -1695,24 +1702,24 @@ it("copies the complete captured output when Select All precedes a virtual-windo
     reader.scrollTop = top;
     fireEvent.scroll(reader);
   };
-  scrollTo(49_980 * 20);
+  scrollTo(49_980 * OUTPUT_LINE_HEIGHT);
   expect(reader.querySelector('[data-output-line="49999"]')).toBeTruthy();
   expect(selectAll(reader)).toBe(false);
 
-  scrollTo(49_900 * 20);
+  scrollTo(49_900 * OUTPUT_LINE_HEIGHT);
   expect(reader.querySelector('[data-output-line="49999"]')).toBeNull();
   expect(reader.querySelector('[data-output-line="49894"]')).toBeTruthy();
   let copied = copyFrom(reader);
   expect(copied.proceeded).toBe(false);
   expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
 
-  scrollTo(49_980 * 20);
+  scrollTo(49_980 * OUTPUT_LINE_HEIGHT);
   copied = copyFrom(reader);
   expect(copied.proceeded).toBe(false);
   expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
 
   document.getSelection()!.selectAllChildren(reader.querySelector('[data-output-line="49990"]')!);
-  scrollTo(49_970 * 20);
+  scrollTo(49_970 * OUTPUT_LINE_HEIGHT);
   copied = copyFrom(reader);
   expect(copied.proceeded).toBe(true);
   expect(copied.setData).not.toHaveBeenCalled();

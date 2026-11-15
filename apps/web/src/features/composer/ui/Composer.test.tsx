@@ -21,6 +21,7 @@ import { loadPluginsForTest } from "@/test/kernel";
 import { refuseDraftStorage } from "@/test/draftStorage";
 import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 import { ComposerDraft } from "@/features/composer/domain/composer";
+import { composerToolbar } from "@/features/composer/toolbar";
 
 import {
   useAddComposerImageFiles,
@@ -349,6 +350,61 @@ function DraftComposer() {
     />
   );
 }
+
+describe("toolbar insertion", () => {
+  it("cannot restore an obsolete caret after command completion and further typing", async () => {
+    await loadPluginsForTest(
+      composerToolbar,
+      definePlugin({
+        name: "test.toolbar-command",
+        setup(ctx) {
+          ctx.contributions.add(
+            SLASH_COMMAND,
+            { description: "goal", run: () => {} },
+            { key: "/goal" },
+          );
+        },
+      }),
+    );
+    wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    fireEvent.click(screen.getByRole("button", { name: t("composer.add") }));
+    const command = await screen.findByRole("menuitem", {
+      name: t("composer.add.command"),
+    });
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      const id = ++nextFrame;
+      frames.set(id, callback);
+      return id;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      frames.delete(id);
+    });
+    fireEvent.click(command);
+    expect(input.value).toBe("/");
+    act(() => input.focus());
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(input.value).toBe("/goal ");
+    const continued = "/goal Con";
+    fireEvent.change(input, {
+      target: {
+        value: continued,
+        selectionStart: continued.length,
+        selectionEnd: continued.length,
+      },
+    });
+    act(() => {
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const frame of pending) frame(performance.now());
+    });
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(input.value.length);
+    expect(input.selectionEnd).toBe(input.value.length);
+  });
+});
 
 describe("draft persistence recovery", () => {
   it("keeps ordinary asynchronous commits out of the editing layout while retaining the exit warning", async () => {

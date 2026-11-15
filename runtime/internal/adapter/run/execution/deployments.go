@@ -21,15 +21,15 @@ var _ interaction.AdvertisingTool = (*toolset.Discovery)(nil)
 type interactionDeploymentSet struct {
 	// Connection publication can occur between group resolutions. Recovery must
 	// retain each group's authority rather than reconstructing their union.
-	manifests           map[domaintool.Group]toolset.Manifest
+	toolGroups          map[domaintool.Group]interactionToolGroup
 	root                scoperun.Program[scoperun.Payload, scoperun.Payload]
 	delegateSource      domaintool.Ref
 	delegatesByParent   map[scoperun.ProgramRef]map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]
 	managedChildren     map[scoperun.ProgramRef]struct{}
 	interactionChildren map[scoperun.ProgramRef]struct{}
 	interactions        map[scoperun.ProgramRef]compiledInteraction
-	// Immutable Scope Contracts are indexed by the exact Tool deployment so a
-	// checkpoint cannot borrow another layer's input schema.
+	// Checkpoints resolve immutable Contracts through their captured Program,
+	// so another Tool group cannot lend its schemas.
 	toolContracts map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract
 	toolSets      map[scoperun.ProgramRef]interaction.ToolSet
 	observedTools map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool
@@ -54,8 +54,8 @@ func (i *interactionDeploymentSet) close() error {
 		return nil
 	}
 	var err error
-	for _, manifest := range i.manifests {
-		err = errors.Join(err, manifest.Close())
+	for _, group := range i.toolGroups {
+		err = errors.Join(err, group.manifest.Close())
 	}
 	return err
 }
@@ -116,16 +116,14 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 }
 
 type interactionDeploymentBuilder struct {
-	executor          *InteractionExecutor
-	session           *interactionSession
-	start             runs.RootExecutionStart
-	model             *observedInteractionModel
-	counter           modelContextInputTokenCounter
-	maxDepth          uint32
-	instructions      []corechat.Message
-	rootManifest      toolset.Manifest
-	delegatedManifest toolset.Manifest
-	deployments       *interactionDeploymentSet
+	executor     *InteractionExecutor
+	session      *interactionSession
+	start        runs.RootExecutionStart
+	model        *observedInteractionModel
+	counter      modelContextInputTokenCounter
+	maxDepth     uint32
+	instructions []corechat.Message
+	deployments  *interactionDeploymentSet
 }
 
 func (i *InteractionExecutor) newInteractionDeploymentBuilder(
@@ -140,20 +138,16 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	if err != nil {
 		return nil, err
 	}
-	rootManifest, err := i.resolveInteractionManifest(ctx, domaintool.GroupRoot, checkpoint)
-	if err != nil {
-		return nil, err
-	}
 	delegateSource, err := domaintool.BuiltIn(builtincontract.DelegateTask)
 	if err != nil {
 		return nil, err
 	}
 	builder := &interactionDeploymentBuilder{
 		executor: i, session: session, start: start, model: model, counter: counter,
-		instructions: instructions, rootManifest: rootManifest,
+		instructions: instructions,
 		deployments: &interactionDeploymentSet{
 			delegateSource:      delegateSource,
-			manifests:           map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
+			toolGroups:          make(map[domaintool.Group]interactionToolGroup),
 			interactionChildren: make(map[scoperun.ProgramRef]struct{}),
 			interactions:        make(map[scoperun.ProgramRef]compiledInteraction),
 			toolContracts:       make(map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract),
@@ -169,15 +163,21 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 			err = errors.Join(err, builder.deployments.close())
 		}
 	}()
+	groups := []domaintool.Group{domaintool.GroupRoot}
 	if start.ChildRunAdmissionEnabled {
 		builder.maxDepth = defaultDelegateDepth
+		groups = append(groups, domaintool.GroupDelegated)
 	}
-	if builder.maxDepth > 0 {
-		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated, checkpoint)
+	for _, group := range groups {
+		manifest, err := i.resolveInteractionManifest(ctx, group, checkpoint)
 		if err != nil {
 			return nil, err
 		}
-		builder.deployments.manifests[domaintool.GroupDelegated] = builder.delegatedManifest
+		bound, err := i.bindInteractionToolGroup(ctx, manifest, session, start)
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("execution: bind Interaction tool group %s: %w", group, err), manifest.Close())
+		}
+		builder.deployments.toolGroups[group] = bound
 	}
 	return builder, nil
 }
@@ -199,35 +199,14 @@ func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionD
 }
 
 func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth int, next scoperun.Program[scoperun.Payload, scoperun.Payload]) (scoperun.Program[scoperun.Payload, scoperun.Payload], error) {
-	group, manifest, definitionName, definitionDescription := i.layerIdentity(depth)
+	if err := ctx.Err(); err != nil {
+		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
+	}
+	group, definitionName, definitionDescription := i.layerIdentity(depth)
+	bound := i.deployments.toolGroups[group]
 	delegates, err := i.delegateLayer(depth, next)
 	if err != nil {
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
-	}
-	visible, deferred, contracts, observed, err := wrapInteractionTools(
-		ctx,
-		manifest,
-		i.session,
-		i.executor.config,
-		i.executor.policy.toolResultOffload,
-		i.start,
-	)
-	if err != nil {
-		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: wrap Interaction tools at depth %d: %w", depth, err)
-	}
-	var tools interaction.ToolSet
-	if len(visible)+len(deferred) > 0 {
-		configuration, err := i.executor.interactionToolConfiguration(manifest)
-		if err != nil {
-			return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
-		}
-		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
-			Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
-			Tools:    visible, DeferredTools: deferred,
-		})
-		if err != nil {
-			return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: bind Interaction Tools at depth %d: %w", depth, err)
-		}
 	}
 	configuration, err := i.executor.interactionConfiguration(i.session, group, uint32(depth), i.instructions)
 	if err != nil {
@@ -235,7 +214,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 	}
 	contextProcessor := newInteractionModelContextReducer(
 		i.executor.config.ModelContextCompactor, i.executor.config.ModelContextState,
-		i.session, i.start, i.instructions, deferredCatalogMessage(manifest), i.counter,
+		i.session, i.start, i.instructions, deferredCatalogMessage(bound.manifest), i.counter,
 	)
 	model := interaction.CallModel(i.model)
 	if i.executor.config.StreamModelResponses && i.model.Streams() {
@@ -244,9 +223,9 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 	config := interaction.Config{
 		Name: definitionName, Description: definitionDescription,
 		Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
-		Model:    model, ContextProcessor: contextProcessor, Tools: tools, Delegates: delegates,
+		Model:    model, ContextProcessor: contextProcessor, Tools: bound.tools, Delegates: delegates,
 	}
-	if tools.Configured() {
+	if bound.tools.Configured() {
 		config.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
 	}
 	program, err := interaction.Compile(i.session.engine.Compiler(), config)
@@ -259,9 +238,9 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: bind Interaction history at depth %d: %w", depth, err)
 	}
 	i.deployments.interactions[reference] = compiled
-	i.deployments.toolContracts[reference] = contracts
-	i.deployments.toolSets[reference] = tools
-	i.deployments.observedTools[reference] = observed
+	i.deployments.toolContracts[reference] = bound.contracts
+	i.deployments.toolSets[reference] = bound.tools
+	i.deployments.observedTools[reference] = bound.observed
 	if next.Valid() {
 		i.deployments.delegatesByParent[reference] = map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]{
 			i.deployments.delegateSource.ModelName(): next,
@@ -299,11 +278,11 @@ func deferredCatalogMessage(manifest toolset.Manifest) []corechat.Message {
 
 func (i *interactionDeploymentBuilder) layerIdentity(
 	depth int,
-) (domaintool.Group, toolset.Manifest, string, string) {
+) (domaintool.Group, string, string) {
 	if depth == 0 {
-		return domaintool.GroupRoot, i.rootManifest, interactionDefinitionName, interactionDefinitionDescription
+		return domaintool.GroupRoot, interactionDefinitionName, interactionDefinitionDescription
 	}
-	return domaintool.GroupDelegated, i.delegatedManifest, delegatedDefinitionName(depth), delegatedDefinitionDescription
+	return domaintool.GroupDelegated, delegatedDefinitionName(depth), delegatedDefinitionDescription
 }
 
 // delegatedDefinitionName names the interaction at one delegation depth; each

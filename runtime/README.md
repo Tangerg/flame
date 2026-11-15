@@ -112,6 +112,9 @@ execute as Effects in their owning Interaction. Delegated tasks use
 `workflow.Adapt` around an Interaction, with one product Run for the task and its
 inner model loop. Restoration reads `interaction.HistoryProjection.DelegateAttributions` from the
 complete log and uses the acknowledged tree's statuses.
+Each resolved Tool group binds once per assembly. Nested delegate depths share
+that immutable ToolSet. Deployment identities read the admitted contracts, so
+later source-definition changes cannot rewrite an executing program's identity.
 Each compiled Interaction owns one immutable history projection bound to that
 program. Model and Tool sequence attribution comes from Scope's committed call
 intent; request-preparation metadata is only checked against that sequence.
@@ -614,6 +617,10 @@ standing Tool decisions. Configuration changes, release selection and uninstall
 respect the original business and execution protection under the shared
 Admission. Exact old bindings remain the authority for retained work; a current
 provider selection cannot replace them.
+
+Point-value resolution and installed MCP activation join withdrawn native instances
+before acquiring a successor. Frame's original instance owns the release proof;
+canceling a caller ends its wait without releasing that instance.
 
 Advisory leases own their release attempt and settled cleanup result. Non-blocking
 contention returns no lease and no error; descriptor or handle cleanup failures remain

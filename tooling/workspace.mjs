@@ -346,6 +346,24 @@ export function goWorkspaceMembers(repository = root) {
     return { directory, manifest };
   });
 }
+async function prepareGoDependencies(repository, env) {
+  const scratch = await mkdtemp(join(tmpdir(), "flame-module-dependencies-"));
+  try {
+    for (const { directory } of goWorkspaceMembers(repository)) {
+      const prepared = await mkdtemp(join(scratch, "module-"));
+      await cp(join(directory, "go.mod"), join(prepared, "go.mod"));
+      if (existsSync(join(directory, "go.sum")))
+        await cp(join(directory, "go.sum"), join(prepared, "go.sum"));
+      // Downloads may add checksums; the frozen module source must not change.
+      run("go", ["mod", "download", "all"], prepared, {
+        ...env,
+        GOWORK: "off",
+      });
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
 // A directory tree survives patch application and rebasing without pinning
 // an unpublished commit from another checkout.
 function resolveModuleSource(repository, key, pinned, directory) {
@@ -763,8 +781,7 @@ async function main(command) {
       const artifacts = await moduleArtifacts();
       const env = proxyEnvironment(artifacts.proxy);
       run("npm", ["ci"], root);
-      for (const { directory } of goWorkspaceMembers())
-        run("go", ["mod", "download"], directory, { ...env, GOWORK: "off" });
+      await prepareGoDependencies(root, env);
       await buildShared();
       const target = JSON.parse(
         run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),

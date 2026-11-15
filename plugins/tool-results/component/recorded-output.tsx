@@ -162,7 +162,12 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   // the same line, so it can reveal that line again after manual scrolling.
   const [find, setFind] = useState({ query: "", match: 0 });
   const { query, match } = find;
-  const [metrics, setMetrics] = useState({ height: 0, top: 0, row: 1 });
+  const [metrics, setMetrics] = useState<{
+    height: number;
+    top: number;
+    row: number;
+  } | null>(null);
+  const rowHeight = metrics?.row;
   const viewport = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLSpanElement>(null);
   const search = useRef<HTMLElement>(null);
@@ -179,15 +184,20 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   }, [lines, query]);
   const selected = matches.length ? matches[match % matches.length] : undefined;
   const atLatest =
+    metrics !== null &&
     lines.length * metrics.row - metrics.top - metrics.height < 1;
 
   const readWindow = useCallback(() => {
     const node = viewport.current;
     if (!node) return;
+    // CSS line units use layout precision; parsed values drift across long logs.
+    // Hidden readers have no sample and must retain their last valid window.
+    const measuredRowHeight = ruler.current!.getBoundingClientRect().height;
+    if (measuredRowHeight === 0) return;
     setMetrics({
       height: node.clientHeight,
       top: node.scrollTop,
-      row: parseFloat(getComputedStyle(node).lineHeight),
+      row: measuredRowHeight,
     });
   }, []);
 
@@ -211,21 +221,18 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
 
   useLayoutEffect(() => {
     if (!expanded) return;
-    const frame = requestAnimationFrame(() => {
-      jumpToLatest();
-      const intent = expansion.current;
-      expansion.current = null;
-      const node = viewport.current;
-      if (
-        intent &&
-        node &&
-        (node.ownerDocument.activeElement === intent.origin ||
-          node.ownerDocument.activeElement === intent.activeElement)
-      ) {
-        node.focus();
-      }
-    });
-    return () => cancelAnimationFrame(frame);
+    jumpToLatest();
+    const intent = expansion.current;
+    expansion.current = null;
+    const node = viewport.current;
+    if (
+      intent &&
+      node &&
+      (node.ownerDocument.activeElement === intent.origin ||
+        node.ownerDocument.activeElement === intent.activeElement)
+    ) {
+      node.focus();
+    }
   }, [expanded, lines, jumpToLatest]);
 
   useLayoutEffect(() => {
@@ -234,13 +241,10 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
 
   useLayoutEffect(() => {
     const node = viewport.current;
-    if (!node || selected === undefined) return;
-    node.scrollTop = Math.max(
-      0,
-      selected * metrics.row - node.clientHeight / 2,
-    );
+    if (!node || selected === undefined || rowHeight === undefined) return;
+    node.scrollTop = Math.max(0, selected * rowHeight - node.clientHeight / 2);
     readWindow();
-  }, [find, selected, metrics.row, readWindow]);
+  }, [find, selected, rowHeight, readWindow]);
 
   function closeFind() {
     setFinding(false);
@@ -248,15 +252,17 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
     viewport.current?.focus();
   }
 
-  const start = expanded
-    ? Math.max(0, Math.floor(metrics.top / metrics.row) - OVERSCAN)
-    : Math.max(0, lines.length - PREVIEW_LINES);
-  const end = expanded
-    ? Math.min(
-        lines.length,
-        Math.ceil((metrics.top + metrics.height) / metrics.row) + OVERSCAN,
-      )
-    : lines.length;
+  const start =
+    expanded && metrics !== null
+      ? Math.max(0, Math.floor(metrics.top / metrics.row) - OVERSCAN)
+      : Math.max(0, lines.length - PREVIEW_LINES);
+  const end =
+    expanded && metrics !== null
+      ? Math.min(
+          lines.length,
+          Math.ceil((metrics.top + metrics.height) / metrics.row) + OVERSCAN,
+        )
+      : lines.length;
   const presented = lines.slice(start, end);
   const visible = presented.map((line, offset) => (
     <div
@@ -264,7 +270,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
       data-slot="search-line"
       data-current-match={start + offset === selected ? "" : undefined}
       style={{
-        height: expanded ? metrics.row : undefined,
+        height: expanded ? "1lh" : undefined,
         minWidth: "max-content",
         paddingInline: frameInset,
         whiteSpace: "pre",
@@ -313,7 +319,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
                 })}
           </Button>
         )}
-        {expanded && !atLatest && (
+        {expanded && metrics !== null && !atLatest && (
           <IconButton
             icon={ArrowDownToLine}
             size="xs"
@@ -426,9 +432,9 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             {/* Select All bounds its Range by this region's child offsets, which
                 window reconciliation would shift; one stable child keeps it whole. */}
             <div>
-              <div style={{ height: start * metrics.row }} />
+              <div style={{ height: `${start}lh` }} />
               {visible}
-              <div style={{ height: (lines.length - end) * metrics.row }} />
+              <div style={{ height: `${lines.length - end}lh` }} />
             </div>
           </div>
         ) : (

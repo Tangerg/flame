@@ -69,7 +69,7 @@
 25 runtime/internal/application/agent/sessions/rollback_files.go:Coordinator.Rollback
 23 runtime/internal/application/goals/driver.go:Driver.Start
 21 runtime/internal/application/integration/plugins/installations.go:Coordinator.change
-31 runtime/internal/application/integration/plugins/points.go:ResolvePoint
+30 runtime/internal/application/integration/plugins/points.go:ResolvePoint
 21 runtime/internal/application/integration/plugins/requirements.go:requirementCatalog.candidates
 33 runtime/internal/bootstrap/assemble.go:buildAssemblyCore
 22 runtime/internal/bootstrap/instance.go:OpenInstance

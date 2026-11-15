@@ -178,10 +178,10 @@ for (const width of [1120, 320]) {
 
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
-    test(`settings keep controls inside their content measure ${theme} ${width}`, async ({
-      page,
-    }) => {
-      for (const pane of VISUAL_SETTINGS_PANES) {
+    for (const pane of VISUAL_SETTINGS_PANES) {
+      test(`settings keep controls inside their content measure ${pane} ${theme} ${width}`, async ({
+        page,
+      }) => {
         await page.setViewportSize({ width, height: 1000 });
         await page.goto(
           `/lab/fixture.html?fixture=workspace&state=settings&pane=${pane}&theme=${theme}&font-size=18`,
@@ -223,8 +223,8 @@ for (const theme of ["light", "dark"]) {
             .evaluate((element) => element.scrollWidth - element.clientWidth),
           `${pane}: page overflow`,
         ).toBe(0);
-      }
-    });
+      });
+    }
   }
 }
 

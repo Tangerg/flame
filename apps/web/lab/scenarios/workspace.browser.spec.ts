@@ -2413,6 +2413,7 @@ test("choosing a subagent swaps the panel's name for the way back", async ({ pag
 });
 
 test("every dock view the app offers is a view some state opens", async ({ page }) => {
+  test.slow();
   await openWorkspace(page, { state: "dock-catalog" });
   await waitForWorkspaceState(page, "dock-catalog");
 

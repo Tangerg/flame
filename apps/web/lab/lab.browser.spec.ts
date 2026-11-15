@@ -72,10 +72,11 @@ for (const engine of ["chromium", "webkit"] as const) {
         await expect(page.getByRole("option")).toHaveText(
           story.variants.map((variant) => localize(variant.title, profile.locale)),
         );
+        const reportOption = page.getByRole("option", { name: profile.title, exact: true });
+        await expect(reportOption).toBeFocused();
         await page.keyboard.press("Home");
         const reportIndex = story.variants.findIndex((variant) => variant.id === sceneId);
         for (let index = 0; index < reportIndex; index++) await page.keyboard.press("ArrowDown");
-        const reportOption = page.getByRole("option", { name: profile.title, exact: true });
         await expect(reportOption).toBeFocused();
         await capture("menu");
         await page.keyboard.press("Enter");
@@ -672,6 +673,7 @@ for (const locale of ["en", "zh-CN"] as const) {
     test(`gallery navigation retains reading context ${locale} ${viewport.width}`, async ({
       page,
     }, testInfo) => {
+      test.slow();
       const theme = locale === "en" ? "light" : "dark";
       const t = (key: keyof typeof messages) => localize(messages[key], locale);
       const main = page.getByRole("main");

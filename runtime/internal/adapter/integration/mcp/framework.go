@@ -179,18 +179,9 @@ func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedS
 }
 
 func (s *Installed) waitRetired(ctx context.Context, binding frame.BindingSnapshot) error {
-	for _, observed := range s.host.Observations() {
-		if observed.State == frame.Preparing || observed.State == frame.Ready {
-			continue
-		}
-		for _, unit := range binding.Units {
-			if observed.Source.InstallationID != unit.Source.InstallationID || observed.Source.UnitID != unit.Source.UnitID {
-				continue
-			}
-			if err := s.host.WaitInstanceRetired(ctx, observed.ID); err != nil {
-				return err
-			}
-			break
+	for _, unit := range binding.Units {
+		if err := plugins.AwaitNativeUnitRetirement(ctx, s.host, unit.Source); err != nil {
+			return err
 		}
 	}
 	return nil

@@ -2458,7 +2458,13 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
       };
     });
 
-  const atTail = await readFade();
+  await expect.poll(readFade).toEqual({
+    overflowing: true,
+    masked: true,
+    overlays: 0,
+    top: "24px",
+    bottom: "0px",
+  });
   const aside = await scroller.evaluate((body) => {
     const frame = body.closest('[data-slot="agent-activity-disclosure"]');
     if (!frame) throw new Error("The reasoning reader must belong to its disclosure");
@@ -2478,12 +2484,6 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
   expect(aside?.leftBorder).toBeGreaterThan(0);
   expect(aside?.leftInset).toBeGreaterThan(20);
   expect(aside?.hasFill).toBe(false);
-
-  expect(atTail.overflowing).toBe(true);
-  expect(atTail.masked).toBe(true);
-  expect(atTail.overlays).toBe(0);
-  expect(atTail.top, "a thought still being written is followed to its end").toBe("24px");
-  expect(atTail.bottom, "and nothing is hidden below the end").toBe("0px");
 
   await scroller.evaluate((el) => {
     el.scrollTop = 0;

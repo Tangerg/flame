@@ -56,7 +56,7 @@ func TestCheckpointCapturesMCPManifestsPerGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := &interactionSession{}
-	session.state.deployments = &interactionDeploymentSet{manifests: map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: {}, domaintool.GroupDelegated: manifest}}
+	session.state.deployments = &interactionDeploymentSet{toolGroups: map[domaintool.Group]interactionToolGroup{domaintool.GroupRoot: {}, domaintool.GroupDelegated: {manifest: manifest}}}
 	got, err := session.checkpointMCPManifests()
 	if err != nil || !reflect.DeepEqual(got, map[domaintool.Group][]string{domaintool.GroupRoot: {}, domaintool.GroupDelegated: {ref.String()}}) {
 		t.Fatalf("captured references=%v, %v", got, err)

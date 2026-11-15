@@ -77,6 +77,9 @@ func TestNaturalSessionExitWithdrawsItsCatalogAndDispatchAuthority(t *testing.T)
 		owner := newTestConnections(t)
 		var closes atomic.Int32
 		session, exit, tools := observedTestSession(t, owner, testsupport.UserMCPServer("files"), &closes)
+		owner.mu.Lock()
+		ended := owner.sessions[session].end
+		owner.mu.Unlock()
 		var published atomic.Int32
 		owner.setToolSink(func(tools []Executable, _, _ []mcpserver.ID) { published.Store(int32(len(tools))) })
 		if !tools[0].Current() || published.Load() != 1 {
@@ -85,9 +88,7 @@ func TestNaturalSessionExitWithdrawsItsCatalogAndDispatchAuthority(t *testing.T)
 		if err := exit(); err != nil {
 			t.Fatal(err)
 		}
-		if err := session.Wait(); err != nil {
-			t.Fatal(err)
-		}
+		<-ended.done
 		synctest.Wait()
 		statuses := owner.statuses()
 		if len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed || statuses[0].Failure != mcpserver.FailureConnection || statuses[0].ToolCount != 0 {
@@ -98,6 +99,9 @@ func TestNaturalSessionExitWithdrawsItsCatalogAndDispatchAuthority(t *testing.T)
 		owner.mu.Unlock()
 		if !errors.Is(failure, errSessionEnded) {
 			t.Fatalf("terminal evidence was erased: %v", failure)
+		}
+		if ended.err != nil && !errors.Is(failure, ended.err) {
+			t.Fatalf("terminal SDK cause was erased: %v, want %v", failure, ended.err)
 		}
 		if published.Load() != 0 || tools[0].Current() {
 			t.Fatal("terminal session retained advertised tools or dispatch authority")

@@ -44,8 +44,8 @@ func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	}
 	i.state.mu.Unlock()
 	if deployments != nil {
-		for _, manifest := range deployments.manifests {
-			dependencies = append(dependencies, manifest.Installations...)
+		for _, group := range deployments.toolGroups {
+			dependencies = append(dependencies, group.manifest.Installations...)
 		}
 	}
 	return plugin.CompactDependencies(dependencies)
@@ -61,13 +61,13 @@ func (i *interactionSession) checkpointPluginReferences() ([]plugin.Activation, 
 	i.state.mu.Unlock()
 	var resources []plugin.Dependency
 	if deployments != nil {
-		for _, manifest := range deployments.manifests {
-			for _, activation := range manifest.Bindings {
+		for _, group := range deployments.toolGroups {
+			for _, activation := range group.manifest.Bindings {
 				if !slices.ContainsFunc(bindings, activation.Equal) {
 					bindings = append(bindings, activation.Clone())
 				}
 			}
-			resources = append(resources, manifest.Resources...)
+			resources = append(resources, group.manifest.Resources...)
 		}
 	}
 	return bindings, plugin.CompactDependencies(resources)

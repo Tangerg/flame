@@ -80,4 +80,4 @@
 23 plugins/tool-results/component/component.tsx:webPage
 46 plugins/trajectory/component/report.tsx:Observation
 31 plugins/trajectory/component/report.tsx:statusTone
-26 tooling/workspace.mjs:main
+25 tooling/workspace.mjs:main

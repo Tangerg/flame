@@ -65,10 +65,8 @@ func ResolvePoint(ctx context.Context, host *frame.Host, store Store, contract *
 	if !applicable {
 		return []PointBinding{}, nil
 	}
-	for _, provider := range providers {
-		if _, err := host.ActivateUnit(ctx, "", provider); err != nil {
-			return nil, FrameworkError(err)
-		}
+	if err := activatePointProviders(ctx, host, providers); err != nil {
+		return nil, err
 	}
 	point, err := DataPoint(contract)
 	if err != nil {
@@ -139,6 +137,18 @@ func ResolvePoint(ctx context.Context, host *frame.Host, store Store, contract *
 		return nil, FrameworkError(err)
 	}
 	return result, nil
+}
+
+func activatePointProviders(ctx context.Context, host *frame.Host, providers []frame.UnitRef) error {
+	for _, provider := range providers {
+		if err := AwaitNativeUnitRetirement(ctx, host, provider); err != nil {
+			return FrameworkError(err)
+		}
+		if _, err := host.ActivateUnit(ctx, "", provider); err != nil {
+			return FrameworkError(err)
+		}
+	}
+	return nil
 }
 
 func readPointBinding(candidate frame.Candidate[framevalue.JSON, framevalue.JSON]) (PointBinding, error) {

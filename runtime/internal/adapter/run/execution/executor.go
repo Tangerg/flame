@@ -443,12 +443,12 @@ func (i *InteractionExecutor) interactionConfiguration(
 	return configuration.JSON(), nil
 }
 
-func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Manifest) ([]byte, error) {
-	visible, err := toolIdentities(manifest.Visible)
+func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Manifest, observed map[domaintool.Ref]*observedInteractionTool) ([]byte, error) {
+	visible, err := toolIdentities(manifest.Visible, observed)
 	if err != nil {
 		return nil, err
 	}
-	deferred, err := toolIdentities(manifest.Deferred)
+	deferred, err := toolIdentities(manifest.Deferred, observed)
 	if err != nil {
 		return nil, err
 	}
@@ -477,22 +477,22 @@ type toolConfigurationIdentity struct {
 	Activation        string                  `json:"activation,omitempty"`
 }
 
-func toolIdentities(tools []toolcontract.Tool) ([]toolConfigurationIdentity, error) {
+func toolIdentities(tools []toolcontract.Tool, observed map[domaintool.Ref]*observedInteractionTool) ([]toolConfigurationIdentity, error) {
 	identities := make([]toolConfigurationIdentity, 0, len(tools))
 	for _, executable := range tools {
 		ref, err := toolset.Identify(executable)
 		if err != nil {
 			return nil, err
 		}
-		fingerprint, err := toolset.SourceFingerprint(executable, ref)
+		owner := observed[ref]
+		if owner == nil {
+			return nil, fmt.Errorf("execution: Tool %s has no admitted contract", ref)
+		}
+		activation, err := toolset.InstallationActivation(owner.inner)
 		if err != nil {
 			return nil, err
 		}
-		activation, err := toolset.InstallationActivation(executable)
-		if err != nil {
-			return nil, err
-		}
-		identities = append(identities, toolConfigurationIdentity{Definition: executable.Definition(), Reference: ref.String(), SourceFingerprint: fingerprint.String(), Activation: activation.Identity.String()})
+		identities = append(identities, toolConfigurationIdentity{Definition: owner.binding.Contract().Definition(), Reference: ref.String(), SourceFingerprint: owner.sourceFingerprint.String(), Activation: activation.Identity.String()})
 	}
 	return identities, nil
 }
