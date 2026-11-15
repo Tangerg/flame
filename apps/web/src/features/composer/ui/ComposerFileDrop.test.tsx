@@ -195,6 +195,42 @@ it("moves the receiver to a rebound surface without granting it the retired surf
   expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
 });
 
+it("retires a rebound target even while its original element remains connected", () => {
+  const deliver = vi.fn();
+  function RetainedSurfaces({ replacement }: { replacement: boolean }) {
+    const { ref } = useComposerFileDrop(true, deliver);
+    return (
+      <>
+        <div ref={replacement ? null : ref} data-testid="original-surface">
+          Original
+        </div>
+        <div ref={replacement ? ref : null} data-testid="replacement-surface">
+          Replacement
+        </div>
+      </>
+    );
+  }
+  const view = client.render(<RetainedSurfaces replacement={false} />);
+  const original = screen.getByTestId("original-surface");
+  const replacement = screen.getByTestId("replacement-surface");
+  const retired = dragTransfer([image]);
+  fireEvent.dragEnter(original, { dataTransfer: retired, relatedTarget: null });
+  fireEvent.dragOver(original, { dataTransfer: retired });
+
+  view.rerender(<RetainedSurfaces replacement />);
+  expect(original.isConnected).toBe(true);
+  expect(screen.getByTestId("replacement-surface")).toBe(replacement);
+  fireEvent.dragOver(original, { dataTransfer: retired });
+  fireEvent.drop(original, { dataTransfer: retired });
+  expect(deliver).not.toHaveBeenCalled();
+
+  const fresh = dragTransfer([image]);
+  fireEvent.dragEnter(replacement, { dataTransfer: fresh, relatedTarget: null });
+  fireEvent.dragOver(replacement, { dataTransfer: fresh });
+  fireEvent.drop(replacement, { dataTransfer: fresh });
+  expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
+});
+
 it("clears cancellation and permits a later drag without a depth counter", async () => {
   const deliver = vi.fn();
   client.render(<Receiver deliver={deliver} />);
