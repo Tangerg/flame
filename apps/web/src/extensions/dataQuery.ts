@@ -1,4 +1,5 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
+import { useMemo, useSyncExternalStore } from "react";
 import { type Query, type UseQueryResult } from "@tanstack/react-query";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { type Host } from "dougong";
@@ -53,6 +54,10 @@ class DataQueryOwner {
     return generation.load<T, P>(params, signal);
   }
 
+  generation(key: string): DataProviderGeneration | undefined {
+    return this.#disposed ? undefined : this.#providers.get(key);
+  }
+
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
@@ -98,37 +103,20 @@ class DataQueryOwner {
       const key = query.queryKey[0];
       return typeof key === "string" && affected.has(key);
     };
-    const predecessorQueries = new Set(
-      queryClient.getQueryCache().findAll({ predicate: affectedQuery }),
-    );
-    if (predecessorQueries.size === 0) return;
-    void queryClient
-      .cancelQueries({ predicate: (query) => predecessorQueries.has(query) })
-      .then(() => {
-        if (this.#disposed) return;
-        const ownedQuery = (query: Query) => {
-          const key = query.queryKey[0];
-          return (
-            predecessorQueries.has(query) &&
-            typeof key === "string" &&
-            this.#providers.get(key) === successor.get(key)
-          );
-        };
-        // Continuous placeholders can retain a removed Query object, so clear it before eviction.
-        void queryClient.resetQueries({ predicate: ownedQuery });
-        queryClient.removeQueries({
-          predicate: (query) => {
-            const key = query.queryKey[0];
-            // Mounted observers need their cache entry to receive a returning provider.
-            return (
-              ownedQuery(query) &&
-              typeof key === "string" &&
-              !successor.has(key) &&
-              query.getObserversCount() === 0
-            );
-          },
-        });
-      });
+    // Reset cancels reads and clears objects retained by continuous placeholders before eviction.
+    void queryClient.resetQueries({ predicate: affectedQuery });
+    queryClient.removeQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        // Mounted observers need their cache entry to receive a returning provider.
+        return (
+          affectedQuery(query) &&
+          typeof key === "string" &&
+          !successor.has(key) &&
+          query.getObserversCount() === 0
+        );
+      },
+    });
   }
 }
 
@@ -168,18 +156,33 @@ export function createParameterizedDataQuery<P, T>(
 ): (params: P | undefined, subscribed?: boolean) => UseQueryResult<T> {
   const interval = options?.refetchInterval;
   const keep = options?.keepWhenContinuous;
-  return (params, subscribed = true) =>
+  const useData = (query: ReturnType<typeof parameterizedQuery<P, T>>, subscribed: boolean) =>
     useQuery({
-      ...parameterizedQuery<P, T>(key, params),
+      ...query,
       subscribed,
       refetchInterval: interval ? (query) => interval(query.state.data) : undefined,
-      placeholderData: keep
-        ? (previous, previousQuery) => {
+    });
+  if (!keep)
+    return (params, subscribed = true) =>
+      useData(parameterizedQuery<P, T>(key, params), subscribed);
+  const currentGeneration = () => dataQueryOwner.generation(key);
+  return (params, subscribed = true) => {
+    // Activity can reconnect retained options; continuity must also observe provider retirement.
+    const generation = useSyncExternalStore(subscribeContributions, currentGeneration);
+    const query = useMemo(
+      () =>
+        queryOptions({
+          ...parameterizedQuery<P, T>(key, params),
+          placeholderData: (previous, previousQuery) => {
+            if (!generation || currentGeneration() !== generation) return undefined;
             const prior = previousQuery?.queryKey[1] as P | undefined;
             return prior !== undefined && params !== undefined && keep(prior, params)
               ? previous
               : undefined;
-          }
-        : undefined,
-    });
+          },
+        }),
+      [generation, params],
+    );
+    return useData(query, subscribed);
+  };
 }

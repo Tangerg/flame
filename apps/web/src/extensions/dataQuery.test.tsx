@@ -12,8 +12,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { act, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode, useState } from "react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { Activity, createElement, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
@@ -315,7 +315,7 @@ describe("createParameterizedDataQuery", () => {
 
       await act(async () => stopKernel(ownedHosts.pop()!));
       await waitFor(() =>
-        expect(queryClient.getQueryCache().find({ queryKey: ["resource"] })).toBeUndefined(),
+        expect(queryClient.getQueryData(["resource", { id: "same" }])).toBeUndefined(),
       );
       const returned = Promise.withResolvers<string>();
       fetcher.mockImplementation(() => returned.promise);
@@ -329,6 +329,60 @@ describe("createParameterizedDataQuery", () => {
       expect(fetcher).toHaveBeenCalledTimes(2);
     },
   );
+
+  it("retires a pending continuous placeholder when Activity reconnects after provider replacement", async () => {
+    const pending = Promise.withResolvers<string>();
+    const returned = Promise.withResolvers<string>();
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce("original value")
+      .mockImplementation(() => pending.promise);
+    const plugin = definePlugin({
+      name: "test.activity-returning-data-provider",
+      setup(ctx) {
+        ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
+      },
+    });
+    ownedHosts.push(await startKernel([plugin]));
+    const useResource = createParameterizedDataQuery<{ id: string; page: number }, string>(
+      "resource",
+      {
+        keepWhenContinuous: (previous, next) => previous.id === next.id,
+      },
+    );
+    function Resource() {
+      const [page, setPage] = useState(0);
+      const resource = useResource({ id: "same", page });
+      return (
+        <div>
+          <button onClick={() => setPage(1)}>Next page</button>
+          <output>{resource.data ?? "Waiting for source"}</output>
+        </div>
+      );
+    }
+    const child = <Resource />;
+    const scene = (visible: boolean) => (
+      <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
+    );
+    const view = testClient.render(scene(true), { wrapper: productQueryWrapper });
+    await screen.findByText("original value");
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("original value")).toBeTruthy();
+    view.rerender(scene(false));
+    await act(async () => stopKernel(ownedHosts.pop()!));
+    fetcher.mockImplementation(() => returned.promise);
+    ownedHosts.push(await startKernel([plugin]));
+
+    view.rerender(scene(true));
+
+    expect(screen.queryByText("original value")).toBeNull();
+    await act(async () => returned.resolve("returned value"));
+    await screen.findByText("returned value");
+    pending.resolve("retired value");
+    await act(async () => Promise.resolve());
+    expect(screen.queryByText("retired value")).toBeNull();
+  });
 
   it("preserves an in-flight read when another provider is contributed to the same Host", async () => {
     const stable = Promise.withResolvers<string>();
@@ -464,20 +518,12 @@ describe("createParameterizedDataQuery", () => {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(hook.result.current.fetchStatus).toBe("fetching"));
-    const cancellation = Promise.withResolvers<void>();
-    const cancel = queryClient.cancelQueries.bind(queryClient);
-    const cancelling = vi
-      .spyOn(queryClient, "cancelQueries")
-      .mockImplementation(async (filters, options) => {
-        await cancel(filters, options);
-        await cancellation.promise;
-      });
+    const successor = Promise.withResolvers<string>();
     onTestFinished(() => {
-      cancelling.mockRestore();
-      cancellation.resolve();
+      successor.resolve("successor value");
       retired.resolve("retired value");
     });
-    const successorFetcher = vi.fn().mockResolvedValue("successor value");
+    const successorFetcher = vi.fn(() => successor.promise);
     await addPluginsForTest(host, [
       definePlugin({
         name: "test.handoff-successor-provider",
@@ -494,7 +540,7 @@ describe("createParameterizedDataQuery", () => {
         },
       }),
     ]);
-    cancellation.resolve();
+    successor.resolve("successor value");
 
     await waitFor(() => expect(hook.result.current.data).toBe("successor value"));
     expect(successorFetcher).toHaveBeenCalledOnce();
