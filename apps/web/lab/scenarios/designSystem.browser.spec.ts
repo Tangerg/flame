@@ -215,16 +215,18 @@ for (const [engine, engineTest] of [
             await page.emulateMedia({ reducedMotion: preference });
             await page.setViewportSize({ width: 1440, height: 900 });
             await page.goto(
-              `/lab/fixture.html?fixture=workspace&state=dock-skills&locale=zh&theme=dark&font-size=18&motion=${appMotion}&skills-commands=accept`,
+              `/lab/fixture.html?fixture=workspace&state=dock-skills&locale=zh&theme=dark&font-size=18&motion=${appMotion}&skills-commands=accept&sidebar=collapsed`,
             );
             await expectLabReady(page);
-            await page
-              .getByRole("button", { name: "Collapse the workspace fixture sidebar" })
-              .click();
             const panel = page
               .getByRole("region", { name: "技能", exact: true })
               .and(page.locator('[data-slot="panel"]'));
-            await panel.getByRole("radio", { name: "技能提议", exact: true }).click();
+            const proposals = panel.getByRole("radio", { name: "技能提议", exact: true });
+            await proposals.click();
+            await expect(proposals).toHaveAttribute("aria-checked", "true");
+            await expect(
+              panel.getByRole("group", { name: "risk-first-review 的提议操作", exact: true }),
+            ).toBeVisible();
             for (let step = 1; step <= 20; step += 1) {
               const scale = 1 + step / 20;
               await page.setViewportSize({

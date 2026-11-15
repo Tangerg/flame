@@ -610,6 +610,7 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
 const FULL_VIEW_ID = "file";
 
 export interface VisualWorkspaceConfig {
+  sidebarOpen: boolean;
   pane?: VisualSettingsPane;
   fullViewId?: string;
 }
@@ -688,7 +689,7 @@ export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
   { agentState, snapshot, capabilities, readDiff }: ReturnType<typeof visualWorkspaceRuntime>,
-  { pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig = {},
+  { sidebarOpen, pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig,
 ): Promise<void> {
   if (state === "dock-diagnostics-recorded") {
     const { spans, metrics, logs } = structuredClone(VISUAL_DIAGNOSTICS);
@@ -748,7 +749,7 @@ export async function installVisualWorkspaceFixture(
   });
   visual.theme.store.setState({ theme, visualStyle: "flame" });
   visual.workspace.layout.setState({
-    sidebarCollapsed: false,
+    sidebarCollapsed: !sidebarOpen,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
     dockWidthRatio:
       state === "dock-catalog"

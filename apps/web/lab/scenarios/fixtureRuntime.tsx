@@ -343,6 +343,7 @@ async function fixtureNode(): Promise<ReactNode> {
       theme,
       runtimeInput,
       {
+        sidebarOpen,
         pane: settingsPane,
         fullViewId: requestedFullView,
       },

@@ -34,7 +34,9 @@ beforeEach(async () => {
     { capabilities: () => runtime.capabilities },
   );
   visual = createVisualClient(() => client);
-  await installVisualWorkspaceFixture(visual, () => client, "dock-light", "light", runtime);
+  await installVisualWorkspaceFixture(visual, () => client, "dock-light", "light", runtime, {
+    sidebarOpen: true,
+  });
   render(
     <visual.Wrapper>
       <QueryClientProvider client={queryClient}>

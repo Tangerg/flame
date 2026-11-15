@@ -77,6 +77,30 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
 }
 
+for (const sidebarOpen of [true, false]) {
+  test(`workspace initializes its ${sidebarOpen ? "expanded" : "collapsed"} sidebar before interaction`, async ({
+    page,
+  }) => {
+    await page.goto(
+      `/lab/fixture.html?fixture=workspace&state=dock-light&theme=light${sidebarOpen ? "" : "&sidebar=collapsed"}`,
+    );
+    await expectLabReady(page);
+    const expand = page.getByRole("button", {
+      name: "Expand the workspace fixture sidebar",
+      exact: true,
+    });
+    const collapse = page.getByRole("button", {
+      name: "Collapse the workspace fixture sidebar",
+      exact: true,
+    });
+    const initial = sidebarOpen ? collapse : expand;
+    const next = sidebarOpen ? expand : collapse;
+    await expect(initial).toBeVisible();
+    await initial.click();
+    await expect(next).toBeVisible();
+  });
+}
+
 test("a full view keeps its catalog title in prose and its file identity in mono", async ({
   page,
 }) => {
