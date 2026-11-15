@@ -2,9 +2,11 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -111,7 +113,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			openWorkbench, currentWorkbench := observeTestWorkbench(persistentTestWorkbench(t, stateDirectory))
 			backend := &persistedTreeResumeRuntime{
 				Connection: connection, workbench: currentWorkbench, sessionID: session.ID,
-				observed: make(chan workbench.PendingResume, 1),
+				observed: make(chan workbench.PendingResume, 1), rootFinished: make(chan error, 1),
 			}
 			host, stop, _ := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
@@ -121,16 +123,16 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				host.Shows(t, "Tool approval")
 				host.Press(input.Enter)
 			}
-			host.Shows(t, "root complete")
-			awaitState(t, "delegated root completion", func() bool {
-				finished, err := connection.GetSession(t.Context(), session.ID)
+			// Execution owns completion; the visibility budget only bounds rendering after it.
+			select {
+			case err := <-backend.rootFinished:
 				if err != nil {
-					return false
+					t.Fatal(err)
 				}
-				return slices.ContainsFunc(finished.Runs, func(run conversation.Run) bool {
-					return run.ID == root.ID && run.Status == protocol.RunStatusFinished && run.Outcome.Status == protocol.OutcomeCompleted
-				})
-			})
+			case <-t.Context().Done():
+				t.Fatal(context.Cause(t.Context()))
+			}
+			host.Shows(t, "root complete")
 			stop()
 			var pending workbench.PendingResume
 			select {
@@ -165,9 +167,11 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 
 type persistedTreeResumeRuntime struct {
 	*runtimebinding.Connection
-	workbench func() *workbench.Store
-	sessionID string
-	observed  chan workbench.PendingResume
+	workbench    func() *workbench.Store
+	sessionID    string
+	observed     chan workbench.PendingResume
+	rootFinished chan error
+	rootFinish   sync.Once
 }
 
 func (r *persistedTreeResumeRuntime) ResumeRun(ctx context.Context, command conversation.ResumeRun) (conversation.SegmentStream, error) {
@@ -176,5 +180,29 @@ func (r *persistedTreeResumeRuntime) ResumeRun(ctx context.Context, command conv
 	if found && pending.Command.Equal(command) {
 		r.observed <- pending
 	}
-	return r.Connection.ResumeRun(ctx, command)
+	stream, err := r.Connection.ResumeRun(ctx, command)
+	if err != nil {
+		r.finishRootObservation(err)
+		return stream, err
+	}
+	events := stream.Events
+	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
+		defer r.finishRootObservation(errors.New("resume stream ended before the root finished"))
+		for event, err := range events {
+			if err != nil {
+				r.finishRootObservation(err)
+			}
+			if finished, ok := event.Event.(conversation.SegmentFinished); ok && event.RunID == command.RunID && finished.Run.Status == protocol.RunStatusFinished {
+				r.finishRootObservation(nil)
+			}
+			if !yield(event, err) {
+				return
+			}
+		}
+	}
+	return stream, nil
+}
+
+func (r *persistedTreeResumeRuntime) finishRootObservation(err error) {
+	r.rootFinish.Do(func() { r.rootFinished <- err })
 }
