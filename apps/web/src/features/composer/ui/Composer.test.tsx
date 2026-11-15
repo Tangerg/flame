@@ -21,6 +21,7 @@ import { loadPluginsForTest } from "@/test/kernel";
 import { refuseDraftStorage } from "@/test/draftStorage";
 import { DraftDatabase } from "@/features/composer/adapters/draftDatabase";
 import { ComposerDraft } from "@/features/composer/domain/composer";
+import { ContentVisibility } from "@flame/ui";
 
 import {
   useAddComposerImageFiles,
@@ -632,6 +633,44 @@ describe("draft persistence recovery", () => {
       successor.remove();
     }
   });
+
+  it.each([false, true])(
+    "retires a hidden retry capture and requires fresh focus after reveal (refocus=%s)",
+    async (refocus) => {
+      function Scene() {
+        const [visible, setVisible] = useState(true);
+        return (
+          <>
+            <button type="button" onClick={() => setVisible((current) => !current)}>
+              Toggle composer
+            </button>
+            <ContentVisibility visible={visible}>
+              <DraftComposer />
+            </ContentVisibility>
+          </>
+        );
+      }
+      wrap(<Scene />);
+      const refusal = refuseDraftWrites();
+      const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+      fireEvent.change(input, { target: { value: "retained draft" } });
+      const retry = await screen.findByRole<HTMLButtonElement>("button", { name: "Retry" });
+      retry.focus();
+      const toggle = screen.getByRole("button", { name: "Toggle composer" });
+      fireEvent.click(toggle);
+      fireEvent.click(toggle);
+      expect(screen.getByRole("button", { name: "Retry" })).toBe(retry);
+      expect(document.activeElement).toBe(retry);
+      if (refocus) {
+        retry.blur();
+        retry.focus();
+      }
+      refusal.restore();
+      act(() => testClient.composer.access.retryPersistence());
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+      expect(document.activeElement === input).toBe(refocus);
+    },
+  );
 
   it("copies a recovery snapshot only on request and reports clipboard refusal", async () => {
     const write = vi

@@ -84,10 +84,10 @@ function PersistenceRetry({
   const button = useRef<HTMLButtonElement>(null);
   const capture = useRef<{ witness: FocusWitness; restore(): void } | null>(null);
   const visible = useContentVisible();
-  const presentation = useRef({ composer, visible });
   useLayoutEffect(() => {
-    presentation.current = { composer, visible };
-  });
+    capture.current?.witness.retire();
+    capture.current = null;
+  }, [composer, visible]);
   useLayoutEffect(
     () => () => {
       const node = button.current;
@@ -107,10 +107,7 @@ function PersistenceRetry({
       onMouseDown={(event) => event.preventDefault()}
       onFocus={(event) => {
         capture.current?.witness.retire();
-        const witness = FocusWitness.capture(
-          event.currentTarget,
-          () => presentation.current.visible && presentation.current.composer === composer,
-        );
+        const witness = FocusWitness.capture(event.currentTarget, () => visible);
         capture.current = witness ? { witness, restore: composer.captureFocus() } : null;
       }}
       onClick={composer.retryPersistence}

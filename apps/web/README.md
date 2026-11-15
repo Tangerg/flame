@@ -271,6 +271,8 @@ diagnostics and ordinary short copy feedback share `useCopyAttempt` qualificatio
 The Retry presentation captures its original input on focus and returns it in
 pre-exit layout cleanup only while Retry still holds focus. A stable ref merely
 binds the button; a failed retry or a ref rebind cannot return focus.
+Hiding that presentation or replacing its Composer owner permanently retires the
+capture. After reveal, a new focus entry can capture the original input again.
 
 Draft storage accepts only the current IndexedDB shape. There is no older-format
 reader, import lifecycle or localStorage draft projection. Retain obsolete browser
