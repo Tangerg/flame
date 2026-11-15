@@ -775,7 +775,9 @@ another set of row insets, field spacing, and footer alignment.
 `useCopyAttempt` qualifies each copy by its captured source, latest attempt and
 visible mounted lifetime. It owns no text, persistence confirmation, timer or
 feedback policy. Replacement and hide/reveal permanently retire captured commands,
-even when the original source is shown again. `useCopyFeedback` uses that same
+even when the original source is shown again. Effect reconnection, including React
+Activity and Suspense, starts a fresh scope without reviving retired commands.
+`useCopyFeedback` uses that same
 qualification for both clipboard completion and its short feedback timer.
 Persistent recovery diagnostics can keep
 the previous result during another attempt without sharing that timer policy.

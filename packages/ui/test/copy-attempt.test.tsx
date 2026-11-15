@@ -6,7 +6,7 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { Activity, Suspense, type ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
@@ -130,5 +130,94 @@ it("does not write the clipboard through a retired copy callback after its text 
     expect(await view.result.current.copy()).toBe(true);
   });
   expect(write).toHaveBeenCalledExactlyOnceWith("first");
+  expect(view.result.current.copied).toBe(true);
+});
+
+it("never revives a captured command when Activity reconnects its effects", () => {
+  const source = {};
+  let visible = true;
+  const view = renderHook(() => useCopyAttempt(source), {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <Activity mode={visible ? "visible" : "hidden"}>{children}</Activity>
+    ),
+  });
+  const original = view.result.current;
+  const originalAttempt = original()!;
+  visible = false;
+  view.rerender();
+  expect(original()).toBeNull();
+  expect(originalAttempt()).toBe(false);
+  visible = true;
+  view.rerender();
+  const latest = view.result.current()!;
+  expect(latest()).toBe(true);
+  expect(original()).toBeNull();
+  expect(originalAttempt()).toBe(false);
+  expect(latest()).toBe(true);
+});
+
+it("does not write through a copy callback captured before Activity hides", async () => {
+  const write = vi
+    .fn<(text: string) => Promise<boolean>>()
+    .mockResolvedValue(true);
+  let visible = true;
+  const view = renderHook(
+    () => useCopyFeedback("captured source", 1500, write),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <Activity mode={visible ? "visible" : "hidden"}>{children}</Activity>
+      ),
+    },
+  );
+  const original = view.result.current.copy;
+  visible = false;
+  view.rerender();
+  visible = true;
+  view.rerender();
+  await act(async () => {
+    expect(await original()).toBeUndefined();
+  });
+  expect(write).not.toHaveBeenCalled();
+  await act(async () => {
+    expect(await view.result.current.copy()).toBe(true);
+  });
+  expect(write).toHaveBeenCalledExactlyOnceWith("captured source");
+  expect(view.result.current.copied).toBe(true);
+});
+
+it("retires copy callbacks across Suspense fallback and reveal", async () => {
+  const write = vi
+    .fn<(text: string) => Promise<boolean>>()
+    .mockResolvedValue(true);
+  const pending = new Promise<never>(() => {});
+  let suspended = false;
+  function Pending(): never {
+    throw pending;
+  }
+  const view = renderHook(
+    () => useCopyFeedback("captured source", 1500, write),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <Suspense fallback={<p>Waiting for source</p>}>
+          {suspended && <Pending />}
+          {children}
+        </Suspense>
+      ),
+    },
+  );
+  const original = view.result.current.copy;
+  suspended = true;
+  view.rerender();
+  expect(screen.getByText("Waiting for source")).toBeTruthy();
+  suspended = false;
+  view.rerender();
+  await act(async () => {
+    expect(await original()).toBeUndefined();
+  });
+  expect(write).not.toHaveBeenCalled();
+  await act(async () => {
+    expect(await view.result.current.copy()).toBe(true);
+  });
+  expect(write).toHaveBeenCalledExactlyOnceWith("captured source");
   expect(view.result.current.copied).toBe(true);
 });

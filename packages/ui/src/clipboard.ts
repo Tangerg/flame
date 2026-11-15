@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useContentVisible } from "./content-visibility";
 
 export async function copyText(text: string): Promise<boolean> {
@@ -20,20 +20,18 @@ interface CopyScope {
 
 export function useCopyAttempt(source: unknown): () => (() => boolean) | null {
   const visible = useContentVisible();
-  // Returning to the same source must not revive commands from a retired incarnation.
-  const binding = useMemo<CopyScope>(
-    () => ({ active: false, attempt: null }),
-    [source, visible],
-  );
+  const [binding, setBinding] = useState<CopyScope | null>(null);
   useLayoutEffect(() => {
-    binding.active = visible;
+    // Effect reconnection retains memoized values; a new setup must own a fresh scope.
+    const owned: CopyScope = { active: visible, attempt: null };
+    setBinding(owned);
     return () => {
-      binding.active = false;
-      binding.attempt = null;
+      owned.active = false;
+      owned.attempt = null;
     };
-  }, [binding, visible]);
+  }, [source, visible]);
   return useCallback(() => {
-    if (!binding.active) return null;
+    if (!binding?.active) return null;
     const attempt = {};
     binding.attempt = attempt;
     return () => binding.active && binding.attempt === attempt;
