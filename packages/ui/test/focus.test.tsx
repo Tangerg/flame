@@ -127,6 +127,35 @@ it("waits for the opener's committed availability and ignores retained ref bindi
   );
 });
 
+it("captures the current node when a retained owner replaces its DOM binding", () => {
+  const target = document.createElement("button");
+  document.body.append(target);
+  const resolve = vi.fn(() => target);
+  function Task({ replaced }: { replaced: boolean }) {
+    const source = useRef<HTMLElement>(null);
+    useRemovalFocus(source, resolve);
+    return replaced ? (
+      <section ref={source}>
+        <button>Current task</button>
+      </section>
+    ) : (
+      <article ref={source}>
+        <button>Current task</button>
+      </article>
+    );
+  }
+  const view = render(<Task replaced={false} />);
+  const original = screen.getByRole("button", { name: "Current task" });
+  act(() => original.focus());
+  view.rerender(<Task replaced />);
+  expect(original.isConnected).toBe(false);
+  expect(resolve).not.toHaveBeenCalled();
+  act(() => screen.getByRole("button", { name: "Current task" }).focus());
+  view.unmount();
+  expect(resolve).toHaveBeenCalledExactlyOnceWith();
+  expect(document.activeElement).toBe(target);
+});
+
 it("retires a retained hidden task before its later removal", () => {
   const target = document.createElement("button");
   document.body.append(target);

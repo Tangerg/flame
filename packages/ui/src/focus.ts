@@ -134,8 +134,8 @@ export function useRemovalFocus(
     binding.current = { target, current, visible };
   });
   useLayoutEffect(() => {
-    const node = source.current;
     return () => {
+      const node = source.current;
       witness.current?.retire();
       witness.current = node
         ? RemovalFocus.capture(

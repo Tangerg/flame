@@ -686,7 +686,9 @@ to its consumer's persistent search field. `canRestoreFocus` qualifies the captu
 business source; hiding, a retired source, later focus (even if it subsequently
 blurs), or an unavailable destination prevents restoration. `FocusWitness` owns the captured source, later-focus guard and once-only
 delivery. `RemovalFocus` additionally requires physical removal of its boundary; `useRemovalFocus` binds its layout capture and passive
-settlement. Synchronous retry replacement uses the separate `handoffFocus`
+settlement. Layout capture reads the current ref binding when its owner exits;
+replacing a retained owner's DOM node neither restores focus nor leaves the old
+node as the source for a later removal. Synchronous retry replacement uses the separate `handoffFocus`
 guarantee before replacing the error view.
 
 `FormActions` groups
