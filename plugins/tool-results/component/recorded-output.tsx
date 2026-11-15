@@ -25,7 +25,7 @@ import {
   type CodeActionLabels,
 } from "@flame/ui";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
-import { ansiText, renderAnsi } from "./ansi";
+import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
 
 const PREVIEW_LINES = 9;
@@ -160,6 +160,7 @@ export function FindField({
 
 export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
+  const lineStyles = useMemo(() => ansiLineStyles(text), [text]);
   const [expanded, setExpanded] = useState(false);
   const visible = useContentVisible();
   const [finding, setFinding] = useState(false);
@@ -310,7 +311,9 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
       }}
       data-reader-line={start === undefined ? undefined : index}
     >
-      <span data-output-line={index}>{renderAnsi(line)}</span>
+      <span data-output-line={index}>
+        {renderAnsi(line, lineStyles[index]!)}
+      </span>
     </div>
   );
   const earlier = lines.length - PREVIEW_LINES;

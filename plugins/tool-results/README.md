@@ -37,6 +37,9 @@ Filters, ANSI styles, line numbers and incremental expansion are local presentat
 ANSI foreground colours and the `error`/`warning` line fallbacks use the host's readable
 text roles (`--color-negative`, `--color-success`, `--color-warning`, `--color-accent-text`,
 `--color-text-muted`), never the solid fill tones, so coloured output reads on the frame.
+ANSI state flows across lines within the captured page. The same parser derives
+line-start styles before selecting a preview or virtual window; an omitted line
+cannot reset later colours. Separate captured pages retain independent state.
 Rows and command output use the shared `CodeFrame` and `CodeCaption`, so recognised
 results read like the generic inspector's captured code: the caption names the
 content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the

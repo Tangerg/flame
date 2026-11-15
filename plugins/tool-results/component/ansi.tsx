@@ -57,29 +57,49 @@ function sgr(style: AnsiStyle, params: string): AnsiStyle {
   return next;
 }
 
-// ANSI determines local text style only; result bytes never become markup or URLs.
-export function renderAnsi(input: string) {
-  const spans: { text: string; style: AnsiStyle }[] = [];
-  let style: AnsiStyle = {};
+function* ansiSpans(input: string, initialStyle: AnsiStyle = {}) {
+  let style = initialStyle;
   let cursor = 0;
   for (const match of input.matchAll(ANSI_SEQUENCE)) {
     if (match.index > cursor)
-      spans.push({ text: input.slice(cursor, match.index), style });
+      yield { text: input.slice(cursor, match.index), style };
     if (match[2] === "m") style = sgr(style, match[1]!);
     cursor = match.index + match[0].length;
   }
-  if (cursor < input.length) spans.push({ text: input.slice(cursor), style });
-  return spans.map(({ text, style: value }, index) => {
-    const style: CSSProperties = {
-      color: value.tone && INK[value.tone],
-      fontWeight: value.bold ? "bold" : undefined,
-      opacity: value.dim ? 0.7 : undefined,
-      textDecoration: value.underline ? "underline" : undefined,
-    };
-    return (
-      <span key={index} style={style}>
-        {text}
-      </span>
-    );
-  });
+  if (cursor < input.length) yield { text: input.slice(cursor), style };
+}
+
+// A rendered window can omit the line that established the captured ANSI state.
+export function ansiLineStyles(input: string) {
+  const initial: AnsiStyle = {};
+  const styles = [initial];
+  for (const { text, style } of ansiSpans(input, initial)) {
+    for (
+      let index = text.indexOf("\n");
+      index !== -1;
+      index = text.indexOf("\n", index + 1)
+    )
+      styles.push(style);
+  }
+  return styles;
+}
+
+// ANSI determines local text style only; result bytes never become markup or URLs.
+export function renderAnsi(input: string, initialStyle: AnsiStyle = {}) {
+  return Array.from(
+    ansiSpans(input, initialStyle),
+    ({ text, style: value }, index) => {
+      const style: CSSProperties = {
+        color: value.tone && INK[value.tone],
+        fontWeight: value.bold ? "bold" : undefined,
+        opacity: value.dim ? 0.7 : undefined,
+        textDecoration: value.underline ? "underline" : undefined,
+      };
+      return (
+        <span key={index} style={style}>
+          {text}
+        </span>
+      );
+    },
+  );
 }

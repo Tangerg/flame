@@ -1525,6 +1525,47 @@ it.each([{ altKey: true }, { shiftKey: true }, { isComposing: true }, { keyCode:
   },
 );
 
+it.each([3, 13])(
+  "preserves ANSI state across %i captured output lines and preview boundaries",
+  async (count) => {
+    const lines = Array.from({ length: count }, (_, index) => `coloured line ${index}`);
+    const output = `\u001b[31m${lines.join("\n")}\u001b[39m\nplain line\n`;
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    testClient.render(<RecordedResult context={capturedContext("shell", output)} />);
+    expect(screen.getByText(lines.at(-1)!, { exact: true }).style.color).toBe(
+      "var(--color-negative)",
+    );
+    expect(screen.getByText("plain line", { exact: true }).style.color).toBe("");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy output" }));
+    });
+    expect(write).toHaveBeenCalledExactlyOnceWith(`${lines.join("\n")}\nplain line\n`);
+  },
+);
+
+it("preserves ANSI state and resets outside the mounted output window", () => {
+  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
+  const output =
+    "\u001b[31m" +
+    plain.map((line, index) => (index === 25_001 ? `\u001b[39m${line}` : line)).join("\n") +
+    "\n";
+  const reader = expandOutput(output);
+  reader.scrollTop = 25_000 * 20;
+  fireEvent.scroll(reader);
+  expect(within(reader).getByText(plain[25_000]!, { exact: true }).style.color).toBe(
+    "var(--color-negative)",
+  );
+  expect(within(reader).getByText(plain[25_001]!, { exact: true }).style.color).toBe("");
+  expect(reader.querySelector('[data-output-line="0"]')).toBeNull();
+  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
+  expect(selectAll(reader)).toBe(false);
+  expect(copyFrom(reader).setData).toHaveBeenCalledExactlyOnceWith(
+    "text/plain",
+    plain.join("\n") + "\n",
+  );
+  document.getSelection()?.removeAllRanges();
+});
+
 it("selects only the preview excerpt and copies its presented lines", () => {
   const plain = Array.from({ length: 12 }, (_, index) => (index === 6 ? "" : `line ${index}`));
   const output = plain
