@@ -1,4 +1,4 @@
-import { useEffectEvent, useLayoutEffect, useMemo, useState, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useState, type RefObject } from "react";
 import { dropTargetForExternal } from "@atlaskit/pragmatic-drag-and-drop/adapter/drop-target-for-external";
 import { monitorForExternal } from "@atlaskit/pragmatic-drag-and-drop/adapter/monitor-for-external";
 import { type ExternalDragPayload } from "@atlaskit/pragmatic-drag-and-drop/adapter/external-adapter-types";
@@ -22,11 +22,7 @@ export function useComposerFileDrop(
   const intake = useComposer().useImageIntake();
   const visible = useContentVisible();
   const deliver = useEffectEvent(onFiles);
-  const registration = useMemo(
-    () => ({ intake, visible, acceptsImages }),
-    [intake, visible, acceptsImages],
-  );
-  const [dragging, setDragging] = useState<object | null>(null);
+  const [dragging, setDragging] = useState(false);
   useLayoutEffect(() => {
     const element = target.current;
     if (!element || !visible || !intake.current()) return;
@@ -47,11 +43,11 @@ export function useComposerFileDrop(
       },
       onDragStart({ source }) {
         if (!current() || observed !== source) return;
-        setDragging(registration);
+        setDragging(true);
       },
       onDrop() {
         if (phase === "retired") return;
-        setDragging(null);
+        setDragging(false);
         preventUnhandled.stop();
       },
     });
@@ -67,12 +63,13 @@ export function useComposerFileDrop(
     });
     return () => {
       phase = "retired";
+      setDragging(false);
       stopTarget();
       stopMonitor();
       preventUnhandled.stop();
     };
-  }, [target, visible, intake, acceptsImages, registration]);
-  return dragging === registration;
+  }, [target, visible, intake, acceptsImages]);
+  return dragging;
 }
 
 export function ComposerFileDropCue({ acceptsImages }: { acceptsImages: boolean }) {

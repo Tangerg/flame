@@ -9,7 +9,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { useState } from "react";
+import { Activity, Suspense, useState } from "react";
 import { ContentVisibility } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -383,6 +383,50 @@ describe("AgentDockTabs", () => {
     expect(onMove).not.toHaveBeenCalled();
     expect(view.container.querySelector("[data-dragging]")).toBeNull();
   });
+
+  it.each(["Activity", "Suspense"])(
+    "retires the drag and its presentation after %s reconnects",
+    (lifetime) => {
+      const onMove = vi.fn();
+      const reorder = { onMove, moveLeftLabel: "Move left", moveRightLabel: "Move right" };
+      const pending = new Promise<never>(() => {});
+      function Pending(): never {
+        throw pending;
+      }
+      const scene = (visible: boolean) => {
+        const dock = (
+          <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" reorder={reorder} />
+        );
+        return lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{dock}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for workspace</p>}>
+            {!visible && <Pending />}
+            {dock}
+          </Suspense>
+        );
+      };
+      const view = testClient.render(scene(true));
+      const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
+      const dataTransfer = dragTransfer();
+      fireEvent.dragStart(rows[0]!, { dataTransfer });
+      flushFrames();
+      expect(view.container.querySelector("[data-dragging]")).toBeTruthy();
+      view.rerender(scene(false));
+      view.rerender(scene(true));
+      const presented = view.container.querySelector("[data-dragging]") !== null;
+      fireEvent.dragOver(rows[2]!, { dataTransfer });
+      fireEvent.drop(rows[2]!, { dataTransfer });
+      expect(onMove).not.toHaveBeenCalled();
+      expect(presented).toBe(false);
+
+      const next = dragTransfer();
+      fireEvent.dragStart(rows[0]!, { dataTransfer: next });
+      fireEvent.dragOver(rows[2]!, { dataTransfer: next });
+      fireEvent.drop(rows[2]!, { dataTransfer: next });
+      expect(onMove).toHaveBeenCalledExactlyOnceWith("skills", 2);
+    },
+  );
 
   it("leaves a single-tab strip undraggable", () => {
     const view = testClient.render(

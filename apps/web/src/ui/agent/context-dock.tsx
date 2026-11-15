@@ -6,7 +6,6 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
   useCallback,
-  useMemo,
   useLayoutEffect,
   useRef,
   useState,
@@ -264,10 +263,7 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
 
 export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [dragPresentation, setDragPresentation] = useState<{
-    id: string;
-    registration: object;
-  } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const visible = useContentVisible();
   const binding = useRef({ tabs, reorder, visible });
   const removal = useRef<{
@@ -294,11 +290,11 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
   }, []);
   const tabIds = JSON.stringify(tabs.map((tab) => tab.id));
   const canReorder = visible && reorder !== undefined && tabs.length > 1;
-  const registration = useMemo(() => ({ tabIds, canReorder }), [tabIds, canReorder]);
-  const draggingId = dragPresentation?.registration === registration ? dragPresentation.id : null;
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || !canReorder) return;
+    // Reconnected effects must not accept payloads from their retired registration.
+    const registration = {};
     let active = true;
     const draggedId = (data: Record<string | symbol, unknown>) => {
       if (
@@ -324,10 +320,10 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
             getInitialData: () =>
               ({ kind: "flame-dock-tab", strip: root, registration, id }) satisfies DockTabDrag,
             onDragStart: () => {
-              if (active) setDragPresentation({ id, registration });
+              if (active) setDraggingId(id);
             },
             onDrop: () => {
-              if (active) setDragPresentation(null);
+              if (active) setDraggingId(null);
             },
           }),
           dropTargetForElements({
@@ -348,9 +344,10 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
     );
     return () => {
       active = false;
+      setDraggingId(null);
       releases.forEach((release) => release());
     };
-  }, [tabIds, canReorder, requestMove, registration]);
+  }, [tabIds, canReorder, requestMove]);
   const activeIndex = tabs.findIndex((tab) => tab.active);
   const activeId = tabs[activeIndex]?.id;
   const closeTarget = () => {

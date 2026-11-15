@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { useRef } from "react";
+import { Activity, Suspense, useRef } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { dragTransfer } from "@/test/dragTransfer";
@@ -120,6 +120,43 @@ it("admits the next external drag after retiring an earlier Session", () => {
   fireEvent.drop(next.receiver, { dataTransfer: next.transfer });
   expect(deliver).toHaveBeenCalledTimes(1);
 });
+
+it.each(["Activity", "Suspense"])(
+  "clears a retired cue after %s reconnects without acquiring the old drag",
+  async (lifetime) => {
+    const deliver = vi.fn();
+    const pending = new Promise<never>(() => {});
+    function Pending(): never {
+      throw pending;
+    }
+    const scene = (visible: boolean) => {
+      const receiver = <Receiver deliver={deliver} />;
+      return lifetime === "Activity" ? (
+        <Activity mode={visible ? "visible" : "hidden"}>{receiver}</Activity>
+      ) : (
+        <Suspense fallback={<p>Waiting for composer</p>}>
+          {!visible && <Pending />}
+          {receiver}
+        </Suspense>
+      );
+    };
+    const view = client.render(scene(true));
+    const original = enter();
+    await waitFor(() => expect(original.receiver.hasAttribute("data-dragging")).toBe(true));
+    view.rerender(scene(false));
+    view.rerender(scene(true));
+    expect(screen.getByTestId("receiver")).toBe(original.receiver);
+    expect(original.receiver.hasAttribute("data-dragging")).toBe(false);
+    fireEvent.dragOver(original.receiver, { dataTransfer: original.transfer });
+    fireEvent.drop(original.receiver, { dataTransfer: original.transfer });
+    expect(deliver).not.toHaveBeenCalled();
+
+    const next = enter();
+    await waitFor(() => expect(next.receiver.hasAttribute("data-dragging")).toBe(true));
+    fireEvent.drop(next.receiver, { dataTransfer: next.transfer });
+    expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
+  },
+);
 
 it("does not let a successor receiver acquire a drag started by a retired receiver", () => {
   const deliver = vi.fn();

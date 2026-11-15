@@ -753,7 +753,10 @@ The saved Dock ratio remains unchanged. One layout-width read per active animati
 frame preserves this capacity timing under both viewport and sidebar changes.
 Native Dock dragging uses the PDD element adapter. Its typed payload binds the
 registered strip and a currently present tab; plain text and another strip cannot
-supply an alternative source. Drop and keyboard menu moves call the same navigation
+supply an alternative source. Each effect setup owns a fresh payload registration,
+including Activity and Suspense reconnection; a retired drag cannot acquire the
+same strip again. Drag styling starts empty and reflects only that registration's
+events. Drop and keyboard menu moves call the same navigation
 command, whose store alone advances tab order. The live announcement reads the
 committed position. Base UI continues owning tab keys and menu closing. The public final-focus
 callback settles the captured focus witness synchronously, so a later focus
@@ -769,6 +772,8 @@ beginning after registration grants the target file intake. Native cancellation,
 hiding and unmount clean up the receiver. The generic cue promises only that
 supported images will be attached; file type filtering happens after drop. PDD's
 unhandled-drop utility prevents native file navigation without delivering files.
+Effect reconnection starts with no cue and cannot acquire the preceding drag;
+the next external drag can enter the new receiver normally.
 
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
