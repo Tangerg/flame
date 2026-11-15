@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { Activity, Suspense, useRef } from "react";
+import { Activity, Suspense } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { dragTransfer } from "@/test/dragTransfer";
@@ -22,14 +22,15 @@ afterEach(async () => {
 function Receiver({
   acceptsImages = true,
   deliver,
+  targetKey = "original",
 }: {
   acceptsImages?: boolean;
   deliver: (files: File[], intake: ComposerImageIntake) => void;
+  targetKey?: string;
 }) {
-  const target = useRef<HTMLDivElement>(null);
-  const dragging = useComposerFileDrop(target, acceptsImages, deliver);
+  const { ref, dragging } = useComposerFileDrop(acceptsImages, deliver);
   return (
-    <div ref={target} data-testid="receiver" data-dragging={dragging ? "" : undefined}>
+    <div key={targetKey} ref={ref} data-testid="receiver" data-dragging={dragging ? "" : undefined}>
       Files
     </div>
   );
@@ -169,6 +170,27 @@ it("does not let a successor receiver acquire a drag started by a retired receiv
   fireEvent.drop(successor, { dataTransfer: original.transfer });
   expect(deliver).not.toHaveBeenCalled();
   const next = enter();
+  fireEvent.drop(next.receiver, { dataTransfer: next.transfer });
+  expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
+});
+
+it("moves the receiver to a rebound surface without granting it the retired surface's drag", async () => {
+  const deliver = vi.fn();
+  const view = client.render(<Receiver deliver={deliver} />);
+  const original = enter();
+  await waitFor(() => expect(original.receiver.hasAttribute("data-dragging")).toBe(true));
+
+  view.rerender(<Receiver deliver={deliver} targetKey="replacement" />);
+  const replacement = screen.getByTestId("receiver");
+  expect(replacement).not.toBe(original.receiver);
+  expect(original.receiver.isConnected).toBe(false);
+  expect(replacement.hasAttribute("data-dragging")).toBe(false);
+  fireEvent.dragOver(replacement, { dataTransfer: original.transfer });
+  fireEvent.drop(replacement, { dataTransfer: original.transfer });
+  expect(deliver).not.toHaveBeenCalled();
+
+  const next = enter();
+  await waitFor(() => expect(next.receiver.hasAttribute("data-dragging")).toBe(true));
   fireEvent.drop(next.receiver, { dataTransfer: next.transfer });
   expect(deliver).toHaveBeenCalledExactlyOnceWith([image], expect.any(Object));
 });

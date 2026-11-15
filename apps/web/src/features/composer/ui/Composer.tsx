@@ -20,7 +20,7 @@ import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments"
 import { ComposerPersistenceNotice } from "@/features/composer/ui/ComposerPersistenceNotice";
 import { ComposerFileDropCue, useComposerFileDrop } from "@/features/composer/ui/ComposerFileDrop";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -88,10 +88,17 @@ export function Composer({
     onAddPaste,
     acceptsImages,
   });
-  const dropping = useComposerFileDrop(surfaceRef, acceptsImages, handleDrop);
+  const { ref: bindDrop, dragging: dropping } = useComposerFileDrop(acceptsImages, handleDrop);
+  const bindSurface = useCallback(
+    (node: HTMLDivElement | null) => {
+      surfaceRef.current = node;
+      bindDrop(node);
+    },
+    [bindDrop],
+  );
   return (
     <AgentComposerSurface
-      ref={surfaceRef}
+      ref={bindSurface}
       data-slot="composer-root"
       data-dropping={dropping ? "" : undefined}
       className={stylex.props(composerStyles.surface).className}

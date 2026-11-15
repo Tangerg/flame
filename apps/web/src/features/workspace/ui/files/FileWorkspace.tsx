@@ -326,6 +326,7 @@ function FileBrowser({
       >
         {(entries) => (
           <FileTree
+            key={cwd}
             ref={treeRef}
             entries={entries}
             cwd={cwd}
@@ -548,7 +549,10 @@ function FilePreview({
         <>
           {canRender && control}
           {data && !unsupported && (
-            <GoToLine onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)} />
+            <GoToLine
+              key={JSON.stringify([cwd, viewer.path])}
+              onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)}
+            />
           )}
           <IconButton
             icon={iconGlyph(copied ? "check" : "copy")}

@@ -79,7 +79,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
         const container = document.createElement("div");
         Object.assign(container.style, { position: "fixed", top: "120px", right: "24px" });
         document.body.append(container);
-        const dispose = mountFileDropReceiver(container, visualClient);
+        const { dispose, replaceSurface } = mountFileDropReceiver(container, visualClient);
+        container.addEventListener("replace-file-drop-surface", replaceSurface, { once: true });
         container.addEventListener(
           "retire-file-drop-receiver",
           () => {
@@ -99,6 +100,26 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await successor.dispatchEvent("dragover", { dataTransfer: fresh });
       await successor.dispatchEvent("drop", { dataTransfer: fresh });
       await expect(attached).toHaveCount(1);
+
+      const rebound = await files(page);
+      await successor.dispatchEvent("dragenter", { dataTransfer: rebound, relatedTarget: null });
+      await successor.dispatchEvent("dragover", { dataTransfer: rebound });
+      await expect(successor).toHaveAttribute("data-dragging", "");
+      const originalSurface = await successor.elementHandle();
+      await successor.dispatchEvent("replace-file-drop-surface", { bubbles: true });
+      await expect.poll(() => originalSurface!.evaluate((node) => node.isConnected)).toBe(false);
+      await expect(successor).not.toHaveAttribute("data-dragging");
+      await successor.dispatchEvent("dragover", { dataTransfer: rebound });
+      await successor.dispatchEvent("drop", { dataTransfer: rebound });
+      await expect(attached).toHaveCount(1);
+      const afterRebind = await files(page);
+      await successor.dispatchEvent("dragenter", {
+        dataTransfer: afterRebind,
+        relatedTarget: null,
+      });
+      await successor.dispatchEvent("dragover", { dataTransfer: afterRebind });
+      await successor.dispatchEvent("drop", { dataTransfer: afterRebind });
+      await expect(attached).toHaveCount(2);
       await successor.dispatchEvent("retire-file-drop-receiver", { bubbles: true });
       await expect(successor).toHaveCount(0);
       await transfer.dispose();
@@ -106,6 +127,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await outside.dispose();
       await retired.dispose();
       await fresh.dispose();
+      await rebound.dispose();
+      await afterRebind.dispose();
     },
   );
 

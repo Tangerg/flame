@@ -773,7 +773,9 @@ hiding and unmount clean up the receiver. The generic cue promises only that
 supported images will be attached; file type filtering happens after drop. PDD's
 unhandled-drop utility prevents native file navigation without delivering files.
 Effect reconnection starts with no cue and cannot acquire the preceding drag;
-the next external drag can enter the new receiver normally.
+the next external drag can enter the new receiver normally. The hook's callback
+ref binds the actual surface node, so replacing that node retires its receiver
+and cue before registering the replacement. The replacement requires a fresh drag.
 
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
@@ -811,6 +813,10 @@ File previews retain the browser's DOM and project its logical visibility throug
 `ContentVisibility`, so row menus retire before returning to the tree. Root and
 expanded-directory Query observers unsubscribe while the browser is hidden and
 resume their normal read lifecycle on return, preserving accepted data and rows.
+Workspace changes replace the tree's interaction scope even when the new Query
+already has identical paths cached. Go to line belongs to the exact workspace
+and file path; changing either retires its popup and draft without replacing the
+reader for ordinary line navigation.
 
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;

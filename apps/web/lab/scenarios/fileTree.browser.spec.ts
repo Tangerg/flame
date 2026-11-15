@@ -48,6 +48,42 @@ for (const browserName of ["chromium", "webkit"] as const) {
   );
 
   test.extend({ browserName })(
+    `${browserName} changing a cached file retires its line-navigation popup`,
+    async ({ page }) => {
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
+      );
+      await expectLabReady(page);
+      const tree = page.getByRole("tree", { name: "Files", exact: true });
+      await tree.getByRole("treeitem", { name: "go.mod", exact: true }).click();
+      const goToLine = page.getByRole("button", { name: "Go to line", exact: true });
+      await expect(goToLine).toBeVisible();
+      await page.getByRole("button", { name: "Back to files", exact: true }).click();
+      await tree.getByRole("treeitem", { name: "README.md", exact: true }).click();
+      await goToLine.click();
+      const field = page.getByRole("textbox", { name: "Go to line", exact: true });
+      await field.fill("37");
+
+      await page.evaluate(async () => {
+        const runtimePath = "/lab/scenarios/fixtureRuntime.tsx";
+        const navigationPath = "/src/features/workspace/application/navigation.ts";
+        const [{ visualClient }, { openWorkspaceFile }] = await Promise.all([
+          import(runtimePath),
+          import(navigationPath),
+        ]);
+        openWorkspaceFile(visualClient.workspace.access, "go.mod");
+      });
+
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.getByRole("region", { name: "go.mod", exact: true })).toBeVisible();
+      await goToLine.click();
+      await expect(field).toHaveValue("");
+      await page.keyboard.press("Escape");
+      await expect(goToLine).toBeFocused();
+    },
+  );
+
+  test.extend({ browserName })(
     `${browserName} a file preview retires the retained tree menu`,
     async ({ page }) => {
       await page.goto(

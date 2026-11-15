@@ -2822,6 +2822,97 @@ describe("local file action feedback", () => {
 });
 
 describe("retained file workspace popups", () => {
+  it("retires an open row menu when another workspace has the same cached paths", async () => {
+    selection.current = { status: "ready", cwd: "/work/one" };
+    client.setQueryData([WORKSPACE_LIST_FILES_KEY, { cwd: "/work/two" }], [directory]);
+    const view = mount(<FileWorkspace />);
+    const original = await screen.findByRole("treeitem", { name: "src" });
+    fireEvent.contextMenu(original);
+    const menu = await screen.findByRole("menu");
+    await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+
+    selection.current = { status: "ready", cwd: "/work/two" };
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <FileWorkspace />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("treeitem", { name: "src" })).toBeTruthy();
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it.each([
+    { label: "file", cwd: "/work/one", path: "src/other.go" },
+    { label: "workspace", cwd: "/work/two", path: file.path },
+  ])(
+    "retires Go to line and its draft when another $label is opened from cache",
+    async ({ cwd, path }) => {
+      selection.current = { status: "ready", cwd: "/work/one" };
+      client.setQueryData([WORKSPACE_READ_FILE_KEY, { cwd, path }], {
+        content: "another file",
+        startLine: 1,
+        endLine: 1,
+        totalLines: 1,
+      });
+      act(() => openWorkspaceFile(testClient.workspace.access, file.path));
+      const view = mount(<FileWorkspace />);
+      await screen.findByText("package main");
+      fireEvent.click(screen.getByRole("button", { name: "Go to line" }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(within(dialog).getByRole("textbox", { name: "Go to line" }), {
+        target: { value: "37" },
+      });
+
+      selection.current = { status: "ready", cwd };
+      act(() => openWorkspaceFile(testClient.workspace.access, path));
+      view.rerender(
+        <QueryClientProvider client={client}>
+          <FileWorkspace />
+        </QueryClientProvider>,
+      );
+
+      await screen.findByText("another file");
+      expect(screen.queryByRole("dialog")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Go to line" }));
+      const reopened = await screen.findByRole("dialog");
+      expect(
+        within(reopened).getByRole<HTMLInputElement>("textbox", { name: "Go to line" }).value,
+      ).toBe("");
+    },
+  );
+
+  it("subscribes only to the current workspace after the retained browser changes source while hidden", async () => {
+    selection.current = { status: "ready", cwd: "/work/one" };
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: ["src"], lastFilePath: file.path },
+    });
+    const scene = (visible: boolean) => (
+      <QueryClientProvider client={client}>
+        <ContentVisibility visible={visible}>
+          <FileWorkspace />
+        </ContentVisibility>
+      </QueryClientProvider>
+    );
+    const view = testClient.render(scene(true));
+    await screen.findByRole("treeitem", { name: "main.go" });
+    view.rerender(scene(false));
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    listFiles.mockClear();
+
+    selection.current = { status: "ready", cwd: "/work/two" };
+    view.rerender(scene(false));
+    await act(async () => client.invalidateQueries({ queryKey: [WORKSPACE_LIST_FILES_KEY] }));
+    expect(listFiles).not.toHaveBeenCalled();
+
+    view.rerender(scene(true));
+    await screen.findByRole("treeitem", { name: "main.go" });
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(listFiles).toHaveBeenCalledTimes(2);
+    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two" });
+    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two", path: "src" });
+  });
+
   it("retires Go to line when hidden and keeps its draft for an explicit reopen", async () => {
     readFile.mockResolvedValue({
       content: "one\ntwo\nthree\nfour\nfive",
