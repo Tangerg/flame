@@ -826,8 +826,9 @@ cache entries behind them. Accepted data clears, absence reports a read failure,
 and a returning provider can reach those same observers. Unsubscribed orphan
 entries reset before removal, clearing objects retained for continuous placeholders;
 hidden consumers resume through Query's normal subscription.
-Continuous placeholders also observe the provider's lifetime, so Activity
-reconnection cannot reuse a memoized placeholder from a retired provider.
+Continuous placeholders observe their native Query cache state, so Activity or
+Suspense reconnection recomputes continuity after reset or eviction, including
+Runtime replacement without a provider change.
 
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;

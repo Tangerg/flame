@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { useMemo, useSyncExternalStore } from "react";
 import { type Query, type UseQueryResult } from "@tanstack/react-query";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
 import { type Contribution } from "@/extensions/contracts";
@@ -52,10 +52,6 @@ class DataQueryOwner {
     if (!generation)
       return Promise.reject(new Error(`No data provider registered for key "${key}"`));
     return generation.load<T, P>(params, signal);
-  }
-
-  generation(key: string): DataProviderGeneration | undefined {
-    return this.#disposed ? undefined : this.#providers.get(key);
   }
 
   dispose(): void {
@@ -165,24 +161,35 @@ export function createParameterizedDataQuery<P, T>(
   if (!keep)
     return (params, subscribed = true) =>
       useData(parameterizedQuery<P, T>(key, params), subscribed);
-  const currentGeneration = () => dataQueryOwner.generation(key);
   return (params, subscribed = true) => {
-    // Activity can reconnect retained options; continuity must also observe provider retirement.
-    const generation = useSyncExternalStore(subscribeContributions, currentGeneration);
-    const query = useMemo(
-      () =>
-        queryOptions({
-          ...parameterizedQuery<P, T>(key, params),
-          placeholderData: (previous, previousQuery) => {
-            if (!generation || currentGeneration() !== generation) return undefined;
-            const prior = previousQuery?.queryKey[1] as P | undefined;
-            return prior !== undefined && params !== undefined && keep(prior, params)
-              ? previous
-              : undefined;
-          },
-        }),
-      [generation, params],
+    const client = useQueryClient();
+    const query = parameterizedQuery<P, T>(key, params);
+    const queryHash = client.defaultQueryOptions(query).queryHash;
+    const cache = client.getQueryCache();
+    const readState = useMemo(
+      () => ({
+        subscribe: (onChange: () => void) =>
+          cache.subscribe((event) => {
+            if (event.query.queryHash === queryHash) onChange();
+          }),
+        getSnapshot: () => cache.get(queryHash)?.state,
+      }),
+      [cache, queryHash],
     );
-    return useData(query, subscribed);
+    // Observer placeholders can outlive a reset while effects are disconnected.
+    // Native cache state makes reconnection recompute continuity after reset or eviction.
+    useSyncExternalStore(readState.subscribe, readState.getSnapshot);
+    return useData(
+      queryOptions({
+        ...query,
+        placeholderData: (previous, previousQuery) => {
+          const prior = previousQuery?.queryKey[1] as P | undefined;
+          return prior !== undefined && params !== undefined && keep(prior, params)
+            ? previous
+            : undefined;
+        },
+      }),
+      subscribed,
+    );
   };
 }
