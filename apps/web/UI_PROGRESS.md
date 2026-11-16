@@ -20709,6 +20709,15 @@ Verification on Node 24.22.2, npm 11.21.1, Go 1.27.4 and Wails 3.1.0:
   its wrapping header during a real two-page wheel scroll. Back selects the guide;
   Cmd+L continues the original caret as `保留草稿，返回后继续核对文件。`.
 
+Late-main integration `fb337e47d` brings `2d49e2aa2` after UI qualification. Its
+Runtime accounting change and CLI/tooling candidate updates leave Web/native
+build sources, shared packages, SDKs, plugins, root lock and build policy byte-identical
+to qualified `838de740c`. An additional Go 1.27.4 offline, read-only-manifest,
+`GOWORK=off` serial run passes **8 packages** across the Run domain subtree,
+persistence and delivery. This is not a full Runtime or CLI distribution check.
+Its separate two-node integration log directory is removed after review; the
+previously retired application and build/cache roots remain absent.
+
 The isolated native hosts use the normal production embed and services, with
 only the private Go URL-literal overlay selecting the canonical built HTTP Lab.
 All UI input comes through CUA. This does not qualify live Runtime/provider
