@@ -143,10 +143,7 @@ func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded boo
 		return hooksFile{}, false, nil
 	}
 	if err := framevalue.DecodeValue(data, &file, "hook configuration"); err != nil {
-		return hooksFile{}, false, err
-	}
-	if file.Hooks == nil {
-		return hooksFile{}, false, errors.New("hooks array is required")
+		return hooksFile{}, false, fmt.Errorf("%w: %w", hook.ErrInvalidHook, err)
 	}
 	if err := hook.ValidateHooksPerFile(len(file.Hooks)); err != nil {
 		return hooksFile{}, false, err

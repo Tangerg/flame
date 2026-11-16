@@ -20,12 +20,12 @@
 24 runtime/cmd/contractgen/main.go:run
 23 runtime/cmd/contractgen/schema.go:applyValueConstraints
 23 runtime/cmd/contractgen/schema.go:schemaSet.walkAdmitted
-23 runtime/cmd/pluginbrowsergen/main.go:generate
+22 runtime/cmd/pluginbrowsergen/main.go:generate
 21 runtime/internal/adapter/integration/mcp/framework_source.go:ProcessSource.Configure
 25 runtime/internal/adapter/integration/mcp/reconnect.go:connections.dialAndSwap
 24 runtime/internal/adapter/integration/mcp/restore.go:Pool.RestoreTools
 27 runtime/internal/adapter/integration/pluginpackage/author.go:BuildRelease
-24 runtime/internal/adapter/integration/pluginpackage/author.go:authorManifest
+23 runtime/internal/adapter/integration/pluginpackage/author.go:authorManifest
 24 runtime/internal/adapter/integration/pluginpackage/executions.go:Releases.Connection
 44 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseExtensions
 30 runtime/internal/adapter/integration/pluginpackage/manifest.go:parseMetadata

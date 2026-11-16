@@ -11,6 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func writeHooks(t *testing.T, dir, body string) {
@@ -123,15 +125,19 @@ func TestLoadRejectsMissingAndNullConfigurationMaterial(t *testing.T) {
 
 func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 	tests := []struct {
-		name string
-		body string
+		name  string
+		body  string
+		field string
 	}{
-		{name: "unknown event", body: `{"hooks":[{"event":"PreTool","command":"check"}]}`},
+		{name: "missing hooks", body: `{}`, field: "hooks"},
+		{name: "null hooks", body: `{"hooks":null}`, field: "hooks"},
+		{name: "unknown field", body: `{"hooks":[],"enabled":true}`, field: "enabled"},
+		{name: "unknown event", body: `{"hooks":[{"event":"PreTool","command":"check"}]}`, field: "hooks[0].event"},
 		{name: "missing action", body: `{"hooks":[{"event":"Stop"}]}`},
 		{name: "ambiguous action", body: `{"hooks":[{"event":"Stop","command":"notify","inject":"context"}]}`},
 		{name: "negative timeout", body: `{"hooks":[{"event":"Stop","command":"notify","timeoutMillis":-1}]}`},
 		{name: "timeout on inject", body: `{"hooks":[{"event":"SessionStart","inject":"context","timeoutMillis":100}]}`},
-		{name: "unknown failure policy", body: `{"hooks":[{"event":"PreToolUse","command":"check","failurePolicy":"ignore"}]}`},
+		{name: "unknown failure policy", body: `{"hooks":[{"event":"PreToolUse","command":"check","failurePolicy":"ignore"}]}`, field: "hooks[0].failurePolicy"},
 		{name: "required observer", body: `{"hooks":[{"event":"Stop","command":"notify","failurePolicy":"required"}]}`},
 		{name: "matcher on non-tool event", body: `{"hooks":[{"event":"Stop","command":"notify","matcher":"shell"}]}`},
 		{name: "malformed matcher", body: `{"hooks":[{"event":"PreToolUse","command":"check","matcher":"["}]}`},
@@ -141,8 +147,18 @@ func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			cwd := t.TempDir()
 			writeHooks(t, cwd, test.body)
-			if _, err := readTestHooks(t.Context(), cwd, ""); !errors.Is(err, hook.ErrInvalidHook) {
+			hooks, err := readTestHooks(t.Context(), cwd, "")
+			if !errors.Is(err, hook.ErrInvalidHook) {
 				t.Fatalf("Load error = %v, want ErrInvalidHook", err)
+			}
+			if len(hooks) != 0 {
+				t.Fatalf("Load returned partial hooks after refusing configuration: %+v", hooks)
+			}
+			if test.field != "" {
+				shape, ok := errors.AsType[*framevalue.ShapeError](err)
+				if !ok || shape.Field != test.field {
+					t.Fatalf("Load error lost the original field %q: %v", test.field, err)
+				}
 			}
 		})
 	}

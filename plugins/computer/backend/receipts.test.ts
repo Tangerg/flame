@@ -247,6 +247,7 @@ describe("original computer receipts", () => {
               media: {
                 mime: "image/png",
                 source: { kind: "bytes", bytes: "AQID" },
+                metadata: {},
               },
               metadata: {
                 "mcp/content": {

@@ -28,6 +28,27 @@ export function composerKeyBindingKey(
   return normalizeCombo(parts.join("+"));
 }
 
+export type ComposerSuggestionKeyIntent =
+  "dismiss" | "dismiss-and-traverse" | "accept" | "navigate" | null;
+
+export function composerSuggestionKeyIntent(
+  event: Pick<KeyboardEvent, "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "key">,
+): ComposerSuggestionKeyIntent {
+  switch (event.key) {
+    case "Escape":
+      return "dismiss";
+    case "Tab":
+      return event.shiftKey ? "dismiss-and-traverse" : "accept";
+    case "Enter":
+      return event.shiftKey ? null : "accept";
+    case "ArrowUp":
+    case "ArrowDown":
+      return event.shiftKey || event.altKey || event.ctrlKey || event.metaKey ? null : "navigate";
+    default:
+      return null;
+  }
+}
+
 export type ComposerCompositionKeyIntent = "active" | "committed-enter" | null;
 
 export function composerCompositionKeyIntent(

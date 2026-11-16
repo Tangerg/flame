@@ -12,7 +12,7 @@ interface ToolMedia {
   source: { kind: "bytes"; bytes: string } | { kind: "uri"; uri: string };
   id?: string;
   name?: string;
-  metadata?: JSONRecord;
+  metadata: JSONRecord;
 }
 interface ToolContent {
   kind: "text" | "media";
@@ -79,6 +79,7 @@ function bytes(value: string, mimeType?: string): ToolMedia {
   )
     throw new Error("computer: tool media requires nonempty standard base64");
   return {
+    metadata: {},
     ...(mimeType ? { mime: mime(mimeType) } : {}),
     source: {
       kind: "bytes",
@@ -196,6 +197,7 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
       part = {
         kind: "media",
         media: {
+          metadata: {},
           ...(content.mimeType ? { mime: mime(content.mimeType) } : {}),
           source: { kind: "uri", uri: content.uri },
           ...(content.name ? { name: content.name } : {}),
@@ -240,7 +242,7 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
     }
   }
   restorePortable(part, content, meta);
-  if (Object.keys(meta).length) envelope._meta = meta;
+  if (content._meta !== undefined) envelope._meta = meta;
   if (
     content.type !== "text" ||
     Object.keys(meta).length ||

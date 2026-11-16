@@ -31,6 +31,7 @@ import { useT } from "@/lib/i18n/index";
 import {
   composerKeyBindingKey,
   composerPasteIntent,
+  composerSuggestionKeyIntent,
 } from "@/features/composer/application/composerInputEvents";
 import { useCompositionCommitGuard } from "@/features/composer/ui/useCompositionCommitGuard";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
@@ -231,32 +232,26 @@ export function useComposerInputController({
       retry.focus();
       return;
     }
-    if (suggestions.open) {
-      if (event.key === "Tab" && event.shiftKey) {
+    const suggestionIntent = suggestions.open ? composerSuggestionKeyIntent(event) : null;
+    switch (suggestionIntent) {
+      case "dismiss-and-traverse":
         dismissSuggestions();
         return;
-      }
-      switch (event.key) {
-        case "Escape":
+      case "dismiss":
+        event.preventDefault();
+        dismissSuggestions();
+        return;
+      case "accept":
+        event.preventDefault();
+        acceptSuggestion();
+        return;
+      case "navigate":
+        if (candidateCount > 0) {
           event.preventDefault();
-          dismissSuggestions();
-          return;
-        case "Tab":
-        case "Enter":
-          if (event.shiftKey) break;
-          event.preventDefault();
-          acceptSuggestion();
-          return;
-        case "ArrowUp":
-        case "ArrowDown":
-          if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) break;
-          if (candidateCount > 0) {
-            event.preventDefault();
-            // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
-            navigation.navigate?.(event);
-          }
-          return;
-      }
+          // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
+          navigation.navigate?.(event);
+        }
+        return;
     }
     const binding = lookupExtensionByKey(COMPOSER_KEY_BINDING, key);
     if (!binding) return;
