@@ -1169,6 +1169,68 @@ describe("root file listing refresh continuity", () => {
   });
   const unavailable = () => new Error("listing unavailable");
 
+  it("keeps tree navigation after a complete keyboard menu, read and Back cycle", async () => {
+    listFiles.mockImplementation(async (query) =>
+      query.path ? [file] : [directory, readme, guide],
+    );
+    const value = "  Keep this menu return draft — 保留  ";
+    mount(
+      <>
+        <textarea aria-label="Message" defaultValue={value} />
+        <FileWorkspace />
+      </>,
+    );
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(7, 7);
+    });
+    const opened = await screen.findByRole("treeitem", { name: guide.name });
+    const folder = screen.getByRole("treeitem", { name: directory.name });
+    const previous = screen.getByRole("treeitem", { name: readme.name });
+    act(() => opened.focus());
+
+    fireEvent.keyDown(opened, { key: "Shift", code: "ShiftLeft", shiftKey: true });
+    fireEvent.keyDown(opened, { key: "F10", code: "F10", shiftKey: true });
+    const menu = await screen.findByRole("menu", { name: guide.path });
+    await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+    fireEvent.keyUp(document.activeElement!, { key: "F10", code: "F10", shiftKey: true });
+    fireEvent.keyUp(document.activeElement!, { key: "Shift", code: "ShiftLeft" });
+    fireEvent.keyDown(document.activeElement!, { key: "Escape", code: "Escape" });
+    fireEvent.keyUp(document.activeElement!, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(document.activeElement).toBe(opened));
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    fireEvent.keyDown(opened, { key: "Enter", code: "Enter" });
+    fireEvent.keyUp(document.activeElement!, { key: "Enter", code: "Enter" });
+    await screen.findByText("package main");
+    const back = screen.getByRole("button", { name: "Back to files" });
+    expect(document.activeElement).toBe(back);
+    expect(opened.isConnected).toBe(true);
+
+    fireEvent.keyDown(back, { key: "Enter", code: "Enter" });
+    // Happy DOM does not synthesize the native button's Enter click.
+    fireEvent.click(back);
+    fireEvent.keyUp(document.activeElement!, { key: "Enter", code: "Enter" });
+    await waitFor(() => expect(document.activeElement).toBe(opened));
+    expect(screen.getByRole("treeitem", { name: guide.name })).toBe(opened);
+    expect(opened.getAttribute("aria-current")).toBe("true");
+
+    fireEvent.keyDown(opened, { key: "ArrowUp", code: "ArrowUp" });
+    fireEvent.keyUp(document.activeElement!, { key: "ArrowUp", code: "ArrowUp" });
+    expect(document.activeElement).toBe(previous);
+    fireEvent.keyDown(previous, { key: "Home", code: "Home" });
+    fireEvent.keyUp(document.activeElement!, { key: "Home", code: "Home" });
+    expect(document.activeElement).toBe(folder);
+    expect(opened.getAttribute("aria-current")).toBe("true");
+    expect(readFile).toHaveBeenCalledExactlyOnceWith({ cwd: undefined, path: guide.path });
+    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ cwd: undefined });
+    act(() => draft.focus());
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe(value);
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+  });
+
   it("keeps the accepted tree, its cursor and focus through failed refreshes and retries", async () => {
     listFiles.mockImplementation(async (query) =>
       query.path ? [file] : [directory, readme, guide],
@@ -2245,6 +2307,87 @@ describe("file read refresh continuity", () => {
 
 describe("workspace file tree keyboard model", () => {
   const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
+
+  it("keeps navigation independent of a shortcut released after focus leaves the tree", () => {
+    const value = "  Keep the shortcut draft — 保留  ";
+    const onSelectFile = vi.fn();
+    mount(
+      <>
+        <textarea aria-label="Message" defaultValue={value} />
+        <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />
+      </>,
+    );
+    const folder = screen.getByRole("treeitem", { name: directory.name });
+    const next = screen.getByRole("treeitem", { name: readme.name });
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(7, 7);
+      folder.focus();
+    });
+
+    try {
+      fireEvent.keyDown(folder, { key: "l", code: "KeyL", metaKey: true });
+      act(() => draft.focus());
+      expect(fireEvent.keyDown(draft, { key: "ArrowDown", code: "ArrowDown" })).toBe(true);
+      fireEvent.keyUp(draft, { key: "ArrowDown", code: "ArrowDown" });
+      expect(document.activeElement).toBe(draft);
+      expect(folder.tabIndex).toBe(0);
+
+      act(() => folder.focus());
+      fireEvent.keyDown(folder, { key: "ArrowDown", code: "ArrowDown" });
+      fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown" });
+      expect(document.activeElement).toBe(next);
+      fireEvent.keyDown(next, { key: "Home", code: "Home" });
+      fireEvent.keyUp(document.activeElement!, { key: "Home", code: "Home" });
+      expect(document.activeElement).toBe(folder);
+      expect(screen.getByRole("treeitem", { name: directory.name })).toBe(folder);
+      expect(screen.getByRole("treeitem", { name: readme.name })).toBe(next);
+      expect(testClient.workspace.dock.store.getState().memory.lastFilePath).toBeNull();
+      expect(onSelectFile).not.toHaveBeenCalled();
+      expect(listFiles).not.toHaveBeenCalled();
+      act(() => draft.focus());
+      expect(draft.value).toBe(value);
+      expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+    } finally {
+      fireEvent.keyUp(document.activeElement!, { key: "l", code: "KeyL" });
+    }
+  });
+
+  it("leaves modified, composing and consumed navigation with its current owner", () => {
+    const onSelectFile = vi.fn();
+    mount(
+      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
+    );
+    const folder = screen.getByRole("treeitem", { name: directory.name });
+    act(() => folder.focus());
+
+    for (const extra of [
+      { altKey: true },
+      { ctrlKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { isComposing: true },
+      { keyCode: 229 },
+    ]) {
+      fireEvent.keyDown(folder, { key: "ArrowDown", code: "ArrowDown", ...extra });
+      fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown", ...extra });
+      expect(document.activeElement).toBe(folder);
+    }
+    const consumed = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      code: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    consumed.preventDefault();
+    act(() => folder.dispatchEvent(consumed));
+    fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown" });
+    expect(document.activeElement).toBe(folder);
+    expect(folder.tabIndex).toBe(0);
+    expect(onSelectFile).not.toHaveBeenCalled();
+    expect(listFiles).not.toHaveBeenCalled();
+  });
 
   it("activates a directory once across Space keydown and keyup", async () => {
     const onSelectFile = vi.fn();

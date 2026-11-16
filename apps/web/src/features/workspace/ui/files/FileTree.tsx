@@ -7,7 +7,6 @@ import {
   type FeatureImplementation,
   type ItemInstance,
   type TreeInstance,
-  hotkeysCoreFeature,
   selectionFeature,
   syncDataLoaderFeature,
 } from "@headless-tree/core";
@@ -391,34 +390,7 @@ export function FileTree({
           (entry) => entryId(entry.path),
         ),
     },
-    hotkeys: {
-      focusNextItem: { hotkey: "ArrowDown", isEnabled: ownsTreeFocus },
-      focusPreviousItem: { hotkey: "ArrowUp", isEnabled: ownsTreeFocus },
-      expandOrDown: {
-        hotkey: "ArrowRight",
-        isEnabled: ownsTreeFocus,
-        preventDefault: true,
-        handler: (_event, tree) => {
-          const item = tree.getFocusedItem();
-          if (!item.isFolder()) return;
-          if (!item.isExpanded()) {
-            item.expand();
-            return;
-          }
-          item.getChildren()[0]?.setFocused();
-          tree.updateDomFocus();
-        },
-      },
-      collapseOrUp: { hotkey: "ArrowLeft", isEnabled: ownsTreeFocus, preventDefault: true },
-      focusFirstItem: { hotkey: "Home", isEnabled: ownsTreeFocus, preventDefault: true },
-      focusLastItem: { hotkey: "End", isEnabled: ownsTreeFocus, preventDefault: true },
-      // Selection is the workspace's activated file; tree browsing never changes it.
-      toggleSelectedItem: { hotkey: "Control+Space", isEnabled: () => false },
-      selectUpwards: { hotkey: "Shift+ArrowUp", isEnabled: () => false },
-      selectDownwards: { hotkey: "Shift+ArrowDown", isEnabled: () => false },
-      selectAll: { hotkey: "Control+KeyA", isEnabled: () => false },
-    },
-    features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, domFocusFeature],
+    features: [syncDataLoaderFeature, selectionFeature, domFocusFeature],
   });
   tree.scheduleRebuildTree();
   const visible = tree.getItems();
@@ -472,11 +444,62 @@ export function FileTree({
   return (
     <div
       {...tree.getContainerProps(t("workspace.view.title.file"))}
+      role="tree"
       ref={bindRoot}
       tabIndex={-1}
       onFocus={(event) => {
         if (event.target === event.currentTarget)
           tree.getFocusedItem()?.getElement()?.focus({ preventScroll: true });
+      }}
+      onKeyDown={(event) => {
+        const item = tree.getFocusedItem();
+        if (
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent) ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          !ownsTreeFocus(tree) ||
+          event.target !== item?.getElement()
+        )
+          return;
+        switch (event.key) {
+          case "ArrowDown":
+            tree.focusNextItem();
+            break;
+          case "ArrowUp":
+            tree.focusPreviousItem();
+            break;
+          case "ArrowRight":
+            event.preventDefault();
+            if (!item.isFolder()) return;
+            if (!item.isExpanded()) {
+              item.expand();
+              return;
+            }
+            item.getChildren()[0]?.setFocused();
+            break;
+          case "ArrowLeft":
+            event.preventDefault();
+            if ((!item.isExpanded() || !item.isFolder()) && item.getItemMeta().level !== 0)
+              item.getParent()?.setFocused();
+            else {
+              item.collapse();
+              return;
+            }
+            break;
+          case "Home":
+            tree.getItems()[0]?.setFocused();
+            break;
+          case "End":
+            tree.getItems().at(-1)?.setFocused();
+            break;
+          default:
+            return;
+        }
+        event.preventDefault();
+        tree.updateDomFocus();
       }}
       {...stylex.props(ft.pad)}
     >

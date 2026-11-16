@@ -244,6 +244,41 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await page.keyboard.press("Escape");
       await expect(folder).toBeFocused();
       await expectAccessibleTree(page);
+
+      await page.keyboard.press("Meta+l");
+      const composer = page.getByRole("textbox", {
+        name: en["composer.input.label"]!,
+        exact: true,
+      });
+      await expect(composer).toBeFocused();
+      const prefix = "Keep this draft. ";
+      const suffix = "Continue here.";
+      await composer.fill(prefix + suffix);
+      for (let index = 0; index < suffix.length; index++) await composer.press("ArrowLeft");
+      const caret = () =>
+        composer.evaluate((node) => {
+          const input = node as HTMLTextAreaElement;
+          return [input.selectionStart, input.selectionEnd];
+        });
+      expect(await caret()).toEqual([prefix.length, prefix.length]);
+      await folder.click();
+      await expect(folder).toHaveAttribute("aria-expanded", "false");
+      await folder.press("ArrowDown");
+      const next = tree.getByRole("treeitem", { name: "go.mod", exact: true });
+      await expect(next).toBeFocused();
+      await next.press("Home");
+      await expect(folder).toBeFocused();
+      await folder.press("ArrowRight");
+      await expect(returned).toHaveAttribute("aria-current", "true");
+      await folder.press("End");
+      await expect(
+        tree.getByRole("treeitem", { name: "reading-callouts.md", exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press("Meta+l");
+      await expect(composer).toBeFocused();
+      expect(await caret()).toEqual([prefix.length, prefix.length]);
+      await page.keyboard.type("Returned. ");
+      await expect(composer).toHaveValue(prefix + "Returned. " + suffix);
     },
   );
 

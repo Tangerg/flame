@@ -20846,12 +20846,10 @@ verify fresh nonces, strict-dynamic without unsafe-eval, no-store and SAMEORIGIN
 This is captured-fixture UI acceptance, not live provider/Runtime execution,
 production startup, physical IME, VoiceOver audio or minimum browser/OS coverage.
 
-Follow-up evidence needs a separate baseline reproduction: Up/Home did not move
-the selected guide after the EN/ZH context-menu/read/Back sequences, while the
-same CUA Up key works in the fresh loading scene. The root hotkeys, leaf control
-and Back restoration paths are unchanged here. No new regression or cause is
-established; investigate key retirement and actual DOM/AX focus before changing
-that lifetime. Do not infer a general navigation or screen-reader approval.
+The subsequent **Native tree navigation after Composer focus** batch below
+resolves the Up/Home follow-up. Its native controls isolate Cmd+L focus transfer;
+context-menu/read/Back alone passes. This directory-feedback batch does not claim
+that later repair or a general navigation or screen-reader approval.
 
 All four native processes quit through CUA and join with exit 0. The preview's
 intentional SIGINT exits 130, and both Lab ports close. Exact registrations and
@@ -20867,6 +20865,112 @@ remains active.
 
 Compact evidence and cleanup receipt: **6,615 gzip bytes**, SHA-256
 `c80f4de918ea71b20a6b68289c925100d78f016478113e4635e58daf689491db`.
+
+### Native tree navigation after Composer focus (2026-11-17)
+
+Continued from main `ea6fb780a`; a fresh origin/main fetch before final delivery
+contains no additional commits. Native baseline controls correct the earlier
+menu hypothesis: guide → keyboard Back → Up/Home, Shift+F10 → Escape → Up, and
+pointer Composer → folder → Down all work before a shortcut transfers focus.
+Focused tree → Cmd+L → Composer → pointer folder → Down fails twice in EN and
+once in a fresh ZH instance, while native AX still identifies the focused folder.
+An unrelated `x` does not help; plain `l` immediately restores navigation in both
+locales.
+
+Pinned Headless Tree 1.8 records unhandled keydowns in its optional hotkeys core
+and requires an exact pressed-key set for navigation. Its document keyup/window
+focus lifetime can outlive the tree's current input task. The native controls and
+source support an unowned KeyL remaining in that set. Actual native keyup/code
+delivery is not instrumented, so this is not proof of which OS, browser or input
+tool boundary omitted or changed a release. Menu portals alone are not blamed.
+
+`src/features/workspace/ui/files/FileTree.tsx` removes that optional feature and
+its superseded hotkey configuration. The tree handles only its six plain
+navigation events through public Headless focus/expansion APIs. Current row DOM
+focus, event target and unconsumed/non-IME/unmodified input must agree. Up/Down,
+Home/End, folder expansion/first-child entry and collapse/parent return preserve
+the existing policy. The existing synchronous DOM-focus owner, roving tab stop,
+activated-file selection, query snapshot, Retry, menu, Enter/Space and return
+memory remain authoritative. No private library reset, listener, timer, new state,
+dependency, Runtime change or data migration is added.
+
+The better-accessibility keyboard/focus guidance and
+[W3C Tree View pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/)
+inform the owned navigation boundary. The
+[Radix Context Menu keyboard model](https://www.radix-ui.com/primitives/docs/components/context-menu#keyboard-interactions)
+informs the separate menu/Escape return task. Read-only ZCode
+`packages/ui/src/workspace-file-tree/WorkspaceFileTree.tsx` handles navigation
+from the current event key; its state, virtualization and all-row tab stops are
+not copied. Existing Flame typography, spacing, themes and motion remain intact.
+
+| Severity       | Location                                       | Before                                                                                     | After                                                                                               | Why                                                                         |
+| -------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| HIGH, repaired | `src/features/workspace/ui/files/FileTree.tsx` | After Cmd+L returns through Composer, an unrelated retained key can block tree navigation. | An owned plain navigation event advances the existing tree cursor independently of prior shortcuts. | Keyboard access, WCAG 2.1.1; focus and activation retain separate meanings. |
+
+Verification uses Node 24.22.2, npm 11.21.1, Go 1.27.4 and Wails 3.1.0:
+
+- The complete menu/read/Back control passes against the original source. Loading
+  that original owner through the normal Vitest transform produces **2 failing /
+  133 passing** tests for the new shortcut-lifetime and input-admission contracts.
+  Candidate and final FileWorkspace runs each pass **135 tests**. Regressions
+  check the same DOM rows, activated selection, no extra file I/O, unchanged draft
+  and middle caret, outside focus, modifiers, composition and consumed input.
+- All **16** canonical Chromium/WebKit interaction cases pass, with existing axe
+  checks enabled. The ready-tree case now uses real Cmd+L, pointer return, tree
+  navigation and middle-caret draft continuation. The first attempt has 14 passes
+  and two failures because macOS Home does not place the textarea caret; actual
+  ArrowLeft inputs correct that test setup without changing product editing.
+  No extra browser visual suite or performance benchmark runs.
+- Workspace Lab integration passes **15 tests**. Web typecheck and all **24**
+  other canonical Web checks pass. `make check-native` passes production staging,
+  native Go tests, vet/build and the Wails macOS 14 deployment build. Full frontend,
+  Runtime, shared-package and author-distribution suites are not newly run.
+- In the same EN/light/14px/Orange/motion-off Wails binary and process as the
+  baseline, Cmd+L → middle-draft edit → pointer folder → Down focuses go.mod.
+  All six navigation keys work. A child's exact-path keyboard menu, Escape,
+  source → keyboard Back and selected/focused return pass. The 93-line guide
+  retains its header and inset reader focus through PageDown and a two-page wheel
+  scroll; Back → Up reaches README. A second shortcut/return cycle passes and
+  continues `Keep this draft. Returned. Checked. Continue here.` at the old caret.
+- ZH/dark/18px/custom-blue/full-motion uses ordinary Window → Move & Resize → Left
+  at default zoom with a 363px Dock. The same shortcut/return succeeds twice.
+  Pointer child menu, Escape, source → keyboard Back, Left to the expanded parent,
+  guide reading and a two-page wheel scroll retain the task and visible focus.
+  Back → Up reaches README; the original middle caret continues
+  `保留草稿，返回后仍可继续核对文件。`.
+
+Native acceptance freezes **490** Lab artifacts and **6,856** non-Markdown inputs.
+The only later source change explicitly writes the same `role="tree"` already
+returned by the public container-props API, so static accessibility lint can see
+the role. Removing that one equivalent attribute restores the exact accepted
+FileTree bytes; all other **6,855** inputs remain identical. Derived-role syntax
+also failed lint before this correction; no check is suppressed. Final focused,
+type, Web and native-build checks run after the explicit role is authored.
+
+The private native URL overlays select the canonical captured Workspace scene;
+the Go sources, binaries and services stay the same across baseline/candidate.
+This qualifies real CUA mouse, keyboard, focus, scrolling and window tasks in
+Wails, with preserved drafts and themes. Physical hardware key delivery, actual
+keyup traces, physical IME, VoiceOver audio, minimum OS/browser combinations,
+live Runtime/provider execution and production startup are not qualified.
+
+Both native apps quit through CUA and join with exit 0. Their registrations and
+all **16** reserved app/profile/Library roots are absent after removing **780**
+UID-501 nodes. Both Lab ports close after intentional preview SIGINT (exit 130).
+All **13** initially absent build/cache roots are removed: **7,463** owned nodes.
+The exact private root `flame-tree-key-release-vfn28k31`, including its browser
+cache, is removed after receipt transfer: **7,214** nodes and **40** symlinks
+unlinked without following targets. Every removed node belongs to UID 501.
+Dependencies, shared caches, user data, read-only references and unrelated
+worktrees remain intact.
+
+Compact evidence retains **43,409 gzip bytes**, SHA-256 of the gzip bytes
+`fc607b076b74ba60fff30bbf2f957b6bd540c42d805a610cad93a4f38fadc117`.
+Verdict: **Approve** for this inspected tree/Composer/read/return task. The prior
+navigation follow-up is closed. Typography, whitespace, hierarchy, color, motion
+and responsive behavior retain their existing treatment in these scenes; this is
+not whole-product award-level acceptance. The UI goal remains active; another
+repair requires fresh task evidence rather than repeating this resolved finding.
 
 ### Full-width material switching
 
