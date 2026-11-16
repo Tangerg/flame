@@ -491,6 +491,7 @@ test("files browse and preview share one dock tab", async ({ page }) => {
   await dock.getByRole("treeitem", { name: fileName, exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
   await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
+  await expect(dock.getByRole("button", { name: "Go to line", exact: true })).toBeVisible();
   const back = dock.getByRole("button", { name: "Back to files" });
   await expect(back).toBeFocused();
   await page.keyboard.press("Tab");
