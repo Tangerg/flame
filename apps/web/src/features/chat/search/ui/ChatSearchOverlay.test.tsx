@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
 import { openChatSearch } from "@/features/chat/search/application/openChatSearch";
 import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
-import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
+import { AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
 import {
   StreamFollowProvider,
   usePublishStreamFollow,
@@ -112,8 +112,17 @@ function renderSearch() {
 }
 
 function RetainedDisclosure({ open, children }: { open: boolean; children: ReactNode }) {
-  const revealed = useDisclosedContent(open);
-  return <Collapsible open={open}>{revealed ? children : null}</Collapsible>;
+  return (
+    <AgentActivityDisclosure
+      icon="file-text"
+      shell="line"
+      label="Searchable activity"
+      open={open}
+      onOpenChange={() => {}}
+    >
+      {children}
+    </AgentActivityDisclosure>
+  );
 }
 
 function DisclosedSearchFixture({ outer, inner }: { outer: boolean; inner: boolean }) {

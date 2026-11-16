@@ -13,12 +13,53 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient } from "@flame/runtime-client";
-import { type Diff, type FileStatus, type GetDiffRequest } from "@flame/runtime-client/wire";
+import {
+  type Diff as WireDiff,
+  type FileStatus,
+  type GetDiffRequest,
+} from "@flame/runtime-client/wire";
 import { WorkspaceDiff } from "../../../../plugins/diff/component/component";
+// Worker preparation and native selection run in the real browser suite.
+vi.mock("../../../../plugins/diff/component/PreparedDiff", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../../plugins/diff/component/PreparedDiff")>();
+  const { FileDiff } = await import("@pierre/diffs/react");
+  return {
+    ...actual,
+    PreparedDiff: ({ file, options }: Parameters<typeof actual.PreparedDiff>[0]) => (
+      <FileDiff
+        fileDiff={file}
+        options={{ ...options, ...actual.DIFF_RENDERING_OPTIONS }}
+        disableWorkerPool
+      />
+    ),
+  };
+});
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
-import { ACTIVE_DIFF_FILE, REVIEW_DIFF, scaledReview } from "./diffSnapshot";
+import {
+  ACTIVE_DIFF_FILE,
+  REVIEW_DIFF,
+  reviewDiff,
+  scaledReview,
+  visualRead,
+} from "./diffSnapshot";
+type Diff = Extract<WireDiff, { type: "visual" }>;
+const SDK_PATH = REVIEW_DIFF.visual.manifest[1]!.path;
+function partialRead(read: Diff): Diff {
+  return { ...read, visual: { ...read.visual, truncated: true } };
+}
+const NO_COMPLETE_FILE: Diff = {
+  ...REVIEW_DIFF,
+  visual: {
+    ...REVIEW_DIFF.visual,
+    patch: "",
+    manifest: [],
+    truncated: true,
+    budget: { ...REVIEW_DIFF.visual.budget, rows: 1 },
+  },
+};
 const releases: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
@@ -33,10 +74,7 @@ function mountDiff(
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff> = async (
     _signal,
     request,
-  ) => ({
-    ...REVIEW_DIFF,
-    files: REVIEW_DIFF.files?.filter((file) => !request?.path || file.path === request.path),
-  }),
+  ) => reviewDiff({ path: request?.path }),
   locale = "en",
 ) {
   const owner = new AbortController();
@@ -182,12 +220,12 @@ it("keeps the original pending scoped diff read through a display-language chang
     expect(originalSignal.aborted).toBe(false);
     expect(owner.signal.aborted).toBe(false);
     expect(get).toHaveBeenCalledExactlyOnceWith(
-      { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+      { mode: "worktree", format: "visual", path: ACTIVE_DIFF_FILE },
       originalSignal,
     );
     expect(screen.getByText("正在读取未提交的更改…")).toBeTruthy();
     expect(document.activeElement).toBe(outside);
-    await act(async () => accepted.resolve({ ...REVIEW_DIFF, files: [REVIEW_DIFF.files![0]!] }));
+    await act(async () => accepted.resolve(reviewDiff({ path: ACTIVE_DIFF_FILE })));
     expect(screen.getByRole("region", { name: `${ACTIVE_DIFF_FILE} 中的更改` })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
     expect(document.activeElement).toBe(outside);
@@ -241,25 +279,25 @@ it.each([
 );
 
 it("reads a source-targeted file outside the workspace page and explicitly requests the overview", async () => {
-  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => ({
-    ...REVIEW_DIFF,
-    files: request?.path === ACTIVE_DIFF_FILE ? [REVIEW_DIFF.files![0]!] : [REVIEW_DIFF.files![1]!],
-    truncated: request?.path === undefined,
-  }));
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> =>
+    request?.path
+      ? reviewDiff({ path: request.path })
+      : partialRead(reviewDiff({ path: SDK_PATH })),
+  );
   const { get } = mountDiff(`/Users/visual/scope/${ACTIVE_DIFF_FILE}`, read);
   await loaded();
 
   expect(get).toHaveBeenCalledWith(
-    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+    { mode: "worktree", format: "visual", path: ACTIVE_DIFF_FILE },
     expect.any(AbortSignal),
   );
   expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
 
   await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows" },
+    { mode: "worktree", format: "visual" },
     expect.any(AbortSignal),
   );
   await screen.findByRole("heading", { name: "1 included file" });
@@ -267,38 +305,17 @@ it("reads a source-targeted file outside the workspace page and explicitly reque
   expect(screen.getByRole("note").textContent).toContain("Partial diff");
 });
 
-const BOUNDED_PATCH = `diff --git a/${ACTIVE_DIFF_FILE} b/${ACTIVE_DIFF_FILE}\n--- a/${ACTIVE_DIFF_FILE}\n+++ b/${ACTIVE_DIFF_FILE}\n@@ -1 +1 @@\n-old value\n+accepted patch value\n`;
-
-it("continues a row-bounded target through the existing raw read and returns to workspace files", async () => {
-  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
-    if (request?.format === "raw") return { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH };
-    if (request?.path) return { baseline: REVIEW_DIFF.baseline, truncated: true };
-    return { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!], truncated: true };
-  });
-  const { get, outsideEscape } = mountDiff(ACTIVE_DIFF_FILE, read);
+it("shows an honest zero-file budget result without supplementary reads", async () => {
+  const { get } = mountDiff(ACTIVE_DIFF_FILE, async () => NO_COMPLETE_FILE);
   await loaded();
+  expect(screen.getByText("No complete file fits this read’s budget.")).toBeTruthy();
+  expect(screen.getByRole("note").textContent).toContain("Partial diff");
   expect(screen.queryByText("No changes in this comparison.")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
-
-  const patch = await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
-  expect(patch.textContent).toContain("accepted patch value");
-  expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "raw", path: ACTIVE_DIFF_FILE },
+  expect(screen.queryByRole("button", { name: "Read patch" })).toBeNull();
+  expect(get).toHaveBeenCalledExactlyOnceWith(
+    { mode: "worktree", format: "visual", path: ACTIVE_DIFF_FILE },
     expect.any(AbortSignal),
   );
-  const heading = screen.getByRole<HTMLElement>("heading", { name: "DockResizer.tsx" });
-  expect(document.activeElement).toBe(heading);
-  expect(screen.queryByText("Modified")).toBeNull();
-  fireEvent.keyDown(heading, { key: "Escape" });
-  expect(outsideEscape).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
-
-  await screen.findByRole("heading", { name: "1 included file" });
-  expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows" },
-    expect.any(AbortSignal),
-  );
-  expect(screen.queryByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` })).toBeNull();
 });
 
 it("keeps the accepted scope, baseline and read time beside a reader after a failed comparison", async () => {
@@ -333,78 +350,34 @@ it("keeps the accepted scope, baseline and read time beside a reader after a fai
   expect(controls.querySelector("time")?.dateTime).toBe(next);
 });
 
-it("retains a bounded target after a byte-bounded patch failure and retries the same scope", async () => {
-  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
-    if (request?.format === "raw") throw new Error("Workspace diff result exceeds the byte limit");
-    return { baseline: REVIEW_DIFF.baseline, truncated: true };
-  });
+it("retains a bounded visual target after a read failure and retries the same scope", async () => {
+  const read = vi.fn(async () => NO_COMPLETE_FILE);
   const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
   await loaded();
   const at = document.querySelector("time")!.dateTime;
-  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
+  read.mockRejectedValueOnce(new Error("Workspace diff result exceeds the byte limit"));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   const error = await screen.findByRole("alert");
   expect(error.textContent).toContain("byte limit");
   expect(document.querySelector("time")!.dateTime).toBe(at);
   expect(screen.getByRole("note").textContent).toContain("Partial diff");
   expect(screen.queryByText("No changes in this comparison.")).toBeNull();
-  read.mockResolvedValueOnce({ baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH });
+  read.mockResolvedValueOnce(reviewDiff({ path: ACTIVE_DIFF_FILE }));
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-  await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
+  fireEvent.click(await screen.findByRole("button", { name: /^DockResizer.tsx / }));
+  await screen.findByRole("heading", { name: "DockResizer.tsx" });
   expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "raw", path: ACTIVE_DIFF_FILE },
+    { mode: "worktree", format: "visual", path: ACTIVE_DIFF_FILE },
     expect.any(AbortSignal),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Show structured diff" }));
-  await screen.findByRole("button", { name: "Read patch" });
-  expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
-    expect.any(AbortSignal),
-  );
+  expect(get).toHaveBeenCalledTimes(3);
 });
-
-it.each([
-  ["en", "Read patch", "Copy patch", "Enable word wrap", "Disable word wrap"],
-  ["zh", "阅读补丁", "复制补丁", "启用自动换行", "关闭自动换行"],
-  ["zh-TW", "閱讀修補檔", "複製修補檔", "啟用自動換行", "關閉自動換行"],
-  ["ja", "パッチを読む", "パッチをコピー", "折り返しを有効にする", "折り返しを無効にする"],
-  ["ko", "패치 읽기", "패치 복사", "자동 줄 바꿈 사용", "자동 줄 바꿈 사용 안 함"],
-  ["es", "Leer parche", "Copiar parche", "Activar ajuste de línea", "Desactivar ajuste de línea"],
-  [
-    "fr",
-    "Lire le patch",
-    "Copier le patch",
-    "Activer le retour à la ligne",
-    "Désactiver le retour à la ligne",
-  ],
-  ["de", "Patch lesen", "Patch kopieren", "Zeilenumbruch aktivieren", "Zeilenumbruch deaktivieren"],
-])(
-  "names patch actions in %s and keeps wrapping state observable",
-  async (locale, open, copy, wrap, unwrap) => {
-    mountDiff(
-      ACTIVE_DIFF_FILE,
-      async (_signal, request) =>
-        request?.format === "raw"
-          ? { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH }
-          : { baseline: REVIEW_DIFF.baseline, truncated: true },
-      locale,
-    );
-    fireEvent.click(await screen.findByRole("button", { name: open }));
-    await screen.findByRole("button", { name: copy });
-    const enable = screen.queryByRole("button", { name: wrap });
-    const toggle = enable ?? screen.getByRole("button", { name: unwrap });
-    const next = enable ? unwrap : wrap;
-    expect(toggle.getAttribute("aria-pressed")).toBeNull();
-    fireEvent.click(toggle);
-    expect(screen.getByRole("button", { name: next })).toBe(toggle);
-    fireEvent.click(toggle);
-  },
-);
 
 it("leaves later focus alone while the source reader requests the workspace overview", async () => {
   let release!: (value: Diff) => void;
   const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
     if (!request?.path) return new Promise((resolve) => (release = resolve));
-    return { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![0]!] };
+    return reviewDiff({ path: ACTIVE_DIFF_FILE });
   });
   mountDiff(ACTIVE_DIFF_FILE, read);
   await loaded();
@@ -450,24 +423,21 @@ it("keeps full read feedback in the scrolling content with a compact persistent 
 it("retries an explicit workspace read after it fails while retaining an accepted patch", async () => {
   let workspaceReads = 0;
   const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
-    if (request?.format === "raw") return { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH };
-    if (request?.path) return { baseline: REVIEW_DIFF.baseline, truncated: true };
+    if (request?.path) return reviewDiff({ path: request.path });
     if (++workspaceReads === 1) throw new Error("Workspace read unavailable");
     return REVIEW_DIFF;
   });
   const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
   await loaded();
-  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
-  await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
   const at = document.querySelector("time")!.dateTime;
   fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
   await screen.findByRole("alert");
-  expect(screen.getByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /^DockResizer.tsx / })).toBeTruthy();
   expect(document.querySelector("time")!.dateTime).toBe(at);
   fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
   await screen.findByRole("heading", { name: "2 changed files" });
   expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows" },
+    { mode: "worktree", format: "visual" },
     expect.any(AbortSignal),
   );
   expect(workspaceReads).toBe(2);
@@ -477,9 +447,9 @@ it("retries an explicit workspace read after it fails while retaining an accepte
 it("starts a general review at its overview and gives each navigation depth a distinct return", async () => {
   const { get, outsideEscape } = mountDiff();
   await loaded();
-  expect(get).toHaveBeenCalledWith({ mode: "worktree", format: "rows" }, expect.any(AbortSignal));
+  expect(get).toHaveBeenCalledWith({ mode: "worktree", format: "visual" }, expect.any(AbortSignal));
   expect(screen.getByRole("heading", { name: "2 changed files" })).toBeTruthy();
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   expect(screen.queryByRole("combobox", { name: "Diff layout" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Expand all" })).toBeNull();
   const scope = screen.getByRole("group", { name: "Comparison scope" });
@@ -487,7 +457,7 @@ it("starts a general review at its overview and gives each navigation depth a di
   expect(scope.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: /^DockResizer.tsx / }));
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(
     screen.getByRole("region", { name: `Scrollable diff for ${ACTIVE_DIFF_FILE}` }),
   ).toBeTruthy();
@@ -495,11 +465,11 @@ it("starts a general review at its overview and gives each navigation depth a di
   fireEvent.click(screen.getByRole("button", { name: "Next file" }));
   const heading = screen.getByRole<HTMLElement>("heading", { name: "session.go" });
   expect(document.activeElement).toBe(heading);
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Next file" }).disabled).toBe(true);
   fireEvent.keyDown(heading, { key: "Escape" });
   expect(outsideEscape).not.toHaveBeenCalled();
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   const current = screen.getByRole<HTMLElement>("button", { name: /^session.go / });
   expect(current.getAttribute("aria-current")).toBe("true");
   expect(document.activeElement).toBe(current);
@@ -591,7 +561,7 @@ it("opens a requested file directly while keeping complete paths in the list and
   const { outsideEscape } = mountDiff(`/Users/visual/scope/${ACTIVE_DIFF_FILE}`);
   await loaded();
   expect(screen.queryByRole("searchbox", { name: "Filter files" })).toBeNull();
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(
     screen.getByRole("region", { name: `Changes in ${ACTIVE_DIFF_FILE}` }).textContent,
   ).toContain(ACTIVE_DIFF_FILE);
@@ -599,7 +569,7 @@ it("opens a requested file directly while keeping complete paths in the list and
   heading.focus();
   fireEvent.keyDown(heading, { key: "Escape" });
   expect(outsideEscape).toHaveBeenCalledOnce();
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
   const row = screen.getByRole<HTMLElement>("button", { name: /^DockResizer.tsx / });
   expect(row.title).toBe(ACTIVE_DIFF_FILE);
@@ -611,30 +581,26 @@ it("shows each complete path in the scrolling reader while the filename stays in
   const segments = Array.from({ length: 7 }, (_, index) => `level-${index}-${"d".repeat(39)}`);
   const directory = segments.join("/");
   const nested = `${directory}/${name}`;
-  const diff: Diff = {
-    baseline: { type: "head", commit: "c".repeat(40) },
-    files: [
+  const diff = visualRead(
+    [
       {
-        path: nested,
-        status: "modified",
-        added: 1,
-        removed: 0,
-        rows: [
-          { type: "hunk", text: "@@ -1,0 +1,1 @@" },
-          { type: "added", rightLine: 1, code: "export {};" },
-        ],
+        change: { path: nested, status: "modified", added: 1, removed: 0 },
+        body: ["@@ -0,0 +1 @@", "+export {};"],
       },
-      { path: "logo.png", status: "added", binary: true, rows: [] },
+      { change: { path: "logo.png", status: "added", binary: true }, body: [] },
       {
-        path: "docs/new.md",
-        previousPath: "docs/old.md",
-        status: "renamed",
-        added: 0,
-        removed: 0,
-        rows: [],
+        change: {
+          path: "docs/new.md",
+          previousPath: "docs/old.md",
+          status: "renamed",
+          added: 0,
+          removed: 0,
+        },
+        body: [],
       },
     ],
-  };
+    { type: "head", commit: "c".repeat(40) },
+  );
   mountDiff(nested, async () => diff);
   await loaded();
 
@@ -689,31 +655,34 @@ it("preserves query and focus when a refreshed file leaves the comparison", asyn
   mountDiff(ACTIVE_DIFF_FILE, async () => result);
   await loaded();
   screen.getByRole<HTMLElement>("heading", { name: "DockResizer.tsx" }).focus();
-  result = { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!] };
+  result = reviewDiff({ path: SDK_PATH });
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   await screen.findByText(/The requested file is not included in this read/);
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   const search = screen.getByRole("searchbox", { name: "Filter files" });
   expect(document.activeElement).toBe(search);
   expect(screen.getByRole("heading", { name: "1 changed file" })).toBeTruthy();
 });
 
 it("keeps partial, binary, rename and metadata-only states distinct from a clean comparison", async () => {
-  const diff: Diff = {
-    baseline: { type: "emptyTree" },
-    truncated: true,
-    files: [
-      { path: "assets/图标.png", status: "added", binary: true, rows: [] },
-      {
-        path: "docs/new.md",
-        previousPath: "docs/old.md",
-        status: "renamed",
-        added: 0,
-        removed: 0,
-        rows: [],
-      },
-    ],
-  };
+  const diff = partialRead(
+    visualRead(
+      [
+        { change: { path: "assets/图标.png", status: "added", binary: true }, body: [] },
+        {
+          change: {
+            path: "docs/new.md",
+            previousPath: "docs/old.md",
+            status: "renamed",
+            added: 0,
+            removed: 0,
+          },
+          body: [],
+        },
+      ],
+      { type: "emptyTree" },
+    ),
+  );
   mountDiff("missing.ts", async () => diff);
   await loaded();
   expect(screen.getByRole("note").textContent).toContain("Partial diff");
@@ -724,7 +693,7 @@ it("keeps partial, binary, rename and metadata-only states distinct from a clean
   expect(
     screen.getByText("Binary content is not displayed. Line counts are unavailable."),
   ).toBeTruthy();
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   expect(screen.queryByRole("combobox", { name: "Diff layout" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Next file" }));
   expect(screen.getByText(/Renamed from/).textContent).toContain("docs/old.md");
@@ -732,52 +701,34 @@ it("keeps partial, binary, rename and metadata-only states distinct from a clean
   expect(screen.queryByRole("combobox", { name: "Diff layout" })).toBeNull();
 });
 
-const STATUS_DIFF: Diff = {
-  baseline: { type: "head", commit: "d".repeat(40) },
-  files: [
+const STATUS_DIFF = visualRead(
+  [
     {
-      path: "src/created.ts",
-      status: "added",
-      added: 2,
-      removed: 0,
-      rows: [
-        { type: "hunk", text: "@@ -0,0 +1,2 @@" },
-        { type: "added", rightLine: 1, code: "export const created = true;" },
-        { type: "added", rightLine: 2, code: "export default created;" },
-      ],
+      change: { path: "src/created.ts", status: "added", added: 2, removed: 0 },
+      body: ["@@ -0,0 +1,2 @@", "+export const created = true;", "+export default created;"],
     },
     {
-      path: "src/changed.ts",
-      status: "modified",
-      added: 1,
-      removed: 1,
-      rows: [
-        { type: "hunk", text: "@@ -1,1 +1,1 @@" },
-        { type: "deleted", leftLine: 1, code: "export const value = 1;" },
-        { type: "added", rightLine: 1, code: "export const value = 2;" },
-      ],
+      change: { path: "src/changed.ts", status: "modified", added: 1, removed: 1 },
+      body: ["@@ -1 +1 @@", "-export const value = 1;", "+export const value = 2;"],
     },
     {
-      path: "src/removed.ts",
-      status: "deleted",
-      added: 0,
-      removed: 1,
-      rows: [
-        { type: "hunk", text: "@@ -1,1 +0,0 @@" },
-        { type: "deleted", leftLine: 1, code: "export {};" },
-      ],
+      change: { path: "src/removed.ts", status: "deleted", added: 0, removed: 1 },
+      body: ["@@ -1 +0,0 @@", "-export {};"],
     },
     {
-      path: "docs/new.md",
-      previousPath: "docs/old.md",
-      status: "renamed",
-      added: 0,
-      removed: 0,
-      rows: [],
+      change: {
+        path: "docs/new.md",
+        previousPath: "docs/old.md",
+        status: "renamed",
+        added: 0,
+        removed: 0,
+      },
+      body: [],
     },
-    { path: "assets/draft.png", status: "untracked", binary: true, rows: [] },
+    { change: { path: "assets/draft.png", status: "untracked", binary: true }, body: [] },
   ],
-};
+  { type: "head", commit: "d".repeat(40) },
+);
 const STATUS_COUNTS = ["+2 −0", "+1 −1", "+0 −1", "+0 −0", null];
 const STATUS_LABELS: Record<string, Record<FileStatus, string>> = {
   en: {
@@ -844,11 +795,11 @@ it.each(Object.entries(STATUS_LABELS))(
     const { get } = mountDiff("", async () => STATUS_DIFF, locale);
     const rows = await waitFor(() => {
       const found = Array.from(document.querySelectorAll<HTMLElement>("[data-diff-file]"));
-      expect(found).toHaveLength(STATUS_DIFF.files!.length);
+      expect(found).toHaveLength(STATUS_DIFF.visual.manifest.length);
       return found;
     });
 
-    for (const [index, file] of STATUS_DIFF.files!.entries()) {
+    for (const [index, file] of STATUS_DIFF.visual.manifest.entries()) {
       const label = labels[file.status];
       const row = rows[index]!;
       expect(row.dataset.diffFile).toBe(file.path);
@@ -886,8 +837,9 @@ it.each(Object.entries(STATUS_LABELS))(
     }
 
     expect(get).toHaveBeenCalledOnce();
-    const read: Diff = await get.mock.results[0]!.value;
-    expect(read.files!.map((file) => [file.status, file.previousPath])).toEqual([
+    const read: WireDiff = await get.mock.results[0]!.value;
+    if (read.type !== "visual") throw new Error("Expected the accepted visual read");
+    expect(read.visual.manifest.map((file) => [file.status, file.previousPath])).toEqual([
       ["added", undefined],
       ["modified", undefined],
       ["deleted", undefined],
@@ -936,7 +888,7 @@ it("retires superseded reads without replacing the newer comparison", async () =
   await comparison("Branch changes");
   await screen.findByText("Showing branch changes.");
   expect(oldSignal.aborted).toBe(true);
-  await act(async () => stale.resolve({ baseline: { type: "emptyTree" } }));
+  await act(async () => stale.resolve({ ...REVIEW_DIFF, baseline: { type: "emptyTree" } }));
   expect(screen.getByRole("heading", { name: "2 changed files" })).toBeTruthy();
   expect(screen.getByText("Showing branch changes.")).toBeTruthy();
 });
@@ -1028,12 +980,12 @@ it("lets Escape from a pending Refresh return a list-opened file to its filtered
   expect((await screen.findByRole("tooltip")).textContent).toBe("Refresh");
   fireEvent.keyDown(refresh, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(outsideEscape).not.toHaveBeenCalled();
 
   fireEvent.keyDown(refresh, { key: "Escape" });
   expect(outsideEscape).not.toHaveBeenCalled();
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   expect(screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" }).value).toBe(
     "session",
   );
@@ -1045,7 +997,7 @@ it("lets Escape from a pending Refresh return a list-opened file to its filtered
   await act(async () => held.resolve(REVIEW_DIFF));
   await loaded();
   expect(get).toHaveBeenCalledTimes(2);
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   expect(screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" }).value).toBe(
     "session",
   );
@@ -1073,12 +1025,12 @@ it("leaves Escape from a pending Refresh on a directly opened file to the source
   expect((await screen.findByRole("tooltip")).textContent).toBe("Refresh");
   fireEvent.keyDown(refresh, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(outsideEscape).not.toHaveBeenCalled();
 
   fireEvent.keyDown(refresh, { key: "Escape" });
   expect(outsideEscape).toHaveBeenCalledOnce();
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(screen.getByRole("button", { name: "Show changed files" })).toBeTruthy();
   expect(screen.queryByRole("searchbox", { name: "Filter files" })).toBeNull();
   expect(document.activeElement).toBe(refresh);
@@ -1087,7 +1039,7 @@ it("leaves Escape from a pending Refresh on a directly opened file to the source
   await act(async () => held.resolve(REVIEW_DIFF));
   await loaded();
   expect(get).toHaveBeenCalledTimes(2);
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(document.activeElement).toBe(refresh);
   expect(outsideEscape).toHaveBeenCalledOnce();
 });
@@ -1106,9 +1058,9 @@ it("leaves a later outside focus choice when a pending refresh drops the selecte
   await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
   outside.focus();
-  await act(async () => held.resolve({ ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!] }));
+  await act(async () => held.resolve(reviewDiff({ path: SDK_PATH })));
   await screen.findByText(/The requested file is not included in this read/);
-  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByRole("region", { name: /^Scrollable diff for / })).toBeNull();
   expect(document.activeElement).toBe(outside);
 });
 
@@ -1122,7 +1074,7 @@ async function retireFilesAfterFailedTarget(workspaceReads: Array<PromiseWithRes
     "Could not read uncommitted changes: Visual fixture could not load the workspace diff",
   );
   expect(mounted.get).toHaveBeenCalledWith(
-    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+    { mode: "worktree", format: "visual", path: ACTIVE_DIFF_FILE },
     expect.any(AbortSignal),
   );
   const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
@@ -1133,7 +1085,7 @@ async function retireFilesAfterFailedTarget(workspaceReads: Array<PromiseWithRes
 
   await waitFor(() => expect(mounted.get).toHaveBeenCalledTimes(2));
   expect(mounted.get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows" },
+    { mode: "worktree", format: "visual" },
     expect.any(AbortSignal),
   );
   expect(files.isConnected).toBe(false);
@@ -1164,7 +1116,7 @@ it("hands a retired Files action to the pending Refresh and keeps it after the w
   fireEvent.click(refresh);
   await waitFor(() => expect(get).toHaveBeenCalledTimes(3));
   expect(get).toHaveBeenLastCalledWith(
-    { mode: "worktree", format: "rows" },
+    { mode: "worktree", format: "visual" },
     expect.any(AbortSignal),
   );
   expect(document.activeElement).toBe(refresh);
@@ -1182,7 +1134,7 @@ it.each([
   ],
   [
     "the filter",
-    { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!] },
+    reviewDiff({ path: SDK_PATH }),
     () => screen.getByRole("searchbox", { name: "Filter files" }),
   ],
 ])(
@@ -1243,6 +1195,50 @@ it("dismisses a layout popup before consuming a file-list return", async () => {
   fireEvent.keyDown(options, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getAllByRole("region", { name: /^Scrollable diff for / })).toHaveLength(1);
   expect(outsideEscape).not.toHaveBeenCalled();
 });
+
+it.each([
+  [
+    "missing manifest",
+    (read: Diff): Diff => ({ ...read, visual: { ...read.visual, manifest: [] } }),
+  ],
+  ["missing patch", (read: Diff): Diff => ({ ...read, visual: { ...read.visual, patch: "" } })],
+  [
+    "incomplete hunk",
+    (read: Diff): Diff => ({
+      ...read,
+      visual: {
+        ...read.visual,
+        patch: read.visual.patch.replace("@@ -104,8 +104,20 @@", "@@ -104,8 +104,200 @@"),
+      },
+    }),
+  ],
+  [
+    "different path",
+    (read: Diff): Diff => ({
+      ...read,
+      visual: {
+        ...read.visual,
+        manifest: read.visual.manifest.map((file) => ({ ...file, path: "wrong.ts" })),
+      },
+    }),
+  ],
+] as const)(
+  "retains the accepted visual read when a new response has %s",
+  async (_label, corrupt) => {
+    let result = reviewDiff({ path: ACTIVE_DIFF_FILE });
+    const read = vi.fn(async () => result);
+    const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
+    await loaded();
+    const at = document.querySelector("time")!.dateTime;
+    result = corrupt(result);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await screen.findByRole("alert");
+    expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
+    expect(document.querySelector("time")!.dateTime).toBe(at);
+    expect(screen.queryByText("No changes in this comparison.")).toBeNull();
+    expect(get).toHaveBeenCalledTimes(2);
+  },
+);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { type ToolCall } from "@/features/agent/public/sessionView";
@@ -32,7 +32,7 @@ function denied(args: string): ToolCall {
 
 function Record({ Row, tool }: { Row: typeof ToolCard; tool: ToolCall }) {
   const [expanded, setExpanded] = useState(false);
-  return <Row tool={tool} expanded={expanded} onToggleExpand={() => setExpanded(!expanded)} />;
+  return <Row tool={tool} expanded={expanded} onExpandedChange={setExpanded} />;
 }
 
 describe("recorded denied Tool arguments", () => {
@@ -54,7 +54,7 @@ describe("recorded denied Tool arguments", () => {
 
       fireEvent.click(summary);
       expect(summary.getAttribute("aria-expanded")).toBe("false");
-      expect(reader.isConnected && !reader.closest("[inert]")).toBe(false);
+      await waitFor(() => expect(screen.queryByRole("region", { name: "Arguments" })).toBeNull());
     },
   );
 
@@ -67,7 +67,7 @@ describe("recorded denied Tool arguments", () => {
 
   it.each(rows)("keeps a %s denied record without parameters static", (_, Row) => {
     const { container } = client.render(
-      <Row tool={denied("")} expanded onToggleExpand={() => {}} />,
+      <Row tool={denied("")} expanded onExpandedChange={() => {}} />,
     );
     expect(screen.getByText("denied")).toBeTruthy();
     expect(container.querySelector("[aria-expanded]")).toBeNull();

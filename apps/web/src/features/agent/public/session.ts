@@ -4,6 +4,7 @@ export {
   useActiveSessionId,
   resolvedWorkspaceCwd,
   isWorkspaceResolving,
+  type ActiveSessionWorkspaceSelection,
 } from "@/features/agent/application/session/activeSession";
 export { type AgentOpenSessions } from "@/features/agent/application/session/sessionSelectionModel";
 export { useReconcilePersistedAgentSessions } from "@/features/agent/application/session/sessionList";

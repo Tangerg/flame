@@ -10,8 +10,6 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcError } from "@flame/runtime-client";
 import { useCommandAction } from "@/features/command/public/commandAction";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
-vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), message: vi.fn() } }));
 
 class Retired extends Error {}
 
@@ -34,7 +32,7 @@ function Harness({
 
 describe("useCommandAction", () => {
   beforeEach(() => {
-    useNotificationStore.getState().clearAll();
+    testClient.messages.clearAll();
   });
 
   it("runs one command at a time even when the caller renders no disabled state", () => {
@@ -74,7 +72,7 @@ describe("useCommandAction", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
     });
-    expect(useNotificationStore.getState().log.at(-1)?.message).toContain("runtime said no");
+    expect(testClient.messages.snapshot().at(-1)?.message).toContain("runtime said no");
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
@@ -90,7 +88,7 @@ describe("useCommandAction", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
     });
-    expect(useNotificationStore.getState().log.at(-1)?.message).toBe("could not do it");
+    expect(testClient.messages.snapshot().at(-1)?.message).toBe("could not do it");
   });
 
   it("stays quiet when the owner retired the command", async () => {
@@ -99,7 +97,7 @@ describe("useCommandAction", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
     });
-    expect(useNotificationStore.getState().log).toHaveLength(0);
+    expect(testClient.messages.snapshot()).toHaveLength(0);
   });
 
   it("hands the failure to the task that renders it instead of notifying", async () => {
@@ -116,7 +114,7 @@ describe("useCommandAction", () => {
     });
     expect(onError).toHaveBeenCalledOnce();
     expect(onError).toHaveBeenCalledWith("runtime said no");
-    expect(useNotificationStore.getState().log).toHaveLength(0);
+    expect(testClient.messages.snapshot()).toHaveLength(0);
     expect(screen.getByRole("button").getAttribute("aria-busy")).toBe("false");
 
     await act(async () => {
@@ -135,6 +133,6 @@ describe("useCommandAction", () => {
       fireEvent.click(screen.getByRole("button"));
     });
     expect(onError).not.toHaveBeenCalled();
-    expect(useNotificationStore.getState().log).toHaveLength(0);
+    expect(testClient.messages.snapshot()).toHaveLength(0);
   });
 });

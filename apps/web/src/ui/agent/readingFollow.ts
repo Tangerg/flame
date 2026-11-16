@@ -1,6 +1,11 @@
 import { type FocusEvent, type MouseEvent, useLayoutEffect } from "react";
 import { type StickToBottomInstance } from "use-stick-to-bottom";
-import { readingUnitFor } from "@flame/ui";
+import {
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+  withinReadingFrame,
+} from "@flame/ui";
 type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopScroll">;
 
 // Native zoom reports fractional CSS pixels.
@@ -37,7 +42,7 @@ function readingFocusContext(target: Element, viewport: HTMLElement) {
       marginEnd: bounds.marginEnd + bottom - bounds.bottom,
     };
   };
-  const frame = safeReadingBounds(viewport);
+  const frame = readingViewportBounds(viewport);
   const unit = readingUnitFor(target, viewport, (candidate) => {
     const height = candidate.getBoundingClientRect().height;
     if (height <= 0 || contextBounds(candidate).height > frame.bottom - frame.top) return false;
@@ -62,13 +67,8 @@ function withinSafeReading(
   viewport: HTMLElement,
   bounds = readingTargetBounds(target),
 ) {
-  let { top, bottom } = safeReadingBounds(viewport);
-  // An ancestor's smaller clip cannot turn an obscured, fitting target into an oversized one.
-  if (
-    bounds.top < top - EDGE_TOLERANCE ||
-    (bounds.height <= bottom - top && bounds.bottom > bottom + EDGE_TOLERANCE)
-  )
-    return false;
+  let { top, bottom } = readingViewportBounds(viewport);
+  if (!withinReadingFrame(bounds, { top, bottom })) return false;
   for (
     let parent = target.parentElement;
     parent && parent !== viewport;
@@ -102,7 +102,7 @@ export function useReadingFocusVisibility(
     const content = contentRef.current;
     if (!attached || !viewport || !content) return;
     viewport.style.removeProperty(FRAME_HEIGHT_PROPERTY);
-    const frameState = { value: safeReadingBounds(viewport) };
+    const frameState = { value: readingViewportBounds(viewport) };
     const observedScrollTopState = { value: viewport.scrollTop };
     const witnessState: { value: Element | null } = { value: null };
     const pressedTargetState: { value: Element | null } = { value: null };
@@ -111,11 +111,9 @@ export function useReadingFocusVisibility(
     // The named region containing the reader can hold focus itself, without a descendant witness.
     const region = viewport.closest('[role="region"]');
     const pressedFocus = (target: Element) =>
-      pressedTargetState.value &&
-      (target.contains(pressedTargetState.value) ||
-        pressedTargetState.value.closest("label, [data-focus-proxy]")?.contains(target));
+      isPressedReadingTarget(target, pressedTargetState.value);
     const remember = () => {
-      frameState.value = safeReadingBounds(viewport);
+      frameState.value = readingViewportBounds(viewport);
       observedScrollTopState.value = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
       const witness = witnessState.value;
@@ -137,7 +135,7 @@ export function useReadingFocusVisibility(
     const onScroll = (event: Event) => {
       // A focused reader's internal scroll does not move its frame during reflow.
       if (event.target !== viewport && event.target === content.ownerDocument.activeElement) return;
-      const next = safeReadingBounds(viewport);
+      const next = readingViewportBounds(viewport);
       // Native zoom can notify before its frame or content reflow is observed, without moving.
       if (event.target === viewport) {
         const moved = viewport.scrollTop !== observedScrollTopState.value;
@@ -160,7 +158,7 @@ export function useReadingFocusVisibility(
       remember();
     };
     const reveal = () => {
-      frameState.value = safeReadingBounds(viewport);
+      frameState.value = readingViewportBounds(viewport);
       // A content shrink can rearm follow after the region took focus; keep its visible source.
       if (region && region === content.ownerDocument.activeElement) {
         if (state.isAtBottom) stopScroll();
@@ -289,16 +287,6 @@ export function useReadingFocusVisibility(
   }, [attached, scrollRef, contentRef, state, stopScroll]);
 }
 
-function safeReadingBounds(viewport: HTMLElement) {
-  const frame = viewport.getBoundingClientRect();
-  const style = getComputedStyle(viewport);
-  return {
-    width: frame.width,
-    top: frame.top + (parseFloat(style.scrollPaddingTop) || 0),
-    bottom: frame.bottom - (parseFloat(style.scrollPaddingBottom) || 0),
-  };
-}
-
 export function stopFollowOnReadingFocus(
   event: FocusEvent<HTMLElement>,
   { scrollRef, state, stopScroll }: ReadingFollow,
@@ -321,7 +309,7 @@ function stopFollowHidingReading(
   if (!state.isAtBottom) return;
   const movement = state.targetScrollTop - viewport.scrollTop;
   if (movement <= 0) return;
-  const { top, bottom } = safeReadingBounds(viewport);
+  const { top, bottom } = readingViewportBounds(viewport);
   if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();
 }
 
@@ -364,7 +352,7 @@ export function prepareDisclosureReading(
   )
     return;
   const bounds = readingTargetBounds(trigger);
-  const { top, bottom } = safeReadingBounds(viewport);
+  const { top, bottom } = readingViewportBounds(viewport);
   if (bounds.top >= top && bounds.bottom <= bottom) return;
   if (state.isAtBottom) stopScroll();
   trigger.scrollIntoView({

@@ -52,6 +52,6 @@ export async function fileToInputImage(
   return { mime: file.type, data, name: file.name };
 }
 
-export function imageFiles(list: FileList | null | undefined): File[] {
+export function imageFiles(list: FileList | readonly File[] | null | undefined): File[] {
   return list ? Array.from(list).filter((f) => f.type.startsWith("image/")) : [];
 }

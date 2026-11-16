@@ -45,6 +45,57 @@ afterEach(async () => {
 });
 
 describe("search overlay", () => {
+  it("keeps externally filtered choices and active associations through shrinking and empty results", async () => {
+    const choose = vi.fn();
+    const first = {
+      key: "opaque-first",
+      children: "First result",
+      onSelect: () => choose("first"),
+    };
+    const last = { key: "opaque-last", children: "Last result", onSelect: () => choose("last") };
+    function Search() {
+      const [open, setOpen] = useState(true);
+      return (
+        <SearchOverlay
+          open={open}
+          onOpenChange={setOpen}
+          label="Finder"
+          placeholder="Search…"
+          empty={<p>nothing</p>}
+          options={(query) => (query === "none" ? [] : query === "one" ? [last] : [first, last])}
+        />
+      );
+    }
+    testClient.render(<Search />);
+    const field = await screen.findByRole("combobox");
+    const active = () => document.getElementById(field.getAttribute("aria-activedescendant") ?? "");
+    await waitFor(() => expect(active()?.textContent).toBe("First result"));
+    fireEvent.keyDown(field, { key: "ArrowUp" });
+    await waitFor(() => expect(active()?.textContent).toBe("Last result"));
+    fireEvent.change(field, { target: { value: "none" } });
+    await waitFor(() => expect(screen.queryAllByRole("option")).toHaveLength(0));
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(choose).not.toHaveBeenCalled();
+    fireEvent.change(field, { target: { value: "one" } });
+    await waitFor(() => expect(active()?.textContent).toBe("Last result"));
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(choose).toHaveBeenCalledExactlyOnceWith("last"));
+  });
+
+  it("keeps composing Enter out of the choice activation path", async () => {
+    const choose = vi.fn();
+    testClient.render(<Harness onSelect={choose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    const field = await screen.findByRole("combobox");
+    fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+    await drainBrowserTasks();
+    expect(choose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(choose).toHaveBeenCalledOnce());
+  });
+
   it("hands focus back to whatever opened it", async () => {
     testClient.render(<Harness />);
     const trigger = screen.getByRole("button", { name: "Find" });

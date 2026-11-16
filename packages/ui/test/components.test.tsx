@@ -31,7 +31,6 @@ import {
   readCalloutMarker,
   useCopyFeedback,
   Disclosure,
-  DiffTable,
   DiffFileHeader,
   FilterBar,
   Checkbox,
@@ -41,7 +40,7 @@ import {
   FormGroup,
   FormSection,
   FontScaleProvider,
-  copyWholeReader,
+  copyReaderSelection,
   Facts,
   HeadingLevel,
   IconButton,
@@ -58,6 +57,7 @@ import {
   RecordForm,
   SearchField,
   ScrollRegion,
+  scrollWithHorizontalArrow,
   type SearchFieldProps,
   Segmented,
   Select,
@@ -199,6 +199,33 @@ describe("named scroll readers", () => {
     }
     expect(region.scrollLeft).toBe(0);
     expect(caller).toHaveBeenCalledTimes(untouched.length + 2);
+  });
+
+  it("delegates keyboard panning to the renderer that owns its columns", () => {
+    const scrollBy = vi.fn();
+    render(
+      <ScrollRegion
+        label="Rendered source"
+        onKeyDown={(event) => scrollWithHorizontalArrow(event, scrollBy)}
+      >
+        <button>Source action</button>
+      </ScrollRegion>,
+    );
+    const region = screen.getByRole("region", { name: "Rendered source" });
+    Object.defineProperties(region, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 200 },
+    });
+    expect(fireEvent.keyDown(region, { key: "ArrowRight" })).toBe(false);
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith(20);
+    expect(region.scrollLeft).toBe(0);
+    expect(fireEvent.keyDown(region, { key: "ArrowLeft", metaKey: true })).toBe(
+      true,
+    );
+    expect(
+      fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowLeft" }),
+    ).toBe(true);
+    expect(scrollBy).toHaveBeenCalledOnce();
   });
 
   it("keeps native keys when the reader has no horizontal range", () => {
@@ -354,7 +381,7 @@ describe("recorded code", () => {
           aria-label="Reader"
           tabIndex={0}
           onKeyDown={selectAllInReader}
-          onCopy={(event) => copyWholeReader(event, "presented text")}
+          onCopy={(event) => copyReaderSelection(event, "presented text")}
         >
           <span>captured</span>
           <input aria-label="Nested field" defaultValue="draft" />
@@ -442,7 +469,7 @@ describe("recorded code", () => {
             tabIndex={0}
             onKeyDown={(event) => selectAllInReader(event, content.current!)}
             onCopy={(event) =>
-              copyWholeReader(event, rows.join("\n"), content.current!)
+              copyReaderSelection(event, rows.join("\n"), content.current!)
             }
           >
             <p>src/review.go</p>
@@ -532,6 +559,39 @@ describe("recorded code", () => {
     selection.removeAllRanges();
   });
 
+  it("selects an owned shadow reader without crossing into another reader", () => {
+    const host = document.createElement("div");
+    const source = host.attachShadow({ mode: "open" });
+    source.textContent = "captured source";
+    const outside = document.createElement("div");
+    const other = outside.attachShadow({ mode: "open" });
+    other.textContent = "outside source";
+    document.body.append(outside);
+    let content = source;
+    render(
+      <div
+        role="region"
+        aria-label="Shadow reader"
+        tabIndex={0}
+        ref={(node) => {
+          node?.append(host);
+        }}
+        onKeyDown={(event) => selectAllInReader(event, content)}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "Shadow reader" });
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    expect(fireEvent.keyDown(region, { key: "a", ctrlKey: true })).toBe(false);
+    expect(selection.getRangeAt(0).startContainer).toBe(source);
+    expect(selection.getRangeAt(0).endContainer).toBe(source);
+    selection.removeAllRanges();
+    content = other;
+    expect(fireEvent.keyDown(region, { key: "a", ctrlKey: true })).toBe(true);
+    expect(selection.rangeCount).toBe(0);
+    outside.remove();
+  });
+
   it("leaves Select All and copy native for a boundary outside the reader", () => {
     render(
       <>
@@ -544,7 +604,7 @@ describe("recorded code", () => {
             selectAllInReader(event, screen.getByText("Outside source"))
           }
           onCopy={(event) =>
-            copyWholeReader(
+            copyReaderSelection(
               event,
               "outside",
               screen.getByText("Outside source"),
@@ -1984,46 +2044,6 @@ describe("diff semantics", () => {
     expect(screen.getByText("+2")).toBeTruthy();
     expect(screen.getByText("−1")).toBeTruthy();
   });
-
-  const labels = {
-    region: "文件差异，可横向滚动",
-    beforeLine: "原行号",
-    beforeCode: "原代码",
-    afterLine: "新行号",
-    afterCode: "新代码",
-    changedCode: "变更代码",
-  };
-  it.each(["unified", "split"] as const)(
-    "takes all %s accessibility labels from its consumer",
-    (layout) => {
-      render(
-        <DiffTable
-          rows={[{ type: "added", code: "false", rightLine: 1 }]}
-          layout={layout}
-          label="示例.ts"
-          labels={labels}
-        />,
-      );
-      expect(screen.getByRole("region", { name: labels.region })).toBeTruthy();
-      const headings = screen
-        .getAllByRole("columnheader")
-        .map((element) => element.textContent);
-      expect(headings).toEqual(
-        layout === "split"
-          ? [
-              labels.beforeLine,
-              labels.beforeCode,
-              labels.afterLine,
-              labels.afterCode,
-            ]
-          : [labels.beforeLine, labels.afterLine, labels.changedCode],
-      );
-      expect(screen.getByText("false")).toBeTruthy();
-      expect(
-        screen.getByText("+", { exact: true }).getAttribute("aria-hidden"),
-      ).toBe("true");
-    },
-  );
 });
 
 describe("selection motion projection", () => {

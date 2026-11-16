@@ -15,48 +15,39 @@ import (
 // model-authored patch proposes without each consumer re-implementing the
 // parser. The input is a bounded tool-call argument, so no row budget applies.
 func SummarizePatch(patch []byte) ([]DiffFile, error) {
-	parser := unifiedDiffParser{maxFiles: math.MaxInt, maxRows: math.MaxInt}
-	for encoded := range bytes.SplitSeq(patch, []byte{'\n'}) {
-		if _, err := parser.consume(string(encoded)); err != nil {
-			return nil, err
-		}
-	}
-	if _, err := parser.flush(); err != nil {
-		return nil, err
-	}
-	for i := range parser.files {
-		parser.files[i].Rows = nil
-	}
-	return parser.files, nil
+	parsed, err := parseUnifiedDiff(patch, math.MaxInt, math.MaxInt, false)
+	return parsed.files, err
 }
 
-// parseUnifiedDiff parses a byte-bounded `git diff` patch into whole-file
-// DiffFiles. It stops before entering a file that cannot fit the file or row
-// budget, so truncation never retains or returns a partial file. Path comes
-// from the +++ (new) / --- (old, for deletes) headers; status comes from the
-// extended headers, and added/removed are counted from retained rows.
-func parseUnifiedDiff(patch []byte, maxFiles, maxRows int) ([]DiffFile, bool, error) {
+type parsedDiff struct {
+	files     []DiffFile
+	end       int
+	truncated bool
+}
+
+// parseUnifiedDiff selects whole files from one bounded capture. The same grammar
+// owns metadata and counts; only the rows projection materializes source strings.
+func parseUnifiedDiff(patch []byte, maxFiles, maxRows int, retainRows bool) (parsedDiff, error) {
 	if maxFiles <= 0 || maxRows <= 0 {
-		return nil, false, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
+		return parsedDiff{}, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
 	}
-	parser := unifiedDiffParser{maxFiles: maxFiles, maxRows: maxRows}
-	for encoded := range bytes.SplitSeq(patch, []byte{'\n'}) {
-		stop, err := parser.consume(string(encoded))
+	parser := unifiedDiffParser{maxFiles: maxFiles, maxRows: maxRows, retainRows: retainRows}
+	offset := 0
+	for encoded := range bytes.SplitAfterSeq(patch, []byte{'\n'}) {
+		stop, err := parser.consume(bytes.TrimSuffix(encoded, []byte{'\n'}), offset)
 		if err != nil {
-			return nil, false, err
+			return parsedDiff{}, err
 		}
 		if stop {
-			return parser.files, true, nil
+			return parsedDiff{files: parser.files, end: parser.acceptedEnd, truncated: true}, nil
 		}
+		offset += len(encoded)
 	}
-	flushed, err := parser.flush()
+	flushed, err := parser.flush(len(patch))
 	if err != nil {
-		return nil, false, err
+		return parsedDiff{}, err
 	}
-	if !flushed {
-		return parser.files, true, nil
-	}
-	return parser.files, false, nil
+	return parsedDiff{files: parser.files, end: parser.acceptedEnd, truncated: !flushed}, nil
 }
 
 const (
@@ -75,21 +66,26 @@ const (
 )
 
 type unifiedDiffParser struct {
-	maxFiles int
-	maxRows  int
-	files    []DiffFile
-	current  *DiffFile
-	left     hunkRange
-	right    hunkRange
-	rows     int
+	maxFiles    int
+	maxRows     int
+	files       []DiffFile
+	current     *DiffFile
+	left        hunkRange
+	right       hunkRange
+	rows        int
+	currentRows int
+	retainRows  bool
+	lastRow     *Row
+	scratch     Row
+	acceptedEnd int
 }
 
-func (parser *unifiedDiffParser) consume(line string) (bool, error) {
-	if line == `\ No newline at end of file` {
-		if parser.current == nil || len(parser.current.Rows) == 0 {
+func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, error) {
+	if bytes.Equal(encoded, []byte(`\ No newline at end of file`)) {
+		if parser.current == nil || parser.lastRow == nil {
 			return false, fmt.Errorf("git: newline marker without a code row")
 		}
-		row := &parser.current.Rows[len(parser.current.Rows)-1]
+		row := parser.lastRow
 		if row.Type == RowHunk || row.NoNewline ||
 			row.LeftLine > 0 && parser.left.remaining != 0 || row.RightLine > 0 && parser.right.remaining != 0 {
 			return false, fmt.Errorf("git: newline marker without a terminal code row")
@@ -98,10 +94,11 @@ func (parser *unifiedDiffParser) consume(line string) (bool, error) {
 		return false, nil
 	}
 	if parser.left.remaining > 0 || parser.right.remaining > 0 {
-		return parser.appendRow(line)
+		return parser.appendRow(encoded)
 	}
+	line := string(encoded)
 	if strings.HasPrefix(line, diffFileHeader) {
-		return parser.startFile(strings.TrimPrefix(line, diffFileHeader))
+		return parser.startFile(strings.TrimPrefix(line, diffFileHeader), offset)
 	}
 	if parser.current == nil {
 		return false, nil
@@ -115,8 +112,8 @@ func (parser *unifiedDiffParser) consume(line string) (bool, error) {
 	return false, nil
 }
 
-func (parser *unifiedDiffParser) startFile(header string) (bool, error) {
-	flushed, err := parser.flush()
+func (parser *unifiedDiffParser) startFile(header string, offset int) (bool, error) {
+	flushed, err := parser.flush(offset)
 	if err != nil || !flushed || len(parser.files) >= parser.maxFiles {
 		return true, err
 	}
@@ -126,22 +123,25 @@ func (parser *unifiedDiffParser) startFile(header string) (bool, error) {
 	}
 	parser.left = hunkRange{}
 	parser.right = hunkRange{}
+	parser.currentRows = 0
+	parser.lastRow = nil
 	return false, nil
 }
 
-func (parser *unifiedDiffParser) flush() (bool, error) {
+func (parser *unifiedDiffParser) flush(end int) (bool, error) {
 	if parser.left.remaining != 0 || parser.right.remaining != 0 {
 		return false, fmt.Errorf("git: incomplete diff hunk")
 	}
 	if parser.current == nil {
 		return true, nil
 	}
-	if len(parser.files) >= parser.maxFiles || parser.rows+len(parser.current.Rows) > parser.maxRows {
+	if len(parser.files) >= parser.maxFiles || parser.rows+parser.currentRows > parser.maxRows {
 		return false, nil
 	}
-	parser.rows += len(parser.current.Rows)
+	parser.rows += parser.currentRows
 	parser.files = append(parser.files, *parser.current)
 	parser.current = nil
+	parser.acceptedEnd = end
 	return true, nil
 }
 
@@ -188,12 +188,12 @@ func (parser *unifiedDiffParser) appendHunk(line string) (bool, error) {
 	}
 	parser.left = left
 	parser.right = right
-	parser.current.Rows = append(parser.current.Rows, Row{Type: RowHunk, Text: line})
+	parser.recordRow(Row{Type: RowHunk, Text: line})
 	return false, nil
 }
 
-func (parser *unifiedDiffParser) appendRow(line string) (bool, error) {
-	if line == "" {
+func (parser *unifiedDiffParser) appendRow(line []byte) (bool, error) {
+	if len(line) == 0 {
 		return false, fmt.Errorf("git: incomplete diff hunk")
 	}
 	marker := line[0]
@@ -205,7 +205,10 @@ func (parser *unifiedDiffParser) appendRow(line string) (bool, error) {
 	if parser.rowBudgetExhausted() {
 		return true, nil
 	}
-	row := Row{Code: line[1:]}
+	row := Row{}
+	if parser.retainRows {
+		row.Code = string(line[1:])
+	}
 	switch marker {
 	case '+':
 		row.Type = RowAdded
@@ -226,12 +229,24 @@ func (parser *unifiedDiffParser) appendRow(line string) (bool, error) {
 		parser.right.line++
 		parser.right.remaining--
 	}
-	parser.current.Rows = append(parser.current.Rows, row)
+	parser.recordRow(row)
 	return false, nil
 }
 
+func (parser *unifiedDiffParser) recordRow(row Row) {
+	parser.currentRows++
+	if parser.retainRows {
+		parser.current.Rows = append(parser.current.Rows, row)
+		parser.lastRow = &parser.current.Rows[len(parser.current.Rows)-1]
+		return
+	}
+	// Summary and visual reads need only the last row to validate an EOF marker.
+	parser.scratch = row
+	parser.lastRow = &parser.scratch
+}
+
 func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
-	return parser.rows+len(parser.current.Rows) >= parser.maxRows
+	return parser.rows+parser.currentRows >= parser.maxRows
 }
 
 func parsePatchPath(value, prefix string) string {

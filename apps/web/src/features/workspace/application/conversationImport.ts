@@ -9,12 +9,15 @@ import { t } from "@/lib/i18n/index";
 import { invalidateAgentSessions } from "@/features/agent/public/session";
 
 import { runtimeCapability } from "@/features/connection/public/capabilities";
-import { notifyError } from "@/features/notifications/public/notifications";
-import { toast } from "sonner";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type ConversationImportGateway } from "@/features/workspace/application/ports/conversationImportGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 
-export function createConversationImport(agentAccess: AgentAccess, runtimeAccess: RuntimeAccess) {
+export function createConversationImport(
+  agentAccess: AgentAccess,
+  runtimeAccess: RuntimeAccess,
+  notifications: NotificationFeed,
+) {
   class ConversationImportGeneration {
     readonly #gateway: ConversationImportGateway;
     readonly #files: FileTransferPort;
@@ -47,7 +50,7 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
     async #runImport(): Promise<void> {
       try {
         if (!runtimeCapability(runtimeAccess, "sessionExport")) {
-          notifyError(t("convExport.unsupported"), { source: "import" });
+          notifications.notify("error", t("convExport.unsupported"), { source: "import" });
           return;
         }
         let text: string | null;
@@ -56,7 +59,7 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
         } catch (error) {
           if (this.#cohort.retired) return;
           console.error("[import] selected file read failed:", error);
-          notifyError(t("convExport.readFailed"), { source: "import" });
+          notifications.notify("error", t("convExport.readFailed"), { source: "import" });
           return;
         }
         if (text === null) return;
@@ -66,7 +69,7 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
           artifact = parseJSON(text);
         } catch {
           this.#cohort.assertCurrent();
-          notifyError(t("convExport.notJson"), { source: "import" });
+          notifications.notify("error", t("convExport.notJson"), { source: "import" });
           return;
         }
 
@@ -78,19 +81,22 @@ export function createConversationImport(agentAccess: AgentAccess, runtimeAccess
           if (this.#cohort.retired) return;
           console.error("[import] imported Session view could not be refreshed:", error);
           agentAccess.selectAgentSession(session.id);
-          notifyError(t("convExport.importRefreshFailed"), { source: "import" });
+          notifications.notify("error", t("convExport.importRefreshFailed"), { source: "import" });
           return;
         }
         this.#cohort.assertCurrent();
         agentAccess.selectAgentSession(session.id);
-        toast.success(
-          t("convExport.importSuccess", { title: session.title?.trim() || t("session.untitled") }),
-        );
+        notifications.show({
+          level: "success",
+          message: t("convExport.importSuccess", {
+            title: session.title?.trim() || t("session.untitled"),
+          }),
+        });
       } catch (error) {
         if (this.#cohort.retired) return;
         console.error("[import] sessions.import failed:", error);
         this.#cohort.assertCurrent();
-        notifyError(t("convExport.importFailed"), { source: "import" });
+        notifications.notify("error", t("convExport.importFailed"), { source: "import" });
       }
     }
 

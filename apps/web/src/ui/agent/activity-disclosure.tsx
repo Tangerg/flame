@@ -1,11 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { reveal } from "@/ui/atoms/reveal";
 import { type ComponentPropsWithoutRef, type ReactNode } from "react";
-import { Children, useId, useLayoutEffect, useRef } from "react";
+import { Children, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
-import { vocab, ButtonPrimitive } from "@flame/ui";
-import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
+import { vocab, ButtonPrimitive, ContentVisibility } from "@flame/ui";
+import { Collapsible } from "@base-ui/react/collapsible";
+import { useScrollLock } from "@/ui/atoms/use-scroll-lock";
 
 import { ProgressBar } from "@flame/ui";
 import { Icon, type IconName } from "@/ui/icons/index";
@@ -21,6 +22,17 @@ type ActivityShell = "line" | "card";
 type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; leading: ReactNode };
 
 const styles = stylex.create({
+  panel: {
+    overflow: "clip",
+    height: {
+      default: "var(--collapsible-panel-height)",
+      ":is([data-starting-style], [data-ending-style])": 0,
+    },
+    opacity: { default: 1, ":is([data-starting-style], [data-ending-style])": 0 },
+    transitionProperty: "height, opacity",
+    transitionDuration: motion.med,
+    transitionTimingFunction: motion.easeOut,
+  },
   frame: { minWidth: 0, overflow: "clip" },
   frameLine: { borderRadius: radius.sm },
   frameCard: {
@@ -171,7 +183,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     actions?: ReactNode;
     feedback?: ReactNode;
     open: boolean;
-    onToggle: () => void;
+    onOpenChange: (open: boolean) => void;
     stickyHeader?: boolean;
     progress?: { value: number; label: string };
     tone?: ActivityTone;
@@ -193,7 +205,7 @@ export function AgentActivityDisclosure({
   actions,
   feedback,
   open,
-  onToggle,
+  onOpenChange,
   stickyHeader,
   progress,
   tone = "neutral",
@@ -209,12 +221,19 @@ export function AgentActivityDisclosure({
   const skin = SHELL_SKINS[shell];
   const ownSummaryId = useId();
   const triggerId = summaryId ?? ownSummaryId;
-  const panelId = useId();
   const framed = shell !== "line" && icon !== undefined;
-  const disclosed = useDisclosedContent(open);
   const headerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const wasOpen = useRef(open);
+  const lockScroll = useScrollLock(panelRef);
   const disclosable = children != null;
+
+  useEffect(() => {
+    const closing = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (closing && disclosable) return lockScroll();
+  }, [open, disclosable, lockScroll]);
 
   useLayoutEffect(() => {
     const header = headerRef.current;
@@ -273,8 +292,11 @@ export function AgentActivityDisclosure({
   }, [stickyHeader, disclosable]);
 
   return (
-    <div
+    <Collapsible.Root
       {...props}
+      open={open}
+      disabled={!disclosable}
+      onOpenChange={(next) => onOpenChange(next)}
       data-slot="agent-activity-disclosure"
       data-tone={tone}
       data-shell={shell}
@@ -296,9 +318,6 @@ export function AgentActivityDisclosure({
         <TriggerShell
           disclosable={disclosable}
           id={triggerId}
-          panelId={panelId}
-          open={open}
-          onToggle={onToggle}
           className={
             stylex.props(styles.trigger, skin.trigger, preview != null && styles.triggerFit)
               .className
@@ -361,40 +380,37 @@ export function AgentActivityDisclosure({
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       {feedback}
       {disclosable && (
-        <Collapsible open={open}>
+        <Collapsible.Panel
+          ref={panelRef}
+          keepMounted
+          role="region"
+          aria-labelledby={triggerId}
+          {...stylex.props(styles.panel)}
+        >
           <div ref={bodyRef} {...stylex.props(skin.body)}>
             <div
-              id={panelId}
-              role="region"
-              aria-labelledby={triggerId}
               className={cn(
                 stylex.props(contentInset === "rows" && styles.bodyRows).className,
                 contentClassName,
               )}
             >
-              {disclosed && children}
+              <ActivityBody open={open}>{children}</ActivityBody>
             </div>
           </div>
-        </Collapsible>
+        </Collapsible.Panel>
       )}
-    </div>
+    </Collapsible.Root>
   );
 }
 
 function TriggerShell({
   disclosable,
   id,
-  panelId,
-  open,
-  onToggle,
   className,
   children,
 }: {
   disclosable: boolean;
   id: string;
-  panelId: string;
-  open: boolean;
-  onToggle: () => void;
   className?: string;
   children: ReactNode;
 }) {
@@ -406,16 +422,20 @@ function TriggerShell({
     );
   }
   return (
-    <ButtonPrimitive
+    <Collapsible.Trigger
+      render={<ButtonPrimitive />}
       id={id}
       type="button"
-      aria-expanded={open}
-      aria-controls={panelId}
       data-focus-inset=""
-      onClick={onToggle}
       className={className}
     >
       {children}
-    </ButtonPrimitive>
+    </Collapsible.Trigger>
   );
+}
+
+function ActivityBody({ open, children }: { open: boolean; children: ReactNode }) {
+  const [revealed, setRevealed] = useState(open);
+  if (open && !revealed) setRevealed(true);
+  return revealed ? <ContentVisibility visible={open}>{children}</ContentVisibility> : null;
 }

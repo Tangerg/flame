@@ -1846,21 +1846,62 @@
         "baseline": {
           "$ref": "#/$defs/DiffBaseline"
         },
-        "files": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/FileDiff"
-          }
-        },
         "patch": {
           "type": "string"
         },
-        "truncated": {
-          "type": "boolean"
+        "rows": {
+          "$ref": "#/$defs/DiffRows"
+        },
+        "type": {
+          "$ref": "#/$defs/DiffFormat"
+        },
+        "visual": {
+          "$ref": "#/$defs/VisualDiff"
         }
       },
-      "required": [
-        "baseline"
+      "oneOf": [
+        {
+          "properties": {
+            "patch": false,
+            "type": {
+              "const": "rows"
+            },
+            "visual": false
+          },
+          "required": [
+            "baseline",
+            "rows",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "rows": false,
+            "type": {
+              "const": "raw"
+            },
+            "visual": false
+          },
+          "required": [
+            "baseline",
+            "patch",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "patch": false,
+            "rows": false,
+            "type": {
+              "const": "visual"
+            }
+          },
+          "required": [
+            "baseline",
+            "type",
+            "visual"
+          ]
+        }
       ]
     },
     "DiffBaseline": {
@@ -1918,11 +1959,34 @@
         "emptyTree"
       ]
     },
+    "DiffBudget": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "bytes",
+        "files",
+        "rows"
+      ]
+    },
     "DiffFormat": {
       "type": "string",
       "enum": [
         "rows",
-        "raw"
+        "raw",
+        "visual"
       ]
     },
     "DiffMode": {
@@ -2023,6 +2087,28 @@
         "context",
         "added",
         "deleted"
+      ]
+    },
+    "DiffRows": {
+      "type": "object",
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/DiffBudget"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileDiff"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "budget",
+        "files",
+        "truncated"
       ]
     },
     "DiscoverResponse": {
@@ -13629,6 +13715,32 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         }
       }
+    },
+    "VisualDiff": {
+      "type": "object",
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/DiffBudget"
+        },
+        "manifest": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkspaceFileChange"
+          }
+        },
+        "patch": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "budget",
+        "manifest",
+        "patch",
+        "truncated"
+      ]
     },
     "WatchSpec": {
       "type": "object",

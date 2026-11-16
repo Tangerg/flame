@@ -326,6 +326,7 @@ html.theme-dark {
 }
 
 .agent-shell {
+  --sidebar-layout-width: var(--sidebar-preview-width, var(--sidebar-width));
   position: relative;
   display: flex;
   width: 100%;
@@ -336,20 +337,26 @@ html.theme-dark {
   background: var(--app-drawer-surface);
 }
 
-.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"][data-floating] {
+body:has([data-slot="notification-toast"])
+  .agent-shell
+  [data-slot="composer-overlay"][data-floating] {
   --notification-composer-clearance: var(--notification-reading-space);
 }
 
-.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+body:has([data-slot="notification-toast"])
+  .agent-shell
+  [data-slot="composer-overlay"]:not([data-floating]) {
   --notification-empty-composer-limit: calc(100% - 2 * var(--notification-reading-space));
 }
 
 @container empty-conversation (max-height: 20rem) {
-  .agent-shell:has([data-sonner-toast]) [data-slot="empty-conversation-layout"] {
+  body:has([data-slot="notification-toast"]) .agent-shell [data-slot="empty-conversation-layout"] {
     --notification-empty-inset: 0px;
   }
 
-  .agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+  body:has([data-slot="notification-toast"])
+    .agent-shell
+    [data-slot="composer-overlay"]:not([data-floating]) {
     --notification-empty-composer-limit: calc(100% - var(--notification-min-reading-height));
     position: sticky;
     top: var(--notification-min-reading-height);
@@ -382,7 +389,7 @@ html.theme-dark {
 }
 
 .agent-drawer-gap {
-  width: var(--sidebar-width);
+  width: var(--sidebar-layout-width);
   flex-shrink: 0;
   transition: width var(--dur-drawer) var(--ease-drawer);
 }
@@ -397,7 +404,7 @@ html.theme-dark {
   left: 0;
   z-index: var(--layer-drawer);
   display: flex;
-  width: var(--sidebar-width);
+  width: var(--sidebar-layout-width);
   height: 100dvh;
   visibility: visible;
   transition:
@@ -406,7 +413,7 @@ html.theme-dark {
     visibility 0s linear 0s;
 }
 .agent-shell[data-sidebar="collapsed"] .agent-drawer {
-  left: calc(var(--sidebar-width) * -1);
+  left: calc(var(--sidebar-layout-width) * -1);
   visibility: hidden;
   transition:
     left var(--dur-drawer) var(--ease-drawer),
@@ -530,7 +537,7 @@ html.theme-dark {
 .agent-pane-resizer {
   position: absolute;
   inset-block: 0;
-  inset-inline-end: var(--dock-measure);
+  inset-inline-end: var(--dock-layout-width);
   z-index: var(--layer-resizer);
   width: 10px;
   transform: translateX(5px);
@@ -543,7 +550,7 @@ html.theme-dark {
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
-  inset-inline-end: var(--dock-measure);
+  inset-inline-end: var(--dock-layout-width);
   z-index: var(--layer-resizer);
   pointer-events: none;
 }
@@ -616,6 +623,7 @@ html.theme-dark {
 }
 
 .agent-dock-row {
+  --dock-layout-width: var(--dock-preview-width, var(--dock-measure));
   position: relative;
 }
 
@@ -624,7 +632,7 @@ html.theme-dark {
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 0 0 var(--dock-measure);
+  flex: 0 0 var(--dock-layout-width);
   flex-direction: column;
   overflow: hidden;
   contain: layout paint;
@@ -642,7 +650,7 @@ html.theme-dark {
 }
 /* Clipping folds the Dock; retained readers keep their measured width throughout the motion. */
 .agent-dock-row:not([data-presentation="main"]) .agent-context-dock > * {
-  min-inline-size: var(--dock-measure);
+  min-inline-size: var(--dock-layout-width);
 }
 .agent-dock-row[data-resizing] .agent-context-dock,
 .agent-dock-row[data-dock="collapsed"]:not([data-dock-available]) .agent-context-dock {

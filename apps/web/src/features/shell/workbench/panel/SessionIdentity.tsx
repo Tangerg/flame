@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode } from "react";
 import { basename } from "@/lib/path";
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export function SessionIdentity({ sessionId, title, workspacePath, detail }: Props): ReactElement {
+  const { messages } = useNotifications();
   const t = useT();
   const copies: { id: string; label: string; copy: () => void }[] = [
     ...(workspacePath
@@ -57,7 +59,7 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
             id: "cwd",
             label: t("session.identity.copyCwd"),
             copy: () =>
-              void writeToClipboard(workspacePath, {
+              void writeToClipboard(messages.show, workspacePath, {
                 successLabel: t("session.identity.copiedCwd"),
               }),
           },
@@ -69,7 +71,9 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
             id: "id",
             label: t("session.identity.copyId"),
             copy: () =>
-              void writeToClipboard(sessionId, { successLabel: t("session.identity.copiedId") }),
+              void writeToClipboard(messages.show, sessionId, {
+                successLabel: t("session.identity.copiedId"),
+              }),
           },
         ]
       : []),

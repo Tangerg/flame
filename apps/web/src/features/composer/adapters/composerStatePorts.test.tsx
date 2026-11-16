@@ -310,6 +310,19 @@ describe("draft focus presentation", () => {
     unregister();
   });
 
+  it("retires a captured return when its Session leaves even if the same input and Session return", () => {
+    testClient.render(<Harness />);
+    const other = screen.getByRole("button", { name: "Other task" });
+    act(() => other.focus());
+    const restore = captureComposerFocus(testClient.composer.access);
+    act(() => {
+      testClient.composer.store.getState().loadSession("successor-draft");
+      testClient.composer.store.getState().loadSession("focus-draft");
+      restore();
+    });
+    expect(document.activeElement).toBe(other);
+  });
+
   it("synchronizes the registered input after delivering its native selection", () => {
     testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });

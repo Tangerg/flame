@@ -119,6 +119,7 @@ func (b DiffBaseline) Validate() error {
 type StructuredDiffResult struct {
 	Baseline  DiffBaseline
 	Files     []FileDiff
+	Patch     string
 	Truncated bool
 }
 
@@ -134,22 +135,36 @@ type RawDiffResult struct {
 // most maxRows rows altogether, and reports Truncated when it stopped early.
 type gitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
-	StructuredDiff(ctx context.Context, root, path string, base bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
+	StructuredDiff(ctx context.Context, root, path string, base bool, format DiffFormat, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
 	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (RawDiffResult, error)
 }
 
-// DiffInput selects a working-tree or merge-base diff, optionally as raw text.
+type DiffFormat string
+
+const (
+	DiffFormatRows   DiffFormat = "rows"
+	DiffFormatRaw    DiffFormat = "raw"
+	DiffFormatVisual DiffFormat = "visual"
+)
+
+type DiffBudget struct {
+	Files int
+	Rows  int
+	Bytes int
+}
+
+// DiffInput selects a working-tree or merge-base diff and its read projection.
 type DiffInput struct {
 	CWD      string
 	Path     string
 	Base     bool
-	Raw      bool
+	Format   DiffFormat
 	RowLimit DiffRowLimit
 }
 
 // DiffRowLimit is the caller's structured-diff row budget. Zero is the named
-// default; the constructor admits only a positive row count. Raw diffs do not
-// consume this value at all.
+// default; the constructor admits only a positive row count. Complete raw
+// reads reject an explicit budget instead of silently ignoring it.
 type DiffRowLimit struct{ rows int }
 
 // DefaultDiffRowLimit asks the structured read to use its owned maximum.
@@ -173,10 +188,12 @@ func (l DiffRowLimit) Rows() int {
 
 // Diff is a structured or raw workspace diff.
 type Diff struct {
+	Format    DiffFormat
 	Baseline  DiffBaseline
 	Patch     string
 	Files     []FileDiff
 	Truncated bool
+	Budget    DiffBudget
 }
 
 // Changes reads the root's VCS status.
@@ -208,6 +225,19 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 // owns cutting at a whole-file boundary within them, because only it can stop
 // before materializing what does not fit.
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
+	format := input.Format
+	if format == "" {
+		format = DiffFormatRows
+	}
+	switch format {
+	case DiffFormatRaw:
+		if input.RowLimit.rows != 0 {
+			return Diff{}, errors.New("workspace: raw diff does not accept a row budget")
+		}
+	case DiffFormatRows, DiffFormatVisual:
+	default:
+		return Diff{}, fmt.Errorf("workspace: unsupported diff format %q", format)
+	}
 	root, err := v.scope.ResolveRoot(input.CWD)
 	if err != nil {
 		return Diff{}, err
@@ -219,7 +249,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 			return Diff{}, err
 		}
 	}
-	if input.Raw {
+	if format == DiffFormatRaw {
 		result, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, maxWorkspaceDiffBytes)
 		if rawDiffErr != nil {
 			return Diff{}, rawDiffErr
@@ -230,7 +260,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		if err := result.Baseline.Validate(); err != nil {
 			return Diff{}, err
 		}
-		return Diff{Baseline: result.Baseline, Patch: result.Patch}, nil
+		return Diff{Format: format, Baseline: result.Baseline, Patch: result.Patch}, nil
 	}
 	rowLimit := input.RowLimit.Rows()
 	result, err := v.git.StructuredDiff(
@@ -238,6 +268,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		root,
 		path,
 		input.Base,
+		format,
 		maxWorkspaceDiffFiles,
 		rowLimit,
 		maxWorkspaceDiffBytes,
@@ -248,6 +279,9 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	if err := result.Baseline.Validate(); err != nil {
 		return Diff{}, err
 	}
+	if len(result.Patch) > maxWorkspaceDiffBytes {
+		return Diff{}, fmt.Errorf("%w: visual diff exceeds %d bytes", ErrVCSResultTooLarge, maxWorkspaceDiffBytes)
+	}
 	paths := make(map[string]struct{}, len(result.Files))
 	for _, file := range result.Files {
 		if _, duplicate := paths[file.Path]; duplicate {
@@ -255,5 +289,9 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 		paths[file.Path] = struct{}{}
 	}
-	return Diff{Baseline: result.Baseline, Files: result.Files, Truncated: result.Truncated}, nil
+	return Diff{
+		Format: format, Baseline: result.Baseline, Files: result.Files,
+		Patch: result.Patch, Truncated: result.Truncated,
+		Budget: DiffBudget{Files: maxWorkspaceDiffFiles, Rows: rowLimit, Bytes: maxWorkspaceDiffBytes},
+	}, nil
 }

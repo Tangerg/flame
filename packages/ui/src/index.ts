@@ -94,11 +94,6 @@ export {
 export { Disclosure } from "./disclosure";
 export { ScrollRegion, scrollWithHorizontalArrow } from "./scroll-region";
 export {
-  type ComparisonRow,
-  type DiffTableLabels,
-  DiffTable,
-} from "./diff-table";
-export {
   type DiffFileSummary,
   DiffFilePath,
   DiffFileList,
@@ -114,10 +109,21 @@ export {
   type CodeSourceComponent,
   type CodeSourceProps,
 } from "./code-block";
-export { copyText, useCopyFeedback } from "./clipboard";
+export { copyText, useCopyFeedback, useCopyAttempt } from "./clipboard";
 export { isImeKey } from "./keyboard";
-export { copyWholeReader, selectAllInReader } from "./reader-selection";
-export { readingUnitFor } from "./reading-unit";
+export {
+  copyReaderSelection,
+  readerSelectionLines,
+  selectAllInReader,
+} from "./reader-selection";
+export {
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+  withinReadingFrame,
+} from "./reading-unit";
+export { PointerSession, type PointerOutcome } from "./pointer-session";
+export { scrollPan, useScrollPan } from "./scroll-pan";
 export { TaskListItem } from "./task-list-item";
 export {
   Callout,
@@ -133,6 +139,7 @@ export { Select } from "./select";
 export { vocab, gap } from "./vocabulary";
 export { toneInk } from "./tone-ink";
 export { Segmented, type SegmentedOption } from "./segmented";
+export { Tabs } from "./tabs";
 export { ActionMenu, type ActionMenuItem } from "./action-menu";
 export { ARTIFACT_SURFACE } from "./artifact-surface";
 export { HoverTrack, ItemHighlight, useHoverTrackItem } from "./item-highlight";
@@ -156,3 +163,10 @@ export {
   imageSizeFromBytes,
   type PixelSize,
 } from "./image-dimensions";
+
+export {
+  FocusWitness,
+  RemovalFocus,
+  useRemovalFocus,
+  handoffFocus,
+} from "./focus";

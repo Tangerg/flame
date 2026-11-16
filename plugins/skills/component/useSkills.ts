@@ -59,6 +59,33 @@ export function useSkills(context: ComponentContext) {
   const [target, setTarget] = useState<Target>(
     workspace ? "available" : "library",
   );
+  const focusSource = useRef({
+    runtime,
+    workspace,
+    componentSignal,
+    track,
+    target,
+  });
+  useLayoutEffect(() => {
+    focusSource.current = {
+      runtime,
+      workspace,
+      componentSignal,
+      track,
+      target,
+    };
+  });
+  const canRestoreFocus = () => {
+    const current = focusSource.current;
+    return (
+      !componentSignal.aborted &&
+      current.runtime === runtime &&
+      current.workspace === workspace &&
+      current.componentSignal === componentSignal &&
+      current.track === track &&
+      current.target === target
+    );
+  };
   const [search, setSearch] = useState("");
   const panel = useRef<HTMLElement>(null);
   const searchField = useRef<HTMLElement>(null);
@@ -350,6 +377,7 @@ export function useSkills(context: ComponentContext) {
   const title = t(`section.${target}`);
   const skillDocument = opened?.accepted;
   return {
+    canRestoreFocus,
     t,
     panel,
     opened,

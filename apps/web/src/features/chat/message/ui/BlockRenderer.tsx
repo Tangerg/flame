@@ -66,7 +66,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
           <ToolCard
             tool={tool}
             expanded={ctx.expandedIds.has(block.toolCallId)}
-            onToggleExpand={() => ctx.onToggleExpand(block.toolCallId)}
+            onExpandedChange={(expanded) => ctx.onExpandedChange(block.toolCallId, expanded)}
           />
           {delegatedRuns.map((narrative, index) => (
             <DelegatedRunLink
@@ -137,7 +137,7 @@ function renderUnit(messageId: string, unit: MessageRenderUnit, facts: TurnFacts
       <ToolGroup
         tools={unit.tools}
         expandedIds={ctx.expandedIds}
-        onToggleExpand={ctx.onToggleExpand}
+        onExpandedChange={ctx.onExpandedChange}
         superseded={unit.superseded}
       />
     );

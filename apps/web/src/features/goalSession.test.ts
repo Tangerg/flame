@@ -23,7 +23,6 @@ import { loadPluginsForTest } from "@/test/kernel";
 
 import { type GoalState } from "@/features/goal/application/goalReadModel";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
 import { t } from "@/lib/i18n/index";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
@@ -120,9 +119,9 @@ describe("Goal and mounted Session integration", () => {
       await testClient.agent.access.synchronizeMountedAgentSession(SID, "replace-live");
       expect(read()?.goal?.reason).toEqual(goal.reason);
       expect(
-        useNotificationStore
-          .getState()
-          .log.some((notice) => notice.message === t("agent.synchronizationIncomplete")),
+        testClient.messages
+          .snapshot()
+          .some((notice) => notice.message === t("agent.synchronizationIncomplete")),
       ).toBe(true);
 
       snapshot.mockResolvedValue({ ...base, goal: { ...goal, reason: { code: "awaitingInput" } } });

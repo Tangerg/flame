@@ -2,6 +2,7 @@ import { iconGlyph, type IconName } from "@/ui/icons/index";
 import { type RefObject } from "react";
 import { useT } from "@/lib/i18n/index";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
+import { handoffFocus } from "@flame/ui";
 import { Button } from "@flame/ui/button";
 import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
 export interface UnsupportedConfig {
@@ -47,14 +48,11 @@ export function DataError({ failure, unsupported, focusTarget, onRetry, title, s
             variant="outline"
             size={size === "compact" ? "xs" : "sm"}
             onClick={(event) => {
-              // Retrying replaces this error, so hand owned focus to its surviving host first.
               const retiring = event.currentTarget;
-              if (retiring === retiring.ownerDocument.activeElement) {
-                const host =
-                  focusTarget?.current ??
-                  retiring.parentElement?.closest<HTMLElement>("[tabindex]");
-                host?.focus({ preventScroll: true });
-              }
+              handoffFocus(
+                retiring,
+                focusTarget?.current ?? retiring.parentElement?.closest<HTMLElement>("[tabindex]"),
+              );
               onRetry();
             }}
           >

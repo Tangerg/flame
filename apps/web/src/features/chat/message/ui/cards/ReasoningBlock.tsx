@@ -5,13 +5,13 @@ import { MarkdownMessage } from "@/features/chat/message/ui/markdown/MarkdownMes
 import { Icon } from "@/ui/index";
 import { Loader } from "@/ui/index";
 import { scrollEdges, useScrollEdges } from "@/ui/index";
+import { useStickToBottom } from "use-stick-to-bottom";
+import { useContentVisible } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n/index";
 import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "@/features/chat/message/ui/messageStyles";
-const FOLLOW_SLACK = 24;
-
 const GLIMPSE_LEAD = "16px";
 
 function currentThought(text: string): string | undefined {
@@ -63,7 +63,6 @@ export function ReasoningBlock({ text, status }: Props) {
   const t = useT();
   const streaming = status === "running";
   const [isOpen, setOpen] = useState(false);
-  const toggle = useCallback(() => setOpen((value) => !value), []);
 
   const startedAt = useRef<number | null>(null);
   const [thoughtMillis, setThoughtMillis] = useState<number | null>(null);
@@ -101,34 +100,34 @@ export function ReasoningBlock({ text, status }: Props) {
     return () => ro.disconnect();
   }, [glimpse]);
 
+  const visible = useContentVisible();
+  const port = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const {
-    port,
-    content,
-    onScroll: measureEdges,
+    onScroll,
     style: edgeStyle,
     overflowing,
-    distanceFromEnd,
-    scrollToEnd,
-  } = useScrollEdges(isOpen);
-
-  const followingRef = useRef(true);
-  const onScroll = useCallback(() => {
-    followingRef.current = distanceFromEnd() < FOLLOW_SLACK;
-    measureEdges();
-  }, [distanceFromEnd, measureEdges]);
-
-  useEffect(() => {
-    if (!streaming || !isOpen) return;
-    const contentEl = content.current;
-    if (!contentEl) return;
-    const follow = () => {
-      if (followingRef.current) scrollToEnd();
-    };
-    follow();
-    const ro = new ResizeObserver(follow);
-    ro.observe(contentEl);
-    return () => ro.disconnect();
-  }, [streaming, isOpen, content, scrollToEnd]);
+  } = useScrollEdges(port, content, isOpen && visible);
+  const { scrollRef, contentRef } = useStickToBottom({
+    initial: streaming ? "instant" : false,
+    resize: "instant",
+  });
+  const following = streaming && isOpen && visible;
+  const bindPort = useCallback(
+    (node: HTMLDivElement | null) => {
+      port.current = node;
+      scrollRef(following ? node : null);
+      if (node && isOpen && visible) onScroll();
+    },
+    [port, scrollRef, following, isOpen, visible, onScroll],
+  );
+  const bindContent = useCallback(
+    (node: HTMLDivElement | null) => {
+      content.current = node;
+      contentRef(following ? node : null);
+    },
+    [content, contentRef, following],
+  );
 
   return (
     <AgentActivityDisclosure
@@ -152,11 +151,11 @@ export function ReasoningBlock({ text, status }: Props) {
         )
       }
       open={isOpen}
-      onToggle={toggle}
+      onOpenChange={setOpen}
       contentClassName={stylex.props(rb.aside).className}
     >
       <div
-        ref={port}
+        ref={bindPort}
         data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={overflowing ? 0 : undefined}
@@ -166,7 +165,7 @@ export function ReasoningBlock({ text, status }: Props) {
         style={edgeStyle}
         {...stylex.props(rb.scroller, scrollEdges.fade)}
       >
-        <div ref={content} className={stylex.props(ms.quote, typeStep.uiMd).className}>
+        <div ref={bindContent} className={stylex.props(ms.quote, typeStep.uiMd).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
             <div {...stylex.props(rb.note, typeStep.uiSm, face.mono)}>

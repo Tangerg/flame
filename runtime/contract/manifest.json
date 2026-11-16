@@ -5026,6 +5026,33 @@
       ]
     },
     {
+      "type": "Diff",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "rows",
+          "required": [
+            "baseline",
+            "rows"
+          ]
+        },
+        {
+          "tag": "raw",
+          "required": [
+            "baseline",
+            "patch"
+          ]
+        },
+        {
+          "tag": "visual",
+          "required": [
+            "baseline",
+            "visual"
+          ]
+        }
+      ]
+    },
+    {
       "type": "DiffBaseline",
       "discriminator": "type",
       "variants": [
@@ -8991,6 +9018,23 @@
       ]
     },
     {
+      "type": "DiffBudget",
+      "rules": [
+        {
+          "field": "files",
+          "constraint": "positive"
+        },
+        {
+          "field": "rows",
+          "constraint": "positive"
+        },
+        {
+          "field": "bytes",
+          "constraint": "positive"
+        }
+      ]
+    },
+    {
       "type": "ReadFileRequest",
       "rules": [
         {
@@ -11156,6 +11200,18 @@
     },
     {
       "file": "ws.diff.json",
+      "shape": "Diff"
+    },
+    {
+      "file": "ws.diff.visual.json",
+      "shape": "Diff"
+    },
+    {
+      "file": "ws.diff.raw.json",
+      "shape": "Diff"
+    },
+    {
+      "file": "ws.diff.truncated.json",
       "shape": "Diff"
     },
     {

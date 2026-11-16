@@ -1,15 +1,18 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useId, useLayoutEffect, useRef } from "react";
+import { useId, useRef, useSyncExternalStore, type RefObject } from "react";
 import { Popover } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
-import { EmptyState, IconButton, vocab } from "@flame/ui";
+import { EmptyState, IconButton, vocab, useRemovalFocus } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
-import { type NotificationLevel } from "@/features/notifications/public/types";
+import { useNotifications } from "@/features/notifications/public/notifier";
+import {
+  type NotificationEntry,
+  type NotificationLevel,
+} from "@/features/notifications/public/types";
 import {
   notificationBadgeText,
   unreadNotificationCount,
@@ -41,31 +44,15 @@ const styles = stylex.create({
 
 export function NotificationsBadge() {
   const t = useT();
-  const log = useNotificationStore((state) => state.log);
-  const dismiss = useNotificationStore((state) => state.dismiss);
-  const clearAll = useNotificationStore((state) => state.clearAll);
+  const { messages } = useNotifications();
+  const log = useSyncExternalStore(messages.subscribe, messages.snapshot, messages.snapshot);
+  const { dismiss, clearAll } = messages;
   const unread = unreadNotificationCount(log);
   const messageIdPrefix = useId();
   const historyRef = useRef<HTMLDivElement>(null);
-  const focusedDismiss = useRef<HTMLButtonElement>(null);
-
-  useLayoutEffect(() => {
-    const removed = focusedDismiss.current;
-    if (!removed || removed.isConnected) return;
-    focusedDismiss.current = null;
-    const history = historyRef.current;
-    if (!history?.isConnected || removed.ownerDocument.activeElement !== removed.ownerDocument.body)
-      return;
-    const controls = history.querySelectorAll<HTMLButtonElement>("button");
-    controls[controls.length - 1]?.focus();
-  }, [log]);
 
   return (
-    <Popover.Root
-      onOpenChange={() => {
-        focusedDismiss.current = null;
-      }}
-    >
+    <Popover.Root>
       <Popover.Trigger
         render={
           <IconButton
@@ -103,50 +90,64 @@ export function NotificationsBadge() {
         >
           {t("notifications.title")}
         </SectionLabel>
-        <div
-          ref={historyRef}
-          onFocusCapture={(event) => {
-            if (event.target instanceof HTMLButtonElement) focusedDismiss.current = event.target;
-          }}
-          onBlurCapture={() => {
-            focusedDismiss.current = null;
-          }}
-          {...stylex.props(styles.list)}
-        >
+        <div ref={historyRef} {...stylex.props(styles.list)}>
           {log.length === 0 && (
             <EmptyState icon={iconGlyph("bell")} title={t("notifications.empty.title")} />
           )}
           {log.toReversed().map((entry) => (
-            <div key={entry.id} {...stylex.props(styles.row)}>
-              <StatusDot
-                tone={dotTone[entry.level]}
-                className={stylex.props(styles.dot).className}
-              />
-              <div {...stylex.props(vocab.fill)}>
-                <div
-                  id={`${messageIdPrefix}-${entry.id}`}
-                  {...stylex.props(vocab.wrapText, entry.dismissed && vocab.faint, typeStep.uiMd)}
-                >
-                  {entry.message}
-                </div>
-                <div {...stylex.props(vocab.faint, typeStep.uiSm)}>
-                  {formatRelative(entry.timestamp)}
-                </div>
-              </div>
-              {/* A dismissed entry keeps its control so keyboard focus is not dropped on removal. */}
-              <IconButton
-                icon={iconGlyph("x")}
-                size="xs"
-                aria-label={t("notifications.dismiss")}
-                aria-describedby={`${messageIdPrefix}-${entry.id}`}
-                disabled={entry.dismissed === true}
-                focusableWhenDisabled
-                onClick={() => dismiss(entry.id)}
-              />
-            </div>
+            <NotificationRow
+              key={entry.id}
+              entry={entry}
+              history={historyRef}
+              messageIdPrefix={messageIdPrefix}
+              dismiss={dismiss}
+            />
           ))}
         </div>
       </Popover.Content>
     </Popover.Root>
+  );
+}
+
+function NotificationRow({
+  entry,
+  history,
+  messageIdPrefix,
+  dismiss,
+}: {
+  entry: NotificationEntry;
+  history: RefObject<HTMLDivElement | null>;
+  messageIdPrefix: string;
+  dismiss(id: string): void;
+}) {
+  const t = useT();
+  const action = useRef<HTMLButtonElement>(null);
+  useRemovalFocus(action, () => {
+    const controls = history.current?.querySelectorAll<HTMLButtonElement>("button");
+    return controls?.[controls.length - 1];
+  });
+  return (
+    <div {...stylex.props(styles.row)}>
+      <StatusDot tone={dotTone[entry.level]} className={stylex.props(styles.dot).className} />
+      <div {...stylex.props(vocab.fill)}>
+        <div
+          id={`${messageIdPrefix}-${entry.id}`}
+          {...stylex.props(vocab.wrapText, entry.dismissed && vocab.faint, typeStep.uiMd)}
+        >
+          {entry.message}
+        </div>
+        <div {...stylex.props(vocab.faint, typeStep.uiSm)}>{formatRelative(entry.timestamp)}</div>
+      </div>
+      <IconButton
+        ref={action}
+        icon={iconGlyph("x")}
+        size="xs"
+        aria-label={t("notifications.dismiss")}
+        aria-describedby={`${messageIdPrefix}-${entry.id}`}
+        disabled={entry.dismissed === true}
+        focusableWhenDisabled
+        onClick={() => dismiss(entry.id)}
+      />
+    </div>
   );
 }

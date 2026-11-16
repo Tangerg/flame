@@ -748,7 +748,8 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     });
     const ui = controller(current.client, document);
     await ui.value.initialize();
-    await ui.value.execute("submit");
+    const issues = await ui.value.execute("submit");
+    expect(issues).toEqual(rows.length ? [{ field: "amount", issue: { code: "required" } }] : []);
     expect(ui.value.snapshot().action.status).toBe(status);
     expect(ui.copy).toHaveBeenCalledTimes(copyCount);
     expect(remote.calls).toEqual([]);

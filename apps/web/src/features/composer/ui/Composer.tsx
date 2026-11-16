@@ -4,23 +4,23 @@ import {
 } from "@/features/composer/public/attachments";
 import { type AgentInput } from "@/features/agent/public/input";
 import { TextArea } from "@flame/ui";
-import {
-  SUGGESTION_LISTBOX_ID,
-  suggestionOptionId,
-} from "@/features/composer/application/suggestions";
 import { AgentComposerFooter, AgentComposerSurface, useViewportFocus } from "@/ui/agent/index";
 import { useContentVisible } from "@/ui/index";
-import { FileMentionPopup } from "@/features/composer/ui/FileMentionPopup";
+import {
+  FileMentionOptions,
+  FileMentionStatus,
+} from "@/features/composer/ui/FileMentionSuggestions";
 import { SlashSuggestions } from "@/features/composer/ui/SlashSuggestions";
+import { SuggestionPopup } from "@/features/composer/ui/SuggestionPopup";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 import { useT } from "@/lib/i18n/index";
 import { type ComposerSubmission } from "@/features/composer/application/state";
 import { Slot } from "@/extensions/host/Slot";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 import { ComposerPersistenceNotice } from "@/features/composer/ui/ComposerPersistenceNotice";
-import { ComposerDropCue, useComposerImageDrop } from "@/features/composer/ui/ComposerImageDrop";
+import { ComposerFileDropCue, useComposerFileDrop } from "@/features/composer/ui/ComposerFileDrop";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -60,10 +60,14 @@ export function Composer({
   useViewportFocus(editorRef, visible);
   const {
     inputRef,
+    bindInput,
     retryRef,
     returnFocusToInput,
     mentions,
     slash,
+    suggestions,
+    dismissSuggestions,
+    navigation,
     knownPaths,
     placeholder,
     handleChange,
@@ -84,25 +88,45 @@ export function Composer({
     onAddPaste,
     acceptsImages,
   });
-  const dropping = useComposerImageDrop(handleDrop);
-  const listing = slash.open || (mentions.open && mentions.status === "ready");
-  const highlighted =
-    mentions.open && mentions.status === "ready" ? mentions.index : slash.open ? slash.index : null;
+  const { ref: bindDrop, dragging: dropping } = useComposerFileDrop(acceptsImages, handleDrop);
+  const bindSurface = useCallback(
+    (node: HTMLDivElement | null) => {
+      surfaceRef.current = node;
+      bindDrop(node);
+    },
+    [bindDrop],
+  );
   return (
     <AgentComposerSurface
-      ref={surfaceRef}
+      ref={bindSurface}
       data-slot="composer-root"
       data-dropping={dropping ? "" : undefined}
       className={stylex.props(composerStyles.surface).className}
     >
-      {dropping && <ComposerDropCue acceptsImages={acceptsImages} />}
-      <FileMentionPopup
-        mentions={mentions}
+      {dropping && <ComposerFileDropCue acceptsImages={acceptsImages} />}
+      <SuggestionPopup
+        open={suggestions.open}
+        onDismiss={dismissSuggestions}
+        navigation={navigation}
+        heading={t(mentions.open ? "composer.mention.heading" : "composer.slash.heading")}
         anchor={surfaceRef}
-        retryRef={retryRef}
-        onReturnFocus={returnFocusToInput}
-      />
-      <SlashSuggestions slash={slash} anchor={surfaceRef} />
+        status={
+          mentions.open && mentions.status !== "ready" ? (
+            <FileMentionStatus
+              mentions={mentions}
+              retryRef={retryRef}
+              onReturnFocus={returnFocusToInput}
+              onDismiss={dismissSuggestions}
+            />
+          ) : undefined
+        }
+      >
+        {mentions.open ? (
+          <FileMentionOptions mentions={mentions} navigation={navigation} />
+        ) : (
+          <SlashSuggestions slash={slash} navigation={navigation} />
+        )}
+      </SuggestionPopup>
       <div ref={editorRef} {...stylex.props(composerStyles.editorInset)}>
         <ComposerPersistenceNotice />
         <ComposerAttachments
@@ -121,22 +145,30 @@ export function Composer({
           variant="bare"
           data-chrome-focus=""
           size="prose"
-          ref={inputRef}
+          {...navigation.referenceProps}
+          ref={bindInput}
           aria-label={t("composer.input.label")}
-          aria-controls={listing ? SUGGESTION_LISTBOX_ID : undefined}
-          aria-activedescendant={highlighted === null ? undefined : suggestionOptionId(highlighted)}
           placeholder={placeholder}
           value={value}
           onChange={handleChange}
           onSelect={handleSelect}
-          onBlur={clearCompositionCommit}
-          onFocus={clearCompositionCommit}
+          onBlur={(event) => {
+            navigation.referenceProps.onBlur?.(event);
+            clearCompositionCommit();
+          }}
+          onFocus={(event) => {
+            navigation.referenceProps.onFocus?.(event);
+            clearCompositionCommit();
+          }}
+          onPointerUp={(event) => {
+            navigation.referenceProps.onPointerUp?.(event);
+            clearCompositionCommit();
+          }}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
           onPaste={handlePaste}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
-          onPointerUp={clearCompositionCommit}
           rows={1}
           autosize
           className={stylex.props(composerStyles.editor).className}

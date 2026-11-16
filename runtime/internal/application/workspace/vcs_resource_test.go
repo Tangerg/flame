@@ -23,7 +23,7 @@ func (r *resourceGitReader) Changes(_ context.Context, _ string, maxChanges int)
 	return slices.Clone(r.changes), nil
 }
 
-func (r *resourceGitReader) StructuredDiff(_ context.Context, _, _ string, _ bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error) {
+func (r *resourceGitReader) StructuredDiff(_ context.Context, _, _ string, _ bool, _ DiffFormat, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error) {
 	r.diffFiles, r.diffRows, r.diffBytes = maxFiles, maxRows, maxBytes
 	files := slices.Clone(r.files)
 	for index := range files {
@@ -130,7 +130,7 @@ func TestVCSRejectsUnboundedRawDiffFromDirectPort(t *testing.T) {
 		patch: strings.Repeat("p", maxWorkspaceDiffBytes+1),
 	})
 
-	if _, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo", Raw: true}); !errors.Is(err, ErrVCSResultTooLarge) {
+	if _, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo", Format: DiffFormatRaw}); !errors.Is(err, ErrVCSResultTooLarge) {
 		t.Fatalf("Diff error = %v, want ErrVCSResultTooLarge", err)
 	}
 }

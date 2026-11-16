@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu } from "@/ui/index";
 import { Tooltip, vocab } from "@flame/ui";
@@ -12,6 +13,7 @@ import { MessageActionButton } from "@/features/chat/message-actions/MessageActi
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 function CopyButton() {
+  const { messages } = useNotifications();
   const t = useT();
   const msg = useCurrentMessage();
   const copy = messageCopyPayloads(msg);
@@ -31,7 +33,7 @@ function CopyButton() {
           label={t("msgActions.copyMarkdown")}
           hint={t("msgActions.copyMarkdownHint")}
           onSelect={() =>
-            writeToClipboard(copy.markdown || copy.plain, {
+            writeToClipboard(messages.show, copy.markdown || copy.plain, {
               successLabel: t("msgActions.copiedMarkdown"),
             })
           }
@@ -40,7 +42,9 @@ function CopyButton() {
           label={t("msgActions.copyPlain")}
           hint={t("msgActions.copyPlainHint")}
           onSelect={() =>
-            writeToClipboard(copy.plain, { successLabel: t("msgActions.copiedPlain") })
+            writeToClipboard(messages.show, copy.plain, {
+              successLabel: t("msgActions.copiedPlain"),
+            })
           }
         />
       </DropdownMenu.Content>

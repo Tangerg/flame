@@ -1,8 +1,10 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { type SystemNotifier } from "@/features/notifications/systemNotifier";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export interface NotificationAccess {
   readonly notifier: SystemNotifier;
   readonly productName: string;
+  readonly messages: NotificationFeed;
 }
 const NotificationContext = createContext<NotificationAccess | null>(null);
 export function NotificationProvider({

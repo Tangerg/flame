@@ -113,7 +113,7 @@ func TestDiffReportsExactHeadAndUnbornBaseline(t *testing.T) {
 		root := initRepo(t)
 		expected := strings.TrimSpace(gitTestCommandOutput(t, root, "rev-parse", "HEAD"))
 		write(t, root, "a.txt", "changed\n")
-		result, err := Diff(t.Context(), root, "", Worktree, 100, 100, testMaxDiffBytes)
+		result, err := Diff(t.Context(), root, "", Worktree, Rows, 100, 100, testMaxDiffBytes)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,7 +127,7 @@ func TestDiffReportsExactHeadAndUnbornBaseline(t *testing.T) {
 		write(t, root, "staged.txt", "staged\n")
 		gitTestCommand(t, root, "add", "staged.txt")
 		write(t, root, "untracked.txt", "untracked\n")
-		result, err := Diff(t.Context(), root, "", Worktree, 100, 100, testMaxDiffBytes)
+		result, err := Diff(t.Context(), root, "", Worktree, Rows, 100, 100, testMaxDiffBytes)
 		if err != nil {
 			t.Fatal(err)
 		}

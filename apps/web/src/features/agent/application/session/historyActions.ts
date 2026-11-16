@@ -2,7 +2,6 @@ import { type AgentDependencies } from "@/features/agent/application/agentDepend
 import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/domain/input";
-import { notifyInfo } from "@/features/notifications/public/notifications";
 import { type RestoreType } from "@/features/agent/application/runtimeGateway";
 import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
 
@@ -104,7 +103,7 @@ async function rollbackBeforeRun(
   const keep = boundary.toRunId;
   const wantsFiles = restoreType !== "history";
   if (wantsFiles && !keep) {
-    notifyInfo(t("session.restore.noCheckpoint"), {
+    agentAccess.notifications.notify("info", t("session.restore.noCheckpoint"), {
       source: "session",
     });
     return { status: "unavailable" };

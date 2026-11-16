@@ -9,6 +9,7 @@ import {
   Metadata,
   RecordTitle,
   Select,
+  Segmented,
   Slider,
   Switch,
   TextArea,
@@ -19,7 +20,6 @@ import type { ComponentRenderProps } from "@openuidev/react-lang";
 import type { DisplayProps } from "../contracts/catalog";
 import { validateField, type ValidationIssue } from "../contracts/document";
 import { useGenUIInteraction } from "./interaction";
-import { moveChoice } from "./layout";
 import { useLocalValue } from "./state";
 
 type Translated = { t: Translate };
@@ -37,7 +37,7 @@ function FieldFrame({
   children: ReactNode;
 }) {
   return (
-    <div data-genui-field={field} data-genui-invalid={issue ? "" : undefined}>
+    <div data-genui-field={field}>
       {children}
       {issue && (
         <Metadata id={errorId}>
@@ -183,40 +183,15 @@ export function RadioGroupView({
   return (
     <FieldFrame field={props.field} issue={issue} errorId={errorId} t={t}>
       <FormGroup label={props.label}>
-        <div
-          role="radiogroup"
-          aria-label={props.label}
+        <Segmented
+          value={value}
+          onChange={setValue}
+          options={props.options}
+          ariaLabel={props.label}
+          disabled={blocked}
           aria-invalid={issue !== undefined}
           aria-describedby={issue ? errorId : undefined}
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "calc(var(--spacing) * 2)",
-          }}
-        >
-          {props.options.map((option, index) => (
-            <Button
-              key={option.value}
-              role="radio"
-              aria-checked={value === option.value}
-              tabIndex={
-                value === option.value || (!value && index === 0) ? 0 : -1
-              }
-              active={value === option.value}
-              variant="outline"
-              disabled={blocked}
-              onClick={() => setValue(option.value)}
-              onKeyDown={(event) => {
-                if (!blocked)
-                  moveChoice(event, (next) =>
-                    setValue(props.options[next]!.value),
-                  );
-              }}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </div>
+        />
       </FormGroup>
     </FieldFrame>
   );
@@ -322,22 +297,32 @@ export function FormView({
       onSubmit={(event) => {
         event.preventDefault();
         if (interaction.blocked) return;
-        // Field views project the document's validation; execution still owns admission.
-        for (const control of event.currentTarget.querySelectorAll<HTMLElement>(
-          "[data-genui-invalid] :is(input, textarea, button, [tabindex])",
-        )) {
-          if (
-            control.tabIndex < 0 ||
-            control.matches(
-              ':disabled, [aria-disabled="true"], [type="hidden"]',
-            ) ||
-            control.closest('[hidden], [inert], [aria-hidden="true"]')
-          )
-            continue;
-          control.focus();
-          if (control.ownerDocument.activeElement === control) break;
-        }
-        void interaction.execute(props.action);
+        const form = event.currentTarget;
+        const origin = form.ownerDocument.activeElement;
+        void interaction.execute(props.action).then((issues) => {
+          if (!form.isConnected || form.ownerDocument.activeElement !== origin)
+            return;
+          const fields = new Set(issues.map(({ field }) => field));
+          for (const field of form.querySelectorAll<HTMLElement>(
+            "[data-genui-field]",
+          )) {
+            if (!fields.has(field.dataset.genuiField!)) continue;
+            for (const control of field.querySelectorAll<HTMLElement>(
+              "input, textarea, button, [tabindex]",
+            )) {
+              if (
+                control.tabIndex < 0 ||
+                control.matches(
+                  ':disabled, [aria-disabled="true"], [type="hidden"]',
+                ) ||
+                control.closest('[hidden], [inert], [aria-hidden="true"]')
+              )
+                continue;
+              control.focus();
+              if (control.ownerDocument.activeElement === control) return;
+            }
+          }
+        });
       }}
       onReset={(event) => {
         event.preventDefault();

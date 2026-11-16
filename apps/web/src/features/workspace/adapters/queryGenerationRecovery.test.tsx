@@ -7,8 +7,8 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { Activity, Suspense, createElement, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { createParameterizedDataQuery } from "@/extensions/dataQuery";
@@ -16,8 +16,14 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
 import {
   invalidateWorkspaceEverything,
+  replaceWorkspaceServerScope,
   retireWorkspaceReadModels,
 } from "@/features/workspace/adapters/queryInvalidation";
+import {
+  useWorkspaceReadFile,
+  WORKSPACE_READ_FILE_KEY,
+  type WorkspaceFileContent,
+} from "@/features/workspace/application/workspaceQueries";
 import { loadPluginsForTest } from "@/test/kernel";
 const { synchronizeMountedAgentSessions } = vi.hoisted(() => ({
   synchronizeMountedAgentSessions: vi.fn(),
@@ -57,6 +63,100 @@ afterEach(() => {
 });
 
 describe("workspace Runtime-generation query recovery", () => {
+  it.each([
+    { lifetime: "Activity", evictPrevious: false },
+    { lifetime: "Suspense", evictPrevious: false },
+    { lifetime: "Activity", evictPrevious: true },
+    { lifetime: "Suspense", evictPrevious: true },
+  ])(
+    "retires continuous file placeholders across server round trips in $lifetime (evictPrevious=$evictPrevious)",
+    async ({ lifetime, evictPrevious }) => {
+      const content = (value: string): WorkspaceFileContent => ({
+        content: value,
+        startLine: 1,
+        endLine: 10,
+        totalLines: 100,
+      });
+      let read = Promise.resolve(content("original source"));
+      const fetcher = vi.fn((_params?: unknown) => read);
+      await loadPluginsForTest(
+        definePlugin({
+          name: "test.continuous-file-server-replacement",
+          setup(ctx) {
+            ctx.contributions.add(DATA_PROVIDER, { key: WORKSPACE_READ_FILE_KEY, fetcher });
+          },
+        }),
+      );
+      function Reader() {
+        const [page, setPage] = useState(0);
+        const file = useWorkspaceReadFile({
+          cwd: "/work",
+          path: "guide.md",
+          startLine: page * 10 + 1,
+        });
+        return (
+          <div>
+            <button onClick={() => setPage((current) => current + 1)}>Next page</button>
+            <output>{file.data?.content ?? "Waiting for file"}</output>
+          </div>
+        );
+      }
+      const child = <Reader />;
+      const pending = new Promise<never>(() => {});
+      function Pending(): never {
+        throw pending;
+      }
+      const scene = (visible: boolean) =>
+        lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for reader</p>}>
+            {!visible && <Pending />}
+            {child}
+          </Suspense>
+        );
+      const view = testClient.render(scene(true), { wrapper });
+      let previous = "original source";
+      await screen.findByText(previous);
+      expect(fetcher).toHaveBeenCalledOnce();
+
+      for (const next of ["second source", "returned source"]) {
+        const retired = Promise.withResolvers<WorkspaceFileContent>();
+        const successor = Promise.withResolvers<WorkspaceFileContent>();
+        finishTestClient(() => {
+          retired.resolve(content("retired source"));
+          successor.resolve(content(next));
+        });
+        read = retired.promise;
+        const before = fetcher.mock.calls.length;
+        const previousRequest = fetcher.mock.calls.at(-1)![0];
+        fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+        await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(before + 1));
+        expect(screen.getByText(previous)).toBeTruthy();
+        view.rerender(scene(false));
+        const queryKey = [WORKSPACE_READ_FILE_KEY, previousRequest];
+        if (evictPrevious) {
+          act(() => queryClient.removeQueries({ queryKey, exact: true }));
+        }
+        expect(queryClient.getQueryData<WorkspaceFileContent>(queryKey)?.content).toBe(
+          evictPrevious ? undefined : previous,
+        );
+
+        read = successor.promise;
+        act(() => replaceWorkspaceServerScope(testClient.agent.access));
+        view.rerender(scene(true));
+
+        expect(screen.queryByText(previous)).toBeNull();
+        await act(async () => successor.resolve(content(next)));
+        await screen.findByText(next);
+        await act(async () => retired.resolve(content("retired source")));
+        expect(screen.queryByText("retired source")).toBeNull();
+        expect(fetcher).toHaveBeenCalledTimes(before + 2);
+        previous = next;
+      }
+    },
+  );
+
   it("revokes an old query before the successor event tail starts its replacement", async () => {
     const retired = Promise.withResolvers<FixtureState>();
     let firstSignal: AbortSignal | undefined;

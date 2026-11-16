@@ -28,7 +28,12 @@ export function useRelocateSession(): (
       } catch (err) {
         if (!owner.isCurrent()) return false;
         void invalidateAgentSessions();
-        reportSessionError("relocate", err, rpcErrorText(err) ?? String(err));
+        reportSessionError(
+          agentAccess.notifications,
+          "relocate",
+          err,
+          rpcErrorText(err) ?? String(err),
+        );
         return false;
       }
     },

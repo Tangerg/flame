@@ -493,6 +493,11 @@ func registerArtifactUnions(s *Shapes) {
 }
 
 func registerDiffUnions(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.Diff](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.DiffFormatRows), Required: []string{"baseline", "rows"}},
+		{Tag: string(protocol.DiffFormatRaw), Required: []string{"baseline", "patch"}},
+		{Tag: string(protocol.DiffFormatVisual), Required: []string{"baseline", "visual"}},
+	}})
 	s.union(UnionSpec{GoType: typeOf[protocol.DiffBaseline](), Discriminator: "type", Variants: []VariantSpec{
 		{Tag: "head", Required: []string{"commit"}},
 		{Tag: "mergeBase", Required: []string{"commit"}},

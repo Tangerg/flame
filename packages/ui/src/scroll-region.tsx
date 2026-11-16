@@ -10,6 +10,7 @@ import {
   type KeyboardEventHandler,
   type Ref,
 } from "react";
+import { isPressedReadingTarget } from "./reading-unit";
 import { useContentVisible } from "./content-visibility";
 import { space } from "./tokens.stylex";
 
@@ -58,7 +59,10 @@ function horizontalPlacement(region: HTMLElement, target: Element) {
 }
 
 // Some native hosts do not pan a focused scroller with arrows, so the reader owns the transition.
-export function scrollWithHorizontalArrow(event: KeyboardEvent<HTMLElement>) {
+export function scrollWithHorizontalArrow(
+  event: KeyboardEvent<HTMLElement>,
+  scrollBy?: (delta: number) => void,
+) {
   if (
     event.defaultPrevented ||
     event.target !== event.currentTarget ||
@@ -71,12 +75,16 @@ export function scrollWithHorizontalArrow(event: KeyboardEvent<HTMLElement>) {
   )
     return;
   const region = event.currentTarget;
-  if (region.clientWidth <= 0 || region.scrollWidth <= region.clientWidth)
+  if (
+    region.clientWidth <= 0 ||
+    (!scrollBy && region.scrollWidth <= region.clientWidth)
+  )
     return;
   event.preventDefault();
   event.stopPropagation();
-  region.scrollLeft +=
-    region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+  const delta = region.clientWidth * 0.1 * (event.key === "ArrowLeft" ? -1 : 1);
+  if (scrollBy) scrollBy(delta);
+  else region.scrollLeft += delta;
 }
 
 export function ScrollRegion({
@@ -122,10 +130,7 @@ export function ScrollRegion({
         return;
       }
       const placement = horizontalPlacement(region, focused);
-      const pointerFocus =
-        pressed &&
-        (focused.contains(pressed) ||
-          pressed.closest("label, [data-focus-proxy]")?.contains(focused));
+      const pointerFocus = isPressedReadingTarget(focused, pressed);
       // Moving a pressed control before pointerup can swallow its activation.
       if (placement.displacement && !pointerFocus)
         region.scrollTo({

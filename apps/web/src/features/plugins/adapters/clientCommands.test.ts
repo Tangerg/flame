@@ -6,13 +6,8 @@ import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { contributionsTo } from "@/extensions/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { COMMAND } from "@/features/command/public/extensionPoints";
-import { notifyFrom } from "@/features/notifications/public/notifications";
+import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { createClientCommandRegistration } from "./clientCommands";
-
-vi.mock("@/features/notifications/public/notifications", async (original) => ({
-  ...(await original<typeof import("@/features/notifications/public/notifications")>()),
-  notifyFrom: vi.fn(),
-}));
 
 async function fixture(captureSessionId: () => string | undefined = () => "captured") {
   let lifetime!: ContributionScope;
@@ -25,7 +20,9 @@ async function fixture(captureSessionId: () => string | undefined = () => "captu
     }),
   ]);
   onTestFinished(() => stopKernel(host));
-  vi.mocked(notifyFrom).mockClear();
+  const messages = new NotificationFeed(() => {});
+  const notify = vi.spyOn(messages, "notify");
+  onTestFinished(() => messages.dispose());
   usePluginErrorStore.getState().clearAll();
   const controller = new AbortController();
   const signal = AbortSignal.any([controller.signal, lifetime.lifetime.signal]);
@@ -38,13 +35,14 @@ async function fixture(captureSessionId: () => string | undefined = () => "captu
       componentId: "exports",
     },
     captureSessionId,
+    messages,
   );
-  return { lifetime, register, signal, controller };
+  return { lifetime, register, signal, controller, messages, notify };
 }
 
 it("captures the invocation's Session synchronously and joins accepted work on withdrawal", async () => {
   let selected = "original";
-  const { register, lifetime, signal } = await fixture(() => selected);
+  const { register, lifetime, signal, notify } = await fixture(() => selected);
   const response = Promise.withResolvers<void>();
   let captured!: ClientCommandInvocation;
   register({
@@ -73,11 +71,11 @@ it("captures the invocation's Session synchronously and joins accepted work on w
     response.resolve();
     await Promise.all([exporting, closing]);
   }
-  expect(notifyFrom).not.toHaveBeenCalled();
+  expect(notify).not.toHaveBeenCalled();
 });
 
 it("namespaces commands by installed component and removes only their own registration", async () => {
-  const { register, lifetime, signal } = await fixture();
+  const { register, lifetime, signal, messages } = await fixture();
   const other = createClientCommandRegistration(
     lifetime,
     signal,
@@ -87,6 +85,7 @@ it("namespaces commands by installed component and removes only their own regist
       componentId: "exports",
     },
     () => undefined,
+    messages,
   );
   const run = vi.fn();
   const stop = register({ id: "json", label: "Export JSON", combo: "Mod+Shift+E", run });
@@ -115,7 +114,7 @@ it("rejects invalid or duplicate local registrations without replacing a live co
 });
 
 it("reports a synchronous or asynchronous command failure while preserving its cause", async () => {
-  const { register } = await fixture();
+  const { register, notify } = await fixture();
   for (const asynchronous of [false, true]) {
     const failure = new Error(`export failed: ${asynchronous}`);
     register({
@@ -132,16 +131,14 @@ it("reports a synchronous or asynchronous command failure while preserving its c
       source: "command",
       message: failure.message,
     });
-    expect(notifyFrom).toHaveBeenLastCalledWith(
-      "package:installed",
-      `Export: ${failure.message}`,
-      "error",
-    );
+    expect(notify).toHaveBeenLastCalledWith("error", `Export: ${failure.message}`, {
+      source: "package:installed",
+    });
   }
 });
 
 it("does not publish a retired command's late failure into the current client", async () => {
-  const { register, controller } = await fixture();
+  const { register, controller, notify } = await fixture();
   const response = Promise.withResolvers<void>();
   register({ id: "export", label: "Export", run: () => response.promise });
   const work = contributionsTo(COMMAND)[0]!.item.run();
@@ -149,6 +146,6 @@ it("does not publish a retired command's late failure into the current client", 
   const failure = new Error("old native save failed");
   response.reject(failure);
   await expect(work).rejects.toBe(failure);
-  expect(notifyFrom).not.toHaveBeenCalled();
+  expect(notify).not.toHaveBeenCalled();
   expect(usePluginErrorStore.getState().log).toEqual([]);
 });

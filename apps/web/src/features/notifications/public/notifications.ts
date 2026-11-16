@@ -1,54 +1,8 @@
-import {
-  type NotificationEntry,
-  type NotificationLevel,
-} from "@/features/notifications/public/types";
-import { toast } from "sonner";
-import { create } from "zustand";
+import type { NotificationEntry, NotificationLevel } from "@/features/notifications/public/types";
+import { createStore } from "zustand/vanilla";
 import { ExactSequence } from "@/foundation/exactSequence";
+
 const MAX_ENTRIES = 200;
-
-interface NotificationStoreState {
-  log: NotificationEntry[];
-}
-
-interface NotificationStoreActions {
-  push: (entry: { plugin: string; level: NotificationLevel; message: string }) => NotificationEntry;
-  dismiss: (id: string) => void;
-  clearAll: () => void;
-}
-
-const notificationIds = new ExactSequence();
-
-export const useNotificationStore = create<NotificationStoreState & NotificationStoreActions>(
-  (set, get) => ({
-    log: [],
-
-    push({ plugin, level, message }) {
-      const id = notificationIds.issue().toString();
-      const entry: NotificationEntry = {
-        id,
-        plugin,
-        level,
-        message,
-        timestamp: Date.now(),
-      };
-      const next = [...get().log, entry];
-      const trimmed = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
-      set({ log: trimmed });
-      return entry;
-    },
-
-    dismiss(id) {
-      set({
-        log: get().log.map((e) => (e.id === id ? { ...e, dismissed: true } : e)),
-      });
-    },
-
-    clearAll() {
-      set({ log: [] });
-    },
-  }),
-);
 
 export type NotifySource =
   | "agentMemory"
@@ -63,35 +17,82 @@ export type NotifySource =
   | "setup"
   | "skills";
 
-export interface NotifyOptions {
+export interface NotificationPresentation {
+  level: NotificationLevel | "success";
+  message: string;
   description?: string;
-  source?: NotifySource;
+  lifetime?: "persistent";
+  action?: { label: string; run(): void };
 }
 
-const TOAST_BY_LEVEL: Record<NotificationLevel, typeof toast.info> = {
-  info: toast.info,
-  warn: toast.warning,
-  error: toast.error,
-};
+export class NotificationFeed {
+  readonly #history = createStore(() => ({ log: [] as NotificationEntry[] }));
+  readonly #ids = new ExactSequence();
+  readonly #present: (message: NotificationPresentation) => void;
+  #active = true;
 
-function notify(level: "info" | "error", message: string, opts?: NotifyOptions): void {
-  useNotificationStore.getState().push({
-    plugin: opts?.source ?? "app",
-    level,
-    message: opts?.description ? `${message} — ${opts.description}` : message,
-  });
-  TOAST_BY_LEVEL[level](message, opts?.description ? { description: opts.description } : undefined);
-}
+  constructor(present: (message: NotificationPresentation) => void) {
+    this.#present = present;
+  }
 
-export function notifyInfo(message: string, opts?: NotifyOptions): void {
-  notify("info", message, opts);
-}
+  readonly snapshot = (): readonly NotificationEntry[] => this.#history.getState().log;
+  readonly subscribe = (listener: () => void): (() => void) => this.#history.subscribe(listener);
 
-export function notifyError(message: string, opts?: NotifyOptions): void {
-  notify("error", message, opts);
-}
+  record(input: {
+    plugin: string;
+    level: NotificationLevel;
+    message: string;
+  }): NotificationEntry | undefined {
+    if (!this.#active) return;
+    const entry: NotificationEntry = {
+      ...input,
+      id: this.#ids.issue().toString(),
+      timestamp: Date.now(),
+    };
+    this.#history.setState(({ log }) => ({ log: [...log, entry].slice(-MAX_ENTRIES) }));
+    return entry;
+  }
 
-export function notifyFrom(plugin: string, message: string, level: NotificationLevel): void {
-  useNotificationStore.getState().push({ plugin, level, message });
-  TOAST_BY_LEVEL[level](message);
+  notify(
+    level: NotificationLevel,
+    message: string,
+    options?: { description?: string; source?: string },
+  ): void {
+    if (!this.#active) return;
+    this.record({
+      plugin: options?.source ?? "app",
+      level,
+      message: options?.description ? `${message} — ${options.description}` : message,
+    });
+    this.show({ level, message, description: options?.description });
+  }
+
+  readonly show = (message: NotificationPresentation): void => {
+    if (!this.#active) return;
+    const action = message.action;
+    this.#present({
+      ...message,
+      action: action && {
+        label: action.label,
+        run: () => {
+          if (this.#active) action.run();
+        },
+      },
+    });
+  };
+
+  readonly dismiss = (id: string): void => {
+    if (!this.#active) return;
+    this.#history.setState(({ log }) => ({
+      log: log.map((entry) => (entry.id === id ? { ...entry, dismissed: true } : entry)),
+    }));
+  };
+
+  readonly clearAll = (): void => {
+    if (this.#active) this.#history.setState({ log: [] });
+  };
+
+  dispose(): void {
+    this.#active = false;
+  }
 }

@@ -25,11 +25,14 @@ import {
   safeURL,
   stateKey,
 } from "../contracts/document";
-import { InteractionController } from "./interactionController";
+import {
+  InteractionController,
+  type ActionIssues,
+} from "./interactionController";
 
 interface Interaction {
   blocked: boolean;
-  execute(actionId: string): Promise<void>;
+  execute(actionId: string): Promise<ActionIssues>;
   reset(fields?: string[]): void;
   resetForm(actionId: string): void;
   update(id: string, value: unknown): void;

@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   create: vi.fn(),
   focusComposer: vi.fn(),
-  notifyError: vi.fn(),
 }));
 
 vi.mock("@/features/agent/public/session", async (importOriginal) => ({
@@ -50,12 +49,6 @@ vi.mock("@/features/connection/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => mocks.runtimeAvailable,
 }));
 
-vi.mock("@/features/notifications/public/notifications", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/features/notifications/public/notifications")>();
-  return { ...actual, notifyError: mocks.notifyError };
-});
-
 let disposePicker = () => {};
 
 beforeEach(() => {
@@ -65,7 +58,6 @@ beforeEach(() => {
   mocks.open.mockReset();
   mocks.create.mockReset().mockResolvedValue("session-new");
   mocks.focusComposer.mockReset();
-  mocks.notifyError.mockReset();
   disposePicker = stubInstance(testClient.directory.access, {
     open: mocks.open,
     browse: async () => undefined,

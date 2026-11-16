@@ -166,6 +166,7 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       await measureLoad(page, async () => {
         await page.goto(REVIEW_URL);
         await expectLabReady(page);
+        await diff.getByRole("button", { name: "Show changed files", exact: true }).click();
         await expect(diffFiles).toHaveCount(REVIEW_FILES);
       }),
     );
@@ -175,7 +176,8 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       "review: open file",
       await measure(page, session, async () => {
         await diffFiles.first().click();
-        await expect(diff.getByRole("table")).toHaveCount(1);
+        const reader = diff.getByRole("region", { name: /^Scrollable diff for / });
+        await expect(reader.getByText(/^export const value1 = /).first()).toBeVisible();
       }),
     );
     record(
@@ -183,7 +185,7 @@ test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page
       await measure(page, session, async () => {
         await diff.getByRole("button", { name: "Back to changed files", exact: true }).click();
         await expect(diffFiles.first()).toBeFocused();
-        await expect(diff.getByRole("table")).toHaveCount(0);
+        await expect(diff.getByRole("region", { name: /^Scrollable diff for / })).toHaveCount(0);
       }),
     );
 

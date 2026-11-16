@@ -1,6 +1,7 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useCallback, useRef, useState } from "react";
 import { rpcErrorText } from "@/lib/rpcErrors";
-import { notifyError, type NotifySource } from "@/features/notifications/public/notifications";
+import { type NotifySource } from "@/features/notifications/public/notifications";
 export interface CommandActionConfig {
   wasRetired?: (error: unknown) => boolean;
   fallback: string;
@@ -19,6 +20,7 @@ export function useCommandAction({
   source,
   onError,
 }: CommandActionConfig): CommandAction {
+  const { messages } = useNotifications();
   const inFlight = useRef(false);
   const [busy, setBusy] = useState(false);
 
@@ -32,14 +34,14 @@ export function useCommandAction({
           if (wasRetired?.(error)) return;
           const message = rpcErrorText(error) ?? fallback;
           if (onError) onError(message);
-          else notifyError(message, source ? { source } : undefined);
+          else messages.notify("error", message, source ? { source } : undefined);
         })
         .finally(() => {
           inFlight.current = false;
           setBusy(false);
         });
     },
-    [fallback, onError, source, wasRetired],
+    [fallback, onError, source, wasRetired, messages],
   );
 
   return { busy, run };

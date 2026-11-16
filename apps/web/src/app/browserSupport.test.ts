@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { missingBrowserFeatures, startBrowserApplication } from "./browserSupport";
 
+const selection = {
+  getComposedRanges(options: GetComposedRangesOptions) {
+    void options.shadowRoots;
+    return [];
+  },
+};
+
 beforeEach(() => {
   vi.spyOn(HTMLScriptElement, "supports").mockReturnValue(true);
+  vi.spyOn(document, "getSelection").mockReturnValue(selection as unknown as Selection);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -24,6 +32,7 @@ describe("browser startup admission", () => {
     ["Map.groupBy", Map, "groupBy"],
     ["Array.prototype.toSorted", Array.prototype, "toSorted"],
     ["Array.prototype.toReversed", Array.prototype, "toReversed"],
+    ["Selection.getComposedRanges({ shadowRoots })", selection, "getComposedRanges"],
     ['HTMLScriptElement.supports("importmap")', HTMLScriptElement, "supports"],
   ] as const)(
     "diagnoses missing %s before evaluating the application",
@@ -42,6 +51,28 @@ describe("browser startup admission", () => {
       status: "unsupported",
       missing: ['HTMLScriptElement.supports("importmap")'],
     });
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("refuses legacy composed-range arguments before loading the application", async () => {
+    vi.spyOn(selection, "getComposedRanges").mockImplementation(() => {
+      throw new TypeError("Expected a ShadowRoot argument");
+    });
+    const load = vi.fn(async () => undefined);
+    expect(await startBrowserApplication(load)).toEqual({
+      status: "unsupported",
+      missing: ["Selection.getComposedRanges({ shadowRoots })"],
+    });
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("preserves unexpected selection capability failures", async () => {
+    const cause = new Error("selection inspection failed");
+    vi.spyOn(selection, "getComposedRanges").mockImplementation(() => {
+      throw cause;
+    });
+    const load = vi.fn(async () => undefined);
+    await expect(startBrowserApplication(load)).rejects.toBe(cause);
     expect(load).not.toHaveBeenCalled();
   });
 

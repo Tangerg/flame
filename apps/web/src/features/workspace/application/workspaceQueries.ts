@@ -77,14 +77,20 @@ export const useWorkspaceListFiles = createParameterizedDataQuery<
   WorkspaceFileEntry[]
 >(WORKSPACE_LIST_FILES_KEY);
 
-export function useWorkspaceFileMatches(requests: readonly WorkspaceListFilesQuery[]) {
+export function workspaceFileListQuery(request: WorkspaceListFilesQuery) {
+  return parameterizedQuery<WorkspaceListFilesQuery, WorkspaceFileEntry[]>(
+    WORKSPACE_LIST_FILES_KEY,
+    request,
+  );
+}
+
+export function useWorkspaceFileLists(
+  requests: readonly WorkspaceListFilesQuery[],
+  subscribed = true,
+) {
   return useQueries({
-    queries: requests.map((request) =>
-      parameterizedQuery<WorkspaceListFilesQuery, WorkspaceFileEntry[]>(
-        WORKSPACE_LIST_FILES_KEY,
-        request,
-      ),
-    ),
+    queries: requests.map(workspaceFileListQuery),
+    subscribed,
   });
 }
 

@@ -15,7 +15,7 @@ import { vocab } from "@flame/ui";
 interface ToolGroupRowsProps {
   tools: ToolCall[];
   expandedIds: Set<string>;
-  onToggleExpand: (id: string) => void;
+  onExpandedChange: (id: string, expanded: boolean) => void;
 }
 
 interface Props extends ToolGroupRowsProps {
@@ -26,7 +26,7 @@ const tg = stylex.create({
   members: { display: "flex", flexDirection: "column", gap: space.s1 },
 });
 
-export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Props) {
+export function ToolGroup({ tools, expandedIds, onExpandedChange, superseded }: Props) {
   const [pinned, setPinned] = useState<ToolGroupPinnedState>(null);
   const t = useT();
   const model = toolGroupModel(t, tools, pinned, superseded);
@@ -43,7 +43,7 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
         </span>
       }
       open={model.expanded}
-      onToggle={() => setPinned(model.nextPinned)}
+      onOpenChange={setPinned}
       stickyHeader
     >
       {/* Focus inside the rows is explicit engagement: pinning keeps settling
@@ -51,7 +51,7 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
       <ToolGroupRows
         tools={tools}
         expandedIds={expandedIds}
-        onToggleExpand={onToggleExpand}
+        onExpandedChange={onExpandedChange}
         onFocusCapture={() => setPinned(model.expanded)}
       />
     </AgentActivityDisclosure>
@@ -61,7 +61,7 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
 export function ToolGroupRows({
   tools,
   expandedIds,
-  onToggleExpand,
+  onExpandedChange,
   onFocusCapture,
 }: ToolGroupRowsProps & Pick<ComponentPropsWithoutRef<"div">, "onFocusCapture">) {
   return (
@@ -71,7 +71,7 @@ export function ToolGroupRows({
           key={tool.id}
           tool={tool}
           expanded={expandedIds.has(tool.id)}
-          onToggleExpand={() => onToggleExpand(tool.id)}
+          onExpandedChange={(expanded) => onExpandedChange(tool.id, expanded)}
         />
       ))}
     </div>

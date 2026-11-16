@@ -212,10 +212,8 @@ export function SessionRow({
         <SessionActionDialog
           action={action.entry}
           session={action.session}
-          close={() => {
-            setAction(undefined);
-            requestAnimationFrame(() => rowRef.current?.focus());
-          }}
+          finalFocus={rowRef}
+          close={() => setAction(undefined)}
         />
       )}
       {onDelete && (

@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { toast } from "sonner";
 import { copyRichText, writeToClipboard } from "@/lib/clipboard";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const present = vi.fn();
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.mocked(toast.success).mockClear();
-  vi.mocked(toast.error).mockClear();
+  present.mockClear();
 });
 
 describe("copyRichText", () => {
@@ -49,42 +47,39 @@ describe("writeToClipboard", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    await expect(writeToClipboard(text, labels)).resolves.toBe(true);
+    await expect(writeToClipboard(present, text, labels)).resolves.toBe(true);
 
     expect(writeText).toHaveBeenCalledExactlyOnceWith(text);
-    expect(toast.success).toHaveBeenCalledExactlyOnceWith("Copied");
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(present).toHaveBeenCalledExactlyOnceWith({ level: "success", message: "Copied" });
   });
 
   it("reports a denied write with the failure label, never the error", async () => {
     const writeText = vi.fn().mockRejectedValue(new Error("NotAllowedError: secret-token"));
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    await expect(writeToClipboard(text, labels)).resolves.toBe(false);
+    await expect(writeToClipboard(present, text, labels)).resolves.toBe(false);
 
     expect(writeText).toHaveBeenCalledExactlyOnceWith(text);
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith("Couldn't copy");
+    expect(present).toHaveBeenCalledExactlyOnceWith({ level: "error", message: "Couldn't copy" });
   });
 
   it("reports an absent Clipboard API with the failure label", async () => {
     vi.stubGlobal("navigator", {});
 
-    await expect(writeToClipboard(text, labels)).resolves.toBe(false);
+    await expect(writeToClipboard(present, text, labels)).resolves.toBe(false);
 
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith("Couldn't copy");
+    expect(present).toHaveBeenCalledExactlyOnceWith({ level: "error", message: "Couldn't copy" });
   });
 
   it("stays silent for an outcome whose label was not requested", async () => {
     const writeText = vi.fn().mockRejectedValue(new Error("denied"));
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    await expect(writeToClipboard(text, { successLabel: "Copied" })).resolves.toBe(false);
+    await expect(writeToClipboard(present, text, { successLabel: "Copied" })).resolves.toBe(false);
     writeText.mockResolvedValue(undefined);
-    await expect(writeToClipboard(text)).resolves.toBe(true);
+    await expect(writeToClipboard(present, text)).resolves.toBe(true);
 
     expect(writeText).toHaveBeenCalledTimes(2);
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(present).not.toHaveBeenCalled();
   });
 });

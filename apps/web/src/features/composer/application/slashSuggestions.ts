@@ -1,9 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSlashCommands } from "@/features/composer/public/extensionPoints";
-import {
-  type SuggestionList,
-  useSuggestionIndex,
-} from "@/features/composer/application/suggestions";
+import { type SuggestionList } from "@/features/composer/application/suggestions";
 type SlashCommand = ReturnType<typeof useSlashCommands>[number];
 
 function slashToken(value: string, caret: number): string | null {
@@ -31,13 +28,13 @@ export function useSlashSuggestions({ value, caret, apply }: Args): SuggestionLi
   const commands = useSlashCommands();
   const [dismissedToken, setDismissedToken] = useState<string | null>(null);
   const token = slashToken(value, caret);
+  if (token === null && dismissedToken !== null) setDismissedToken(null);
   const items = useMemo(
     () => (token === null ? [] : matchSlashCommands(commands, token)),
     [commands, token],
   );
   const complete = items.length === 1 && items[0]!.cmd === token;
   const open = token !== null && token !== dismissedToken && items.length > 0 && !complete;
-  const { index, setIndex } = useSuggestionIndex(`${token}\0${items.length}`, items.length);
 
   const accept = useCallback(
     (command: SlashCommand) => {
@@ -52,5 +49,11 @@ export function useSlashSuggestions({ value, caret, apply }: Args): SuggestionLi
 
   const dismiss = useCallback(() => setDismissedToken(token), [token]);
 
-  return { open, items, index, setIndex, accept, dismiss };
+  return {
+    key: [token, ...items.map((item) => item.cmd)].join("\0"),
+    open,
+    items,
+    accept,
+    dismiss,
+  };
 }

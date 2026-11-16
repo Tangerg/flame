@@ -1,8 +1,8 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
-  Activity,
   Component,
   Fragment,
   useCallback,
@@ -31,13 +31,15 @@ import { TextButton } from "@/ui/index";
 import { Icon, fileIconName } from "@/ui/index";
 import {
   Button,
-  copyWholeReader,
+  ContentVisibility,
+  copyReaderSelection,
   EmptyState,
   IconButton,
   isImeKey,
   selectAllInReader,
   TextField,
   useCopyFeedback,
+  useContentVisible,
   vocab,
 } from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -51,6 +53,7 @@ import {
   isWorkspaceResolving,
   resolvedWorkspaceCwd,
   useActiveSessionWorkspace,
+  type ActiveSessionWorkspaceSelection,
 } from "@/features/agent/public/session";
 import {
   type WorkspaceFileContent,
@@ -73,6 +76,7 @@ const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
   workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
+  hidden: { display: "none" },
   identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
   identityIcon: { flexShrink: 0, color: color.fgFaint },
   // The header never shrinks, so a long name is bounded here; the reader shows the full path.
@@ -121,21 +125,29 @@ function initialWindow(line: number): LineWindow {
 }
 
 export function FileWorkspace() {
+  const { messages } = useNotifications();
   const workspaceAccess = useWorkspace();
 
   const t = useT();
   const { feedback, run, reset } = useAsyncFeedback();
   const viewer = useWorkspaceFileViewer();
+  const workspace = useActiveSessionWorkspace();
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousViewer = useRef(viewer);
   const returnFocus = useRef(false);
   const fileActions: LocalFileActions = {
     open(cwd, path) {
-      void run(() => openLocalFile(workspaceAccess, cwd, path), t("file.openFailed", { path }));
+      void run(
+        () => openLocalFile(messages, workspaceAccess, cwd, path),
+        t("file.openFailed", { path }),
+      );
     },
     reveal(cwd, path) {
-      void run(() => revealLocalFile(workspaceAccess, cwd, path), t("file.revealFailed", { path }));
+      void run(
+        () => revealLocalFile(messages, workspaceAccess, cwd, path),
+        t("file.revealFailed", { path }),
+      );
     },
     feedback(focusTarget) {
       if (feedback.state !== "error") return undefined;
@@ -188,10 +200,27 @@ export function FileWorkspace() {
   }, [viewer, restoreFocus]);
   return (
     <div ref={panelRef} {...stylex.props(fp.workspace)}>
-      <Activity mode={viewer ? "hidden" : "visible"}>
-        <FileBrowser restoreFocus={restoreFocus} fileActions={fileActions} />
-      </Activity>
-      {viewer && <FilePreview viewer={viewer} backRef={backRef} fileActions={fileActions} />}
+      <ContentVisibility visible={!viewer}>
+        <div hidden={Boolean(viewer)} {...stylex.props(fp.workspace, viewer && fp.hidden)}>
+          <FileBrowser
+            workspace={workspace}
+            restoreFocus={restoreFocus}
+            fileActions={fileActions}
+          />
+        </div>
+      </ContentVisibility>
+      {viewer && (
+        <FilePreview
+          key={JSON.stringify([
+            workspace.status,
+            workspace.status === "ready" ? workspace.cwd : workspace.sessionId,
+          ])}
+          workspace={workspace}
+          viewer={viewer}
+          backRef={backRef}
+          fileActions={fileActions}
+        />
+      )}
     </div>
   );
 }
@@ -251,18 +280,23 @@ class FileContentLayout extends Component<FileContentLayoutProps, unknown, HTMLE
 }
 
 function FileBrowser({
+  workspace,
   restoreFocus,
   fileActions,
 }: {
+  workspace: ActiveSessionWorkspaceSelection;
   restoreFocus: (item: HTMLElement) => void;
   fileActions: LocalFileActions;
 }) {
   const workspaceAccess = useWorkspace();
 
   const t = useT();
-  const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
-  const query = useWorkspaceListFiles(isWorkspaceResolving(workspace) ? undefined : { cwd });
+  const visible = useContentVisible();
+  const query = useWorkspaceListFiles(
+    isWorkspaceResolving(workspace) ? undefined : { cwd },
+    visible,
+  );
   const scrollPort = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -270,7 +304,7 @@ function FileBrowser({
     if (item) restoreFocus(item);
   }, [query.data, restoreFocus]);
   // A failed refresh of this query's accepted files keeps them, and the tree's cursor, in place.
-  const retained = query.data !== undefined && query.data.length > 0;
+  const retained = query.data !== undefined;
   const refreshFeedback =
     retained && query.error != null ? (
       query.isFetching ? (
@@ -310,6 +344,7 @@ function FileBrowser({
       >
         {(entries) => (
           <FileTree
+            key={cwd}
             ref={treeRef}
             entries={entries}
             cwd={cwd}
@@ -362,10 +397,12 @@ function FileReadSummary({ file, partial }: { file: WorkspaceFileContent; partia
 }
 
 function FilePreview({
+  workspace,
   viewer,
   backRef,
   fileActions,
 }: {
+  workspace: ActiveSessionWorkspaceSelection;
   viewer: WorkspaceFileViewer;
   backRef: Ref<HTMLButtonElement>;
   fileActions: LocalFileActions;
@@ -374,7 +411,6 @@ function FilePreview({
 
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
-  const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
   const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
@@ -462,7 +498,7 @@ function FilePreview({
     if (content) selectAllInReader(event, content);
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
-    if (source.current && data) copyWholeReader(event, data.content, source.current);
+    if (source.current && data) copyReaderSelection(event, data.content, source.current);
   };
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
@@ -532,7 +568,10 @@ function FilePreview({
         <>
           {canRender && control}
           {data && !unsupported && (
-            <GoToLine onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)} />
+            <GoToLine
+              key={viewer.path}
+              onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)}
+            />
           )}
           <IconButton
             icon={iconGlyph(copied ? "check" : "copy")}

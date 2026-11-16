@@ -26,7 +26,7 @@ import { toolCategoryForName } from "@/test/toolCategory.generated";
 const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),
-  onToggleExpand: vi.fn(),
+  onExpandedChange: vi.fn(),
   textReveal: "smooth",
 };
 
@@ -109,8 +109,8 @@ describe("activity header semantics", () => {
         awaiting: new Map<string, string>(),
       },
     };
-    const onToggleExpand = vi.fn();
-    const ctx: BlockCtx = { ...CTX, onToggleExpand, textReveal: "instant" };
+    const onExpandedChange = vi.fn();
+    const ctx: BlockCtx = { ...CTX, onExpandedChange, textReveal: "instant" };
     const renderRow = () => (
       <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
         {renderMessageBlocks(row, ctx)}
@@ -129,7 +129,7 @@ describe("activity header semantics", () => {
     expect(content.queryByRole("region", { name: "Result" })).toBeNull();
 
     fireEvent.click(readRow);
-    expect(onToggleExpand).toHaveBeenNthCalledWith(1, read.id);
+    expect(onExpandedChange).toHaveBeenNthCalledWith(1, read.id, true);
     ctx.expandedIds = new Set([read.id]);
     rerender(renderRow());
     expect(
@@ -138,8 +138,8 @@ describe("activity header semantics", () => {
     expect(content.getByRole("region", { name: "Result" }).textContent).toBe(read.result);
 
     fireEvent.click(content.getByRole("button", { name: /^Searched.*RunInTx/ }));
-    expect(onToggleExpand).toHaveBeenNthCalledWith(2, search.id);
-    expect(onToggleExpand).toHaveBeenCalledTimes(2);
+    expect(onExpandedChange).toHaveBeenNthCalledWith(2, search.id, true);
+    expect(onExpandedChange).toHaveBeenCalledTimes(2);
     ctx.expandedIds = new Set([read.id, search.id]);
     rerender(renderRow());
     expect(

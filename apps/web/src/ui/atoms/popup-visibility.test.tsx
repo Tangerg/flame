@@ -7,10 +7,20 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
-import { createRef, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  Activity,
+  Suspense,
+  createRef,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { flushSync } from "react-dom";
 import { ContentVisibility, ContextMenu, DropdownMenu, Popover } from "@/ui/index";
 type PopoverOpenChange = NonNullable<ComponentProps<typeof Popover.Root>["onOpenChange"]>;
+type PopoverActions = NonNullable<ComponentProps<typeof Popover.Root>["actionsRef"]>;
 
 type MenuOpenChange = NonNullable<ComponentProps<typeof DropdownMenu.Root>["onOpenChange"]>;
 
@@ -91,6 +101,218 @@ async function openPopover() {
 const imperativeClose = expect.objectContaining({ reason: "imperative-action" });
 
 describe("Popover retirement", () => {
+  it.each(["unmount", "Activity", "Suspense"])(
+    "retires an in-flight opening across %s",
+    async (lifetime) => {
+      const onOpenChange = vi.fn<PopoverOpenChange>();
+      const pending = new Promise<never>(() => {});
+      let retireNext = true;
+      function Pending(): never {
+        throw pending;
+      }
+      function Owner() {
+        const [visible, setVisible] = useState(true);
+        const outside = useRef<HTMLButtonElement>(null);
+        const popup = (
+          <Popover.Root
+            onOpenChange={(next, details) => {
+              onOpenChange(next, details);
+              if (next && retireNext) {
+                retireNext = false;
+                flushSync(() => setVisible(false));
+                outside.current?.focus();
+                if (lifetime !== "unmount") flushSync(() => setVisible(true));
+              }
+            }}
+          >
+            <Popover.Trigger>Go</Popover.Trigger>
+            <Popover.Content aria-label="Go panel">
+              <LineField />
+            </Popover.Content>
+          </Popover.Root>
+        );
+        return (
+          <>
+            <button ref={outside} onClick={() => setVisible(true)}>
+              Restore owner
+            </button>
+            {lifetime === "unmount" ? (
+              visible && popup
+            ) : lifetime === "Activity" ? (
+              <Activity mode={visible ? "visible" : "hidden"}>{popup}</Activity>
+            ) : (
+              <Suspense fallback={<p>Waiting for owner</p>}>
+                {!visible && <Pending />}
+                {popup}
+              </Suspense>
+            )}
+          </>
+        );
+      }
+      testClient.render(<Owner />);
+      const original = screen.getByRole("button", { name: "Go" });
+
+      fireEvent.click(original);
+
+      await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(
+        true,
+        expect.objectContaining({ isCanceled: true }),
+      );
+      expect(original.isConnected).toBe(lifetime !== "unmount");
+      const restore = screen.getByRole("button", { name: "Restore owner" });
+      expect(document.activeElement).toBe(restore);
+      fireEvent.click(restore);
+      fireEvent.click(screen.getByRole("button", { name: "Go" }));
+      expect(await screen.findByRole("dialog", { name: "Go panel" })).toBeTruthy();
+    },
+  );
+
+  it("preserves a controlled close committed during a canceled change", async () => {
+    const onOpenChange = vi.fn<PopoverOpenChange>();
+    function ControlledOwner() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Popover.Root
+          open={open}
+          onOpenChange={(next, details) => {
+            onOpenChange(next, details);
+            if (details.reason === "escape-key") {
+              flushSync(() => setOpen(false));
+              details.cancel();
+            } else setOpen(next);
+          }}
+        >
+          <Popover.Trigger>Go</Popover.Trigger>
+          <Popover.Content aria-label="Go panel">
+            <LineField />
+          </Popover.Content>
+        </Popover.Root>
+      );
+    }
+    const view = testClient.render(<ControlledOwner />);
+    const dialog = await screen.findByRole("dialog", { name: "Go panel" });
+    fireEvent.keyDown(within(dialog).getByRole("textbox", { name: "Line" }), { key: "Escape" });
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    onOpenChange.mockClear();
+
+    view.unmount();
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps a newer accepted close when the preceding change is canceled", async () => {
+    const actions: PopoverActions = createRef();
+    const onOpenChange = vi.fn<PopoverOpenChange>((next, details) => {
+      if (!next && details.reason === "escape-key") {
+        details.cancel();
+        actions.current?.close();
+      }
+    });
+    const host = mount(
+      <Popover.Root defaultOpen actionsRef={actions} onOpenChange={onOpenChange}>
+        <Popover.Trigger>Go</Popover.Trigger>
+        <Popover.Content aria-label="Go panel">
+          <LineField />
+        </Popover.Content>
+      </Popover.Root>,
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Go panel" });
+    fireEvent.keyDown(within(dialog).getByRole("textbox", { name: "Line" }), { key: "Escape" });
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false, imperativeClose);
+    onOpenChange.mockClear();
+
+    host.hide();
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { mode: "controlled", synchronous: false },
+    { mode: "uncontrolled", synchronous: false },
+    { mode: "controlled", synchronous: true },
+    { mode: "uncontrolled", synchronous: true },
+  ])(
+    "does not repeat the close that unmounted the $mode root (synchronous=$synchronous)",
+    async ({ mode, synchronous }) => {
+      const onOpenChange = vi.fn<PopoverOpenChange>();
+      function ClosingOwner() {
+        const [mounted, setMounted] = useState(true);
+        return (
+          mounted && (
+            <Popover.Root
+              {...(mode === "controlled" ? { open: true } : { defaultOpen: true })}
+              onOpenChange={(next, details) => {
+                onOpenChange(next, details);
+                if (!next) {
+                  if (synchronous) flushSync(() => setMounted(false));
+                  else setMounted(false);
+                }
+              }}
+            >
+              <Popover.Trigger>Go</Popover.Trigger>
+              <Popover.Content aria-label="Go panel">
+                <LineField />
+              </Popover.Content>
+            </Popover.Root>
+          )
+        );
+      }
+      testClient.render(<ClosingOwner />);
+      const dialog = await screen.findByRole("dialog", { name: "Go panel" });
+      fireEvent.keyDown(within(dialog).getByRole("textbox", { name: "Line" }), { key: "Escape" });
+      await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(
+        false,
+        expect.objectContaining({ reason: "escape-key" }),
+      );
+    },
+  );
+
+  it.each([
+    ["controlled", "Activity"],
+    ["uncontrolled", "Activity"],
+    ["controlled", "Suspense"],
+    ["uncontrolled", "Suspense"],
+  ] as const)("retires the %s popover when %s disconnects its effects", async (mode, lifetime) => {
+    const onOpenChange = vi.fn<PopoverOpenChange>();
+    const child = popoverOf(mode, onOpenChange);
+    const pending = new Promise<never>(() => {});
+    function Pending(): never {
+      throw pending;
+    }
+    const scene = (visible: boolean) => (
+      <>
+        <button>Outside</button>
+        {lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for panel</p>}>
+            {!visible && <Pending />}
+            {child}
+          </Suspense>
+        )}
+      </>
+    );
+    const view = testClient.render(scene(true));
+    await openPopover();
+    onOpenChange.mockClear();
+
+    view.rerender(scene(false));
+    const outside = screen.getByRole("button", { name: "Outside" });
+    act(() => outside.focus());
+    view.rerender(scene(true));
+
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false, imperativeClose);
+    expect(document.activeElement).toBe(outside);
+    await openPopover();
+  });
+
   it.each(["controlled", "uncontrolled"] as const)(
     "closes a %s popover when its host hides and does not bring it back on reveal",
     async (mode) => {

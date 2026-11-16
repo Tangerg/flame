@@ -1,14 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { companion } from "@flame/brand-assets";
-import {
-  Callout,
-  CodeBlock,
-  DiffTable,
-  EvidenceImage,
-  ImageViewport,
-  type CalloutKind,
-  type ComparisonRow,
-} from "@flame/ui";
+import { Callout, CodeBlock, EvidenceImage, ImageViewport, type CalloutKind } from "@flame/ui";
 import { foundationMessages } from "./foundationMessages";
 import { foundationStyles as styles } from "./foundationStyles";
 import { foundationViews as views } from "./foundationVariants";
@@ -22,15 +14,6 @@ const LONG_CODE = [
   "  return `${preview.id}: ${preview.title} (${preview.state}) — this intentionally long source line demonstrates the shared reader and its wrap control.`;",
   "}",
 ].join("\n");
-
-const DIFF_ROWS: readonly ComparisonRow[] = [
-  { type: "hunk", text: "@@ -1,4 +1,4 @@" },
-  { type: "context", code: "function title(value: string) {", leftLine: 1, rightLine: 1 },
-  { type: "deleted", code: '  return "Preview: " + value;', leftLine: 2 },
-  { type: "added", code: "  return `Preview: ${value}`;", rightLine: 2 },
-  { type: "context", code: "}", leftLine: 3, rightLine: 3 },
-  { type: "context", code: 'title("Flame");', leftLine: 4, rightLine: 4, noNewline: true },
-];
 
 function calloutKind(value: string): CalloutKind {
   const { note, tip, important, warning, caution } = views;
@@ -65,25 +48,6 @@ export function CalloutExample({ variant, locale }: LabExampleProps) {
     <Callout kind={calloutKind(variant)}>
       <p>{copy.calloutBody}</p>
     </Callout>
-  );
-}
-
-export function DiffExample({ variant, locale }: LabExampleProps) {
-  const copy = foundationMessages[locale];
-  return (
-    <DiffTable
-      rows={DIFF_ROWS}
-      layout={variant === views.split.id ? "split" : "unified"}
-      label={copy.difference}
-      labels={{
-        region: copy.diffRegion,
-        beforeLine: copy.beforeLine,
-        beforeCode: copy.beforeCode,
-        afterLine: copy.afterLine,
-        afterCode: copy.afterCode,
-        changedCode: copy.changedCode,
-      }}
-    />
   );
 }
 

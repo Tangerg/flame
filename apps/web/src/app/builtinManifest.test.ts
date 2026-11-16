@@ -68,6 +68,7 @@ beforeEach(async () => {
     testClient.installedPlugins,
     testClient.theme,
     testClient.goals,
+    testClient.messages,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
@@ -147,6 +148,7 @@ describe("built-in contributions", () => {
       testClient.installedPlugins,
       testClient.theme,
       testClient.goals,
+      testClient.messages,
     );
     running = await startKernel(builtinPlugins);
     expect(resolve).not.toHaveBeenCalled();

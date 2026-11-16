@@ -1,6 +1,14 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Collapsible } from "./collapsible";
+import { AgentActivityDisclosure } from "./activity-disclosure";
 
 function Pair({
   first = true,
@@ -22,19 +30,31 @@ function Pair({
       }}
     >
       {showFirst && (
-        <Collapsible open={first}>
+        <AgentActivityDisclosure
+          icon="file-text"
+          shell="line"
+          label="First section"
+          open={first}
+          onOpenChange={() => {}}
+        >
           <p>First</p>
-        </Collapsible>
+        </AgentActivityDisclosure>
       )}
-      <Collapsible open={second}>
+      <AgentActivityDisclosure
+        icon="file-text"
+        shell="line"
+        label="Second section"
+        open={second}
+        onOpenChange={() => {}}
+      >
         <p>Second</p>
-      </Collapsible>
+      </AgentActivityDisclosure>
     </div>
   );
 }
 
 function row(text: string): HTMLElement {
-  return screen.getByText(text).parentElement!.parentElement!;
+  return screen.getByText(text).closest<HTMLElement>('[role="region"]')!;
 }
 
 function geometry(element: HTMLElement, releasedWidth = 26) {
@@ -49,7 +69,7 @@ function geometry(element: HTMLElement, releasedWidth = 26) {
 }
 
 function sharedPair() {
-  const view = render(<Pair />);
+  const view = testClient.render(<Pair />);
   const scrollport = screen.getByTestId("scrollport");
   geometry(scrollport);
   row("First").style.transitionDuration = "100ms";
@@ -79,11 +99,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("Collapsible shared scroll lifetime", () => {
+describe("Activity collapse scroll lifetime", () => {
   it.each([0, 26])(
     "compensates only the %d pixels actually released by hiding the scrollbar",
     (releasedWidth) => {
-      const { rerender } = render(<Pair />);
+      const { rerender } = testClient.render(<Pair />);
       const scrollport = screen.getByTestId("scrollport");
       geometry(scrollport, releasedWidth);
       row("First").style.transitionDuration = "100ms";
@@ -169,21 +189,33 @@ describe("Collapsible shared scroll lifetime", () => {
             border: "2px solid",
           }}
         >
-          <Collapsible open={open}>
+          <AgentActivityDisclosure
+            icon="file-text"
+            shell="line"
+            label="Left section"
+            open={open}
+            onOpenChange={() => {}}
+          >
             <p>Left</p>
-          </Collapsible>
+          </AgentActivityDisclosure>
         </div>
         <div
           data-testid="right"
           style={{ overflowY: "auto", direction: "rtl", paddingLeft: "1px", border: "2px solid" }}
         >
-          <Collapsible open={open}>
+          <AgentActivityDisclosure
+            icon="file-text"
+            shell="line"
+            label="Right section"
+            open={open}
+            onOpenChange={() => {}}
+          >
             <p>Right</p>
-          </Collapsible>
+          </AgentActivityDisclosure>
         </div>
       </>
     );
-    const { rerender } = render(<Independent open />);
+    const { rerender } = testClient.render(<Independent open />);
     const left = screen.getByTestId("left");
     const right = screen.getByTestId("right");
     geometry(left);

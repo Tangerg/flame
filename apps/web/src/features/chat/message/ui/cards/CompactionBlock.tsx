@@ -25,7 +25,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
       shell="line"
       label={label}
       open={open}
-      onToggle={() => setOpen((value) => !value)}
+      onOpenChange={setOpen}
       contentClassName={stylex.props(cb.summary, typeStep.uiSm).className}
     >
       {summary}

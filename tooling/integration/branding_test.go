@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/png"
@@ -100,7 +101,7 @@ func retiredBrandInFile(path string) (string, error) {
 			if found < 0 {
 				break
 			}
-			end, err := inlinePNGEnd(file, start+int64(found))
+			end, err := inlineBinaryEnd(file, start+int64(found))
 			if err != nil {
 				return "", err
 			}
@@ -122,9 +123,9 @@ func retiredBrandInFile(path string) (string, error) {
 	}
 }
 
-// Encoded artwork remains binary content when embedded in a source string.
+// Encoded payloads remain binary content when embedded in a source string.
 // ReadAt leaves the streaming scanner's file position unchanged.
-func inlinePNGEnd(file *os.File, tokenOffset int64) (int64, error) {
+func inlineBinaryEnd(file *os.File, tokenOffset int64) (int64, error) {
 	var window [brandScanChunkBytes]byte
 	for before := tokenOffset; before > 0; {
 		n := int(min(before, int64(len(window))))
@@ -146,14 +147,18 @@ func inlinePNGEnd(file *os.File, tokenOffset int64) (int64, error) {
 			}
 			return 0, err
 		}
-		if string(header[:]) != prefix {
+		wasm := bytes.HasPrefix(header[:], []byte("AGFzbQEA"))
+		if !wasm && string(header[:]) != prefix {
 			return 0, nil
 		}
 		info, err := file.Stat()
 		if err != nil {
 			return 0, err
 		}
-		bodyStart := start + int64(len(prefix))
+		bodyStart := start
+		if !wasm {
+			bodyStart += int64(len(prefix))
+		}
 		reader := bufio.NewReader(io.NewSectionReader(file, bodyStart, info.Size()-bodyStart))
 		end := bodyStart
 		for {
@@ -170,7 +175,15 @@ func inlinePNGEnd(file *os.File, tokenOffset int64) (int64, error) {
 			}
 			end--
 			decoded := base64.NewDecoder(base64.StdEncoding, io.NewSectionReader(file, bodyStart, end-bodyStart))
-			_, err = png.DecodeConfig(decoded)
+			if wasm {
+				var magic [8]byte
+				_, err = io.ReadFull(decoded, magic[:])
+				if err == nil && magic != [8]byte{0, 'a', 's', 'm', 1, 0, 0, 0} {
+					return 0, nil
+				}
+			} else {
+				_, err = png.DecodeConfig(decoded)
+			}
 			if err == nil {
 				_, err = io.Copy(io.Discard, decoded)
 			}
@@ -187,6 +200,49 @@ func inlinePNGEnd(file *os.File, tokenOffset int64) (int64, error) {
 		}
 	}
 	return 0, nil
+}
+
+func TestProductBrandScanDistinguishesInlineWASMFromSourceText(t *testing.T) {
+	encodedToken := string(retiredProductBrandTokens[0])
+	noise, err := base64.StdEncoding.DecodeString(encodedToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custom := append([]byte{0, 0, 0}, bytes.Repeat(noise, brandScanChunkBytes/len(noise)+1)...)
+	module := []byte{0, 'a', 's', 'm', 1, 0, 0, 0, 0}
+	module = binary.AppendUvarint(module, uint64(len(custom)))
+	module = append(module, custom...)
+	encoded := base64.StdEncoding.EncodeToString(module)
+	if !strings.Contains(encoded, encodedToken) {
+		t.Fatal("binary fixture does not exercise the retired token")
+	}
+	source := `const module = atob("` + encoded + `");`
+	invalidHeader := slices.Clone(module)
+	invalidHeader[7] = 1
+	invalidModule := `const module = atob("` + base64.StdEncoding.EncodeToString(invalidHeader) + `");`
+	visibleToken := string(retiredProductBrandTokens[2])
+	for _, test := range []struct{ name, source, token string }{
+		{"embedded module", source, ""},
+		{"single quotes", "const module = atob('" + encoded + "');", ""},
+		{"template string", "const module = atob(`" + encoded + "`);", ""},
+		{"prefix across chunks", strings.Repeat(" ", brandScanChunkBytes-30) + source, ""},
+		{"visible before module", `const name = "` + visibleToken + `";` + source, visibleToken},
+		{"visible after module", source + `const name = "` + visibleToken + `";`, visibleToken},
+		{"wrong header", strings.Replace(source, "AGFzbQEA", "AAAAAAEA", 1), encodedToken},
+		{"invalid version", invalidModule, encodedToken},
+		{"invalid encoding", strings.Replace(source, `");`, `!");`, 1), encodedToken},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "component.js")
+			if err := os.WriteFile(path, []byte(test.source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			actual, err := retiredBrandInFile(path)
+			if err != nil || actual != test.token {
+				t.Fatalf("retired brand = %q, %v; want %q", actual, err, test.token)
+			}
+		})
+	}
 }
 
 func TestProductBrandScanDistinguishesInlinePNGFromSourceText(t *testing.T) {

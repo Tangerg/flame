@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { definePlugin } from "@/extensions/definePlugin";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import { RUNTIME_SERVER_SCOPE } from "@/features/connection/public/services";
+import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/features/connection/public/services";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { createComposerBootstrap } from "@/features/composer/bootstrap";
 afterEach(async () => {
@@ -25,11 +25,21 @@ describe("Composer bootstrap", () => {
       subscribeDeleted: () => () => undefined,
     };
     const scope = { subscribeReplacement: () => () => undefined };
-    const composer = createComposer(sessionAccess, () => "https://bootstrap-composer.test", scope);
+    const stream = {
+      connectionGeneration: () => null,
+      subscribeConnection: () => () => undefined,
+      reportConnectionLoss: () => undefined,
+    };
+    const composer = createComposer(
+      sessionAccess,
+      () => "https://bootstrap-composer.test",
+      scope,
+      stream,
+    );
     const sessions = definePlugin({
       name: "test.composer-session-ports",
-      provides: { sessions: AGENT_SESSIONS, scope: RUNTIME_SERVER_SCOPE },
-      setup: () => ({ scope, sessions: sessionAccess }),
+      provides: { sessions: AGENT_SESSIONS, scope: RUNTIME_SERVER_SCOPE, stream: RUNTIME_STREAM },
+      setup: () => ({ scope, stream, sessions: sessionAccess }),
     });
     await loadPluginsForTest(createComposerBootstrap(composer), sessions);
 

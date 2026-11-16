@@ -1,7 +1,6 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { t } from "@/lib/i18n/index";
 import { describeRpcError } from "@/lib/rpcErrors";
-import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
 import { type AgentInput } from "@/features/agent/domain/input";
 
 import {
@@ -37,7 +36,9 @@ export function steerRunningTurn(
   try {
     submission = agentAccess.runtime.steerRun(runId, segmentId, prepared);
   } catch (error) {
-    notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+    agentAccess.notifications.notify("error", describeRpcError(error) ?? t("session.error.steer"), {
+      source: "session",
+    });
     return null;
   }
   return observeSteer(
@@ -110,7 +111,7 @@ function observeSteer(
     const current = view.getSession(sessionId)?.view;
     const message = current?.messages.find((input) => input.id === localId);
     if (message && steerInputFeedback(message) === "unknown")
-      notifyInfo(t("agent.command.unknown"), { source: "session" });
+      agentAccess.notifications.notify("info", t("agent.command.unknown"), { source: "session" });
   }
 
   function attempt(
@@ -132,7 +133,11 @@ function observeSteer(
         });
       }
       effect.rollback();
-      notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+      agentAccess.notifications.notify(
+        "error",
+        describeRpcError(error) ?? t("session.error.steer"),
+        { source: "session" },
+      );
       const rejected = Promise.reject<AgentInputSettlement>(error);
       void rejected.catch(() => {});
       return rejected;
@@ -147,7 +152,11 @@ function observeSteer(
         () => {},
       )
       .catch((error: unknown) => {
-        notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+        agentAccess.notifications.notify(
+          "error",
+          describeRpcError(error) ?? t("session.error.steer"),
+          { source: "session" },
+        );
       });
     const acceptance = owner.settle(submission).then(
       (result): AgentOpeningAcceptance => {
@@ -191,7 +200,11 @@ function observeSteer(
           if (runtime.isInputReceiptUnknown(error)) retainUnknown(submission);
           else {
             effect.rollback();
-            notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+            agentAccess.notifications.notify(
+              "error",
+              describeRpcError(error) ?? t("session.error.steer"),
+              { source: "session" },
+            );
           }
         }
         throw error;

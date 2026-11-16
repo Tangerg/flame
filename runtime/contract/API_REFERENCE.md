@@ -517,6 +517,14 @@ Forbidden on every variant: `durable`.
 | `toolCall` | `id`, `runId`, `status`, `startedAt`, `tool` | `finishedAt`, `durationMillis`, `safetyClass`, `approvalDecision`, `error` |
 | `compaction` | `id`, `runId`, `status`, `createdAt`, `summary` | `droppedMessages` |
 
+### `Diff`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `rows` | `baseline`, `rows` | — |
+| `raw` | `baseline`, `patch` | — |
+| `visual` | `baseline`, `visual` | — |
+
 ### `DiffBaseline`
 
 | tag | required | optional |
@@ -927,6 +935,9 @@ TypeScript validator from this single registry projection.
 | `DiffRow` | `leftLine` | `positive` |
 | `DiffRow` | `rightLine` | `positive` |
 | `GetDiffRequest` | `limit` | `positive` |
+| `DiffBudget` | `files` | `positive` |
+| `DiffBudget` | `rows` | `positive` |
+| `DiffBudget` | `bytes` | `positive` |
 | `ReadFileRequest` | `path` | `nonEmpty` |
 | `ReadFileRequest` | `startLine` | `positive` |
 | `ReadFileRequest` | `endLine` | `positive` |

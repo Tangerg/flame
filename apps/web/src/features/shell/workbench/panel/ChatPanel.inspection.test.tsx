@@ -88,7 +88,7 @@ function PromptTurn({ message }: { message: Message }) {
       ctx={{
         sessionId: "ses_first",
         expandedIds: new Set(),
-        onToggleExpand: () => {},
+        onExpandedChange: () => {},
         textReveal: "instant",
       }}
       sessionId="ses_first"
@@ -115,7 +115,7 @@ function AnswerTurn({ text }: { text: string }) {
       ctx={{
         sessionId: "ses_first",
         expandedIds: new Set(),
-        onToggleExpand: () => {},
+        onExpandedChange: () => {},
         textReveal: "instant",
       }}
       sessionId="ses_first"

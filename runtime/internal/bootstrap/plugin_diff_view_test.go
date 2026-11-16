@@ -53,7 +53,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 		t.Fatalf("workspace diff component: %+v", component)
 	}
 	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
-	read := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: root}, Format: protocol.DiffFormatRows}
+	read := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: root}, Format: protocol.DiffFormatVisual}
 	compare := func() {
 		t.Helper()
 		got := r.must(delivery.WorkspaceDiffGet, read, "").(*protocol.Diff)
@@ -68,7 +68,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	read.Mode = protocol.DiffModeWorktree
 	diff := r.must(delivery.WorkspaceDiffGet, read, "").(*protocol.Diff)
 	renamed, binary := false, false
-	for _, file := range diff.Files {
+	for _, file := range diff.Visual.Manifest {
 		renamed = renamed || file.PreviousPath == "before.txt"
 		binary = binary || file.Binary && file.Added == nil && file.Removed == nil
 	}
@@ -78,7 +78,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	limit := 1
 	read.Limit = &limit
 	compare()
-	if bounded := r.must(delivery.WorkspaceDiffGet, read, "").(*protocol.Diff); !bounded.Truncated {
+	if bounded := r.must(delivery.WorkspaceDiffGet, read, "").(*protocol.Diff); !bounded.Visual.Truncated {
 		t.Fatalf("bounded diff did not report truncation: %+v", bounded)
 	}
 	read.Limit = nil

@@ -86,8 +86,13 @@ Controls use public `@flame/ui` components and the active host locale and tokens
 A digit-only metric value gains ordinary character wrap opportunities in its own
 balanced block. Its exact text and optional detail are retained; other values
 keep ordinary text flow.
-Horizontal report tabs select with Left/Right, Home and End. They leave Up/Down
-to the browser, while radio choices retain both arrow axes.
+Horizontal report tabs use shared Base UI Tabs and select with Left/Right, Home
+and End. They leave Up/Down to the browser. Radio fields use shared Segmented
+controls with both arrow axes and field-error associations. The OpenUI store
+remains the only field-value owner; hidden tab panels retain local drafts.
+Action execution returns field issues from its single admission decision. Forms
+use those issues to focus a visible control within the submitting form, while
+preserving later focus. DOM error markers never decide whether an action runs.
 Popover uses the shared non-modal portal and collision positioning, so a clipped
 report does not clip its detail controls. Nested Select and Popover dismissal
 use Base UI's existing layer boundary. The declared open field and all drafts

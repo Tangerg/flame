@@ -1,3 +1,4 @@
+import { handoffFocus } from "@flame/ui";
 import { Trans, useT } from "@/lib/i18n/index";
 import { type ErrorInfo, type ReactNode } from "react";
 import { Component, useRef } from "react";
@@ -57,12 +58,9 @@ function PluginFailure({
   const t = useT();
   const root = useRef<HTMLDivElement>(null);
   const retry = () => {
-    // The error tree unmounts on retry. Hand off to its surviving host before
-    // recovered children can claim their own focus.
     const retiring = root.current;
-    if (retiring?.contains(retiring.ownerDocument.activeElement)) {
-      retiring.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
-    }
+    if (retiring)
+      handoffFocus(retiring, retiring.parentElement?.closest<HTMLElement>("[tabindex]"));
     onRetry();
   };
   return (

@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useComposer } from "@/features/composer/public/composer";
 import { useAgent } from "@/features/agent/public/agent";
 import { iconGlyph } from "@/ui/icons/index";
@@ -22,7 +23,6 @@ import { useApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { contributeLayout } from "@/extensions/contributeHelpers";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { useT } from "@/lib/i18n/index";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useAddComposerImageFiles } from "@/features/composer/public/attachments";
@@ -134,6 +134,7 @@ const MODE_ICON: Record<ApprovalMode, IconName> = {
 };
 
 function ApprovalModePill() {
+  const { messages } = useNotifications();
   const agentAccess = useAgent();
 
   const t = useT();
@@ -146,7 +147,7 @@ function ApprovalModePill() {
     try {
       await agentAccess.setApprovalMode(next);
     } catch (err) {
-      notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
+      messages.notify("error", rpcErrorText(err) ?? t("approvals.error.mode"));
     }
   };
   return (
@@ -168,35 +169,43 @@ function ApprovalModePill() {
         <div aria-hidden {...stylex.props(toolbarStyles.menuHeading, typeStep.uiSm)}>
           {t("approvals.mode.aria")}
         </div>
-        {modes.map((policy) => (
-          <DropdownMenu.Item
-            key={policy.mode}
-            onClick={() => void onSelect(policy.mode)}
-            layout="pick"
-            styles={toolbarStyles.describedRow}
-          >
-            <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
-              <Icon
-                name={MODE_ICON[policy.mode]}
-                size="md"
-                className={stylex.props(toolbarStyles.optionGlyph).className}
-              />
-            </span>
-            <span {...stylex.props(vocab.min)}>
-              <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
-                {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
-              </span>
-              <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
-                {describeApprovalMode(policy, t)}
-              </span>
-            </span>
-            {policy.mode === mode && (
+        <DropdownMenu.RadioGroup
+          value={mode}
+          onValueChange={(next) => {
+            const policy = modes.find((policy) => policy.mode === next);
+            if (policy) void onSelect(policy.mode);
+          }}
+        >
+          {modes.map((policy) => (
+            <DropdownMenu.RadioItem
+              key={policy.mode}
+              value={policy.mode}
+              layout="pick"
+              styles={toolbarStyles.describedRow}
+            >
               <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
-                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+                <Icon
+                  name={MODE_ICON[policy.mode]}
+                  size="md"
+                  className={stylex.props(toolbarStyles.optionGlyph).className}
+                />
               </span>
-            )}
-          </DropdownMenu.Item>
-        ))}
+              <span {...stylex.props(vocab.min)}>
+                <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
+                  {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
+                </span>
+                <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
+                  {describeApprovalMode(policy, t)}
+                </span>
+              </span>
+              <DropdownMenu.RadioItemIndicator>
+                <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
+                  <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+                </span>
+              </DropdownMenu.RadioItemIndicator>
+            </DropdownMenu.RadioItem>
+          ))}
+        </DropdownMenu.RadioGroup>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
 describe("AgentActivityDisclosure", () => {
   it("owns one accessible summary and detail region", () => {
-    const onToggle = vi.fn();
+    const onOpenChange = vi.fn();
     const { rerender } = testClient.render(
       <AgentActivityDisclosure
         icon="search"
@@ -19,7 +19,7 @@ describe("AgentActivityDisclosure", () => {
         label="Search source"
         detail="runtime"
         open={false}
-        onToggle={onToggle}
+        onOpenChange={onOpenChange}
       >
         <p>Search result</p>
       </AgentActivityDisclosure>,
@@ -28,14 +28,14 @@ describe("AgentActivityDisclosure", () => {
     const trigger = screen.getByRole("button", { name: /Search source/ });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
 
-    const shut = document.getElementById(trigger.getAttribute("aria-controls") ?? "");
-    expect(shut).not.toBeNull();
-    expect(shut!.getAttribute("role")).toBe("region");
-    expect(shut!.closest("[inert]"), "a shut region is not reachable").not.toBeNull();
-    expect(shut!.textContent).toBe("");
+    const shut = screen.getByRole("region", { hidden: true });
+    expect(trigger.getAttribute("aria-controls")).toBeNull();
+    expect(shut.hidden, "a shut region is not reachable").toBe(true);
+    expect(shut.textContent).toBe("");
 
     fireEvent.click(trigger);
-    expect(onToggle).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(true);
 
     rerender(
       <AgentActivityDisclosure
@@ -44,7 +44,7 @@ describe("AgentActivityDisclosure", () => {
         label="Search source"
         detail="runtime"
         open
-        onToggle={onToggle}
+        onOpenChange={onOpenChange}
       >
         <p>Search result</p>
       </AgentActivityDisclosure>,
@@ -63,7 +63,7 @@ describe("AgentActivityDisclosure", () => {
         label="Search source"
         detail="runtime"
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -78,7 +78,7 @@ describe("AgentActivityDisclosure", () => {
           label="Thinking"
           preview={glimpse}
           open={false}
-          onToggle={() => {}}
+          onOpenChange={() => {}}
         >
           body
         </AgentActivityDisclosure>,
@@ -103,7 +103,7 @@ describe("AgentActivityDisclosure", () => {
         summaryId="caller-summary"
         actions={actions}
         open
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         <p>Search result</p>
       </AgentActivityDisclosure>,
@@ -123,7 +123,7 @@ describe("AgentActivityDisclosure", () => {
         summaryId="caller-summary"
         actions={actions}
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       />,
     );
 
@@ -132,7 +132,7 @@ describe("AgentActivityDisclosure", () => {
   });
 
   it("keeps row actions outside the disclosure trigger", () => {
-    const onToggle = vi.fn();
+    const onOpenChange = vi.fn();
     const onAction = vi.fn();
     testClient.render(
       <AgentActivityDisclosure
@@ -140,7 +140,7 @@ describe("AgentActivityDisclosure", () => {
         shell="card"
         label="Delegated run"
         open={false}
-        onToggle={onToggle}
+        onOpenChange={onOpenChange}
         actions={
           <button type="button" onClick={onAction}>
             Cancel
@@ -153,7 +153,7 @@ describe("AgentActivityDisclosure", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onAction).toHaveBeenCalledOnce();
-    expect(onToggle).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("gives each shell its own material", () => {
@@ -164,7 +164,7 @@ describe("AgentActivityDisclosure", () => {
           shell={shell}
           label={shell}
           open={false}
-          onToggle={() => {}}
+          onOpenChange={() => {}}
         >
           body
         </AgentActivityDisclosure>,
@@ -185,7 +185,7 @@ describe("AgentActivityDisclosure", () => {
         shell="card"
         label="framed"
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -202,7 +202,7 @@ describe("AgentActivityDisclosure", () => {
         shell="card"
         label="own"
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -218,7 +218,7 @@ describe("AgentActivityDisclosure", () => {
         shell="line"
         label="quiet search"
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -240,7 +240,7 @@ describe("AgentActivityDisclosure", () => {
         label="Searched files"
         trailing="3 steps"
         open={false}
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -265,7 +265,7 @@ describe("AgentActivityDisclosure", () => {
         label="Searched files"
         trailing="3 steps"
         open
-        onToggle={() => {}}
+        onOpenChange={() => {}}
       >
         body
       </AgentActivityDisclosure>,
@@ -322,7 +322,7 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
               shell="line"
               label={label}
               open
-              onToggle={() => {}}
+              onOpenChange={() => {}}
               stickyHeader={sticky}
             >
               <button type="button">Run command</button>
@@ -338,9 +338,10 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
   const trigger = screen.getByRole("button", { name: "Tool group" });
   const headerNode = trigger.closest<HTMLElement>('[data-slot="agent-activity-header"]')!;
   const region = screen.getByRole("region", { name: "Tool group" });
-  const body = region.parentElement!;
-  region.style.lineHeight = "20px";
-  region.style.paddingTop = "6px";
+  const body = region.firstElementChild! as HTMLElement;
+  const contentBody = body.firstElementChild! as HTMLElement;
+  contentBody.style.lineHeight = "20px";
+  contentBody.style.paddingTop = "6px";
   viewportNode.style.scrollPaddingTop = `${top}px`;
   viewportNode.style.scrollPaddingBottom = `${bottom}px`;
   vi.spyOn(viewportNode, "getBoundingClientRect").mockImplementation(
@@ -384,6 +385,7 @@ function readingScenario({ header = 30, viewport = 400, top = 24, bottom = 80 } 
     header: headerNode,
     trigger,
     region,
+    contentBody,
     resize,
     frame,
     reading,
@@ -480,7 +482,7 @@ describe("AgentActivityDisclosure reading space", () => {
     s.resize(s.viewport);
     expect(s.reading()).toEqual({ sticky: true, clearance: true, reserved: "59px" });
 
-    s.region.style.lineHeight = "normal";
+    s.contentBody.style.lineHeight = "normal";
     s.resize(s.content);
     expect(s.reading()).toEqual({ sticky: false, clearance: false, reserved: "" });
   });

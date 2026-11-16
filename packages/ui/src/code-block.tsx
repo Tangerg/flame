@@ -147,20 +147,21 @@ const styles = stylex.create({
 
 export function CodeFrame({
   children,
+  bounded = false,
   className,
   styles: extra,
   ...props
 }: Omit<ComponentPropsWithoutRef<"div">, "style"> & {
   "data-slot"?: string;
+  bounded?: boolean;
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }) {
   const frame = useRef<HTMLDivElement>(null);
-  const literal = props["data-slot"] === "code-block";
   const visible = useContentVisible();
   useLayoutEffect(() => {
     const root = frame.current;
     const caption = root?.querySelector(':scope > [data-slot="code-caption"]');
-    if (!literal || !visible || !root || !caption) return;
+    if (!bounded || !visible || !root || !caption) return;
     // WebKit can clamp an intrinsic minimum to max-height and clip the source entirely.
     const measure = () =>
       root.style.setProperty(
@@ -174,11 +175,11 @@ export function CodeFrame({
       resize.disconnect();
       root.style.removeProperty("--code-caption-height");
     };
-  }, [literal, visible]);
+  }, [bounded, visible]);
   const styled = stylex.props(
     ARTIFACT_SURFACE.face,
     styles.frame,
-    literal && [styles.literalFrame, type.code],
+    bounded && [styles.literalFrame, type.code],
     extra,
   );
   return (
@@ -295,7 +296,7 @@ export function CodeBlock({
   labels?: CodeActionLabels;
 }) {
   return (
-    <CodeFrame data-slot="code-block" data-focus-unit="">
+    <CodeFrame bounded data-slot="code-block" data-focus-unit="">
       <CodeCaption
         language={caption ?? language}
         code={children}

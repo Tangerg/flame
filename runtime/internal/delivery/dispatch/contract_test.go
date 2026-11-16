@@ -253,7 +253,7 @@ func TestUnknownMethodStaysUnknown(t *testing.T) {
 }
 
 func (c *capabilityRuntime) GetWorkspaceDiff(context.Context, protocol.GetDiffRequest) (*protocol.Diff, error) {
-	return &protocol.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}}, nil
+	return &protocol.Diff{Type: protocol.DiffFormatRows, Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Rows: &protocol.DiffRows{Files: []protocol.FileDiff{}, Budget: protocol.DiffBudget{Files: 5000, Rows: 5000, Bytes: 64 << 20}}}, nil
 }
 func TestCanonicalDiffRequiresGitAndRetiresPluginWrapper(t *testing.T) {
 	const params = `{"workspace":{"path":"/runtime"},"format":"rows"}`

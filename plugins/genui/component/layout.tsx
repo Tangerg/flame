@@ -1,4 +1,3 @@
-import { useId, type KeyboardEvent } from "react";
 import {
   Button,
   ContentVisibility,
@@ -11,6 +10,7 @@ import {
   RecordGroup,
   RecordTitle,
   Toolbar,
+  Tabs,
 } from "@flame/ui";
 import type { ComponentRenderProps } from "@openuidev/react-lang";
 import type { Translate } from "@flame/component-sdk";
@@ -84,89 +84,22 @@ export function SectionView({
   );
 }
 
-export function moveChoice(
-  event: KeyboardEvent<HTMLButtonElement>,
-  choose: (index: number) => void,
-) {
-  const options = Array.from(
-    event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>(
-      "button",
-    ),
-  );
-  const current = options.indexOf(event.currentTarget);
-  let index: number;
-  switch (event.key) {
-    case "ArrowRight":
-    case "ArrowDown":
-      index = (current + 1) % options.length;
-      break;
-    case "ArrowLeft":
-    case "ArrowUp":
-      index = (current + options.length - 1) % options.length;
-      break;
-    case "Home":
-      index = 0;
-      break;
-    case "End":
-      index = options.length - 1;
-      break;
-    default:
-      return;
-  }
-  event.preventDefault();
-  choose(index);
-  options[index]?.focus();
-}
-
 export function TabsView({
   props,
   renderNode,
   t,
 }: ComponentRenderProps<DisplayProps["Tabs"]> & { t: Translate }) {
   const [selected, select] = useLocalValue<string>(props.field);
-  const id = useId();
   return (
-    <RecordGroup>
-      <div
-        role="tablist"
-        aria-label={t("tabs.label")}
-        style={{ display: "flex", flexWrap: "wrap" }}
-      >
-        {props.items.map((item, index) => (
-          <Button
-            key={item.value}
-            id={`${id}-tab-${index}`}
-            role="tab"
-            aria-selected={selected === item.value}
-            aria-controls={`${id}-panel-${index}`}
-            tabIndex={selected === item.value ? 0 : -1}
-            variant="soft"
-            active={selected === item.value}
-            onClick={() => select(item.value)}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowUp" || event.key === "ArrowDown") return;
-              moveChoice(event, (next) => select(props.items[next]!.value));
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </div>
-      {props.items.map((item, index) => (
-        <div
-          key={item.value}
-          id={`${id}-panel-${index}`}
-          role="tabpanel"
-          aria-labelledby={`${id}-tab-${index}`}
-          hidden={selected !== item.value}
-          tabIndex={0}
-        >
-          <ContentVisibility visible={selected === item.value}>
-            {renderNode(props.children[index])}
-          </ContentVisibility>
-        </div>
-      ))}
-    </RecordGroup>
+    <Tabs
+      value={selected}
+      onValueChange={select}
+      ariaLabel={t("tabs.label")}
+      items={props.items.map((item, index) => ({
+        ...item,
+        content: renderNode(props.children[index]),
+      }))}
+    />
   );
 }
 

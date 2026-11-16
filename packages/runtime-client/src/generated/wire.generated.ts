@@ -489,12 +489,10 @@ export interface DeleteSessionRequest {
   sessionId: string;
 }
 
-export interface Diff {
-  baseline: DiffBaseline;
-  files?: FileDiff[];
-  patch?: string;
-  truncated?: boolean;
-}
+export type Diff =
+  | { type: "rows"; baseline: DiffBaseline; rows: DiffRows }
+  | { type: "raw"; baseline: DiffBaseline; patch: string }
+  | { type: "visual"; baseline: DiffBaseline; visual: VisualDiff };
 
 export type DiffBaseline =
   | { type: "head"; commit: string }
@@ -503,7 +501,13 @@ export type DiffBaseline =
 
 export type DiffBaselineType = "head" | "mergeBase" | "emptyTree";
 
-export type DiffFormat = "rows" | "raw";
+export interface DiffBudget {
+  bytes: number;
+  files: number;
+  rows: number;
+}
+
+export type DiffFormat = "rows" | "raw" | "visual";
 
 export type DiffMode = "worktree" | "base";
 
@@ -514,6 +518,12 @@ export type DiffRow =
   | { type: "deleted"; code: string; leftLine: number; noNewline?: boolean };
 
 export type DiffRowType = "hunk" | "context" | "added" | "deleted";
+
+export interface DiffRows {
+  budget: DiffBudget;
+  files: FileDiff[];
+  truncated: boolean;
+}
 
 export interface DiscoverResponse {
   capabilities: ServerCapabilities;
@@ -2446,6 +2456,13 @@ export interface UtilityRole {
   provider?: string;
 }
 
+export interface VisualDiff {
+  budget: DiffBudget;
+  manifest: WorkspaceFileChange[];
+  patch: string;
+  truncated: boolean;
+}
+
 export interface WatchSpec {
   paths?: string[];
   watchId: string;
@@ -2504,7 +2521,7 @@ export const WIRE_ENUMS = {
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
-  DiffFormat: ["rows", "raw"],
+  DiffFormat: ["rows", "raw", "visual"],
   DiffMode: ["worktree", "base"],
   DiffRowType: ["hunk", "context", "added", "deleted"],
   ExportFormat: ["md", "json"],

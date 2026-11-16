@@ -4,13 +4,14 @@ import { pluginModules } from "./pluginModules.vite.mjs";
 import { webArtifacts } from "./webArtifacts.vite.mjs";
 import { BROWSER_TARGETS } from "@flame/component-sdk/build";
 import react from "@vitejs/plugin-react";
-import { stylexPlugin } from "./stylex.vite.mjs";
+import { STYLEX_CONDITIONS, stylexPlugin } from "./stylex.vite.mjs";
 import path from "node:path";
 import { LAB_DEVELOPMENT_SERVER, LAB_PREVIEW_SERVER } from "./labServers.ts";
 
 export default defineConfig({
   plugins: [react(), stylexPlugin(), pluginModules(), webArtifacts()],
   resolve: {
+    conditions: STYLEX_CONDITIONS,
     dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

@@ -58,6 +58,36 @@ export function useMemory(context: ComponentContext) {
   const [pinned, setPinned] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
+  const focusSource = useRef({
+    runtime: context.runtime,
+    binding: context.binding,
+    track: context.track,
+    signal: context.signal,
+    scope,
+    cwd,
+  });
+  useLayoutEffect(() => {
+    focusSource.current = {
+      runtime: context.runtime,
+      binding: context.binding,
+      track: context.track,
+      signal: context.signal,
+      scope,
+      cwd,
+    };
+  });
+  const canRestoreFocus = () => {
+    const current = focusSource.current;
+    return (
+      !context.signal.aborted &&
+      current.runtime === context.runtime &&
+      current.binding === context.binding &&
+      current.track === context.track &&
+      current.signal === context.signal &&
+      current.scope === scope &&
+      current.cwd === cwd
+    );
+  };
   const [read, setRead] = useState<Read>({ loading: false });
   const current =
     read.accepted?.scope === scope && read.accepted.cwd === cwd
@@ -296,6 +326,7 @@ export function useMemory(context: ComponentContext) {
     }
   }
   return {
+    canRestoreFocus,
     t,
     edit,
     locked,

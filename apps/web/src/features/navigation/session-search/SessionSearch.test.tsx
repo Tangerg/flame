@@ -59,12 +59,12 @@ function wrap(ui: ReactElement) {
 const field = () => screen.getByRole("combobox");
 
 const marked = () =>
-  screen.getAllByRole("option").filter((row) => row.getAttribute("aria-selected") === "true");
+  screen.getAllByRole("option").filter((row) => row.hasAttribute("data-highlighted"));
 
 beforeEach(() => selectAgentSession.mockClear());
 
 afterEach(async () => {
-  useSessionSearchStore.setState({ open: false });
+  act(() => useSessionSearchStore.setState({ open: false }));
   cleanup();
   await drainBrowserTasks();
 });
@@ -88,16 +88,16 @@ describe("going to a session", () => {
     await waitFor(() => expect(selectAgentSession).toHaveBeenCalledWith("ses_a"));
   });
 
-  it("marks exactly one row, and moves it with the query", () => {
+  it("marks exactly one row, and moves it with the query", async () => {
     wrap(open());
 
-    expect(marked()).toHaveLength(1);
+    await waitFor(() => expect(marked()).toHaveLength(1));
     expect(marked()[0]?.textContent).toContain("Rename the dock");
 
     fireEvent.change(field(), { target: { value: "retry" } });
 
     expect(screen.getAllByRole("option")).toHaveLength(1);
-    expect(marked()[0]?.textContent).toContain("Fix the retry loop");
+    await waitFor(() => expect(marked()[0]?.textContent).toContain("Fix the retry loop"));
   });
 
   it("says so when nothing matches, instead of showing an empty box", () => {
@@ -109,7 +109,7 @@ describe("going to a session", () => {
     expect(screen.getByText("No session matches")).toBeTruthy();
   });
 
-  it("starts from a fresh query and highlight after an external close", () => {
+  it("starts from a fresh query and highlight after an external close", async () => {
     wrap(open());
     fireEvent.change(field(), { target: { value: "retry" } });
     expect(screen.getAllByRole("option")).toHaveLength(1);
@@ -119,19 +119,20 @@ describe("going to a session", () => {
 
     expect((field() as HTMLInputElement).value).toBe("");
     expect(screen.getAllByRole("option")).toHaveLength(2);
-    expect(marked()[0]?.textContent).toContain("Rename the dock");
+    await waitFor(() => expect(marked()[0]?.textContent).toContain("Rename the dock"));
   });
 });
 
 describe("reaching the list without a pointer", () => {
-  it("announces the highlighted row from the field", () => {
+  it("announces the highlighted row from the field", async () => {
     wrap(open());
 
+    await waitFor(() => expect(marked()).toHaveLength(1));
     expect(field().getAttribute("aria-activedescendant")).toBe(marked()[0]?.id);
 
     fireEvent.keyDown(field(), { key: "ArrowDown" });
 
-    expect(marked()[0]?.textContent).toContain("Fix the retry loop");
+    await waitFor(() => expect(marked()[0]?.textContent).toContain("Fix the retry loop"));
     expect(field().getAttribute("aria-activedescendant")).toBe(marked()[0]?.id);
   });
 

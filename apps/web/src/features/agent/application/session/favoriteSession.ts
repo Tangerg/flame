@@ -25,7 +25,7 @@ export function useToggleFavorite(): (
       } catch (err) {
         if (!owner.isCurrent()) return;
         void invalidateAgentSessions();
-        reportSessionError("favorite", err);
+        reportSessionError(agentAccess.notifications, "favorite", err);
       }
     },
     [agentAccess],

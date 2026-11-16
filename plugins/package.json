@@ -20,11 +20,14 @@
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz",
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@openuidev/lang-core": "1.1.0",
     "@openuidev/react-lang": "1.1.0",
+    "@pierre/diffs": "1.7.0-beta.3",
     "@stylexjs/stylex": "^0.19.1",
+    "@tanstack/react-virtual": "3.14.26",
     "docx": "9.15.3",
     "exceljs": "4.4.0",
     "jpeg-js": "0.4.4",
@@ -38,8 +41,7 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "saxes": "6.0.0",
-    "zod": "4.6.7",
-    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",

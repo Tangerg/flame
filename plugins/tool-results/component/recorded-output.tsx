@@ -2,6 +2,7 @@ import {
   useCallback,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -15,13 +16,16 @@ import {
   CodeCaption,
   CodeFrame,
   IconButton,
-  copyWholeReader,
+  copyReaderSelection,
+  readerSelectionLines,
+  useContentVisible,
   isImeKey,
   SearchField,
   selectAllInReader,
   type CodeActionLabels,
 } from "@flame/ui";
-import { ansiText, renderAnsi } from "./ansi";
+import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
+import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
 
 const PREVIEW_LINES = 9;
@@ -156,24 +160,27 @@ export function FindField({
 
 export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
+  const lineStyles = useMemo(() => ansiLineStyles(text), [text]);
   const [expanded, setExpanded] = useState(false);
+  const visible = useContentVisible();
   const [finding, setFinding] = useState(false);
   // Each explicit Find action publishes a fresh value, even when it selects
   // the same line, so it can reveal that line again after manual scrolling.
   const [find, setFind] = useState({ query: "", match: 0 });
   const { query, match } = find;
-  const [metrics, setMetrics] = useState<{
-    height: number;
-    top: number;
-    row: number;
-  } | null>(null);
-  const rowHeight = metrics?.row;
+  const [rowHeight, setRowHeight] = useState(20);
+  const [selectionVersion, invalidateSelection] = useReducer(
+    (version: number) => version + 1,
+    0,
+  );
   const viewport = useRef<HTMLDivElement>(null);
+  const reflow = useRef<{ lines: typeof lines; index: number } | null>(null);
   const ruler = useRef<HTMLSpanElement>(null);
   const search = useRef<HTMLElement>(null);
   const expansion = useRef<{
     origin: HTMLButtonElement;
     activeElement: Element | null;
+    source: string;
   } | null>(null);
   const matches = useMemo(() => {
     if (!query) return [];
@@ -183,68 +190,99 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
     );
   }, [lines, query]);
   const selected = matches.length ? matches[match % matches.length] : undefined;
+  const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
+    count: expanded ? lines.length : 0,
+    getScrollElement: () => viewport.current,
+    estimateSize: () => rowHeight,
+    overscan: OVERSCAN,
+    rangeExtractor: useCallback(
+      (range) => {
+        const endpoints = readerSelectionLines(viewport.current);
+        return [
+          ...new Set([
+            ...defaultRangeExtractor(range),
+            ...endpoints.filter((index) => index >= 0 && index < range.count),
+          ]),
+        ].sort((left, right) => left - right);
+      },
+      [selectionVersion],
+    ),
+  });
   const atLatest =
-    metrics !== null &&
-    lines.length * metrics.row - metrics.top - metrics.height < 1;
-
-  const readWindow = useCallback(() => {
-    const node = viewport.current;
-    if (!node) return;
-    // CSS line units use layout precision; parsed values drift across long logs.
-    // Hidden readers have no sample and must retain their last valid window.
-    const measuredRowHeight = ruler.current!.getBoundingClientRect().height;
-    if (measuredRowHeight === 0) return;
-    setMetrics({
-      height: node.clientHeight,
-      top: node.scrollTop,
-      row: measuredRowHeight,
-    });
-  }, []);
-
+    virtualizer.getTotalSize() -
+      (virtualizer.scrollOffset ?? 0) -
+      (virtualizer.scrollRect?.height ?? 0) <
+    1;
   const jumpToLatest = useCallback(() => {
-    const node = viewport.current;
-    if (!node) return;
-    node.scrollTop = node.scrollHeight;
-    readWindow();
-  }, [readWindow]);
+    virtualizer.scrollToIndex(lines.length - 1, { align: "end" });
+  }, [virtualizer, lines.length]);
 
   useLayoutEffect(() => {
     const node = viewport.current;
-    if (!expanded || !node) return;
-    readWindow();
-    const observer = new ResizeObserver(readWindow);
-    observer.observe(node);
-    // The fixed viewport does not resize when the code font changes.
+    if (!expanded || !visible || !node) return;
+    const read = () => {
+      // CSS line units use layout precision; parsed values drift across long logs.
+      const height = ruler.current!.getBoundingClientRect().height;
+      if (height > 0 && height !== rowHeight) {
+        const anchor = virtualizer.getVirtualItemForOffset(
+          virtualizer.scrollOffset ?? 0,
+        );
+        reflow.current = anchor ? { lines, index: anchor.index } : null;
+        setRowHeight(height);
+      }
+    };
+    read();
+    const observer = new ResizeObserver(read);
     observer.observe(ruler.current!);
-    return () => observer.disconnect();
-  }, [expanded, readWindow]);
+    node.ownerDocument.addEventListener("selectionchange", invalidateSelection);
+    return () => {
+      observer.disconnect();
+      node.ownerDocument.removeEventListener(
+        "selectionchange",
+        invalidateSelection,
+      );
+    };
+  }, [expanded, visible, rowHeight, virtualizer, lines]);
 
   useLayoutEffect(() => {
-    if (!expanded) return;
-    jumpToLatest();
+    const anchor = reflow.current;
+    reflow.current = null;
+    virtualizer.measure();
+    if (anchor?.lines === lines)
+      virtualizer.scrollToIndex(anchor.index, { align: "start" });
+  }, [virtualizer, rowHeight, lines]);
+
+  useLayoutEffect(() => {
     const intent = expansion.current;
-    expansion.current = null;
-    const node = viewport.current;
-    if (
-      intent &&
-      node &&
-      (node.ownerDocument.activeElement === intent.origin ||
-        node.ownerDocument.activeElement === intent.activeElement)
-    ) {
-      node.focus();
+    if (!expanded || !visible || intent?.source !== text) {
+      expansion.current = null;
+      virtualizer.cancelScroll();
+      return;
     }
-  }, [expanded, lines, jumpToLatest]);
+    const frame = requestAnimationFrame(() => {
+      jumpToLatest();
+      expansion.current = null;
+      const node = viewport.current;
+      if (
+        intent &&
+        node &&
+        (node.ownerDocument.activeElement === intent.origin ||
+          node.ownerDocument.activeElement === intent.activeElement)
+      ) {
+        node.focus();
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded, visible, text, jumpToLatest, virtualizer]);
 
   useLayoutEffect(() => {
     if (finding) enterFind(search.current);
   }, [finding]);
 
   useLayoutEffect(() => {
-    const node = viewport.current;
-    if (!node || selected === undefined || rowHeight === undefined) return;
-    node.scrollTop = Math.max(0, selected * rowHeight - node.clientHeight / 2);
-    readWindow();
-  }, [find, selected, rowHeight, readWindow]);
+    if (selected !== undefined)
+      virtualizer.scrollToIndex(selected, { align: "center" });
+  }, [find, selected, virtualizer]);
 
   function closeFind() {
     setFinding(false);
@@ -252,33 +290,31 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
     viewport.current?.focus();
   }
 
-  const start =
-    expanded && metrics !== null
-      ? Math.max(0, Math.floor(metrics.top / metrics.row) - OVERSCAN)
-      : Math.max(0, lines.length - PREVIEW_LINES);
-  const end =
-    expanded && metrics !== null
-      ? Math.min(
-          lines.length,
-          Math.ceil((metrics.top + metrics.height) / metrics.row) + OVERSCAN,
-        )
-      : lines.length;
-  const presented = lines.slice(start, end);
-  const visible = presented.map((line, offset) => (
+  const previewStart = Math.max(0, lines.length - PREVIEW_LINES);
+  const presented = lines.slice(previewStart);
+  const row = (line: string, index: number, start?: number) => (
     <div
-      key={start + offset}
+      key={index}
       data-slot="search-line"
-      data-current-match={start + offset === selected ? "" : undefined}
+      data-current-match={index === selected ? "" : undefined}
       style={{
-        height: expanded ? "1lh" : undefined,
-        minWidth: "max-content",
+        position: start === undefined ? undefined : "absolute",
+        top: start === undefined ? undefined : 0,
+        left: start === undefined ? undefined : 0,
+        transform: start === undefined ? undefined : `translateY(${start}px)`,
+        height: "1lh",
+        minWidth: "100%",
+        width: "max-content",
         paddingInline: frameInset,
         whiteSpace: "pre",
       }}
+      data-reader-line={start === undefined ? undefined : index}
     >
-      <span data-output-line={start + offset}>{renderAnsi(line || " ")}</span>
+      <span data-output-line={index}>
+        {renderAnsi(line, lineStyles[index]!)}
+      </span>
     </div>
-  ));
+  );
   const earlier = lines.length - PREVIEW_LINES;
   const copied = useMemo(() => ansiText(text), [text]);
 
@@ -306,6 +342,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
                   origin: event.currentTarget,
                   activeElement:
                     event.currentTarget.ownerDocument.activeElement,
+                  source: text,
                 };
                 setExpanded(true);
               }
@@ -319,7 +356,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
                 })}
           </Button>
         )}
-        {expanded && metrics !== null && !atLatest && (
+        {expanded && !atLatest && (
           <IconButton
             icon={ArrowDownToLine}
             size="xs"
@@ -417,24 +454,35 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
               overflowAnchor: "none",
               overscrollBehavior: "contain auto",
             }}
-            onScroll={readWindow}
+            onWheel={() => virtualizer.cancelScroll()}
+            onPointerDown={() => virtualizer.cancelScroll()}
             onKeyDown={(event) => {
               if (isFindShortcut(event)) {
                 event.preventDefault();
                 event.stopPropagation();
                 setFinding(true);
                 enterFind(search.current);
+                return;
               }
+              if (!isImeKey(event.nativeEvent)) virtualizer.cancelScroll();
               selectAllInReader(event);
             }}
-            onCopy={(event) => copyWholeReader(event, copied)}
+            onCopy={(event) => copyReaderSelection(event, copied)}
           >
             {/* Select All bounds its Range by this region's child offsets, which
                 window reconciliation would shift; one stable child keeps it whole. */}
-            <div>
-              <div style={{ height: `${start}lh` }} />
-              {visible}
-              <div style={{ height: `${lines.length - end}lh` }} />
+            <div
+              data-reader-source=""
+              style={{
+                height: virtualizer.getTotalSize(),
+                position: "relative",
+                minWidth: "100%",
+                width: "max-content",
+              }}
+            >
+              {virtualizer
+                .getVirtualItems()
+                .map((item) => row(lines[item.index]!, item.index, item.start))}
             </div>
           </div>
         ) : (
@@ -446,10 +494,10 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             style={{ overflowX: "auto" }}
             onKeyDown={selectAllInReader}
             onCopy={(event) =>
-              copyWholeReader(event, presented.map(ansiText).join("\n"))
+              copyReaderSelection(event, presented.map(ansiText).join("\n"))
             }
           >
-            {visible}
+            {presented.map((line, offset) => row(line, previewStart + offset))}
           </div>
         )}
       </div>

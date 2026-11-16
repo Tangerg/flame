@@ -9,6 +9,7 @@ import {
 import { ZoomIn, ZoomOut } from "@flame/icons/react";
 import { IconButton } from "./icon-button";
 import { ScrollRegion } from "./scroll-region";
+import { scrollPan, useScrollPan } from "./scroll-pan";
 import {
   color,
   radius,
@@ -52,12 +53,6 @@ const styles = stylex.create({
     paddingTop: space.s4,
     paddingBottom: space.s16,
     overscrollBehavior: "contain",
-    touchAction: "none",
-    cursor: {
-      default: null,
-      ":is([data-pannable])": "grab",
-      ":is([data-panning])": "grabbing",
-    },
   },
   centre: {
     display: "grid",
@@ -122,28 +117,19 @@ export function ImageViewport({
     clientX: number;
     clientY: number;
   } | null>(null);
-  const dragRef = useRef<{
-    pointerId: number;
-    x: number;
-    y: number;
-    left: number;
-    top: number;
-  } | null>(null);
   const zoomPercent = ZOOM_STEPS[zoomIndex]!;
-
-  const stopDrag = (cancel: boolean) => {
-    const pan = panRef.current;
-    const drag = dragRef.current;
-    if (!pan || !drag) return;
-    dragRef.current = null;
-    pan.removeAttribute("data-panning");
-    if (cancel) {
-      pan.scrollLeft = drag.left;
-      pan.scrollTop = drag.top;
-    }
-    if (pan.hasPointerCapture(drag.pointerId))
-      pan.releasePointerCapture(drag.pointerId);
-  };
+  const {
+    ref: panBinding,
+    onPointerDown,
+    retire,
+  } = useScrollPan(item, zoomPercent > 100);
+  const bindPan = useCallback(
+    (node: HTMLDivElement | null) => {
+      panRef.current = node;
+      panBinding(node);
+    },
+    [panBinding],
+  );
 
   const measure = useCallback(() => {
     const pan = panRef.current;
@@ -188,7 +174,7 @@ export function ImageViewport({
       if (width === pan.offsetWidth && height === pan.offsetHeight) return;
       width = pan.offsetWidth;
       height = pan.offsetHeight;
-      stopDrag(true);
+      retire();
       anchorRef.current = null;
       setZoomIndex(0);
       pan.scrollLeft = 0;
@@ -196,21 +182,18 @@ export function ImageViewport({
       measure();
     });
     observer.observe(pan, { box: "border-box" });
-    const cancel = () => stopDrag(true);
-    window.addEventListener("blur", cancel);
     measure();
     return () => {
       source.removeEventListener("load", measure);
       sourceRef.current = null;
       observer.disconnect();
-      window.removeEventListener("blur", cancel);
-      stopDrag(true);
+      retire();
     };
-  }, [item, measure]);
+  }, [item, measure, retire]);
 
   const zoomAt = (next: number, clientX?: number, clientY?: number) => {
+    retire();
     if (next === zoomIndex) return;
-    stopDrag(false);
     const pan = panRef.current;
     const image = imageRef.current;
     if (pan && image) {
@@ -267,12 +250,13 @@ export function ImageViewport({
   return (
     <div {...stylex.props(styles.frame)}>
       <ScrollRegion
-        ref={panRef}
-        styles={styles.pan}
+        ref={bindPan}
+        styles={[styles.pan, scrollPan.viewport]}
         data-image-zoom={zoomPercent}
         data-pannable={zoomPercent > 100 ? "" : undefined}
         label={label}
         tabIndex={zoomPercent > 100 ? 0 : -1}
+        onKeyDownCapture={retire}
         onKeyDown={(event) => {
           if (zoomPercent <= 100) return;
           const pan = event.currentTarget;
@@ -296,37 +280,7 @@ export function ImageViewport({
           event.preventDefault();
           event.stopPropagation();
         }}
-        onPointerDown={(event) => {
-          if (zoomPercent <= 100 || event.button !== 0 || dragRef.current)
-            return;
-          event.preventDefault();
-          const pan = event.currentTarget;
-          dragRef.current = {
-            pointerId: event.pointerId,
-            x: event.clientX,
-            y: event.clientY,
-            left: pan.scrollLeft,
-            top: pan.scrollTop,
-          };
-          pan.setPointerCapture(event.pointerId);
-          pan.setAttribute("data-panning", "");
-          pan.focus({ preventScroll: true });
-        }}
-        onPointerMove={(event) => {
-          const drag = dragRef.current;
-          if (!drag || event.pointerId !== drag.pointerId) return;
-          event.currentTarget.scrollLeft = drag.left + drag.x - event.clientX;
-          event.currentTarget.scrollTop = drag.top + drag.y - event.clientY;
-        }}
-        onPointerUp={(event) => {
-          if (event.pointerId === dragRef.current?.pointerId) stopDrag(false);
-        }}
-        onPointerCancel={(event) => {
-          if (event.pointerId === dragRef.current?.pointerId) stopDrag(true);
-        }}
-        onLostPointerCapture={(event) => {
-          if (event.pointerId === dragRef.current?.pointerId) stopDrag(true);
-        }}
+        onPointerDown={onPointerDown}
       >
         <div {...stylex.props(styles.centre)}>
           {/* A new source gets a new element so the previous frame never shows at the new fit. */}

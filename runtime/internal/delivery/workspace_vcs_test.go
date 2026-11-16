@@ -81,14 +81,14 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDiff: %v", err)
 	}
-	if len(diff.Files) != 2 || len(diff.Files[0].Rows) == 0 {
-		t.Fatalf("diff = %+v, want modified and empty files", diff.Files)
+	if len(diff.Rows.Files) != 2 || len(diff.Rows.Files[0].Rows) == 0 {
+		t.Fatalf("diff = %+v, want modified and empty files", diff.Rows.Files)
 	}
 	if err := protocol.ValidateWireTree(diff); err != nil {
 		t.Fatalf("real Git diff violates the response contract: %v", err)
 	}
 	blank := false
-	for _, row := range diff.Files[0].Rows {
+	for _, row := range diff.Rows.Files[0].Rows {
 		if row.Type == protocol.DiffRowContext && row.Code != nil && *row.Code == "" {
 			blank = true
 		}
@@ -97,17 +97,36 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 		t.Fatal("real Git diff lost its blank context line")
 	}
 
-	last := diff.Files[0].Rows[len(diff.Files[0].Rows)-1]
+	last := diff.Rows.Files[0].Rows[len(diff.Rows.Files[0].Rows)-1]
 	if last.Type != protocol.DiffRowAdded || !last.NoNewline || *last.Code != "B" {
 		t.Fatalf("line termination = %+v", last)
 	}
 	selected, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Path: "a.txt"})
-	if err != nil || len(selected.Files) != 1 || !reflect.DeepEqual(selected.Files[0], diff.Files[0]) {
+	if err != nil || len(selected.Rows.Files) != 1 || !reflect.DeepEqual(selected.Rows.Files[0], diff.Rows.Files[0]) {
 		t.Fatalf("single-file projection differs: %+v, %v", selected, err)
 	}
 	raw, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Format: protocol.DiffFormatRaw})
-	if err != nil || strings.Count(raw.Patch, "diff --git ") != 2 || !strings.Contains(raw.Patch, `\ No newline at end of file`) {
+	if err != nil || strings.Count(*raw.Patch, "diff --git ") != 2 || !strings.Contains(*raw.Patch, `\ No newline at end of file`) {
 		t.Fatalf("raw patch = %+v, %v", raw, err)
+	}
+	visual, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Format: protocol.DiffFormatVisual})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := protocol.ValidateWireTree(visual); err != nil {
+		t.Fatal(err)
+	}
+	if visual.Type != protocol.DiffFormatVisual || visual.Visual.Patch != *raw.Patch || len(visual.Visual.Manifest) != 2 ||
+		visual.Visual.Manifest[1].Status != protocol.FileStatusUntracked || visual.Visual.Truncated ||
+		visual.Visual.Budget != (protocol.DiffBudget{Files: 5000, Rows: 5000, Bytes: 64 << 20}) {
+		t.Fatalf("visual read = %+v", visual.Visual)
+	}
+	bounded, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Format: protocol.DiffFormatVisual, Limit: valuePtr(1)})
+	if err != nil || !bounded.Visual.Truncated || bounded.Visual.Patch != "" || len(bounded.Visual.Manifest) != 0 || bounded.Visual.Budget.Rows != 1 {
+		t.Fatalf("zero-file visual budget = %+v, %v", bounded, err)
+	}
+	if _, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Format: "unknown"}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("unknown projection error = %v", err)
 	}
 
 	gitCmd("checkout", "-b", "feature")
@@ -119,7 +138,7 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	if err := os.WriteFile(baseRef, []byte(strings.Repeat("1", len(strings.TrimSpace(string(baseCommit))))+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, format := range []protocol.DiffFormat{protocol.DiffFormatRaw, protocol.DiffFormatRows} {
+	for _, format := range []protocol.DiffFormat{protocol.DiffFormatRaw, protocol.DiffFormatRows, protocol.DiffFormatVisual} {
 		_, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Mode: protocol.DiffModeBase, Format: format})
 		if err == nil || errors.Is(err, protocol.ErrInvalidParams) {
 			t.Fatalf("%s broken repository error = %v, want an operational failure", format, err)

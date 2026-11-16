@@ -19,7 +19,12 @@ import { IconMark } from "./icon-mark";
 import { isImeKey } from "./keyboard";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 import { PanelLayoutContext } from "./panel-layout";
-import { readingUnitFor } from "./reading-unit";
+import {
+  readingUnitFor,
+  isPressedReadingTarget,
+  readingViewportBounds,
+  withinReadingFrame,
+} from "./reading-unit";
 import { color, layout, surface, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -238,14 +243,10 @@ type BodyFrame = {
 
 function bodyFrame(body: HTMLElement, target: Element): BodyFrame | null {
   if (!body.isConnected || !body.contains(target)) return null;
-  const bounds = body.getBoundingClientRect();
-  const style = getComputedStyle(body);
-  const top = Math.max(
-    bounds.top + (Number.parseFloat(style.scrollPaddingBlockStart) || 0),
-    0,
-  );
+  const bounds = readingViewportBounds(body);
+  const top = Math.max(bounds.top, 0);
   const bottom = Math.min(
-    bounds.bottom - (Number.parseFloat(style.scrollPaddingBlockEnd) || 0),
+    bounds.bottom,
     body.ownerDocument.documentElement.clientHeight,
   );
   const height = bottom - top;
@@ -261,16 +262,6 @@ function bodyFrame(body: HTMLElement, target: Element): BodyFrame | null {
     contentHeight: body.scrollHeight,
     unit,
   };
-}
-
-function withinBodyFrame(shown: DOMRect, frame: BodyFrame) {
-  // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
-  return (
-    shown.top >= frame.top - 0.5 &&
-    (shown.height > frame.bottom - frame.top
-      ? shown.top < frame.bottom
-      : shown.bottom <= frame.bottom + 0.5)
-  );
 }
 
 // The portal's React parent may be a page Panel whose viewport does not
@@ -302,14 +293,10 @@ function DialogBody({
     const body = bodyRef.current;
     const frame = body && bodyFrame(body, target);
     if (!body || !frame) return null;
-    const pressed = pressedTarget.current;
-    const pointerFocus =
-      pressed &&
-      (target.contains(pressed) ||
-        pressed.closest("label, [data-focus-proxy]")?.contains(target));
+    const pointerFocus = isPressedReadingTarget(target, pressedTarget.current);
     const shown = frame.unit.getBoundingClientRect();
     // Moving a pressed control before pointerup can swallow its activation.
-    if (!pointerFocus && !withinBodyFrame(shown, frame)) {
+    if (!pointerFocus && !withinReadingFrame(shown, frame)) {
       frame.unit.scrollIntoView({
         block: shown.height > frame.bottom - frame.top ? "start" : "nearest",
         inline: "nearest",
@@ -398,7 +385,9 @@ function DialogBody({
         current.contentHeight !== frame.contentHeight
       )
         follow();
-      else if (!withinBodyFrame(current.unit.getBoundingClientRect(), current))
+      else if (
+        !withinReadingFrame(current.unit.getBoundingClientRect(), current)
+      )
         following = false;
     };
     body.addEventListener("focusin", onFocusIn);

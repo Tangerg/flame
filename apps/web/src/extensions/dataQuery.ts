@@ -1,6 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
+import { useMemo, useSyncExternalStore } from "react";
 import { type Query, type UseQueryResult } from "@tanstack/react-query";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
 import { type Contribution } from "@/extensions/contracts";
@@ -98,35 +99,20 @@ class DataQueryOwner {
       const key = query.queryKey[0];
       return typeof key === "string" && affected.has(key);
     };
-    const predecessorQueries = new Set(
-      queryClient.getQueryCache().findAll({ predicate: affectedQuery }),
-    );
-    if (predecessorQueries.size === 0) return;
-    void queryClient
-      .cancelQueries({ predicate: (query) => predecessorQueries.has(query) })
-      .then(() => {
-        if (this.#disposed) return;
-        const ownedQuery = (query: Query) => {
-          const key = query.queryKey[0];
-          return (
-            predecessorQueries.has(query) &&
-            typeof key === "string" &&
-            this.#providers.get(key) === successor.get(key)
-          );
-        };
-        queryClient.removeQueries({
-          predicate: (query) => {
-            const key = query.queryKey[0];
-            return ownedQuery(query) && typeof key === "string" && !successor.has(key);
-          },
-        });
-        void queryClient.resetQueries({
-          predicate: (query) => {
-            const key = query.queryKey[0];
-            return ownedQuery(query) && typeof key === "string" && successor.has(key);
-          },
-        });
-      });
+    // Reset cancels reads and clears objects retained by continuous placeholders before eviction.
+    void queryClient.resetQueries({ predicate: affectedQuery });
+    queryClient.removeQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        // Mounted observers need their cache entry to receive a returning provider.
+        return (
+          affectedQuery(query) &&
+          typeof key === "string" &&
+          !successor.has(key) &&
+          query.getObserversCount() === 0
+        );
+      },
+    });
   }
 }
 
@@ -163,20 +149,49 @@ export function parameterizedQuery<P, T>(key: string, params: P | undefined) {
 export function createParameterizedDataQuery<P, T>(
   key: string,
   options?: ParameterizedQueryOptions<P, T>,
-): (params: P | undefined) => UseQueryResult<T> {
+): (params: P | undefined, subscribed?: boolean) => UseQueryResult<T> {
   const interval = options?.refetchInterval;
   const keep = options?.keepWhenContinuous;
-  return (params) =>
+  const useData = (query: ReturnType<typeof parameterizedQuery<P, T>>, subscribed: boolean) =>
     useQuery({
-      ...parameterizedQuery<P, T>(key, params),
+      ...query,
+      subscribed,
       refetchInterval: interval ? (query) => interval(query.state.data) : undefined,
-      placeholderData: keep
-        ? (previous, previousQuery) => {
-            const prior = previousQuery?.queryKey[1] as P | undefined;
-            return prior !== undefined && params !== undefined && keep(prior, params)
-              ? previous
-              : undefined;
-          }
-        : undefined,
     });
+  if (!keep)
+    return (params, subscribed = true) =>
+      useData(parameterizedQuery<P, T>(key, params), subscribed);
+  return (params, subscribed = true) => {
+    const client = useQueryClient();
+    const query = parameterizedQuery<P, T>(key, params);
+    const queryHash = client.defaultQueryOptions(query).queryHash;
+    const cache = client.getQueryCache();
+    const readState = useMemo(
+      () => ({
+        subscribe: (onChange: () => void) =>
+          cache.subscribe((event) => {
+            if (event.query.queryHash === queryHash) onChange();
+          }),
+        getSnapshot: () => cache.get(queryHash)?.state,
+      }),
+      [cache, queryHash],
+    );
+    // Observer placeholders can outlive a reset while effects are disconnected.
+    // Native cache state makes reconnection recompute continuity after reset or eviction.
+    useSyncExternalStore(readState.subscribe, readState.getSnapshot);
+    return useData(
+      queryOptions({
+        ...query,
+        placeholderData: (_previous, previousQuery) => {
+          if (!previousQuery) return undefined;
+          const prior = previousQuery.queryKey[1] as P | undefined;
+          // Observers can retain evicted Queries; continuity belongs to the current cache entry.
+          return prior !== undefined && params !== undefined && keep(prior, params)
+            ? cache.get<typeof _previous>(previousQuery.queryHash)?.state.data
+            : undefined;
+        },
+      }),
+      subscribed,
+    );
+  };
 }

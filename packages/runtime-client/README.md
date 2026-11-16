@@ -39,6 +39,14 @@ and unit tests are not exports. `testing` supplies the deliberate memory-transpo
 fixture and sample index. Its raw sample JSON is an exact generated copy of
 `runtime/contract/samples`; edit canonical samples at that Runtime owner.
 
+`workspace.diff.get` returns a discriminated read projection. Browser review
+requests `format: "visual"` and accepts `baseline` plus `visual.patch`,
+`visual.manifest`, `visual.truncated` and `visual.budget` together. Do not combine
+that manifest with a later rows or changes read. Empty truncated visual results
+are capacity results, not a clean workspace. Complete `raw` and bounded `rows`
+remain distinct consumers' projections. Migrate former flat response fields to
+the matching tagged payload; the decoder does not translate old responses.
+
 Transport receives JSON losslessly before method validation. Schema-declared
 numeric DTO fields project into JavaScript numbers and reject values they cannot
 represent exactly. Opaque JSON, including Tool schemas, retains exact numbers.

@@ -14,6 +14,12 @@ beforeEach(() => {
   previousLanguage = document.documentElement.lang;
   localStorage.setItem(LOCALE_STORAGE_KEY, "zh");
   vi.spyOn(HTMLScriptElement, "supports").mockReturnValue(true);
+  vi.spyOn(document, "getSelection").mockReturnValue({
+    getComposedRanges(options: GetComposedRangesOptions) {
+      void options.shadowRoots;
+      return [];
+    },
+  } as unknown as Selection);
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(async () => {

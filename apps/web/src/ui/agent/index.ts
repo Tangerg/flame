@@ -11,7 +11,6 @@ export {
   AgentDockResizer,
   AgentDockRow,
   AgentDockTabs,
-  DOCK_MEASURE_PROPERTY,
   type AgentDockTab,
 } from "@/ui/agent/context-dock";
 export { AgentRow } from "@/ui/agent/navigation-row";

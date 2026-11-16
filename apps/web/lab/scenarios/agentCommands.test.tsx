@@ -1,3 +1,4 @@
+import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
@@ -64,7 +65,7 @@ async function mountAgent(
   const requests = vi.spyOn(transport, "send");
   const runtime = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
   client = runtime;
-  const owned = createVisualClient(() => runtime);
+  const owned = createVisualClient(() => runtime, new NotificationFeed(() => {}));
   visual = owned;
   if (initialDraft !== undefined) {
     owned.composer.activate(owned.runtime.endpoint.currentRuntimeEndpoint());

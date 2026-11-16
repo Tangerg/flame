@@ -72,8 +72,16 @@ type Baseline struct {
 type DiffResult struct {
 	Baseline  Baseline
 	Files     []DiffFile
+	Patch     string
 	Truncated bool
 }
+
+type Projection string
+
+const (
+	Rows   Projection = "rows"
+	Visual Projection = "visual"
+)
 
 type RawDiffResult struct {
 	Baseline Baseline
@@ -85,21 +93,28 @@ type RawDiffResult struct {
 // untracked files through Git's no-index patch semantics. maxFiles, maxRows,
 // and maxBytes are hard pre-materialization boundaries; truncated reports a
 // complete-file cut. Repository and process sentinels remain distinguishable.
-func Diff(ctx context.Context, dir, relPath string, mode Mode, maxFiles, maxRows, maxBytes int) (DiffResult, error) {
+func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projection, maxFiles, maxRows, maxBytes int) (DiffResult, error) {
+	if projection != Rows && projection != Visual {
+		return DiffResult{}, fmt.Errorf("git: unsupported diff projection %q", projection)
+	}
 	patch, untracked, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	files, truncated, err := parseUnifiedDiff(patch, maxFiles, maxRows)
+	parsed, err := parseUnifiedDiff(patch, maxFiles, maxRows, projection == Rows)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	for index := range files {
-		if _, ok := untracked[files[index].Path]; ok {
-			files[index].Status = StatusUntracked
+	for index := range parsed.files {
+		if _, ok := untracked[parsed.files[index].Path]; ok {
+			parsed.files[index].Status = StatusUntracked
 		}
 	}
-	return DiffResult{Baseline: baseline, Files: files, Truncated: truncated}, nil
+	result := DiffResult{Baseline: baseline, Files: parsed.files, Truncated: parsed.truncated}
+	if projection == Visual {
+		result.Patch = string(patch[:parsed.end])
+	}
+	return result, nil
 }
 
 // RawDiff returns at most maxBytes of complete raw unified patch text. Worktree

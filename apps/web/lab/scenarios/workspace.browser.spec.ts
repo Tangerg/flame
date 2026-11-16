@@ -195,13 +195,32 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
       name: `Changes in ${ACTIVE_FILE_PATH}`,
       exact: true,
     });
-    await expect(changes.getByRole("table")).toBeVisible();
+    await expect(changes.getByRole("region", { name: /^Scrollable diff for / })).toBeVisible();
     await expect(
-      changes.getByRole("cell", {
-        name: "const rail = railRef.current;",
+      changes.getByText("const rail = railRef.current;", {
         exact: true,
       }),
     ).toBeVisible();
+    return;
+  }
+  if (state === "dock-diff-evidence") {
+    const view = pluginView(page, "diff");
+    await expect(view.getByText("alpha中🙂omega", { exact: true })).toBeVisible();
+    await expect(view.getByText("No newline at end of file", { exact: true })).toHaveCount(2);
+    return;
+  }
+  if (state === "dock-diff-budget") {
+    await expect(
+      pluginView(page, "diff").getByText("No complete file fits this read’s budget.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    return;
+  }
+  if (state === "dock-diff-large") {
+    await expect(
+      pluginView(page, "diff").getByText("export const item4999 = 4999;", { exact: true }),
+    ).toBeAttached();
     return;
   }
   if (state === "dock-empty") {
@@ -486,7 +505,7 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
 test("files browse and preview share one dock tab", async ({ page }) => {
   await openWorkspace(page, { state: "dock-files" });
   const dock = page.locator(".agent-context-dock");
-  const fileName = ACTIVE_FILE_PATH.split("/").at(-1)!;
+  const fileName = /^DockResizer\.tsx\b/;
   await dock.getByRole("treeitem", { name: "apps", exact: true }).click();
   await dock.getByRole("treeitem", { name: fileName, exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
@@ -1628,11 +1647,11 @@ for (const theme of ["light", "dark"] as const) {
       host.flameVisualNotify("Provider credentials were rejected", "error");
     });
 
-    const toast = page.locator("[data-sonner-toast]");
+    const toast = page.getByRole("dialog", { name: "Provider credentials were rejected" });
     await expect(toast).toContainText("Provider credentials were rejected");
     await expect(toast).toHaveAttribute("data-type", "error");
     await expect(toast).toHaveCSS("font-family", "monospace");
-    await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", theme);
+    await expect(toast).toHaveCSS("color-scheme", theme);
     await expect(toast).toHaveCSS("border-top-width", "0px");
 
     await expect.poll(() => toast.count(), { timeout: 6_000 }).toBe(0);

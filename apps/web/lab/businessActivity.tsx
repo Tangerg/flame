@@ -23,8 +23,7 @@ export function ActivityExample({ variant, locale, observe }: LabExampleProps) {
         label={localize(messages.samples.activity, locale)}
         detail={localize(messages.samples.activityDetail, locale)}
         open={open}
-        onToggle={() => {
-          const next = !open;
+        onOpenChange={(next) => {
           setOpen(next);
           observe("activity.toggle", next);
         }}

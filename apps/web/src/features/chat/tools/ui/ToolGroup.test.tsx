@@ -32,10 +32,11 @@ const searched: ToolCall = { ...searching, status: "ok", result: "file.ts:1" };
 
 function Turn({ tools, superseded }: { tools: ToolCall[]; superseded?: boolean }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const toggle = (id: string) =>
+  const changeExpanded = (id: string, expanded: boolean) =>
     setExpandedIds((current) => {
       const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
+      if (expanded) next.add(id);
+      else next.delete(id);
       return next;
     });
   return (
@@ -43,7 +44,7 @@ function Turn({ tools, superseded }: { tools: ToolCall[]; superseded?: boolean }
       <ToolGroup
         tools={tools}
         expandedIds={expandedIds}
-        onToggleExpand={toggle}
+        onExpandedChange={changeExpanded}
         superseded={superseded}
       />
       <button type="button">Outside</button>
@@ -161,7 +162,7 @@ describe("ToolGroup", () => {
       { id: "search", runId: "r1", name: "grep", fn: "pattern", args: "", status: "ok" },
     ];
     const group = () => (
-      <ToolGroup tools={calls} expandedIds={new Set()} onToggleExpand={vi.fn()} />
+      <ToolGroup tools={calls} expandedIds={new Set()} onExpandedChange={vi.fn()} />
     );
     const { rerender } = testClient.render(group());
     const summary = screen.getByRole("button", { name: /1 running.*2 calls/ });

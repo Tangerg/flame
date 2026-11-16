@@ -1,6 +1,6 @@
 {
   "profile": "io.github.tangerg.flame/component-runtime@1",
-  "browserTargets": ["chrome131", "safari17.4"],
+  "browserTargets": ["chrome137", "safari26"],
   "modules": [
     "react",
     "react-dom",

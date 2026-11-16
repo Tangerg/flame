@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
 import { DataError } from "@/ui/atoms/data-error";
 import { DataView } from "@/ui/atoms/data-view";
-import { Tree } from "@/ui/atoms/tree";
+import { Button } from "@flame/ui";
 const rows = (items: string[]) => <div>{items.join(",")}</div>;
 
 const broke = new Error("the runtime answered badly");
@@ -220,16 +220,12 @@ describe("DataView", () => {
 });
 
 describe("DataError", () => {
-  it("hands owned Retry focus to its caller's surviving sibling composite", () => {
-    const target = createRef<HTMLDivElement>();
+  it("hands owned Retry focus to its caller's surviving sibling control", () => {
+    const target = createRef<HTMLButtonElement>();
     const callbackFocus: (Element | null)[] = [];
     testClient.render(
       <>
-        <Tree.Root ref={target} aria-label="Recovered files">
-          <Tree.Item level={1} selected={false} focusable onActivate={vi.fn()}>
-            kept.go
-          </Tree.Item>
-        </Tree.Root>
+        <Button ref={target}>kept.go</Button>
         <div role="region" aria-label="Read error" tabIndex={-1}>
           <DataError
             focusTarget={target}
@@ -240,7 +236,7 @@ describe("DataError", () => {
       </>,
     );
     const retry = screen.getByRole("button", { name: "Retry" });
-    const row = screen.getByRole("treeitem", { name: "kept.go" });
+    const row = screen.getByRole("button", { name: "kept.go" });
     act(() => retry.focus());
     fireEvent.click(retry);
     expect(document.activeElement).toBe(row);

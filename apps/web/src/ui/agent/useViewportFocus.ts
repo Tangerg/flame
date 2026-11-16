@@ -1,3 +1,4 @@
+import { isPressedReadingTarget, readingViewportBounds } from "@flame/ui";
 import { type RefObject, useLayoutEffect } from "react";
 
 export function useViewportFocus(viewportRef: RefObject<HTMLDivElement | null>, enabled: boolean) {
@@ -8,16 +9,10 @@ export function useViewportFocus(viewportRef: RefObject<HTMLDivElement | null>, 
     const witnessState: { value: Element | null } = { value: null };
     const pressedState: { value: Element | null } = { value: null };
     const scrollTopState = { value: viewport.scrollTop };
-    const frame = () => {
-      const bounds = viewport.getBoundingClientRect();
-      const style = getComputedStyle(viewport);
-      return {
-        top: bounds.top + (parseFloat(style.scrollPaddingTop) || 0),
-        bottom: bounds.bottom - (parseFloat(style.scrollPaddingBottom) || 0),
-        width: bounds.width,
-        contentHeight: viewport.scrollHeight,
-      };
-    };
+    const frame = () => ({
+      ...readingViewportBounds(viewport),
+      contentHeight: viewport.scrollHeight,
+    });
     const previousState = { value: frame() };
     const visible = (target: Element, bounds: ReturnType<typeof frame>) => {
       const rect = target.getBoundingClientRect();
@@ -64,10 +59,7 @@ export function useViewportFocus(viewportRef: RefObject<HTMLDivElement | null>, 
         return;
       retire();
     };
-    const pressedTarget = (target: Element) =>
-      pressedState.value &&
-      (target.contains(pressedState.value) ||
-        pressedState.value.closest("label, [data-focus-proxy]")?.contains(target));
+    const pressedTarget = (target: Element) => isPressedReadingTarget(target, pressedState.value);
     const reveal = () => {
       previousState.value = frame();
       // A larger frame can clamp native scroll before its delayed scroll event arrives.

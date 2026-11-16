@@ -48,9 +48,15 @@ describe("ReasoningEffortPill", () => {
     expect(pill.textContent).toContain("High");
 
     fireEvent.click(pill);
-    const items = await screen.findAllByRole("menuitem");
+    const items = await screen.findAllByRole("menuitemradio");
     expect(items.map((item) => item.textContent)).toEqual(["Low", "High", "Max"]);
-    fireEvent.click(screen.getByRole("menuitem", { name: "Max" }));
+    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "true",
+      "false",
+    ]);
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Max" }));
+    expect(state.setModel).toHaveBeenCalledTimes(1);
     expect(state.setModel).toHaveBeenCalledWith({
       kind: "explicit",
       provider: "deepseek",

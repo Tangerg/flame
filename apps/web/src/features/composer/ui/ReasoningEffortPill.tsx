@@ -77,29 +77,32 @@ export function ReasoningEffortPill() {
         <div aria-hidden {...stylex.props(toolbarStyles.menuHeading, typeStep.uiSm)}>
           {t("composer.reasoningEffort")}
         </div>
-        {levels.map((effort, index) => (
-          <DropdownMenu.Item
-            key={effort}
-            layout="pick"
-            styles={styles.row}
-            onClick={() =>
+        <DropdownMenu.RadioGroup
+          value={current}
+          onValueChange={(next) => {
+            const effort = levels.find((effort) => effort === next);
+            if (effort !== undefined) {
               setModel({
                 kind: "explicit",
                 provider: model.provider,
                 model: model.id,
                 reasoningEffort: effort,
-              })
+              });
             }
-          >
-            <EffortMeter index={index} count={levels.length} />
-            <span {...stylex.props(vocab.fill, vocab.truncate, typeStep.uiMd)}>
-              {reasoningEffortLabel(effort, t)}
-            </span>
-            {effort === current && (
-              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-            )}
-          </DropdownMenu.Item>
-        ))}
+          }}
+        >
+          {levels.map((effort, index) => (
+            <DropdownMenu.RadioItem key={effort} value={effort} layout="pick" styles={styles.row}>
+              <EffortMeter index={index} count={levels.length} />
+              <span {...stylex.props(vocab.fill, vocab.truncate, typeStep.uiMd)}>
+                {reasoningEffortLabel(effort, t)}
+              </span>
+              <DropdownMenu.RadioItemIndicator>
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+              </DropdownMenu.RadioItemIndicator>
+            </DropdownMenu.RadioItem>
+          ))}
+        </DropdownMenu.RadioGroup>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

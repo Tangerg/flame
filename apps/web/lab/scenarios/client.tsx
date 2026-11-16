@@ -1,3 +1,4 @@
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { createImageExport } from "@/foundation/imageExport";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
@@ -43,7 +44,7 @@ function useRecordedChatSession() {
 }
 
 /** One browser fixture owns these feature instances; production has no default instance. */
-export function createVisualClient(runtimeClient: () => FlameClient) {
+export function createVisualClient(runtimeClient: () => FlameClient, messages: NotificationFeed) {
   const host = createBrowserHost();
   const theme = createTheme(document, window);
   const navigation = createMemoryNavigator();
@@ -91,7 +92,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
     reportConnectionLoss: () => undefined,
   };
-  const agent = createAgentFixture(runtimeClient, navigation, runtime, stream, scope);
+  const agent = createAgentFixture(runtimeClient, navigation, runtime, stream, scope, messages);
   agent.dependencies = {
     ...agent.dependencies,
     defaultSession: { useDefaultChatSession: useRecordedChatSession },
@@ -110,6 +111,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     },
     runtime.endpoint.currentRuntimeEndpoint,
     scope,
+    stream,
   );
   const workspace = createWorkspace(
     runtimeClient,
@@ -118,6 +120,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     () => false,
     agent.access,
     runtime,
+    messages,
   );
   workspace.dock.activate(runtime.endpoint.currentRuntimeEndpoint());
   const directory = createWorkingDirectoryPicker(
@@ -131,6 +134,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     workspace.access,
     "Flame",
     runtime.endpoint.currentRuntimeEndpoint,
+    messages,
   );
   const installedPlugins = createInstalledPlugins(
     runtimeClient,
@@ -183,6 +187,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     workspace,
     directory,
     notifications,
+    messages,
     installedPlugins,
     Wrapper,
     bindEndpoint(next: RuntimeEndpointConfiguration) {

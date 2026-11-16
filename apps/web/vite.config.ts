@@ -2,7 +2,7 @@ import { sharedRuntimePackages } from "./shared-runtime.mjs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { stylexPlugin } from "./stylex.vite.mjs";
+import { STYLEX_CONDITIONS, stylexPlugin } from "./stylex.vite.mjs";
 import { pluginModules } from "./pluginModules.vite.mjs";
 import { webArtifacts } from "./webArtifacts.vite.mjs";
 import { BROWSER_TARGETS } from "@flame/component-sdk/build";
@@ -39,6 +39,7 @@ export default defineConfig({
       }
     : undefined,
   resolve: {
+    conditions: STYLEX_CONDITIONS,
     dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

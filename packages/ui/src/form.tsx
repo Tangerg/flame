@@ -3,7 +3,6 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   type AriaAttributes,
   type ComponentPropsWithRef,
@@ -13,6 +12,7 @@ import { clsx } from "clsx";
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
 import { Metadata } from "./panel";
+import { useRemovalFocus } from "./focus";
 import { color, layout, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -177,37 +177,20 @@ export function Form({
 export function RecordForm({
   children,
   opener,
+  canRestoreFocus = () => true,
   ref,
   className,
   ...props
 }: ComponentPropsWithRef<"section"> & {
   opener?: HTMLElement | (() => HTMLElement | null);
+  canRestoreFocus?: () => boolean;
 }) {
   const element = useRef<HTMLElement>(null);
-  const ownedFocus = useRef(false);
-  useLayoutEffect(() => {
-    const form = element.current;
-    if (!form || !opener) return;
-    ownedFocus.current = false;
-    return () => {
-      ownedFocus.current = form.contains(form.ownerDocument.activeElement);
-    };
-  }, [opener]);
-  useEffect(() => {
-    const form = element.current;
-    if (!form || !opener) return;
-    return () => {
-      // Passive cleanup runs after the opener's disabled state commits.
-      if (
-        !form.isConnected &&
-        ownedFocus.current &&
-        form.ownerDocument.activeElement === form.ownerDocument.body
-      ) {
-        const target = typeof opener === "function" ? opener() : opener;
-        if (target?.isConnected) target.focus();
-      }
-    };
-  }, [opener]);
+  useRemovalFocus(
+    element,
+    () => (typeof opener === "function" ? opener() : opener),
+    canRestoreFocus,
+  );
   const styled = stylex.props(
     CARD_SURFACE.face,
     styles.form,

@@ -7,7 +7,7 @@ import { type FlameClient } from "@flame/runtime-client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
-import { notifyError } from "@/features/notifications/public/notifications";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { resolveAgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type SlashCommandSpec } from "@/features/composer/public/types";
 import { COMPOSER_SUBMIT_MODE, SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
@@ -38,6 +38,7 @@ export function createGoalPlugin(
   runtimeClient: () => FlameClient,
   goals: Goals,
   providers: WorkflowProviders,
+  notifications: NotificationFeed,
 ) {
   return definePlugin({
     name: "flame.builtin.goal",
@@ -107,9 +108,11 @@ export function createGoalPlugin(
             };
           },
           focusComposer: focusComposer.bind(null, composerAccess),
-          reportUnavailable: () => notifyError(t("goal.error.unavailable")),
-          reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),
-          reportStartError: (error) => notifyError(rpcErrorText(error) ?? t("goal.error.start")),
+          reportUnavailable: () => notifications.notify("error", t("goal.error.unavailable")),
+          reportUnsupportedAttachments: () =>
+            notifications.notify("error", t("goal.error.attachmentsUnsupported")),
+          reportStartError: (error) =>
+            notifications.notify("error", rpcErrorText(error) ?? t("goal.error.start")),
           retired: wasGenerationRetired,
         }),
       );

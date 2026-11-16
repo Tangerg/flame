@@ -61,8 +61,9 @@ activation and withdrawal retain their existing owners.
 
 The authored Component SDK runtime profile owns the browser compilation targets
 for components, this application and the Lab. The current support floor is Chrome
-131 or Safari/WebKit 17.4. The native macOS installation floor is separate: macOS
-13 needs software updates that provide the required WebKit capabilities. The
+137 or Safari/WebKit 26. Native composed selection ranges are required for
+precise clipboard projection from installed Shadow DOM readers. The native macOS installation floor is separate: macOS
+14 needs software updates that provide the required WebKit capabilities. The
 startup check tests capabilities, rather than inferring them from an OS version
 or user-agent string. Compilation does not polyfill runtime APIs.
 
@@ -94,9 +95,24 @@ Immutable caching requires a build-owned content fingerprint and verification of
 the served bytes against the final distribution digest. JS uses the bundler's
 actual hash-placeholder provenance; emitted assets use SHA-256 names. StyleX emits
 one complete stylesheet before asset hashing instead of rewriting named CSS or JS.
+Web, Lab and unit tests select the shared UI's `stylex` export condition, so the same
+transform compiles shared and application atomic styles once. The shared CSS import
+then supplies document rules; standalone consumers retain the complete precompiled
+stylesheet through the ordinary package exports.
 Unfingerprinted public appearance scripts, focus scripts and fonts remain
 revalidatable. A stale policy or altered registered file is refused; registering
 an arbitrary filename alone does not establish a content fingerprint.
+
+Resize handles preserve the layout owner's pixel limits and 8px/24px/Home/End
+commands. A shared `PointerSession` owns capture and termination. Only a valid
+completed gesture requests a commit. The layout owner alone projects the accepted
+width; the handle owns a separate temporary preview property. CSS derives the
+displayed width from these distinct facts. Completion, cancellation and retirement
+remove that preview without writing or restoring an accepted value. External
+widths, container changes, hidden scopes and unmount revoke the old gesture.
+Keyboard commands request the next width from the same layout owner.
+Modified keys, IME composition and keys already consumed elsewhere retain their
+original owner; only plain resize keys and the existing Shift coarse step apply.
 
 The fixed, clipped application root owns the viewport frame. Reading surfaces own
 their scrolling, so native input focus cannot scroll the application chrome away.
@@ -249,7 +265,14 @@ restore the saved collection before authoring changes; subsequent authoring keep
 the unread bytes intact and requires explicit recovery. Copy draft text captures
 the unconfirmed text and separate pasted-text records on request, including
 inactive targets, without copying connection credentials or claiming images are
-durable. A late copy cannot confirm a later draft.
+durable. A late copy cannot confirm a later draft. Recovery reads its text synchronously
+in the click and starts clipboard I/O in that same activation. Its persistent
+diagnostics and ordinary short copy feedback share `useCopyAttempt` qualification.
+The Retry presentation captures its original input on focus and returns it in
+pre-exit layout cleanup only while Retry still holds focus. A stable ref merely
+binds the button; a failed retry or a ref rebind cannot return focus.
+Hiding that presentation or replacing its Composer owner permanently retires the
+capture. After reveal, a new focus entry can capture the original input again.
 
 Draft storage accepts only the current IndexedDB shape. There is no older-format
 reader, import lifecycle or localStorage draft projection. Retain obsolete browser
@@ -277,6 +300,17 @@ Segment. Duplicate event folds, rejected batches and retired projection generati
 cannot publish another settlement. Cold reads and history refreshes stay quiet.
 Accepted cancellation receipts use the same committed transition projection.
 
+Each window starts notification producers only after its Base UI Toast Provider
+exposes the public command capability. One Provider owns the live queue, four-second
+ordinary lifetime, persistent errors and interaction pauses. All live messages remain
+readable in the bounded notification band; Action and localized Close controls use
+normal keyboard order. The window's notification feed owns its separate in-memory
+history. Closing a Toast never marks history read, and clearing history never closes
+live feedback. Cancelled departure, visibility changes and persisted page transitions
+retain this capability; actual window retirement revokes it before producer disposal.
+Feature presentations compose public Base UI primitives at their behavior owner;
+shared controls retain their token, accessibility and cross-host contracts.
+
 Session title editing captures the Session ID, revision, original title and command
 port when Rename opens. List refreshes cannot retarget that edit. Summary writes
 preserve the captured revision even when queued behind another write; Runtime owns
@@ -302,6 +336,15 @@ the view. Pointer movement changes a highlighted suggestion; moving the popup
 beneath a stationary pointer does not.
 File and command suggestions dismiss on Shift+Tab without accepting a value,
 letting the browser return to the preceding control with the draft intact.
+One suggestion navigation owner holds the candidate identity and highlighted item.
+Floating UI's public root context, virtual list navigation and role bindings read
+the actual textarea and list; Base UI remains the sole popup owner. The input route
+admits composition first, then Retry and acceptance, then explicit library arrow
+navigation, and finally ordinary commands. Home and End retain native editing.
+Highlight, hover, accessibility and acceptance use the same item. Matching reopened
+candidates retain that item; changed candidates select from their current set.
+One popup lifecycle reveals the item within its own scrollport after navigation or
+size changes, without scrolling an ancestor or retaining global option identities.
 
 File suggestions show the filename above its complete wrapping parent directory
 before insertion. Literal path text keeps directory then filename in DOM order,
@@ -708,6 +751,34 @@ widths retain their coalesced update; an unchanged width publishes nothing.
 Ref cleanup cancels sampling, including retirement during a synchronous commit.
 The saved Dock ratio remains unchanged. One layout-width read per active animation
 frame preserves this capacity timing under both viewport and sidebar changes.
+Native Dock dragging uses the PDD element adapter. Its typed payload binds the
+registered strip and a currently present tab; plain text and another strip cannot
+supply an alternative source. Each effect setup owns a fresh payload registration,
+including Activity and Suspense reconnection; a retired drag cannot acquire the
+same strip again. Drag styling starts empty and reflects only that registration's
+events. Drop and keyboard menu moves call the same navigation
+command, whose store alone advances tab order. The live announcement reads the
+committed position. Base UI continues owning tab keys and menu closing. The public final-focus
+callback settles the captured focus witness synchronously, so a later focus
+choice cannot lose to a queued return. Actual tab removal uses the shared
+removal witness; the strip has no separate animation-frame return task.
+
+External files use PDD's external adapter with one Composer target and one monitor
+for the generic file cue. The target extracts files only at drop and enters the
+existing image intake. Picker and paste keep that same attachment owner. A captured
+intake retires with its Session, endpoint, Runtime generation or disposed owner;
+new monitors can observe a running drag but cannot acquire its files. Only a drag
+beginning after registration grants the target file intake. Native cancellation,
+hiding and unmount clean up the receiver. The generic cue promises only that
+supported images will be attached; file type filtering happens after drop. PDD's
+unhandled-drop utility prevents native file navigation without delivering files.
+Effect reconnection starts with no cue and cannot acquire the preceding drag;
+the next external drag can enter the new receiver normally. The hook's callback
+ref binds the actual surface node, so replacing that node retires its receiver
+and cue before registering the replacement. The replacement requires a fresh drag.
+Returning to a still-connected former target creates a new registration and
+cannot reacquire a drag from either retired binding.
+
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.
@@ -725,6 +796,41 @@ File roots, expanded directories and selected file bodies retain first-result
 loading while their query is pending, including a paused request. Accepted empty
 lists and readable content keep their meaning during later pauses. Query data,
 network admission, retry and navigation retain their existing owners.
+File trees use Headless Tree's synchronous model for navigation and a controlled
+projection of workspace expansion and the activated file. Query remains the only
+filesystem reader and cache; the loader reads its accepted snapshot without I/O.
+Only reachable expanded directories subscribe to reads. Unread, pending, failed,
+ready, refreshing and stale directories retain their distinct meaning, including
+accepted empty lists. Status and Retry are presentation beside real entries.
+File activation handles Enter, Space and click before navigation. Right expands a
+closed directory or enters its first accepted child. Leaves and expanded directories
+without accepted children keep focus, including pending, failed and empty first
+reads. Arriving children do not advance focus without another command.
+A collapsed or removed focus moves to its surviving ancestor in
+the same model, without reclaiming focus from another control. Reopening keeps
+that current ancestor rather than reviving an invisible cursor. Tree focus commits
+to existing rows synchronously, so a retired navigation cannot later steal focus.
+
+File previews retain the browser's DOM and project its logical visibility through
+`ContentVisibility`, so row menus retire before returning to the tree. Root and
+expanded-directory Query observers unsubscribe while the browser is hidden and
+resume their normal read lifecycle on return, preserving accepted data and rows.
+Workspace changes replace the tree's and preview's interaction scopes even when
+the new Query already has identical paths cached. Pagination, presentation mode
+and popup drafts belong to that workspace; returning does not revive them.
+File changes within one workspace retain the reader. Go to line belongs to that
+file path and retires its popup and draft when the path changes.
+
+Provider retirement resets subscribed Query observers rather than removing their
+cache entries behind them. Accepted data clears, absence reports a read failure,
+and a returning provider can reach those same observers. Unsubscribed orphan
+entries reset before removal, clearing objects retained for continuous placeholders;
+hidden consumers resume through Query's normal subscription.
+Continuous placeholders observe their native Query cache state, so Activity or
+Suspense reconnection recomputes continuity after reset or eviction, including
+Runtime replacement without a provider change. Prior windows come from the
+current native cache; eviction retires an entry's eligibility to seed another read.
+
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;
 unsupported classification still removes it. Back and Copy path remain available
@@ -926,10 +1032,19 @@ the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code
 copying retains the complete original SVG text.
 
+Activity disclosures compose Base UI Collapsible directly. Consumers request an
+explicit open value; the workspace command owns each tool's expanded state.
+Base UI owns trigger/panel associations and the closing lifetime. The activity
+keeps only its first-reveal history and the existing reading clearance.
 Collapsing disclosures share one scroll lock per containing viewport. The first
 animation captures the original scrollbar, padding and reading position; later
 animations retain that same lock. Completion, cancellation, reopening and unmount
 release only their own lease. The final release restores the captured styles.
+
+Search overlays use inline Base UI Autocomplete for externally filtered choices,
+highlighting and activation. The surrounding Dialog alone owns dismissal and
+focus isolation. A captured command is delivered once after Dialog completion;
+canceling, reopening or unmounting retires an undelivered command.
 
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
@@ -956,8 +1071,11 @@ resizes, including Composer clearance changes, re-evaluate the decision.
 
 The activity disclosure's `preview` is redundant supporting text beside its toggle,
 so arriving reasoning never renames that control. Ordinary `detail` remains part
-of the summary name. Reasoning previews and prose use the existing faint text role;
-the retained reader owns its scroll position through closing and reopening.
+of the summary name. Reasoning previews and prose use the existing faint text role.
+Each reasoning reader delegates bottom follow and user escape to its own existing
+use-stick-to-bottom instance. Its refs observe only visible, expanded streaming
+content; closing and reopening retain the same reader and paused follow. Fade and
+overflow remain read-only geometry and never write a competing scroll position.
 
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested

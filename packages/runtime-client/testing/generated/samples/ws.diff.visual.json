@@ -1,0 +1,25 @@
+{
+  "type": "visual",
+  "baseline": {
+    "type": "head",
+    "commit": "1111111111111111111111111111111111111111"
+  },
+  "visual": {
+    "patch": "diff --git a/old.txt b/new.txt\nrename from old.txt\nrename to new.txt\n--- a/old.txt\n+++ b/new.txt\n@@ -1 +1 @@\n-old\n+新🙂\n\\ No newline at end of file\n",
+    "manifest": [
+      {
+        "path": "new.txt",
+        "previousPath": "old.txt",
+        "status": "renamed",
+        "added": 1,
+        "removed": 1
+      }
+    ],
+    "truncated": false,
+    "budget": {
+      "files": 5000,
+      "rows": 5000,
+      "bytes": 67108864
+    }
+  }
+}

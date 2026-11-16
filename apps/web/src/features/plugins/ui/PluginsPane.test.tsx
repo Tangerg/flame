@@ -22,9 +22,7 @@ import { reportPluginError, usePluginErrorStore } from "@/extensions/errors";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { definePlugin } from "@/extensions/definePlugin";
 import { PluginsPane } from "@/features/plugins/ui/PluginsPane";
-import { toast } from "sonner";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 let host: Host | undefined;
 
 function pauseQueries() {
@@ -115,6 +113,7 @@ describe("PluginsPane client error reading", () => {
       failure: [["Couldn't copy. Select the error text to copy it."]],
     },
   ])("reports an $outcome copy without changing its payload or focus", async (result) => {
+    const show = vi.spyOn(testClient.messages, "show");
     const writeText = vi.fn(result.write);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     await openError();
@@ -124,8 +123,10 @@ describe("PluginsPane client error reading", () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledExactlyOnceWith(`[event handler] ${message}\n\n${detail}`);
-      expect(vi.mocked(toast.success).mock.calls).toEqual(result.success);
-      expect(vi.mocked(toast.error).mock.calls).toEqual(result.failure);
+      expect(show).toHaveBeenCalledExactlyOnceWith({
+        level: result.outcome === "accepted" ? "success" : "error",
+        message: [...result.success, ...result.failure][0]![0],
+      });
     });
     expect(document.activeElement).toBe(copy);
   });

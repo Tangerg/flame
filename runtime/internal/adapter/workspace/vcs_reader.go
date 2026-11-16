@@ -36,9 +36,11 @@ func (VCS) StructuredDiff(
 	ctx context.Context,
 	root, path string,
 	base bool,
+	format workspaceapp.DiffFormat,
 	maxFiles, maxRows, maxBytes int,
 ) (workspaceapp.StructuredDiffResult, error) {
-	result, err := git.Diff(ctx, root, path, diffMode(base), maxFiles, maxRows, maxBytes)
+	projection := git.Projection(format)
+	result, err := git.Diff(ctx, root, path, diffMode(base), projection, maxFiles, maxRows, maxBytes)
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, vcsError(err)
 	}
@@ -65,7 +67,7 @@ func (VCS) StructuredDiff(
 	}
 	return workspaceapp.StructuredDiffResult{
 		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
-		Files:    out, Truncated: result.Truncated,
+		Files:    out, Patch: result.Patch, Truncated: result.Truncated,
 	}, nil
 }
 

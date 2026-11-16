@@ -28,12 +28,11 @@ export function AgentSeamRail({
       edge="end"
       value={width}
       container={(rail) => rail.closest<HTMLElement>(".agent-shell")}
-      property={SIDEBAR_WIDTH_PROPERTY}
+      previewProperty="--sidebar-preview-width"
       read={readSidebarWidth}
       minWidth={sidebarMinWidth}
       maxWidth={maxSidebarWidth}
       onCommit={onCommit}
-      resizingAttribute="data-resizing"
     />
   );
 }

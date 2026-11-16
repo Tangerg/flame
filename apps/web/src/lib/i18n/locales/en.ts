@@ -140,7 +140,7 @@ export const en: Record<string, string> = {
   "composer.paste.chars_other": "Pasted · {{count}} chars",
   "composer.paste.remove": "Remove pasted text",
   "composer.mention.heading": "Files",
-  "composer.drop.images": "Drop images to attach",
+  "composer.drop.files": "Drop files here · supported images will be attached",
   "composer.slash.heading": "Commands",
   "chat.notices": "Conversation notices",
   "chat.error.title": "Render error",
@@ -158,6 +158,7 @@ export const en: Record<string, string> = {
   "dock.tabs.closeOthers": "Close other panels",
   "dock.tabs.moveLeft": "Move panel left",
   "dock.tabs.moveRight": "Move panel right",
+  "dock.tabs.moved": "{{title}} moved to position {{position}} of {{total}}",
   "workspace.view.openBeside": "Open in the context dock",
   "workspace.view.unavailable.title": "View unavailable",
   "workspace.view.unavailable.body":

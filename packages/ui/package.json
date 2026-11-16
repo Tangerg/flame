@@ -8,11 +8,12 @@
   ],
   "files": [
     "dist",
-    "src/tokens.stylex.ts",
+    "src",
     "README.md"
   ],
   "exports": {
     ".": {
+      "stylex": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
@@ -20,68 +21,87 @@
       "types": "./dist/tokens.stylex.d.ts",
       "import": "./src/tokens.stylex.ts"
     },
-    "./styles.css": "./dist/styles.css",
+    "./styles.css": {
+      "stylex": "./src/globals.css",
+      "default": "./dist/styles.css"
+    },
     "./button": {
+      "stylex": "./src/button.tsx",
       "types": "./dist/button.d.ts",
       "import": "./dist/button.js"
     },
     "./badge": {
+      "stylex": "./src/badge.tsx",
       "types": "./dist/badge.d.ts",
       "import": "./dist/badge.js"
     },
     "./tooltip": {
+      "stylex": "./src/tooltip.tsx",
       "types": "./dist/tooltip.d.ts",
       "import": "./dist/tooltip.js"
     },
     "./floating-surface": {
+      "stylex": "./src/floating-surface.tsx",
       "types": "./dist/floating-surface.d.ts",
       "import": "./dist/floating-surface.js"
     },
     "./text-field": {
+      "stylex": "./src/text-field.tsx",
       "types": "./dist/text-field.d.ts",
       "import": "./dist/text-field.js"
     },
     "./icon-button": {
+      "stylex": "./src/icon-button.tsx",
       "types": "./dist/icon-button.d.ts",
       "import": "./dist/icon-button.js"
     },
     "./icon-scale": {
+      "stylex": "./src/icon-scale.ts",
       "types": "./dist/icon-scale.d.ts",
       "import": "./dist/icon-scale.js"
     },
     "./empty-state": {
+      "stylex": "./src/empty-state.tsx",
       "types": "./dist/empty-state.d.ts",
       "import": "./dist/empty-state.js"
     },
     "./glyph-swap": {
+      "stylex": "./src/glyph-swap.tsx",
       "types": "./dist/glyph-swap.d.ts",
       "import": "./dist/glyph-swap.js"
     },
     "./vocabulary": {
+      "stylex": "./src/vocabulary.ts",
       "types": "./dist/vocabulary.d.ts",
       "import": "./dist/vocabulary.js"
     },
     "./tone-ink": {
+      "stylex": "./src/tone-ink.ts",
       "types": "./dist/tone-ink.d.ts",
       "import": "./dist/tone-ink.js"
     },
     "./typography": {
+      "stylex": "./src/typography.ts",
       "types": "./dist/typography.d.ts",
       "import": "./dist/typography.js"
     },
     "./well-surface": {
+      "stylex": "./src/well-surface.ts",
       "types": "./dist/well-surface.d.ts",
       "import": "./dist/well-surface.js"
     },
     "./panel": {
+      "stylex": "./src/panel.tsx",
       "types": "./dist/panel.d.ts",
       "import": "./dist/panel.js"
     },
     "./checkbox": {
+      "stylex": "./src/checkbox.tsx",
       "types": "./dist/checkbox.d.ts",
       "import": "./dist/checkbox.js"
     },
     "./select": {
+      "stylex": "./src/select.tsx",
       "types": "./dist/select.d.ts",
       "import": "./dist/select.js"
     }

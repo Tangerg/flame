@@ -22,7 +22,6 @@ import { createRuntimeTestClient } from "@/test/runtimeClient";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import { asRunId, asSegmentId } from "@flame/runtime-client";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
 
 import { runtimeRunFact } from "@/features/agent/adapters/runtimeAgentFacts";
 
@@ -70,7 +69,7 @@ let gateway: ReturnType<typeof createAgentGatewayFixture>;
 
 beforeEach(() => {
   testClient.agent.projection.store.setState({ sessions: {} });
-  useNotificationStore.setState({ log: [] });
+  testClient.messages.clearAll();
   testClient.agent.projection.store.getState().ensureSession(sessionId);
   testClient.agent.projection.store.getState().applyRunSnapshot(sessionId, root);
   testClient.agent.projection.store.getState().setSynchronize(sessionId, async () => false);
@@ -457,7 +456,7 @@ describe("steer command observation", () => {
     expect(messages()).toHaveLength(1);
     expect(messages()[0]?.steer?.receipt).toBe("accepted");
     expect(steerInputFeedback(messages()[0]!)).toBe("accepted");
-    expect(useNotificationStore.getState().log).toHaveLength(0);
+    expect(testClient.messages.snapshot()).toHaveLength(0);
   });
 
   it("keeps equal payloads separate under their original nominated identities", async () => {

@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import { useRuntime } from "@/features/connection/public/runtime";
 import { tupleKey } from "@/lib/tupleKey";
@@ -13,7 +14,6 @@ import { color, leading, space, type as typeStep } from "@flame/ui/tokens.stylex
 import { useT } from "@/lib/i18n/index";
 import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "@/lib/useElapsedMillis";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { useGoalCommands } from "@/features/goal/public/goals";
 import {
@@ -117,6 +117,7 @@ export function GoalStatusSurface() {
 }
 
 function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean }) {
+  const { messages } = useNotifications();
   const runtimeAccess = useRuntime();
 
   const t = useT();
@@ -155,7 +156,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
 
   const admitted = (fallback: string) => {
     if (runtimeCommandsAvailable(runtimeAccess)) return true;
-    notifyError(fallback);
+    messages.notify("error", fallback);
     return false;
   };
 

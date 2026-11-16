@@ -1,3 +1,8 @@
+export interface DockTabPosition {
+  position: number;
+  total: number;
+}
+
 export interface WorkspaceFileViewer {
   path: string;
   line: number;
@@ -65,7 +70,7 @@ export interface WorkspaceNavigationPort {
   remember(change: Partial<WorkspaceViewMemory>): void;
   useSettingsPaneTarget(): string | null;
   useExpandedToolIds(): Set<string>;
-  useToggleTool(): (id: string) => void;
+  useSetToolExpanded(): (id: string, expanded: boolean) => void;
   useSidebarDrawer(): WorkspaceDrawer;
   useSidebarWidth(): WorkspaceColumnWidth;
   useDockWidth(): WorkspaceOptionalColumnWidth;
@@ -77,7 +82,7 @@ export interface WorkspaceNavigationPort {
   closeDockView(id: string): void;
   closeOtherDockViews(id: string): void;
   closeAllDockViews(): void;
-  reorderDockView(id: string, toIndex: number): void;
+  reorderDockView(id: string, toIndex: number): DockTabPosition | null;
   collapseDock(): void;
   showDock(
     defaultViewId: string,

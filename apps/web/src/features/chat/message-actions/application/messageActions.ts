@@ -2,7 +2,7 @@ import { type ComposerAccess } from "@/features/composer/public/composer";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
-import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { agentInputToComposerDraft } from "@/features/chat/message-actions/application/inputBridge";
 import { describeRpcError } from "@/lib/rpcErrors";
 
@@ -27,10 +27,10 @@ function prefillComposer(composerAccess: ComposerAccess, msg: Message): void {
   replaceComposerDraft(composerAccess, messageDraftContent(msg));
 }
 
-function reportRollbackError(err: unknown): void {
+function reportRollbackError(notifications: NotificationFeed, err: unknown): void {
   const copy = describeRpcError(err);
   if (!copy) console.error("[message] rollback failed:", err);
-  notifyError(copy ?? t("session.error.rollback"), { source: "session" });
+  notifications.notify("error", copy ?? t("session.error.rollback"), { source: "session" });
 }
 
 export interface RollbackActionOptions {
@@ -38,6 +38,7 @@ export interface RollbackActionOptions {
 }
 
 export function regenerateMessage(
+  notifications: NotificationFeed,
   agentAccess: AgentAccess,
   msg: Message,
   opts?: RollbackActionOptions,
@@ -52,9 +53,11 @@ export function regenerateMessage(
     )
     .then((result) => {
       if (result.status === "noInput" || result.status === "notReady")
-        notifyInfo(t(`session.regenerate.${result.status}`), { source: "session" });
+        notifications.notify("info", t(`session.regenerate.${result.status}`), {
+          source: "session",
+        });
     })
-    .catch(reportRollbackError);
+    .catch((error) => reportRollbackError(notifications, error));
 }
 
 export function editMessageInComposer(composerAccess: ComposerAccess, msg: Message): void {
@@ -63,6 +66,7 @@ export function editMessageInComposer(composerAccess: ComposerAccess, msg: Messa
 }
 
 export function editAndRerunMessage(
+  notifications: NotificationFeed,
   agentAccess: AgentAccess,
   composerAccess: ComposerAccess,
   msg: Message,
@@ -85,13 +89,14 @@ export function editAndRerunMessage(
         ? agentInputToComposerDraft(rollback.userInput)
         : messageDraftContent(msg);
       if (!replaceDraft(draft)) {
-        notifyInfo(t("session.editRerun.draftRetained"), { source: "session" });
+        notifications.notify("info", t("session.editRerun.draftRetained"), { source: "session" });
       }
     })
-    .catch(reportRollbackError);
+    .catch((error) => reportRollbackError(notifications, error));
 }
 
 export function restoreCheckpoint(
+  notifications: NotificationFeed,
   agentAccess: AgentAccess,
   msg: Message,
   restoreType: RestoreType,
@@ -102,10 +107,10 @@ export function restoreCheckpoint(
     .rollbackSessionToBeforeRun(conversation.sessionId, msg.runId, restoreType)
     .then((rollback) => {
       if (rollback.status === "committed") {
-        notifyInfo(restoreCopy(restoreType), { source: "session" });
+        notifications.notify("info", restoreCopy(restoreType), { source: "session" });
       }
     })
-    .catch(reportRollbackError);
+    .catch((error) => reportRollbackError(notifications, error));
 }
 
 function restoreCopy(restoreType: RestoreType): string {

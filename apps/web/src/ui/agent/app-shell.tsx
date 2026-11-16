@@ -55,7 +55,6 @@ export function AgentAppShell({
   useLayoutEffect(() => {
     if (!shell) return;
     const syncWidth = () => {
-      if (shell.hasAttribute("data-resizing")) return;
       shell.style.setProperty(
         SIDEBAR_WIDTH_PROPERTY,
         `${clampSidebarWidth(sidebarWidth, shell.clientWidth)}px`,

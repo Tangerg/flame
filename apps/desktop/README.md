@@ -35,12 +35,13 @@ configuration. Deliveries are under `out/desktop/darwin-<architecture>`.
 `build/product.mjs` also owns the macOS deployment target and native compiler/linker
 policy. Wails compilation, independent Go checks and generated plists consume the
 same values. Native verification checks the resulting Mach-O deployment target.
-The installation floor does not identify the installed WebKit version. macOS 13
-requires software updates supplying the Web Host's required Safari/WebKit 17.4
+The installation floor does not identify the installed WebKit version. macOS 14
+requires software updates supplying the Web Host's required Safari/WebKit 26
 capabilities. The shared Web bootstrap diagnoses missing capabilities before
 loading application dependencies; it does not infer support from the OS version.
-WebKit documents these API additions and the Safari update in its
-[17.4 release notes](https://webkit.org/blog/15063/webkit-features-in-safari-17-4/).
+Installed Shadow DOM readers additionally require native composed selection
+ranges for precise clipboard text. The Component SDK runtime profile owns the
+shared browser compilation floor.
 Linker warnings are fatal except the duplicate system-library diagnostic produced
 by Go's per-package Objective-C linkage ([Go #67799](https://github.com/golang/go/issues/67799)).
 

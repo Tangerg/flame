@@ -42,6 +42,7 @@ export function ShikiCodeBlock({
   const isPreview = preview !== undefined;
   return (
     <CodeFrame
+      bounded
       dir="ltr"
       data-slot="code-block"
       data-focus-unit=""

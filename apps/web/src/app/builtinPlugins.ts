@@ -1,3 +1,4 @@
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type Goals } from "@/features/goal/application/goals";
 import { type Theme } from "@/features/theme/adapters/theme";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
@@ -69,12 +70,15 @@ import { windowTitle } from "@/features/shell/windowTitle";
 import { tasksPill } from "@/features/workspace/tasks";
 import { createAppearancePlugins } from "@/features/theme/index";
 import toaster from "@/features/notifications/toaster/index";
-import { toolActions, toolIcons } from "@/features/chat/tools/toolMeta";
+import { createToolActions, toolIcons } from "@/features/chat/tools/toolMeta";
 import { subagentsView } from "@/features/chat/message/subagents";
 import toolViewOpener from "@/features/workspace/toolViewOpener";
 import { fileView } from "@/features/workspace/views";
-export function createToolRenderingPlugins(workspace: WorkspaceOwner["access"]): AnyPlugin[] {
-  return [toolActions, toolViewOpener(workspace), toolIcons];
+export function createToolRenderingPlugins(
+  workspace: WorkspaceOwner["access"],
+  messages: NotificationFeed,
+): AnyPlugin[] {
+  return [createToolActions(messages), toolViewOpener(workspace), toolIcons];
 }
 
 export function createBuiltinPlugins(
@@ -88,6 +92,7 @@ export function createBuiltinPlugins(
   installedPlugins: InstalledPluginsOwner,
   theme: Theme,
   goals: Goals,
+  messages: NotificationFeed,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -173,6 +178,7 @@ export function createBuiltinPlugins(
       runtimeClient,
       goals,
       installedPlugins.access.workflows,
+      messages,
     ),
     planProgress,
     providerSetup,
@@ -184,7 +190,7 @@ export function createBuiltinPlugins(
     shellServices,
     ...infrastructure,
     ...messageRendering,
-    ...createToolRenderingPlugins(workspaceAccess),
+    ...createToolRenderingPlugins(workspaceAccess, messages),
     ...composer,
     ...panes,
     ...workbench,

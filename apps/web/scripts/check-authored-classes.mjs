@@ -63,7 +63,7 @@ const ANY_STRING = /(["'`])([^"'`\n]{2,200})\1/g;
  * Position is not enough, because a class list does not have to be in one.
  *
  * The two worst instances of this were a function RETURNING the string and a third-party
- * component taking one under its own prop name (`sonner`'s `classNames.toast`), and neither
+ * component taking one under its own prop name (`classNames.content`), and neither
  * is anywhere near a `className`. So a second rule reads SHAPE: a string of two or more
  * tokens that all look like utilities and none of which we define. Measured against the whole
  * tree it fires on nothing else — a hyphenated icon name, an i18n key or a log prefix is one

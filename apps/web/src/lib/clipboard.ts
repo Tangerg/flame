@@ -1,5 +1,4 @@
 import { copyText } from "@flame/ui";
-import { toast } from "sonner";
 export interface RichClipboardText {
   plainText: string;
   htmlText?: string;
@@ -31,11 +30,12 @@ export async function copyRichText({ plainText, htmlText }: RichClipboardText): 
 }
 
 export async function writeToClipboard(
+  present: (message: { level: "success" | "error"; message: string }) => void,
   text: string,
   options?: { successLabel?: string; failureLabel?: string },
 ): Promise<boolean> {
   const ok = await copyText(text);
-  if (ok && options?.successLabel) toast.success(options.successLabel);
-  if (!ok && options?.failureLabel) toast.error(options.failureLabel);
+  if (ok && options?.successLabel) present({ level: "success", message: options.successLabel });
+  if (!ok && options?.failureLabel) present({ level: "error", message: options.failureLabel });
   return ok;
 }

@@ -10,7 +10,7 @@ import { useActiveSessionId } from "@/features/agent/public/session";
 import { Slot } from "@/extensions/host/Slot";
 import {
   useExpandedWorkspaceToolIds,
-  useToggleWorkspaceTool,
+  useSetWorkspaceToolExpanded,
 } from "@/features/workspace/public/navigation";
 import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
 import { focusComposer } from "@/features/composer/public/focus";
@@ -133,7 +133,7 @@ export function ChatStream({ onSend }: Props) {
   const rows = useActiveConversationRows();
 
   const expandedToolIds = useExpandedWorkspaceToolIds();
-  const toggleExpandedTool = useToggleWorkspaceTool();
+  const setToolExpanded = useSetWorkspaceToolExpanded();
 
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
 
@@ -143,11 +143,11 @@ export function ChatStream({ onSend }: Props) {
     () => ({
       sessionId,
       expandedIds: expandedToolIds,
-      onToggleExpand: toggleExpandedTool,
+      onExpandedChange: setToolExpanded,
       textReveal,
       questionInComposer: pendingQuestion?.block,
     }),
-    [sessionId, expandedToolIds, toggleExpandedTool, textReveal, pendingQuestion],
+    [sessionId, expandedToolIds, setToolExpanded, textReveal, pendingQuestion],
   );
 
   const composer = pendingQuestion ? (

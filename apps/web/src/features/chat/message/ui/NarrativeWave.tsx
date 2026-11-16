@@ -41,7 +41,7 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
       label={<ToolActivitySummary label={summary || steps} tools={tools} />}
       trailing={summary ? steps : undefined}
       open={open}
-      onToggle={() => setOpen((value) => !value)}
+      onOpenChange={setOpen}
       stickyHeader
     >
       {units.map((unit, index) => (
@@ -53,7 +53,7 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
             <ToolGroupRows
               tools={unit.tools}
               expandedIds={ctx.expandedIds}
-              onToggleExpand={ctx.onToggleExpand}
+              onExpandedChange={ctx.onExpandedChange}
             />
           ) : (
             renderUnit(messageId, unit, facts, ctx)

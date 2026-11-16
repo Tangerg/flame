@@ -1,4 +1,6 @@
 import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
+import { parseVisualDiff } from "./visualDiff";
+import { DiffReader } from "./DiffReader";
 import {
   useCallback,
   useEffect,
@@ -25,15 +27,13 @@ import {
   List,
   Refresh,
 } from "@flame/icons/react";
-import type { Diff, DiffMode, FileDiff } from "@flame/runtime-client/wire";
+import type { DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 import {
   Button,
-  CodeBlock,
   DiffFileHeader,
   DiffFileList,
   DiffFilePath,
   DiffStat,
-  DiffTable,
   Disclosure,
   EmptyState,
   FilterBar,
@@ -64,7 +64,10 @@ const COMPARISONS: DiffMode[] = ["worktree", "base"];
 const comparisonName = (t: Translate, mode: DiffMode) =>
   t(`comparison.${mode}`);
 
-const fileSummary = (t: Translate, file: FileDiff): DiffFileSummary => ({
+const fileSummary = (
+  t: Translate,
+  file: WorkspaceFileChange,
+): DiffFileSummary => ({
   path: file.path,
   status: t(`file.status.${file.status}`),
   added: file.added,
@@ -72,12 +75,10 @@ const fileSummary = (t: Translate, file: FileDiff): DiffFileSummary => ({
   binary: file.binary,
 });
 
-type Query =
-  | { mode: DiffMode; format: "rows"; path?: string }
-  | { mode: DiffMode; format: "raw"; path: string };
+type Query = { mode: DiffMode; path?: string };
 type Read = {
   loading: boolean;
-  accepted?: { diff: Diff; query: Query; at: string };
+  accepted?: ReturnType<typeof parseVisualDiff> & { query: Query; at: string };
   error?: { cause: unknown };
 };
 type Selection =
@@ -128,7 +129,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   }, [capturedWorkspace]);
   const [query, setQuery] = useState<Query>(() => ({
     mode: "worktree",
-    format: "rows",
     ...(workspace.focusPath ? { path: workspace.focusPath } : {}),
   }));
   const timeFormat = useMemo(
@@ -165,19 +165,23 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
       const diff = await track(() =>
-        runtime.workspace(workspace.ref).diff.get(query, signal),
+        runtime
+          .workspace(workspace.ref)
+          .diff.get({ ...query, format: "visual" }, signal),
       );
       if (!signal.aborted) {
+        const projected = parseVisualDiff(diff);
         setSelection((current) =>
-          query.format === "rows" &&
           current.view === "file" &&
-          !diff.files?.some((file) => file.path === current.path)
+          !projected.diff.visual.manifest.some(
+            (file) => file.path === current.path,
+          )
             ? { path: current.path, view: "files" }
             : current,
         );
         setRead({
           loading: false,
-          accepted: { diff, query, at: new Date().toISOString() },
+          accepted: { ...projected, query, at: new Date().toISOString() },
         });
       }
     } catch (error) {
@@ -197,12 +201,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   }, [refresh]);
 
   const accepted = read.accepted;
-  const rawPath =
-    accepted?.query.format === "raw" ? accepted.query.path : undefined;
-  const files = accepted?.diff.files ?? [];
+  const files = accepted?.diff.visual.manifest ?? [];
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
-  const showingReader = Boolean(file || rawPath);
+  const rendered = file ? accepted?.rendered.get(file.path) : undefined;
+  const showingReader = file !== undefined;
   const readingOverview =
     read.loading &&
     query.path === undefined &&
@@ -240,7 +243,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   function showFiles() {
     const next: Query =
       query.path !== undefined || accepted?.query.path !== undefined
-        ? { mode: query.mode, format: "rows" }
+        ? { mode: query.mode }
         : query;
     pendingFocus.current = {
       target: "list",
@@ -248,22 +251,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       query: next !== query ? next : undefined,
     };
     setSelection((current) => ({ path: current.path, view: "files" }));
-    setQuery(next);
-  }
-  function readTarget(format: "raw" | "rows") {
-    const path = accepted?.query.path;
-    if (!path) return;
-    const next: Query = {
-      ...accepted.query,
-      format,
-      path,
-    };
-    pendingFocus.current = {
-      target: "file",
-      active: document.activeElement,
-      query: next,
-    };
-    setSelection({ view: "file", path, returnTo: "source" });
     setQuery(next);
   }
   useLayoutEffect(() => {
@@ -471,23 +458,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   {t("files.button")}
                 </Button>
               </Toolbar>
-              <DiffFileHeader
-                ref={heading}
-                file={file ? fileSummary(t, file) : { path: rawPath! }}
-              >
-                {rawPath ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => readTarget("rows")}
-                    pending={read.loading}
-                  >
-                    {t("raw.structured")}
-                  </Button>
-                ) : (
-                  file &&
-                  !file.binary &&
-                  file.rows.length > 0 && (
+              {file && (
+                <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
+                  {!file.binary && rendered && rendered.hunks.length > 0 && (
                     <Select
                       size="sm"
                       label={t("layout.label")}
@@ -500,9 +473,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                         { value: "split", label: t("layout.split") },
                       ]}
                     />
-                  )
-                )}
-              </DiffFileHeader>
+                  )}
+                </DiffFileHeader>
+              )}
             </>
           ) : (
             <FilterBar
@@ -590,22 +563,17 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               })}
             </Metadata>
           )}
-          {accepted.diff.truncated && (
-            <>
-              <Metadata role="note">{t("partial")}</Metadata>
-              {accepted.query.path && accepted.query.format === "rows" && (
-                <Button
-                  variant="soft"
-                  size="sm"
-                  onClick={() => readTarget("raw")}
-                  pending={read.loading}
-                >
-                  {t("raw.read")}
-                </Button>
-              )}
-            </>
+          {accepted.diff.visual.truncated && (
+            <Metadata role="note">{t("partial")}</Metadata>
           )}
-          {selection.path && !selected && !rawPath && (
+          {accepted.diff.visual.truncated && files.length === 0 && (
+            <EmptyState
+              icon={FileDiffIcon}
+              size="compact"
+              title={t("budget.empty")}
+            />
+          )}
+          {selection.path && !selected && (
             <Metadata>
               {t("missing")} <DiffFilePath path={selection.path} />
             </Metadata>
@@ -613,7 +581,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           <div hidden={showingReader}>
             <PanelSection
               title={t(
-                accepted.diff.truncated ? "files.included" : "files.changed",
+                accepted.diff.visual.truncated
+                  ? "files.included"
+                  : "files.changed",
                 { count: files.length },
               )}
               description={
@@ -634,7 +604,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 ) : undefined
               }
             >
-              {!files.length && !accepted.diff.truncated && (
+              {!files.length && !accepted.diff.visual.truncated && (
                 <EmptyState
                   icon={FileDiffIcon}
                   size="compact"
@@ -670,51 +640,17 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               )}
               {file.binary ? (
                 <Metadata>{t("file.binary")}</Metadata>
-              ) : file.rows.length ? (
-                <DiffTable
+              ) : rendered && rendered.hunks.length > 0 ? (
+                <DiffReader
                   key={file.path}
-                  rows={file.rows}
+                  file={rendered}
+                  patch={accepted.diff.visual.patch}
                   layout={layout}
-                  label={file.path}
-                  labels={{
-                    region: t("table.region", { path: file.path }),
-                    beforeLine: t("table.beforeLine"),
-                    beforeCode: t("table.beforeCode"),
-                    afterLine: t("table.afterLine"),
-                    afterCode: t("table.afterCode"),
-                    changedCode: t("table.changedCode"),
-                  }}
+                  locale={context.locale}
+                  t={t}
                 />
               ) : (
                 <Metadata>{t("file.metadataOnly")}</Metadata>
-              )}
-            </section>
-          )}
-          {rawPath && (
-            <section aria-label={t("file.changes", { path: rawPath })}>
-              <Metadata>
-                <DiffFilePath path={rawPath} />
-              </Metadata>
-              {accepted.diff.patch ? (
-                <CodeBlock
-                  language="diff"
-                  label={t("raw.region", { path: rawPath })}
-                  labels={{
-                    copy: t("raw.copy"),
-                    copied: t("raw.copied"),
-                    wrap: t("raw.wrap"),
-                    unwrap: t("raw.unwrap"),
-                  }}
-                >
-                  {accepted.diff.patch}
-                </CodeBlock>
-              ) : (
-                <EmptyState
-                  icon={FileDiffIcon}
-                  size="compact"
-                  title={t("empty.title")}
-                  sub={t("empty.sub")}
-                />
               )}
             </section>
           )}

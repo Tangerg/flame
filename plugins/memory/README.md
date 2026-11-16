@@ -262,7 +262,11 @@ command hands that focus to the existing catalog result before its accepted read
 changes the row. If a subscription read removes the focused control before the
 receipt, the same result receives focus while still showing the command's pending
 state. A read never confirms the command. Review and recovery controls share the
-local removal-lifetime guarantee; later search and draft choices retain focus.
+shared removal witness; later search and draft choices retain focus. Each
+restoration retains its original Runtime, callable binding, signal, tracking owner
+and scope/workspace qualification. A retired source cannot target a successor
+catalog or form. Form restoration waits for the opener's committed availability;
+record and recovery actions keep their own existing result destination.
 Pin/Unpin selection hands the closing menu to that result even when settlement
 finishes immediately. Its selection intent lasts only until popup close;
 ordinary Escape retains the menu's default return, and Delete keeps its form task.

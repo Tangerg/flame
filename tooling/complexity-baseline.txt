@@ -21,9 +21,9 @@
 21 apps/web/src/features/shell/workbench/panel/RunErrorBanner.tsx:RunErrorBanner
 22 apps/web/src/features/sidebar/ui/SessionRow.tsx:SessionRow
 23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
-44 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
+43 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
 41 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
-23 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
+22 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
 24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
 21 apps/web/vite.config.ts:name
@@ -61,7 +61,7 @@
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>#2
 23 plugins/deliverables/component/useDeliverables.ts:useDeliverables
-69 plugins/diff/component/component.tsx:WorkspaceDiff
+65 plugins/diff/component/component.tsx:WorkspaceDiff
 38 plugins/genui/contracts/catalog.ts:validateResolvedProps
 26 plugins/genui/contracts/document.ts:<anonymous>
 30 plugins/genui/contracts/document.ts:Presentation.<anonymous>

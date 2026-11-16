@@ -1,3 +1,4 @@
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { useComposer } from "@/features/composer/public/composer";
 import { useRuntime } from "@/features/connection/public/runtime";
 import {
@@ -8,6 +9,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { handoffFocus, useContentVisible } from "@flame/ui";
 import { type AgentInput } from "@/features/agent/public/input";
 import { imageFiles } from "@/features/composer/public/input";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
@@ -15,12 +17,11 @@ import {
   useFileMentions,
   useKnownWorkspacePaths,
 } from "@/features/composer/application/fileMentions";
-import { handleSuggestionKey } from "@/features/composer/application/suggestions";
+import { useSuggestionNavigation } from "@/features/composer/ui/useSuggestionNavigation";
 import { useSlashSuggestions } from "@/features/composer/application/slashSuggestions";
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { submitComposer } from "@/features/composer/public/submit";
 import {
   captureComposerFocus,
@@ -33,7 +34,10 @@ import {
 } from "@/features/composer/application/composerInputEvents";
 import { useCompositionCommitGuard } from "@/features/composer/ui/useCompositionCommitGuard";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { type ComposerSubmission } from "@/features/composer/application/state";
+import {
+  type ComposerSubmission,
+  type ComposerImageIntake,
+} from "@/features/composer/application/state";
 
 interface Args {
   value: string;
@@ -54,11 +58,18 @@ export function useComposerInputController({
   onAddPaste,
   acceptsImages,
 }: Args) {
+  const visible = useContentVisible();
   const composerAccess = useComposer();
   const runtimeAccess = useRuntime();
 
+  const { messages } = useNotifications();
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [input, setInput] = useState<HTMLTextAreaElement | null>(null);
+  const bindInput = useCallback((node: HTMLTextAreaElement | null) => {
+    inputRef.current = node;
+    setInput(node);
+  }, []);
   // The file-error Retry lives in the portaled popup, outside the textarea's
   // tab order, so the composer hands focus to it and takes it back.
   const retryRef = useRef<HTMLButtonElement>(null);
@@ -106,6 +117,20 @@ export function useComposerInputController({
   );
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
   const slash = useSlashSuggestions({ value, caret, apply: applyMention });
+  const suggestions = mentions.open ? mentions : slash;
+  const dismissSuggestions = () => {
+    const retry = retryRef.current;
+    if (visible && retry && handoffFocus(retry, inputRef.current)) synchronizeCaret();
+    suggestions.dismiss();
+  };
+  const listing = suggestions.open && (!mentions.open || mentions.status === "ready");
+  const navigation = useSuggestionNavigation({
+    open: suggestions.open,
+    candidateKey: suggestions.open ? suggestions.key : null,
+    count: listing ? suggestions.items.length : 0,
+    dismiss: dismissSuggestions,
+    input,
+  });
   const knownPaths = useKnownWorkspacePaths(cwd, value);
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
@@ -150,7 +175,8 @@ export function useComposerInputController({
     const files = imageFiles(event.clipboardData?.files);
     const text = event.clipboardData?.getData("text") ?? "";
     const intent = composerPasteIntent(files, text, acceptsImages);
-    if (files.length > 0 && !acceptsImages) notifyError(t("composer.attachImage.unsupported"));
+    if (files.length > 0 && !acceptsImages)
+      messages.notify("error", t("composer.attachImage.unsupported"));
     switch (intent.kind) {
       case "images":
         event.preventDefault();
@@ -166,18 +192,29 @@ export function useComposerInputController({
     }
   };
 
-  const handleDrop = (files: File[]): void => {
+  const handleDrop = (files: File[], intake: ComposerImageIntake): void => {
     composition.clear();
-    if (files.length === 0) return;
+    if (!files.length) return;
     if (!acceptsImages) {
-      notifyError(t("composer.attachImage.unsupported"));
+      messages.notify("error", t("composer.attachImage.unsupported"));
       return;
     }
-    onAddImages(files);
+    intake.addFiles(files);
   };
 
   const clearCompositionCommit = (): void => {
     composition.clear();
+  };
+
+  const acceptSuggestion = () => {
+    if (navigation.activeIndex === null) dismissSuggestions();
+    else if (mentions.open) {
+      const item = mentions.items[navigation.activeIndex];
+      if (item !== undefined) mentions.accept(item);
+    } else {
+      const item = slash.items[navigation.activeIndex];
+      if (item !== undefined) slash.accept(item);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -186,28 +223,38 @@ export function useComposerInputController({
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
     }
+    const key = composerKeyBindingKey(event.nativeEvent);
     const retry = retryRef.current;
-    if (
-      retry &&
-      mentions.retry &&
-      event.key === "Tab" &&
-      !event.shiftKey &&
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
+    if (retry && mentions.retry && key === "tab") {
       event.preventDefault();
       retry.focus();
       return;
     }
-    if (handleSuggestionKey(mentions, event) || handleSuggestionKey(slash, event)) {
-      event.preventDefault();
-      return;
+    if (suggestions.open) {
+      if (event.key === "Tab" && event.shiftKey) {
+        dismissSuggestions();
+        return;
+      }
+      switch (event.key) {
+        case "Escape":
+          event.preventDefault();
+          dismissSuggestions();
+          return;
+        case "Tab":
+        case "Enter":
+          if (event.shiftKey) break;
+          event.preventDefault();
+          acceptSuggestion();
+          return;
+        case "ArrowUp":
+        case "ArrowDown":
+          event.preventDefault();
+          // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
+          navigation.navigate?.(event);
+          return;
+      }
     }
-    const binding = lookupExtensionByKey(
-      COMPOSER_KEY_BINDING,
-      composerKeyBindingKey(event.nativeEvent),
-    );
+    const binding = lookupExtensionByKey(COMPOSER_KEY_BINDING, key);
     if (!binding) return;
     const handled = binding.handler({
       value,
@@ -220,10 +267,14 @@ export function useComposerInputController({
 
   return {
     inputRef,
+    bindInput,
     retryRef,
     returnFocusToInput,
     mentions,
     slash,
+    suggestions,
+    dismissSuggestions,
+    navigation,
     knownPaths,
     placeholder,
     handleChange,

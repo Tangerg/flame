@@ -6,11 +6,6 @@ export type ComposerPasteIntent =
   | { kind: "native" }
   | { kind: "unsupported-images" };
 
-export interface TransferItemLike {
-  kind: string;
-  type: string;
-}
-
 export function composerPasteIntent(
   files: File[],
   text: string,
@@ -20,15 +15,6 @@ export function composerPasteIntent(
   if (files.length > 0 && !text) return { kind: "unsupported-images" };
   if (isLargePaste(text)) return { kind: "large-text", text };
   return { kind: "native" };
-}
-
-export function hasComposerImageTransferItems(
-  items: Iterable<TransferItemLike> | ArrayLike<TransferItemLike> | null | undefined,
-): boolean {
-  return (
-    !!items &&
-    Array.from(items).some((item) => item.kind === "file" && item.type.startsWith("image/"))
-  );
 }
 
 export function composerKeyBindingKey(

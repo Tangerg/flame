@@ -1,16 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  useWorkspaceListFiles,
-  useWorkspaceFileMatches,
-} from "@/features/workspace/public/queries";
+import { useWorkspaceListFiles, useWorkspaceFileLists } from "@/features/workspace/public/queries";
 import {
   formatFileReference,
   mentionCandidates,
 } from "@/features/composer/application/draftContext";
-import {
-  type SuggestionList,
-  useSuggestionIndex,
-} from "@/features/composer/application/suggestions";
+import { type SuggestionList } from "@/features/composer/application/suggestions";
 const MENTION_ROWS = 8;
 
 function mentionRequest(cwd: string, nameQuery: string) {
@@ -87,7 +81,6 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const status = mentionStatus(cwd, listing, items.length);
 
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
-  const { index, setIndex } = useSuggestionIndex(candidateKey, items.length);
 
   const accept = useCallback(
     (path: string) => {
@@ -117,10 +110,9 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
       : undefined;
 
   return {
+    key: candidateKey,
     open,
     items,
-    index,
-    setIndex,
     accept,
     dismiss,
     status,
@@ -137,7 +129,7 @@ export function useKnownWorkspacePaths(
     () => [...new Set(mentionCandidates(value).map((mention) => mention.path))],
     [value],
   );
-  const matches = useWorkspaceFileMatches(
+  const matches = useWorkspaceFileLists(
     cwd === undefined ? [] : paths.map((path) => mentionRequest(cwd, path)),
   );
   return new Set(

@@ -1,3 +1,4 @@
+import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stubInstance } from "@/test/stubInstance";
 import { type Navigator } from "@/lib/navigation";
@@ -94,7 +95,9 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
     subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
     reportConnectionLoss: () => undefined,
   };
-  const agent = createAgentFixture(client, navigation, runtime, stream, scope);
+  const messages = new NotificationFeed(() => {});
+  disposers.push(() => messages.dispose());
+  const agent = createAgentFixture(client, navigation, runtime, stream, scope, messages);
   const sessions = {
     getActiveSessionId: () => getActiveSessionId(agent.dependencies),
     getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(agent.dependencies),
@@ -105,7 +108,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
     subscribeDeleted: (listener: (id: string) => void) =>
       subscribeDeletedAgentSession(agent.dependencies, listener),
   };
-  const composer = createComposer(sessions, () => endpoint, scope);
+  const composer = createComposer(sessions, () => endpoint, scope, stream);
   const workspace = createWorkspace(
     client,
     navigation,
@@ -113,6 +116,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
     () => false,
     agent.access,
     runtime,
+    messages,
   );
   testClient = { navigation, agent, composer, workspace };
   disposers.push(

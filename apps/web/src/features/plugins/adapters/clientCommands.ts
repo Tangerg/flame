@@ -7,7 +7,7 @@ import { type ContributionScope } from "@/extensions/definePlugin";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
 import { COMMAND } from "@/features/command/public/extensionPoints";
-import { notifyFrom } from "@/features/notifications/public/notifications";
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { failureMessage } from "@/lib/diagnostics";
 
 export function createClientCommandRegistration(
@@ -15,6 +15,7 @@ export function createClientCommandRegistration(
   signal: AbortSignal,
   component: ComponentReference,
   captureSessionId: () => string | undefined,
+  notifications: NotificationFeed,
 ): ComponentContext["registerCommand"] {
   const registered = new Map<string, symbol>();
   const source = `package:${component.installationId}`;
@@ -43,7 +44,7 @@ export function createClientCommandRegistration(
         void work.catch((error: unknown) => {
           if (signal.aborted) return;
           reportPluginError(source, "command", error);
-          notifyFrom(source, `${label}: ${failureMessage(error)}`, "error");
+          notifications.notify("error", `${label}: ${failureMessage(error)}`, { source });
         });
         return work;
       },

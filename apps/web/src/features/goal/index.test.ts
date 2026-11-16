@@ -74,6 +74,7 @@ describe("Goal plugin Runtime generation wiring", () => {
         getRuntimeClient,
         testClient.goals,
         testClient.installedPlugins.access.workflows,
+        testClient.messages,
       ),
     );
     const predecessor = rejected(testClient.goals.commands.capture()!.stop("ses_goal"));
@@ -135,6 +136,7 @@ describe("Goal plugin Runtime generation wiring", () => {
         getRuntimeClient,
         testClient.goals,
         testClient.installedPlugins.access.workflows,
+        testClient.messages,
       ),
     );
 

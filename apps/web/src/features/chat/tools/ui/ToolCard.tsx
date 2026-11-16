@@ -21,7 +21,7 @@ import {
 interface Props {
   tool: ToolCall;
   expanded: boolean;
-  onToggleExpand: () => void;
+  onExpandedChange: (expanded: boolean) => void;
 }
 
 const tc = stylex.create({
@@ -38,7 +38,7 @@ const tc = stylex.create({
   },
 });
 
-export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
+export function ToolCard({ tool, expanded, onExpandedChange }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
   const summaryId = useId();
@@ -66,7 +66,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         actions={actions.length > 0 ? <ToolRowActions>{actions}</ToolRowActions> : undefined}
         feedback={<ToolActionFailureLine feedback={feedback} summaryId={summaryId} />}
         open={expanded}
-        onToggle={onToggleExpand}
+        onOpenChange={onExpandedChange}
       >
         {model.disclosable ? <ToolPreview tool={tool} /> : undefined}
       </AgentActivityDisclosure>

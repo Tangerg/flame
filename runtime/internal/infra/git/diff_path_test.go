@@ -6,7 +6,8 @@ func TestParseUnifiedDiffRecoversBinaryFilePath(t *testing.T) {
 	patch := []byte("diff --git a/image.bin b/image.bin\n" +
 		"Binary files a/image.bin and b/image.bin differ\n")
 
-	files, truncated, err := parseUnifiedDiff(patch, 5, 5)
+	parsed, err := parseUnifiedDiff(patch, 5, 5, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +24,8 @@ func TestParseUnifiedDiffDecodesGitQuotedPath(t *testing.T) {
 		"-before\n" +
 		"+after\n")
 
-	files, truncated, err := parseUnifiedDiff(patch, 5, 5)
+	parsed, err := parseUnifiedDiff(patch, 5, 5, true)
+	files, truncated := parsed.files, parsed.truncated
 	if err != nil {
 		t.Fatal(err)
 	}

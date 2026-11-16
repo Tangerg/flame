@@ -1080,8 +1080,11 @@ it("composes controls, conditional views and repeated nodes from their declared 
     screen.getByRole("checkbox", { name: "Ready for a review" }).getAttribute("aria-checked"),
   ).toBe("true");
   const radio = screen.getByRole("radio", { name: "Internal" });
+  act(() => radio.focus());
   fireEvent.keyDown(radio, { key: "ArrowRight" });
-  expect(screen.getByRole("radio", { name: "Public" }).getAttribute("aria-checked")).toBe("true");
+  await waitFor(() =>
+    expect(screen.getByRole("radio", { name: "Public" }).getAttribute("aria-checked")).toBe("true"),
+  );
   fireEvent.change(screen.getByLabelText("Review date"), { target: { value: "2026-11-15" } });
   expect((screen.getByLabelText("Review date") as HTMLInputElement).value).toBe("2026-11-15");
   const toggle = screen.getByRole("switch", { name: "Show the local projection" });
@@ -1742,7 +1745,7 @@ it("keeps horizontal report tab selection, wrapping and local drafts together", 
     expect(fireEvent.keyDown(window.document.activeElement!, { key, cancelable: true })).toBe(
       false,
     );
-    expect(window.document.activeElement).toBe(target);
+    await waitFor(() => expect(window.document.activeElement).toBe(target));
     expect(target.getAttribute("aria-selected")).toBe("true");
     expect(screen.getAllByRole("tab").filter((tab) => tab.tabIndex === 0)).toEqual([target]);
   }
@@ -1758,10 +1761,10 @@ it("keeps vertical arrows selecting a report radio choice", async () => {
   const external = screen.getByRole("radio", { name: "Public review" });
   act(() => internal.focus());
   expect(fireEvent.keyDown(internal, { key: "ArrowDown", cancelable: true })).toBe(false);
-  expect(window.document.activeElement).toBe(external);
+  await waitFor(() => expect(window.document.activeElement).toBe(external));
   expect(external.getAttribute("aria-checked")).toBe("true");
   expect(fireEvent.keyDown(external, { key: "ArrowUp", cancelable: true })).toBe(false);
-  expect(window.document.activeElement).toBe(internal);
+  await waitFor(() => expect(window.document.activeElement).toBe(internal));
   expect(internal.getAttribute("aria-checked")).toBe("true");
 });
 
@@ -2352,6 +2355,13 @@ it("keeps invalid-field focus inside the submitted form and its visible view", a
   });
   const current = screen.getByRole("textbox", { name: "Current draft" });
   expect(window.document.activeElement).toBe(current);
+  const outside = screen.getByRole("textbox", { name: "Other draft" });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(screen.getByRole("form", { name: "Save local" }));
+    outside.focus();
+  });
+  expect(window.document.activeElement).toBe(outside);
   fireEvent.change(current, { target: { value: "Ready" } });
   submit.focus();
   await act(async () => {

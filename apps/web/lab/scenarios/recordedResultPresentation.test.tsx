@@ -7,7 +7,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type CapturedToolResult, type ComponentContext } from "@flame/component-sdk";
 import skillPages from "@flame/runtime-client/testing/skill-pages.json";
@@ -1352,6 +1352,31 @@ const OUTPUT_LINE_HEIGHT = 20;
 
 function expandOutput(output: string) {
   document.documentElement.style.setProperty("--leading-relaxed", `${OUTPUT_LINE_HEIGHT}px`);
+  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  for (const property of ["clientHeight", "clientWidth", "scrollHeight"] as const) {
+    const read = Object.getOwnPropertyDescriptor(
+      property === "scrollHeight" ? Element.prototype : HTMLElement.prototype,
+      property,
+    )!.get!;
+    vi.spyOn(HTMLElement.prototype, property, "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.getAttribute("aria-label") !== "Tool output") return read.call(this);
+      if (property === "clientHeight") return 400;
+      if (property === "clientWidth") return 800;
+      return Number.parseFloat((this.firstElementChild as HTMLElement)?.style.height ?? "0");
+    });
+  }
+  const scrollTo = Element.prototype.scrollTo;
+  vi.spyOn(Element.prototype, "scrollTo").mockImplementation(function (
+    this: Element,
+    ...args: Parameters<Element["scrollTo"]>
+  ) {
+    Reflect.apply(scrollTo, this, args);
+    queueMicrotask(() => {
+      if (this.isConnected) fireEvent.scroll(this);
+    });
+  });
   testClient.render(
     <>
       <p>Surrounding narrative</p>
@@ -1380,14 +1405,17 @@ function findUniqueOutputLine() {
   const status = () =>
     within(screen.getByRole("search", { name: "Output search" })).queryByRole("status")
       ?.textContent;
-  const expectRevealed = () => {
-    expect(reader.scrollTop).toBe(42 * OUTPUT_LINE_HEIGHT - reader.clientHeight / 2);
-    expect(reader.querySelector('[data-current-match] [data-output-line="42"]')?.textContent).toBe(
-      "Boundary needle alpha",
-    );
-    expect(document.activeElement).toBe(field);
-    expect(status()).toBe("1 of 1");
-  };
+  const expectRevealed = () =>
+    waitFor(() => {
+      expect(reader.scrollTop).toBe(
+        42 * OUTPUT_LINE_HEIGHT + OUTPUT_LINE_HEIGHT / 2 - reader.clientHeight / 2,
+      );
+      expect(
+        reader.querySelector('[data-current-match] [data-output-line="42"]')?.textContent,
+      ).toBe("Boundary needle alpha");
+      expect(document.activeElement).toBe(field);
+      expect(status()).toBe("1 of 1");
+    });
   const expectScrolledAway = () => {
     expect(reader.scrollTop).toBe(100 * OUTPUT_LINE_HEIGHT);
     expect(reader.querySelector('[data-output-line="100"]')).toBeTruthy();
@@ -1417,19 +1445,19 @@ it.each([
   },
 ])(
   "reveals the same unique output match again on $action after manual scrolling",
-  ({ request }) => {
+  async ({ request }) => {
     const { field, expectRevealed, scrollAway } = findUniqueOutputLine();
-    expectRevealed();
+    await expectRevealed();
     scrollAway();
     request(field);
-    expectRevealed();
+    await expectRevealed();
   },
 );
 
-it("keeps a manual output scroll until an explicit Find action", () => {
+it("keeps a manual output scroll until an explicit Find action", async () => {
   const { reader, field, status, expectRevealed, scrollAway, expectScrolledAway } =
     findUniqueOutputLine();
-  expectRevealed();
+  await expectRevealed();
   scrollAway();
 
   fireEvent.scroll(reader);
@@ -1454,7 +1482,7 @@ it("keeps a manual output scroll until an explicit Find action", () => {
   expect(status()).toBeUndefined();
 
   fireEvent.change(field, { target: { value: "Boundary needle" } });
-  expectRevealed();
+  await expectRevealed();
   scrollAway();
 
   fireEvent.click(screen.getByRole("button", { name: "Close find" }));
@@ -1506,6 +1534,47 @@ it.each([{ altKey: true }, { shiftKey: true }, { isComposing: true }, { keyCode:
     expect(document.getSelection()?.rangeCount).toBe(0);
   },
 );
+
+it.each([3, 13])(
+  "preserves ANSI state across %i captured output lines and preview boundaries",
+  async (count) => {
+    const lines = Array.from({ length: count }, (_, index) => `coloured line ${index}`);
+    const output = `\u001b[31m${lines.join("\n")}\u001b[39m\nplain line\n`;
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    testClient.render(<RecordedResult context={capturedContext("shell", output)} />);
+    expect(screen.getByText(lines.at(-1)!, { exact: true }).style.color).toBe(
+      "var(--color-negative)",
+    );
+    expect(screen.getByText("plain line", { exact: true }).style.color).toBe("");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy output" }));
+    });
+    expect(write).toHaveBeenCalledExactlyOnceWith(`${lines.join("\n")}\nplain line\n`);
+  },
+);
+
+it("preserves ANSI state and resets outside the mounted output window", () => {
+  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
+  const output =
+    "\u001b[31m" +
+    plain.map((line, index) => (index === 25_001 ? `\u001b[39m${line}` : line)).join("\n") +
+    "\n";
+  const reader = expandOutput(output);
+  reader.scrollTop = 25_000 * 20;
+  fireEvent.scroll(reader);
+  expect(within(reader).getByText(plain[25_000]!, { exact: true }).style.color).toBe(
+    "var(--color-negative)",
+  );
+  expect(within(reader).getByText(plain[25_001]!, { exact: true }).style.color).toBe("");
+  expect(reader.querySelector('[data-output-line="0"]')).toBeNull();
+  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
+  expect(selectAll(reader)).toBe(false);
+  expect(copyFrom(reader).setData).toHaveBeenCalledExactlyOnceWith(
+    "text/plain",
+    plain.join("\n") + "\n",
+  );
+  document.getSelection()?.removeAllRanges();
+});
 
 it("selects only the preview excerpt and copies its presented lines", () => {
   const plain = Array.from({ length: 12 }, (_, index) => (index === 6 ? "" : `line ${index}`));
@@ -1650,7 +1719,51 @@ it("copies the complete captured output after Select All in the virtualized read
   document.getSelection()?.removeAllRanges();
 });
 
-it("leaves partial, outside, collapsed and handled output copies native", () => {
+it("retains only native selection endpoints across a 50,000-line virtual window", () => {
+  const plain = Array.from({ length: 50_000 }, (_, index) =>
+    index % 1000 === 10 ? "" : `line ${index} 中😀`,
+  );
+  const raw =
+    plain
+      .map((line, index) => (index % 100 === 0 ? `\u001b[31m${line}\u001b[0m` : line))
+      .join("\n") + "\n";
+  const reader = expandOutput(raw);
+  const anchor = reader.querySelector('[data-output-line="2"]')!;
+  act(() => {
+    document
+      .getSelection()!
+      .setBaseAndExtent(anchor.firstChild!.firstChild!, 1, anchor.firstChild!.firstChild!, 1);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+  reader.scrollTop = 49_980 * 20;
+  fireEvent.scroll(reader);
+  expect(reader.querySelector('[data-output-line="2"]')).toBe(anchor);
+  const end = reader.querySelector('[data-output-line="49990"]')!;
+  act(() => {
+    document
+      .getSelection()!
+      .setBaseAndExtent(anchor.firstChild!.firstChild!, 1, end.firstChild!.firstChild!, 7);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+  reader.scrollTop = 400 * 20;
+  fireEvent.scroll(reader);
+  expect(reader.querySelector('[data-output-line="2"]')).toBe(anchor);
+  expect(reader.querySelector('[data-output-line="49990"]')).toBe(end);
+  expect(reader.querySelector('[data-output-line="25000"]')).toBeNull();
+  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
+  expect(copyFrom(reader).setData).toHaveBeenCalledExactlyOnceWith(
+    "text/plain",
+    plain.slice(2, 49_990).join("\n").slice(1) + "\n" + plain[49_990]!.slice(0, 7),
+  );
+  act(() => {
+    document.getSelection()!.removeAllRanges();
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+  expect(reader.querySelector('[data-output-line="2"]')).toBeNull();
+  expect(reader.querySelector('[data-output-line="49990"]')).toBeNull();
+});
+
+it("serializes virtual partial selections and leaves outside, collapsed and handled copies native", () => {
   const output = Array.from({ length: 200 }, (_, index) => `line ${index}`).join("\n");
   const reader = expandOutput(output);
   const selection = document.getSelection()!;
@@ -1658,8 +1771,8 @@ it("leaves partial, outside, collapsed and handled output copies native", () => 
 
   selection.selectAllChildren(line);
   let copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", line.textContent);
 
   selection.selectAllChildren(screen.getByText("Surrounding narrative"));
   copied = copyFrom(reader);
@@ -1721,8 +1834,8 @@ it("copies the complete captured output when Select All precedes a virtual-windo
   document.getSelection()!.selectAllChildren(reader.querySelector('[data-output-line="49990"]')!);
   scrollTo(49_970 * OUTPUT_LINE_HEIGHT);
   copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", "line 49990");
   document.getSelection()?.removeAllRanges();
 });
 

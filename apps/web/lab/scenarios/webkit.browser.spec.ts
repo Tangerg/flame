@@ -188,7 +188,7 @@ test("WebKit workspace keeps review geometry and separator semantics", async ({ 
     page.getByRole("region", { name: `Changes in ${ACTIVE_DIFF_FILE}`, exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Show changed files", exact: true }).click();
-  await expect(page.locator("[data-diff-file]")).toHaveCount(REVIEW_DIFF.files!.length);
+  await expect(page.locator("[data-diff-file]")).toHaveCount(REVIEW_DIFF.visual.manifest.length);
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
   await expect(separator).toHaveAttribute("aria-valuemin", String(DOCK_MIN_WIDTH_PX));
   await expect

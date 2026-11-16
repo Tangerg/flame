@@ -4,7 +4,6 @@ import {
   composerCompositionKeyIntent,
   composerKeyBindingKey,
   composerPasteIntent,
-  hasComposerImageTransferItems,
 } from "@/features/composer/application/composerInputEvents";
 const image = new File(["image"], "shot.png", { type: "image/png" });
 
@@ -31,22 +30,6 @@ describe("composerPasteIntent", () => {
 
   it("leaves small text to the browser paste path", () => {
     expect(composerPasteIntent([], "small snippet", false)).toEqual({ kind: "native" });
-  });
-});
-
-describe("hasComposerImageTransferItems", () => {
-  it("detects image file transfer items", () => {
-    expect(
-      hasComposerImageTransferItems([
-        { kind: "string", type: "text/plain" },
-        { kind: "file", type: "image/png" },
-      ]),
-    ).toBe(true);
-  });
-
-  it("ignores non-image file transfer items", () => {
-    expect(hasComposerImageTransferItems([{ kind: "file", type: "text/plain" }])).toBe(false);
-    expect(hasComposerImageTransferItems(null)).toBe(false);
   });
 });
 

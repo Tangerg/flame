@@ -72,11 +72,13 @@ export function Memory({ context }: { context: ComponentContext }) {
     recordFeedback,
     recordResult,
     initiator,
+    canRestoreFocus,
   } = useMemory(context);
   const recordCommand = unknown?.source === "record" ? unknown : undefined;
   const recovering = unknown?.source === "editor";
   const editFeedback = (editorFeedback || recovering) && (
     <MemoryFeedback
+      canRestoreFocus={canRestoreFocus}
       feedback={editorFeedback}
       original={recovering ? unknown : undefined}
       pending={pending}
@@ -242,6 +244,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       {read.error && <p role="alert">{read.error}</p>}
       {edit?.type === "delete" ? (
         <MemoryDeleteConfirmation
+          canRestoreFocus={canRestoreFocus}
           item={edit.item}
           opener={resolveOpener}
           feedback={editFeedback}
@@ -267,6 +270,7 @@ export function Memory({ context }: { context: ComponentContext }) {
         <RecordForm
           aria-label={edit.type === "add" ? t("add") : t("edit")}
           opener={resolveOpener}
+          canRestoreFocus={canRestoreFocus}
           data-focus-unit=""
         >
           <RecordGroup>
@@ -351,6 +355,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       {(current || recordFeedback || recordCommand) && (
         <>
           <MemoryReport
+            canRestoreFocus={canRestoreFocus}
             page={current?.page}
             pageNumber={current?.cursors.length}
             summary={summary}
@@ -364,6 +369,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             }}
             feedback={
               <MemoryFeedback
+                canRestoreFocus={canRestoreFocus}
                 feedback={recordFeedback}
                 original={recordCommand}
                 pending={pending}

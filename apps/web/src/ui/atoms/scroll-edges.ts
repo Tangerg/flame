@@ -1,5 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 const FADE = "24px";
 
 const EPSILON = 1;
@@ -12,18 +19,16 @@ export const scrollEdges = stylex.create({
 });
 
 interface ScrollEdges {
-  port: React.RefObject<HTMLDivElement | null>;
-  content: React.RefObject<HTMLDivElement | null>;
   onScroll: () => void;
   style: CSSProperties;
   overflowing: boolean;
-  distanceFromEnd: () => number;
-  scrollToEnd: () => void;
 }
 
-export function useScrollEdges(active = true): ScrollEdges {
-  const port = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
+export function useScrollEdges(
+  port: RefObject<HTMLElement | null>,
+  content: RefObject<HTMLElement | null>,
+  active = true,
+): ScrollEdges {
   const [edges, setEdges] = useState({ top: false, bottom: false, overflowing: false });
 
   const measure = useCallback(() => {
@@ -43,27 +48,15 @@ export function useScrollEdges(active = true): ScrollEdges {
         ? prev
         : next,
     );
-  }, []);
+  }, [port]);
 
   useEffect(() => {
     if (!active) return;
-    measure();
     const observer = new ResizeObserver(measure);
     if (port.current) observer.observe(port.current);
     if (content.current) observer.observe(content.current);
     return () => observer.disconnect();
-  }, [active, measure]);
-
-  const distanceFromEnd = useCallback(() => {
-    const el = port.current;
-    if (!el) return 0;
-    return Math.max(0, el.scrollHeight - el.scrollTop - el.clientHeight);
-  }, []);
-
-  const scrollToEnd = useCallback(() => {
-    const el = port.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, []);
+  }, [active, measure, port, content]);
 
   const top = active && edges.top;
   const bottom = active && edges.bottom;
@@ -78,14 +71,10 @@ export function useScrollEdges(active = true): ScrollEdges {
 
   return useMemo(
     () => ({
-      port,
-      content,
       onScroll: measure,
       style,
       overflowing: active && edges.overflowing,
-      distanceFromEnd,
-      scrollToEnd,
     }),
-    [measure, style, active, edges.overflowing, distanceFromEnd, scrollToEnd],
+    [measure, style, active, edges.overflowing],
   );
 }

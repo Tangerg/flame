@@ -16,20 +16,21 @@ const (
 type DiffFormat string
 
 const (
-	DiffFormatRows DiffFormat = "rows" // per-file structured diff (default)
-	DiffFormatRaw  DiffFormat = "raw"  // unified patch string
+	DiffFormatRows   DiffFormat = "rows"   // per-file structured diff (default)
+	DiffFormatRaw    DiffFormat = "raw"    // unified patch string
+	DiffFormatVisual DiffFormat = "visual" // bounded patch and its same-read manifest
 )
 
 // GetDiffRequest is the workspace.diff.get body. Mode selects the
 // baseline (worktree=changes vs HEAD incl. untracked; base=vs merge-base with
-// default branch). Format selects the shape (rows=structured; raw=unified patch
-// string). Limit caps the diff rows (rows format); over it the result is
-// truncated at a file boundary (Diff.Truncated) rather than silently dropped.
+// default branch). Format selects rows, complete raw text, or a visual patch
+// with authoritative metadata. Limit caps rows in either bounded projection;
+// exceeding it sets the projection's Truncated flag at a whole-file boundary.
 type GetDiffRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path,omitempty"`
-	Mode      DiffMode     `json:"mode,omitempty"`   // "worktree" (default) | "base"
-	Format    DiffFormat   `json:"format,omitempty"` // "rows" (default) | "raw"
+	Mode      DiffMode     `json:"mode,omitempty"` // "worktree" (default) | "base"
+	Format    DiffFormat   `json:"format,omitempty"`
 	Limit     *int         `json:"limit,omitzero"`
 }
 
@@ -50,15 +51,36 @@ type DiffBaseline struct {
 	Commit string           `json:"commit,omitempty"`
 }
 
-// Diff is the workspace.diff.get result: a sum type where Files is
-// populated for format=rows (per-file structured diff), Patch for format=raw
-// (the unified patch string). Truncated self-describes a row-limit cut at a
-// file boundary, so a caller can distinguish a partial result from a complete diff.
+// Diff explicitly identifies its read projection. Visual patch bytes and the
+// manifest belong to one accepted read; they cannot be combined with another
+// response or interpreted as the complete raw projection.
 type Diff struct {
-	Baseline  DiffBaseline `json:"baseline"`
-	Files     []FileDiff   `json:"files,omitempty"`
-	Patch     string       `json:"patch,omitempty"`
-	Truncated bool         `json:"truncated,omitzero"`
+	Type     DiffFormat   `json:"type"`
+	Baseline DiffBaseline `json:"baseline"`
+	Rows     *DiffRows    `json:"rows,omitzero"`
+	Patch    *string      `json:"patch,omitzero"`
+	Visual   *VisualDiff  `json:"visual,omitzero"`
+}
+
+type DiffBudget struct {
+	Files int `json:"files"`
+	Rows  int `json:"rows"`
+	Bytes int `json:"bytes"`
+}
+
+type DiffRows struct {
+	Files     []FileDiff `json:"files"`
+	Truncated bool       `json:"truncated"`
+	Budget    DiffBudget `json:"budget"`
+}
+
+// VisualDiff contains only complete files within Budget. An empty manifest
+// with Truncated set means no complete file fit, not a clean comparison.
+type VisualDiff struct {
+	Patch     string                `json:"patch"`
+	Manifest  []WorkspaceFileChange `json:"manifest"`
+	Truncated bool                  `json:"truncated"`
+	Budget    DiffBudget            `json:"budget"`
 }
 
 // FileStatus is the past-tense working-tree status vocabulary shared by

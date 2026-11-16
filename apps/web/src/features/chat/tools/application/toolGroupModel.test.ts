@@ -24,13 +24,11 @@ describe("toolGroupModel", () => {
     expect(toolGroupModel(t, [tool({ status: "running" })], null)).toMatchObject({
       needsAttention: true,
       expanded: true,
-      nextPinned: false,
     });
 
     expect(toolGroupModel(t, [tool({ status: "ok" })], null)).toMatchObject({
       needsAttention: false,
       expanded: false,
-      nextPinned: true,
     });
   });
 
@@ -38,13 +36,11 @@ describe("toolGroupModel", () => {
     expect(toolGroupModel(t, [tool({ status: "running" })], false)).toMatchObject({
       needsAttention: true,
       expanded: false,
-      nextPinned: true,
     });
 
     expect(toolGroupModel(t, [tool({ status: "ok" })], true)).toMatchObject({
       needsAttention: false,
       expanded: true,
-      nextPinned: false,
     });
   });
 

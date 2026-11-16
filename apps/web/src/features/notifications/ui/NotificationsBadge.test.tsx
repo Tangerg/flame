@@ -9,47 +9,40 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
-import { useNotificationStore } from "@/features/notifications/public/notifications";
 import { NotificationsBadge } from "@/features/notifications/ui/NotificationsBadge";
 afterEach(async () => {
   cleanup();
-  useNotificationStore.setState({ log: [] });
+  testClient.messages.clearAll();
   await drainBrowserTasks();
 });
 
-it("reads and dismisses global notifications without navigating the conversation", async () => {
-  const first = useNotificationStore
-    .getState()
-    .push({ plugin: "test", level: "info", message: "Saved" });
-  useNotificationStore
-    .getState()
-    .push({ plugin: "test", level: "error", message: "Could not save" });
+it("reads and dismisses window notifications without navigating the conversation", async () => {
+  const first = testClient.messages.record({ plugin: "test", level: "info", message: "Saved" })!;
+  testClient.messages.record({ plugin: "test", level: "error", message: "Could not save" });
   const location = window.location.href;
   testClient.render(<NotificationsBadge />);
   fireEvent.click(screen.getByRole("button", { name: /unread notifications/i }));
   await screen.findByText("Could not save");
   const dismiss = screen.getAllByRole("button", { name: "Dismiss" });
   fireEvent.click(dismiss[0]!);
-  expect(useNotificationStore.getState().log[1]?.dismissed).toBe(true);
-  expect(useNotificationStore.getState().log[0]?.id).toBe(first.id);
-  expect(useNotificationStore.getState().log[0]?.dismissed).not.toBe(true);
+  expect(testClient.messages.snapshot()[1]?.dismissed).toBe(true);
+  expect(testClient.messages.snapshot()[0]?.id).toBe(first.id);
+  expect(testClient.messages.snapshot()[0]?.dismissed).not.toBe(true);
 
   act(() => {
-    useNotificationStore
-      .getState()
-      .push({ plugin: "test", level: "warn", message: "Still running" });
+    testClient.messages.record({ plugin: "test", level: "warn", message: "Still running" });
   });
   expect(screen.getByText("Still running")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
   expect(screen.getByText("No notifications")).toBeTruthy();
-  expect(useNotificationStore.getState().log).toEqual([]);
+  expect(testClient.messages.snapshot()).toEqual([]);
   expect(window.location.href).toBe(location);
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
 function pushInfo(message: string) {
-  return useNotificationStore.getState().push({ plugin: "test", level: "info", message });
+  return testClient.messages.record({ plugin: "test", level: "info", message })!;
 }
 
 async function openHistory() {
@@ -74,13 +67,15 @@ it("keeps a dismissed entry's control focused in place and refuses repeated acti
   const target = controls[6]!;
 
   const logs: unknown[] = [];
-  const unsubscribe = useNotificationStore.subscribe((state) => logs.push(state.log));
+  const unsubscribe = testClient.messages.subscribe(() =>
+    logs.push(testClient.messages.snapshot()),
+  );
   try {
     target.focus();
     fireEvent.click(target);
 
     expect(logs).toHaveLength(1);
-    const log = useNotificationStore.getState().log;
+    const log = testClient.messages.snapshot();
     expect(log.find((entry) => entry.dismissed)?.id).toBe(entries[5]!.id);
     expect(log.filter((entry) => entry.dismissed)).toHaveLength(1);
     expect(screen.getByRole("button", { name: /11 unread notifications/i })).toBeTruthy();
@@ -94,7 +89,7 @@ it("keeps a dismissed entry's control focused in place and refuses repeated acti
 
     fireEvent.click(target);
     expect(logs).toHaveLength(1);
-    expect(useNotificationStore.getState().log).toBe(log);
+    expect(testClient.messages.snapshot()).toBe(log);
     expect(document.activeElement).toBe(target);
   } finally {
     unsubscribe();
@@ -115,7 +110,7 @@ it("describes each control by its own message even when messages repeat", async 
   expect(screen.getAllByRole("button", { name: "Dismiss", description: "Saved" })).toHaveLength(2);
 
   fireEvent.click(olderControl!);
-  const log = useNotificationStore.getState().log;
+  const log = testClient.messages.snapshot();
   expect(log.find((entry) => entry.id === older.id)?.dismissed).toBe(true);
   expect(log.filter((entry) => entry.dismissed)).toHaveLength(1);
   expect(olderControl!.getAttribute("aria-disabled")).toBe("true");
@@ -142,13 +137,13 @@ it("keeps current focus and state while other store transitions arrive", async (
 
   firstControl!.focus();
   act(() => {
-    useNotificationStore.getState().dismiss(second.id);
-    useNotificationStore.getState().dismiss(first.id);
+    testClient.messages.dismiss(second.id);
+    testClient.messages.dismiss(first.id);
   });
   expect(document.activeElement).toBe(firstControl);
   expect(firstControl!.getAttribute("aria-disabled")).toBe("true");
   expect(screen.getByText("First")).toBeTruthy();
-  expect(useNotificationStore.getState().log.map((entry) => entry.id)).toEqual([
+  expect(testClient.messages.snapshot().map((entry) => entry.id)).toEqual([
     first.id,
     second.id,
     expect.any(String),
@@ -166,13 +161,13 @@ it("continues at the oldest retained message when a focused entry is evicted", a
   });
   await act(async () => drainBrowserTasks());
 
-  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(testClient.messages.snapshot()).toHaveLength(200);
   expect(oldest.isConnected).toBe(false);
   expect(screen.queryByText("Event 1")).toBeNull();
   const retained = screen.getByRole("button", { name: "Dismiss", description: "Event 2" });
   expect(document.activeElement).toBe(retained);
   fireEvent.click(retained);
-  expect(useNotificationStore.getState().log[0]?.dismissed).toBe(true);
+  expect(testClient.messages.snapshot()[0]?.dismissed).toBe(true);
   expect(document.activeElement).toBe(retained);
 });
 
@@ -191,7 +186,7 @@ it("does not reclaim later draft focus when the previously focused oldest entry 
   });
   await act(async () => drainBrowserTasks());
 
-  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(testClient.messages.snapshot()).toHaveLength(200);
   expect(document.activeElement).toBe(draft);
   expect(draft.value).toBe("Keep reading.");
   expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 12]);
@@ -212,7 +207,7 @@ it("honors normal popup focus after the user leaves its action", async () => {
   });
   await act(async () => drainBrowserTasks());
 
-  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(testClient.messages.snapshot()).toHaveLength(200);
   expect(oldest.isConnected).toBe(false);
   expect(document.activeElement).toBe(screen.getByRole("dialog"));
 });
@@ -224,7 +219,7 @@ it("keeps Clear all focused on the empty state and returns to the bell on Escape
 
   clearAll.focus();
   fireEvent.click(clearAll);
-  expect(useNotificationStore.getState().log).toEqual([]);
+  expect(testClient.messages.snapshot()).toEqual([]);
   expect(screen.getByText("No notifications")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
   expect(document.activeElement).toBe(clearAll);
@@ -248,9 +243,9 @@ it("preserves later outside focus when another source dismisses a notification",
   const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Draft" });
   draft.focus();
   draft.setSelectionRange(5, 10);
-  act(() => useNotificationStore.getState().dismiss(entry.id));
+  act(() => testClient.messages.dismiss(entry.id));
   expect(document.activeElement).toBe(draft);
   expect(draft.value).toBe("Keep this draft.");
   expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 10]);
-  expect(useNotificationStore.getState().log[0]?.dismissed).toBe(true);
+  expect(testClient.messages.snapshot()[0]?.dismissed).toBe(true);
 });

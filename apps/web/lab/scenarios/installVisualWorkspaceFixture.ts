@@ -1,6 +1,6 @@
+import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type VisualClient } from "./client";
 import webPackageContent from "../../package.json?raw";
-import { notifyFrom } from "@/features/notifications/public/notifications";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { WorkspaceChangesAction } from "@/features/plugins/ui/WorkspaceChangesAction";
@@ -24,7 +24,6 @@ import { visualComponentProps } from "./installedComponentProps";
 import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../../plugins/icon-gallery/component/component";
 import { Diagnostics } from "../../../../plugins/diagnostics/component/component";
-import { WorkspaceDiff } from "../../../../plugins/diff/component/component";
 import { type Diff, type GetDiffRequest } from "@flame/runtime-client/wire";
 import { Usage } from "../../../../plugins/usage/component/component";
 import { Memory } from "../../../../plugins/memory/component/component";
@@ -49,7 +48,16 @@ import {
   type WorkspaceFileEntry,
   type WorkspaceReadFileQuery,
 } from "@/features/workspace/application/workspaceQueries";
-import { REVIEW_DIFF, BRANCH_REVIEW_DIFF, scaledReview, ACTIVE_DIFF_FILE } from "./diffSnapshot";
+import {
+  BRANCH_REVIEW_DIFF,
+  reviewDiff,
+  branchReviewDiff,
+  scaledReview,
+  evidenceDiff,
+  budgetDiff,
+  largeFileDiff,
+  ACTIVE_DIFF_FILE,
+} from "./diffSnapshot";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import {
   VISUAL_DIAGNOSTICS,
@@ -105,12 +113,12 @@ const MCPServers = Object.values(
     { eager: true },
   ),
 )[0]!.MCPServers;
-const WorktreeChanges = Object.values(
-  import.meta.glob<{ WorktreeChanges: PluginComponent }>(
+const { WorktreeChanges, WorkspaceDiff } = Object.values(
+  import.meta.glob<{ WorktreeChanges: PluginComponent; WorkspaceDiff: PluginComponent }>(
     "../../../../plugins/diff/package/io.github.tangerg.flame/components/component.js",
     { eager: true },
   ),
-)[0]!.WorktreeChanges;
+)[0]!;
 const Trajectory = Object.values(
   import.meta.glob<{ Trajectory: PluginComponent }>(
     "../../../../plugins/trajectory/package/io.github.tangerg.flame/components/component.js",
@@ -498,7 +506,8 @@ function workspaceDataPlugin(
         key: WORKSPACE_FILES_CHANGED_KEY,
         fetcher: async (_, signal) => {
           const diff = await readDiff(signal);
-          return (diff.files ?? []).map((file): WorkspaceFileChange => ({
+          if (diff.type !== "visual") throw new Error("Visual fixture requires a visual diff");
+          return diff.visual.manifest.map((file): WorkspaceFileChange => ({
             path: file.path,
             change: "mod",
             added: file.added,
@@ -570,17 +579,19 @@ function workspaceDataPlugin(
   });
 }
 
-const visualNotifier = definePlugin({
-  name: "flame.visual.notifier",
-  setup(ctx) {
-    const host = window as unknown as {
-      flameVisualNotify?: (message: string, level: NotificationLevel) => void;
-    };
-    host.flameVisualNotify = (message, level) =>
-      notifyFrom(ctx.metadata.pluginName, message, level);
-    ctx.lifetime.defer(() => delete host.flameVisualNotify);
-  },
-});
+function createVisualNotifier(messages: NotificationFeed) {
+  return definePlugin({
+    name: "flame.visual.notifier",
+    setup(ctx) {
+      const host = window as unknown as {
+        flameVisualNotify?: (message: string, level: NotificationLevel) => void;
+      };
+      host.flameVisualNotify = (message, level) =>
+        messages.notify(level, message, { source: ctx.metadata.pluginName });
+      ctx.lifetime.defer(() => delete host.flameVisualNotify);
+    },
+  });
+}
 
 const visualShortcuts = definePlugin({
   name: "flame.visual.shortcuts",
@@ -635,50 +646,31 @@ export function visualWorkspaceRuntime(
     state === "dock-feature-off"
       ? { ...VISUAL_CAPABILITIES, features: { git: VISUAL_CAPABILITIES.features!.git! } }
       : VISUAL_CAPABILITIES;
-  const capturedReview = reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles);
-  const review =
-    reviewPath && capturedReview.files
-      ? {
-          ...capturedReview,
-          files: capturedReview.files.map((file, index) =>
-            index === 0 ? { ...file, path: reviewPath } : file,
-          ),
-        }
-      : capturedReview;
+  let branchEvidenceReads = 0;
   const readDiff = async (signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    const input: Pick<GetDiffRequest, "mode" | "path" | "format"> = request ?? {};
     if (state === "dock-loading") return pending<Diff>(signal);
     if (state === "dock-error") throw new Error("Visual fixture could not load the workspace diff");
-    const comparison =
-      request?.mode === "base"
-        ? reviewFiles === undefined && !reviewPath
-          ? BRANCH_REVIEW_DIFF
-          : { ...review, baseline: BRANCH_REVIEW_DIFF.baseline }
-        : review;
-    const files =
-      state === "dock-empty"
-        ? []
-        : comparison.files?.filter((file) => !request?.path || file.path === request.path);
-    if (request?.format === "raw") {
-      return {
-        baseline: comparison.baseline,
-        patch: files
-          ?.map((file) =>
-            [
-              `diff --git a/${file.previousPath ?? file.path} b/${file.path}`,
-              `--- a/${file.previousPath ?? file.path}`,
-              `+++ b/${file.path}`,
-              ...file.rows.map((row) =>
-                row.type === "hunk"
-                  ? row.text
-                  : `${row.type === "added" ? "+" : row.type === "deleted" ? "-" : " "}${row.code}`,
-              ),
-              "",
-            ].join("\n"),
-          )
-          .join("\n"),
-      };
+    if (request && input.format !== "visual")
+      throw new Error("Visual fixture only supports the visual diff projection");
+    if (state === "dock-diff-evidence") {
+      if (input.mode === "base") branchEvidenceReads++;
+      return evidenceDiff(input.path, input.mode, branchEvidenceReads > 1);
     }
-    return { ...comparison, files };
+    if (state === "dock-diff-budget") return request ? budgetDiff() : evidenceDiff();
+    if (state === "dock-diff-large") return largeFileDiff(input.path);
+    const selection = { firstPath: reviewPath, path: input.path };
+    const captured =
+      reviewFiles === undefined ? reviewDiff(selection) : scaledReview(reviewFiles, selection);
+    const comparison =
+      input.mode === "base"
+        ? reviewFiles === undefined && !reviewPath
+          ? branchReviewDiff(input.path)
+          : { ...captured, baseline: BRANCH_REVIEW_DIFF.baseline }
+        : captured;
+    return state === "dock-empty"
+      ? { ...comparison, visual: { ...comparison.visual, manifest: [], patch: "" } }
+      : comparison;
   };
   return { agentState, snapshot, capabilities, readDiff };
 }
@@ -769,7 +761,7 @@ export async function installVisualWorkspaceFixture(
     personalizationSettings,
     createInstalledPluginLoader(visual.installedPlugins),
     pluginManagementPane,
-    visualNotifier,
+    createVisualNotifier(visual.messages),
     visualShortcuts,
     workspaceDataPlugin(readDiff, runtimeClient, state),
     visualFileRenderers(runtimeClient),
