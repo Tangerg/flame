@@ -147,17 +147,35 @@ for (const touch of [false, true]) {
       await request.focus();
       await page.keyboard.press("Shift+Tab");
       await expect(jump).toBeFocused();
-      const viewport = (await stream.boundingBox())!;
-      const card = (await request.boundingBox())!;
-      const button = (await jump.boundingBox())!;
-      const outline = await jump.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
-      });
-      expect(await jump.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
-      expect(button.y - outline).toBeGreaterThanOrEqual(viewport.y);
-      expect(button.y + button.height).toBeLessThanOrEqual(card.y);
-      if (touch) expect(button.height).toBeGreaterThanOrEqual(44);
+      // Resize publication can occur between separate browser protocol measurements.
+      await expect
+        .poll(() =>
+          jump.evaluate((node, touch) => {
+            const viewport = document.querySelector(".msg-scroll-viewport");
+            const card = node
+              .closest('[data-slot="composer-overlay"]')
+              ?.querySelector('[data-slot="question-request-surface"]');
+            if (!viewport || !card)
+              throw new Error("The question reading frame must remain mounted");
+            const frame = viewport.getBoundingClientRect();
+            const question = card.getBoundingClientRect();
+            const button = node.getBoundingClientRect();
+            const style = getComputedStyle(node);
+            const outline = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+            return {
+              focusVisible: node.matches(":focus-visible"),
+              belowHeading: button.top - outline >= frame.top,
+              aboveQuestion: button.bottom <= question.top,
+              touchTarget: !touch || button.height >= 44,
+            };
+          }, touch),
+        )
+        .toEqual({
+          focusVisible: true,
+          belowHeading: true,
+          aboveQuestion: true,
+          touchTarget: true,
+        });
     });
   });
 }
