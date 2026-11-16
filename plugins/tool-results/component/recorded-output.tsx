@@ -24,12 +24,43 @@ import {
   selectAllInReader,
   type CodeActionLabels,
 } from "@flame/ui";
-import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
+import {
+  defaultRangeExtractor,
+  observeElementOffset,
+  observeElementRect,
+  useVirtualizer,
+  type Virtualizer,
+} from "@tanstack/react-virtual";
 import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
 
 const PREVIEW_LINES = 9;
 const OVERSCAN = 6;
+
+function observeOutputOffset(
+  instance: Virtualizer<HTMLDivElement, HTMLDivElement>,
+  onChange: (offset: number, scrolling: boolean) => void,
+) {
+  const node = instance.scrollElement;
+  if (!node) return;
+  let connected = true;
+  const publish = (scrolling: boolean) => {
+    if (connected && instance.scrollElement === node && node.clientHeight > 0)
+      onChange(node.scrollTop, scrolling);
+  };
+  const stopOffset = observeElementOffset(instance, (_offset, scrolling) =>
+    publish(scrolling),
+  );
+  // A hidden scroller can restore its offset without a scroll event on reveal.
+  const stopRect = observeElementRect(instance, () =>
+    publish(instance.isScrolling),
+  );
+  return () => {
+    connected = false;
+    stopOffset?.();
+    stopRect?.();
+  };
+}
 
 export const frameInset = "calc(var(--spacing) * 3)";
 
@@ -193,6 +224,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: expanded ? lines.length : 0,
     getScrollElement: () => viewport.current,
+    observeElementOffset: observeOutputOffset,
     estimateSize: () => rowHeight,
     overscan: OVERSCAN,
     rangeExtractor: useCallback(

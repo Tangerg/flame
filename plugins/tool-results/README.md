@@ -67,6 +67,8 @@ range and explicit line jumps. Its public range extractor retains only the nativ
 selection's endpoint rows beside the visible range. Partial copy maps that same
 Range through styled UTF-16 line offsets into the complete ANSI-stripped source;
 unmounted middle lines remain exact without hidden full text or stored selection.
+The offset observer resamples the visible native scroller when its layout returns;
+a reveal need not emit a scroll event.
 Font changes invalidate the same virtualizer, and only an explicit Find request
 scrolls to a match. Search fields
 and caption controls remain outside each reading range.
