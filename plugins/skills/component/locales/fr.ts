@@ -50,6 +50,8 @@ export const fr: Record<string, string> = {
   "summary.none": "Aucune lecture acceptée.",
   "empty.filtered.title": "Aucun Skill correspondant dans ce catalogue.",
   "empty.none.title": "Aucun Skill dans ce catalogue.",
+  "empty.review.filtered.title": "Aucune proposition correspondante.",
+  "empty.review.none.title": "Aucune proposition en attente.",
   "empty.filtered.sub": "Effacez la recherche pour afficher les Skills.",
   "empty.none.sub":
     "Choisissez un autre catalogue ou actualisez après avoir ajouté un Skill.",

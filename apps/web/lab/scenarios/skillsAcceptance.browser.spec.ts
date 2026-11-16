@@ -57,7 +57,14 @@ for (const [decision, width, theme] of [
       ).toBeVisible();
       await expect.soft(search).toBeFocused();
     }
-    await expect(panel.getByText("No Skills in this catalog.", { exact: true })).toBeVisible();
+    await expect(panel.getByText("No pending proposals.", { exact: true })).toBeVisible();
+    await expect(panel.getByText("No Skills in this catalog.", { exact: true })).toHaveCount(0);
+    await expect(panel.getByText("Clear the search to show Skills.", { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(
+      panel.getByText("Choose another catalog or refresh after adding a Skill.", { exact: true }),
+    ).toHaveCount(0);
     await testInfo.attach(`skills-${decision}-empty`, {
       body: await page.screenshot({ animations: "disabled" }),
       contentType: "image/png",

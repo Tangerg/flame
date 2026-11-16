@@ -32,6 +32,8 @@ export const ko: Record<string, string> = {
   "summary.none": "수락된 읽기가 없습니다.",
   "empty.filtered.title": "이 카탈로그에 일치하는 스킬이 없습니다.",
   "empty.none.title": "이 카탈로그에 스킬이 없습니다.",
+  "empty.review.filtered.title": "일치하는 제안이 없습니다.",
+  "empty.review.none.title": "대기 중인 제안이 없습니다.",
   "empty.filtered.sub": "검색을 지우면 스킬이 표시됩니다.",
   "empty.none.sub":
     "다른 카탈로그를 선택하거나 스킬을 추가한 후 새로 고치세요.",

@@ -522,11 +522,23 @@ export function Skills({ context }: { context: ComponentContext }) {
                 size="compact"
                 title={
                   rows.length
-                    ? t("empty.filtered.title")
-                    : t("empty.none.title")
+                    ? t(
+                        snapshot.type === "review"
+                          ? "empty.review.filtered.title"
+                          : "empty.filtered.title",
+                      )
+                    : t(
+                        snapshot.type === "review"
+                          ? "empty.review.none.title"
+                          : "empty.none.title",
+                      )
                 }
                 sub={
-                  rows.length ? t("empty.filtered.sub") : t("empty.none.sub")
+                  snapshot.type === "review"
+                    ? undefined
+                    : rows.length
+                      ? t("empty.filtered.sub")
+                      : t("empty.none.sub")
                 }
               />
             )}

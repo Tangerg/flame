@@ -25,6 +25,7 @@ import { REVIEW_DIFF } from "./diffSnapshot";
 import {
   VISUAL_SKILL_DISCOVERY,
   VISUAL_SKILL_DOCUMENTS,
+  VISUAL_SKILL_LIBRARY,
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
 const [RISK_FIRST, RUNTIME_BOUNDARIES] = VISUAL_SKILL_DOCUMENTS as [SkillDetail, SkillDetail];
@@ -39,8 +40,22 @@ afterEach(async () => {
 });
 
 const LABELS = {
-  en: { reading: "Reading Skills…", search: "Search this catalog", clear: "Clear search" },
-  zh: { reading: "正在读取技能…", search: "搜索此目录", clear: "清除搜索" },
+  en: {
+    reading: "Reading Skills…",
+    search: "Search this catalog",
+    clear: "Clear search",
+    refresh: "Refresh",
+    filteredHint: "Clear the search to show Skills.",
+    emptyHint: "Choose another catalog or refresh after adding a Skill.",
+  },
+  zh: {
+    reading: "正在读取技能…",
+    search: "搜索此目录",
+    clear: "清除搜索",
+    refresh: "刷新",
+    filteredHint: "清除搜索以显示技能。",
+    emptyHint: "选择其他目录，或在添加技能后刷新。",
+  },
 } as const;
 
 async function mountSkills(locale: keyof typeof LABELS = "en") {
@@ -144,12 +159,24 @@ it.each([
     catalogName: "Available Skills",
     query: "risk",
     summaries: ["2 available Skills", "1 of 2 available Skills", "0 of 2 available Skills"],
+    empty: {
+      filtered: "No matching Skills in this catalog.",
+      none: "No Skills in this catalog.",
+      summary: "0 available Skills",
+      genericHints: true,
+    },
   },
   {
     locale: "en",
     catalogName: "Skill proposals",
     query: "release",
     summaries: ["2 pending proposals", "1 of 2 pending proposals", "0 of 2 pending proposals"],
+    empty: {
+      filtered: "No matching proposals.",
+      none: "No pending proposals.",
+      summary: "0 pending proposals",
+      genericHints: false,
+    },
   },
   {
     locale: "en",
@@ -160,28 +187,52 @@ it.each([
       "1 of 2 user-managed Skills",
       "0 of 2 user-managed Skills",
     ],
+    empty: {
+      filtered: "No matching Skills in this catalog.",
+      none: "No Skills in this catalog.",
+      summary: "0 user-managed Skills",
+      genericHints: true,
+    },
   },
   {
     locale: "zh",
     catalogName: "可用技能",
     query: "risk",
     summaries: ["2 个可用技能", "2 个可用技能中的 1 个", "2 个可用技能中的 0 个"],
+    empty: {
+      filtered: "此目录中没有匹配的技能。",
+      none: "此目录中没有技能。",
+      summary: "0 个可用技能",
+      genericHints: true,
+    },
   },
   {
     locale: "zh",
     catalogName: "技能提议",
     query: "release",
     summaries: ["2 项待处理提议", "2 项待处理提议中的 1 项", "2 项待处理提议中的 0 项"],
+    empty: {
+      filtered: "没有匹配的提议。",
+      none: "没有待处理提议。",
+      summary: "0 项待处理提议",
+      genericHints: false,
+    },
   },
   {
     locale: "zh",
     catalogName: "个人技能库",
     query: "risk",
     summaries: ["2 个用户管理的技能", "2 个用户管理的技能中的 1 个", "2 个用户管理的技能中的 0 个"],
+    empty: {
+      filtered: "此目录中没有匹配的技能。",
+      none: "此目录中没有技能。",
+      summary: "0 个用户管理的技能",
+      genericHints: true,
+    },
   },
 ] as const)(
   "summarizes the $locale $catalogName result set against its accepted catalog in heading and status",
-  async ({ locale, catalogName, query, summaries: [all, one, none] }) => {
+  async ({ locale, catalogName, query, summaries: [all, one, none], empty }) => {
     const { runtime, workspace, listDiscovered } = await mountSkills(locale);
     const listProposals = vi.spyOn(workspace.skills, "listProposals");
     const listLibrary = vi.spyOn(runtime.skills, "listLibrary");
@@ -201,12 +252,29 @@ it.each([
 
     fireEvent.change(search, { target: { value: "not-a-skill" } });
     expectSummary(none);
+    expect(screen.getByText(empty.filtered)).toBeTruthy();
+    expect(screen.queryByText(LABELS[locale].filteredHint) !== null).toBe(empty.genericHints);
+    expect(screen.queryByText(LABELS[locale].emptyHint)).toBeNull();
     expect(document.activeElement).toBe(search);
 
     fireEvent.click(screen.getByRole("button", { name: LABELS[locale].clear }));
     expectSummary(all);
     await waitFor(() => expect(document.activeElement).toBe(search));
     expect(reads()).toEqual(accepted);
+
+    listDiscovered.mockResolvedValueOnce({ ...VISUAL_SKILL_DISCOVERY, skills: [] });
+    listProposals.mockResolvedValueOnce({ ...VISUAL_SKILL_PROPOSALS, data: [] });
+    listLibrary.mockResolvedValueOnce({ ...VISUAL_SKILL_LIBRARY, data: [] });
+    fireEvent.click(screen.getByRole("button", { name: LABELS[locale].refresh }));
+    await summaryStatus(empty.summary);
+    expectSummary(empty.summary);
+    expect(screen.getByText(empty.none)).toBeTruthy();
+    expect(screen.queryByText(LABELS[locale].emptyHint) !== null).toBe(empty.genericHints);
+    expect(screen.queryByText(LABELS[locale].filteredHint)).toBeNull();
+    expect(search.value).toBe("");
+    expect(reads().reduce((sum, count) => sum + count, 0)).toBe(
+      accepted.reduce((sum, count) => sum + count, 0) + 1,
+    );
   },
 );
 
@@ -991,9 +1059,15 @@ it.each([
       expect(owner.signal.aborted).toBe(false);
       await act(async () => acknowledgement.resolve());
       await summaryStatus(`${zh} ${proposal.name}已完成。`);
+      expect(await screen.findByText("没有匹配的提议。")).toBeTruthy();
+      expect(screen.queryByText(LABELS.zh.filteredHint)).toBeNull();
+      expect(screen.queryByText(LABELS.zh.emptyHint)).toBeNull();
 
       await act(async () => changeLocale("en"));
       await summaryStatus(`${action} ${proposal.name} completed.`);
+      expect(screen.getByText("No matching proposals.")).toBeTruthy();
+      expect(screen.queryByText(LABELS.en.filteredHint)).toBeNull();
+      expect(screen.queryByText(LABELS.en.emptyHint)).toBeNull();
       expect(screen.getByRole("searchbox", { name: LABELS.en.search })).toBe(search);
       expect(search.value).toBe(proposal.name);
       expect(document.activeElement).toBe(outside);

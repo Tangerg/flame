@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline passes 434 files / 4,900 tests on the native-qualified message-menu, Computer and GenUI inputs; subsequent display changes pass 6 files / 40 focused Session-search tests and 7 files / 98 focused Composer tests, each with both native profiles. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `ea6fb780a` passes 440 files / 5,129 tests; subsequent tree and Skills changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -31971,6 +31971,109 @@ Verification for this contract:
 - Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
+### Skills proposal empty states and native review (2026-11-17)
+
+Continued from main `2f76a302f` after a fresh fetch with no incoming commits.
+The formal Frame 0.4.0/Dougong 0.13.0 integration is already present. Read-only
+report/source review finds no new migration defect; actual Wails inspection of
+the installed Skills component identifies a separate terminology problem.
+After approving both captured proposals, the accepted queue reports zero pending
+proposals but says `No Skills in this catalog.` and suggests adding a Skill.
+Available Skills still contains two entries. A Chinese proposal search similarly
+reports zero of two proposals while naming missing Skills and suggesting clearing
+the search to show Skills.
+
+The better-writing noun inventory and empty-state criteria guide the correction.
+`plugins/skills/component/component.tsx` now uses the accepted snapshot's `review`
+type to name either no pending proposals or no matching proposals. This queue
+omits the generic Skill hint; its existing catalog navigation, search Clear and
+Refresh remain available. Eight component locales receive the same two private
+keys, using their existing proposal vocabulary. Available Skills and the personal
+library retain their existing copy. Loading/accepted-read admission, command
+identity, review capture, cancellation, retirement focus and Runtime ownership
+are unchanged. No state, effect, handler, dependency or data migration is added.
+The normal publisher regenerates the one changed prebuilt Skills resource.
+
+| Severity         | Location                                     | Before                                                                                            | After                                                                                                | Why                                                                    |
+| ---------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| MEDIUM, repaired | `plugins/skills/component/component.tsx:520` | An empty proposal result names Skills and suggests an operation that does not populate the queue. | The queue names pending or matching proposals, with the existing controls providing the next action. | Keep the object and available action consistent with the current task. |
+
+Verification on Node 24.22.2, npm 11.21.1, Go 1.27.4, Wails 3.1.0 and macOS 27.2:
+
+- The exact original component, loaded through the canonical Vitest transform,
+  produces **4 failures / 32 passes** for the strengthened existing regressions.
+  The candidate passes all **36** Skills presentation tests. The six EN/ZH catalog
+  cases retain search, Clear, focus and read-count assertions and now cover both
+  filtered and accepted-empty results. Existing Approve/Reject language cases
+  also retain the original command, outside focus and query through row removal.
+- The existing canonical browser Approve/Reject tasks pass **2/2**, including
+  accepted-row removal, search focus, zero remaining proposals and absence of the
+  inapplicable hints. No new suite, retries, deadlines or visual benchmark is added.
+- The complete plugin check passes: **47** script tests and **44 files / 653**
+  source tests. Its existing Linux-only Computer suites account for **2 skipped
+  files / 17 skipped tests** on macOS. Typecheck, lint, formatting, all **20**
+  eight-language catalogs and exact prebuilt-resource reproduction pass. The first
+  aggregate stops after its script tests because the declared Node 24.22.1 archive
+  is absent; normal companion preparation supplies it and the full rerun passes.
+- Web typecheck, the other **24** canonical Web checks and `make check-native`
+  pass serially. The latter includes final production staging, Desktop Go
+  test/vet/build and the Wails macOS 14 deployment build. Full frontend, Runtime
+  and author-distribution aggregates are not newly run.
+
+Actual native qualification uses the same EN/ZH binaries and processes as the
+baseline, with a native View → Force Reload of the qualified canonical Lab:
+
+- **EN/light/14px/Orange/motion off:** Dock → preserved middle-caret draft →
+  full-width Skills → proposal search shows `No matching proposals.` Escape
+  clears the query in place. Two keyboard-confirmed approvals keep default Cancel
+  focus, retire the original rows and return focus to Search after each result.
+  The second command leaves `No pending proposals.` with no Skill hint. Available
+  Skills still shows its two entries; returning to proposals retains the empty
+  queue. Cmd+L continues exactly `Keep proposal draft. Reviewed. Continue here.`
+- **ZH/dark/18px/custom blue/full motion:** ordinary Window → Move & Resize →
+  Left retains default zoom and a **364px Dock**. Search shows `没有匹配的提议。`;
+  pointer Clear restores the same search. Escape from a rejection review returns
+  to its original Reject action. Two keyboard-confirmed rejections leave zero
+  proposals, `没有待处理提议。` and one visible blue search perimeter. Cmd+L
+  continues exactly `保留提议草稿，回来后继续检查。` at the original middle caret.
+
+Separate native controls also qualify parent Subagent → captured eight-line file
+→ Escape → three-page EN/five-page ZH wheel reading → nested task → Escape to
+its original opener and reading position. Both task headers remain complete at
+ordinary sizes; no title-overflow defect is reproduced or patched. Drafts continue
+as `Keep nested draft. Returned. Continue here.` and
+`保留嵌套草稿，返回后继续检查。`. An initial EN selectText failure and a ZH
+index-based scroll are excluded; actual arrow-key caret setup and coordinate wheel
+input supply the accepted evidence.
+
+All **490** candidate Lab artifacts and **6,856** non-Markdown source inputs
+remain identical through final native/build qualification. Only the **12** intended
+inputs differ from baseline; all other inputs and the native source remain intact.
+Two HTTP responses retain fresh nonces, strict-dynamic without unsafe-eval and
+no-store. Typography, spacing, hierarchy, palette and motion retain their existing
+owners; this patch changes task wording and removes one inappropriate hint.
+This is captured-transport UI acceptance through the real installed component
+and Host. Live Runtime/provider decisions or library publication, production
+startup, physical IME, VoiceOver audio, minimum OS/browser combinations and
+whole-product visual acceptance remain unqualified. Existing installations receive
+the changed resource through their ordinary package-digest update.
+
+All four native processes quit through CUA and join with exit 0. Their exact
+registrations and **32** reserved app/profile/Library roots are absent after
+removing **1,544** owned nodes. Both canonical ports close; the two manually owned
+preview wrappers exit **1** after intentional SIGINT. All **13** initially absent
+build/cache roots are removed: **13,821** nodes, including three symlinks unlinked
+without following targets. The private root `flame-reading-context-rr8aq3go` is
+removed after evidence transfer: **137** nodes. Every removed node belongs to
+UID 501; dependencies, shared caches, user data, references and unrelated worktrees
+are preserved.
+
+Compact evidence retains **14,650 gzip bytes**, SHA-256 of the gzip bytes
+`943a57f3e56a8361a680a10950555c42e87270a9c2e660ad337506850944946f`.
+Verdict: **Approve** for the inspected Skills proposal wording and task
+continuity. The whole UI goal remains active; subsequent batches need fresh
+task evidence in another current integration or view.
 
 ### Skills command language and retained reads (2026-11-12)
 
