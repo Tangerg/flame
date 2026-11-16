@@ -1,6 +1,5 @@
 import {
-  DougongError,
-  isCancellationReason,
+  isRestoredCancellation,
   createResourceAuthority,
   createHost,
   type AnyPlugin,
@@ -41,12 +40,7 @@ export async function startKernel(
     } catch (stopError) {
       throw new AggregateError([error, stopError], "Kernel startup and rollback both failed");
     }
-    if (
-      signal &&
-      error instanceof DougongError &&
-      error.details.outcome === "restored" &&
-      isCancellationReason(signal, error.cause)
-    ) {
+    if (signal && isRestoredCancellation(signal, error)) {
       throw signal.reason;
     }
     throw error;

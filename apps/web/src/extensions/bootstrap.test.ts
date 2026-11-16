@@ -137,7 +137,7 @@ describe("kernel generation ownership", () => {
     controller.abort();
     setup.resolve();
 
-    await expect(starting).rejects.toThrow(/aborted/i);
+    await expect(starting).rejects.toBe(controller.signal.reason);
     expect(cleanup).toHaveBeenCalledOnce();
     expect(publishedKernel()).toBeUndefined();
     expect(testClient.renderHook(() => useInstalledPlugins()).result.current).toEqual([]);

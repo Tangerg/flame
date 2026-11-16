@@ -93,6 +93,7 @@ github.com/ProtonMail/go-crypto v1.3.0/go.mod h1:9whxjD8Rbs29b4XWbB8irEcE8KHMqaR
 github.com/ProtonMail/go-crypto v1.5.2/go.mod h1:/RaSu30DaKO4RY+XdV/ACcCcZkGr7AhUIduq5sjzzCo=
 github.com/Tangerg/flame/packages/go-sdk v0.1.7-dev.20261110.t07f62013f4a6/go.mod h1:CGQD3bnZe7dZb/DvZ9E5g1Wk2ThmZlgxZt62uh5BCgA=
 github.com/Tangerg/flame/packages/go-sdk v0.1.16-dev.20261116.t39dd98bada59/go.mod h1:H0gw4i53BrBtpXMRkbszmIodkUNqNcgiuurX9hfV+Ic=
+github.com/Tangerg/flame/runtime v0.1.52-dev.20261116.tfe868215d6f6/go.mod h1:Y8jjGVeAQ3R2krqA/aECtoYzX8WhO3xunk7nfaE3SfQ=
 github.com/a2aproject/a2a-go v0.3.15 h1:h5YpCiPq3jxQ5rIns7oDjPag3ivP8u817AzdA4F+NiI=
 github.com/a2aproject/a2a-go v0.3.15/go.mod h1:I7Cm+a1oL+UT6zMoP+roaRE5vdfUa1iQGVN8aSOuZ0I=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=

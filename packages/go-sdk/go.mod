@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/packages/go-sdk
 go 1.27.4
 
 require (
-	github.com/Tangerg/frame v0.3.1-0.20261116132246-1b4b1f3cf619
+	github.com/Tangerg/frame v0.4.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	github.com/Tangerg/scope/core v0.62.0
 	github.com/Tangerg/scope/mcp v0.62.0

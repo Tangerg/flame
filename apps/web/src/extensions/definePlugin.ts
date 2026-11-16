@@ -1,6 +1,6 @@
 import {
   type AnyPlugin,
-  type Plugin,
+  type PluginAuthoring,
   type PluginContext as ContractContext,
   type Provisions,
   type Requirements,
@@ -22,12 +22,12 @@ export type PluginContext<Requires extends Requirements = Requirements> = Omit<
   };
 
 export type PluginSpec<Requires extends Requirements = {}, Provides extends Provisions = {}> = Pick<
-  Plugin<void, Requires, Provides>,
+  PluginAuthoring<void, Requires, Provides>,
   "name" | "requires" | "provides"
 > & {
   readonly setup: (
     ctx: PluginContext<NoInfer<Requires>>,
-  ) => ReturnType<Plugin<void, Requires, NoInfer<Provides>>["setup"]>;
+  ) => ReturnType<PluginAuthoring<void, Requires, NoInfer<Provides>>["setup"]>;
 };
 
 const specFields: ReadonlySet<string> = new Set(["name", "requires", "provides", "setup"]);
