@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, type RefObject } from "react";
 import { useContentVisible } from "./content-visibility";
 interface RetirableRootProps<Actions, Details> {
   open?: boolean | undefined;
@@ -21,9 +21,13 @@ export function useHiddenRootRetirement<
   const actions = actionsRef ?? ownActions;
   // Base UI owns uncontrolled state; this snapshot avoids redundant close callbacks.
   const acceptedOpen = useRef(defaultOpen);
+  const retire = useEffectEvent(() => {
+    if (open ?? acceptedOpen.current) actions.current?.close();
+  });
   useLayoutEffect(() => {
-    if (!visible && (open ?? acceptedOpen.current)) actions.current?.close();
+    if (!visible) retire();
   }, [visible, open, actions]);
+  useLayoutEffect(() => () => retire(), []);
   return {
     actionsRef: actions,
     onOpenChange: (next: boolean, eventDetails: Details) => {

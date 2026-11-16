@@ -86,7 +86,9 @@ while closing has no exit transition that would defer Base UI's focus return
 until unmount. A consumer that retains
 content declares its active subtree with `ContentVisibility`;
 hidden roots retire through their existing change callback, and hidden portals
-do not restore focus to an unavailable trigger. Positioning, initial/final focus
+do not restore focus to an unavailable trigger. Effect disconnection also closes
+an open root, so Activity or Suspense reconnection requires a fresh interaction.
+Positioning, initial/final focus
 and dismissal remain with Base UI. Consumers own their content measure and
 available-height scrolling, not another document-level outside-press listener.
 

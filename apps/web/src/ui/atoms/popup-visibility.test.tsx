@@ -7,7 +7,15 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
-import { createRef, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  Activity,
+  Suspense,
+  createRef,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentVisibility, ContextMenu, DropdownMenu, Popover } from "@/ui/index";
 type PopoverOpenChange = NonNullable<ComponentProps<typeof Popover.Root>["onOpenChange"]>;
@@ -91,6 +99,47 @@ async function openPopover() {
 const imperativeClose = expect.objectContaining({ reason: "imperative-action" });
 
 describe("Popover retirement", () => {
+  it.each([
+    ["controlled", "Activity"],
+    ["uncontrolled", "Activity"],
+    ["controlled", "Suspense"],
+    ["uncontrolled", "Suspense"],
+  ] as const)("retires the %s popover when %s disconnects its effects", async (mode, lifetime) => {
+    const onOpenChange = vi.fn<PopoverOpenChange>();
+    const child = popoverOf(mode, onOpenChange);
+    const pending = new Promise<never>(() => {});
+    function Pending(): never {
+      throw pending;
+    }
+    const scene = (visible: boolean) => (
+      <>
+        <button>Outside</button>
+        {lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for panel</p>}>
+            {!visible && <Pending />}
+            {child}
+          </Suspense>
+        )}
+      </>
+    );
+    const view = testClient.render(scene(true));
+    await openPopover();
+    onOpenChange.mockClear();
+
+    const outside = screen.getByRole("button", { name: "Outside" });
+    act(() => outside.focus());
+    view.rerender(scene(false));
+    view.rerender(scene(true));
+
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(onOpenChange).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false, imperativeClose);
+    expect(document.activeElement).toBe(outside);
+    await openPopover();
+  });
+
   it.each(["controlled", "uncontrolled"] as const)(
     "closes a %s popover when its host hides and does not bring it back on reveal",
     async (mode) => {
