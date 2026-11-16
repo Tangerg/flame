@@ -73,8 +73,9 @@ export function EmptyState({
           <Icon glyph={icon} size={size === "compact" ? "md" : "lg"} />
         </IconMark>
       )}
-      <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title}</div>
-      {sub && <div {...stylex.props(type.uiSm, styles.sub)}>{sub}</div>}
+      {/* Preserve word boundaries when a containing control includes this feedback in its name. */}
+      <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title} </div>
+      {sub && <div {...stylex.props(type.uiSm, styles.sub)}>{sub} </div>}
       {action && <div {...stylex.props(styles.action)}>{action}</div>}
     </div>
   );

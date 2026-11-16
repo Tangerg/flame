@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Checkbox } from "@flame/ui";
+import { TextButton } from "@/ui/index";
 import { Slot } from "@/extensions/host/Slot";
 import { AppToaster } from "@/features/notifications/toaster/index";
 import { useActiveWorkspaceViewId, useWorkspaceDock } from "@/features/workspace/public/navigation";
@@ -16,6 +17,9 @@ import {
   VISUAL_WORKSPACE_STATE_TITLES,
   VISUAL_WORKSPACE_STATES,
   type VisualWorkspaceState,
+  type VisualDirectoryState,
+  VISUAL_DIRECTORY_PATH,
+  VISUAL_DIRECTORY_CHANGED_EVENT,
 } from "./workspaceFixtureStates";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
@@ -25,10 +29,12 @@ import { localize } from "../story";
 
 function WorkspaceStateSidebar({
   state,
+  directoryState,
   observeLayout,
   onObserveLayoutChange,
 }: {
   state: VisualWorkspaceState;
+  directoryState?: VisualDirectoryState;
   observeLayout: boolean;
   onObserveLayoutChange: (observe: boolean) => void;
 }) {
@@ -87,6 +93,16 @@ function WorkspaceStateSidebar({
           label="Observe layout"
         />
       </div>
+      {directoryState === "refresh-error" && (
+        <div {...stylex.props(fx.listFoot, fx.ink)}>
+          <TextButton
+            tone="accent"
+            onClick={() => window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT))}
+          >
+            Notify {VISUAL_DIRECTORY_PATH} change
+          </TextButton>
+        </div>
+      )}
     </div>
   );
 }
@@ -467,7 +483,13 @@ function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
   );
 }
 
-export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState }) {
+export function VisualWorkspaceFixture({
+  state,
+  directoryState,
+}: {
+  state: VisualWorkspaceState;
+  directoryState?: VisualDirectoryState;
+}) {
   const [observeLayout, setObserveLayout] = useState(false);
   const settingsOpen = useActiveWorkspaceViewId() === "settings";
   const sidebar = useSidebarDrawer();
@@ -487,6 +509,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
         settingsOpen ? undefined : (
           <WorkspaceStateSidebar
             state={state}
+            directoryState={directoryState}
             observeLayout={observeLayout}
             onObserveLayoutChange={setObserveLayout}
           />

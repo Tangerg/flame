@@ -2,6 +2,26 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./test";
 import { expectLabReady } from "../readiness";
 import { type AgentSessionSummary } from "@/features/agent/public/session";
+import { en } from "@/lib/i18n/locales/en";
+
+async function directoryIsFetching(page: Page) {
+  return page.evaluate(async () => {
+    const queryPath = "/src/lib/queryClient.ts";
+    const { queryClient }: typeof import("@/lib/queryClient") = await import(queryPath);
+    return queryClient
+      .getQueryCache()
+      .getAll()
+      .some((query) => {
+        const request = query.queryKey[1] as { path?: string; recursive?: boolean } | undefined;
+        return (
+          query.queryKey[0] === "list-files" &&
+          request?.path === "apps" &&
+          request.recursive !== true &&
+          query.state.fetchStatus === "fetching"
+        );
+      });
+  });
+}
 
 async function relocateWorkspace(page: Page, cwd: string) {
   return page.evaluate(async (cwd) => {
@@ -30,7 +50,163 @@ async function relocateWorkspace(page: Page, cwd: string) {
   }, cwd);
 }
 
+async function expectAccessibleTree(page: Page) {
+  const audit = await new AxeBuilder({ page })
+    .include('[role="tree"]')
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(audit.violations).toEqual([]);
+}
+
 for (const browserName of ["chromium", "webkit"] as const) {
+  test.extend({ browserName })(
+    `${browserName} retries a failed directory read through its real Files action`,
+    async ({ page }) => {
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=error&locale=en&motion=off",
+      );
+      await expectLabReady(page);
+      const tree = page.getByRole("tree", { name: "Files", exact: true });
+      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      await folder.focus();
+      await folder.press("ArrowRight");
+      const failure = page.getByText(en["dataView.error.title"]!, { exact: true });
+      await expect(failure).toBeVisible();
+      await expect(folder).toHaveAccessibleName(/^apps\s+Couldn't load\b/);
+      await expect(tree.getByRole("treeitem", { name: "README.md", exact: true })).toBeVisible();
+      await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Notify apps change", exact: true }),
+      ).toHaveCount(0);
+
+      const bounds = await failure.boundingBox();
+      if (!bounds) throw new Error("Expected the visible directory failure title");
+      const y = bounds.y + bounds.height / 2;
+      await page.mouse.move(bounds.x - 1, y);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + bounds.width + 1, y, { steps: 8 });
+      await page.mouse.up();
+      await expect
+        .poll(() => page.evaluate(() => window.getSelection()?.toString() ?? ""))
+        .toContain(en["dataView.error.title"]!);
+      await expect(folder).toHaveAttribute("aria-expanded", "true");
+      await failure.click();
+      await expect(folder).toHaveAttribute("aria-expanded", "true");
+      await expectAccessibleTree(page);
+
+      const retry = page.getByRole("button", { name: en["common.retry"]!, exact: true });
+      await folder.focus();
+      await folder.press("Tab");
+      await expect(retry).toBeFocused();
+      await retry.press("Enter");
+      const child = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      await expect(child).toBeVisible();
+      await expect(folder).toHaveAccessibleName("apps");
+      await expect(retry).toBeHidden();
+      await folder.focus();
+      await folder.press("ArrowRight");
+      await expect(child).toBeFocused();
+      await child.press("Enter");
+      const back = page.getByRole("button", { name: "Back to files", exact: true });
+      await expect(back).toBeFocused();
+      await back.press("Enter");
+      await expect(child).toBeFocused();
+      await child.press("ArrowLeft");
+      await expect(folder).toBeFocused();
+    },
+  );
+
+  test.extend({ browserName })(
+    `${browserName} retains directory children through a notified refresh failure and Retry`,
+    async ({ page }) => {
+      await page.goto(
+        "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=refresh-error&locale=en&motion=off",
+      );
+      await expectLabReady(page);
+      const tree = page.getByRole("tree", { name: "Files", exact: true });
+      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      await folder.focus();
+      await folder.press("ArrowRight");
+      const child = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      await expect(child).toBeVisible();
+      await expect(folder).toHaveAccessibleName("apps");
+      await folder.press("ArrowRight");
+      await expect(child).toBeFocused();
+      const original = await child.elementHandle();
+      const notify = page.getByRole("button", { name: "Notify apps change", exact: true });
+      await notify.focus();
+      await notify.press("Enter");
+      const failure = page.getByText(en["file.refreshError.title"]!, { exact: true });
+      await expect(failure).toBeVisible();
+      await expect(folder).toHaveAccessibleName(/^apps\s+Couldn't refresh files\b/);
+      await expect(folder).not.toHaveAccessibleName(/DockResizer\.tsx/);
+      await expect(
+        page.getByText("Showing the last loaded files in apps.", { exact: true }),
+      ).toBeVisible();
+      await expect(notify).toBeFocused();
+      await expect(folder).toHaveAttribute("aria-expanded", "true");
+      expect(await child.evaluate((node, before) => node === before, original)).toBe(true);
+      await expect(child).toHaveAttribute("tabindex", "0");
+      await expectAccessibleTree(page);
+
+      const retry = page.getByRole("button", { name: en["common.retry"]!, exact: true });
+      await child.focus();
+      await child.press("Shift+Tab");
+      await expect(retry).toBeFocused();
+      await expect(child).toHaveAttribute("tabindex", "0");
+      expect(await folder.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
+      await retry.press("Enter");
+      await expect(failure).toBeHidden();
+      await expect(retry).toBeHidden();
+      await expect(child).toBeVisible();
+      expect(await child.evaluate((node, before) => node === before, original)).toBe(true);
+      await expect(child).toBeFocused();
+      await expect(folder).toHaveAccessibleName("apps");
+      await folder.focus();
+      await folder.press("ArrowRight");
+      await expect(child).toBeFocused();
+      await child.press("ArrowLeft");
+      await expect(folder).toBeFocused();
+    },
+  );
+
+  for (const directoryState of ["loading", "empty"] as const) {
+    test.extend({ browserName })(
+      `${browserName} keeps a ${directoryState} directory scoped to its expanded branch`,
+      async ({ page }) => {
+        await page.goto(
+          `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=${directoryState}&locale=en&motion=off`,
+        );
+        await expectLabReady(page);
+        const tree = page.getByRole("tree", { name: "Files", exact: true });
+        const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+        await folder.focus();
+        await folder.press("ArrowRight");
+        const feedback = page.getByText(
+          en[directoryState === "loading" ? "common.loading" : "file.empty.title"]!,
+          { exact: true },
+        );
+        await expect(feedback).toBeVisible();
+        await expect(tree.getByRole("treeitem", { name: "README.md", exact: true })).toBeVisible();
+        await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(0);
+        if (directoryState === "loading") {
+          await expect(folder).toHaveAttribute("aria-busy", "true");
+          await expect.poll(() => directoryIsFetching(page)).toBe(true);
+          await folder.press("ArrowLeft");
+          await expect(feedback).toBeHidden();
+          await expect.poll(() => directoryIsFetching(page)).toBe(false);
+          await folder.press("ArrowRight");
+          await expect(feedback).toBeVisible();
+          await expect.poll(() => directoryIsFetching(page)).toBe(true);
+        } else {
+          await expect(folder).not.toHaveAttribute("aria-busy", "true");
+        }
+        await folder.press("ArrowDown");
+        await expect(tree.getByRole("treeitem", { name: "go.mod", exact: true })).toBeFocused();
+      },
+    );
+  }
+
   test.extend({ browserName })(
     `${browserName} file tree keeps navigation separate from activation`,
     async ({ page }) => {
@@ -39,7 +215,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       );
       await expectLabReady(page);
       const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: "apps", exact: true });
+      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
       await expect(folder).toHaveAttribute("aria-expanded", "true");
@@ -67,11 +243,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await expect(copy).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(folder).toBeFocused();
-      const audit = await new AxeBuilder({ page })
-        .include('[role="tree"]')
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-        .analyze();
-      expect(audit.violations).toEqual([]);
+      await expectAccessibleTree(page);
     },
   );
 
@@ -153,7 +325,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       );
       await expectLabReady(page);
       const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: "apps", exact: true });
+      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
       const file = tree.locator('[role="treeitem"][aria-level="2"]').first();

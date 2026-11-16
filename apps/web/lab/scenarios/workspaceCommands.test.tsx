@@ -1,10 +1,10 @@
 import { WindowNotifications } from "@/features/notifications/toaster/window";
 import type { ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { isCancelledError, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
-import { afterEach, beforeEach, expect, it, onTestFinished } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { executeCommand } from "@/features/command/public/commands";
 import commandMenu from "@/features/command/menu/index";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
@@ -24,30 +24,48 @@ import brandDeclaration from "../../../../plugins/brand/package/io.github.tanger
 import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
 import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json";
 import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json";
+import {
+  WORKSPACE_LIST_FILES_KEY,
+  workspaceFileListQuery,
+} from "@/features/workspace/application/workspaceQueries";
+import { lookupDataProvider } from "@/extensions/dataProvider";
+import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
+import {
+  VISUAL_DIRECTORY_PATH,
+  VISUAL_DIRECTORY_CHANGED_EVENT,
+  type VisualDirectoryState,
+} from "./workspaceFixtureStates";
+import { type RuntimeSubscribeRequest } from "@flame/runtime-client/wire";
 
 let visual: VisualClient;
 let client: FlameClient;
+let transport: ReturnType<typeof createVisualRuntimeTransport>;
+let renderContent: (node: ReactNode) => void;
 
-beforeEach(async () => {
+async function installFixture(directoryState?: VisualDirectoryState, renderView = true) {
   await import("@/features/chat/message/ui/markdown/MarkdownRenderer");
   const runtime = visualWorkspaceRuntime("dock-light");
-  client = createFlameClient(
-    createVisualRuntimeTransport(runtime.snapshot, runtime.capabilities, runtime.readDiff),
-    { capabilities: () => runtime.capabilities },
+  transport = createVisualRuntimeTransport(
+    runtime.snapshot,
+    runtime.capabilities,
+    runtime.readDiff,
   );
-  let renderContent!: (node: ReactNode) => void;
+  const ownedClient = createFlameClient(transport, { capabilities: () => runtime.capabilities });
+  client = ownedClient;
   render(
     <WindowNotifications
       start={(messages, update) => {
-        visual = createVisualClient(() => client, messages);
+        visual = createVisualClient(() => ownedClient, messages);
         renderContent = update;
         return () => {};
       }}
     />,
   );
-  await installVisualWorkspaceFixture(visual, () => client, "dock-light", "light", runtime, {
+  await installVisualWorkspaceFixture(visual, () => ownedClient, "dock-light", "light", runtime, {
     sidebarOpen: true,
+    directoryState,
   });
+  if (!renderView) return;
   act(() =>
     renderContent(
       <visual.Wrapper>
@@ -63,13 +81,19 @@ beforeEach(async () => {
       </visual.Wrapper>,
     ),
   );
-});
+}
 
-afterEach(async () => {
+beforeEach(() => installFixture());
+
+async function retireFixture() {
   cleanup();
   await resetKernelForTest();
   await visual.dispose();
-  client.close();
+  await client.close();
+}
+
+afterEach(async () => {
+  await retireFixture();
   queryClient.clear();
 });
 
@@ -235,5 +259,186 @@ it.each(["zh", "de"])(
       if (screen.queryByRole("combobox", { name: t("commandMenu.placeholder") }))
         await act(() => executeCommand("command.menu"));
     }
+  },
+);
+
+async function installDirectoryState(directoryState: VisualDirectoryState) {
+  await retireFixture();
+  await installFixture(directoryState, false);
+}
+
+function directoryQueryOptions() {
+  return {
+    ...workspaceFileListQuery({ cwd: VISUAL_WORKSPACE_PATH, path: VISUAL_DIRECTORY_PATH }),
+    staleTime: 0,
+    retryDelay: 0,
+  };
+}
+
+it("keeps directory failure through automatic retries and resets it on fixture reinstallation", async () => {
+  await installDirectoryState("error");
+  const query = directoryQueryOptions();
+  queryClient.setQueryData(query.queryKey, [
+    { path: "apps/previous.ts", name: "previous.ts", type: "file" },
+  ]);
+
+  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+  expect(queryClient.getQueryState(query.queryKey)).toMatchObject({
+    status: "error",
+    fetchStatus: "idle",
+    fetchFailureCount: 2,
+  });
+  const accepted = await queryClient.fetchQuery(query);
+  expect(accepted).toHaveLength(1);
+  expect(accepted[0]?.path).not.toBe("apps/previous.ts");
+
+  await installDirectoryState("error");
+  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
+});
+
+it("retains accepted directory children through refresh failure and ignores manual cache success", async () => {
+  await installDirectoryState("refresh-error");
+  const query = directoryQueryOptions();
+  const accepted = await queryClient.fetchQuery(query);
+  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
+  window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT));
+  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+  expect(queryClient.getQueryData(query.queryKey)).toBe(accepted);
+
+  queryClient.setQueryData(query.queryKey, accepted);
+  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
+});
+
+it("routes a notified directory change through the installed Workspace event consumer", async () => {
+  await installDirectoryState("refresh-error");
+  const subscriptions: Array<{ request: RuntimeSubscribeRequest; signal?: AbortSignal }> = [];
+  const subscribe = client.runtimeEvents.subscribe.bind(client.runtimeEvents);
+  const subscriptionWitness = vi
+    .spyOn(client.runtimeEvents, "subscribe")
+    .mockImplementation(async (request, signal) => {
+      const opened = await subscribe(request, signal);
+      subscriptions.push({ request, signal });
+      return opened;
+    });
+  const notify = () => transport.notifyDirectoryChange();
+  window.addEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notify);
+  let successfulReads = 0;
+  const stopWitness = queryClient.getQueryCache().subscribe((event) => {
+    const request = event.query.queryKey[1] as { cwd?: string; path?: string } | undefined;
+    if (
+      event.type === "updated" &&
+      event.query.queryKey[0] === WORKSPACE_LIST_FILES_KEY &&
+      request?.cwd === VISUAL_WORKSPACE_PATH &&
+      request.path === VISUAL_DIRECTORY_PATH &&
+      event.action.type === "success" &&
+      !event.action.manual
+    )
+      successfulReads += 1;
+  });
+  onTestFinished(() => {
+    subscriptionWitness.mockRestore();
+    window.removeEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notify);
+    stopWitness();
+  });
+  const observer = new QueryObserver(queryClient, directoryQueryOptions());
+  const stop = observer.subscribe(() => {});
+  try {
+    await waitFor(() => {
+      expect(successfulReads).toBeGreaterThan(1);
+      expect(observer.getCurrentResult()).toMatchObject({ status: "success", fetchStatus: "idle" });
+      expect(
+        subscriptions.some(
+          ({ request, signal }) =>
+            !signal?.aborted &&
+            request.topics.includes("files.changed") &&
+            request.watches?.some(
+              (watch) =>
+                watch.workspace.path === VISUAL_WORKSPACE_PATH &&
+                watch.paths?.includes(VISUAL_DIRECTORY_PATH),
+            ),
+        ),
+      ).toBe(true);
+    });
+    const accepted = observer.getCurrentResult().data;
+    expect(accepted).toHaveLength(1);
+
+    window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT));
+    await waitFor(() => expect(observer.getCurrentResult().status).toBe("error"));
+    expect(observer.getCurrentResult().data).toBe(accepted);
+    await observer.refetch();
+    expect(observer.getCurrentResult()).toMatchObject({ status: "success", fetchStatus: "idle" });
+    expect(observer.getCurrentResult().data).toEqual(accepted);
+  } finally {
+    stop();
+    observer.destroy();
+  }
+});
+
+it("aborts a pending directory read when its fixture retires", async () => {
+  await installDirectoryState("loading");
+  const query = directoryQueryOptions();
+  const controller = new AbortController();
+  const cause = new Error("Directory read retired");
+  const fetcher = lookupDataProvider(WORKSPACE_LIST_FILES_KEY)!;
+  const providerOutcome = fetcher(
+    { cwd: VISUAL_WORKSPACE_PATH, path: VISUAL_DIRECTORY_PATH },
+    controller.signal,
+  ).catch((error: unknown) => error);
+  controller.abort(cause);
+  expect(await providerOutcome).toBe(cause);
+
+  const outcome = queryClient.fetchQuery(query).catch((error: unknown) => error);
+  await waitFor(() =>
+    expect(queryClient.getQueryState(query.queryKey)?.fetchStatus).toBe("fetching"),
+  );
+
+  await resetKernelForTest();
+  expect(isCancelledError(await outcome)).toBe(true);
+  expect(queryClient.getQueryState(query.queryKey)?.fetchStatus).not.toBe("fetching");
+
+  await installDirectoryState("error");
+  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+});
+
+it("limits an empty directory scene to its captured nonrecursive workspace request", async () => {
+  await installDirectoryState("empty");
+  await expect(queryClient.fetchQuery(directoryQueryOptions())).resolves.toEqual([]);
+  const root = await queryClient.fetchQuery(workspaceFileListQuery({ cwd: VISUAL_WORKSPACE_PATH }));
+  expect(root.map(({ path }) => path)).toEqual(
+    expect.arrayContaining([VISUAL_DIRECTORY_PATH, "README.md"]),
+  );
+  for (const request of [
+    { cwd: "/visual/another-workspace", path: VISUAL_DIRECTORY_PATH },
+    { cwd: VISUAL_WORKSPACE_PATH, path: VISUAL_DIRECTORY_PATH, recursive: true },
+  ]) {
+    const children = await queryClient.fetchQuery(workspaceFileListQuery(request));
+    expect(children).toHaveLength(1);
+    expect(children[0]?.type).toBe("file");
+  }
+});
+
+it.each([true, false])(
+  "does not advance directory failure after cancellation (revert=%s)",
+  async (revert) => {
+    await installDirectoryState("error");
+    const query = directoryQueryOptions();
+    const previous = new Error("Previous directory read failed");
+    await expect(
+      queryClient.fetchQuery({
+        ...query,
+        retry: false,
+        queryFn: async () => {
+          throw previous;
+        },
+      }),
+    ).rejects.toBe(previous);
+
+    const outcome = queryClient.fetchQuery(query).catch((error: unknown) => error);
+    await queryClient.cancelQueries({ queryKey: query.queryKey, exact: true }, { revert });
+    expect(isCancelledError(await outcome)).toBe(true);
+
+    await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+    await expect(queryClient.fetchQuery(query)).resolves.toHaveLength(1);
   },
 );

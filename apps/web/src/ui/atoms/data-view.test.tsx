@@ -119,6 +119,44 @@ describe("DataView", () => {
     expect(focusReader).not.toHaveBeenCalled();
   });
 
+  it("hands Retry to the caller's current target after that target mounts", () => {
+    const target = createRef<HTMLButtonElement>();
+    const focusTarget = {
+      get current() {
+        return target.current;
+      },
+    };
+    const callbackFocus: (Element | null)[] = [];
+    testClient.render(
+      <>
+        <div role="region" aria-label="Read error" tabIndex={-1}>
+          <DataView
+            items={undefined}
+            isLoading={false}
+            failure={broke}
+            focusTarget={focusTarget}
+            onRetry={() => callbackFocus.push(document.activeElement)}
+          >
+            {rows}
+          </DataView>
+        </div>
+        <Button ref={target}>kept.go</Button>
+        <button>Another task</button>
+      </>,
+    );
+    const retry = screen.getByRole("button", { name: "Retry" });
+    const row = screen.getByRole("button", { name: "kept.go" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    expect(document.activeElement).toBe(row);
+
+    const outside = screen.getByRole("button", { name: "Another task" });
+    act(() => outside.focus());
+    fireEvent.click(retry);
+    expect(document.activeElement).toBe(outside);
+    expect(callbackFocus).toEqual([row, outside]);
+  });
+
   it("retries without a surviving host and keeps the focus its callback claims", () => {
     const onRetry = vi.fn(() => screen.getByRole("textbox", { name: "Message" }).focus());
     testClient.render(

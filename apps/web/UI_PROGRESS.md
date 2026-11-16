@@ -20748,6 +20748,126 @@ Qualified artifact receipt SHA-256:
 Cleanup receipt SHA-256:
 `d3da1458f76e8684b50229bf54f50b0da96086671ba22db5ac392af3243dde2c`.
 
+### Native directory read feedback and recovery (2026-11-17)
+
+Continued the ready-tree finding from `562290d52` and fast-forwarded the latest
+main `75604adc7` before final qualification. Its Composer input-policy change is
+included in the rebuilt Lab and the native draft-return tasks below. The Hooks
+backend package passes an offline, read-only-manifest Go 1.27.4 run; Computer's
+tool-result and receipt tests pass **59 tests**. These focused integration checks
+do not constitute a full Runtime or author-distribution run.
+
+Native A/B corrects the previous hypothesis: dynamically expanding a pending,
+failed or empty directory retains the cached outline role on this system. The
+actual defect is that feedback and Retry inside its owned child group disappear
+from native AX. Tab visibly focuses Retry while the baseline AX tree reports no
+focused control. Loading and empty text are likewise absent. Static legacy
+WebKit validation alone did not establish that dynamic behavior.
+
+`TreeNode` now keeps read feedback inside its directory treeitem; its separately
+owned `group` contains only real child entries, following the
+[Tree View ownership pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/#wai-aria-roles-states-and-properties).
+The better-accessibility criteria are hierarchy, name/state, keyboard access and
+visible focus (1.3.1, 4.1.2, 2.1.1 and 2.4.7). Read-only ZCode row loading provides
+the parent-owned feedback reference; its tree state and renderer are not copied.
+The directory uses one stable non-native Button element so a real nested Retry
+remains valid and loading does not replace the focused DOM node. Its name refers
+to the existing header and own feedback, excluding the child group; leaves keep
+their precise names. Explicit text boundaries in the feedback and shared
+`EmptyState` keep visible words and the composed name aligned. No feedback is
+hidden, copied into another string, or represented as a fake file.
+
+Directory activation is limited to its header or the row itself. Read text stays
+selectable, and Retry does not collapse the directory or reset the current child.
+The existing DataError focus handoff receives the current tree through DataView's
+optional `focusTarget`; it resumes the retained cursor and respects later outside
+focus. Space keydown remains the activation owner, while its matching directory
+keyup suppresses Base UI's independent synthetic click. Retry keys, modifiers and
+IME boundaries retain their own paths. No query, navigation or Runtime state
+owner, dependency, theme token or command policy is added.
+
+The existing Workspace Lab now accepts `directory-state=loading|error|empty|refresh-error`
+for only its captured nonrecursive `apps` request. The refresh scene's fixed Notify
+action uses the actual Workspace event plugin, mutation lifecycle, resolver and
+Runtime subscription. Subscription initialization and target changes remain
+successful; only that notification arms failure. A fixture-local phase observes
+the exact query's final non-manual success or non-cancelled error, so automatic
+retries, stale cache values and cancellation cannot impersonate a manual Retry.
+Its observer and listeners retire with the provider. This replaces the initial
+prototype in which Notify had no production consumer; that baseline action is
+not counted as successful refresh coverage.
+
+Verification on Node 24.22.2, npm 11.21.1, Go 1.27.4 and Wails 3.1.0:
+
+- The original ownership implementation produces the intended **4 failing /
+  127 passing** regression run. Final focused FileWorkspace/DataView coverage
+  passes **147 tests**, including the complete Space down/up cycle, own-feedback
+  names, retained child identity, cancellation and later drafting focus. The
+  fixture/transport pair passes **56 tests**.
+- All **16** existing and extended canonical Chromium/WebKit file-tree interaction
+  cases pass, including actual pointer text selection, keyboard Retry, retained
+  child DOM identity, source/Back, loading cancellation and other root navigation.
+  Scoped axe checks remain enabled for ready and failed trees. No extra visual
+  suite or performance benchmark runs.
+- The full frontend passes **440 files / 5,129 tests**. Shared UI passes its
+  complete check, including **333 tests** and the standalone packed-consumer
+  test. Typecheck and the other **24** canonical Web checks pass. Final focused
+  verification passes **4 files / 203 tests** after removing two unsupported,
+  ignored Testing Library options and one unused Lab export. Rebuilding the Lab
+  proves all **490 files byte-identical** to native qualification; the other
+  **6,854** non-Markdown inputs remain identical. No product behavior changes
+  after native acceptance.
+- `make check-native` passes with final production staging, native Go tests,
+  vet/build and the Wails macOS 14 deployment build. Full `make check`, Runtime
+  HTTP and author-distribution checks are not newly run.
+- In the same EN/light/14px/Orange Wails binary and process as the baseline,
+  failure text and Retry are exposed in AX. Tab names the focused Retry, and a
+  real mouse drag selects `Couldn't load`. Enter Retry restores the folder;
+  child context menu, source and Back retain the task. Cmd+L resumes the original
+  middle caret as `Keep this draft. Returned. Continue here.` Real Space cycles
+  expand and collapse once each. The 93-line guide retains its header, inset focus
+  and draft during PageDown and a two-page wheel scroll; Back focuses its row.
+- ZH/dark/18px/custom-blue/full-motion uses ordinary Window → Move & Resize → Left
+  at default zoom. Notify produces retained refresh failure without moving its
+  own focus. The child's exact-path menu remains usable; Shift+Tab names Retry
+  with one focus ring. Pointer Retry restores the original child. Source →
+  keyboard Back selects and focuses that child, and Cmd+L continues the middle
+  caret as `保留草稿，返回后继续核对文件。`. The guide's wrapping header and inset
+  focus survive a two-page wheel scroll, and Back focuses the guide.
+- Fresh native loading exposes `apps Loading` and its feedback text. Left removes
+  it, Right starts another pending read, and Down/Up move between apps and go.mod.
+  ZH empty exposes `apps 没有文件`; the other root rows and Down to go.mod remain
+  available. Neither state introduces a fake child.
+
+The private native Go sources and services match their original inputs; only the
+one URL-literal overlay per role selects the canonical built Lab. Its **490-file**
+artifact map and **6,856** non-Markdown source hashes are frozen. Two HTTP responses
+verify fresh nonces, strict-dynamic without unsafe-eval, no-store and SAMEORIGIN.
+This is captured-fixture UI acceptance, not live provider/Runtime execution,
+production startup, physical IME, VoiceOver audio or minimum browser/OS coverage.
+
+Follow-up evidence needs a separate baseline reproduction: Up/Home did not move
+the selected guide after the EN/ZH context-menu/read/Back sequences, while the
+same CUA Up key works in the fresh loading scene. The root hotkeys, leaf control
+and Back restoration paths are unchanged here. No new regression or cause is
+established; investigate key retirement and actual DOM/AX focus before changing
+that lifetime. Do not infer a general navigation or screen-reader approval.
+
+All four native processes quit through CUA and join with exit 0. The preview's
+intentional SIGINT exits 130, and both Lab ports close. Exact registrations and
+all **32** reserved app/profile/Library roots are absent after removing **1,754**
+UID-501 nodes. All **13** named build/cache roots are absent after removing
+**13,693 nodes**, including three symlinks unlinked without following targets.
+The exact private root `flame-directory-feedback-sc4ph25a` is removed after receipt
+transfer: **7,247 nodes**, including the private browser cache and 40 symlinks.
+All nodes belong to UID 501. Dependencies, shared caches, user data, read-only
+references and unrelated worktrees remain intact. No protocol or data migration
+is needed. The batch uses ordinary main fast-forward/push, and the resumed goal
+remains active.
+
+Compact evidence and cleanup receipt: **6,615 gzip bytes**, SHA-256
+`c80f4de918ea71b20a6b68289c925100d78f016478113e4635e58daf689491db`.
+
 ### Full-width material switching
 
 At frozen main `7d359a2cc2c885488f8bda59484a513db87f500a`, actual Wails

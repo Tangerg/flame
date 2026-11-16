@@ -62,6 +62,14 @@ const ft = stylex.create({
   row: {
     whiteSpace: { default: "nowrap", ":is(:focus-within, [data-popup-open])": "normal" },
   },
+  directory: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "center",
+    gap: 0,
+  },
+  header: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
+  feedback: { minWidth: 0, whiteSpace: "normal", userSelect: "text" },
   indent: { width: space.s3, flexShrink: 0 },
   pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   name: { flex: 1, whiteSpace: "inherit", overflowWrap: "anywhere" },
@@ -120,6 +128,8 @@ function TreeNode({
   const change = isDir ? undefined : changes.get(entry.path);
   const dirChanged = isDir && [...changes.keys()].some((path) => path.startsWith(`${entry.path}/`));
   const statusId = useId();
+  const headerId = `${statusId}header`;
+  const feedbackId = `${statusId}feedback`;
   const groupId = `${statusId}group`;
   const status = change
     ? change.change === "renamed"
@@ -131,8 +141,13 @@ function TreeNode({
   const query = snapshot.directories.get(entry.path);
   const children = query?.data;
   const retained = children !== undefined;
+  const feedbackTarget = {
+    get current() {
+      return item.getTree().getElement() ?? null;
+    },
+  };
   const bindRow = useCallback(
-    (row: HTMLButtonElement | null) => {
+    (row: HTMLElement | null) => {
       item.registerElement(row);
       if (!row) return;
       return () => {
@@ -142,47 +157,8 @@ function TreeNode({
     },
     [item, onRemoved],
   );
-  const row = (
-    <Button
-      {...item.getProps()}
-      ref={bindRow}
-      shape="row"
-      size="xs"
-      active={selected}
-      data-focus-proxy
-      aria-label={`${entry.name}${change?.previousPath ? ` ← ${change.previousPath}` : ""}${change ? ` ${CHANGE_MARK[change.change]}` : ""}`}
-      aria-selected={isDir ? undefined : selected}
-      aria-owns={expanded ? groupId : undefined}
-      aria-describedby={status ? statusId : undefined}
-      aria-current={selected ? "true" : undefined}
-      aria-busy={isDir && expanded && query?.isFetching ? true : undefined}
-      title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
-      onFocus={() => item.setFocused()}
-      onKeyDownCapture={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (isImeKey(event.nativeEvent)) {
-          event.stopPropagation();
-          return;
-        }
-        if (
-          (event.key !== "Enter" && event.key !== " ") ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey
-        )
-          return;
-        event.preventDefault();
-        event.stopPropagation();
-        activate(item);
-      }}
-      onClick={() => {
-        item.setFocused();
-        activate(item);
-      }}
-      className={stylex.props(ft.row).className}
-      style={{ paddingInlineStart: `calc(${space.s1_5} + ${item.getItemMeta().level * 12}px)` }}
-    >
+  const label = (
+    <>
       {isDir ? (
         <Icon
           name="chevron-down"
@@ -219,6 +195,118 @@ function TreeNode({
           {status}
         </span>
       )}
+    </>
+  );
+  const row = (
+    <Button
+      {...item.getProps()}
+      ref={bindRow}
+      nativeButton={!isDir}
+      render={isDir ? <div /> : undefined}
+      shape="row"
+      size="xs"
+      active={selected}
+      data-focus-proxy={isDir ? undefined : true}
+      aria-label={
+        isDir
+          ? undefined
+          : `${entry.name}${change?.previousPath ? ` ← ${change.previousPath}` : ""}${change ? ` ${CHANGE_MARK[change.change]}` : ""}`
+      }
+      aria-labelledby={isDir ? `${headerId}${expanded ? ` ${feedbackId}` : ""}` : undefined}
+      aria-selected={isDir ? undefined : selected}
+      aria-owns={expanded ? groupId : undefined}
+      aria-describedby={status ? statusId : undefined}
+      aria-current={selected ? "true" : undefined}
+      aria-busy={isDir && expanded && query?.isFetching ? true : undefined}
+      title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget) item.setFocused();
+      }}
+      onKeyDownCapture={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (isImeKey(event.nativeEvent)) {
+          event.stopPropagation();
+          return;
+        }
+        if (
+          (event.key !== "Enter" && event.key !== " ") ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        activate(item);
+      }}
+      onKeyUpCapture={(event) => {
+        if (!isDir || event.target !== event.currentTarget || event.key !== " ") return;
+        // The row owns keydown activation; Base UI independently clicks non-native rows on Space keyup.
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onClick={(event) => {
+        if (
+          isDir &&
+          event.target !== event.currentTarget &&
+          !event.currentTarget
+            .querySelector('[data-slot="file-tree-header"]')
+            ?.contains(event.target as Node)
+        )
+          return;
+        item.setFocused();
+        activate(item);
+      }}
+      styles={isDir ? ft.directory : undefined}
+      className={stylex.props(ft.row).className}
+      style={{ paddingInlineStart: `calc(${space.s1_5} + ${item.getItemMeta().level * 12}px)` }}
+    >
+      {isDir ? (
+        <div id={headerId} data-slot="file-tree-header" {...stylex.props(ft.header)}>
+          {label}
+        </div>
+      ) : (
+        label
+      )}
+      {isDir && expanded && (
+        <div id={feedbackId} {...stylex.props(ft.feedback)}>
+          {" "}
+          <DataView
+            items={children}
+            isLoading={!retained && (query === undefined || query.isPending)}
+            failure={retained ? undefined : query?.error}
+            focusTarget={feedbackTarget}
+            onRetry={query?.refetch}
+            skeletonCount={1}
+            error={{ title: t("dataView.error.title"), size: "compact" }}
+            empty={{ icon: "folder", title: t("file.empty.title"), size: "compact" }}
+          >
+            {() => null}
+          </DataView>
+          {retained &&
+            query?.error != null &&
+            (query.isFetching ? (
+              <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+            ) : (
+              <div role="status">
+                <DataError
+                  failure={query.error}
+                  focusTarget={feedbackTarget}
+                  unsupported={{
+                    icon: "folder",
+                    sub: t("file.directoryRefreshError.sub", { path: entry.path }),
+                    size: "compact",
+                  }}
+                  onRetry={query.refetch}
+                  title={t("file.refreshError.title")}
+                  sub={t("file.directoryRefreshError.sub", { path: entry.path })}
+                  size="compact"
+                />
+              </div>
+            ))}
+        </div>
+      )}
     </Button>
   );
   return (
@@ -238,49 +326,17 @@ function TreeNode({
       </ContextMenu.Root>
       {isDir && expanded && (
         <div role="group" id={groupId}>
-          <DataView
-            items={children}
-            isLoading={!retained && (query === undefined || query.isPending)}
-            failure={retained ? undefined : query?.error}
-            onRetry={query?.refetch}
-            skeletonCount={1}
-            error={{ title: t("dataView.error.title"), size: "compact" }}
-            empty={{ icon: "folder", title: t("file.empty.title"), size: "compact" }}
-          >
-            {(rows) =>
-              rows.map((entry) => (
-                <TreeNode
-                  key={entry.path}
-                  item={item.getTree().getItemInstance(entryId(entry.path))}
-                  snapshot={snapshot}
-                  changes={changes}
-                  onReveal={onReveal}
-                  revealable={revealable}
-                  onRemoved={onRemoved}
-                />
-              ))
-            }
-          </DataView>
-          {retained &&
-            query?.error != null &&
-            (query.isFetching ? (
-              <SkeletonList count={1} variant="compact" label={t("common.loading")} />
-            ) : (
-              <div role="status">
-                <DataError
-                  failure={query.error}
-                  unsupported={{
-                    icon: "folder",
-                    sub: t("file.directoryRefreshError.sub", { path: entry.path }),
-                    size: "compact",
-                  }}
-                  onRetry={query.refetch}
-                  title={t("file.refreshError.title")}
-                  sub={t("file.directoryRefreshError.sub", { path: entry.path })}
-                  size="compact"
-                />
-              </div>
-            ))}
+          {children?.map((entry) => (
+            <TreeNode
+              key={entry.path}
+              item={item.getTree().getItemInstance(entryId(entry.path))}
+              snapshot={snapshot}
+              changes={changes}
+              onReveal={onReveal}
+              revealable={revealable}
+              onRemoved={onRemoved}
+            />
+          ))}
         </div>
       )}
     </div>

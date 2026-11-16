@@ -27,6 +27,50 @@ import {
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
 describe("visual Runtime transport", () => {
+  it.each([undefined, { path: VISUAL_WORKSPACE_PATH }])(
+    "resolves only the captured workspace through the validated public client (%j)",
+    async (ref) => {
+      const client = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+        ),
+        { capabilities: () => VISUAL_CAPABILITIES },
+      );
+      try {
+        await expect(client.workspaces.resolve(ref)).resolves.toEqual({
+          ref: { path: VISUAL_WORKSPACE_PATH },
+          projectRoot: VISUAL_WORKSPACE_PATH,
+          availability: "available",
+        });
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it("refuses an unrecorded workspace and honors resolver cancellation", async () => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+      ),
+      { capabilities: () => VISUAL_CAPABILITIES },
+    );
+    try {
+      await expect(client.workspaces.resolve({ path: "/visual/unrecorded" })).rejects.toThrow(
+        "has no recorded workspace",
+      );
+      await expect(
+        client.workspaces.resolve(undefined, AbortSignal.abort()),
+      ).rejects.toBeInstanceOf(RpcCancellationError);
+    } finally {
+      await client.close();
+    }
+  });
+
   it.each([
     { scope: "project", page: VISUAL_LONG_MEMORY_PAGE },
     { scope: "user", page: VISUAL_LONG_USER_MEMORY_PAGE },
@@ -322,6 +366,101 @@ describe("visual Runtime transport", () => {
       await events.return?.();
     } finally {
       await client.close();
+    }
+  });
+
+  it("routes fixed directory changes by topic using the same event sequence as schedule changes", async () => {
+    const transport = createVisualRuntimeTransport(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => REVIEW_DIFF,
+    );
+    const client = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
+    try {
+      const files = (await client.runtimeEvents.subscribe({ topics: ["files.changed"] })).events[
+        Symbol.asyncIterator
+      ]();
+      const schedules = (
+        await client.runtimeEvents.subscribe({ topics: ["plugins.dataChanged"] })
+      ).events[Symbol.asyncIterator]();
+      const nextFile = files.next();
+      transport.removeSchedule("sch_nightly");
+      await expect(schedules.next()).resolves.toMatchObject({
+        done: false,
+        value: { type: "plugins.dataChanged", sequence: 1 },
+      });
+      transport.notifyDirectoryChange();
+      await expect(nextFile).resolves.toMatchObject({
+        done: false,
+        value: {
+          type: "files.changed",
+          sequence: 2,
+          workspace: { path: VISUAL_WORKSPACE_PATH },
+          paths: ["apps"],
+        },
+      });
+
+      const nextSchedule = schedules.next();
+      transport.notifyDirectoryChange();
+      transport.removeSchedule("sch_weekly");
+      await expect(nextSchedule).resolves.toMatchObject({
+        done: false,
+        value: { type: "plugins.dataChanged", sequence: 4 },
+      });
+      await files.return?.();
+      await schedules.return?.();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("does not deliver directory notifications to aborted or closed subscriptions", async () => {
+    const transport = createVisualRuntimeTransport(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => REVIEW_DIFF,
+    );
+    const messages = transport.recv()[Symbol.asyncIterator]();
+    const controller = new AbortController();
+    try {
+      await transport.send(
+        {
+          jsonrpc: "2.0",
+          id: "retired-directory-watch",
+          method: "runtime.subscribe",
+          params: { topics: ["files.changed"] },
+        },
+        controller.signal,
+      );
+      await expect(messages.next()).resolves.toMatchObject({
+        value: { type: "message", message: { id: "retired-directory-watch", result: {} } },
+      });
+      controller.abort();
+      transport.notifyDirectoryChange();
+
+      await transport.send({
+        jsonrpc: "2.0",
+        id: "live-directory-watch",
+        method: "runtime.subscribe",
+        params: { topics: ["files.changed"] },
+      });
+      await expect(messages.next()).resolves.toMatchObject({
+        value: { type: "message", message: { id: "live-directory-watch", result: {} } },
+      });
+      transport.notifyDirectoryChange();
+      await expect(messages.next()).resolves.toMatchObject({
+        value: {
+          type: "message",
+          requestRpcId: "live-directory-watch",
+          message: { params: { event: { type: "files.changed", sequence: 2, paths: ["apps"] } } },
+        },
+      });
+
+      await transport.close();
+      transport.notifyDirectoryChange();
+      await expect(messages.next()).resolves.toMatchObject({ done: true });
+    } finally {
+      await transport.close();
     }
   });
 

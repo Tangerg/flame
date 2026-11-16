@@ -50,6 +50,8 @@ import {
 import {
   isVisualSettingsPane,
   isVisualWorkspaceState,
+  isVisualDirectoryState,
+  VISUAL_DIRECTORY_CHANGED_EVENT,
   type VisualSettingsPane,
   type VisualWorkspaceState,
 } from "./workspaceFixtureStates";
@@ -110,6 +112,10 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       requestedFileListState === "error" || requestedFileListState === "loading"
         ? requestedFileListState
         : undefined;
+    const requestedDirectoryState = query.get("directory-state");
+    const directoryState = isVisualDirectoryState(requestedDirectoryState)
+      ? requestedDirectoryState
+      : undefined;
 
     const { colors, ...appearance } = fixtureAppearance(query);
     const { theme, motionScale } = appearance;
@@ -259,8 +265,12 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
               transport.removeSchedule(event.detail);
             };
             window.addEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+            const notifyDirectoryChange = () => transport.notifyDirectoryChange();
+            if (fixture === "workspace" && directoryState === "refresh-error")
+              window.addEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notifyDirectoryChange);
             ctx.lifetime.defer(() => {
               window.removeEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+              window.removeEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notifyDirectoryChange);
               return client.close();
             });
           },
@@ -358,9 +368,10 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
             sidebarOpen,
             pane: settingsPane,
             fullViewId: requestedFullView,
+            directoryState,
           },
         );
-        return <VisualWorkspaceFixture state={workspaceState} />;
+        return <VisualWorkspaceFixture state={workspaceState} directoryState={directoryState} />;
       }
       if (fixture === "shell") {
         const [{ VisualShellFixture }, { installVisualShellFixture }] = await Promise.all([

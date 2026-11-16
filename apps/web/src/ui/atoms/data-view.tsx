@@ -1,5 +1,5 @@
 import { iconGlyph } from "@/ui/icons/index";
-import { type ReactNode } from "react";
+import { type ReactNode, type RefObject } from "react";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
@@ -22,6 +22,7 @@ interface Props<T> {
   empty?: EmptyConfig;
   unsupported?: UnsupportedConfig;
   error?: Omit<EmptyConfig, "icon">;
+  focusTarget?: RefObject<HTMLElement | null>;
   onRetry?: () => void;
   children: (items: T[]) => ReactNode;
 }
@@ -36,6 +37,7 @@ export function DataView<T>({
   empty,
   unsupported,
   error,
+  focusTarget,
   onRetry,
   children,
 }: Props<T>) {
@@ -50,7 +52,15 @@ export function DataView<T>({
     );
   }
   if (failure != null) {
-    return <DataError failure={failure} unsupported={unsupported} onRetry={onRetry} {...error} />;
+    return (
+      <DataError
+        failure={failure}
+        unsupported={unsupported}
+        focusTarget={focusTarget}
+        onRetry={onRetry}
+        {...error}
+      />
+    );
   }
   if (!items || items.length === 0) {
     return empty ? <EmptyState {...empty} icon={iconGlyph(empty.icon)} /> : null;

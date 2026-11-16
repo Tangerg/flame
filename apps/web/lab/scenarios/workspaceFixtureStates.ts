@@ -27,6 +27,15 @@ export function isVisualSettingsPane(value: string | null): value is VisualSetti
   return VISUAL_SETTINGS_PANES.includes(value as VisualSettingsPane);
 }
 
+export const VISUAL_DIRECTORY_PATH = "apps";
+export const VISUAL_DIRECTORY_CHANGED_EVENT = "flame:visual-directory-changed";
+const VISUAL_DIRECTORY_STATES = ["loading", "error", "empty", "refresh-error"] as const;
+export type VisualDirectoryState = (typeof VISUAL_DIRECTORY_STATES)[number];
+
+export function isVisualDirectoryState(value: string | null): value is VisualDirectoryState {
+  return VISUAL_DIRECTORY_STATES.includes(value as VisualDirectoryState);
+}
+
 export const VISUAL_WORKSPACE_STATES = [
   "dock-light",
   "dock-review",

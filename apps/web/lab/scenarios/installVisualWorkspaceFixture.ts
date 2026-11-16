@@ -1,5 +1,7 @@
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type VisualClient } from "./client";
+import { isCancelledError, type Query } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import webPackageContent from "../../package.json?raw";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
@@ -46,6 +48,7 @@ import {
   type WorkspaceFileChange,
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
+  type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
 } from "@/features/workspace/application/workspaceQueries";
 import {
@@ -58,7 +61,7 @@ import {
   largeFileDiff,
   ACTIVE_DIFF_FILE,
 } from "./diffSnapshot";
-import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import {
   VISUAL_DIAGNOSTICS,
   VISUAL_MEMORY_BINDING,
@@ -68,6 +71,11 @@ import {
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { Skills } from "../../../../plugins/skills/component/component";
 import { fileView } from "@/features/workspace/views";
+import { createWorkspaceEventsPlugin } from "@/features/workspace/events";
+import {
+  WORKSPACE_MUTATION_LIFECYCLE,
+  type WorkspaceMutationLifecycle,
+} from "@/features/workspace/public/services";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
@@ -94,6 +102,9 @@ import {
   type VisualSettingsPane,
   type VisualWorkspaceTheme,
   DOCK_VIEW_BY_STATE,
+  VISUAL_DIRECTORY_PATH,
+  VISUAL_DIRECTORY_CHANGED_EVENT,
+  type VisualDirectoryState,
 } from "./workspaceFixtureStates";
 const Brand = Object.values(
   import.meta.glob<{ Brand: PluginComponent }>(
@@ -242,9 +253,12 @@ function workspaceDataPlugin(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   runtimeClient: () => FlameClient,
   state: VisualWorkspaceState,
+  mutationLifecycle: WorkspaceMutationLifecycle,
+  directoryState?: VisualDirectoryState,
 ): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
+    provides: { mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE },
     setup(ctx) {
       const brandLifetime = ctx.contributions.child("visual-brand");
       const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
@@ -515,42 +529,98 @@ function workspaceDataPlugin(
           }));
         },
       });
+      let directoryPhase: "initial" | "accepted" | "notified" | "failed" = "initial";
+      let directoryQuery: Query | undefined;
+      if (directoryState === "refresh-error") {
+        const notify = () => {
+          if (directoryPhase === "accepted") directoryPhase = "notified";
+        };
+        // Arm before the entry's bubble listener publishes the fixed Runtime notification.
+        window.addEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notify, true);
+        ctx.lifetime.defer(() =>
+          window.removeEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notify, true),
+        );
+      }
+      if (directoryState !== undefined) {
+        ctx.lifetime.defer(
+          queryClient.getQueryCache().subscribe((event) => {
+            if (
+              event.type !== "updated" ||
+              event.query !== directoryQuery ||
+              event.query.state.fetchStatus !== "idle"
+            )
+              return;
+            if (
+              event.action.type === "success" &&
+              !event.action.manual &&
+              directoryPhase !== "notified"
+            )
+              directoryPhase = "accepted";
+            else if (
+              event.action.type === "error" &&
+              !isCancelledError(event.action.error) &&
+              event.query.state.status === "error"
+            )
+              directoryPhase = "failed";
+          }),
+        );
+      }
       ctx.contributions.add(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
-        fetcher: async (params) =>
-          (params as { path?: string } | undefined)?.path === "apps"
-            ? [
-                {
-                  path: ACTIVE_DIFF_FILE,
-                  name: splitFilePath(ACTIVE_DIFF_FILE).name,
-                  type: "file",
-                  sizeBytes: 2048,
-                },
-              ]
-            : ([
-                { path: "apps", name: "apps", type: "dir" },
-                { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
-                { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
-                {
-                  path: "reading-guide.md",
-                  name: "reading-guide.md",
-                  type: "file",
-                  sizeBytes: new TextEncoder().encode(LONG_RESPONSE_MARKDOWN).byteLength,
-                },
-                {
-                  path: "reading-blocks.md",
-                  name: "reading-blocks.md",
-                  type: "file",
-                  sizeBytes: new TextEncoder().encode(READING_BLOCKS_MARKDOWN).byteLength,
-                },
-                {
-                  path: "reading-callouts.md",
-                  name: "reading-callouts.md",
-                  type: "file",
-                  sizeBytes: new TextEncoder().encode(CALLOUT_MARKDOWN).byteLength,
-                },
-                ...(state === "dock-file-unsupported" ? [UNSUPPORTED_IMAGE] : []),
-              ] satisfies WorkspaceFileEntry[]),
+        fetcher: async (params, signal) => {
+          const request = params as WorkspaceListFilesQuery | undefined;
+          if (request?.path === VISUAL_DIRECTORY_PATH) {
+            if (
+              directoryState !== undefined &&
+              request.cwd === VISUAL_WORKSPACE_PATH &&
+              request.recursive !== true
+            ) {
+              directoryQuery = queryClient.getQueryCache().find({
+                queryKey: [WORKSPACE_LIST_FILES_KEY, request],
+                exact: true,
+              });
+              if (directoryState === "loading") return pending<WorkspaceFileEntry[]>(signal);
+              if (directoryState === "empty") return [];
+              if (
+                (directoryState === "error" && directoryPhase === "initial") ||
+                (directoryState === "refresh-error" && directoryPhase === "notified")
+              )
+                throw new Error("Visual fixture could not list apps");
+            }
+            return [
+              {
+                path: ACTIVE_DIFF_FILE,
+                name: splitFilePath(ACTIVE_DIFF_FILE).name,
+                type: "file",
+                sizeBytes: 2048,
+              },
+            ] satisfies WorkspaceFileEntry[];
+          }
+          return [
+            { path: VISUAL_DIRECTORY_PATH, name: VISUAL_DIRECTORY_PATH, type: "dir" },
+            { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
+            { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+            {
+              path: "reading-guide.md",
+              name: "reading-guide.md",
+              type: "file",
+              sizeBytes: new TextEncoder().encode(LONG_RESPONSE_MARKDOWN).byteLength,
+            },
+            {
+              path: "reading-blocks.md",
+              name: "reading-blocks.md",
+              type: "file",
+              sizeBytes: new TextEncoder().encode(READING_BLOCKS_MARKDOWN).byteLength,
+            },
+            {
+              path: "reading-callouts.md",
+              name: "reading-callouts.md",
+              type: "file",
+              sizeBytes: new TextEncoder().encode(CALLOUT_MARKDOWN).byteLength,
+            },
+            ...(state === "dock-file-unsupported" ? [UNSUPPORTED_IMAGE] : []),
+          ] satisfies WorkspaceFileEntry[];
+        },
       });
 
       ctx.contributions.add(DATA_PROVIDER, {
@@ -575,6 +645,7 @@ function workspaceDataPlugin(
           return RESIZER_SOURCE;
         },
       });
+      return { mutationLifecycle };
     },
   });
 }
@@ -624,6 +695,7 @@ export interface VisualWorkspaceConfig {
   sidebarOpen: boolean;
   pane?: VisualSettingsPane;
   fullViewId?: string;
+  directoryState?: VisualDirectoryState;
 }
 
 export function visualWorkspaceRuntime(
@@ -681,7 +753,12 @@ export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
   { agentState, snapshot, capabilities, readDiff }: ReturnType<typeof visualWorkspaceRuntime>,
-  { sidebarOpen, pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig,
+  {
+    sidebarOpen,
+    pane = "appearance",
+    fullViewId = FULL_VIEW_ID,
+    directoryState,
+  }: VisualWorkspaceConfig,
 ): Promise<void> {
   if (state === "dock-diagnostics-recorded") {
     const { spans, metrics, logs } = structuredClone(VISUAL_DIAGNOSTICS);
@@ -763,7 +840,10 @@ export async function installVisualWorkspaceFixture(
     pluginManagementPane,
     createVisualNotifier(visual.messages),
     visualShortcuts,
-    workspaceDataPlugin(readDiff, runtimeClient, state),
+    workspaceDataPlugin(readDiff, runtimeClient, state, visual.workspace, directoryState),
+    ...(directoryState === "refresh-error"
+      ? [createWorkspaceEventsPlugin(visual.agent.access, visual.runtime, runtimeClient)]
+      : []),
     visualFileRenderers(runtimeClient),
   ]);
 

@@ -4,6 +4,8 @@ import {
   type ApprovalModeResult,
   NOTIFICATIONS_RUNTIME_EVENT,
   type RuntimeSubscribeRequest,
+  type ResolveWorkspaceRequest,
+  type WorkspaceInfo,
   type MCPServer,
   type MCPServerID,
   type Diff,
@@ -34,6 +36,7 @@ import {
 import { type MethodInputs as UsageReportInputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_MODEL_FACTS, type VisualModelFacts } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
+import { VISUAL_DIRECTORY_PATH } from "./workspaceFixtureStates";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import { visualTrajectory } from "./trajectorySnapshot";
 import { VISUAL_HOOKS } from "./hookSnapshot";
@@ -99,6 +102,16 @@ function resultFor(
   signal?: AbortSignal,
 ): unknown {
   switch (request.method) {
+    case "workspaces.resolve": {
+      const ref = (request.params as ResolveWorkspaceRequest | undefined)?.ref;
+      if (ref !== undefined && ref.path !== VISUAL_WORKSPACE_PATH)
+        throw new Error(`Visual Runtime has no recorded workspace "${ref.path}"`);
+      return {
+        ref: { path: VISUAL_WORKSPACE_PATH },
+        projectRoot: VISUAL_WORKSPACE_PATH,
+        availability: "available",
+      } satisfies WorkspaceInfo;
+    }
     case "workspace.diff.get":
       return readDiff(signal, request.params as GetDiffRequest);
     case "runtime.discover":
@@ -178,7 +191,7 @@ export function createVisualRuntimeTransport(
     skillDocuments?: readonly SkillDetail[];
     memoryPages?: VisualMemoryPages;
   } = {},
-): Transport & { removeSchedule(id: string): void } {
+): Transport & { removeSchedule(id: string): void; notifyDirectoryChange(): void } {
   const transport = createMemoryTransport();
   const skillDocuments = structuredClone([
     ...(configuration.skillDocuments ?? VISUAL_SKILL_DOCUMENTS),
@@ -190,8 +203,31 @@ export function createVisualRuntimeTransport(
   const models = structuredClone(configuration.modelFacts ?? VISUAL_MODEL_FACTS);
   const mcpServers = structuredClone(configuration.mcpServers ?? []);
   const schedules = structuredClone(VISUAL_SCHEDULES_PAGE);
-  const scheduleWatches = new Map<TransportRequest["id"], AbortSignal | undefined>();
+  const watches = new Map<
+    TransportRequest["id"],
+    { topics: RuntimeSubscribeRequest["topics"]; signal?: AbortSignal }
+  >();
   let sequence = 0;
+  const publish = (type: "plugins.dataChanged" | "files.changed") => {
+    sequence += 1;
+    const event =
+      type === "files.changed"
+        ? {
+            type,
+            sequence,
+            workspace: { path: VISUAL_WORKSPACE_PATH },
+            paths: [VISUAL_DIRECTORY_PATH],
+          }
+        : { type, sequence };
+    for (const [rpcId, watch] of watches) {
+      if (watch.signal?.aborted || !watch.topics.includes(type)) continue;
+      transport.inject(
+        { jsonrpc: "2.0", method: NOTIFICATIONS_RUNTIME_EVENT, params: { event } },
+        undefined,
+        rpcId,
+      );
+    }
+  };
   const approval: ApprovalModeResult = {
     mode: "balanced",
     modes: [
@@ -203,26 +239,17 @@ export function createVisualRuntimeTransport(
   return {
     recv: transport.recv,
     close() {
-      scheduleWatches.clear();
+      watches.clear();
       return transport.close();
+    },
+    notifyDirectoryChange() {
+      publish("files.changed");
     },
     removeSchedule(id) {
       const index = schedules.Rows.findIndex((row) => row.ID === id);
       if (index < 0) throw new Error(`visual schedules has no record named "${id}"`);
       schedules.Rows.splice(index, 1);
-      sequence += 1;
-      for (const [rpcId, signal] of scheduleWatches) {
-        if (signal?.aborted) continue;
-        transport.inject(
-          {
-            jsonrpc: "2.0",
-            method: NOTIFICATIONS_RUNTIME_EVENT,
-            params: { event: { type: "plugins.dataChanged", sequence } },
-          },
-          undefined,
-          rpcId,
-        );
-      }
+      publish("plugins.dataChanged");
     },
     async send(request, signal, options) {
       signal?.throwIfAborted();
@@ -292,13 +319,12 @@ export function createVisualRuntimeTransport(
         );
       }
       await transport.send(request, signal, options);
-      if (
-        request.method === "runtime.subscribe" &&
-        (request.params as RuntimeSubscribeRequest).topics.includes("plugins.dataChanged") &&
-        !signal?.aborted
-      ) {
-        scheduleWatches.set(request.id, signal);
-        signal?.addEventListener("abort", () => scheduleWatches.delete(request.id), { once: true });
+      if (request.method === "runtime.subscribe" && !signal?.aborted) {
+        watches.set(request.id, {
+          topics: [...(request.params as RuntimeSubscribeRequest).topics],
+          signal,
+        });
+        signal?.addEventListener("abort", () => watches.delete(request.id), { once: true });
       }
       transport.inject({ jsonrpc: "2.0", id: request.id, result });
     },

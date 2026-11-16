@@ -259,6 +259,43 @@ viewer owner after resetting the document's file tree memory, retaining its path
 and parent folders for return. Listed file names derive from their captured paths.
 Retry preserves the recorded failure; other files keep their normal captured reads.
 
+The same Workspace document accepts `directory-state=loading|error|empty|refresh-error`.
+It controls only the captured workspace's nonrecursive `apps` listing. Root entries,
+other workspaces and recursive reads keep their normal captured responses. This is
+separate from the Agent fixture's Composer `file-list` parameter.
+
+- `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=loading`
+  holds the expanded directory read until its query or provider lifetime is aborted.
+  Collapse cancels that read; reopening starts another pending read.
+- `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=error`
+  rejects the initial query, including its automatic retries. The real Files Retry
+  action then receives the captured child and ordinary file navigation continues.
+- `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=empty`
+  returns an accepted empty directory without emptying the root list.
+- `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=refresh-error`
+  first accepts the child. The fixture sidebar's **Notify apps change** action sends
+  a fixed `files.changed` notification through the existing Runtime subscription.
+  Production invalidation triggers a failed refresh while retaining that child;
+  the real Retry action recovers it. The fixture's state rows remain read-only.
+
+Each provider installation owns its directory phase. Settled reads own acceptance
+and failure; only the fixed Notify event arms a refresh failure. Normal subscription
+initialization and read-target changes can refresh successfully. Old cache values,
+manual writes and cancellation do not advance the read phase. Its observer and
+notification listener retire with the provider. No fixture timer,
+query-default override, cache write or alternate FileBrowser renders these states.
+The refresh scene installs the production Workspace event plugin with the real
+Workspace mutation lifecycle. Its captured resolver accepts only the fixture root.
+The transport owns the notification sequence and stops delivery when a subscription
+aborts or closes. The control simulates a captured external filesystem notification,
+not live filesystem access.
+
+`fileTree.browser.spec.ts` follows keyboard Retry, file/source return, retained child
+identity, loading cancellation and unaffected root navigation in both engines.
+Existing fixture and transport unit tests cover automatic retries, cache/reinstall
+boundaries, cancellation and topic routing. These checks establish DOM/ARIA and
+interaction behavior; actual Wails AX outline/child exposure requires native acceptance.
+
 The existing Workspace catalog also owns `dock-skills-catalog`: 80 recorded
 documents alternate project and user scopes, with 40 matching `runtime`.
 Discovery and document reads project the same array captured when that fixture's
