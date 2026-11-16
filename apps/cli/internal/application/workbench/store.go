@@ -291,7 +291,7 @@ func (s *Store) newStash(message authoring.Message) (Stash, error) {
 		return Stash{}, fmt.Errorf("create stash id: %w", err)
 	}
 	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
-	if err := stash.Validate(); err != nil {
+	if err := validateStashes(append(slices.Clone(s.stashes), stash)); err != nil {
 		return Stash{}, err
 	}
 	return stash, nil
