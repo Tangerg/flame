@@ -11,7 +11,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -100,7 +101,7 @@ func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
 	if err == nil {
 		t.Fatal("malformed output became success")
 	}
-	if _, known := errors.AsType[*framemcp.Refusal](err); known {
+	if _, known := errors.AsType[*framecall.Refusal](err); known {
 		t.Fatalf("malformed output became known business refusal: %v", err)
 	}
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime(t *testing.T) {
@@ -47,7 +47,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	consumer := activate(consumerSource, "consumer")
 	consumerServer := wait(consumer, "reviews")
 	contribution := consumer.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: consumer.ID}}
+	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: consumer.ID}}
 	type analysis struct {
 		Review struct {
 			ID       string `json:"id"`

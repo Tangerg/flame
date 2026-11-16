@@ -5,10 +5,10 @@ import (
 	"slices"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framemcp "github.com/Tangerg/frame/process/mcp"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type pluginBinding interface {
@@ -137,7 +137,7 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 		return nil, runtimeContractViolation("plugin call returned invalid response: %v", err)
 	}
 	if result.Failure != nil {
-		return nil, &framemcp.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return nil, &framecall.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	contract, err := plugincontract.ParseCapability([]byte(request.Contract))
 	if err != nil {

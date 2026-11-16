@@ -15,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -162,7 +163,7 @@ func (a *observationAdmission) enter(command pluginmcp.Command[scopewire.Request
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
 	if a.entered || string(command.ID) != a.id || err != nil || !exact {
-		a.violation = &framemcp.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
+		a.violation = &framecall.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
 		a.violation = errors.Join(a.violation, err)
 		return a.violation
 	}

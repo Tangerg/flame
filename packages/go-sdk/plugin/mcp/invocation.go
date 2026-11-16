@@ -6,7 +6,8 @@ import (
 	"errors"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
@@ -15,28 +16,28 @@ const InvocationMetadataKey = "io.github.tangerg.flame/invocation"
 
 type invocationKey struct{}
 
-func WithInvocation(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
+func WithInvocation(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 	if err := invocation.Validate(); err != nil {
 		return nil, err
 	}
 	return context.WithValue(ctx, invocationKey{}, invocation), nil
 }
 
-func InvocationFromContext(ctx context.Context) (framemcp.Invocation, error) {
-	invocation, found := ctx.Value(invocationKey{}).(framemcp.Invocation)
+func InvocationFromContext(ctx context.Context) (framecall.Invocation, error) {
+	invocation, found := ctx.Value(invocationKey{}).(framecall.Invocation)
 	if !found {
-		return framemcp.Invocation{}, errors.New("plugin: calling-owner invocation is required")
+		return framecall.Invocation{}, errors.New("plugin: calling-owner invocation is required")
 	}
 	return invocation, invocation.Validate()
 }
 
 func invocationMetadata(ctx context.Context, metadata sdk.ParamsBase) (sdk.ParamsBase, error) {
-	invocation, found := ctx.Value(invocationKey{}).(framemcp.Invocation)
+	invocation, found := ctx.Value(invocationKey{}).(framecall.Invocation)
 	if !found {
 		return metadata, nil
 	}
 	if supplied, present := metadata.Meta[InvocationMetadataKey]; present {
-		var value framemcp.Invocation
+		var value framecall.Invocation
 		if err := json.Unmarshal(supplied, &value, json.RejectUnknownMembers(true)); err != nil || value != invocation {
 			return sdk.ParamsBase{}, errors.New("plugin: metadata cannot replace its calling-owner context")
 		}
@@ -53,11 +54,11 @@ func bindInvocationMetadata(ctx context.Context, metadata sdk.Meta, method *fram
 	if !found {
 		return ctx, nil
 	}
-	var invocation framemcp.Invocation
+	var invocation framecall.Invocation
 	if err := json.Unmarshal(value, &invocation, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
-	if owner, present := ctx.Value(invocationKey{}).(framemcp.Invocation); present {
+	if owner, present := ctx.Value(invocationKey{}).(framecall.Invocation); present {
 		if invocation != owner {
 			return nil, errors.New("plugin: callback cannot replace its calling-owner context")
 		}

@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -66,7 +66,7 @@ func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, fun
 
 func providerContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "provider-test", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "providers"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "provider-test", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "providers"}})
 	if err != nil {
 		t.Fatal(err)
 	}

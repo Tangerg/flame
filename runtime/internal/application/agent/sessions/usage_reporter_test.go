@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -95,7 +95,7 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Invoca
 		t.Fatal(err)
 	}
 	caller := "call_" + id
-	invocation := modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: framemcp.Invocation{ID: caller, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: modelref.ChatEndpointRequest{Chat: request}}
+	invocation := modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: framecall.Invocation{ID: caller, Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: modelref.ChatEndpointRequest{Chat: request}}
 	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)

@@ -12,7 +12,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -88,7 +89,7 @@ func TestRequestFrameBudgetIncludesActualSDKEnvelopeAndStreamGrant(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation := framemcp.Invocation{ID: "original-frame", Origin: "human", Parent: "original-owner", Target: framemcp.Target{Scope: "installation", Reference: "original-installation"}}
+			invocation := framecall.Invocation{ID: "original-frame", Origin: "human", Parent: "original-owner", Target: framecall.Target{Scope: "installation", Reference: "original-installation"}}
 			ctx, err := WithInvocation(t.Context(), invocation)
 			if err != nil {
 				t.Fatal(err)

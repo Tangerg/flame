@@ -11,7 +11,8 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -65,7 +66,7 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != admitted.String() {
-				conflict, err := pluginmcp.EncodeReply(zero, framemcp.ErrInvocationConflict, nil)
+				conflict, err := pluginmcp.EncodeReply(zero, framecall.ErrConflict, nil)
 				reply = conflict.Bytes()
 				return err
 			}
@@ -207,7 +208,7 @@ func ReadReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.R
 		return pluginmcp.Receipt{}, err
 	}
 	if method != input.Method || admitted.Digest() != input.InputDigest {
-		return pluginmcp.Receipt{}, framemcp.ErrInvocationConflict
+		return pluginmcp.Receipt{}, framecall.ErrConflict
 	}
 	return pluginmcp.Receipt{Found: len(reply) != 0, Reply: reply}, nil
 }

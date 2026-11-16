@@ -537,6 +537,7 @@ var notOnTheWire = map[string]string{
 	"ConstraintError":        "the Go validator's error carrier; its wire projection is ProblemData.errors",
 	"PageContinuation":       "a composed value owner flattened into every Page instantiation, never a standalone JSON frame",
 	"PageQuery":              "a composed cursor-query owner flattened into each paginated request, never a standalone JSON frame",
+	"PluginBrowserScopeRef":  "a composed browser scope reference flattened into its requests, never a standalone JSON frame",
 	"RecordedUsage":          "a composed usage block flattened into each usage report, never a standalone JSON frame",
 }
 

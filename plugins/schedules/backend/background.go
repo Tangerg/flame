@@ -15,7 +15,7 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/google/uuid"
 )
@@ -33,11 +33,11 @@ type background struct {
 	store           store
 	scanner         *app.Scanner
 	host            runHost
-	target          framemcp.Target
+	target          framecall.Target
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, db framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target framemcp.Target, closeHost func() error) *background {
+func newBackground(ctx context.Context, db framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target framecall.Target, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{contribution: contribution, closeDone: make(chan struct{}), ctx: lifetime, cancel: cancel, done: make(chan struct{}), db: db, store: store, scanner: scanner, host: host, target: target, closeHost: closeHost}
 }
@@ -87,7 +87,7 @@ func (b *background) run() {
 	}
 }
 func (b *background) scan(now time.Time) {
-	invocation := framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+	invocation := framecall.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 	ctx, err := pluginmcp.WithInvocation(b.ctx, invocation)
 	if err != nil {
 		b.report("caller admission", err)

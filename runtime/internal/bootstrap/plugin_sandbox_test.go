@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -80,7 +80,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
 	var result testsupport.SandboxResult
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || generatedInteger(t, result.ExitCode) != 5 || result.Stdout.Content != "native-typed-result" {

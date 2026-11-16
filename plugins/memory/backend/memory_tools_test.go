@@ -18,7 +18,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -28,7 +29,7 @@ import (
 func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, name string, input any) (*sdk.CallToolResult, framevalue.JSON) {
 	t.Helper()
 	var meta sdk.Meta
-	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: id, Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := meta.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: project}); err != nil {
@@ -117,7 +118,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	}
 	humanInput := rpc.UpdateInput{ID: first.ID().String(), ExpectedRevision: first.Revision(), Content: new(second.Content()), Pinned: new(true)}
 	_, err = callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput, sdk.ParamsBase{})
-	refusal, known := errors.AsType[*framemcp.Refusal](err)
+	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("human content conflict remained unconfirmed: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	_, found, err := receiptMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput)
-	refusal, known = errors.AsType[*framemcp.Refusal](err)
+	refusal, known = errors.AsType[*framecall.Refusal](err)
 	if !found || !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("restart lost the human refusal: found=%v %v", found, err)
 	}

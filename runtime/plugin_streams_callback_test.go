@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -93,7 +93,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if chunks != 1 || results != 1 || target.calls.Load() != 1 {
 		t.Fatalf("callback chunks=%d results=%d calls=%d", chunks, results, target.calls.Load())
 	}
-	invoked, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original"}})
+	invoked, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}

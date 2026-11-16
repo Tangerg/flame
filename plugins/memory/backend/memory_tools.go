@@ -16,7 +16,7 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/jsonschema"
 	tool "github.com/Tangerg/scope/core/tool"
@@ -243,7 +243,7 @@ func memoryToolFailure(name string, err error) error {
 		return nil
 	}
 	wrapped := fmt.Errorf("%s: %w", name, err)
-	if _, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
+	if _, known := errors.AsType[*framecall.Refusal](err); known && !errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
 		return pluginsdk.DefiniteToolFailure(wrapped)
 	}
 	return wrapped

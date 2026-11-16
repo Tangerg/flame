@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	framemcp "github.com/Tangerg/frame/process/mcp"
 
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/samber/lo"
 )
 
@@ -29,7 +29,7 @@ func NewCallerRestorer(commands *plugins.Commands, tools toolCallers) (*CallerRe
 	return &CallerRestorer{commands: commands, tools: tools}, nil
 }
 
-func (r *CallerRestorer) RestoreInvocation(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
+func (r *CallerRestorer) RestoreInvocation(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}

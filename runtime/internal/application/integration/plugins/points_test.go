@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -48,7 +48,7 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 	}
 	unrelated := makeSnapshot("unrelated", plugin.Declaration{PointValues: []plugin.PointValue{{ID: "unrelated", Contract: otherContract.Identity(), Value: value}}})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{producer, consumer, unrelated}}
-	context := plugincontract.PointContext{Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+	context := plugincontract.PointContext{Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
 	host := testFramework(t, store)
 	bindings, err := ResolvePoint(t.Context(), host, store, contract, context, nil)
 	if err != nil || len(bindings) != 1 || bindings[0].Reference.Installation != producer.Installation.ID() || bindings[0].Digest != producer.Selected.Digest() || bindings[0].Value != value {

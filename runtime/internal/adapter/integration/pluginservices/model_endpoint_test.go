@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -51,7 +51,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatal(err)
 	}
 	bound, _ := observers.Bind(resolved.Model(), nil, bindings)
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-endpoint-parent"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original-endpoint-parent"}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"os"
@@ -219,7 +220,7 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 		}
 		result = encoded.Bytes()
 	case "conflict":
-		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, framemcp.ErrInvocationConflict, nil)
+		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, framecall.ErrConflict, nil)
 		if err != nil {
 			return nil, err
 		}

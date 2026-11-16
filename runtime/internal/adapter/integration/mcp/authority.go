@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -48,7 +48,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return toolcontract.Result{}, err
 	}
 	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
-		captured, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
+		captured, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
 		}

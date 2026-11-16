@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -146,7 +146,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framecall.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

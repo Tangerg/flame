@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -23,7 +24,7 @@ func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
 	var meta sdk.Meta
 	if id != "" {
-		if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+		if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: id, Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -261,7 +262,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}
-	if _, classified := errors.AsType[*framemcp.Refusal](err); classified {
+	if _, classified := errors.AsType[*framecall.Refusal](err); classified {
 		t.Fatalf("unexpected storage error became a known refusal: %v", err)
 	}
 }

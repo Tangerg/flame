@@ -24,8 +24,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/frame"
+	framecall "github.com/Tangerg/frame/call"
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -191,7 +192,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 				f.digest = input.Digest()
 				f.receipt = pluginmcp.Receipt{Found: true, Reply: []byte(`{"failure":{"code":"refused","message":"owner refused"}}`)}
 				f.mu.Unlock()
-				yield(pluginmcp.StreamValue[string, bool]{}, &framemcp.Refusal{Code: "refused", Message: "owner refused"})
+				yield(pluginmcp.StreamValue[string, bool]{}, &framecall.Refusal{Code: "refused", Message: "owner refused"})
 				return
 			}
 			input, err := command.RequestInput()
@@ -248,7 +249,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}}
+	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}}
 	return f
 }
 
@@ -327,7 +328,7 @@ func TestInstalledStreamKnownRefusalObservesAndRestoresOriginalReceipt(t *testin
 	ctx := operation.Bind(t.Context(), "records.stream", "refused")
 	for range 2 {
 		_, err := f.run(t, ctx)
-		if refusal, known := errors.AsType[*framemcp.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, pluginmcp.ErrStreamUnconfirmed) {
+		if refusal, known := errors.AsType[*framecall.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, pluginmcp.ErrStreamUnconfirmed) {
 			t.Fatalf("known refusal became uncertain: %v", err)
 		}
 	}
@@ -362,7 +363,7 @@ func TestInstalledStreamOriginalOriginAndInputCannotChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	changed := operation.Adopt(t.Context(), operation.Identity(ctx), extension.Automatic, "")
-	if _, err := f.run(t, changed); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := f.run(t, changed); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed origin admitted: %v", err)
 	}
 	input, err := framevalue.ParseJSON([]byte(`{"changed":true}`))
@@ -370,7 +371,7 @@ func TestInstalledStreamOriginalOriginAndInputCannotChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.request.Input = input
-	if _, err := f.run(t, ctx); !errors.Is(err, framemcp.ErrInvocationConflict) || f.invocations.Load() != 1 {
+	if _, err := f.run(t, ctx); !errors.Is(err, framecall.ErrConflict) || f.invocations.Load() != 1 {
 		t.Fatalf("changed input admitted: %v calls=%d", err, f.invocations.Load())
 	}
 }
@@ -430,7 +431,7 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared := call.(*installedStream)
-	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) framemcp.Target { return f.request.Target }, true)
+	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) framecall.Target { return f.request.Target }, true)
 	if err != nil {
 		t.Fatal(err)
 	}

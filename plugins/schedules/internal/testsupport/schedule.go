@@ -3,9 +3,9 @@ package testsupport
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
-func ScheduleInvocation() framemcp.Invocation {
-	return framemcp.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}}
+func ScheduleInvocation() framecall.Invocation {
+	return framecall.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

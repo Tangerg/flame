@@ -15,7 +15,8 @@ This guide uses the following package names:
 | `pluginmcp`      | `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`      | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
 | `frame`          | `github.com/Tangerg/frame`                                 | Neutral immutable method/schema contracts                                 |
 | `plugincontract` | `github.com/Tangerg/flame/packages/go-sdk/plugin/contract` | Flame capability composition, scope and value points                      |
-| `framemcp`       | `github.com/Tangerg/frame/process/mcp`                     | Managed invocation, origin and refusal values                             |
+| `framecall`      | `github.com/Tangerg/frame/call`                            | Pure invocation, origin, target and identity-conflict values              |
+| `framemcp`       | `github.com/Tangerg/frame/process/mcp`                     | Managed transport, callbacks and refusal wire translation                 |
 | `extension`      | `github.com/Tangerg/flame/packages/go-sdk/extension`       | Flame invocation origins and call/installation scope policy               |
 
 Use the ordinary MCP SDK server and transport. Frame's process driver and runner
@@ -842,7 +843,7 @@ admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
 per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.3.0/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
-`framemcp.ErrInvocationConflict` classifies changed original method/input under
+`framecall.ErrConflict` classifies changed original method/input under
 one invocation identity. Host replay retention and execution lifecycle remain
 inside Runtime.
 

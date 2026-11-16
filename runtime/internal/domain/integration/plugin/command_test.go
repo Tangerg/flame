@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestCommandAdmissionAndRestorationRequireTheOriginalInputContract(t *testing.T) {
@@ -18,7 +18,7 @@ func TestCommandAdmissionAndRestorationRequireTheOriginalInputContract(t *testin
 		Contract: testsupport.CommandContract(t, "records.update", extension.ScopeInstallation),
 		Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider),
 		Server: testsupport.ServerName("backend"), Contribution: "records", Export: "operations",
-		Invocation: framemcp.Invocation{ID: "original", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}},
+		Invocation: framecall.Invocation{ID: "original", Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}},
 	}
 	command, err := plugin.NewCommand(record)
 	if err != nil {

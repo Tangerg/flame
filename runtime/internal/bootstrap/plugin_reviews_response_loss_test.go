@@ -25,7 +25,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -62,7 +63,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
@@ -241,7 +242,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	}
 	if _, err := write.Invoke(ctx, "original-command", input); err == nil {
 		t.Fatal("lost acknowledgement became known success")
-	} else if _, known := errors.AsType[*framemcp.Refusal](err); known {
+	} else if _, known := errors.AsType[*framecall.Refusal](err); known {
 		t.Fatalf("lost observation became a business refusal: %v", err)
 	}
 	_ = session.Close()
@@ -455,7 +456,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := json.Unmarshal(encoded, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	var invocation framemcp.Invocation
+	var invocation framecall.Invocation
 	if err := json.Unmarshal(evidence.Request.Params.Meta[pluginmcp.InvocationMetadataKey], &invocation); err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +531,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	var inspectedMetadata sdk.Meta
-	if err := inspectedMetadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "new-inspected-call", Origin: extension.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
+	if err := inspectedMetadata.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "new-inspected-call", Origin: extension.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
 		t.Fatal(err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: inspectedMetadata})

@@ -16,8 +16,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
+	framecall "github.com/Tangerg/frame/call"
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -90,8 +91,8 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 			return validate(value)
 		}
 		return nil
-	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) framemcp.Target {
-		return framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
+	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) framecall.Target {
+		return framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
 	})
 	if err != nil {
 		var zero R
@@ -100,7 +101,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) framemcp.Target) (_ commandReply[framevalue.JSON], returned error) {
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) framecall.Target) (_ commandReply[framevalue.JSON], returned error) {
 	var zero commandReply[framevalue.JSON]
 	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
@@ -164,7 +165,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			err = plugin.ErrCommandUnconfirmed
 		}
 	}
-	_, known := errors.AsType[*framemcp.Refusal](err)
+	_, known := errors.AsType[*framecall.Refusal](err)
 	if err != nil && !known {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
@@ -213,9 +214,9 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framemcp.Target, streaming bool) (plugin.CommandBinding, error) {
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framecall.Target, streaming bool) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
-	capture := func(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
+	capture := func(binding plugins.ContributionBinding) (framecall.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
 	}
 	command, found, routeErr := c.routing.Find(ctx, id, method, admitted)
@@ -280,7 +281,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		}, capture)
 	}
 	if errors.Is(routeErr, plugin.ErrCommandConflict) {
-		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framemcp.ErrInvocationConflict, routeErr))
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framecall.ErrConflict, routeErr))
 	}
 	if routeErr != nil {
 		return plugin.CommandBinding{}, routeErr
@@ -291,7 +292,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		return plugin.CommandBinding{}, err
 	}
 	if invocation != record.Invocation {
-		return plugin.CommandBinding{}, errors.Join(framemcp.ErrInvocationConflict, plugin.ErrCommandConflict)
+		return plugin.CommandBinding{}, errors.Join(framecall.ErrConflict, plugin.ErrCommandConflict)
 	}
 	if accepts != nil {
 		if err := accepts(record); err != nil {

@@ -15,7 +15,8 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -67,7 +68,7 @@ func evaluateEvent(ctx context.Context, db sqlite.Database, method string, comma
 	}
 	receipt, reply, err := pluginstorage.AdmitCommand(ctx, db, method, string(command.ID), input, func(context.Context) error {
 		if err := command.Input.Validate(); err != nil {
-			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})
@@ -151,7 +152,7 @@ func (e *eventCommands) rule(ctx context.Context, id string, input framevalue.JS
 			return hookprovider.Result{}, err
 		}
 		if original != input {
-			return hookprovider.Result{}, framemcp.ErrInvocationConflict
+			return hookprovider.Result{}, framecall.ErrConflict
 		}
 		if len(reply) == 0 {
 			return hookprovider.Result{}, pluginstorage.ErrCommandUnconfirmed
@@ -164,7 +165,7 @@ func (e *eventCommands) rule(ctx context.Context, id string, input framevalue.JS
 			return err
 		}
 		if err := request.Validate(); err != nil {
-			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})

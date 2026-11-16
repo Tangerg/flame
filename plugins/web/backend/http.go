@@ -10,7 +10,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
@@ -51,12 +51,12 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 	var invocation tool.Invocation
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, input, func(context.Context) error {
 		if r.binding == nil {
-			return &framemcp.Refusal{Code: "http_unconfigured", Message: "web: configure http-allowed-hosts before making HTTP requests"}
+			return &framecall.Refusal{Code: "http_unconfigured", Message: "web: configure http-allowed-hosts before making HTTP requests"}
 		}
 		var err error
 		invocation, err = r.binding.Contract().Prepare((chat.ToolCall{ID: id, Name: "http_request", Arguments: input.String()}).Request(), tool.Admission{})
 		if err != nil {
-			return &framemcp.Refusal{Code: "invalid_request", Message: "web: invalid HTTP request"}
+			return &framecall.Refusal{Code: "invalid_request", Message: "web: invalid HTTP request"}
 		}
 		return nil
 	})
@@ -86,7 +86,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 		if !text {
 			return wire.HTTPResponse{}, callErr
 		}
-		callErr = &framemcp.Refusal{Code: "request_rejected", Message: message}
+		callErr = &framecall.Refusal{Code: "request_rejected", Message: message}
 	}
 	encoded, err := pluginmcp.EncodeReply(response, callErr, nil)
 	if err != nil {
@@ -99,7 +99,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 }
 
 func requestToolFailure(err error) error {
-	refusal, known := errors.AsType[*framemcp.Refusal](err)
+	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known {
 		return err
 	}

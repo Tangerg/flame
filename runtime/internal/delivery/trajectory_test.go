@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -110,7 +110,7 @@ func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: framemcp.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: framecall.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
 	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)

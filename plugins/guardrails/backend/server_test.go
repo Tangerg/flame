@@ -15,7 +15,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -67,7 +68,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "edit-policy", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "guardrails"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "edit-policy", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "guardrails"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -98,7 +99,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err = pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "inspect-input", Origin: extension.Model, Target: framemcp.Target{Scope: "call", Reference: "inspect-input"}})
+			ctx, err = pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "inspect-input", Origin: extension.Model, Target: framecall.Target{Scope: "call", Reference: "inspect-input"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +147,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*framecall.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

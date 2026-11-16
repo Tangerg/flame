@@ -14,7 +14,7 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -59,7 +59,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	}
 	input := wire.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
 	encoded, _ := framevalue.EncodeJSON(input)
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "typed", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "sandbox"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "typed", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "sandbox"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
 		t.Fatal(err)
 	}
 	model, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: executeTool, Arguments: input, Meta: meta})

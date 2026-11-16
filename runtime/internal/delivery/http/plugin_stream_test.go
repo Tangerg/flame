@@ -20,7 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type streamRuntime struct {
@@ -63,7 +64,7 @@ func TestRemotePluginCallPreservesSharedNumericCorpus(t *testing.T) {
 	}
 	defer client.Close()
 	id := testsupport.InstallationID(t).String()
-	reply, err := client.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: source, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id}}, protocol.PluginCallOptions{})
+	reply, err := client.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: source, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: id}}, protocol.PluginCallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 				t.Fatal(err)
 			}
 			defer client.Close()
-			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation).Bytes()), Method: "records.stream", Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation).Bytes()), Method: "records.stream", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 			_, events, err := client.StreamPlugin(t.Context(), request, protocol.PluginCallOptions{IdempotencyKey: "original"})
 			if err != nil {
 				t.Fatal(err)
@@ -181,7 +182,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: "records.query", Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().Bytes()), Method: "records.query", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 	if _, _, err := client.StreamPlugin(t.Context(), request, protocol.PluginCallOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("query admitted a command identity: %v", err)
 	}

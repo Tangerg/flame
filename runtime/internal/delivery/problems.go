@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func pluginProviderErrors(other ...string) []string {
@@ -25,7 +24,7 @@ func failureFromData(data protocol.ProblemData) *protocol.Failure {
 }
 
 func projectError(err error) *protocol.Failure {
-	if errors.Is(err, framemcp.ErrInvocationConflict) {
+	if errors.Is(err, framecall.ErrConflict) {
 		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key already binds a different command", err)
 	}
 	if _, found := errors.AsType[*protocol.Failure](err); found {

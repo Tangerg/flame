@@ -22,7 +22,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/samber/lo"
 )
 
@@ -106,7 +107,7 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Start(ctx, extension.Automatic, m.Name(), "")
 	}
-	invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 	if err != nil {
 		return zero, err
 	}
@@ -245,7 +246,7 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 		if operation.Identity(ctx) == "" {
 			ctx = operation.Start(ctx, extension.Automatic, c.methods.Change.Name(), "")
 		}
-		invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
+		invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 		if err != nil {
 			return err
 		}

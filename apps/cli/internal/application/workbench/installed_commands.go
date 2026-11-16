@@ -15,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -41,7 +42,7 @@ type installedCommandRecord struct {
 	Contract       string                `json:"contract"`
 	Method         string                `json:"method"`
 	Input          []byte                `json:"input"`
-	Target         framemcp.Target       `json:"target"`
+	Target         framecall.Target      `json:"target"`
 	Replay         authoring.ReplayGuard `json:"replay"`
 }
 
@@ -205,7 +206,7 @@ func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store 
 			return errors.New("staged installed command is absent")
 		}
 	}
-	var ownerRefusal *framemcp.Refusal
+	var ownerRefusal *framecall.Refusal
 	_, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (struct{}, error) {
 		if err := store.DispatchReady(); err != nil {
 			return struct{}{}, err
@@ -221,7 +222,7 @@ func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store 
 			return struct{}{}, errors.New("installed command acknowledgement is absent")
 		}
 		if reply.Failure != nil {
-			ownerRefusal = &framemcp.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+			ownerRefusal = &framecall.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 			return struct{}{}, ownerRefusal
 		}
 		return struct{}{}, nil

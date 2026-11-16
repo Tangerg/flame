@@ -17,7 +17,8 @@ import (
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -78,7 +79,7 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 	}
 	changed := wire.ExecuteInput{Script: "exit 0", TimeoutMillis: 3000}
 	changedJSON, _ := framevalue.EncodeJSON(changed)
-	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", changedJSON); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", changedJSON); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("accepted identity changed script: %v", err)
 	}
 	binary := wire.ExecuteInput{Script: "printf '\\377'", TimeoutMillis: 3000}
@@ -129,7 +130,7 @@ func TestUnknownNativeCommandCannotAcquireANewHostReadAfterRestart(t *testing.T)
 	invalidJSON, _ := framevalue.EncodeJSON(invalid)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "invalid", invalidJSON)
-		refusal, known := errors.AsType[*framemcp.Refusal](err)
+		refusal, known := errors.AsType[*framecall.Refusal](err)
 		if !known || refusal.Code != "invalid_program" || calls != 1 {
 			t.Fatalf("local refusal did not settle before host access: %v", err)
 		}

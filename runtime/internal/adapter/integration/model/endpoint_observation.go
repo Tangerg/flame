@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/google/uuid"
@@ -228,5 +228,5 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 }
 
 func endpointContext(ctx context.Context, invocation modelref.EndpointInvocation) (context.Context, error) {
-	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: invocation.ID, Origin: invocation.Caller.Origin, Parent: invocation.Caller.ID, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: invocation.ID}})
+	return pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: invocation.ID, Origin: invocation.Caller.Origin, Parent: invocation.Caller.ID, Target: framecall.Target{Scope: extension.ScopeCall, Reference: invocation.ID}})
 }

@@ -21,7 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
@@ -515,7 +516,7 @@ func providerContext(ctx context.Context, binding plugins.ContributionBinding, i
 		if operation.Identity(ctx) == "" {
 			ctx = operation.Bind(ctx, "models.provider", "")
 		}
-		caller, err = operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()})
+		caller, err = operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -527,5 +528,5 @@ func providerContext(ctx context.Context, binding plugins.ContributionBinding, i
 	if parent == id {
 		parent = caller.Parent
 	}
-	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
+	return pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
 }

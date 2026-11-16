@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -62,7 +62,7 @@ type identifiedTool struct {
 func (t identifiedTool) ToolRef() tool.Ref                    { return t.ref }
 func (t identifiedTool) SourceFingerprint() framevalue.Digest { return t.fingerprint }
 
-func CaptureToolCaller(executable toolcontract.Tool, invocation framemcp.Invocation) (plugin.ToolCaller, error) {
+func CaptureToolCaller(executable toolcontract.Tool, invocation framecall.Invocation) (plugin.ToolCaller, error) {
 	ref, err := Identify(executable)
 	if err != nil {
 		return plugin.ToolCaller{}, err

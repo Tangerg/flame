@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
@@ -65,13 +65,13 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				var backendCalls atomic.Int32
 				selection := testsupport.DefaultModelSelection()
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-				original := framemcp.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
-				callers := make(chan framemcp.Invocation, 1)
+				original := framecall.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
+				callers := make(chan framecall.Invocation, 1)
 				refs := make(chan pluginmcp.CallbackRef, 1)
 				host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					actor, found := operation.ActorFrom(r.Context())
 					invocation, err := pluginmcp.InvocationFromContext(r.Context())
-					var expected framemcp.Invocation
+					var expected framecall.Invocation
 					select {
 					case expected = <-callers:
 					default:

@@ -21,7 +21,8 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -152,7 +153,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatalf("original evidence changed: %s, %v", output.Source, err)
 	}
 	_, err = readBinding.Call(t.Context(), typescriptInput{Mode: "empty-refusal", Value: input.Value})
-	if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+	if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("empty-message business refusal lost its category: %v", err)
 	}
 	writeBinding, err := write.Bind(bound)
@@ -176,9 +177,9 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	invocation := framemcp.Invocation{
+	invocation := framecall.Invocation{
 		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
-		Target: framemcp.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+		Target: framecall.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
 	}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), invocation)
 	if err != nil {
@@ -190,7 +191,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 			t.Errorf("callback lost original invocation: %+v, %v", actual, err)
 		}
 		if string(command.Input.Value) == `"empty-refusal"` {
-			return typescriptHostInput{}, &framemcp.Refusal{Code: "fixture_refused"}
+			return typescriptHostInput{}, &framecall.Refusal{Code: "fixture_refused"}
 		}
 		return command.Input, nil
 	})
@@ -212,7 +213,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatalf("host callback: %s, %v", output.Value, err)
 	}
 	_, err = readBinding.CallWithMetadata(ctx, typescriptInput{Mode: "host", Value: jsontext.Value(`"empty-refusal"`)}, metadata)
-	if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+	if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("host refusal changed across Go and TypeScript: %v", err)
 	}
 	if err := metadata.Set(pluginmcp.InvocationMetadataKey, invocation); err != nil {

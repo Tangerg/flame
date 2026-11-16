@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -58,7 +59,7 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	if err := composition.calls.framework.WaitRetired(t.Context(), framehost.InstallationID(captured[0].InstallationID.String())); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +123,7 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original"}})
 			if err != nil {
 				t.Fatal(err)
 			}

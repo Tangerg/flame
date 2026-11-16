@@ -8,7 +8,8 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
@@ -40,7 +41,7 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 		{name: "absent"},
 		{name: "original unrelated Tool", receipt: known, found: true},
 		{name: "original refusal", receipt: failed, found: true, failed: true},
-		{name: "lookup conflict", queryErr: &framemcp.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
+		{name: "lookup conflict", queryErr: &framecall.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "independent records"}, nil)

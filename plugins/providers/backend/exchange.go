@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
 
@@ -33,7 +33,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command plu
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &framemcp.Refusal{Code: "invalid_input", Message: "model provider: invalid request"}
+			return &framecall.Refusal{Code: "invalid_input", Message: "model provider: invalid request"}
 		}
 		return nil
 	})

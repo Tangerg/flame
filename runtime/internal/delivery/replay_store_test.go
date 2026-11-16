@@ -6,9 +6,8 @@ import (
 	"sync"
 	"time"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type memoryIdempotencyStore struct {
@@ -37,7 +36,7 @@ func (m *memoryIdempotencyStore) Lookup(_ context.Context, key, fingerprint stri
 		return operation.ReplayRecord{}, false, nil
 	}
 	if current.Fingerprint != fingerprint {
-		return operation.ReplayRecord{}, false, framemcp.ErrInvocationConflict
+		return operation.ReplayRecord{}, false, framecall.ErrConflict
 	}
 	return current.ReplayRecord, true, nil
 }
@@ -54,7 +53,7 @@ func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint strin
 	stored, ok := m.records[key]
 	if ok {
 		if stored.Fingerprint != fingerprint {
-			return operation.ReplayRecord{}, false, framemcp.ErrInvocationConflict
+			return operation.ReplayRecord{}, false, framecall.ErrConflict
 		}
 		stored.Payload = bytes.Clone(stored.Payload)
 		return stored.ReplayRecord, false, nil
@@ -72,7 +71,7 @@ func (m *memoryIdempotencyStore) Complete(_ context.Context, record operation.Re
 		return operation.ErrClaimLost
 	}
 	if stored.Fingerprint != record.Fingerprint {
-		return framemcp.ErrInvocationConflict
+		return framecall.ErrConflict
 	}
 	if len(stored.Payload) != 0 {
 		if !time.Now().Before(stored.expiresAt) {

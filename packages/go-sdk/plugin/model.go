@@ -10,7 +10,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -85,7 +86,7 @@ func NewModelCallback(call func(context.Context, pluginmcp.Command[scopewire.Req
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*framemcp.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*framecall.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
@@ -93,7 +94,7 @@ func NewModelCallback(call func(context.Context, pluginmcp.Command[scopewire.Req
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}}
+	call := framecall.Invocation{ID: id, Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil

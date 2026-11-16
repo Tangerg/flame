@@ -4,19 +4,18 @@ import (
 	"context"
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/scope/core/tool"
 )
 
 func classify(err error) (string, bool) {
-	if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
+	if refusal, known := errors.AsType[*framecall.Refusal](err); known {
 		return refusal.Code, true
 	}
 	if errors.Is(err, errResource) {

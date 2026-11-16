@@ -21,7 +21,8 @@ import (
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -358,7 +359,7 @@ func TestMalformedMemoryModelReplyRetainsItsDefinitiveRefusalAfterRestart(t *tes
 				defer release()
 				input := rpc.MaintenanceInput{SessionID: "ses_malformed", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
 				_, err = invokeMaintenance(t, t.Context(), session, "original", input, grant)
-				var refusal *framemcp.Refusal
+				var refusal *framecall.Refusal
 				if test.failReceipt {
 					if err == nil || errors.As(err, &refusal) {
 						t.Fatalf("failed receipt became a confirmed outcome: %v", err)

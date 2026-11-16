@@ -18,7 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -271,7 +272,7 @@ func (s *SkillGovernance) admitted(ctx context.Context, root string, ref skills.
 	if doc.review().Ref != ref {
 		return doc, skills.ErrProposalChanged
 	}
-	caller, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: doc.source.InstallationID.String()})
+	caller, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: doc.source.InstallationID.String()})
 	if err != nil || caller.Origin != extension.Human {
 		return doc, plugin.ErrInvalid
 	}
@@ -356,7 +357,7 @@ func (s *SkillGovernance) changed() {
 	s.calls.publish.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }
 func reviewError(err error) error {
-	if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok && refusal.Code == skilllearning.StaleReview {
+	if refusal, ok := errors.AsType[*framecall.Refusal](err); ok && refusal.Code == skilllearning.StaleReview {
 		return errors.Join(skills.ErrProposalChanged, err)
 	}
 	return err

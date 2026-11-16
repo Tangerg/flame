@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -166,7 +166,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		if err != nil {
 			t.Fatal(err)
 		}
-		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Identity().String(), Method: method, Input: admitted.String(), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Identity().String(), Method: method, Input: admitted.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if response.Failure != nil {
 			t.Fatalf("knowledge operation: %+v", response.Failure)
 		}

@@ -13,7 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -34,7 +35,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			return
 		}
 		fail := func(err error) { yield(plugins.StreamEvent{}, errors.Join(plugin.ErrCommandUnconfirmed, err)) }
-		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) framemcp.Target { return c.request.Target }, true)
+		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) framecall.Target { return c.request.Target }, true)
 		if err != nil {
 			yield(plugins.StreamEvent{}, err)
 			return
@@ -91,7 +92,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			defer c.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 			for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, record.ID, record.Input, metadata) {
 				if err != nil {
-					if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
+					if refusal, known := errors.AsType[*framecall.Refusal](err); known {
 						if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 							fail(errors.Join(err, observeErr))
 							return
@@ -123,7 +124,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			var found bool
 			result, found, err = binding.ReadReceipt(ctx, pluginmcp.CommandID(record.ID), record.Input)
 			if err != nil {
-				if _, known := errors.AsType[*framemcp.Refusal](err); known {
+				if _, known := errors.AsType[*framecall.Refusal](err); known {
 					if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 						fail(errors.Join(err, observeErr))
 						return

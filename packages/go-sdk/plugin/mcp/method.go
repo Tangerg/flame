@@ -9,7 +9,8 @@ import (
 	"reflect"
 	"unicode/utf8"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -99,16 +100,16 @@ func decodeMethodInput[T any](data jsontext.Value) (T, framevalue.JSON, error) {
 
 type methodResult[T any] struct {
 	sdk.ResultBase
-	Value     *T                `json:"value,omitzero"`
-	Failure   *framemcp.Refusal `json:"failure,omitzero"`
+	Value     *T                 `json:"value,omitzero"`
+	Failure   *framecall.Refusal `json:"failure,omitzero"`
 	valueJSON jsontext.Value
 }
 
 func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 	var decoded struct {
 		sdk.ResultBase
-		Value   jsontext.Value    `json:"value"`
-		Failure *framemcp.Refusal `json:"failure,omitzero"`
+		Value   jsontext.Value     `json:"value"`
+		Failure *framecall.Refusal `json:"failure,omitzero"`
 	}
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
@@ -146,11 +147,11 @@ func reply[T any](value T, err error, classify Classifier) (*methodResult[T], er
 		if errors.Is(err, ErrOutcomeUnconfirmed) {
 			return nil, err
 		}
-		if failure, ok := errors.AsType[*framemcp.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
+		if failure, ok := errors.AsType[*framecall.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
 			copy := *failure
 			return &methodResult[T]{Failure: &copy}, nil
 		}
-		code, refused := framemcp.InvocationConflictCode, errors.Is(err, framemcp.ErrInvocationConflict)
+		code, refused := framecall.ConflictCode, errors.Is(err, framecall.ErrConflict)
 		if !refused && classify != nil {
 			code, refused = classify(err)
 		}
@@ -160,7 +161,7 @@ func reply[T any](value T, err error, classify Classifier) (*methodResult[T], er
 		if code == "" || !utf8.ValidString(code) || !utf8.ValidString(err.Error()) {
 			return nil, errors.Join(err, errors.New("plugin: invalid business refusal"))
 		}
-		return &methodResult[T]{Failure: &framemcp.Refusal{Code: code, Message: err.Error()}}, nil
+		return &methodResult[T]{Failure: &framecall.Refusal{Code: code, Message: err.Error()}}, nil
 	}
 	return &methodResult[T]{Value: &value}, nil
 }

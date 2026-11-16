@@ -17,7 +17,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -226,7 +227,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	method := callbackTestMethod(t, "call")
 	callback, err := NewCallback(method, nil, func(_ context.Context, command Command[callbackInput]) (int64, error) {
 		if command.Input.Value == 1 {
-			return 0, &framemcp.Refusal{Code: "conflict", Message: "original decision"}
+			return 0, &framecall.Refusal{Code: "conflict", Message: "original decision"}
 		}
 		return 0, errors.New("unconfirmed storage failure")
 	})
@@ -239,7 +240,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	}
 	defer release()
 	_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-	failure, known := errors.AsType[*framemcp.Refusal](err)
+	failure, known := errors.AsType[*framecall.Refusal](err)
 	if !known || failure.Code != "conflict" || failure.Message != "original decision" {
 		t.Fatalf("known refusal changed: %v", err)
 	}
@@ -276,7 +277,7 @@ func TestCallbackCapacitiesDoNotInventAnOwnerResult(t *testing.T) {
 			}
 			defer release()
 			_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-			var failure *framemcp.Refusal
+			var failure *framecall.Refusal
 			if err == nil || errors.As(err, &failure) {
 				t.Fatalf("capacity failure became a known business result: %v", err)
 			}
@@ -542,7 +543,7 @@ func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
 	}
 	var calls atomic.Int32
 	owner := context.WithValue(t.Context(), callbackOwnerKey{}, "activation")
-	original := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("automatic"), Target: framemcp.Target{Scope: "installation", Reference: "owner"}}
+	original := framecall.Invocation{ID: "original", Origin: framecall.Origin("automatic"), Target: framecall.Target{Scope: "installation", Reference: "owner"}}
 	if err := host.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		invocation, err := InvocationFromContext(r.Context())
 		if err != nil || invocation != original || r.Context().Value(callbackOwnerKey{}) != "activation" {
@@ -554,7 +555,7 @@ func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.OpenRPCWithInvocation(owner, session, callbackTestLimits, func(ctx context.Context, v framemcp.Invocation) (context.Context, error) {
+	ref, release, err := host.OpenRPCWithInvocation(owner, session, callbackTestLimits, func(ctx context.Context, v framecall.Invocation) (context.Context, error) {
 		if v != original {
 			return nil, errors.New("different caller")
 		}

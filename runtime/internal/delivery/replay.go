@@ -10,11 +10,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	framecall "github.com/Tangerg/frame/call"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -52,7 +51,7 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store %s replay: %w", method.Meta.Name, err))
 		}
 		switch {
-		case errors.Is(err, framemcp.ErrInvocationConflict):
+		case errors.Is(err, framecall.ErrConflict):
 			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		case errors.Is(err, operation.ErrOutcomePending):
 			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, operation.ErrOutcomePending.Error()))

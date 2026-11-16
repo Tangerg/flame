@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type typedStreamCaller struct {
@@ -51,7 +51,7 @@ func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtime
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t).String()
-	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
+	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 					failure = err
 				}
 			}
-			_, known := errors.AsType[*framemcp.Refusal](failure)
+			_, known := errors.AsType[*framecall.Refusal](failure)
 			if failure == nil || known != test.known || errors.Is(failure, runtimeclient.ErrAcknowledgementUnknown) == test.known || caller.calls != 1 {
 				t.Fatalf("outcome=%v known=%v calls=%d", failure, known, caller.calls)
 			}
@@ -135,7 +135,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
-		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
+		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 		if err != nil {
 			t.Fatal(err)
 		}

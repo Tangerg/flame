@@ -17,7 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -94,7 +95,7 @@ func (c *CommandCalls) resolveContribution(ctx context.Context, r plugins.CallRe
 func (c *installedCall) accepts(record plugin.CommandBinding) error {
 	r := c.request
 	if record.Provider.InstallationID != r.Installation || record.Provider.Digest != r.Digest || record.Contribution != r.Contribution || record.Contract != r.Contract.Identity() {
-		return errors.Join(framemcp.ErrInvocationConflict, plugin.ErrCommandConflict)
+		return errors.Join(framecall.ErrConflict, plugin.ErrCommandConflict)
 	}
 	return nil
 }
@@ -107,7 +108,7 @@ func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
 				return metadata, nil, err
 			}
 			return metadata, func() error { release(); return nil }, nil
-		}, func(plugins.ContributionBinding) framemcp.Target { return c.request.Target })
+		}, func(plugins.ContributionBinding) framecall.Target { return c.request.Target })
 		return reply.value, err
 	}
 	location, err := c.resolve(ctx)

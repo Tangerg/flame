@@ -1,7 +1,7 @@
 # Go SDK
 
 This module owns Flame's public Go contracts and product-specific authoring APIs.
-It consumes the independent Frame module. It has no dependency on Runtime,
+It consumes the independent Frame module. Pure calling evidence comes from `frame/call`; MCP transport, callback grants and refusal decoding remain in `frame/process/mcp`. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 

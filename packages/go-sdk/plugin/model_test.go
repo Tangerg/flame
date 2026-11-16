@@ -13,7 +13,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -42,12 +43,12 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	parent := framemcp.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: framemcp.Target{Scope: "installation", Reference: "captured-installation"}}
+	parent := framecall.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: framecall.Target{Scope: "installation", Reference: "captured-installation"}}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), parent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := make(chan framemcp.Invocation, 2)
+	seen := make(chan framecall.Invocation, 2)
 	callback, err := NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || invocation.ID != string(command.ID) {
@@ -71,7 +72,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 			t.Fatal(err)
 		}
 		actual := <-seen
-		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (framemcp.Target{Scope: "call", Reference: id}) {
+		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (framecall.Target{Scope: "call", Reference: id}) {
 			t.Fatalf("call lost original ancestry: %+v", actual)
 		}
 	}

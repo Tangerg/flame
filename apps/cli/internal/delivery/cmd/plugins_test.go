@@ -19,7 +19,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/value"
 )
 
@@ -56,8 +57,8 @@ func TestPluginRequestEntrancesShareLocalInputAdmission(t *testing.T) {
 		{"get-command", protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original"}},
 		{"resolve-composition", protocol.ResolvePluginCompositionRequest{Contract: string(composition.Identity().Bytes())}},
 		{"requirements", protocol.ResolvePluginRequirementsRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example"}},
-		{"point", protocol.ResolvePluginPointRequest{Contract: string(point.Identity().Bytes()), Target: framemcp.Target{Scope: "installation", Reference: installation}, Attributes: "{}", Order: []protocol.PluginPointReference{}}},
-		{"call", protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example", Contract: string(callable.Identity().Bytes()), Method: method.Name(), Input: "{}", Target: framemcp.Target{Scope: "installation", Reference: installation}}},
+		{"point", protocol.ResolvePluginPointRequest{Contract: string(point.Identity().Bytes()), Target: framecall.Target{Scope: "installation", Reference: installation}, Attributes: "{}", Order: []protocol.PluginPointReference{}}},
+		{"call", protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example", Contract: string(callable.Identity().Bytes()), Method: method.Name(), Input: "{}", Target: framecall.Target{Scope: "installation", Reference: installation}}},
 		{"install", protocol.InstallPluginRequest{Source: "/runtime/plugin"}},
 	} {
 		t.Run(test.command, func(t *testing.T) {
@@ -349,7 +350,7 @@ func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: framemcp.Target{Scope: "installation", Reference: installation}}
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: framecall.Target{Scope: "installation", Reference: installation}}
 	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
 	encoded, err := json.Marshal(query)
 	if err != nil {

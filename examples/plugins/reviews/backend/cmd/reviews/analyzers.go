@@ -8,7 +8,7 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type analyzerCaller interface {
@@ -16,7 +16,7 @@ type analyzerCaller interface {
 	runtimeclient.PluginCaller
 }
 
-func analyzeReview(ctx context.Context, caller analyzerCaller, target framemcp.Target, review reviews.Snapshot) (reviews.Analysis, error) {
+func analyzeReview(ctx context.Context, caller analyzerCaller, target framecall.Target, review reviews.Snapshot) (reviews.Analysis, error) {
 	contract, err := reviews.NewAnalyzerPoint()
 	if err != nil {
 		return reviews.Analysis{}, err
@@ -34,7 +34,7 @@ func analyzeReview(ctx context.Context, caller analyzerCaller, target framemcp.T
 		method, err := runtimeclient.BindPluginMethod(caller, runtimeclient.PluginBinding{
 			InstallationID: value.InstallationID, Digest: value.Digest,
 			Contribution: value.Value.Contribution, Contract: contracts.Capability,
-			Target: framemcp.Target{Scope: "installation", Reference: value.InstallationID},
+			Target: framecall.Target{Scope: "installation", Reference: value.InstallationID},
 		}, contracts.Analyze)
 		if err != nil {
 			return reviews.Analysis{}, err

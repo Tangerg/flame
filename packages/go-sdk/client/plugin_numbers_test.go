@@ -15,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -61,7 +62,7 @@ func numericBinding(t *testing.T, descriptor frame.MethodDescriptor) client.Plug
 		InstallationID: numericInstallation,
 		Digest:         identity.DigestStrings("numbers").String(),
 		Contribution:   "numbers", Contract: contract,
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation},
 	}
 }
 
@@ -137,7 +138,7 @@ func TestPointValuesPreserveUnstructuredNumbers(t *testing.T) {
 		t.Fatal(err)
 	}
 	values, err := client.ResolvePointValues[map[string]any](t.Context(), numericPlugin{}, contract,
-		framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
+		framecall.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

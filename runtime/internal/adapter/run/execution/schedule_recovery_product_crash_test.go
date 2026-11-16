@@ -28,7 +28,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/process/runner"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -459,7 +459,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
 		t.Fatalf("original backend creation: %+v, %v", page, err)
 	}
-	var invocation framemcp.Invocation
+	var invocation framecall.Invocation
 	if err := json.Unmarshal(original.Meta[pluginmcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}

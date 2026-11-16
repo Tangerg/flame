@@ -5,14 +5,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/scope/core/tool"
@@ -21,7 +20,7 @@ import (
 const executeTool = "sandbox_execute"
 
 func commandFailure(err error) error {
-	refusal, known := errors.AsType[*framemcp.Refusal](err)
+	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known {
 		return err
 	}

@@ -25,7 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -109,7 +109,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	var modelCalls, releases atomic.Int32
-	modelInvocations := make(chan framemcp.Invocation, 2)
+	modelInvocations := make(chan framecall.Invocation, 2)
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 		invocation, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil {
@@ -204,7 +204,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: addition, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}})
+	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: addition, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.PluginData {
 		t.Fatalf("public command recovery did not invalidate its consumer reads: %+v", notices)
 	}
-	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), extension.Model, "parent-tool")); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), extension.Model, "parent-tool")); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed calling origin reused an original identity: %v", err)
 	}
 	changed := request
@@ -236,7 +236,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := other.Invoke(addContext); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := other.Invoke(addContext); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed installed binding reused an original identity: %v", err)
 	}
 	if len(notices) != beforeRecovery+1 {

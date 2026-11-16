@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -173,7 +173,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_session", "utility_session", root.SessionID}, {"endpoint_other", "utility_other", other.SessionID},
 		{"endpoint_global", "utility_global", ""},
 	} {
-		value := modelref.EndpointInvocation{ID: source.id, Caller: framemcp.Invocation{ID: source.caller, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
+		value := modelref.EndpointInvocation{ID: source.id, Caller: framecall.Invocation{ID: source.caller, Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
 		owner := ""
 		if source.caller == "call_run_root" {
 			owner = source.caller

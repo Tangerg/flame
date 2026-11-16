@@ -21,7 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -145,7 +145,7 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	call := func(key string, expected any) {

@@ -12,7 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type emptyCallerCommands struct{}
@@ -40,7 +41,7 @@ func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testi
 	}
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: framecall.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)
@@ -61,11 +62,11 @@ func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testi
 	if _, err := restorer.RestoreInvocation(t.Context(), value.Invocation); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("missing installed Actor gained authority: %v", err)
 	}
-	for _, edit := range []func(*framemcp.Invocation){
-		func(i *framemcp.Invocation) { i.ID = "unrecorded-model-call" },
-		func(i *framemcp.Invocation) { i.Parent = "process:other" },
-		func(i *framemcp.Invocation) { i.Origin = extension.Human },
-		func(i *framemcp.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
+	for _, edit := range []func(*framecall.Invocation){
+		func(i *framecall.Invocation) { i.ID = "unrecorded-model-call" },
+		func(i *framecall.Invocation) { i.Parent = "process:other" },
+		func(i *framecall.Invocation) { i.Origin = extension.Human },
+		func(i *framecall.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
 	} {
 		changed := value.Invocation
 		edit(&changed)

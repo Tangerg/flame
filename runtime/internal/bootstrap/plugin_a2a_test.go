@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
@@ -27,7 +27,7 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	call := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: "remote-agents", Contract: contract.Identity().String(),
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: testsupport.A2AAgentsV1Method, Input: `{}`,
 	}
 	result := r.must(delivery.PluginsCall, call, "").(*protocol.CallPluginResponse)

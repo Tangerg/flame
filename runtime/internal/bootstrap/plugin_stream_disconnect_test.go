@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalCommand(t *testing.T) {
@@ -51,7 +51,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	r := poMCPOpen(t, poMCPConfig(t))
 	defer r.close()
 	installed := installCallContributor(t, r, binary, "stream-drop", trace.URL, contract)
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	invoke := func() delivery.Result {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, delivery.Options{IdempotencyKey: "original-stream", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}

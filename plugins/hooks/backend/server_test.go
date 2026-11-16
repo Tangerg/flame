@@ -16,7 +16,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -59,7 +59,7 @@ func connectHooks(t *testing.T, path string) (sqlite.Database, *sdk.ClientSessio
 
 func hookContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
 	if err != nil {
 		t.Fatal(err)
 	}

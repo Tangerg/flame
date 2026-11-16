@@ -18,7 +18,8 @@ import (
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -76,7 +77,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}})
+	owner, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +124,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	toolMeta := maps.Clone(metadata.Meta)
-	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-search", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-search", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -148,7 +149,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatalf("typed original read: %+v %v", read, err)
 	}
 	var readMeta sdk.Meta
-	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-read", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-read", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ReadInput{ID: input.Content.ID}, Meta: readMeta})
@@ -186,7 +187,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	contextOwner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "context-entry", Origin: extension.Model, Target: framemcp.Target{Scope: "call", Reference: "context-entry"}})
+	contextOwner, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "context-entry", Origin: extension.Model, Target: framecall.Target{Scope: "call", Reference: "context-entry"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	space.Store("space-b")
 	if _, err := searchMethod.InvokeWithMetadata(owner, "", queryJSON, metadata); err == nil {
 		t.Fatal("changed space became a successful retrieval")
-	} else if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
+	} else if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
 		t.Fatalf("changed space refusal = %v", err)
 	}
 	result, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})

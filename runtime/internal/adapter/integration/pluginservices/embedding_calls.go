@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	framecall "github.com/Tangerg/frame/call"
 
 	"github.com/samber/lo"
 )
@@ -29,7 +28,7 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if model == nil {
-			return pluginsdk.TextEmbeddings{}, &framemcp.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
+			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
 		}
 		if lo.IsNil(model) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")

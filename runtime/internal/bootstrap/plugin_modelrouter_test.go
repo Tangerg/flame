@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -44,7 +44,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatal(result.Failure)

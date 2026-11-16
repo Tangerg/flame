@@ -13,7 +13,8 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -43,7 +44,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		})
 	}
 	_, err = Command(t.Context(), db, "update", "refused", receiptInput(t, "known"), classify, handler)
-	failure, ok := errors.AsType[*framemcp.Refusal](err)
+	failure, ok := errors.AsType[*framecall.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
@@ -55,7 +56,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
-	if _, ok := errors.AsType[*framemcp.Refusal](err); ok {
+	if _, ok := errors.AsType[*framecall.Refusal](err); ok {
 		t.Fatalf("unknown became known=%v", err)
 	}
 	var count, total int
@@ -71,7 +72,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return CommandPlan[string]{}, nil
 		})
 		if key.id == "refused" {
-			if _, ok := errors.AsType[*framemcp.Refusal](err); !ok {
+			if _, ok := errors.AsType[*framecall.Refusal](err); !ok {
 				t.Fatalf("refusal replay=%v", err)
 			}
 		} else if err != nil {

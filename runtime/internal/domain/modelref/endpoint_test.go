@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -19,7 +19,7 @@ func endpointRecord(t *testing.T) EndpointRecord {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := EndpointInvocation{ID: "physical-request", Caller: framemcp.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+	invocation := EndpointInvocation{ID: "physical-request", Caller: framecall.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)

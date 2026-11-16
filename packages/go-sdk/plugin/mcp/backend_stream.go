@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
@@ -68,7 +69,7 @@ func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method
 	var index uint64
 	for value, err := range sequence {
 		if err != nil {
-			if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
+			if refusal, known := errors.AsType[*framecall.Refusal](err); known {
 				return &methodResult[jsontext.Value]{Failure: refusal}, nil
 			}
 			return nil, err
@@ -232,7 +233,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			case <-done:
 				result, err := completion.result(limits.MaxResponseBytes)
 				if err != nil {
-					if refusal, known := errors.AsType[*framemcp.Refusal](err); known {
+					if refusal, known := errors.AsType[*framecall.Refusal](err); known {
 						yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
 					} else {
 						fail(err)

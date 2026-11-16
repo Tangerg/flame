@@ -3,21 +3,21 @@ package extension
 import (
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 // Flame owns the closed product origin and target vocabulary.
 const (
-	Human             framemcp.Origin = "human"
-	Model             framemcp.Origin = "model"
-	Automatic         framemcp.Origin = "automatic"
-	ScopeCall                         = "call"
-	ScopeInstallation                 = "installation"
+	Human             framecall.Origin = "human"
+	Model             framecall.Origin = "model"
+	Automatic         framecall.Origin = "automatic"
+	ScopeCall                          = "call"
+	ScopeInstallation                  = "installation"
 )
 
 // ValidateInvocation admits Flame's product evidence. Frame accepts other
 // consumers' origin vocabularies without granting them Flame authority.
-func ValidateInvocation(invocation framemcp.Invocation) error {
+func ValidateInvocation(invocation framecall.Invocation) error {
 	if err := invocation.Validate(); err != nil {
 		return err
 	}

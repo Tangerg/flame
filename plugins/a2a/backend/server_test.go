@@ -10,7 +10,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -41,7 +41,7 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "human-send", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "human-send", Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestTypedAndModelEntriesShareTaskBindingsAndOriginalReceipts(t *testing.T) 
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-send", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-send", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "a2a"}}); err != nil {
 		t.Fatal(err)
 	}
 	var modelResult wire.Result

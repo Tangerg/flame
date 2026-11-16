@@ -15,7 +15,8 @@ import (
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -158,7 +159,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			changed := testModelRequest()
 			changed.Messages[1] = chat.NewUserMessage(chat.NewTextPart("changed input"))
 			_, err = pluginsdk.CallModel(t.Context(), grant, "first", changed)
-			failure, known := errors.AsType[*framemcp.Refusal](err)
+			failure, known := errors.AsType[*framecall.Refusal](err)
 			if !known || failure.Code != "command_conflict" {
 				t.Fatalf("changed original input did not conflict: %v", err)
 			}

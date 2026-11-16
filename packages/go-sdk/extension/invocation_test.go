@@ -5,13 +5,13 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestOriginVocabularyBelongsToTheConsumer(t *testing.T) {
-	invocation := framemcp.Invocation{
+	invocation := framecall.Invocation{
 		ID: "document-convert", Origin: "document-workbench",
-		Target: framemcp.Target{Scope: "document", Reference: "document-1"},
+		Target: framecall.Target{Scope: "document", Reference: "document-1"},
 	}
 	if err := invocation.Validate(); err != nil {
 		t.Fatalf("independent consumer origin: %v", err)
@@ -19,7 +19,7 @@ func TestOriginVocabularyBelongsToTheConsumer(t *testing.T) {
 	if err := extension.ValidateInvocation(invocation); err == nil {
 		t.Fatal("another consumer's origin was accepted as Flame evidence")
 	}
-	for _, origin := range []framemcp.Origin{extension.Human, extension.Model, extension.Automatic} {
+	for _, origin := range []framecall.Origin{extension.Human, extension.Model, extension.Automatic} {
 		invocation.Origin = origin
 		if err := extension.ValidateInvocation(invocation); err != nil {
 			t.Fatalf("Flame origin %s: %v", origin, err)

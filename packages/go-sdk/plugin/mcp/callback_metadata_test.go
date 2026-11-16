@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -41,7 +42,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	}
 	var calls int
 	var captured CallbackRef
-	var capturedInvocation framemcp.Invocation
+	var capturedInvocation framecall.Invocation
 	session := methodSession(t, func(backend *Backend) error {
 		return testMethod[map[string]string, string](t, "owner.dispatch", frame.Command).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[map[string]string]) (string, error) {
 			calls++
@@ -65,7 +66,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent-tool", Target: framemcp.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
+	invocation := framecall.Invocation{ID: "original", Origin: framecall.Origin("model"), Parent: "parent-tool", Target: framecall.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
 	ctx, err := WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +93,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 		t.Fatalf("invalid metadata entered business execution: calls=%d error=%v", calls, err)
 	}
 	forged := invocation
-	forged.Origin = framemcp.Origin("human")
+	forged.Origin = framecall.Origin("human")
 	var supplied sdk.ParamsBase
 	if err := supplied.Set(InvocationMetadataKey, forged); err != nil {
 		t.Fatal(err)

@@ -13,7 +13,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -22,7 +23,7 @@ const SetupMethod = "io.github.tangerg.flame/operations.setup"
 const ActivateMethod = "io.github.tangerg.flame/operations.activate"
 
 type SetupContribution struct {
-	Background *framemcp.Target  `json:"background,omitzero"`
+	Background *framecall.Target `json:"background,omitzero"`
 	ID         string            `json:"id"`
 	Export     string            `json:"export"`
 	Requires   []SetupDependency `json:"requires"`

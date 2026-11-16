@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -94,7 +94,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Helper()
 		grant, err := vault.PrepareGrant(t.Context(), owner, server, mcpapp.GrantProposal{
 			Source:     extension.ContributionSource{InstallationID: owner.String(), Release: framevalue.Hash([]byte("release")).String(), Contribution: "directory"},
-			Invocation: framemcp.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
+			Invocation: framecall.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
 			Change:     wire.Change{Name: server.Name.String(), Replacement: &wire.Entry{Name: server.Name.String()}},
 		})
 		if err != nil {

@@ -16,7 +16,7 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -66,7 +66,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil && call.Params.Name == "update_review" {
 				if toolUpdates.Add(1) == 1 {
-					var invocation framemcp.Invocation
+					var invocation framecall.Invocation
 					if err := json.Unmarshal(call.Params.Meta[pluginmcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 						return nil, err
 					}

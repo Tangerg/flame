@@ -19,7 +19,8 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -133,7 +134,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: target.ID}}, protocol.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: target.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
@@ -845,7 +846,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}
 			}
 		}
 	}
@@ -859,7 +860,7 @@ func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPlugi
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &framemcp.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &framecall.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value testsupport.SchedulesRunReference
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
@@ -884,7 +885,7 @@ func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPl
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &framemcp.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &framecall.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value testsupport.SchedulesCreateV1OutputDomainSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {

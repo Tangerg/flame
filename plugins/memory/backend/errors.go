@@ -3,9 +3,8 @@ package main
 import (
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	framecall "github.com/Tangerg/frame/call"
 
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 
@@ -43,7 +42,7 @@ func codedCause(code string) error {
 }
 
 func classify(err error) (string, bool) {
-	if failure, ok := errors.AsType[*framemcp.Refusal](err); ok {
+	if failure, ok := errors.AsType[*framecall.Refusal](err); ok {
 		if codedCause(failure.Code) != nil {
 			return failure.Code, true
 		}

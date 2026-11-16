@@ -13,7 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -146,7 +147,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	}
 	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
 		output, err := call.Invoke(ctx)
-		if failure, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		if failure, known := errors.AsType[*framecall.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 			return &protocol.CallPluginResponse{Failure: &protocol.PluginCallFailure{Code: failure.Code, Message: failure.Message}}, nil
 		}
 		if err != nil {
@@ -199,7 +200,7 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 		return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 			for value, err := range call.Stream(ctx) {
-				if refusal, known := errors.AsType[*framemcp.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+				if refusal, known := errors.AsType[*framecall.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 					yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: refusal.Code, Message: refusal.Message}}, nil)
 					return
 				}

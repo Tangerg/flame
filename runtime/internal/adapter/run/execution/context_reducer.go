@@ -16,7 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -182,7 +183,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 		return nil, modelRequestContext{}, nil, false, err
 	}
 	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.process)})
-	calling, err = pluginmcp.WithInvocation(calling, framemcp.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
+	calling, err = pluginmcp.WithInvocation(calling, framecall.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}
@@ -412,7 +413,7 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, i
 	}
 	transformed, err := i.session.callComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
 	if err != nil {
-		if _, definite := err.(*framemcp.Refusal); definite {
+		if _, definite := err.(*framecall.Refusal); definite {
 			return nil, &interaction.ContextFailure{Cause: err}
 		}
 		return nil, err

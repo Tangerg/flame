@@ -14,7 +14,8 @@ import (
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -160,7 +161,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 	}
 	if _, err := method.Invoke(t.Context(), "", admitted); err == nil {
 		t.Fatal("typed query hid rejected authorization")
-	} else if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("typed refusal = %v", err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "get_issue", Arguments: input})

@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -26,7 +26,7 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	read := func() framevalue.JSON {

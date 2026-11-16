@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -52,7 +52,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			if err := host.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
-			recorded := make(chan framemcp.Invocation, 1)
+			recorded := make(chan framecall.Invocation, 1)
 			callback, err := NewSelectedModelCallback(func(ctx context.Context, command pluginmcp.Command[ModelCallRequest]) (*chat.Response, error) {
 				actual, _ := pluginmcp.InvocationFromContext(ctx)
 				recorded <- actual
@@ -71,7 +71,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			}
 			ctx := t.Context()
 			if owning {
-				ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: framemcp.Target{Scope: "call", Reference: "original-owner"}})
+				ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: framecall.Target{Scope: "call", Reference: "original-owner"}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -92,7 +92,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				return
 			}
 			actual := <-recorded
-			want := framemcp.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: framemcp.Target{Scope: "call", Reference: "fresh-model-call"}}
+			want := framecall.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: framecall.Target{Scope: "call", Reference: "fresh-model-call"}}
 			if err != nil || response == nil || !reflect.DeepEqual(actual, want) {
 				t.Fatalf("original owner changed: %+v %+v %v", actual, response, err)
 			}
@@ -120,8 +120,8 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	original := framemcp.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: framemcp.Target{Scope: "call", Reference: "retained-operation"}}
-	records := make(chan framemcp.Invocation, 2)
+	original := framecall.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: framecall.Target{Scope: "call", Reference: "retained-operation"}}
+	records := make(chan framecall.Invocation, 2)
 	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ pluginmcp.Command[ModelCallRequest]) (*chat.Response, error) {
 		inv, _ := pluginmcp.InvocationFromContext(ctx)
 		records <- inv
@@ -145,7 +145,7 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 		t.Fatal(err)
 	}
 	var projections atomic.Int32
-	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire framemcp.Invocation) (context.Context, error) {
+	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, pluginmcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire framecall.Invocation) (context.Context, error) {
 		if wire != original {
 			return nil, errors.New("unretained invocation")
 		}

@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -52,7 +52,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
+	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
 	if result.Failure != nil || strings.Contains(result.Output, protected) {
 		t.Fatalf("policy result leaked or refused: %+v", result)
 	}

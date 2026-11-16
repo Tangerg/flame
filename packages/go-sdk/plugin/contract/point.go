@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -108,8 +109,8 @@ func (c *Point) ValidateValue(value framevalue.JSON) error {
 // Applicability uses a frozen caller projection so it cannot discover or mutate
 // a screen, workspace or business owner while resolving contributions.
 type PointContext struct {
-	Target     framemcp.Target `json:"target"`
-	Attributes jsontext.Value  `json:"attributes"`
+	Target     framecall.Target `json:"target"`
+	Attributes jsontext.Value   `json:"attributes"`
 }
 
 func (c *Point) Applicable(context PointContext) (bool, error) {

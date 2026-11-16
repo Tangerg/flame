@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -160,7 +161,7 @@ func TestActivationStartsOnceOnlyAfterSuccessfulSetup(t *testing.T) {
 	if err := Activate(t.Context(), session); err == nil {
 		t.Fatal("activation bypassed setup")
 	}
-	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
+	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &framecall.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
 	if err := SetUp(t.Context(), session, values, sdk.ParamsBase{}); err != nil {
 		t.Fatal(err)
 	}

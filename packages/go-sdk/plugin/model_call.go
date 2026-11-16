@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -116,7 +117,7 @@ func NewSelectedModelCallback(call func(context.Context, pluginmcp.Command[Model
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*framemcp.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*framecall.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)

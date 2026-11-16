@@ -12,7 +12,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -27,7 +27,7 @@ func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID stri
 	}
 	defer borrow.Close()
 	ctx = borrow.Context()
-	actor, err := operation.Capture(ctx, framemcp.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID})
+	actor, err := operation.Capture(ctx, framecall.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID})
 	if err != nil {
 		return "", err
 	}

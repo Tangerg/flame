@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -120,7 +120,7 @@ func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) error
 		return err
 	}
 	if err := c.adapters.Verify(ctx, connection); err != nil {
-		if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok {
+		if refusal, ok := errors.AsType[*framecall.Refusal](err); ok {
 			switch modelprovider.FailureKind(refusal.Code) {
 			case modelprovider.InvalidCredentials:
 				return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)

@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestInvocationMetadataRefusesMalformedAndCompetingOwners(t *testing.T) {
-	owner := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent", Target: framemcp.Target{Scope: "installation", Reference: "producer"}}
+	owner := framecall.Invocation{ID: "original", Origin: framecall.Origin("model"), Parent: "parent", Target: framecall.Target{Scope: "installation", Reference: "producer"}}
 	ctx, err := WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)

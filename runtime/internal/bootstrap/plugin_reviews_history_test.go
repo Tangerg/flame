@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -138,7 +138,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)

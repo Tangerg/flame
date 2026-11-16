@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
@@ -27,7 +28,7 @@ type PluginBinding struct {
 	Digest         string
 	Contribution   string
 	Contract       *plugincontract.Capability
-	Target         framemcp.Target
+	Target         framecall.Target
 }
 
 type PluginMethod[P, R any] struct {
@@ -101,7 +102,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	if result.Failure != nil {
-		return zero, &framemcp.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return zero, &framecall.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	if err := m.method.ValidateOutput([]byte(result.Output)); err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))

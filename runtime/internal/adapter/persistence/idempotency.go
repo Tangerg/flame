@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 )
 
 const (
@@ -57,7 +58,7 @@ func (i *idempotencyStore) Lookup(ctx context.Context, key, fingerprint string) 
 			return operation.ReplayRecord{}, false, err
 		}
 		if record.Fingerprint != fingerprint {
-			return operation.ReplayRecord{}, false, framemcp.ErrInvocationConflict
+			return operation.ReplayRecord{}, false, framecall.ErrConflict
 		}
 		return record, true, nil
 	})
@@ -102,7 +103,7 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 			return fmt.Errorf("sqlite: read idempotency claim: %w", scanErr)
 		}
 		if stored.Fingerprint != fingerprint {
-			return framemcp.ErrInvocationConflict
+			return framecall.ErrConflict
 		}
 		record, claimed = stored, false
 		return nil
@@ -142,7 +143,7 @@ func (i *idempotencyStore) Complete(ctx context.Context, record operation.Replay
 			return fmt.Errorf("sqlite: inspect completed idempotency claim: %w", err)
 		}
 		if fingerprint != record.Fingerprint {
-			return framemcp.ErrInvocationConflict
+			return framecall.ErrConflict
 		}
 		if !bytes.Equal(payload, record.Payload) {
 			return operation.ErrOutcomeConflict

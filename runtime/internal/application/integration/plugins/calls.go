@@ -9,7 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -20,7 +21,7 @@ type CallRequest struct {
 	Contract     *plugincontract.Capability
 	Method       string
 	Input        framevalue.JSON
-	Target       framemcp.Target
+	Target       framecall.Target
 }
 
 // Call retains an admitted consumer contract until its concrete invocation ends.

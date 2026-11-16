@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -48,7 +48,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			original := framemcp.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-model"}}
+			original := framecall.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original-model"}}
 			refs := make(chan pluginmcp.CallbackRef, 1)
 			beforeNext := func(ctx context.Context) (pluginmcp.CallbackRef, error) {
 				ref, err := pluginmcp.CallbackFromContext(ctx)

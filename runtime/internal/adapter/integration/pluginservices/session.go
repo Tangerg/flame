@@ -15,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -112,7 +113,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
 	}
-	invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: location.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: location.InstallationID.String()})
 	if err != nil {
 		return nil, err
 	}

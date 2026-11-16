@@ -9,7 +9,7 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -93,7 +93,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		if err == nil {
 			t.Fatal("changed binding adopted an earlier receipt")
 		}
-		if _, known := errors.AsType[*framemcp.Refusal](err); known {
+		if _, known := errors.AsType[*framecall.Refusal](err); known {
 			t.Fatalf("binding error fabricated a known mutation result: %v", err)
 		}
 	}

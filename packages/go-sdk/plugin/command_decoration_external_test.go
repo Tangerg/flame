@@ -15,7 +15,8 @@ import (
 	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -68,7 +69,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	defer db.Close()
-	original := framemcp.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: framemcp.Target{Scope: "workspace", Reference: "original-workspace"}}
+	original := framecall.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: framecall.Target{Scope: "workspace", Reference: "original-workspace"}}
 	calling, err := pluginmcp.WithInvocation(t.Context(), original)
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +140,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 	for range 2 {
 		if _, err := bound.InvokeWithMetadata(calling, "original-command", input, metadata); err == nil {
 			t.Fatal("outer failure appeared successful")
-		} else if _, known := errors.AsType[*framemcp.Refusal](err); known {
+		} else if _, known := errors.AsType[*framecall.Refusal](err); known {
 			t.Fatalf("outer failure claimed a known business refusal: %v", err)
 		}
 	}

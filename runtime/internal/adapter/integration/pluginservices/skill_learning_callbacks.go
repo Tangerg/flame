@@ -14,7 +14,8 @@ import (
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -37,12 +38,12 @@ func (a *learningAdmission) model(id string, input framevalue.JSON) error {
 	defer a.mu.Unlock()
 	if original, found := a.modelCalls[id]; found {
 		if original != input {
-			return &framemcp.Refusal{Code: framemcp.InvocationConflictCode, Message: framemcp.ErrInvocationConflict.Error()}
+			return &framecall.Refusal{Code: framecall.ConflictCode, Message: framecall.ErrConflict.Error()}
 		}
-		return &framemcp.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
+		return &framecall.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
 	}
 	if len(a.modelCalls) >= skilllearning.MaxModelCalls {
-		return &framemcp.Refusal{Code: "model_budget", Message: "skill learning: model budget exhausted"}
+		return &framecall.Refusal{Code: "model_budget", Message: "skill learning: model budget exhausted"}
 	}
 	// External models have no receipt: admission must precede their first I/O.
 	a.modelCalls[id] = input
@@ -57,7 +58,7 @@ func (a *learningAdmission) read(skill bool) error {
 		used = &a.skillRead
 	}
 	if *used {
-		return &framemcp.Refusal{Code: "read_budget", Message: "skill learning: source read budget exhausted"}
+		return &framecall.Refusal{Code: "read_budget", Message: "skill learning: source read budget exhausted"}
 	}
 	*used = true
 	return nil
@@ -108,7 +109,7 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (response *chat.Response, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
 		if !learningModelRequest(chat.Request(command.Input)) {
-			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
+			return nil, &framecall.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {

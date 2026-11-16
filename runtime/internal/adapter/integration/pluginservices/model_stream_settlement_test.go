@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -47,9 +47,9 @@ func TestModelStreamSettlesBeforePublishingItsTerminalFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{
 		ID: "terminal-stream", Origin: extension.Model, Parent: "original-operation",
-		Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "terminal-stream"},
+		Target: framecall.Target{Scope: extension.ScopeCall, Reference: "terminal-stream"},
 	})
 	if err != nil {
 		t.Fatal(err)

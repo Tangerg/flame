@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -79,7 +79,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := framemcp.Invocation{ID: "original-manual", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "captured-installation"}}
+	invocation := framecall.Invocation{ID: "original-manual", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "captured-installation"}}
 	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -163,7 +163,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.Invoke(ctx, pluginmcp.CommandID(invocation.ID), changed); !errors.Is(decodeError(err), framemcp.ErrInvocationConflict) {
+	if _, err := method.Invoke(ctx, pluginmcp.CommandID(invocation.ID), changed); !errors.Is(decodeError(err), framecall.ErrConflict) {
 		t.Fatalf("changed input did not conflict: %v", err)
 	}
 	refused := invocation

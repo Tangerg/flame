@@ -15,7 +15,7 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -67,8 +67,8 @@ func captureManual(ctx context.Context, db framesqlite.Database, store store, co
 			_, err := pluginmcp.CallbackFromContext(ctx)
 			return err
 		})
-		if errors.Is(err, framemcp.ErrInvocationConflict) {
-			conflict, encodeErr := pluginmcp.EncodeReply(app.RunReference{}, framemcp.ErrInvocationConflict, nil)
+		if errors.Is(err, framecall.ErrConflict) {
+			conflict, encodeErr := pluginmcp.EncodeReply(app.RunReference{}, framecall.ErrConflict, nil)
 			original = conflict.Bytes()
 			prepared = nil
 			return encodeErr

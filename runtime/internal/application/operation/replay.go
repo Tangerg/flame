@@ -9,9 +9,8 @@ import (
 	"sync"
 	"time"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	framecall "github.com/Tangerg/frame/call"
 
 	"github.com/samber/lo"
 )
@@ -75,7 +74,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	defer release()
 	if pending, ok := r.pendingCompletion(key); ok {
 		if pending.Fingerprint != fingerprint {
-			return nil, framemcp.ErrInvocationConflict
+			return nil, framecall.ErrConflict
 		}
 		if err := r.completeWithin(context.WithoutCancel(ctx), pending); err != nil {
 			return nil, settlementError(err)
@@ -96,7 +95,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	}
 	record = ReplayRecord{Key: key, Fingerprint: fingerprint, Payload: payload}
 	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
-		if errors.Is(err, framemcp.ErrInvocationConflict) {
+		if errors.Is(err, framecall.ErrConflict) {
 			return nil, err
 		}
 		r.rememberPendingCompletion(record)
@@ -171,7 +170,7 @@ func settledPayload(record ReplayRecord) ([]byte, error) {
 }
 
 func settlementError(err error) error {
-	if errors.Is(err, framemcp.ErrInvocationConflict) || errors.Is(err, ErrClaimLost) || errors.Is(err, ErrOutcomeConflict) {
+	if errors.Is(err, framecall.ErrConflict) || errors.Is(err, ErrClaimLost) || errors.Is(err, ErrOutcomeConflict) {
 		return fmt.Errorf("idempotency: persist execution outcome: %w", err)
 	}
 	return errors.Join(ErrOutcomePending, err)

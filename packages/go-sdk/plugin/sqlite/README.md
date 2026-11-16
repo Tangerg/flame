@@ -40,7 +40,7 @@ input from that value. Callers cannot supply a separate mutation input under the
 same receipt identity. Stored numeric lexemes remain unchanged. A completed
 same-key redelivery returns the original reply without preparing or applying
 again. Reusing an identity with a changed method or original input is
-`frame/process/mcp.ErrInvocationConflict`. A pending receipt remains unconfirmed;
+`frame/call.ErrConflict`. A pending receipt remains unconfirmed;
 its absence never authorizes an external retry.
 
 `ReadReceipt` and `RegisterReceipts` project the original method/input binding

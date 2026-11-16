@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -43,7 +44,7 @@ type CommandBinding struct {
 	Activation   Activation
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
-	Invocation   framemcp.Invocation
+	Invocation   framecall.Invocation
 }
 
 type Command struct{ record CommandBinding }

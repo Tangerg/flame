@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *testing.T) {
@@ -56,7 +56,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatal(err)
 	}
 	contribution := installed.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	options := delivery.Options{IdempotencyKey: "prepared-review"}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := r.endpoint.Invoke(ctx, delivery.PluginsCall, request, options)

@@ -16,7 +16,8 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/httpreq"
@@ -87,7 +88,7 @@ func TestHTTPOriginalResultSurvivesRestartWithoutAnotherRequest(t *testing.T) {
 		t.Fatalf("original body: %+v", second.Body)
 	}
 	changed := httpInput(t, httpreq.Request{URL: server.URL + "/changed"})
-	if _, err := restarted.execute(t.Context(), method, "original", changed); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := restarted.execute(t.Context(), method, "original", changed); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed request reused identity: %v", err)
 	}
 	receipt, err := restarted.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "original", Method: method, InputDigest: input.Digest()})
@@ -114,7 +115,7 @@ func TestHTTPPolicyRefusalsNeverReachTransport(t *testing.T) {
 			})}
 			requests, method, _ := httpFixture(t, httpreq.ClientConfig{AllowedHosts: test.hosts, HTTPClient: client})
 			_, err := requests.execute(t.Context(), method, "refused", httpInput(t, test.input))
-			if _, known := errors.AsType[*framemcp.Refusal](err); !known {
+			if _, known := errors.AsType[*framecall.Refusal](err); !known {
 				t.Fatalf("policy failure is unconfirmed: %v", err)
 			}
 			if _, known := tool.ClassifyFailure(requestToolFailure(err)); !known {

@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -35,10 +34,10 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if pending, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil); err != nil || pending == nil || pending.NewlyAdmitted() || len(reply) != 0 {
 		t.Fatalf("pending command lost its reconciliation-only admission: %v, %s, %v", pending, reply, err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed method=%v", err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
 	if _, err := Command(t.Context(), db, "maintain", "original", input, nil, func(context.Context, string) (CommandPlan[string], error) {
@@ -96,7 +95,7 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	changed := other.Bytes()
-	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("completed outcome changed: %v", err)
 	}
 	duplicate, original, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil)
@@ -194,7 +193,7 @@ func TestCompleteCommandKeepsBusinessDecisionAndReceiptAtomic(t *testing.T) {
 				return
 			}
 			if test.refuse {
-				if refusal, known := errors.AsType[*framemcp.Refusal](err); !known || refusal.Code != "stale" {
+				if refusal, known := errors.AsType[*framecall.Refusal](err); !known || refusal.Code != "stale" {
 					t.Fatalf("decision lost original refusal: %v", err)
 				}
 				assertCommandState(t, db, 0, 1)
@@ -209,7 +208,7 @@ func TestCompleteCommandKeepsBusinessDecisionAndReceiptAtomic(t *testing.T) {
 				return CommandPlan[string]{}, nil
 			})
 			if test.refuse {
-				if _, known := errors.AsType[*framemcp.Refusal](replayErr); !known {
+				if _, known := errors.AsType[*framecall.Refusal](replayErr); !known {
 					t.Fatal(replayErr)
 				}
 			} else if replayErr != nil {

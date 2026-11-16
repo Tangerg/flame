@@ -21,7 +21,8 @@ import (
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -88,7 +89,7 @@ func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contr
 
 func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input framevalue.JSON) (framevalue.JSON, error) {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
 			}
 			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			commandID = "tool:model"
@@ -242,7 +243,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			if err == nil {
 				t.Fatal("uncertain write invented success")
 			}
-			if _, known := errors.AsType[*framemcp.Refusal](err); known {
+			if _, known := errors.AsType[*framecall.Refusal](err); known {
 				t.Fatalf("uncertain write became a definite refusal: %v", err)
 			}
 			if calls != 1 {
@@ -267,7 +268,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			}
 			changed, _ := framevalue.EncodeJSON(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
 			_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", changed)
-			refusal, known := errors.AsType[*framemcp.Refusal](err)
+			refusal, known := errors.AsType[*framecall.Refusal](err)
 			if !known || refusal.Code != "command_conflict" || calls != 1 {
 				t.Fatalf("unknown identity was rebound: calls=%d %v", calls, err)
 			}
@@ -290,7 +291,7 @@ func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *t
 			input := contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: contractwire.Merge}
 			admitted, _ := framevalue.EncodeJSON(input)
 			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "refused", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})

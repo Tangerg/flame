@@ -48,7 +48,8 @@ sqlitebase "github.com/Tangerg/frame/sqlite"
 "github.com/Tangerg/frame"
 framevalue "github.com/Tangerg/frame/value"
 plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -160,7 +161,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
    calls++
    return pluginstorage.NewCommandPlan(false, nil)
  })
- if !errors.Is(err, framemcp.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
+ if !errors.Is(err, framecall.ErrConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
  if err := db.Read(t.Context(), func(reader sqlitebase.Reader) error {
   return reader.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count)

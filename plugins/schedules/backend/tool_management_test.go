@@ -17,7 +17,7 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -57,7 +57,7 @@ func scheduleToolMetadata(t *testing.T, id string) sdk.Meta {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: framecall.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	return metadata.Meta

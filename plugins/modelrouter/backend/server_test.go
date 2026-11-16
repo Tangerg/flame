@@ -15,7 +15,8 @@ import (
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -66,7 +67,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "policy-edit", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "router"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "policy-edit", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "router"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,7 +93,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			routeContext, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "route", Origin: extension.Automatic, Target: framemcp.Target{Scope: "call", Reference: "route"}})
+			routeContext, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "route", Origin: extension.Automatic, Target: framecall.Target{Scope: "call", Reference: "route"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -123,7 +124,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*framemcp.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*framecall.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

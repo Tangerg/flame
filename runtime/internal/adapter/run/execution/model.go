@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	corechat "github.com/Tangerg/scope/core/chat"
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/samber/lo"
@@ -67,7 +67,7 @@ func (o *observedInteractionModel) Call(
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
-	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: callID}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
@@ -105,7 +105,7 @@ func (o *observedInteractionModel) Stream(
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
-		ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: callID}})
+		ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
 			return

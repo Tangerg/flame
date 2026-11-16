@@ -14,7 +14,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/a2aproject/a2a-go/v2/a2a"
@@ -71,7 +71,7 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		var found bool
 		selected, found = c.agents[request.Agent]
 		if !found {
-			return &framemcp.Refusal{Code: "agent_unconfigured", Message: "a2a: agent is not configured"}
+			return &framecall.Refusal{Code: "agent_unconfigured", Message: "a2a: agent is not configured"}
 		}
 		return nil
 	})
@@ -89,7 +89,7 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		if ctx.Err() != nil {
 			return wire.Result{}, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
-		return complete(ctx, prepared, wire.Result{}, &framemcp.Refusal{Code: "discovery_failed", Message: "a2a: agent discovery or endpoint admission failed"})
+		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: "discovery_failed", Message: "a2a: agent discovery or endpoint admission failed"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	message := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart(request.Message))
@@ -160,7 +160,7 @@ func (c *connector) cancel(ctx context.Context, method, id string, input frameva
 	}
 	client, err := selected.connect(ctx, binding.Endpoint)
 	if err != nil {
-		return complete(ctx, prepared, wire.Result{}, &framemcp.Refusal{Code: "endpoint_rejected", Message: "a2a: original endpoint cannot be admitted"})
+		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: "endpoint_rejected", Message: "a2a: original endpoint cannot be admitted"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	task, err := client.CancelTask(ctx, &a2a.CancelTaskRequest{ID: binding.TaskID})
@@ -183,7 +183,7 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 		return reader.QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return taskBinding{}, agent{}, &framemcp.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
+		return taskBinding{}, agent{}, &framecall.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
 	}
 	if err != nil {
 		return taskBinding{}, agent{}, err
@@ -197,7 +197,7 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 	}
 	selected, found := c.agents[binding.Agent]
 	if !found || selected.authority != binding.Authority {
-		return taskBinding{}, agent{}, &framemcp.Refusal{Code: "agent_changed", Message: "a2a: original agent authority is no longer configured"}
+		return taskBinding{}, agent{}, &framecall.Refusal{Code: "agent_changed", Message: "a2a: original agent authority is no longer configured"}
 	}
 	return binding, selected, nil
 }
@@ -251,5 +251,5 @@ func complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, resu
 }
 
 func invalidRequest() error {
-	return &framemcp.Refusal{Code: "invalid_request", Message: "a2a: invalid request"}
+	return &framecall.Refusal{Code: "invalid_request", Message: "a2a: invalid request"}
 }

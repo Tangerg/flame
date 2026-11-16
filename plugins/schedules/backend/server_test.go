@@ -20,7 +20,7 @@ import (
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -95,7 +95,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 		t.Fatalf("absence: %+v,%v", result, err)
 	}
 	var metadata sdk.Meta
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "original", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "original", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	normal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: input})
@@ -135,7 +135,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "refused", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: refusedInput})
@@ -160,7 +160,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result, err := lookup("original", string(changed)); result != nil || !errors.Is(decodeError(err), framemcp.ErrInvocationConflict) {
+	if result, err := lookup("original", string(changed)); result != nil || !errors.Is(decodeError(err), framecall.ErrConflict) {
 		t.Fatalf("wrong input became evidence: %+v,%v", result, err)
 	}
 	if _, err := execDatabase(t.Context(), db, `UPDATE commands SET reply='{"wrong":"result"}' WHERE id='tool:original'`); err != nil {
@@ -223,7 +223,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = pluginmcp.SetUp(t.Context(), session, []pluginmcp.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []pluginmcp.SetupDependency{}, Background: &framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
+			err = pluginmcp.SetUp(t.Context(), session, []pluginmcp.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []pluginmcp.SetupDependency{}, Background: &framecall.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
 			if (err != nil) != mismatched {
 				t.Fatalf("setup mismatched=%v: %v", mismatched, err)
 			}

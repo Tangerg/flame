@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
@@ -92,7 +93,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			}
 			switch event.Kind {
 			case protocol.PluginStreamFailure:
-				yield(pluginmcp.StreamValue[C, R]{}, &framemcp.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
+				yield(pluginmcp.StreamValue[C, R]{}, &framecall.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
 				return
 			case protocol.PluginStreamChunk:
 				if err := m.method.ValidateChunk([]byte(event.Value)); err != nil {

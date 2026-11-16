@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
@@ -128,7 +128,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}}
+	invocation := framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}

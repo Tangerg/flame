@@ -360,7 +360,7 @@
                 "type": "string"
               },
               "invocation": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.SW52b2NhdGlvbg"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL2NhbGw.SW52b2NhdGlvbg"
               },
               "kind": {
                 "allOf": [
@@ -424,7 +424,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.SW52b2NhdGlvbg": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL2NhbGw.SW52b2NhdGlvbg": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -437,7 +437,7 @@
                 "type": "string"
               },
               "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.VGFyZ2V0"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL2NhbGw.VGFyZ2V0"
               }
             },
             "required": [
@@ -447,7 +447,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.VGFyZ2V0": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL2NhbGw.VGFyZ2V0": {
             "additionalProperties": false,
             "properties": {
               "reference": {

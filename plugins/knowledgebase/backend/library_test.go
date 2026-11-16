@@ -14,7 +14,8 @@ import (
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -85,7 +86,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changedJSON); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changedJSON); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
 	staleCalls := calls.Load()
@@ -128,6 +129,6 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 }
 
 func isRevisionConflict(err error) bool {
-	refusal, ok := errors.AsType[*framemcp.Refusal](err)
+	refusal, ok := errors.AsType[*framecall.Refusal](err)
 	return ok && refusal.Code == "revision_conflict"
 }

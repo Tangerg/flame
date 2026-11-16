@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -95,7 +96,7 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 				if err := host.Restore(t.Context(), []*framehost.Plugin{compiled}); err != nil {
 					t.Fatal(err)
 				}
-				target := plugincontract.PointContext{Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: record.ID.String()}, Attributes: jsontext.Value(`{}`)}
+				target := plugincontract.PointContext{Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: record.ID.String()}, Attributes: jsontext.Value(`{}`)}
 				if bindings, err := ResolvePoint(t.Context(), host, store, contract, target, nil); err != nil || len(bindings) != 1 || bindings[0].Digest != original.Digest() {
 					t.Fatalf("original point values: %+v, %v", bindings, err)
 				}

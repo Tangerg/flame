@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
@@ -33,7 +33,7 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 			name string
 			edit func(*RunRequestSnapshot)
 		}{
-			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = framemcp.Invocation{} }},
+			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = framecall.Invocation{} }},
 			{"missing Session", func(v *RunRequestSnapshot) { v.SessionID = "" }},
 			{"missing Run", func(v *RunRequestSnapshot) { v.RunID = "" }},
 			{"invalid Session", func(v *RunRequestSnapshot) { v.SessionID = "ses_bad id" }},
@@ -63,6 +63,6 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	}
 }
 
-func testInvocation() framemcp.Invocation {
-	return framemcp.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: framemcp.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
+func testInvocation() framecall.Invocation {
+	return framecall.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: framecall.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

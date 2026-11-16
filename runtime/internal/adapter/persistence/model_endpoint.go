@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
@@ -28,7 +28,7 @@ const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finis
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
 	Kind      modelref.EndpointKind `json:"kind"`
-	Caller    framemcp.Invocation   `json:"caller"`
+	Caller    framecall.Invocation  `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`
 	SessionID string                `json:"sessionId,omitzero"`

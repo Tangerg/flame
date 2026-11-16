@@ -16,7 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type bindingPlanningDriver struct{}
@@ -274,8 +275,8 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 			ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "records.write", extension.ScopeInstallation), ContributionID: "records", Export: "records",
 		}}, nil
 	}
-	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (framemcp.Invocation, error) {
-		return framemcp.Invocation{ID: "original-command", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
+	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (framecall.Invocation, error) {
+		return framecall.Invocation{ID: "original-command", Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)

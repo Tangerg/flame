@@ -19,7 +19,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -92,7 +93,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "managed"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	toolName = tools[0].ModelName
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	response := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var summary protocol.UsageSummary
 	if response.Failure != nil || json.Unmarshal([]byte(response.Output), &summary) != nil || summary.ObservedAt.IsZero() || summary.Since == nil {

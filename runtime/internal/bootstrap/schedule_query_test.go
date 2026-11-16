@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -40,7 +40,7 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 			if err != nil {
 				r.t.Fatal(err)
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}, Input: string(input)}
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}, Input: string(input)}
 		}
 	}
 	r.t.Fatal("selected schedule contribution unavailable")

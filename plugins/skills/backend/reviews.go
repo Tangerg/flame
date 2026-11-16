@@ -11,7 +11,8 @@ import (
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -22,7 +23,7 @@ const reviewsSchema = `CREATE TABLE IF NOT EXISTS reviews (
 )`
 
 func staleReview() error {
-	return &framemcp.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
+	return &framecall.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
 }
 
 func registerReviews(server *pluginmcp.Backend, db framesqlite.Database) error {
@@ -54,7 +55,7 @@ func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database,
 			return zero, err
 		}
 		if inv.ID != string(command.ID) {
-			return zero, framemcp.ErrInvocationConflict
+			return zero, framecall.ErrConflict
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -126,13 +127,13 @@ func (r reviewQueue) pending(ctx context.Context, libraries skilllearning.Librar
 	return queue, err
 }
 
-func humanDecision(ctx context.Context) (framemcp.Invocation, error) {
+func humanDecision(ctx context.Context) (framecall.Invocation, error) {
 	inv, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return inv, err
 	}
 	if inv.Origin != extension.Human {
-		return inv, &framemcp.Refusal{Code: "human_required", Message: "an explicit human review is required"}
+		return inv, &framecall.Refusal{Code: "human_required", Message: "an explicit human review is required"}
 	}
 	return inv, nil
 }

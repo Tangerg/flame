@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -57,7 +58,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			if found != test.found || value != test.value {
 				t.Fatalf("receipt = %q, %t, %v", value, found, err)
 			}
-			failure, known := errors.AsType[*framemcp.Refusal](err)
+			failure, known := errors.AsType[*framecall.Refusal](err)
 			switch {
 			case test.failure != "":
 				if !known || failure.Code != test.failure {

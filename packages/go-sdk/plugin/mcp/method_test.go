@@ -13,7 +13,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -29,7 +30,7 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 			result *methodResult[string]
 		}{
 			{"neither", &methodResult[string]{}},
-			{"both", &methodResult[string]{Value: &value, Failure: &framemcp.Refusal{Code: "refused", Message: "failed"}}},
+			{"both", &methodResult[string]{Value: &value, Failure: &framecall.Refusal{Code: "refused", Message: "failed"}}},
 		} {
 			t.Run(caller.name+"/"+reply.name, func(t *testing.T) {
 				session := replySession(t, reply.result)
@@ -42,7 +43,7 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 				if err == nil {
 					t.Fatal("malformed backend reply succeeded")
 				}
-				if _, classified := errors.AsType[*framemcp.Refusal](err); classified {
+				if _, classified := errors.AsType[*framecall.Refusal](err); classified {
 					t.Fatalf("malformed backend reply became a classified failure: %v", err)
 				}
 			})
@@ -73,7 +74,7 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 				if err == nil {
 					t.Fatal("failed operation succeeded")
 				}
-				failure, known := errors.AsType[*framemcp.Refusal](err)
+				failure, known := errors.AsType[*framecall.Refusal](err)
 				if known != (cause == refused) {
 					t.Fatalf("known business classification = %v; cause = %v", err, cause)
 				}
@@ -231,9 +232,9 @@ func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client)
 }
 
 func TestCallsPreserveBackendFailureClassification(t *testing.T) {
-	session := replySession(t, &methodResult[string]{Failure: &framemcp.Refusal{Code: "refused", Message: "failed"}})
+	session := replySession(t, &methodResult[string]{Failure: &framecall.Refusal{Code: "refused", Message: "failed"}})
 	_, err := testMethod[string, string](t, "flame.test/reply.v1", frame.Command).CallCommand(t.Context(), session, "command", "input")
-	failure, ok := errors.AsType[*framemcp.Refusal](err)
+	failure, ok := errors.AsType[*framecall.Refusal](err)
 	if !ok || failure.Code != "refused" || failure.Message != "failed" || err.Error() != "failed" {
 		t.Fatalf("backend classification lost: %v", err)
 	}
@@ -327,11 +328,11 @@ func TestReplyRejectsARefusalWithoutCode(t *testing.T) {
 }
 
 func TestReplyReportsInvocationConflictsWithoutAClassifier(t *testing.T) {
-	result, err := reply("", fmt.Errorf("stored command: %w", framemcp.ErrInvocationConflict), nil)
+	result, err := reply("", fmt.Errorf("stored command: %w", framecall.ErrConflict), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := result.value("conflict"); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, err := result.value("conflict"); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("decoded conflict = %v, want ErrInvocationConflict", err)
 	}
 }

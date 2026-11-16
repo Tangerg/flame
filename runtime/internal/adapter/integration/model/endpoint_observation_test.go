@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/catalog"
 )
@@ -34,7 +34,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		}),
 		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "invalid-response"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "invalid-response"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestEndpointRetainsGenerationWhenCatalogRatesAreInvalid(t *testing.T) {
 		}),
 		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing("anthropic", []catalog.Model{{ID: "claude-opus-5", Pricing: catalog.PricingSchedule{{InputPer1M: -1}}}}),
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	stream, _ := resolved.Streamer()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"complete", "stop", "stop-final"} {
-		ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
+		ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}

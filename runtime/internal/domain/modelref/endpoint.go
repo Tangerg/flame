@@ -13,7 +13,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
@@ -119,7 +119,7 @@ func (r EmbeddingEndpointResponse) reportedUsage() *chat.Usage {
 // its logical calling operation. Its immutable input is persisted before I/O.
 type EndpointInvocation struct {
 	ID        string
-	Caller    framemcp.Invocation
+	Caller    framecall.Invocation
 	Provider  string
 	Model     string
 	SessionID string

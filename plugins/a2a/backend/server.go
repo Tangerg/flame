@@ -12,7 +12,8 @@ import (
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
@@ -44,7 +45,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
 		kind := tool.FailureKindFailed
-		if _, refused := errors.AsType[*framemcp.Refusal](err); refused {
+		if _, refused := errors.AsType[*framecall.Refusal](err); refused {
 			kind = tool.FailureKindRejected
 		}
 		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(err.Error()), Cause: err})
@@ -128,7 +129,7 @@ func commandTool[P any](name string, method frame.MethodDescriptor, execute func
 }
 
 func commandFailure(err error) error {
-	refusal, known := errors.AsType[*framemcp.Refusal](err)
+	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known {
 		return err
 	}

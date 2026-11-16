@@ -10,7 +10,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -98,7 +99,7 @@ func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testin
 	input.Revision = 2
 	if _, err := bound.CallCommand(t.Context(), "original", input); err == nil {
 		t.Fatal("invalid implementation output became success")
-	} else if _, known := errors.AsType[*framemcp.Refusal](err); known {
+	} else if _, known := errors.AsType[*framecall.Refusal](err); known {
 		t.Fatal("invalid output became a known refusal")
 	}
 }

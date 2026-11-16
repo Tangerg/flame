@@ -17,7 +17,7 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/a2a/internal/contract"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
@@ -309,7 +309,7 @@ func TestChangedAgentAndWrongRemoteIdentityAreRefused(t *testing.T) {
 	spec.CardURL += "?replacement=true"
 	c = newTestConnector(t, path, spec)
 	_, err := c.status(t.Context(), wire.TaskRequest{RequestID: "original"})
-	refusal, known := errors.AsType[*framemcp.Refusal](err)
+	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known || refusal.Code != "agent_changed" {
 		t.Fatalf("changed source: %v", err)
 	}

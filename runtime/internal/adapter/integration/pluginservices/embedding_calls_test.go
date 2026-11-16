@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -26,7 +27,7 @@ type roleCallbackEmbedder struct {
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
-	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (framemcp.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
+	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (framecall.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
 	e.calls.Add(1)
@@ -67,7 +68,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +85,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 						t.Fatalf("ordinary embedding = %+v, %v", vectors, err)
 					}
 				} else {
-					refusal, known := errors.AsType[*framemcp.Refusal](err)
+					refusal, known := errors.AsType[*framecall.Refusal](err)
 					if err == nil || known != (state == "absent") || known && refusal.Code != "model_role_unconfigured" {
 						t.Fatalf("role absence and failure were merged: %v", err)
 					}

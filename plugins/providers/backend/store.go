@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
@@ -120,7 +120,7 @@ func openClient[R any](ctx context.Context, s *store, method string, kind client
 func prepareClient(ctx context.Context, kind clientKind, input modelprovider.Open) (clientConstruction, error) {
 	created, err := constructClient(ctx, kind, input)
 	if err != nil {
-		return clientConstruction{}, &framemcp.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
+		return clientConstruction{}, &framecall.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
 	}
 	id, err := modelprovider.NewHandleID()
 	if err != nil {

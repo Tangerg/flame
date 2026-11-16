@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -38,7 +38,7 @@ type Pool struct {
 }
 
 type invocationRestorer interface {
-	RestoreInvocation(context.Context, framemcp.Invocation) (context.Context, error)
+	RestoreInvocation(context.Context, framecall.Invocation) (context.Context, error)
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -140,7 +140,7 @@ func setupContributions(connection mcpapp.Launch) ([]pluginmcp.SetupContribution
 			if !found {
 				return nil, errors.New("mcp: background role requires an installed entry")
 			}
-			value.Background = &framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}
+			value.Background = &framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}
 		}
 		for _, required := range connection.Requirements.Snapshot() {
 			if required.Contribution != contribution.ID {

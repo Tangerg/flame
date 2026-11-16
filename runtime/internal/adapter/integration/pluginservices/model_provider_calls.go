@@ -16,7 +16,7 @@ import (
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -310,7 +310,7 @@ func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Reque
 	if caller.ID == id {
 		id = "endpoint_00000000-0000-0000-0000-000000000001"
 	}
-	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 	if err != nil {
 		return false, err
 	}

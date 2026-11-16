@@ -32,7 +32,8 @@ func repositoryLayer(path string) (string, bool) {
 		return sdkLayer(relative), true
 	}
 	if path == frameModulePath {
-		return ringMechanism, true
+		// Core owns callable contracts; admission and external execution have separate packages.
+		return ringValue, true
 	}
 	if relative, ok := strings.CutPrefix(path, frameModulePath+"/"); ok {
 		return frameLayer(relative), true
@@ -65,11 +66,13 @@ func sdkLayer(path string) string {
 
 func frameLayer(path string) string {
 	switch path {
-	case "value", "portable":
+	case "value", "call":
 		return ringValue
+	case "host":
+		return ringMechanism
 	case "browser", "process/mcp", "sqlite", "process/runner", "distribution", "process":
 		return ringInfra
-	case "portable/contractgen", "cmd/frame-runner":
+	case "contractgen", "cmd/frame-runner":
 		return ringGenerator
 	default:
 		return ringUnknown
@@ -118,16 +121,13 @@ func dependencyViolationsInFile(path, fromRing string) ([]dependencyViolation, e
 	return violations, nil
 }
 
-// Frame publishes pure invocation and browser grant values beside executable
-// transports. Inner rings may use these values; starting sessions, admitting
+// Frame publishes browser grant values beside its executable bridge.
+// Inner rings may use these values; starting sessions, admitting
 // use, and controlling lifetimes remains confined to external adapters.
 func frameValueImport(file *ast.File, imported *ast.ImportSpec) bool {
 	var name string
 	var values map[string]bool
 	switch strings.Trim(imported.Path.Value, `"`) {
-	case frameModulePath + "/process/mcp":
-		name = "mcp"
-		values = map[string]bool{"Invocation": true, "Origin": true, "Refusal": true, "ErrInvocationConflict": true}
 	case frameModulePath + "/browser":
 		name = "browser"
 		values = map[string]bool{"Authority": true, "Realm": true, "UseGrant": true}
@@ -154,31 +154,6 @@ func frameValueImport(file *ast.File, imported *ast.ImportSpec) bool {
 		return true
 	})
 	return used && pure
-}
-
-func TestFrameMCPValueBoundaryRejectsExecutableSymbols(t *testing.T) {
-	for _, test := range []struct {
-		name, source string
-		violations   int
-	}{
-		{name: "original invocation", source: "var _ mcp.Invocation"},
-		{name: "owner refusal", source: "var _ mcp.Refusal"},
-		{name: "conflicting identity", source: "var _ = mcp.ErrInvocationConflict"},
-		{name: "client transport", source: "var _ = mcp.NewCallbackReceiver", violations: 1},
-		{name: "mixed value and transport", source: "var _ mcp.Invocation\nvar _ = mcp.NewCallbackReceiver", violations: 1},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "contract.go")
-			content := "package domain\nimport mcp \"" + frameModulePath + "/process/mcp\"\n" + test.source
-			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			violations, err := dependencyViolationsInFile(path, ringDomain)
-			if err != nil || len(violations) != test.violations {
-				t.Fatalf("contract boundary = %v, %v; want %d violations", violations, err, test.violations)
-			}
-		})
-	}
 }
 
 func TestFrameBrowserValueBoundaryRejectsControlAuthority(t *testing.T) {
@@ -239,8 +214,9 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		{name: "unknown target", dependency: runtimeModulePath + "/internal/newfeature", wantViolations: 1},
 		{name: "public protocol", dependency: sdkModulePath + "/protocol"},
 		{name: "public backend transport", dependency: sdkModulePath + "/plugin", wantViolations: 1},
-		{name: "frame admission", dependency: frameModulePath},
-		{name: "frame contract", dependency: frameModulePath + "/portable"},
+		{name: "frame admission", dependency: frameModulePath + "/host"},
+		{name: "frame contract", dependency: frameModulePath},
+		{name: "calling evidence", dependency: frameModulePath + "/call"},
 		{name: "frame mcp driver", dependency: frameModulePath + "/process/mcp", wantViolations: 1},
 		{name: "frame unknown", dependency: frameModulePath + "/unclassified", wantViolations: 1},
 		{name: "pure value", dependency: sdkModulePath + "/identity"},
@@ -290,12 +266,13 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 	}{
 		{from: runtimeModulePath, to: runtimeModulePath + "/internal/bootstrap", allowed: true},
 		{from: sdkModulePath + "/plugin/sqlite", to: frameModulePath + "/sqlite", allowed: true},
-		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath + "/portable", allowed: true},
-		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath + "/call", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath, allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: frameModulePath + "/host"},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: frameModulePath, allowed: true},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: frameModulePath + "/process/mcp"},
-		{from: frameModulePath + "/portable", to: frameModulePath},
-		{from: frameModulePath + "/portable", to: frameModulePath + "/value", allowed: true},
+		{from: frameModulePath + "/call", to: frameModulePath, allowed: true},
+		{from: frameModulePath + "/call", to: frameModulePath + "/value", allowed: true},
 		{from: frameModulePath, to: frameModulePath + "/process/mcp"},
 		{from: frameModulePath + "/process/mcp", to: frameModulePath, allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/model", allowed: true},

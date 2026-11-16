@@ -16,7 +16,7 @@ import (
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -94,7 +94,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			original.Options.MaxOutputTokens = new(int64(64))
 			before := original.Clone()
 			for _, id := range []string{"input-first", "input-second"} {
-				ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
+				ctx, _ := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 				_, err := capture.Model().Call(ctx, original)
 				if (err == nil) != (mode == "ordered") {
 					t.Fatalf("transformed %s input admission: %v", mode, err)
@@ -111,7 +111,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				t.Fatal("transformed input entered caller-owned conversation")
 			}
 			store.disable(t)
-			ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "withdrawn-input"}})
+			ctx, _ := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: framecall.Target{Scope: extension.ScopeCall, Reference: "withdrawn-input"}})
 			if _, err := capture.Model().Call(ctx, original); err == nil {
 				t.Fatal("withdrawn transformer was invoked")
 			}

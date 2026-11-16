@@ -9,7 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
@@ -82,7 +83,7 @@ func (c *Commands) Retire(ctx context.Context, id string) error {
 // RestoreInvocation validates a private owner's retained caller against original
 // host routing, including the resource owner's original target. Only a fresh
 // automatic trigger needs the background contribution's own installation target.
-func (c *Commands) RestoreInvocation(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
+func (c *Commands) RestoreInvocation(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ type CommandAdmission struct {
 	Activation plugin.Activation
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input framevalue.JSON, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (framemcp.Invocation, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input framevalue.JSON, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (framecall.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Admit(ctx, func(ctx context.Context) error {
 		previous, found, err := c.store.Get(ctx, id)

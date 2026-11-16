@@ -18,7 +18,8 @@ import (
 
 	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -186,7 +187,7 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 	var reference pluginmcp.CallbackRef
 	var closeRPC func()
 	if background {
-		reference, closeRPC, err = s.callbacks.OpenRPCWithInvocation(calling, session, callbackPayloadLimits, func(ctx context.Context, invocation framemcp.Invocation) (context.Context, error) {
+		reference, closeRPC, err = s.callbacks.OpenRPCWithInvocation(calling, session, callbackPayloadLimits, func(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 			ctx, err := s.commands.RestoreInvocation(ctx, invocation)
 			if err != nil {
 				return nil, err

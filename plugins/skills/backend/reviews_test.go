@@ -10,12 +10,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R], id string, origin framemcp.Origin, p P) (R, error) {
+func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R], id string, origin framecall.Origin, p P) (R, error) {
 	t.Helper()
 	var zero R
 	capability, err := skilllearning.Contract()
@@ -34,7 +35,7 @@ func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *plug
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: origin, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: origin, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}

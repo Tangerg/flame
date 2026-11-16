@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *testing.T) {
@@ -41,7 +41,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 						if order == nil {
 							order = []protocol.PluginPointReference{}
 						}
-						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: owner.ID}, Attributes: `{}`, Order: order}
+						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: owner.ID}, Attributes: `{}`, Order: order}
 					}
 				}
 				t.Fatalf("missing point %s/%s", name, point)

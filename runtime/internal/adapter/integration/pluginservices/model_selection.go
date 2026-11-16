@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/google/uuid"
 )
 
@@ -74,8 +74,8 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		return modelchoice.Selection{}, err
 	}
 	id := uuid.NewString()
-	target := framemcp.Target{Scope: extension.ScopeCall, Reference: id}
-	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
+	target := framecall.Target{Scope: extension.ScopeCall, Reference: id}
+	invocation := framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID

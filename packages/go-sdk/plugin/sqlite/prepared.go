@@ -9,7 +9,8 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -40,7 +41,7 @@ func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, in
 		err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
-				return framemcp.ErrInvocationConflict
+				return framecall.ErrConflict
 			}
 			return nil
 		}
@@ -80,7 +81,7 @@ func ResumeCommand(ctx context.Context, db sqlite.Database, method, id string) (
 		return nil, framevalue.JSON{}, nil, err
 	}
 	if storedMethod != method {
-		return nil, framevalue.JSON{}, nil, framemcp.ErrInvocationConflict
+		return nil, framevalue.JSON{}, nil, framecall.ErrConflict
 	}
 	input, err := framevalue.ParseJSON([]byte(raw))
 	if err != nil {
@@ -123,7 +124,7 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 		return err
 	}
 	if _, err := pluginmcp.DecodeReply[framevalue.JSON](reply); err != nil {
-		if _, known := errors.AsType[*framemcp.Refusal](err); !known {
+		if _, known := errors.AsType[*framecall.Refusal](err); !known {
 			return err
 		}
 	}
@@ -134,7 +135,7 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 		}
 		if len(original) != 0 {
 			if !bytes.Equal(original, reply) {
-				return framemcp.ErrInvocationConflict
+				return framecall.ErrConflict
 			}
 			return nil
 		}
@@ -158,7 +159,7 @@ func (c *PreparedCommand) readReply(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	if method != c.method || input != c.input.String() {
-		return nil, framemcp.ErrInvocationConflict
+		return nil, framecall.ErrConflict
 	}
 	return reply, nil
 }

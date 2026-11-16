@@ -10,7 +10,7 @@ import (
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -37,11 +37,11 @@ func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, er
 
 func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire.SearchResponse, error) {
 	if len(input.Query) > maxQueryBytes {
-		return wire.SearchResponse{}, &framemcp.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
+		return wire.SearchResponse{}, &framecall.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
 	}
 	prepared, err := input.Prepare()
 	if err != nil {
-		return wire.SearchResponse{}, errors.Join(&framemcp.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
+		return wire.SearchResponse{}, errors.Join(&framecall.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
 	}
 	response, err := r.search(ctx, prepared)
 	if err != nil {
@@ -55,7 +55,7 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire
 		return wire.SearchResponse{}, err
 	}
 	if len(encoded) > maxSearchResponseBytes {
-		return wire.SearchResponse{}, &framemcp.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
+		return wire.SearchResponse{}, &framecall.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
 	}
 	result := wire.SearchResponse{Query: response.Query, Results: make([]wire.SearchResult, len(response.Results))}
 	for index, source := range response.Results {
@@ -70,7 +70,7 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire
 func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (capture.Page, error) {
 	prepared, err := input.Prepare()
 	if err != nil {
-		return capture.Page{}, errors.Join(&framemcp.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
+		return capture.Page{}, errors.Join(&framecall.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
 	}
 	if err := capture.ValidateURL(prepared.URL); err != nil {
 		return capture.Page{}, err

@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 const (
@@ -42,7 +42,7 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 }
 
 func refused(code, message string) error {
-	return &framemcp.Refusal{Code: code, Message: "github: " + message}
+	return &framecall.Refusal{Code: code, Message: "github: " + message}
 }
 
 func query[T any](ctx context.Context, c *connector, path string, parameters url.Values, decode func(response) (T, error)) (T, error) {

@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -113,7 +114,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 	reply = jsontext.Value(`{"failure":{"code":"revision","message":"conflict"}}`)
 	if _, found, err := binding.ReadReceipt(t.Context(), "original", input); !found {
 		t.Fatalf("known refusal disappeared: %v", err)
-	} else if failure, ok := errors.AsType[*framemcp.Refusal](err); !ok || failure.Code != "revision" {
+	} else if failure, ok := errors.AsType[*framecall.Refusal](err); !ok || failure.Code != "revision" {
 		t.Fatalf("original refusal changed: %v", err)
 	}
 	if mutations.Load() != 0 || reads.Load() != 3 {

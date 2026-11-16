@@ -10,7 +10,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -79,21 +79,21 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		remote.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) ([]string, error) {
 			spec, err := newClientSpec(command.Input)
 			if err != nil {
-				return nil, &framemcp.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
+				return nil, &framecall.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
 			}
 			values, err := listModels(ctx, spec, deployments)
 			if err != nil {
-				return nil, &framemcp.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
+				return nil, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
 			}
 			return values, nil
 		}),
 		verify.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) (struct{}, error) {
 			spec, err := newClientSpec(command.Input)
 			if err != nil {
-				return struct{}{}, &framemcp.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
+				return struct{}{}, &framecall.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
 			}
 			if err := verifyConnection(ctx, spec); err != nil {
-				return struct{}{}, &framemcp.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
+				return struct{}{}, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
 			}
 			return struct{}{}, nil
 		}),

@@ -491,7 +491,7 @@
         "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
         "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
-        "github.com/Tangerg/frame/process/mcp",
+        "github.com/Tangerg/frame/call",
         "iter"
       ],
       "variables": [
@@ -531,7 +531,7 @@
         },
         {
           "name": "ResolvePointValues",
-          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *contract.Point, target mcp.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *contract.Point, target call.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
@@ -987,7 +987,7 @@
             },
             {
               "name": "Target",
-              "type": "mcp.Target"
+              "type": "call.Target"
             }
           ]
         },
@@ -1182,12 +1182,12 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/extension",
       "imports": [
-        "github.com/Tangerg/frame/process/mcp"
+        "github.com/Tangerg/frame/call"
       ],
       "constants": [
         {
           "name": "Automatic",
-          "type": "mcp.Origin",
+          "type": "call.Origin",
           "value": "\"automatic\""
         },
         {
@@ -1277,12 +1277,12 @@
         },
         {
           "name": "Human",
-          "type": "mcp.Origin",
+          "type": "call.Origin",
           "value": "\"human\""
         },
         {
           "name": "Model",
-          "type": "mcp.Origin",
+          "type": "call.Origin",
           "value": "\"model\""
         },
         {
@@ -1407,7 +1407,7 @@
         },
         {
           "name": "ValidateInvocation",
-          "signature": "func(invocation mcp.Invocation) error"
+          "signature": "func(invocation call.Invocation) error"
         }
       ],
       "types": [
@@ -4667,7 +4667,7 @@
       "imports": [
         "encoding/json/jsontext",
         "github.com/Tangerg/frame",
-        "github.com/Tangerg/frame/process/mcp",
+        "github.com/Tangerg/frame/call",
         "github.com/Tangerg/frame/value"
       ],
       "constants": [
@@ -4847,7 +4847,7 @@
           "fields": [
             {
               "name": "Target",
-              "type": "mcp.Target",
+              "type": "call.Target",
               "tag": "json:\"target\""
             },
             {
@@ -5206,8 +5206,8 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
         "github.com/Tangerg/frame",
+        "github.com/Tangerg/frame/call",
         "github.com/Tangerg/frame/host",
-        "github.com/Tangerg/frame/process/mcp",
         "github.com/Tangerg/frame/value",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/jsonschema",
@@ -5347,7 +5347,7 @@
         },
         {
           "name": "InvocationFromContext",
-          "signature": "func(ctx context.Context) (mcp.Invocation, error)"
+          "signature": "func(ctx context.Context) (call.Invocation, error)"
         },
         {
           "name": "NewBackend",
@@ -5447,7 +5447,7 @@
         },
         {
           "name": "WithInvocation",
-          "signature": "func(ctx context.Context, invocation mcp.Invocation) (context.Context, error)"
+          "signature": "func(ctx context.Context, invocation call.Invocation) (context.Context, error)"
         }
       ],
       "types": [
@@ -5615,7 +5615,7 @@
             },
             {
               "name": "OpenRPCWithInvocation",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, project func(context.Context, mcp.Invocation) (context.Context, error)) (CallbackRef, func(), error)"
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, project func(context.Context, call.Invocation) (context.Context, error)) (CallbackRef, func(), error)"
             },
             {
               "name": "PublishRPC",
@@ -5949,7 +5949,7 @@
           "fields": [
             {
               "name": "Background",
-              "type": "*mcp.Target",
+              "type": "*call.Target",
               "tag": "json:\"background,omitzero\""
             },
             {
@@ -8664,7 +8664,7 @@
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/hook",
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/frame/process/mcp",
+        "github.com/Tangerg/frame/call",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "reflect",
         "time"
@@ -11391,7 +11391,7 @@
             },
             {
               "name": "Target",
-              "type": "mcp.Target",
+              "type": "call.Target",
               "tag": "json:\"target\""
             }
           ]
@@ -13880,7 +13880,7 @@
             },
             {
               "name": "Caller",
-              "type": "mcp.Invocation",
+              "type": "call.Invocation",
               "tag": "json:\"caller\""
             },
             {
@@ -16098,7 +16098,7 @@
             },
             {
               "name": "Target",
-              "type": "mcp.Target",
+              "type": "call.Target",
               "tag": "json:\"target\""
             },
             {

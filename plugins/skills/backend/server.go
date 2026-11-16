@@ -5,11 +5,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -86,7 +85,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &framemcp.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
 		}
 		return nil
 	})
@@ -101,7 +100,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	}
 	value, err := execute(ctx, request)
 	if errors.Is(err, errInvalidSkillDraft) {
-		refusal := &framemcp.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
+		refusal := &framecall.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
 		return pluginstorage.CompleteExternalCommand(ctx, prepared, nil, func(context.Context) (pluginstorage.CommandPlan[R], error) {
 			return pluginstorage.CommandPlan[R]{}, refusal
 		})

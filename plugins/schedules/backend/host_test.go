@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 // The backend is independently exportable; its captured wire fixture must not
@@ -122,7 +122,7 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 				occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
 					ID: "sch_due:1700000000000", Execution: schedule.ExecutionSnapshot{Title: "Due", Instructions: "captured input"},
 					FiredAt: at, NextRunAt: at.Add(time.Hour), SessionID: fmt.Sprintf("ses_due_%d", index), RunID: fmt.Sprintf("run_due_%d", index),
-					Invocation: framemcp.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
+					Invocation: framecall.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
 				})
 				if err != nil {
 					t.Fatal(err)

@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -59,7 +59,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: id, Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framecall.Invocation{ID: id, Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

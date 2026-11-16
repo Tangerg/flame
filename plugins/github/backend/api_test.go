@@ -13,9 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -75,7 +74,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	status = http.StatusUnauthorized
 	if _, err := connector.getIssue(t.Context(), input); err == nil {
 		t.Fatal("revoked authorization returned cached private data")
-	} else if refusal, ok := errors.AsType[*framemcp.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("authorization failure = %v", err)
 	}
 	otherToken := "second-private-fixture-token"
@@ -153,7 +152,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 				t.Fatal(err)
 			}
 			_, err = connector.getIssue(t.Context(), contractwire.IssueInput{Repository: "owner/repo", Number: 42})
-			refusal, known := errors.AsType[*framemcp.Refusal](err)
+			refusal, known := errors.AsType[*framecall.Refusal](err)
 			if err == nil || known != (test.refusal != "") || known && refusal.Code != test.refusal || calls != 1 {
 				t.Fatalf("failure changed or retried: code=%v err=%v calls=%d", refusal, err, calls)
 			}

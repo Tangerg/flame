@@ -6,8 +6,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	framemcp "github.com/Tangerg/frame/process/mcp"
 
+	framecall "github.com/Tangerg/frame/call"
 	"time"
 )
 
@@ -23,7 +23,7 @@ type RunRequest struct {
 	occurrenceID occurrenceIdentity
 	sessionID    string
 	runID        string
-	invocation   framemcp.Invocation
+	invocation   framecall.Invocation
 	commandID    string
 }
 
@@ -67,7 +67,7 @@ func (r RunRecord) validate() error {
 func (r RunRecord) ScheduleID() string { return r.scheduleID.String() }
 func (r RunRecord) RanAt() time.Time   { return r.ranAt }
 
-func (s Schedule) ManualRun(commandID, sessionID, runID string, ranAt time.Time, invocation framemcp.Invocation) (RunRequest, error) {
+func (s Schedule) ManualRun(commandID, sessionID, runID string, ranAt time.Time, invocation framecall.Invocation) (RunRequest, error) {
 	record, err := s.recordRun(ranAt)
 	if err != nil {
 		return RunRequest{}, err
@@ -136,10 +136,10 @@ func (r RunRequest) ManualRecord() (RunRecord, bool) {
 	return *r.manualRecord, true
 }
 
-func (r RunRequest) SessionID() string               { return r.sessionID }
-func (r RunRequest) RunID() string                   { return r.runID }
-func (r RunRequest) Invocation() framemcp.Invocation { return r.invocation }
-func (r RunRequest) CommandID() string               { return r.commandID }
+func (r RunRequest) SessionID() string                { return r.sessionID }
+func (r RunRequest) RunID() string                    { return r.runID }
+func (r RunRequest) Invocation() framecall.Invocation { return r.invocation }
+func (r RunRequest) CommandID() string                { return r.commandID }
 
 type RunRequestSnapshot struct {
 	ScheduleID   string
@@ -148,7 +148,7 @@ type RunRequestSnapshot struct {
 	SessionID    string
 	RunID        string
 	ManualRanAt  time.Time
-	Invocation   framemcp.Invocation
+	Invocation   framecall.Invocation
 	CommandID    string `json:"CommandID,omitzero"`
 }
 

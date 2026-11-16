@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -96,7 +96,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err == nil {
 		t.Fatal("withheld maintenance response became observed success")
 	}
-	if _, known := errors.AsType[*framemcp.Refusal](err); known {
+	if _, known := errors.AsType[*framecall.Refusal](err); known {
 		t.Fatalf("transport loss became known refusal: %v", err)
 	}
 	if _, err := os.Stat(evidence); err != nil {

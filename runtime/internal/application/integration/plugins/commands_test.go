@@ -16,7 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
@@ -158,8 +159,8 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 	})
 }
 
-func capturedCommand(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
-	invocation := framemcp.Invocation{ID: "command", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
+func capturedCommand(binding plugins.ContributionBinding) (framecall.Invocation, error) {
+	invocation := framecall.Invocation{ID: "command", Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
 	return invocation, invocation.Validate()
 }
 
@@ -179,7 +180,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	original.Parent = "original-parent"
-	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framemcp.Invocation, error) { return original, nil })
+	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framecall.Invocation, error) { return original, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,11 +207,11 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 	if !found || retained.InstallationID() != actor.InstallationID() || retained.Authority() != actor.Authority() {
 		t.Fatal("invocation replaced authenticated Actor")
 	}
-	for _, change := range []func(*framemcp.Invocation){
-		func(v *framemcp.Invocation) { v.Origin = extension.Model },
-		func(v *framemcp.Invocation) { v.Parent = "changed-parent" },
-		func(v *framemcp.Invocation) { v.ID = "unknown-human" },
-		func(v *framemcp.Invocation) { v.Target.Reference = testsupport.InstallationID(t).String() },
+	for _, change := range []func(*framecall.Invocation){
+		func(v *framecall.Invocation) { v.Origin = extension.Model },
+		func(v *framecall.Invocation) { v.Parent = "changed-parent" },
+		func(v *framecall.Invocation) { v.ID = "unknown-human" },
+		func(v *framecall.Invocation) { v.Target.Reference = testsupport.InstallationID(t).String() },
 	} {
 		altered := original
 		change(&altered)
@@ -218,7 +219,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 			t.Fatalf("changed caller accepted: %+v, %v", altered, err)
 		}
 	}
-	automatic := framemcp.Invocation{ID: "private-trigger", Origin: extension.Automatic, Target: original.Target}
+	automatic := framecall.Invocation{ID: "private-trigger", Origin: extension.Automatic, Target: original.Target}
 	if _, err := commands.RestoreInvocation(calling, automatic); err != nil {
 		t.Fatal(err)
 	}
@@ -229,8 +230,8 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 }
 
 func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
-	for _, target := range []framemcp.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
-		for _, origin := range []framemcp.Origin{extension.Human, extension.Model, extension.Automatic} {
+	for _, target := range []framecall.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
+		for _, origin := range []framecall.Origin{extension.Human, extension.Model, extension.Automatic} {
 			t.Run(target.Scope+"/"+string(origin), func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "flame.db")
 				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
@@ -243,8 +244,8 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 					t.Fatal(err)
 				}
 				provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", target.Scope), ContributionID: "owner", Export: "operations"}
-				original := framemcp.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
-				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framemcp.Invocation, error) { return original, nil })
+				original := framecall.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
+				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (framecall.Invocation, error) { return original, nil })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -286,12 +287,12 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 						t.Fatalf("original resource caller changed: %+v %v", captured, err)
 					}
 				}
-				for _, change := range []func(*framemcp.Invocation){
-					func(v *framemcp.Invocation) { v.Target.Reference = "different-resource" },
-					func(v *framemcp.Invocation) {
-						v.Target = framemcp.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
+				for _, change := range []func(*framecall.Invocation){
+					func(v *framecall.Invocation) { v.Target.Reference = "different-resource" },
+					func(v *framecall.Invocation) {
+						v.Target = framecall.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
 					},
-					func(v *framemcp.Invocation) { v.Parent = "different-parent" },
+					func(v *framecall.Invocation) { v.Parent = "different-parent" },
 				} {
 					altered := original
 					change(&altered)
@@ -299,7 +300,7 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 						t.Fatalf("resource caller retargeted: %+v %v", altered, err)
 					}
 				}
-				fresh := framemcp.Invocation{ID: "unrecorded-resource-trigger", Origin: extension.Automatic, Target: target}
+				fresh := framecall.Invocation{ID: "unrecorded-resource-trigger", Origin: extension.Automatic, Target: target}
 				if _, err := commands.RestoreInvocation(calling, fresh); !errors.Is(err, plugin.ErrCommandConflict) {
 					t.Fatalf("unrecorded resource target accepted: %v", err)
 				}

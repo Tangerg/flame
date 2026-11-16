@@ -13,7 +13,7 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +39,7 @@ func TestBackgroundOwnsCronCaptureAndJoinedLifetime(t *testing.T) {
 	}
 	host := &observedRunHost{db: db, namespace: "owner", seen: make(chan schedule.RunRequest, 2), noticed: make(chan struct{}, 1)}
 	var closes atomic.Int32
-	target := framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
+	target := framecall.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
 	worker := newBackground(ctx, db, store, scanner, host, "schedules-provider", target, func() error { closes.Add(1); return nil })
 	// Constructing provisional setup resources must not claim or start work.
 	select {

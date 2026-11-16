@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -38,7 +38,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("aged pending claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
 	conflicting := operation.ReplayRecord{Key: first.Key, Fingerprint: "second"}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framemcp.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framecall.ErrConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
 	if completeErr := store.Complete(ctx, first); completeErr != nil {
@@ -56,7 +56,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if err != nil || claimed || string(got.Payload) != string(first.Payload) {
 		t.Fatalf("completed claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framemcp.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, framecall.ErrConflict) {
 		t.Fatalf("claim conflicting record = %v, want ErrKeyConflict", claimErr)
 	}
 
@@ -97,7 +97,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("claim after reopen = (%+v, %v, %v), want unresolved reservation", got, claimed, err)
 	}
-	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, framemcp.ErrInvocationConflict) {
+	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, framecall.ErrConflict) {
 		t.Fatalf("reuse after reopen = %v, want ErrKeyConflict", err)
 	}
 }

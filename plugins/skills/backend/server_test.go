@@ -16,7 +16,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -75,7 +76,7 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *pluginmcp.
 
 func learningInvocation(t *testing.T, id string) context.Context {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +169,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				t.Fatalf("mining outcome = %s, %v", value.Bytes(), err)
 			}
 			if invalidDraft {
-				var refusal *framemcp.Refusal
+				var refusal *framecall.Refusal
 				if !errors.As(err, &refusal) || refusal.Code != "invalid_skill_draft" {
 					t.Fatalf("malformed draft did not settle as a refusal: %v", err)
 				}
@@ -192,7 +193,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			}
 			receipt, found, err := restarted.ReadReceipt(ctx, "due", input)
 			if invalidDraft {
-				var refusal *framemcp.Refusal
+				var refusal *framecall.Refusal
 				if !found || !errors.As(err, &refusal) || refusal.Code != "invalid_skill_draft" {
 					t.Fatalf("malformed draft refusal was not retained after restart: found=%t, error=%v", found, err)
 				}

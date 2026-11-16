@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -57,7 +57,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	request.Options.MaxOutputTokens = new(int64(64))
 	calling := func(id string) context.Context {
 		t.Helper()
-		ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-maintenance", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
+		ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-maintenance", Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "closing-model", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "closing-model"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "closing-model", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "closing-model"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			}
 			before := request.Clone()
 			for _, id := range []string{"original-context-first", "original-context-second"} {
-				ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
+				ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -195,7 +195,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 				t.Fatalf("failed composition reached provider: %d", calls.Load())
 			}
 			store.disable(t)
-			ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context-withdrawn", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-context-withdrawn"}})
+			ctx, _ := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original-context-withdrawn", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original-context-withdrawn"}})
 			if _, err := capture.Model().Call(ctx, request); err == nil {
 				t.Fatal("withdrawn context capture dispatched provider")
 			}
@@ -277,7 +277,7 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 			request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			request.Options.MaxOutputTokens = new(int64(64))
 			before := request.Clone()
-			ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-context-capacity"}})
+			ctx, _ := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original-context-capacity"}})
 			_, err = capture.Model().Call(ctx, request)
 			wantCalls := int32(0)
 			if count == 272000 {
@@ -321,7 +321,7 @@ func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependenci
 	defer release()
 	request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 	request.Options.MaxOutputTokens = new(int64(64))
-	ctx, _ := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-context-counting"}})
+	ctx, _ := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: framecall.Target{Scope: extension.ScopeCall, Reference: "original-context-counting"}})
 	result := make(chan error, 1)
 	go func() { _, err := capture.Model().Call(ctx, request); result <- err }()
 	select {

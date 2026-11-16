@@ -12,7 +12,7 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	flameruntime "github.com/Tangerg/flame/runtime"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
@@ -112,7 +112,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV1Method, Input: string(input), Target: framemcp.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV1Method, Input: string(input), Target: framecall.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -213,7 +213,7 @@ func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports 
 	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{
 		InstallationID: reports.ID, Digest: reports.Selected.Digest, Contribution: view.Contribution,
 		Contract: contract.Identity().String(), Method: view.List.Method, Input: "{}",
-		Target: framemcp.Target{Scope: "installation", Reference: reports.ID},
+		Target: framecall.Target{Scope: "installation", Reference: reports.ID},
 	}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("terminal archive list: %+v, %v", reply, err)

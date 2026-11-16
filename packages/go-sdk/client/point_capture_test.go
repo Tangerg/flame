@@ -10,7 +10,7 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -43,7 +43,7 @@ func TestPointResolutionKeepsOriginalSchemaAcrossTheCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := client.ResolvePointValues[requiredPointValue](t.Context(), replacingPointResolver{contract, replacement}, contract, framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
+	values, err := client.ResolvePointValues[requiredPointValue](t.Context(), replacingPointResolver{contract, replacement}, contract, framecall.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
 	if err == nil || len(values) != 0 {
 		t.Fatalf("replacement schema admitted a value missing the original required field: %+v, %v", values, err)
 	}

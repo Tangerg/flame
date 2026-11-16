@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -83,7 +83,7 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 	if err != nil {
 		t.Fatal(err)
 	}
-	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Identity().String(), Method: testsupport.WebSearchV1Method, Input: input.String(), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
+	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Identity().String(), Method: testsupport.WebSearchV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
 	if typed.Failure == nil || typed.Failure.Code != "search_not_configured" {
 		t.Fatalf("parent credentials became installation authority: %+v", typed)
 	}

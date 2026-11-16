@@ -29,7 +29,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framehost "github.com/Tangerg/frame/host"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -155,7 +156,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			}
 			remote.AddTool(&sdk.Tool{Name: scenario.name, InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
-				var invocation framemcp.Invocation
+				var invocation framecall.Invocation
 				if err := json.Unmarshal(request.Params.Meta[pluginmcp.InvocationMetadataKey], &invocation); err != nil {
 					return nil, err
 				}

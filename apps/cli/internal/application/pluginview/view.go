@@ -17,7 +17,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -184,7 +185,7 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 	return protocol.CallPluginRequest{
 		InstallationID: v.InstallationID, Digest: v.Digest, Contribution: v.Contribution, Contract: v.contract,
 		Method: method, Input: string(encoded),
-		Target: framemcp.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
+		Target: framecall.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
 	}, nil
 }
 

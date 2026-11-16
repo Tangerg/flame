@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 type persistence struct {
@@ -74,7 +74,7 @@ func request(t *testing.T) protocol.CallPluginRequest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: "flame.schedules/delete.v1", Target: framemcp.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: "flame.schedules/delete.v1", Target: framecall.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
 }
 
 func execute(ctx context.Context, caller workbench.InstalledCaller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
@@ -231,7 +231,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 	if _, pending := store.PendingInstalledCommand("delete"); pending {
 		t.Fatal("confirmed owner receipt remains unresolved")
 	}
-	refusal := &framemcp.Refusal{Code: "revision_conflict", Message: "schedule changed"}
+	refusal := &framecall.Refusal{Code: "revision_conflict", Message: "schedule changed"}
 	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if id == originalID {
 			t.Fatal("new intent reused the original identity")

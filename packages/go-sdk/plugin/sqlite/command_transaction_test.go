@@ -8,7 +8,8 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -97,7 +98,7 @@ func TestCommandPreparationCannotWriteAndItsBorrowExpires(t *testing.T) {
 }
 
 func TestCommandWriteFailureCannotBeClassifiedAsARefusal(t *testing.T) {
-	for _, cause := range []error{framemcp.ErrInvocationConflict, &framemcp.Refusal{Code: "conflict", Message: "late business error"}} {
+	for _, cause := range []error{framecall.ErrConflict, &framecall.Refusal{Code: "conflict", Message: "late business error"}} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			db, _ := commandDatabase(t)
 			classified := 0

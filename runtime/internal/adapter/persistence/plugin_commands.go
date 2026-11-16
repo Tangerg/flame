@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	framemcp "github.com/Tangerg/frame/process/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -71,18 +72,18 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		return err
 	}
 	encoded, err := json.Marshal(struct {
-		ID           string              `json:"id"`
-		Method       string              `json:"method"`
-		Input        string              `json:"input"`
-		Contract     string              `json:"contract"`
-		Installation string              `json:"installation"`
-		Release      string              `json:"release"`
-		Server       string              `json:"server"`
-		Contribution string              `json:"contribution"`
-		Export       string              `json:"export"`
-		Invocation   framemcp.Invocation `json:"invocation"`
-		Binding      string              `json:"binding"`
-		Phase        string              `json:"phase"`
+		ID           string               `json:"id"`
+		Method       string               `json:"method"`
+		Input        string               `json:"input"`
+		Contract     string               `json:"contract"`
+		Installation string               `json:"installation"`
+		Release      string               `json:"release"`
+		Server       string               `json:"server"`
+		Contribution string               `json:"contribution"`
+		Export       string               `json:"export"`
+		Invocation   framecall.Invocation `json:"invocation"`
+		Binding      string               `json:"binding"`
+		Phase        string               `json:"phase"`
 	}{record.ID, record.Method, record.Input.String(), record.Contract.String(), record.Provider.InstallationID.String(), record.Provider.Digest.String(), record.Server.String(), record.Contribution.String(), record.Export, record.Invocation, record.Activation.Binding.String(), string(record.Phase)})
 	if err != nil {
 		return err

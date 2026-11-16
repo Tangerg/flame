@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	"github.com/google/uuid"
 )
 
@@ -89,12 +89,12 @@ type background struct {
 	store           *store
 	host            host
 	namespace       string
-	target          framemcp.Target
+	target          framecall.Target
 	contribution    string
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, store *store, host host, namespace string, target framemcp.Target, contribution string, closeHost func() error) *background {
+func newBackground(ctx context.Context, store *store, host host, namespace string, target framecall.Target, contribution string, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
@@ -159,8 +159,8 @@ func (b *background) dispatchStatus(err error) {
 	}
 }
 
-func (b *background) invocation() framemcp.Invocation {
-	return framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+func (b *background) invocation() framecall.Invocation {
+	return framecall.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 }
 
 func (b *background) run() {

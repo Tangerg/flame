@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -55,7 +55,7 @@ func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
 	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || projected.PointValues[0].Value != "18446744073709551615" || !strings.Contains(raw, "18446744073709551615") {
 		t.Fatal("point projection changed the admitted schema identity")
 	}
-	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: framemcp.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
+	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: framecall.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
 	body, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)

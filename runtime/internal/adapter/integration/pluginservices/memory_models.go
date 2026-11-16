@@ -12,7 +12,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
+	framecall "github.com/Tangerg/frame/call"
+
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -34,12 +35,12 @@ func (a *memoryModelAdmission) admit(id, method string, input framevalue.JSON) e
 	defer a.mu.Unlock()
 	if original, found := a.invocations[id]; found {
 		if original != (memoryModelInvocation{method: method, input: input}) {
-			return &framemcp.Refusal{Code: framemcp.InvocationConflictCode, Message: framemcp.ErrInvocationConflict.Error()}
+			return &framecall.Refusal{Code: framecall.ConflictCode, Message: framecall.ErrConflict.Error()}
 		}
-		return &framemcp.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
+		return &framecall.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
 	}
 	if len(a.invocations) == memorycontract.MaxModelCalls {
-		return &framemcp.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
+		return &framecall.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
 	}
 	// Providers have no owner receipt. Fence each identity before external I/O.
 	a.invocations[id] = memoryModelInvocation{method: method, input: input}
@@ -59,7 +60,7 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		request := chat.Request(command.Input)
 		if lo.IsNil(model) || !memoryModelRequest(request) {
-			return nil, &framemcp.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
+			return nil, &framecall.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -80,7 +81,7 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.Bytes())) > memorycontract.MaxEmbeddingInputBytes {
-			return pluginsdk.TextEmbeddings{}, &framemcp.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(string(command.ID), "embedding", input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err
