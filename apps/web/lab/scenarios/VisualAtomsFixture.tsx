@@ -1,6 +1,7 @@
 import { iconGlyph } from "@/ui/icons/index";
 import { Refresh } from "@flame/icons/react";
-import { Activity, Suspense, useState, type ReactNode } from "react";
+import { Activity, Suspense, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
@@ -134,6 +135,12 @@ export function VisualAtomsFixture({ state }: { state: string | null }) {
       return <VisualPopupRetirementFixture lifetime="Activity" />;
     case "popup-retirement-suspense":
       return <VisualPopupRetirementFixture lifetime="Suspense" />;
+    case "popup-close-unmount":
+      return <VisualSynchronousCloseFixture />;
+    case "popup-opening-activity":
+      return <VisualOpeningCallbackFixture lifetime="Activity" />;
+    case "popup-opening-suspense":
+      return <VisualOpeningCallbackFixture lifetime="Suspense" />;
     default:
       return <AtomsGallery />;
   }
@@ -499,6 +506,84 @@ function VisualPopupRetirementFixture({ lifetime }: { lifetime: "Activity" | "Su
           <Suspense fallback={<p>Waiting for popup owner</p>}>
             {!visible && <PendingPopupOwner />}
             {popups}
+          </Suspense>
+        )}
+      </Specimen>
+    </main>
+  );
+}
+
+function VisualSynchronousCloseFixture() {
+  const [mounted, setMounted] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [closes, setCloses] = useState(0);
+  const restore = useRef<HTMLButtonElement>(null);
+  return (
+    <main {...stylex.props(styles.page)}>
+      <Specimen name="popup-close-unmount">
+        <Button ref={restore} onClick={() => setMounted(true)}>
+          Restore owner
+        </Button>
+        <output aria-label="Close deliveries">{closes}</output>
+        {mounted && (
+          <Popover.Root
+            open={open}
+            onOpenChange={(next) => {
+              if (next) setOpen(true);
+              else {
+                flushSync(() => {
+                  setOpen(false);
+                  setCloses((count) => count + 1);
+                  setMounted(false);
+                });
+                restore.current?.focus();
+              }
+            }}
+          >
+            <Popover.Trigger>Popup to retire</Popover.Trigger>
+            <Popover.Content aria-label="Callback panel">
+              <TextField aria-label="Callback value" />
+            </Popover.Content>
+          </Popover.Root>
+        )}
+      </Specimen>
+    </main>
+  );
+}
+
+function VisualOpeningCallbackFixture({ lifetime }: { lifetime: "Activity" | "Suspense" }) {
+  const [visible, setVisible] = useState(true);
+  const retireNext = useRef(true);
+  const restore = useRef<HTMLButtonElement>(null);
+  const popup = (
+    <Popover.Root
+      onOpenChange={(next) => {
+        if (next && retireNext.current) {
+          retireNext.current = false;
+          flushSync(() => setVisible(false));
+          restore.current?.focus();
+          flushSync(() => setVisible(true));
+        }
+      }}
+    >
+      <Popover.Trigger>Popup to retire</Popover.Trigger>
+      <Popover.Content aria-label="Callback panel">
+        <TextField aria-label="Callback value" />
+      </Popover.Content>
+    </Popover.Root>
+  );
+  return (
+    <main {...stylex.props(styles.page)}>
+      <Specimen name="popup-opening">
+        <Button ref={restore} onClick={() => setVisible(true)}>
+          Restore owner
+        </Button>
+        {lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{popup}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for popup owner</p>}>
+            {!visible && <PendingPopupOwner />}
+            {popup}
           </Suspense>
         )}
       </Specimen>

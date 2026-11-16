@@ -418,6 +418,10 @@ The atoms fixture's `popup-retirement` and `popup-retirement-suspense` states
 exercise controlled and uncontrolled Popovers through effect disconnection.
 Their browser cases hide the owner from inside the open panel, then verify
 retirement, outside focus and a fresh draft after restoring the same owner.
+`popup-close-unmount` checks a close callback that synchronously removes its own
+controlled root. `popup-opening-activity` and `popup-opening-suspense` retire an
+opening inside its callback and retain the same connected trigger; only a fresh
+interaction may open the reconnected popup.
 
 When a migrated check fails, trace the current component contract before changing
 its expectation. Scope retained Dock content to its named visible region, measure
