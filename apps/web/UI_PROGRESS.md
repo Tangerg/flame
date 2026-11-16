@@ -2102,6 +2102,68 @@ before pushing to `main` and retiring the private evidence directory. VoiceOver,
 physical IME, RTL, live filesystem/provider behavior and whole-product routes
 remain unverified by this batch.
 
+#### Native link evidence and original-definition reading (2026-11-17)
+
+At current main `e3b089e8e`, the existing `dock-files` / `prose-blocks` scene
+qualifies reply links → `reading-blocks.md` Preview → original Source definitions
+→ Files → the retained Composer draft. No actionable interface findings.
+The File renderers README, `component.tsx`, transcript `markdownComponents.tsx`
+and existing `proseLinks.browser.spec.ts` establish the boundary: file Preview
+keeps formatted labels and complete destinations as inert text; the reply offers
+safe links. Source preserves the original definitions, annotations and unavailable
+URL literally. No renderer, parser, command or trust-policy change is needed.
+
+- **EN/light/14 px/Orange/full motion/default zoom:** the native reply exposes
+  the named protocol, implementation and rich `Review guide` links with their
+  destinations. Preview retains the rich label and readable destination without
+  an interactive link. Tab enters the named file reader; End reaches the preview
+  tail. Keyboard Left/Right changes modes with radio focus retained. Source End
+  reaches the complete reference definitions at **lines 63–64**. Back to files
+  focuses the selected `reading-blocks.md` row. Cmd+L resumes the original middle
+  caret, producing `Link review draft. CHECKED Continue here.`
+- **ZH/dark/18 px/#3B82F6/motion off/default zoom:** native Window → Move & Resize
+  → Left narrows the ordinary window. Divider Home changes **501 → 320 px**.
+  Complete Preview destinations and Source definitions wrap within that Dock;
+  End reaches line 64. A native wheel scroll moves the source while the reply
+  remains in place. Keyboard Back restores the same file row; Cmd+L continues
+  exactly `核对来源前的草稿。已核对，继续输入。`
+
+| Domain        | Inspected evidence and scoped result                                                        |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Accessibility | Clear: named reader, radio focus, End, Back and original Composer caret                     |
+| Layout        | Clear: split reading, native window resize, 320 px Dock and independent file scrolling      |
+| Writing       | Clear: literal addresses/annotations, localized mode/return labels and no added helper copy |
+| Typography    | Clear: rich labels, source tokens, long addresses and EN 14 / ZH 18 px wrapping             |
+| Colors        | Clear visually: existing Orange/blue focus and muted destinations; no new contrast measure  |
+| UI            | Clear: pointer entry and keyboard mode/return actions; existing full/off motion retained    |
+
+The Source-to-Preview return shows the existing document start, already recorded
+under “Default file arrival and retained reading.” This batch does not claim
+per-mode position restoration or introduce a position cache. No authored external
+or unavailable URL, Copy, Send or live filesystem/Runtime/provider action is
+activated. VoiceOver speech, OS IME and quantitative contrast remain unverified.
+Screenshots are inspected in the native tool transcript, without a file archive.
+
+Serial `make stage-web` passes in **7.833 s**, and `lab:build` in **2.540 s**.
+Both isolated native builds, signing and strict signature checks pass. All
+**6,856 non-Markdown inputs**, **490 Lab assets** and both sets of seven native
+inputs retain their qualified hashes. No functional test, browser visual suite,
+performance benchmark or unchanged full suite is rerun for this documentation-only
+qualification. The first HTTP probe precedes confirmed Vite readiness and is
+refused; the same process then reports ready and two fresh nonce/CSP checks pass.
+
+Both native processes exit **0**, their app inventory is empty and both private
+registrations are retired. The owned preview exits **1** after Ctrl+C; ports
+**4174/4175** are closed. All **16 native roots** and **13 checkout output/cache
+roots** return to absence: **732 native**, **4,238 build/cache** and **32 private
+QA nodes** are removed. Original references, user state and unrelated work remain
+untouched. The compact round-trip-verified witness/build/hash/cleanup receipt is
+**4,153 gzip bytes**, SHA-256
+`97eb1752eefa9d39488d33ec8e9633233b5d303b4726785f536bafe4ba30e1de`.
+
+**Approve** for the six inspected domains in this link-evidence task. Whole-product
+acceptance remains open; choose a distinct observed task before another repair.
+
 ### File reading failures and independent Workspace states (2026-11-08)
 
 The existing Workspace catalog now exposes `dock-file-error` and
