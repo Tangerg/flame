@@ -1,20 +1,40 @@
 package coordination
 
 import (
+	"errors"
 	"slices"
 	"testing"
+
+	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
-func TestParseMemoryFactsCanonicalizesModelMarkdown(t *testing.T) {
-	got, err := parseMemoryFacts("- keep this\n\n* keep this\n1. numbered\n+ use `go test`\n")
-	want := []string{"keep this", "numbered", "use `go test`"}
+func TestDecodeMemoryFactsPreservesContentForDomainAdmission(t *testing.T) {
+	got, err := decodeMemoryFacts(`[" keep this ", "keep this", "use \"go test\"", "line one\nline two"]`)
+	want := []string{" keep this ", "keep this", "use \"go test\"", "line one\nline two"}
 	if err != nil || !slices.Equal(got, want) {
 		t.Fatalf("parsed facts = %#v, %v, want %#v", got, err, want)
 	}
 }
 
-func TestParseMemoryFactsRefusesAnEntireMalformedProposal(t *testing.T) {
+func TestDecodeMemoryFactsAcceptsAnExplicitEmptyArray(t *testing.T) {
+	if facts, err := decodeMemoryFacts(" [] \n"); err != nil || facts == nil || len(facts) != 0 {
+		t.Fatalf("empty proposal produced facts=%v, error=%v", facts, err)
+	}
+}
+
+func TestDecodeMemoryFactsRefusesAnEntireMalformedProposal(t *testing.T) {
 	for _, response := range []string{
+		"",
+		"null",
+		`{"facts":["use go test"]}`,
+		`["use go test", ["nested detail"]]`,
+		`["use go test", 1]`,
+		`["use go test", {}]`,
+		`["use go test", true]`,
+		`["use go test"] []`,
+		`["use go test"] trailing commentary`,
+		`["use go test",]`,
+		"```json\n[\"use go test\"]\n```",
 		"Here are the facts:\n- use go test",
 		"```markdown\n- use go test\n```",
 		"- use go test\nI cannot extract any more facts.",
@@ -23,7 +43,7 @@ func TestParseMemoryFactsRefusesAnEntireMalformedProposal(t *testing.T) {
 		"- ```markdown",
 		"- ",
 	} {
-		if facts, err := parseMemoryFacts(response); err == nil || len(facts) != 0 {
+		if facts, err := decodeMemoryFacts(response); !errors.Is(err, agentmemory.ErrInvalidFacts) || len(facts) != 0 {
 			t.Fatalf("malformed proposal %q produced facts=%v, error=%v", response, facts, err)
 		}
 	}

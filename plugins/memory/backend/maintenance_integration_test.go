@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/frame/portable"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -21,28 +23,13 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
-// promptModel adapts a prompt-oriented completion to the chat.Model the host
-// grant now expects. The maintenance operation is not on the wire, so it is
-// recovered from the unique extract/curate system-prompt markers.
-func promptModel(call func(context.Context, app.Prompt) (string, error)) chat.Model {
+func textResponseModel(call func(context.Context, *chat.Request) (string, error)) chat.Model {
 	return chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		var prompt app.Prompt
-		if len(request.Messages) == 2 {
-			prompt.SystemPrompt = request.Messages[0].Text()
-			prompt.UserPrompt = request.Messages[1].Text()
-		}
-		switch {
-		case strings.Contains(prompt.SystemPrompt, "NO_FACTS"):
-			prompt.Operation = app.OperationExtract
-		case strings.Contains(prompt.SystemPrompt, "NO_MEMORY"):
-			prompt.Operation = app.OperationCurate
-		}
-		text, err := call(ctx, prompt)
+		text, err := call(ctx, request)
 		if err != nil {
 			return nil, err
 		}
@@ -66,17 +53,24 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryThroughCapturedModels(t *te
 	if err := broker.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	operations := []string{}
-	grant, release, err := openTestModel(t.Context(), broker, session, promptModel(func(_ context.Context, prompt app.Prompt) (string, error) {
-		operations = append(operations, prompt.Operation)
-		if prompt.Operation == app.OperationExtract {
-			return "- use local workspace mode\n- verify backend restart", nil
+	var calls atomic.Int32
+	grant, release, err := openTestModel(t.Context(), broker, session, textResponseModel(func(_ context.Context, request *chat.Request) (string, error) {
+		if len(request.Messages) != 2 {
+			return "", errors.New("expected system and user messages")
 		}
-		if prompt.Operation == app.OperationCurate && strings.Contains(prompt.UserPrompt, "use local workspace mode") {
-			return "- use local workspace mode\n- verify backend restart", nil
+		switch calls.Add(1) {
+		case 1:
+			if request.Messages[1].Text() != "captured conversation" {
+				return "", errors.New("extraction did not receive the captured conversation")
+			}
+		case 2:
+			if !strings.Contains(request.Messages[1].Text(), "use local workspace mode") {
+				return "", errors.New("curation did not receive the extracted facts")
+			}
+		default:
+			return "", errors.New("unexpected model call")
 		}
-		t.Errorf("unexpected model request: %s", prompt.Operation)
-		return "", nil
+		return `["use local workspace mode", "verify backend restart"]`, nil
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -90,8 +84,8 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryThroughCapturedModels(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(operations, ",") != "memory.extract,memory.curate" {
-		t.Fatalf("model lifecycle=%v", operations)
+	if calls.Load() != 2 {
+		t.Fatalf("model calls=%d", calls.Load())
 	}
 	state, err := store.State(t.Context(), project)
 	if err != nil || state.Watermark != 2 {
@@ -138,12 +132,14 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	curating := make(chan struct{})
 	joined := make(chan struct{})
-	grant, release, err := openTestModel(ctx, broker, session, promptModel(func(ctx context.Context, prompt app.Prompt) (string, error) {
-		if prompt.Operation == app.OperationExtract {
-			return "- automatic proposal", nil
-		}
-		if prompt.Operation != app.OperationCurate {
-			return "", errors.New("unexpected model operation")
+	var calls atomic.Int32
+	grant, release, err := openTestModel(ctx, broker, session, textResponseModel(func(ctx context.Context, _ *chat.Request) (string, error) {
+		switch calls.Add(1) {
+		case 1:
+			return `["automatic proposal"]`, nil
+		case 2:
+		default:
+			return "", errors.New("unexpected model call")
 		}
 		close(curating)
 		<-ctx.Done()
@@ -211,11 +207,12 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
-	fresh, releaseFresh, err := openTestModel(ctx, broker, session, promptModel(func(_ context.Context, prompt app.Prompt) (string, error) {
-		if prompt.Operation != app.OperationCurate {
-			t.Errorf("pending recovery repeated extraction: %s", prompt.Operation)
+	var recoveryCalls atomic.Int32
+	fresh, releaseFresh, err := openTestModel(ctx, broker, session, textResponseModel(func(_ context.Context, request *chat.Request) (string, error) {
+		if recoveryCalls.Add(1) != 1 || len(request.Messages) != 2 || !strings.Contains(request.Messages[1].Text(), "automatic proposal") {
+			return "", errors.New("pending recovery did not curate the original ledger")
 		}
-		return "- automatic proposal", nil
+		return `["automatic proposal"]`, nil
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -225,6 +222,9 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	published, err := invokeMaintenance(t, ctx, session, "recover-pending-ledger", input, fresh)
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
+	}
+	if recoveryCalls.Load() != 1 {
+		t.Fatalf("pending recovery model calls=%d", recoveryCalls.Load())
 	}
 	recovered, err := store.State(ctx, project)
 	if err != nil || recovered.Watermark != pending[0].Sequence {
@@ -279,9 +279,9 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	}
 	defer broker.RevokeSession(session)
 	var calls atomic.Int32
-	grant, release, err := openTestModel(t.Context(), broker, session, promptModel(func(context.Context, app.Prompt) (string, error) {
+	grant, release, err := openTestModel(t.Context(), broker, session, textResponseModel(func(context.Context, *chat.Request) (string, error) {
 		calls.Add(1)
-		return "- durable ledger fact", nil
+		return `["durable ledger fact"]`, nil
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -308,6 +308,102 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	}
 	if _, err := callMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "original", input, sdk.ParamsBase{}); err == nil || calls.Load() != 2 {
 		t.Fatalf("pending admission reran models: %d, %v", calls.Load(), err)
+	}
+}
+
+func TestMalformedMemoryModelReplyRetainsItsDefinitiveRefusalAfterRestart(t *testing.T) {
+	for _, test := range []struct {
+		name, response string
+		failReceipt    bool
+	}{
+		{name: "nested", response: `["valid fact", ["nested fact"]]`},
+		{name: "blank item", response: `["valid fact", " "]`},
+		{name: "blank response", response: " \n\t "},
+		{name: "cardinality", response: `[` + strings.Repeat(`"fact",`, max(memory.MaxFactsPerBatch, memory.MaxCurationProposals)) + `"fact"]`},
+		{name: "content bound", response: `["` + strings.Repeat("a", memory.MaxContentCharacters+1) + `"]`},
+		{name: "receipt failure", response: "not facts", failReceipt: true},
+	} {
+		for _, curate := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/curation=%t", test.name, curate), func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "memory.db")
+				project := t.TempDir()
+				_, session, closeBackend := connectMemoryBackend(t, path)
+				var faultDB *sql.DB
+				if test.failReceipt {
+					db, err := sql.Open("sqlite", path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = db.Close() })
+					faultDB = db
+					if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_refusal_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
+						t.Fatal(err)
+					}
+				}
+				broker := pluginmcp.NewCallbacks()
+				t.Cleanup(func() { _ = broker.Close() })
+				if err := broker.AdmitSession(session); err != nil {
+					t.Fatal(err)
+				}
+				var calls atomic.Int32
+				grant, release, err := openTestModel(t.Context(), broker, session, textResponseModel(func(context.Context, *chat.Request) (string, error) {
+					if calls.Add(1) == 1 && curate {
+						return `["durable ledger fact"]`, nil
+					}
+					return test.response, nil
+				}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer release()
+				input := rpc.MaintenanceInput{SessionID: "ses_malformed", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
+				_, err = invokeMaintenance(t, t.Context(), session, "original", input, grant)
+				var refusal *framemcp.Refusal
+				if test.failReceipt {
+					if err == nil || errors.As(err, &refusal) {
+						t.Fatalf("failed receipt became a confirmed outcome: %v", err)
+					}
+				} else if !errors.As(err, &refusal) || refusal.Code != "invalid_facts" {
+					t.Fatalf("malformed reply did not settle as a refusal: %v", err)
+				}
+				release()
+				if faultDB != nil {
+					if _, err := faultDB.ExecContext(t.Context(), `DROP TRIGGER fail_refusal_receipt`); err != nil {
+						t.Fatal(err)
+					}
+				}
+				closeBackend()
+				store, restarted, _ := connectMemoryBackend(t, path)
+				_, found, receiptErr := receiptMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), restarted, memoryContract(t), "memory", rpc.Maintain, "original", input)
+				if test.failReceipt {
+					if found || receiptErr != nil {
+						t.Fatalf("failed receipt became durable: found=%t error=%v", found, receiptErr)
+					}
+				} else if !found || !errors.As(receiptErr, &refusal) || refusal.Code != "invalid_facts" {
+					t.Fatalf("known malformed reply lost its receipt: found=%t error=%v", found, receiptErr)
+				}
+				_, err = callMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), restarted, memoryContract(t), "memory", rpc.Maintain, "original", input, sdk.ParamsBase{})
+				if test.failReceipt {
+					if err == nil || errors.As(err, &refusal) {
+						t.Fatalf("unconfirmed command gained a new outcome: %v", err)
+					}
+				} else if !errors.As(err, &refusal) || refusal.Code != "invalid_facts" {
+					t.Fatalf("replay lost its original refusal: %v", err)
+				}
+				state, err := store.State(t.Context(), project)
+				if err != nil || state.Watermark != 0 {
+					t.Fatalf("malformed reply advanced publication: state=%+v error=%v", state, err)
+				}
+				pending, err := store.PendingLedger(t.Context(), project, 0, memory.MaxLedgerFoldFacts)
+				expectedCalls, expectedPending := int32(1), 0
+				if curate {
+					expectedCalls, expectedPending = 2, 1
+				}
+				if err != nil || len(pending) != expectedPending || calls.Load() != expectedCalls {
+					t.Fatalf("malformed reply changed source facts or repeated model work: pending=%v calls=%d error=%v", pending, calls.Load(), err)
+				}
+			})
+		}
 	}
 }
 

@@ -151,7 +151,9 @@ func registerServer(server *sdk.Server, db *framesqlite.Database, store store, r
 			}
 			published, err := consolidator.Consolidate(ctx, input.SessionID, input.Project)
 			if err != nil {
-				return rpc.MaintenanceResult{}, err
+				return pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[rpc.MaintenanceResult], error) {
+					return pluginstorage.CommandPlan[rpc.MaintenanceResult]{}, err
+				})
 			}
 			reply, err := maintenanceReply(published)
 			if err != nil {

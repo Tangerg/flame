@@ -15,7 +15,7 @@ func TestFoldProposesNewAndRespectsStatuses(t *testing.T) {
 		foldTestItem(t, 'c', "- c", StatusRejected),
 	}
 
-	plan, err := foldPublication(t, existing, []string{"- a", "- b", "- c", "- d", "- d", "  "}).Fold(existing)
+	plan, err := foldPublication(t, existing, []string{"- a", "- b", "- c", "- d", " - d "}).Fold(existing)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +99,11 @@ func TestFoldRejectsUnboundedOrInvalidCurationOutput(t *testing.T) {
 	}
 	if _, err := NewPublication("/repo", State{}, 1, nil, []string{strings.Repeat("界", MaxContentCharacters+1)}, time.Unix(1, 0)); err == nil {
 		t.Fatal("invalid curation content was accepted")
+	}
+	for _, content := range []string{"", " \t\n"} {
+		if _, err := NewPublication("/repo", State{}, 1, nil, []string{"valid fact", content}, time.Unix(1, 0)); err == nil {
+			t.Fatalf("curation accepted blank content %q", content)
+		}
 	}
 }
 

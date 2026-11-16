@@ -26,6 +26,7 @@ var errorCodes = []struct {
 	{"target_full", memory.ErrTargetFull},
 	{"duplicate_content", memory.ErrDuplicateContent},
 	{"invalid_input", app.ErrInvalidInput},
+	{"invalid_facts", memory.ErrInvalidFacts},
 	{"revision_conflict", memory.ErrRevisionConflict},
 	{"revision_exhausted", exactint.ErrExhausted},
 	{"cursor", pagination.ErrInvalidCursor},

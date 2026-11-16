@@ -67,7 +67,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	var calls atomic.Int32
 	grant, release, err := pluginservices.GrantMemoryModels(ctx, broker, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
-		return completedTextResponse("- retained publication"), nil
+		return completedTextResponse(`["retained publication"]`), nil
 	}), nil)
 	if err != nil {
 		t.Fatal(err)

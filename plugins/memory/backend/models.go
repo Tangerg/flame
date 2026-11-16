@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"strings"
 
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 
@@ -29,14 +28,7 @@ func (r remoteModels) Complete(ctx context.Context, prompt app.Prompt) (string, 
 	if err != nil {
 		return "", err
 	}
-	text, err := client.Output(ctx, &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(prompt.SystemPrompt), chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt))}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
-	if err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(text) == "" {
-		return "", errors.New("memory: completion returned blank text")
-	}
-	return text, nil
+	return client.Output(ctx, &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(prompt.SystemPrompt), chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt))}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
 }
 func (r remoteModels) ID() string { return r.space }
 func (r remoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {

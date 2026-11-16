@@ -120,7 +120,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		}
 		modelInvocations <- invocation
 		modelCalls.Add(1)
-		message := chat.NewAssistantMessage(chat.NewTextPart("- callback-only model fact"))
+		message := chat.NewAssistantMessage(chat.NewTextPart(`["callback-only model fact"]`))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 	history := capturedConversation{chat.NewUserMessage(chat.NewTextPart("captured conversation")), chat.NewAssistantMessage(chat.NewTextPart("retained response")), chat.NewUserMessage(chat.NewTextPart("continued")), chat.NewAssistantMessage(chat.NewTextPart("complete"))}

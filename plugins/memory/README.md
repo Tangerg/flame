@@ -19,13 +19,18 @@ proposal only when that exact revision was observed. Records omitted by the inpu
 budget or revised during model work survive. Restart reads the same durable
 predecessors; no second generation store or compatibility reader is introduced.
 
-Extraction and curation accept only complete flat Markdown fact lists (`-`, `*`,
-`+`, or numbered bullets), or their explicit empty-result sentinel. Headings,
-preambles, fenced responses, nested lists, and trailing commentary reject the
-entire proposal before publication. A malformed extraction creates no ledger
-entry; a malformed curation preserves its pending ledger and watermark for a
-later independently admitted maintenance activity. Deduplication does not make
-partially valid model output authoritative.
+Extraction and curation accept only a complete JSON array of fact strings, with
+`[]` as the empty result. The response decoder owns this structure; the Domain
+alone normalizes content, enforces cardinality and content bounds, and deduplicates
+facts. Markdown lists, preambles, code fences, nested arrays, non-string or blank
+items, and trailing commentary reject the entire proposal before publication.
+A malformed extraction creates no ledger entry; a malformed curation preserves
+its pending ledger and watermark for a later independently admitted maintenance
+activity. Deduplication does not make partially valid model output authoritative.
+An observed invalid reply settles the original maintenance command as an
+`invalid_facts` refusal. Its receipt survives restart and replay without another
+model call. Failed model exchanges or receipt/publication writes retain their
+unconfirmed outcome; a known validation decision cannot confirm failed storage.
 
 Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
 or explicitly reactivating a record advances that revision; derived embeddings
@@ -153,8 +158,9 @@ projection in `packages/go-sdk/plugin/memory`; components consume the generated
 TypeScript projection of that same descriptor. None imports private Domain or
 Application implementations.
 
-The model completion intent and resource envelope belong to
-`internal/application`. The caller policy is a generated projection of that
+Model prompts and their resource envelope belong to `internal/application`.
+The workflow validates its fixed input limit directly; each request carries only
+its output-token allocation. The caller policy is a generated projection of that
 workflow budget. Extraction and curation share its existing ledger/publication
 workflow; callback I/O and transactional receipt publication remain in `backend`.
 The backend's own `cmd/contracts` only projects an already published consumer

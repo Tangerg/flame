@@ -84,7 +84,7 @@ func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T
 			}
 			defer func() { _ = db.Close() }()
 			store := sqlite.NewAgentMemoryStore(db)
-			first, _ := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact A"}, scriptedReply{text: "- fact A"})
+			first, _ := memoryConsolidatorForStore(t, store, scriptedReply{text: `["fact A"]`}, scriptedReply{text: `["fact A"]`})
 			if published, err := first.Consolidate(t.Context(), "ses_first", "/repo"); err != nil || !published {
 				t.Fatalf("publication = %t, %v", published, err)
 			}
@@ -103,7 +103,7 @@ func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T
 				db = reopened
 				store = sqlite.NewAgentMemoryStore(db)
 			}
-			second, model := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact B"}, scriptedReply{text: "- fact A\n- fact B"})
+			second, model := memoryConsolidatorForStore(t, store, scriptedReply{text: `["fact B"]`}, scriptedReply{text: `["fact A", "fact B"]`})
 			if published, err := second.Consolidate(t.Context(), "ses_second", "/repo"); err != nil || !published {
 				t.Fatalf("publication = %t, %v", published, err)
 			}
@@ -120,7 +120,7 @@ func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T
 
 func TestConsolidatorPreservesProposalsOmittedByTheModelInputBudget(t *testing.T) {
 	consolidator, store, model := memoryConsolidationFixture(t,
-		scriptedReply{text: "- new fact"}, scriptedReply{text: "- new fact"},
+		scriptedReply{text: `["new fact"]`}, scriptedReply{text: `["new fact"]`},
 	)
 	at := consolidator.now()
 	facts, err := store.AppendLedger(t.Context(), agentmemory.FactBatch{
@@ -206,8 +206,8 @@ func TestConsolidatorRejectsMissingDependencies(t *testing.T) {
 
 func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 	consolidator, memory, model := memoryConsolidationFixture(t,
-		scriptedReply{text: "- use make test\n- prefer concise errors"},
-		scriptedReply{text: "- Run `make test`.\n- Prefer concise errors."},
+		scriptedReply{text: `["use make test", "prefer concise errors"]`},
+		scriptedReply{text: "[\"Run `make test`.\", \"Prefer concise errors.\"]"},
 	)
 	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil || !published {
 		t.Fatalf("publication = %t, %v", published, err)
@@ -252,7 +252,7 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 }
 
 func TestMemoryConsolidatorEmptyBacklogDoesNotReportPublication(t *testing.T) {
-	consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: noExtractedFacts})
+	consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: "[]"})
 	published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo")
 	if err != nil || published {
 		t.Fatalf("empty backlog publication = %t, %v", published, err)
@@ -260,6 +260,27 @@ func TestMemoryConsolidatorEmptyBacklogDoesNotReportPublication(t *testing.T) {
 	state, err := memory.State(t.Context(), "/repo")
 	if err != nil || state.Watermark != 0 || len(model.requests) != 1 {
 		t.Fatalf("empty backlog created a generation: state=%+v, requests=%d, error=%v", state, len(model.requests), err)
+	}
+}
+
+func TestMemoryConsolidatorPublishesExplicitEmptyCuration(t *testing.T) {
+	consolidator, memory, model := memoryConsolidationFixture(t,
+		scriptedReply{text: `["obsolete fact"]`}, scriptedReply{text: "[]"},
+	)
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil || !published {
+		t.Fatalf("empty curation publication = %t, %v", published, err)
+	}
+	state, err := memory.State(t.Context(), "/repo")
+	if err != nil || state.Watermark == 0 || len(model.requests) != 2 {
+		t.Fatalf("empty curation did not settle its ledger: state=%+v, requests=%d, error=%v", state, len(model.requests), err)
+	}
+	items, err := memory.List(t.Context(), agentmemory.ScopeProject, "/repo")
+	if err != nil || len(items) != 0 {
+		t.Fatalf("empty curation created items: %v, %v", items, err)
+	}
+	pending, err := memory.PendingLedger(t.Context(), "/repo", state.Watermark, 10)
+	if err != nil || len(pending) != 0 {
+		t.Fatalf("empty curation left unsettled facts: %v, %v", pending, err)
 	}
 }
 
@@ -279,9 +300,9 @@ func TestBoundedLedgerPrefixNeverSkipsPastOmittedFact(t *testing.T) {
 func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testing.T) {
 	providerFailure := errors.New("provider unavailable")
 	consolidator, memory, _ := memoryConsolidationFixture(t,
-		scriptedReply{text: "- durable fact"},
+		scriptedReply{text: `["durable fact"]`},
 		scriptedReply{err: providerFailure},
-		scriptedReply{text: "- durable fact"},
+		scriptedReply{text: `["durable fact"]`},
 	)
 	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || !errors.Is(err, providerFailure) {
 		t.Fatalf("first extraction error = %v", err)
@@ -310,10 +331,20 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 }
 
 func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *testing.T) {
-	for _, malformed := range []string{"", "Here are the facts:\n- durable fact", "```markdown\n- durable fact\n```"} {
+	for _, malformed := range []string{
+		"", "null", "NO_FACTS", "NO_MEMORY",
+		"Here are the facts:\n- durable fact", "```markdown\n- durable fact\n```",
+		"- - nested fact", "- 1. nested fact", "- # Heading", "- > quote",
+		`["durable fact", ["nested fact"]]`,
+		`["durable fact", null]`,
+		`["durable fact", " "]`,
+		`["durable fact", 1]`,
+		`["durable fact"] trailing commentary`,
+		`[` + strings.Repeat(`"durable fact",`, max(agentmemory.MaxFactsPerBatch, agentmemory.MaxCurationProposals)) + `"durable fact"]`,
+	} {
 		t.Run("extraction="+malformed, func(t *testing.T) {
 			consolidator, memory, model := memoryConsolidationFixture(t, scriptedReply{text: malformed})
-			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil {
+			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || !errors.Is(err, agentmemory.ErrInvalidFacts) {
 				t.Fatal("malformed extraction was accepted")
 			}
 			pending, err := memory.PendingLedger(t.Context(), "/repo", 0, 10)
@@ -323,9 +354,9 @@ func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *tes
 		})
 		t.Run("curation="+malformed, func(t *testing.T) {
 			consolidator, memory, _ := memoryConsolidationFixture(t,
-				scriptedReply{text: "- durable fact"}, scriptedReply{text: malformed},
+				scriptedReply{text: `["durable fact"]`}, scriptedReply{text: malformed},
 			)
-			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil {
+			if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || !errors.Is(err, agentmemory.ErrInvalidFacts) {
 				t.Fatal("malformed curation was accepted")
 			}
 			state, err := memory.State(t.Context(), "/repo")
@@ -364,11 +395,11 @@ func TestCurationGateAndTokenEstimate(t *testing.T) {
 
 func TestMemoryConsolidatorDoesNotAdvanceWatermarkForOversizedCuration(t *testing.T) {
 	consolidator, memory, _ := memoryConsolidationFixture(t,
-		scriptedReply{text: "- durable fact"},
+		scriptedReply{text: `["durable fact"]`},
 		scriptedReply{text: strings.Repeat("界", 20)},
 	)
 	consolidator.policy.maxTokens = 10
-	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || err == nil || !strings.Contains(err.Error(), "limit is 10") {
+	if published, err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); published || !errors.Is(err, agentmemory.ErrInvalidFacts) || !strings.Contains(err.Error(), "limit is 10") {
 		t.Fatalf("oversized curation error = %v", err)
 	}
 	state, err := memory.State(t.Context(), "/repo")

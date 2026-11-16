@@ -61,6 +61,8 @@ func Digest(content string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+var ErrInvalidFacts = errors.New("agentmemory: invalid facts")
+
 var ErrNotFound = errors.New("agentmemory: item not found")
 
 var ErrNotPending = errors.New("agentmemory: item is not pending review")
@@ -656,18 +658,15 @@ func (s State) Validate() error {
 
 func normalizeFactList(input []string, maximum int, collection string) ([]string, error) {
 	if len(input) > maximum {
-		return nil, fmt.Errorf("agentmemory: %s exceeds %d items", collection, maximum)
+		return nil, fmt.Errorf("%w: %s exceeds %d items", ErrInvalidFacts, collection, maximum)
 	}
 	var normalized []string
 	seen := make(map[string]struct{})
 	for _, fact := range input {
-		if strings.TrimSpace(fact) == "" {
-			continue
-		}
 		var err error
 		fact, err = NormalizeContent(fact)
 		if err != nil {
-			return nil, fmt.Errorf("agentmemory: invalid %s item: %w", collection, err)
+			return nil, fmt.Errorf("%w: invalid %s item: %w", ErrInvalidFacts, collection, err)
 		}
 		if _, duplicate := seen[fact]; duplicate {
 			continue

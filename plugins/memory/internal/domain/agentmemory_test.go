@@ -47,7 +47,7 @@ func TestFactBatchNormalizeValidatesIdentity(t *testing.T) {
 		Project:    " /repo ",
 		SessionID:  "session",
 		Day:        "2026-07-19",
-		Facts:      []string{"one", "one", "two", " "},
+		Facts:      []string{"one", " one ", "two"},
 		CapturedAt: time.Now(),
 	}
 	normalized, err := batch.Normalize()
@@ -65,6 +65,18 @@ func TestFactBatchNormalizeValidatesIdentity(t *testing.T) {
 	batch.Day = "2026-7-19"
 	if _, err := batch.Normalize(); err == nil {
 		t.Fatal("non-canonical day was accepted")
+	}
+}
+
+func TestFactBatchNormalizeRejectsBlankFacts(t *testing.T) {
+	for _, content := range []string{"", " \t\n"} {
+		batch := FactBatch{
+			Project: "/repo", SessionID: "session", Day: "2026-08-24",
+			Facts: []string{"valid fact", content}, CapturedAt: time.Now(),
+		}
+		if _, err := batch.Normalize(); err == nil {
+			t.Fatalf("fact batch accepted blank content %q", content)
+		}
 	}
 }
 
