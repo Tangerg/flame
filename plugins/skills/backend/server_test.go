@@ -84,7 +84,7 @@ func learningInvocation(t *testing.T, id string) context.Context {
 }
 
 func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) {
-	for _, outcome := range []string{"completed", "response lost", "incomplete", "refused"} {
+	for _, outcome := range []string{"completed", "response lost", "incomplete", "refused", "malformed document", "malformed revision", "blank", "invalid response"} {
 		t.Run(outcome, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "learning.db")
 			session, mine, closeBackend := connectLearning(t, path)
@@ -106,7 +106,18 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				if outcome == "refused" {
 					finish = chat.FinishReasonRefusal
 				}
-				message := chat.NewAssistantMessage(chat.NewTextPart(testSkill))
+				text := testSkill
+				switch outcome {
+				case "malformed document":
+					text = "```markdown\n" + testSkill
+				case "malformed revision":
+					text = "REVISE: run-tests\ntrailing commentary"
+				case "blank":
+					text = " \n\t "
+				case "invalid response":
+					text = ""
+				}
+				message := chat.NewAssistantMessage(chat.NewTextPart(text))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, nil)
 			})
 			if err != nil {
@@ -153,8 +164,15 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			}
 			value, err := mine.InvokeWithMetadata(ctx, "due", input, metadata)
 			complete := outcome == "completed"
+			invalidDraft := outcome == "malformed document" || outcome == "malformed revision" || outcome == "blank"
 			if complete != (err == nil) {
 				t.Fatalf("mining outcome = %s, %v", value.Bytes(), err)
+			}
+			if invalidDraft {
+				var refusal *framemcp.Refusal
+				if !errors.As(err, &refusal) || refusal.Code != "invalid_skill_draft" {
+					t.Fatalf("malformed draft did not settle as a refusal: %v", err)
+				}
 			}
 			if complete {
 				var result skilllearning.MineResult
@@ -174,7 +192,12 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				t.Fatalf("restart outcome = %s, %v", repeated.Bytes(), err)
 			}
 			receipt, found, err := restarted.ReadReceipt(ctx, "due", input)
-			if err != nil || found != complete || complete && receipt != value {
+			if invalidDraft {
+				var refusal *framemcp.Refusal
+				if !found || !errors.As(err, &refusal) || refusal.Code != "invalid_skill_draft" {
+					t.Fatalf("malformed draft refusal was not retained after restart: found=%t, error=%v", found, err)
+				}
+			} else if err != nil || found != complete || complete && receipt != value {
 				t.Fatalf("receipt = %s, %t, %v", receipt.Bytes(), found, err)
 			}
 			if modelCalls.Load() != 1 {

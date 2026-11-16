@@ -66,13 +66,12 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	if noSkill(document) {
 		return skilllearning.MineResult{}, nil
 	}
-	first, _, _ := strings.Cut(document, "\n")
-	name, revision := strings.CutPrefix(strings.TrimSpace(first), revisionMarker)
+	name, revision := strings.CutPrefix(strings.TrimSpace(document), revisionMarker)
 	name = strings.TrimSpace(name)
 	var previous string
 	if revision {
-		if name == "" {
-			return skilllearning.MineResult{}, nil
+		if err := skillspec.ValidateName(name); err != nil {
+			return skilllearning.MineResult{}, errors.Join(errInvalidSkillDraft, err)
 		}
 		read, err := inputs.ReadSkill(ctx, name)
 		current := read.Skill
@@ -95,12 +94,14 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 			return skilllearning.MineResult{}, nil
 		}
 	}
-	skill, err := skillspec.Parse([]byte(unfence(document)))
+	skill, err := skillspec.Parse([]byte(strings.TrimSpace(document)))
 	if err != nil {
-		return skilllearning.MineResult{}, errInvalidSkillDraft
+		return skilllearning.MineResult{}, errors.Join(errInvalidSkillDraft, err)
 	}
 	if revision {
-		skill.Name = name
+		if err := skill.ValidateFor(name); err != nil {
+			return skilllearning.MineResult{}, errors.Join(errInvalidSkillDraft, err)
+		}
 	}
 	return skilllearning.MineResult{Proposal: &skilllearning.Proposal{
 		Skill: skilllearning.Skill{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}, Revises: revision, Previous: previous,
@@ -150,15 +151,4 @@ func (l *learner) archive(now time.Time) skilllearning.ArchiveAdvice {
 
 func noSkill(document string) bool {
 	return strings.EqualFold(strings.TrimSpace(document), declineSkill)
-}
-
-func unfence(document string) string {
-	document = strings.TrimSpace(document)
-	if strings.HasPrefix(document, "```") {
-		if _, body, found := strings.Cut(document, "\n"); found {
-			document = body
-		}
-		document = strings.TrimSuffix(strings.TrimRight(document, "\n"), "```")
-	}
-	return strings.TrimSpace(document)
 }

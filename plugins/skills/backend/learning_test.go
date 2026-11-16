@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 const testSkill = "---\nname: run-tests\ndescription: Run project tests after changing code.\n---\nRun go test ./... from the workspace."
@@ -90,7 +91,6 @@ func TestLearningReturnsOnlyUsableDrafts(t *testing.T) {
 		proposal    bool
 	}{
 		{"new", testSkill, 4, true},
-		{"fenced", "```markdown\n" + testSkill + "\n```", 4, true},
 		{"sentinel", " no_skill\n", 4, false},
 
 		{"short conversation", testSkill, 3, false},
@@ -111,14 +111,44 @@ func TestLearningReturnsOnlyUsableDrafts(t *testing.T) {
 	}
 }
 
-func TestLearningRevisionReadsCurrentDocumentAndCannotRenameIt(t *testing.T) {
-	i := &testInputs{conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "correct the test command"}, skill: &skilllearning.Skill{Name: "run-tests", Description: "Run tests", Instructions: "ACTUAL CURRENT PROCEDURE"}, replies: []string{"REVISE: run-tests", strings.Replace(testSkill, "run-tests", "another-name", 1)}}
+func TestLearningRevisionReadsCurrentDocumentAndPreservesItsIdentity(t *testing.T) {
+	i := &testInputs{conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "correct the test command"}, skill: &skilllearning.Skill{Name: "run-tests", Description: "Run tests", Instructions: "ACTUAL CURRENT PROCEDURE"}, replies: []string{"REVISE: run-tests", testSkill}}
 	result, err := dueMine(t, freshLearner(), i)
 	if err != nil || result.Proposal == nil || !result.Proposal.Revises || result.Proposal.Skill.Name != "run-tests" {
 		t.Fatalf("revision = %+v, %v", result, err)
 	}
 	if i.skillReads != 1 || len(i.prompts) != 2 || !strings.Contains(i.prompts[1], i.skill.Instructions) || !strings.Contains(i.prompts[1], i.conversation.Transcript) {
 		t.Fatalf("revision source: %+v", i)
+	}
+}
+
+func TestLearningRevisionRejectsAReplyForAnotherSkill(t *testing.T) {
+	i := &testInputs{conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "correct the test command"}, skill: &skilllearning.Skill{Name: "run-tests", Description: "Run tests", Instructions: "original"}, replies: []string{"REVISE: run-tests", strings.Replace(testSkill, "run-tests", "another-name", 1)}}
+	result, err := dueMine(t, freshLearner(), i)
+	if result.Proposal != nil || !errors.Is(err, errInvalidSkillDraft) || !errors.Is(err, skillspec.ErrNameMismatch) {
+		t.Fatalf("revision rewrote a mismatched identity: %+v, %v", result, err)
+	}
+}
+
+func TestMiningRejectsMalformedModelEnvelopes(t *testing.T) {
+	for _, reply := range []string{
+		"```markdown\n" + testSkill,
+		"```markdown\n" + testSkill + "\n```",
+		"```markdown\n" + testSkill + "\n```\ntrailing commentary",
+		"REVISE:",
+		"REVISE: run-tests\ntrailing commentary",
+	} {
+		t.Run(reply, func(t *testing.T) {
+			inputs := &testInputs{
+				conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "conversation"},
+				skill:        &skilllearning.Skill{Name: "run-tests", Description: "Run tests", Instructions: "original"},
+				replies:      []string{reply, testSkill},
+			}
+			result, err := dueMine(t, freshLearner(), inputs)
+			if result.Proposal != nil || !errors.Is(err, errInvalidSkillDraft) || len(inputs.prompts) != 1 || inputs.skillReads != 0 {
+				t.Fatalf("malformed reply became authoritative: proposal=%+v error=%v calls=%d reads=%d", result.Proposal, err, len(inputs.prompts), inputs.skillReads)
+			}
+		})
 	}
 }
 
@@ -173,7 +203,7 @@ func TestArchiveAdviceHasOneDecisionPerInterval(t *testing.T) {
 func TestInvalidSkillDraftAndBoundedCadence(t *testing.T) {
 	l := freshLearner()
 	i := &testInputs{conversation: skilllearning.Conversation{MessageCount: 4, Transcript: "conversation"}, replies: []string{"not a skill document"}}
-	if _, err := dueMine(t, l, i); !errors.Is(err, errInvalidSkillDraft) {
+	if _, err := dueMine(t, l, i); !errors.Is(err, errInvalidSkillDraft) || !errors.Is(err, skillspec.ErrNoFrontmatter) {
 		t.Fatalf("invalid draft: %v", err)
 	}
 	for n := range maxTrackedSessions + 2 {

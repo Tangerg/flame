@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -53,14 +52,7 @@ func (remoteInputs) Complete(ctx context.Context, system, user string) (string, 
 		return "", err
 	}
 	outputTokens := skilllearning.MaxModelOutputTokens
-	text, err := client.Output(ctx, &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(system), chat.NewUserMessage(chat.NewTextPart(user))}, Options: chat.Options{MaxOutputTokens: &outputTokens}}, chatclient.Text())
-	if err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(text) == "" {
-		return "", errors.New("skill learning: model returned blank text")
-	}
-	return strings.TrimSpace(text), nil
+	return client.Output(ctx, &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(system), chat.NewUserMessage(chat.NewTextPart(user))}, Options: chat.Options{MaxOutputTokens: &outputTokens}}, chatclient.Text())
 }
 
 func admitMined(ctx context.Context, proposal skilllearning.Proposal) (bool, error) {

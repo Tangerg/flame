@@ -28,6 +28,13 @@ a revision. Only the existing human approval operation publishes the proposal.
 Archive advice passes through Runtime's existing provenance, usage, library-lease
 and invalidation rules; human-authored Skills remain outside automatic archival.
 
+Model drafts must be complete, unfenced SKILL.md documents admitted by Scope's
+parser. A revision request contains only its marker and exact Skill name; malformed
+requests are refused before reading a source or dispatching another model call.
+The captured source owns the revision identity. A corrected document must match
+that identity; the backend never repairs a mismatched name or strips response
+wrappers to manufacture a valid draft.
+
 `PLUGIN_DATA/learning.db` commits local decisions and receipts in one transaction. The mining command records its accepted proposal and completed model receipt in one private SQLite transaction. Its proposal revision is that mining command itself. A crash before commit exposes neither outcome. A crash after commit leaves both available even if the host never received the reply. The mining cadence retains at most 4,096 recently active sessions. A malformed model draft settles its original command as `invalid_skill_draft`. Mining and archive checks run independently. Recovery reads the original mining receipt before considering a proposal and never repeats an unconfirmed model call.
 
 Generate and package through the root `make generate` and plugin build commands.
