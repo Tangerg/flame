@@ -82,6 +82,9 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.md-table-preview {
+  width: max-content;
+}
 .md-table-preview > table {
   min-width: max-content;
 }

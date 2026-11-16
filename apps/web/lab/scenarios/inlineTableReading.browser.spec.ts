@@ -317,6 +317,13 @@ for (const { locale, theme, fontSize, motion, lines, continuation } of [
         const preview = page.getByRole("dialog", { name: labels.preview, exact: true });
         const previewReader = preview.getByRole("region", { name: labels.content, exact: true });
         await expect(previewReader).toBeFocused();
+        const leadingInset = await previewReader.evaluate((node) => {
+          const table = node.querySelector("table")!;
+          return (
+            table.getBoundingClientRect().left - node.getBoundingClientRect().left - node.clientLeft
+          );
+        });
+        expect(leadingInset).toBeGreaterThan(0);
         await page.keyboard.press("End");
         await expect(
           preview.getByRole("cell", { name: "Observation 80", exact: true }),
@@ -330,6 +337,16 @@ for (const { locale, theme, fontSize, motion, lines, continuation } of [
         await expect(preview.getByRole("cell", { name: "80", exact: true })).toBeInViewport({
           ratio: 1,
         });
+        const trailingInset = await previewReader.evaluate((node) => {
+          const table = node.querySelector("table")!;
+          return (
+            node.getBoundingClientRect().left +
+            node.clientLeft +
+            node.clientWidth -
+            table.getBoundingClientRect().right
+          );
+        });
+        expect(trailingInset).toBeGreaterThanOrEqual(leadingInset - 1);
         await testInfo.attach("table-preview-tail", {
           body: await page.screenshot({ animations: "disabled" }),
           contentType: "image/png",

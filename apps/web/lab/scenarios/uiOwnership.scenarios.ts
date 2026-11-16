@@ -25,19 +25,26 @@ async function readAcross(page: Page, reader: Locator, first: Locator, last: Loc
     let keyDowns = 0;
     const start = await reader.evaluate((node) => node.scrollLeft);
     const hiddenEdge = async () => (await hidden(target))[side];
+    const remaining = () =>
+      side === "left" ? reader.evaluate((node) => node.scrollLeft) : hiddenEdge();
     try {
       try {
         await expect(async () => {
           keyDowns++;
           // Releasing between repeats interrupts native scrolling animations.
           await page.keyboard.down(key);
-          expect(await hiddenEdge()).toBeLessThanOrEqual(0.5);
+          expect(await remaining()).toBeLessThanOrEqual(0.5);
         }).toPass({ intervals: [50], timeout: 5_000 });
       } finally {
         await page.keyboard.up(key);
       }
       // Native scrollbar geometry does not provide a portable maximum offset.
       await expect.poll(hiddenEdge).toBeLessThanOrEqual(0.5);
+      if (side === "left")
+        // WebKit reports transient negative offsets during elastic scrolling.
+        await expect
+          .poll(() => reader.evaluate((node) => Math.abs(node.scrollLeft)))
+          .toBeLessThanOrEqual(0.5);
     } finally {
       await test.info().attach(`${key}-reading.json`, {
         body: JSON.stringify({
