@@ -5,16 +5,14 @@ import (
 	"database/sql"
 	"errors"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -27,7 +25,7 @@ func staleReview() error {
 	return &framemcp.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
 }
 
-func registerReviews(server *pluginmcp.Backend, db *framesqlite.Database) error {
+func registerReviews(server *pluginmcp.Backend, db framesqlite.Database) error {
 	propose, e1 := skilllearning.ProposeMethod()
 	queue, e2 := skilllearning.QueueMethod()
 	approve, e3 := skilllearning.ApproveMethod()
@@ -48,7 +46,7 @@ func registerReviews(server *pluginmcp.Backend, db *framesqlite.Database) error 
 	)
 }
 
-func reviewCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Database, method *pluginmcp.Method[P, R], prepare func(context.Context, *sdk.ServerSession, P) (storage.CommandPlan[R], error)) error {
+func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database, method *pluginmcp.Method[P, R], prepare func(context.Context, *sdk.ServerSession, P) (storage.CommandPlan[R], error)) error {
 	return method.RegisterServer(server, nil, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		var zero R
 		inv, err := pluginmcp.InvocationFromContext(ctx)
@@ -68,7 +66,7 @@ func reviewCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Database
 	})
 }
 
-type reviewQueue struct{ db *framesqlite.Database }
+type reviewQueue struct{ db framesqlite.Database }
 
 func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (storage.CommandPlan[skilllearning.ReviewRef], error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)

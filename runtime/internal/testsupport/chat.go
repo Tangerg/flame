@@ -20,15 +20,15 @@ func responseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
 		return nil, fmt.Errorf("testsupport: invalid chat response: %w", err)
 	}
 	delta := &chat.ResponseDelta{
-		FinishReason:   response.Output.FinishReason,
-		OutputMetadata: response.Output.Metadata,
-		Metadata:       response.Metadata,
+		FinishReason: response.Output.FinishReason,
+		Metadata:     response.Metadata,
 	}
 	if response.Output.Message == nil {
 		return delta, nil
 	}
 	delta.MessageMetadata = response.Output.Message.Metadata
-	for _, part := range response.Output.Message.Parts {
+	for index, part := range response.Output.Message.Parts {
+		firstDelta := len(delta.Parts)
 		switch part.Kind {
 		case chat.PartText:
 			delta.Parts = append(delta.Parts, chat.NewTextDelta(part.Text))
@@ -47,6 +47,9 @@ func responseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
 		}
 		for _, citation := range part.Citations {
 			delta.Parts = append(delta.Parts, chat.NewCitationDelta(citation))
+		}
+		for i := firstDelta; i < len(delta.Parts); i++ {
+			delta.Parts[i].Index = index
 		}
 	}
 	if err := delta.Validate(); err != nil {

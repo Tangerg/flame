@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -21,6 +19,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -49,7 +49,7 @@ func (c *coreCallbackTarget) SubscribeRuntime(ctx context.Context, _ protocol.Ru
 type coreCallbackInput struct{ Host pluginmcp.CallbackRef }
 
 func coreCallbackMethod() (*pluginmcp.Method[coreCallbackInput, string], error) {
-	return pluginmcp.NewMethod[coreCallbackInput, string](portable.MethodConfig{Name: "test.backend/core", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the canonical Runtime callback."})
+	return pluginmcp.NewMethod[coreCallbackInput, string](frame.MethodConfig{Name: "test.backend/core", Kind: frame.Query, Target: extension.ScopeCall, Description: "Exercise the canonical Runtime callback."})
 }
 
 func TestCoreCallbackBackendProcess(t *testing.T) {

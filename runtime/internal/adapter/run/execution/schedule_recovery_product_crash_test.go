@@ -18,23 +18,20 @@ import (
 	"testing"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/process/runner"
-
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 )

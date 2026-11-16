@@ -6,11 +6,11 @@ import (
 	"regexp"
 	"strings"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type RefKind string

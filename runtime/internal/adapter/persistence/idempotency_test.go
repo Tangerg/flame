@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -105,7 +104,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 
 func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	openNamespace := func() (*sqlite.Database, operation.ReplayNamespace) {
+	openNamespace := func() (sqlite.Database, operation.ReplayNamespace) {
 		db, err := openDatabase(t.Context(), path)
 		if err != nil {
 			t.Fatalf("open: %v", err)
@@ -158,7 +157,7 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 
 func TestAtomicReplaySurvivesFailedWriteAndReopen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "replay.db")
-	open := func() (*sqlite.Database, *operation.Replay) {
+	open := func() (sqlite.Database, *operation.Replay) {
 		t.Helper()
 		db, err := openDatabase(t.Context(), path)
 		if err != nil {

@@ -3,7 +3,7 @@
 import type { JSONNumber } from "@frame/sdk/json";
 
 export interface CaptureInput {
-  period: ("daily" | "weekly") & (string);
+  period: "daily" | "weekly";
 }
 
 export type CaptureV1Input = CaptureInput;
@@ -13,7 +13,7 @@ export type CaptureV1Output = CaptureV1OutputRpcHeader;
 export interface CaptureV1OutputRpcHeader {
   id: string;
   observedAt: string;
-  period: ("daily" | "weekly") & (string);
+  period: "daily" | "weekly";
   since?: string;
 }
 
@@ -42,7 +42,7 @@ export interface ListV2Output {
 export interface ListV2OutputRpcHeader {
   id: string;
   observedAt: string;
-  period: ("daily" | "weekly") & (string);
+  period: "daily" | "weekly";
   since?: string;
 }
 
@@ -58,7 +58,7 @@ export interface ModelUsage {
 export interface ReportGithubComTangergFlameRuntimeProtocolUsageSummary {
   id: string;
   observedAt: string;
-  period: ("daily" | "weekly") & (string);
+  period: "daily" | "weekly";
   since?: string;
   summary: UsageSummary;
 }

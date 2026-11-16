@@ -7,15 +7,15 @@ import (
 	"iter"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -49,7 +49,7 @@ func (numericPlugin) ResolvePluginPoint(context.Context, protocol.ResolvePluginP
 	}}), nil
 }
 
-func numericBinding(t *testing.T, descriptor portable.MethodDescriptor) client.PluginBinding {
+func numericBinding(t *testing.T, descriptor frame.MethodDescriptor) client.PluginBinding {
 	t.Helper()
 	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{
 		Reference: "numbers", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation,
@@ -61,7 +61,7 @@ func numericBinding(t *testing.T, descriptor portable.MethodDescriptor) client.P
 		InstallationID: numericInstallation,
 		Digest:         identity.DigestStrings("numbers").String(),
 		Contribution:   "numbers", Contract: contract,
-		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation},
+		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation},
 	}
 }
 
@@ -76,8 +76,8 @@ func assertOriginalNumbers(t *testing.T, value map[string]any) {
 }
 
 func TestBoundPluginCallPreservesUnstructuredNumbers(t *testing.T) {
-	method, err := pluginmcp.NewMethod[struct{}, map[string]any](portable.MethodConfig{
-		Name: "numbers.read", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read original numbers.",
+	method, err := pluginmcp.NewMethod[struct{}, map[string]any](frame.MethodConfig{
+		Name: "numbers.read", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read original numbers.",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -94,8 +94,8 @@ func TestBoundPluginCallPreservesUnstructuredNumbers(t *testing.T) {
 }
 
 func TestBoundPluginStreamPreservesUnstructuredNumbers(t *testing.T) {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](portable.MethodConfig{
-		Name: "numbers.stream", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
+	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](frame.MethodConfig{
+		Name: "numbers.stream", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +137,7 @@ func TestPointValuesPreserveUnstructuredNumbers(t *testing.T) {
 		t.Fatal(err)
 	}
 	values, err := client.ResolvePointValues[map[string]any](t.Context(), numericPlugin{}, contract,
-		portable.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
+		framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,8 +148,8 @@ func TestPointValuesPreserveUnstructuredNumbers(t *testing.T) {
 }
 
 func TestBoundPluginQueryStreamRefusesCommandIdentityBeforeDispatch(t *testing.T) {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](portable.MethodConfig{
-		Name: "numbers.stream", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
+	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](frame.MethodConfig{
+		Name: "numbers.stream", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Stream original numbers.",
 	})
 	if err != nil {
 		t.Fatal(err)

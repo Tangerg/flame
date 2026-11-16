@@ -8,18 +8,18 @@ import (
 	"fmt"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 type ScheduleStore struct {
-	db *framesqlite.Database
+	db framesqlite.Database
 }
 
-func NewScheduleStore(db *framesqlite.Database) *ScheduleStore {
+func NewScheduleStore(db framesqlite.Database) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 

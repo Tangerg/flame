@@ -25,7 +25,7 @@ export type CancelV1Output = CancelV1OutputWireResult;
 export interface CancelV1OutputWireResult {
   agent: string;
   contextId?: string;
-  kind: ("task" | "message") & (string);
+  kind: "task" | "message";
   requestId: string;
   state?: string;
   taskId?: string;
@@ -44,7 +44,7 @@ export type SendV1Output = SendV1OutputWireResult;
 export interface SendV1OutputWireResult {
   agent: string;
   contextId?: string;
-  kind: ("task" | "message") & (string);
+  kind: "task" | "message";
   requestId: string;
   state?: string;
   taskId?: string;
@@ -62,7 +62,7 @@ export type StatusV1Output = StatusV1OutputWireResult;
 export interface StatusV1OutputWireResult {
   agent: string;
   contextId?: string;
-  kind: ("task" | "message") & (string);
+  kind: "task" | "message";
   requestId: string;
   state?: string;
   taskId?: string;

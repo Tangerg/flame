@@ -5,13 +5,13 @@ import (
 	"log"
 	"os"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
+
+	"github.com/Tangerg/frame"
 )
 
 func main() {
@@ -29,23 +29,23 @@ func main() {
 }
 
 func define() (*plugincontract.Capability, error) {
-	getMethod, err := pluginmcp.NewMethod[struct{}, filewatch.Snapshot](portable.MethodConfig{Name: "flame.filewatch/get.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installation's single persistent file trigger and configuration revision."})
+	getMethod, err := pluginmcp.NewMethod[struct{}, filewatch.Snapshot](frame.MethodConfig{Name: "flame.filewatch/get.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read this installation's single persistent file trigger and configuration revision."})
 	if err != nil {
 		return nil, err
 	}
-	configureMethod, err := pluginmcp.NewMethod[wire.ConfigureInput, filewatch.Snapshot](portable.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
+	configureMethod, err := pluginmcp.NewMethod[wire.ConfigureInput, filewatch.Snapshot](frame.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
 	if err != nil {
 		return nil, err
 	}
-	statusMethod, err := pluginmcp.NewMethod[struct{}, filewatch.Status](portable.MethodConfig{Name: "flame.filewatch/status.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
+	statusMethod, err := pluginmcp.NewMethod[struct{}, filewatch.Status](frame.MethodConfig{Name: "flame.filewatch/status.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
 	if err != nil {
 		return nil, err
 	}
-	eventsMethod, err := pluginmcp.NewMethod[struct{}, []filewatch.Header](portable.MethodConfig{Name: "flame.filewatch/events.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
+	eventsMethod, err := pluginmcp.NewMethod[struct{}, []filewatch.Header](frame.MethodConfig{Name: "flame.filewatch/events.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
 	if err != nil {
 		return nil, err
 	}
-	eventMethod, err := pluginmcp.NewMethod[wire.EventInput, filewatch.Event](portable.MethodConfig{Name: "flame.filewatch/event.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read one retained observation and its complete original dispatch capture."})
+	eventMethod, err := pluginmcp.NewMethod[wire.EventInput, filewatch.Event](frame.MethodConfig{Name: "flame.filewatch/event.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read one retained observation and its complete original dispatch capture."})
 	if err != nil {
 		return nil, err
 	}

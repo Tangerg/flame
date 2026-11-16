@@ -5,13 +5,12 @@ import (
 	"image"
 	"strings"
 
-	"github.com/Tangerg/oolong/ui/core/scene"
-
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/fuzzy"
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -223,7 +222,7 @@ func (p *picker[T]) row(view grid.View, _ int, item T, _ fuzzy.Match, selected b
 		labelWidth = width - detailWidth - prefixWidth - 3
 		view.Text(width-detailWidth, 0, detail, base.Merge(p.theme.Subtle))
 	}
-	shown := text.Truncate(label, max(labelWidth, 1), p.glyphs.Ellipsis)
+	shown := text.Of(label, base).Truncate(max(labelWidth, 1), p.glyphs.Ellipsis)
 	view.Text(0, 0, prefix, base.Merge(p.theme.Accent))
-	view.Text(prefixWidth, 0, shown, base)
+	shown.Draw(view, prefixWidth, 0)
 }

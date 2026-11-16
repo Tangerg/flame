@@ -5,7 +5,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 const FeedbackReference = "flame.feedback.v1"
@@ -16,8 +17,8 @@ type FeedbackSignal struct {
 }
 
 func PrepareFeedbackMethod() (*pluginmcp.Method[extension.FeedbackDraft, FeedbackSignal], error) {
-	return pluginmcp.NewMethod[extension.FeedbackDraft, FeedbackSignal](portable.MethodConfig{
-		Name: "flame.feedback/prepare.v1", Kind: portable.Command, Target: extension.ScopeInstallation,
+	return pluginmcp.NewMethod[extension.FeedbackDraft, FeedbackSignal](frame.MethodConfig{
+		Name: "flame.feedback/prepare.v1", Kind: frame.Command, Target: extension.ScopeInstallation,
 		Description: "Prepare the immutable quality observation for this command and retain its original decision.",
 	})
 }

@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func testCapability(t *testing.T, methods ...portable.MethodDescriptor) *plugincontract.Capability {
+func testCapability(t *testing.T, methods ...frame.MethodDescriptor) *plugincontract.Capability {
 	t.Helper()
 	capability, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "acme/records", Composition: plugincontract.Selection, Scope: "workspace"}, methods...)
 	if err != nil {
@@ -26,7 +26,7 @@ func testCapability(t *testing.T, methods ...portable.MethodDescriptor) *pluginc
 func TestCapabilityPublicationAndRestorationCaptureTheirOriginalContract(t *testing.T) {
 	for _, replaced := range []string{"backend", "client", "server method", "client method"} {
 		t.Run(replaced, func(t *testing.T) {
-			method, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Query, Target: "workspace", Description: "Read."})
+			method, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "acme/read", Kind: frame.Query, Target: "workspace", Description: "Read."})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -59,7 +59,7 @@ func TestCapabilityPublicationAndRestorationCaptureTheirOriginalContract(t *test
 			if err != nil {
 				t.Fatal(err)
 			}
-			replacementMethod, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Command, Target: "workspace", Description: "Replace read with write."})
+			replacementMethod, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "acme/read", Kind: frame.Command, Target: "workspace", Description: "Replace read with write."})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,11 +85,11 @@ func TestCapabilityPublicationAndRestorationCaptureTheirOriginalContract(t *test
 }
 
 func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
-	read, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Query, Target: "workspace", Description: "Read."})
+	read, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "acme/read", Kind: frame.Query, Target: "workspace", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := NewMethod[string, string](portable.MethodConfig{Name: "acme/write", Kind: portable.Command, Target: "workspace", Description: "Write."})
+	write, err := NewMethod[string, string](frame.MethodConfig{Name: "acme/write", Kind: frame.Command, Target: "workspace", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +215,7 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 }
 
 func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
-	method, err := NewMethod[string, string](portable.MethodConfig{Name: "acme/write", Kind: portable.Command, Target: "installation", Description: "Write."})
+	method, err := NewMethod[string, string](frame.MethodConfig{Name: "acme/write", Kind: frame.Command, Target: "installation", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 		}); err != nil {
 			return err
 		}
-		if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
+		if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, frame.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
 			request := command.Input
 			lookups.Add(1)
 			reply := receipts[string(request.ID)]
@@ -278,7 +278,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 }
 
 func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T) {
-	method, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "acme/read", Kind: portable.Query, Target: "installation", Description: "Read."})
+	method, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "acme/read", Kind: frame.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,12 +289,12 @@ func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T
 	}{
 		{"missing required method", func(d *Description) { d.Methods = nil }},
 		{"duplicate method", func(d *Description) { d.Methods = append(d.Methods, d.Methods[0]) }},
-		{"wrong required method", func(d *Description) { d.Methods[0].Kind = portable.Command }},
+		{"wrong required method", func(d *Description) { d.Methods[0].Kind = frame.Command }},
 		{"duplicate export", func(d *Description) { d.Capabilities = append(d.Capabilities, d.Capabilities[0]) }},
 		{"missing export", func(d *Description) { d.Capabilities = nil }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			description := Description{Protocol: plugincontract.Protocol, Methods: []portable.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
+			description := Description{Protocol: plugincontract.Protocol, Methods: []frame.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
 			change.change(&description)
 			server := sdk.NewServer(&sdk.Implementation{Name: "invalid-publication"}, nil)
 			if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {

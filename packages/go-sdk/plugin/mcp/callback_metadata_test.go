@@ -8,10 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -44,7 +43,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	var captured CallbackRef
 	var capturedInvocation framemcp.Invocation
 	session := methodSession(t, func(backend *Backend) error {
-		return testMethod[map[string]string, string](t, "owner.dispatch", portable.Command).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[map[string]string]) (string, error) {
+		return testMethod[map[string]string, string](t, "owner.dispatch", frame.Command).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[map[string]string]) (string, error) {
 			calls++
 			ref, err := CallbackFromContext(ctx)
 			if err != nil {
@@ -66,7 +65,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent-tool", Target: portable.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
+	invocation := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent-tool", Target: framemcp.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
 	ctx, err := WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)

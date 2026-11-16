@@ -3,15 +3,15 @@
 package pluginbrowser
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"context"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framebrowser "github.com/Tangerg/frame/browser"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type Session struct {
@@ -23,7 +23,7 @@ type Session struct {
 	ProofCapacity       int
 	PreparationCapacity int
 	PollInterval        time.Duration
-	ComponentContract   frame.ContractRef
+	ComponentContract   framehost.ContractRef
 }
 
 type OpenRequest struct {

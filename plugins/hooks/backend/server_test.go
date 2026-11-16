@@ -9,21 +9,20 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func connectHooks(t *testing.T, path string) (*sqlite.Database, *sdk.ClientSession, func()) {
+func connectHooks(t *testing.T, path string) (sqlite.Database, *sdk.ClientSession, func()) {
 	t.Helper()
 	db, err := sqlite.OpenSchema(t.Context(), path, []string{pluginstorage.CommandsSchema})
 	if err != nil {
@@ -60,7 +59,7 @@ func connectHooks(t *testing.T, path string) (*sqlite.Database, *sdk.ClientSessi
 
 func hookContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "hook-test", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "hooks"}})
 	if err != nil {
 		t.Fatal(err)
 	}

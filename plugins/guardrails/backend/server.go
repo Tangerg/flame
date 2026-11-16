@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -13,10 +11,12 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
+
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func newServer(store *store) (*sdk.Server, error) {
-	if store == nil || store.db == nil {
+	if store == nil || !store.db.Valid() {
 		return nil, errors.New("guardrails: private store is required")
 	}
 	contracts, err := rpc.NewContracts()

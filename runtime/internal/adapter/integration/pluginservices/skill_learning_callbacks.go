@@ -7,19 +7,19 @@ import (
 	"reflect"
 	"sync"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-	skillspec "github.com/Tangerg/scope/skills"
-	"github.com/samber/lo"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	skillspec "github.com/Tangerg/scope/skills"
+	"github.com/samber/lo"
 )
 
 type learningSourceRevision struct{ name, revision string }

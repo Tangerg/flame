@@ -6,18 +6,18 @@ import (
 	"slices"
 	"strings"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Collaborator is an explicit absence or a fixed set of named consumer bindings.
 // It is prepared from declarations without starting a backend.
+
 type Collaborator struct {
 	ID       plugin.ContributionID
 	Bindings []ContributionBinding
@@ -29,8 +29,8 @@ type requirementCatalog struct {
 	compositions  map[string]plugin.CompositionRecord
 }
 
-func ResolveRequirements(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest framevalue.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
-	if host == nil {
+func ResolveRequirements(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest framevalue.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
+	if !host.Valid() {
 		return nil, plugin.ErrInvalid
 	}
 	catalog, err := readRequirementCatalog(ctx, store, selections, compositions)
@@ -94,8 +94,8 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	return catalog, nil
 }
 
-func resolveEntryRequirements(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
-	if host == nil {
+func resolveEntryRequirements(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
+	if !host.Valid() {
 		return nil, plugin.ErrInvalid
 	}
 	catalog, err := readRequirementCatalog(ctx, store, selections, compositions)
@@ -122,7 +122,7 @@ func resolveEntryRequirements(ctx context.Context, host *frame.Host, store Store
 
 // ProjectRequiredBindings projects already captured providers for the profile's
 // setup wire. It never consults a role selection or substitutes a provider.
-func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding frame.BindingSnapshot) (*plugin.RequiredBindings, error) {
+func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding framehost.BindingSnapshot) (*plugin.RequiredBindings, error) {
 	snapshots, err := store.List(ctx)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snaps
 	return catalog.projectRequirements(root, server, binding)
 }
 
-func (c requirementCatalog) projectRequirements(current plugin.Snapshot, server mcpserver.ServerName, binding frame.BindingSnapshot) (*plugin.RequiredBindings, error) {
+func (c requirementCatalog) projectRequirements(current plugin.Snapshot, server mcpserver.ServerName, binding framehost.BindingSnapshot) (*plugin.RequiredBindings, error) {
 	var values []plugin.ResolvedRequirement
 	for _, contribution := range current.Selected.Declaration().Contributions {
 		if contribution.Server != server {
@@ -227,10 +227,10 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 	return bindings, nil
 }
 
-func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plugin.Contribution, binding frame.BindingSnapshot) ([]Collaborator, error) {
+func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plugin.Contribution, binding framehost.BindingSnapshot) ([]Collaborator, error) {
 	resolved := make([]Collaborator, 0, len(declaration.Requires))
 	for _, required := range declaration.Requires {
-		var chosen *frame.ImportDeclaration
+		var chosen *framehost.ImportBinding
 		for _, unit := range binding.Units {
 			if unit.Source.InstallationID != root.Installation.ID().Host() || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
 				continue
@@ -275,15 +275,15 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 	return resolved, nil
 }
 
-func (c requirementCatalog) plan(ctx context.Context, host *frame.Host, root plugin.Snapshot, server mcpserver.ServerName) (*frame.BindingPlan, error) {
-	unit := frame.UnitRef{InstallationID: root.Installation.ID().Host(), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
+func (c requirementCatalog) plan(ctx context.Context, host framehost.Host, root plugin.Snapshot, server mcpserver.ServerName) (framehost.BindingPlan, error) {
+	unit := framehost.UnitRef{InstallationID: root.Installation.ID().Host(), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
 	type entry struct {
-		source frame.UnitRef
+		source framehost.UnitRef
 		path   string
 	}
 	pending := []entry{{source: unit}}
-	visited := map[frame.UnitRef]bool{}
-	choices := []frame.BindingChoice{}
+	visited := map[framehost.UnitRef]bool{}
+	choices := []framehost.BindingChoice{}
 	for len(pending) > 0 {
 		next := pending[0]
 		pending = pending[1:]
@@ -294,27 +294,27 @@ func (c requirementCatalog) plan(ctx context.Context, host *frame.Host, root plu
 		visited[current] = true
 		id, err := identity.ParseHostInstallation(current.InstallationID)
 		if err != nil {
-			return nil, err
+			return framehost.BindingPlan{}, err
 		}
 		snapshot, found := c.installations[id]
 		if !found || !snapshot.Installation.Enabled() || snapshot.Selected.Digest() != current.Release {
-			return nil, fmt.Errorf("%s%s: %w", next.path, current, plugin.ErrUnavailable)
+			return framehost.BindingPlan{}, fmt.Errorf("%s%s: %w", next.path, current, plugin.ErrUnavailable)
 		}
 		for _, contribution := range snapshot.Selected.Declaration().Contributions {
 			if BackendUnit(contribution.Server) != current.UnitID {
 				continue
 			}
 			for _, required := range contribution.Requires {
-				choice := frame.BindingChoice{Unit: current, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []frame.ExportRef{}}
+				choice := framehost.BindingChoice{Unit: current, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []framehost.ExportRef{}}
 				path := next.path + current.String() + " requires " + choice.Slot
 				providers, err := c.candidates(required)
 				if err != nil {
-					return nil, fmt.Errorf("%s: %w", path, err)
+					return framehost.BindingPlan{}, fmt.Errorf("%s: %w", path, err)
 				}
 				for _, provider := range providers {
 					source, err := ContributionSource(provider)
 					if err != nil {
-						return nil, err
+						return framehost.BindingPlan{}, err
 					}
 					choice.Providers = append(choice.Providers, source)
 					pending = append(pending, entry{source: source.Unit(), path: path + ": "})

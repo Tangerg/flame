@@ -6,16 +6,16 @@ import (
 	"iter"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type pluginCallTarget struct {
@@ -33,7 +33,7 @@ func (s *pluginStreamOwner) PrepareStream(_ context.Context, _ plugins.CallReque
 	return s, nil
 }
 
-func (*pluginStreamOwner) Kind() portable.MethodKind { return portable.Command }
+func (*pluginStreamOwner) Kind() frame.MethodKind { return frame.Command }
 
 func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
@@ -48,7 +48,7 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
 	contract := testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation)
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Bytes()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Bytes()), Method: "records.stream", Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 	owner := &pluginStreamOwner{err: &framemcp.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
@@ -109,7 +109,7 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().Bytes()), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().Bytes()), Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", extension.Model, "run_owner")
@@ -126,7 +126,7 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 		t.Fatalf("owner invocation identities = %v", target.ids)
 	}
 	query := contract.Descriptor()
-	query.Methods[0].Kind = portable.Query
+	query.Methods[0].Kind = frame.Query
 	queryContract, err := plugincontract.AdmitCapability(query)
 	if err != nil {
 		t.Fatal(err)

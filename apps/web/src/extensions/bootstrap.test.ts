@@ -116,6 +116,7 @@ describe("kernel generation ownership", () => {
 
   it("rolls back a startup that was retired before its non-cooperative setup settled", async () => {
     const setup = deferred();
+    const entered = deferred();
     const cleanup = vi.fn();
     const controller = new AbortController();
     const starting = startKernel(
@@ -124,6 +125,7 @@ describe("kernel generation ownership", () => {
           name: "test.delayed",
           async setup(ctx) {
             ctx.lifetime.defer(cleanup);
+            entered.resolve();
             await setup.promise;
           },
         }),
@@ -131,6 +133,7 @@ describe("kernel generation ownership", () => {
       controller.signal,
     );
 
+    await entered.promise;
     controller.abort();
     setup.resolve();
 

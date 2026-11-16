@@ -11,10 +11,10 @@ import (
 	"sync"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
-	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -22,7 +22,7 @@ const SetupMethod = "io.github.tangerg.flame/operations.setup"
 const ActivateMethod = "io.github.tangerg.flame/operations.activate"
 
 type SetupContribution struct {
-	Background *portable.Target  `json:"background,omitzero"`
+	Background *framemcp.Target  `json:"background,omitzero"`
 	ID         string            `json:"id"`
 	Export     string            `json:"export"`
 	Requires   []SetupDependency `json:"requires"`
@@ -314,10 +314,10 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 }
 
 func validateSetupInstallation(value string) error {
-	return frame.InstallationID(value).Validate()
+	return framehost.InstallationID(value).Validate()
 }
 func validateSetupID(value string) error {
-	if frame.UnitID(value).Validate() != nil {
+	if framehost.UnitID(value).Validate() != nil {
 		return errors.New("plugin: invalid declaration identity")
 	}
 	return nil

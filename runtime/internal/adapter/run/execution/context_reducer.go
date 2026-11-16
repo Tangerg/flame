@@ -7,11 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -20,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -185,7 +182,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 		return nil, modelRequestContext{}, nil, false, err
 	}
 	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.process)})
-	calling, err = pluginmcp.WithInvocation(calling, framemcp.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
+	calling, err = pluginmcp.WithInvocation(calling, framemcp.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}

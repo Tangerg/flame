@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // interactionToolResolver builds the exact Tool manifest for one staged root.

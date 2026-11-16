@@ -6,11 +6,12 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 func TestPortableServiceProjectionCannotReplacePublishedCapability(t *testing.T) {
-	method := portable.MethodDescriptor{Name: "notes.read", Description: "Read notes.", Kind: portable.Query, Target: extension.ScopeInstallation, Input: []byte(`{"type":"object"}`), Output: []byte(`true`)}
+	method := frame.MethodDescriptor{Name: "notes.read", Description: "Read notes.", Kind: frame.Query, Target: extension.ScopeInstallation, Input: []byte(`{"type":"object"}`), Output: []byte(`true`)}
 	capability, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "notes", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, method)
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +20,7 @@ func TestPortableServiceProjectionCannotReplacePublishedCapability(t *testing.T)
 	service := capability.Service()
 	original := service.Identity()
 	method.Name = "replacement.read"
-	replacement, err := portable.NewCapability("replacement", method)
+	replacement, err := frame.NewCapability("replacement", method)
 	if err != nil {
 		t.Fatal(err)
 	}

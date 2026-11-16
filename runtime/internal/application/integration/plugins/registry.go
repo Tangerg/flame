@@ -4,18 +4,18 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
-
-	framevalue "github.com/Tangerg/frame/value"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -50,7 +50,7 @@ type userServers interface {
 // Registry is the only MCP registry projection. Installation descriptors are
 // always derived from the installation owner; no editable server rows exist.
 type Registry struct {
-	framework     *frame.Host
+	framework     framehost.Host
 	user          userServers
 	installations Store
 	packages      packageSources
@@ -58,12 +58,14 @@ type Registry struct {
 	compositions  CompositionStore
 }
 
-func NewRegistry(host *frame.Host, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+func NewRegistry(host framehost.Host, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+	if !host.Valid() {
+		return nil, errors.New("plugins: registry framework host is required")
+	}
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
-		{"framework host", host},
 		{"installation store", installations}, {"package sources", packages}, {"selection store", selections},
 		{"composition store", compositions},
 	} {
@@ -79,22 +81,22 @@ func (r Registry) WithExternalDirectory(user userServers) *Registry { r.user = u
 
 // ComponentPlan prepares one immutable component export in its target Realm.
 // The Host revalidates the plan before the browser receives execution authority.
-func (r *Registry) ComponentPlan(ctx context.Context, realm frame.RealmID, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (*frame.BindingPlan, error) {
+func (r *Registry) ComponentPlan(ctx context.Context, realm framehost.RealmID, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (framehost.BindingPlan, error) {
 	snapshot, found, err := r.installations.Get(ctx, id)
 	if err != nil {
-		return nil, err
+		return framehost.BindingPlan{}, err
 	}
 	if !found {
-		return nil, plugin.ErrNotFound
+		return framehost.BindingPlan{}, plugin.ErrNotFound
 	}
 	if _, err := snapshot.Installation.AuthorizeComponent(snapshot.Selected, digest, component); err != nil {
-		return nil, err
+		return framehost.BindingPlan{}, err
 	}
 	contract, err := ComponentContract()
 	if err != nil {
-		return nil, err
+		return framehost.BindingPlan{}, err
 	}
-	return r.framework.PlanWith(ctx, realm, nil, frame.ExportRef{
+	return r.framework.PlanWith(ctx, realm, nil, framehost.ExportRef{
 		InstallationID: id.Host(),
 		Release:        digest,
 		UnitID:         ComponentUnit(component),
@@ -164,28 +166,28 @@ func (r *Registry) Dispatchable(ctx context.Context, id mcpserver.ID) (mcpserver
 
 // BackendPlan captures consumer choices once for Frame admission of the complete
 // exact Unit graph, including an entry with no public export.
-func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (*frame.BindingPlan, error) {
+func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (framehost.BindingPlan, error) {
 	installationID, installed := id.Origin().Installation()
 	if !installed {
-		return nil, plugin.ErrInvalid
+		return framehost.BindingPlan{}, plugin.ErrInvalid
 	}
 	observed, exists, err := r.installations.Get(ctx, installationID)
 	if err != nil {
-		return nil, err
+		return framehost.BindingPlan{}, err
 	}
 	if !exists || !slices.ContainsFunc(observed.Selected.Declaration().Servers, func(server plugin.Server) bool { return server.Name == id.Name() }) {
-		return nil, mcpapp.ErrUnknownServer
+		return framehost.BindingPlan{}, mcpapp.ErrUnknownServer
 	}
 	catalog, err := readRequirementCatalog(ctx, r.installations, r.selections, r.compositions)
 	if err != nil {
-		return nil, err
+		return framehost.BindingPlan{}, err
 	}
 	root, found := catalog.installations[installationID]
 	if !found {
-		return nil, mcpapp.ErrUnknownServer
+		return framehost.BindingPlan{}, mcpapp.ErrUnknownServer
 	}
 	if !root.Installation.ServerEnabled(id.Name()) {
-		return nil, mcpapp.ErrServerDisabled
+		return framehost.BindingPlan{}, mcpapp.ErrServerDisabled
 	}
 	return catalog.plan(ctx, r.framework, root, id.Name())
 }

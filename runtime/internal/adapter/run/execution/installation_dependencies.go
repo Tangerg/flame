@@ -4,16 +4,16 @@ import (
 	"context"
 	"slices"
 
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // Held projects only live business owners. Durable checkpoint and command
 // references belong to the SQLite owner, which reads their original bindings.
 func (i *InteractionExecutor) ID() string { return "flame.executions" }
 
-func (i *InteractionExecutor) Held(ctx context.Context, id frame.InstallationID) ([]frame.Dependency, error) {
+func (i *InteractionExecutor) Held(ctx context.Context, id framehost.InstallationID) ([]framehost.Dependency, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -24,13 +24,13 @@ func (i *InteractionExecutor) Held(ctx context.Context, id frame.InstallationID)
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
 	}
-	var result []frame.Dependency
+	var result []framehost.Dependency
 	for _, dependency := range held {
 		if dependency.InstallationID.String() == id.String() {
-			result = append(result, frame.Dependency{InstallationID: id, Release: dependency.Digest})
+			result = append(result, framehost.Dependency{InstallationID: id, Release: dependency.Digest})
 		}
 	}
-	return frame.CompactDependencies(result), nil
+	return framehost.CompactDependencies(result), nil
 }
 
 // installationDependencies is the session's single dependency projection: the

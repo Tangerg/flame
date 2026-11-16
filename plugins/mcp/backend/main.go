@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
-
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
 	receipts "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -33,7 +33,7 @@ func run(ctx context.Context, data string) (returned error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
-func register(bound *pluginmcp.Backend, db *sqlite.Database) error {
+func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	m, err := connectormcp.NewMethods()
 	if err != nil {
 		return err

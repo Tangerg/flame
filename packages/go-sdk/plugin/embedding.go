@@ -6,10 +6,10 @@ import (
 	"math"
 	"slices"
 
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
 )
 
 type TextEmbeddings struct {
@@ -20,7 +20,7 @@ type TextEmbeddings struct {
 // TextEmbeddingMethod projects vectors from the captured embedding model. The
 // model adapter retains the complete provider response and endpoint evidence.
 func TextEmbeddingMethod() (*pluginmcp.Method[[]string, TextEmbeddings], error) {
-	return pluginmcp.NewMethod[[]string, TextEmbeddings](portable.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Command, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
+	return pluginmcp.NewMethod[[]string, TextEmbeddings](frame.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: frame.Command, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
 func CallTextEmbedding(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, texts []string) (TextEmbeddings, error) {

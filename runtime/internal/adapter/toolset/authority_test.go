@@ -3,23 +3,21 @@ package toolset
 import (
 	"context"
 	"errors"
+	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"testing"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
@@ -96,7 +94,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Helper()
 		grant, err := vault.PrepareGrant(t.Context(), owner, server, mcpapp.GrantProposal{
 			Source:     extension.ContributionSource{InstallationID: owner.String(), Release: framevalue.Hash([]byte("release")).String(), Contribution: "directory"},
-			Invocation: framemcp.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
+			Invocation: framemcp.Invocation{ID: identity.DigestStrings(server.AuthorityFingerprint().String(), server.Connection.(mcpserver.HTTPConnection).Authorization).String(), Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: owner.String()}},
 			Change:     wire.Change{Name: server.Name.String(), Replacement: &wire.Entry{Name: server.Name.String()}},
 		})
 		if err != nil {

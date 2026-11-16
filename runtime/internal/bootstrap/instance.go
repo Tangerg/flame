@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/process/runner"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+
+	framehost "github.com/Tangerg/frame/host"
+	"github.com/Tangerg/frame/process/runner"
 )
 
 // InstanceConfig is the exact host snapshot required to open one complete
@@ -221,5 +221,5 @@ func (i *Instance) PluginControl() http.Handler { return i.application.pluginCon
 func (i *Instance) CheckPlugins(context.Context) error { return i.stores.Admission.RecoveryError() }
 
 func startupRecoveryDeferred(err error) bool {
-	return errors.Is(err, frame.ErrRecoveryRequired) || errors.Is(err, runs.ErrOriginalSourcePending)
+	return errors.Is(err, framehost.ErrRecoveryRequired) || errors.Is(err, runs.ErrOriginalSourcePending)
 }

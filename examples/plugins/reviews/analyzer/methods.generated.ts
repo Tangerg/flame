@@ -20,7 +20,7 @@ export type ReviewsAnalyzeOutput = Findings;
 export interface Snapshot {
   id: string;
   revision: JSONNumber;
-  status: (string) & ("open" | "resolved");
+  status: "open" | "resolved";
   title: string;
 }
 

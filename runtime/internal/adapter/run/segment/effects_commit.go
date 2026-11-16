@@ -13,7 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // ReserveChildRunStart durably records one invisible child identity. It does
@@ -248,7 +249,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		}
 		return nil
 	})
-	if errors.Is(err, frame.ErrRecoveryRequired) {
+	if errors.Is(err, framehost.ErrRecoveryRequired) {
 		return err
 	}
 	if err != nil {
@@ -352,7 +353,7 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, frame.ErrRecoveryRequired) {
+	if errors.Is(err, framehost.ErrRecoveryRequired) {
 		return err
 	}
 	rootSegmentID := ""

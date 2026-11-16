@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -17,20 +14,22 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 type bindingPlanningDriver struct{}
 
-func (bindingPlanningDriver) Profile() frame.Profile { return pluginmcp.ProcessProfile }
-func (bindingPlanningDriver) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
+func (bindingPlanningDriver) Profile() framehost.Profile { return pluginmcp.ProcessProfile }
+func (bindingPlanningDriver) Prepare(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
 	return nil, errors.New("durable binding fixture does not execute a backend")
 }
 
 type bindingFixture struct {
 	store      *Bundle
-	host       *frame.Host
-	definition *frame.Plugin
+	host       framehost.Host
+	definition *framehost.Plugin
 	activation plugin.Activation
 	provider   plugin.Dependency
 }
@@ -42,10 +41,9 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	host, err := frame.NewHost(context.Background(), frame.HostConfig{
-		Admission: store.Admission, Epoch: store.Frame.Epoch(),
-		Installations: store.Frame, ExecutionProtection: store.Frame,
-		Drivers: []frame.Driver{bindingPlanningDriver{}},
+	host, err := framehost.New(context.Background(), framehost.Config{
+		Authority: store.Frame,
+		Drivers:   []framehost.Driver{bindingPlanningDriver{}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,14 +81,14 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		t.Fatal(err)
 	}
 	id := installation.ID().Host()
-	if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: id, Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(t.Context(), framehost.InstallationConfig{ID: id, Plugin: projection.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := host.PlanUnit(t.Context(), "", frame.UnitRef{InstallationID: id, Release: projection.Plugin.Revision(), UnitID: plugins.BackendUnit(testsupport.ServerName("backend"))}, nil)
+	plan, err := host.PlanUnit(t.Context(), "", framehost.UnitRef{InstallationID: id, Release: projection.Plugin.Revision(), UnitID: plugins.BackendUnit(testsupport.ServerName("backend"))}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var binding frame.BindingSnapshot
+	var binding framehost.BindingSnapshot
 	if err := host.Admission().Admit(t.Context(), func(admitted context.Context) error {
 		var err error
 		binding, err = host.ValidatePlanUnder(admitted, plan)
@@ -189,7 +187,7 @@ func TestBusinessCheckpointAdmitsOriginalBindingInItsOwnAtomicWriteSet(t *testin
 	if err != nil || !reflect.DeepEqual(loaded, checkpoint) {
 		t.Fatalf("original checkpoint = %+v, %v", loaded, err)
 	}
-	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); !errors.Is(err, frame.ErrInUse) {
+	if err := f.host.Uninstall(t.Context(), f.provider.InstallationID.Host()); !errors.Is(err, framehost.ErrInUse) {
 		t.Fatalf("installation escaped retained business graph: %v", err)
 	}
 	if err := f.host.SetEnabled(t.Context(), f.provider.InstallationID.Host(), false); err != nil {
@@ -227,7 +225,7 @@ func TestBusinessCheckpointAndInstallationChangeHaveOneAdmission(t *testing.T) {
 					t.Fatal("a stale original graph reached its business write-set")
 					return nil
 				})
-				if !errors.Is(err, frame.ErrStaleBinding) && !errors.Is(err, frame.ErrUnavailable) {
+				if !errors.Is(err, framehost.ErrStaleBinding) && !errors.Is(err, framehost.ErrUnavailable) {
 					t.Fatalf("removed binding admitted = %v", err)
 				}
 				return
@@ -250,7 +248,7 @@ func TestBusinessCheckpointAndInstallationChangeHaveOneAdmission(t *testing.T) {
 			if err := <-committed; err != nil {
 				t.Fatal(err)
 			}
-			if err := <-changed; !errors.Is(err, frame.ErrInUse) {
+			if err := <-changed; !errors.Is(err, framehost.ErrInUse) {
 				t.Fatalf("installation missed the committed original reference: %v", err)
 			}
 		})
@@ -277,13 +275,13 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 		}}, nil
 	}
 	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (framemcp.Invocation, error) {
-		return framemcp.Invocation{ID: "original-command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
+		return framemcp.Invocation{ID: "original-command", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := f.provider.InstallationID.Host()
-	if err := f.host.Uninstall(t.Context(), id); !errors.Is(err, frame.ErrInUse) {
+	if err := f.host.Uninstall(t.Context(), id); !errors.Is(err, framehost.ErrInUse) {
 		t.Fatalf("prepared command did not protect its original graph: %v", err)
 	}
 	if err := commands.Retire(t.Context(), command.Snapshot().ID); err != nil {

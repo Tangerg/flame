@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
 )
 
 type requirementInstallations struct {
@@ -47,7 +47,7 @@ func (s requirementSelections) List(context.Context) ([]plugin.ProviderSelection
 
 func requirementContract(t *testing.T, reference string, composition plugincontract.Composition) *plugincontract.Capability {
 	t.Helper()
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: reference, Composition: composition, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: reference + ".read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: reference, Composition: composition, Scope: extension.ScopeInstallation}, frame.MethodDescriptor{Name: reference + ".read", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

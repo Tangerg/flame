@@ -4,12 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
 	"github.com/Tangerg/frame/value"
 )
 
 func TestPortableTimestampKeepsNativeNanosecondCodec(t *testing.T) {
-	if _, err := portable.SchemaFor[Timestamp](); err != nil {
+	if _, err := value.SchemaFor[Timestamp](); err != nil {
 		t.Fatal(err)
 	}
 	original := Timestamp{Time: time.Date(2026, 11, 4, 6, 7, 8, 123456789, time.UTC)}

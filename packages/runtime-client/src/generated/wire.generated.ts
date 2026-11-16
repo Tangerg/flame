@@ -1295,6 +1295,11 @@ export interface PluginBrowserRealm {
   id: string;
 }
 
+export interface PluginBrowserScopeRef {
+  scopeGeneration: string;
+  scopeId: string;
+}
+
 export interface PluginBrowserSession {
   authority: PluginBrowserAuthority;
   componentContract: PluginBrowserContractRef;

@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,15 +18,15 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 	type input struct {
 		Revision int64 `json:"revision"`
 	}
-	unary, err := NewMethod[input, bool](portable.MethodConfig{Name: "example.records/update", Kind: portable.Command, Target: "installation", Description: "Update a record."})
+	unary, err := NewMethod[input, bool](frame.MethodConfig{Name: "example.records/update", Kind: frame.Command, Target: "installation", Description: "Update a record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	query, err := NewMethod[input, bool](portable.MethodConfig{Name: "example.records/read", Kind: portable.Query, Target: "installation", Description: "Read a record."})
+	query, err := NewMethod[input, bool](frame.MethodConfig{Name: "example.records/read", Kind: frame.Query, Target: "installation", Description: "Read a record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := NewStreamingMethod[input, string, bool](portable.MethodConfig{Name: "example.records/stream", Kind: portable.Command, Target: "installation", Description: "Stream a record update."})
+	stream, err := NewStreamingMethod[input, string, bool](frame.MethodConfig{Name: "example.records/stream", Kind: frame.Command, Target: "installation", Description: "Stream a record update."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +115,8 @@ func TestPublishedMethodImplementationsRefuseAmbiguousCodecs(t *testing.T) {
 		embedded
 		Other string `json:"value"`
 	}
-	method := testMethod[struct{}, struct{}](t, "example.codec/read", portable.Query)
-	stream, err := NewStreamingMethod[struct{}, struct{}, struct{}](portable.MethodConfig{Name: "example.codec/stream", Kind: portable.Query, Target: "installation", Description: "Read codec values."})
+	method := testMethod[struct{}, struct{}](t, "example.codec/read", frame.Query)
+	stream, err := NewStreamingMethod[struct{}, struct{}, struct{}](frame.MethodConfig{Name: "example.codec/stream", Kind: frame.Query, Target: "installation", Description: "Read codec values."})
 	if err != nil {
 		t.Fatal(err)
 	}

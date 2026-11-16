@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -13,6 +11,8 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -34,7 +34,7 @@ func snapshots(items []memory.Item) []memory.ItemSnapshot {
 	return result
 }
 
-func registerServer(server *sdk.Server, db *framesqlite.Database, store store, roots app.RootResolver) error {
+func registerServer(server *sdk.Server, db framesqlite.Database, store store, roots app.RootResolver) error {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return err

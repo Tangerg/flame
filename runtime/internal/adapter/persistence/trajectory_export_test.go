@@ -8,9 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -18,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -32,7 +30,7 @@ func (r *exportSnapshotReader) ReadSnapshot(context.Context, string) (sessions.S
 	return r.value, nil
 }
 
-func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sqlite.Database, *exportSnapshotReader) {
+func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, sqlite.Database, *exportSnapshotReader) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "export.sqlite"))
 	if err != nil {
@@ -148,7 +146,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: portable.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framemcp.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

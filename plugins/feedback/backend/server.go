@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -23,7 +23,7 @@ func prepare(in extension.FeedbackDraft) (plugin.FeedbackSignal, error) {
 	return plugin.FeedbackSignal{Rating: protocol.FeedbackRating(in.Rating), Text: in.Text}, nil
 }
 
-func newServer(db *framesqlite.Database) (*sdk.Server, error) {
+func newServer(db framesqlite.Database) (*sdk.Server, error) {
 	contract, err := plugin.FeedbackContract()
 	if err != nil {
 		return nil, err

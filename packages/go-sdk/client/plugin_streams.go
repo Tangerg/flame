@@ -7,14 +7,12 @@ import (
 	"iter"
 	"sync/atomic"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -25,7 +23,7 @@ type PluginStreamer interface {
 type PluginStreamingMethod[P, C, R any] struct {
 	caller  PluginStreamer
 	binding PluginBinding
-	method  *portable.Method
+	method  *frame.Method
 }
 
 func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding PluginBinding, method *pluginmcp.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error) {
@@ -47,7 +45,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 	var consumed atomic.Bool
 	return func(yield func(pluginmcp.StreamValue[C, R], error) bool) {
 		fail := func(err error) {
-			if m != nil && m.method != nil && m.method.Kind() == portable.Command {
+			if m != nil && m.method != nil && m.method.Kind() == frame.Command {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
 			yield(pluginmcp.StreamValue[C, R]{}, err)
@@ -60,7 +58,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			yield(pluginmcp.StreamValue[C, R]{}, errors.Join(inputErr, optionsErr, errors.New("runtime: valid bound stream input and options are required")))
 			return
 		}
-		if m.method.Kind() == portable.Query && (capturedOptions.IdempotencyKey != "" || capturedOptions.IdempotencyNamespace != "") {
+		if m.method.Kind() == frame.Query && (capturedOptions.IdempotencyKey != "" || capturedOptions.IdempotencyNamespace != "") {
 			yield(pluginmcp.StreamValue[C, R]{}, errors.New("runtime: plugin query cannot carry a command identity"))
 			return
 		}

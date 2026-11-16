@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-func seedWorkspaceMutationSession(t *testing.T, db *framesqlite.Database, sessionID, cwd string) {
+func seedWorkspaceMutationSession(t *testing.T, db framesqlite.Database, sessionID, cwd string) {
 	t.Helper()
 	if err := newSessionStore(databaseFor(db)).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(cwd),
@@ -24,7 +24,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *framesqlite.Database, sessio
 	}
 }
 
-func seedWorkspaceMutationRun(t *testing.T, db *framesqlite.Database, sessionID, runID string) {
+func seedWorkspaceMutationRun(t *testing.T, db framesqlite.Database, sessionID, runID string) {
 	t.Helper()
 	if err := newRunStore(databaseFor(db)).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Finished,

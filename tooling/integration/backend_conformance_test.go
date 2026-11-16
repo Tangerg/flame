@@ -14,18 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
-	plugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 type typescriptInput struct {
@@ -75,19 +73,19 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build backend: %s: %v", output, err)
 	}
-	read, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](portable.MethodConfig{Name: "fixture.read", Kind: portable.Query, Target: "installation", Description: "Read exact original input."})
+	read, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.read", Kind: frame.Query, Target: "installation", Description: "Read exact original input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](portable.MethodConfig{Name: "fixture.write", Kind: portable.Command, Target: "installation", Description: "Commit one original outcome."})
+	write, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.write", Kind: frame.Command, Target: "installation", Description: "Commit one original outcome."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	queryStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](portable.MethodConfig{Name: "fixture.query-stream", Kind: portable.Query, Target: "installation", Description: "Read exact chunks and final."})
+	queryStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.query-stream", Kind: frame.Query, Target: "installation", Description: "Read exact chunks and final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](portable.MethodConfig{Name: "fixture.command-stream", Kind: portable.Command, Target: "installation", Description: "Commit streamed final."})
+	commandStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.command-stream", Kind: frame.Command, Target: "installation", Description: "Commit streamed final."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +93,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hostMethod, err := pluginmcp.NewMethod[typescriptHostInput, typescriptHostInput](portable.MethodConfig{Name: "fixture.host", Kind: portable.Query, Target: "installation", Description: "Read through the original calling owner."})
+	hostMethod, err := pluginmcp.NewMethod[typescriptHostInput, typescriptHostInput](frame.MethodConfig{Name: "fixture.host", Kind: frame.Query, Target: "installation", Description: "Read through the original calling owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +178,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	}
 	invocation := framemcp.Invocation{
 		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
-		Target: portable.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+		Target: framemcp.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
 	}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), invocation)
 	if err != nil {

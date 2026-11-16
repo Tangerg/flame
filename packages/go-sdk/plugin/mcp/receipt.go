@@ -6,9 +6,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -45,7 +44,7 @@ func (r ReceiptRequest) Validate() error {
 	if err := CommandID(r.ID).Validate(); err != nil {
 		return err
 	}
-	if !portable.ValidToken(r.Method) {
+	if !frame.ValidName(r.Method) {
 		return errors.New("plugin: bounded receipt method identity is required")
 	}
 	if r.InputDigest.IsZero() {
@@ -70,7 +69,7 @@ func EncodeReply[T any](value T, err error, classify Classifier) (framevalue.JSO
 }
 
 func ReceiptQuery() (*Method[ReceiptRequest, Receipt], error) {
-	return NewMethod[ReceiptRequest, Receipt](portable.MethodConfig{Name: ReceiptMethod, Kind: portable.Query, Target: "installation", Description: ReceiptMethod})
+	return NewMethod[ReceiptRequest, Receipt](frame.MethodConfig{Name: ReceiptMethod, Kind: frame.Query, Target: "installation", Description: ReceiptMethod})
 }
 
 func DecodeReply[T any](data []byte) (T, error) {

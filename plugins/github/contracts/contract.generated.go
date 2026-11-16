@@ -10,12 +10,20 @@ const (
 	CreateIssueV1OutputWireIssueStateClosed CreateIssueV1OutputWireIssueState = "closed"
 )
 
+func (CreateIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(CreateIssueV1OutputWireIssueStateOpen), string(CreateIssueV1OutputWireIssueStateClosed)}
+}
+
 type CreatePullRequestCommentV1InputWireInlineCommentSide string
 
 const (
 	CreatePullRequestCommentV1InputWireInlineCommentSideLEFT  CreatePullRequestCommentV1InputWireInlineCommentSide = "LEFT"
 	CreatePullRequestCommentV1InputWireInlineCommentSideRIGHT CreatePullRequestCommentV1InputWireInlineCommentSide = "RIGHT"
 )
+
+func (CreatePullRequestCommentV1InputWireInlineCommentSide) JSONSchemaEnum() []string {
+	return []string{string(CreatePullRequestCommentV1InputWireInlineCommentSideLEFT), string(CreatePullRequestCommentV1InputWireInlineCommentSideRIGHT)}
+}
 
 type CreatePullRequestCommentV1InputWireInlineCommentStartSide string
 
@@ -24,12 +32,20 @@ const (
 	CreatePullRequestCommentV1InputWireInlineCommentStartSideRIGHT CreatePullRequestCommentV1InputWireInlineCommentStartSide = "RIGHT"
 )
 
+func (CreatePullRequestCommentV1InputWireInlineCommentStartSide) JSONSchemaEnum() []string {
+	return []string{string(CreatePullRequestCommentV1InputWireInlineCommentStartSideLEFT), string(CreatePullRequestCommentV1InputWireInlineCommentStartSideRIGHT)}
+}
+
 type CreatePullRequestV1OutputWirePullRequestState string
 
 const (
 	CreatePullRequestV1OutputWirePullRequestStateOpen   CreatePullRequestV1OutputWirePullRequestState = "open"
 	CreatePullRequestV1OutputWirePullRequestStateClosed CreatePullRequestV1OutputWirePullRequestState = "closed"
 )
+
+func (CreatePullRequestV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(CreatePullRequestV1OutputWirePullRequestStateOpen), string(CreatePullRequestV1OutputWirePullRequestStateClosed)}
+}
 
 type GetIssueV1OutputWireIssueState string
 
@@ -38,12 +54,20 @@ const (
 	GetIssueV1OutputWireIssueStateClosed GetIssueV1OutputWireIssueState = "closed"
 )
 
+func (GetIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(GetIssueV1OutputWireIssueStateOpen), string(GetIssueV1OutputWireIssueStateClosed)}
+}
+
 type GetPullRequestV1OutputWirePullRequestState string
 
 const (
 	GetPullRequestV1OutputWirePullRequestStateOpen   GetPullRequestV1OutputWirePullRequestState = "open"
 	GetPullRequestV1OutputWirePullRequestStateClosed GetPullRequestV1OutputWirePullRequestState = "closed"
 )
+
+func (GetPullRequestV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(GetPullRequestV1OutputWirePullRequestStateOpen), string(GetPullRequestV1OutputWirePullRequestStateClosed)}
+}
 
 type ListInputState string
 
@@ -53,6 +77,10 @@ const (
 	ListInputStateAll    ListInputState = "all"
 )
 
+func (ListInputState) JSONSchemaEnum() []string {
+	return []string{string(ListInputStateOpen), string(ListInputStateClosed), string(ListInputStateAll)}
+}
+
 type ListIssuesV1OutputWireIssueState string
 
 const (
@@ -60,12 +88,20 @@ const (
 	ListIssuesV1OutputWireIssueStateClosed ListIssuesV1OutputWireIssueState = "closed"
 )
 
+func (ListIssuesV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(ListIssuesV1OutputWireIssueStateOpen), string(ListIssuesV1OutputWireIssueStateClosed)}
+}
+
 type ListPullRequestsV1OutputWirePullRequestState string
 
 const (
 	ListPullRequestsV1OutputWirePullRequestStateOpen   ListPullRequestsV1OutputWirePullRequestState = "open"
 	ListPullRequestsV1OutputWirePullRequestStateClosed ListPullRequestsV1OutputWirePullRequestState = "closed"
 )
+
+func (ListPullRequestsV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(ListPullRequestsV1OutputWirePullRequestStateOpen), string(ListPullRequestsV1OutputWirePullRequestStateClosed)}
+}
 
 type MergePullInputMergeMethod string
 
@@ -75,6 +111,10 @@ const (
 	MergePullInputMergeMethodRebase MergePullInputMergeMethod = "rebase"
 )
 
+func (MergePullInputMergeMethod) JSONSchemaEnum() []string {
+	return []string{string(MergePullInputMergeMethodMerge), string(MergePullInputMergeMethodSquash), string(MergePullInputMergeMethodRebase)}
+}
+
 type PullListInputState string
 
 const (
@@ -83,6 +123,10 @@ const (
 	PullListInputStateAll    PullListInputState = "all"
 )
 
+func (PullListInputState) JSONSchemaEnum() []string {
+	return []string{string(PullListInputStateOpen), string(PullListInputStateClosed), string(PullListInputStateAll)}
+}
+
 type SubmitPullRequestReviewV1InputWireInlineCommentSide string
 
 const (
@@ -90,12 +134,20 @@ const (
 	SubmitPullRequestReviewV1InputWireInlineCommentSideRIGHT SubmitPullRequestReviewV1InputWireInlineCommentSide = "RIGHT"
 )
 
+func (SubmitPullRequestReviewV1InputWireInlineCommentSide) JSONSchemaEnum() []string {
+	return []string{string(SubmitPullRequestReviewV1InputWireInlineCommentSideLEFT), string(SubmitPullRequestReviewV1InputWireInlineCommentSideRIGHT)}
+}
+
 type SubmitPullRequestReviewV1InputWireInlineCommentStartSide string
 
 const (
 	SubmitPullRequestReviewV1InputWireInlineCommentStartSideLEFT  SubmitPullRequestReviewV1InputWireInlineCommentStartSide = "LEFT"
 	SubmitPullRequestReviewV1InputWireInlineCommentStartSideRIGHT SubmitPullRequestReviewV1InputWireInlineCommentStartSide = "RIGHT"
 )
+
+func (SubmitPullRequestReviewV1InputWireInlineCommentStartSide) JSONSchemaEnum() []string {
+	return []string{string(SubmitPullRequestReviewV1InputWireInlineCommentStartSideLEFT), string(SubmitPullRequestReviewV1InputWireInlineCommentStartSideRIGHT)}
+}
 
 type SubmitReviewInputEvent string
 
@@ -105,12 +157,20 @@ const (
 	SubmitReviewInputEventCOMMENT        SubmitReviewInputEvent = "COMMENT"
 )
 
+func (SubmitReviewInputEvent) JSONSchemaEnum() []string {
+	return []string{string(SubmitReviewInputEventAPPROVE), string(SubmitReviewInputEventREQUESTCHANGES), string(SubmitReviewInputEventCOMMENT)}
+}
+
 type UpdateIssueInputState string
 
 const (
 	UpdateIssueInputStateOpen   UpdateIssueInputState = "open"
 	UpdateIssueInputStateClosed UpdateIssueInputState = "closed"
 )
+
+func (UpdateIssueInputState) JSONSchemaEnum() []string {
+	return []string{string(UpdateIssueInputStateOpen), string(UpdateIssueInputStateClosed)}
+}
 
 type UpdateIssueInputStateReason string
 
@@ -121,12 +181,20 @@ const (
 	UpdateIssueInputStateReasonReopened   UpdateIssueInputStateReason = "reopened"
 )
 
+func (UpdateIssueInputStateReason) JSONSchemaEnum() []string {
+	return []string{string(UpdateIssueInputStateReasonCompleted), string(UpdateIssueInputStateReasonNotPlanned), string(UpdateIssueInputStateReasonDuplicate), string(UpdateIssueInputStateReasonReopened)}
+}
+
 type UpdateIssueV1OutputWireIssueState string
 
 const (
 	UpdateIssueV1OutputWireIssueStateOpen   UpdateIssueV1OutputWireIssueState = "open"
 	UpdateIssueV1OutputWireIssueStateClosed UpdateIssueV1OutputWireIssueState = "closed"
 )
+
+func (UpdateIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(UpdateIssueV1OutputWireIssueStateOpen), string(UpdateIssueV1OutputWireIssueStateClosed)}
+}
 
 type Annotation struct {
 	EndColumn   framevalue.Number `json:"endColumn,omitzero"`

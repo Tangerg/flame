@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"github.com/Tangerg/frame/distribution"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) {

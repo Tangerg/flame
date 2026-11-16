@@ -3,11 +3,11 @@ package plugin
 import (
 	json "encoding/json/v2"
 
-	"github.com/Tangerg/frame/value"
-	"github.com/Tangerg/scope/core/chat"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type modelCallProjection struct {

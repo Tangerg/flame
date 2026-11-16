@@ -424,22 +424,6 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3BvcnRhYmxl.VGFyZ2V0": {
-            "additionalProperties": false,
-            "properties": {
-              "reference": {
-                "type": "string"
-              },
-              "scope": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "scope",
-              "reference"
-            ],
-            "type": "object"
-          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.SW52b2NhdGlvbg": {
             "additionalProperties": false,
             "properties": {
@@ -453,13 +437,29 @@
                 "type": "string"
               },
               "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3BvcnRhYmxl.VGFyZ2V0"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.VGFyZ2V0"
               }
             },
             "required": [
               "id",
               "origin",
               "target"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3Byb2Nlc3MvbWNw.VGFyZ2V0": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "reference"
             ],
             "type": "object"
           }

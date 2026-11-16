@@ -8,16 +8,15 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
@@ -119,7 +118,7 @@ func (s *blockedCommandStore) Save(_ context.Context, command *plugin.Command) e
 
 func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		admission := frame.NewAdmission()
+		admission := framehost.NewAdmission()
 		persist := make(chan struct{})
 		store := &blockedCommandStore{persist: persist}
 		commands, err := plugins.NewCommands(store, admission)
@@ -160,7 +159,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 }
 
 func capturedCommand(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
-	invocation := framemcp.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
+	invocation := framemcp.Invocation{ID: "command", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
 	return invocation, invocation.Validate()
 }
 
@@ -230,7 +229,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 }
 
 func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
-	for _, target := range []portable.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
+	for _, target := range []framemcp.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
 		for _, origin := range []framemcp.Origin{extension.Human, extension.Model, extension.Automatic} {
 			t.Run(target.Scope+"/"+string(origin), func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "flame.db")
@@ -290,7 +289,7 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 				for _, change := range []func(*framemcp.Invocation){
 					func(v *framemcp.Invocation) { v.Target.Reference = "different-resource" },
 					func(v *framemcp.Invocation) {
-						v.Target = portable.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
+						v.Target = framemcp.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
 					},
 					func(v *framemcp.Invocation) { v.Parent = "different-parent" },
 				} {

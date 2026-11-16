@@ -25,7 +25,7 @@ export type ReviewsAnalyzersOutput = Analysis;
 export interface ReviewsAnalyzersOutputContractSnapshot {
   id: string;
   revision: JSONNumber;
-  status: (string) & ("open" | "resolved");
+  status: "open" | "resolved";
   title: string;
 }
 
@@ -36,7 +36,7 @@ export type ReviewsListOutput = ListResult;
 export interface ReviewsListOutputContractSnapshot {
   id: string;
   revision: JSONNumber;
-  status: (string) & ("open" | "resolved");
+  status: "open" | "resolved";
   title: string;
 }
 
@@ -47,15 +47,15 @@ export type ReviewsUpdateOutput = UpdateResult;
 export interface ReviewsUpdateOutputContractSnapshot {
   id: string;
   revision: JSONNumber;
-  status: (string) & ("open" | "resolved");
+  status: "open" | "resolved";
   title: string;
 }
 
-export type Update = ({ expectedRevision: JSONNumber; id: string; status: (string) & ("open" | "resolved") }) & ({ id?: unknown } & Record<string, unknown>);
+export type Update = ({ expectedRevision: JSONNumber; id: string; status: "open" | "resolved" }) & ({ id?: unknown } & Record<string, unknown>);
 
 export interface UpdateResult {
   review?: ReviewsUpdateOutputContractSnapshot;
-  type: (string) & ("updated" | "revisionConflict" | "notFound" | "invalidUpdate" | "invocationConflict" | "revisionExhausted");
+  type: "updated" | "revisionConflict" | "notFound" | "invalidUpdate" | "invocationConflict" | "revisionExhausted";
 }
 
 export interface MethodInputs {

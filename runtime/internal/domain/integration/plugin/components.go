@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)

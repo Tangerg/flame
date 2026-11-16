@@ -12,12 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
@@ -25,6 +19,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func textResponseModel(call func(context.Context, *chat.Request) (string, error)) chat.Model {
@@ -453,10 +453,10 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 		t.Fatal(err)
 	}
 	for _, call := range []struct {
-		descriptor portable.MethodDescriptor
+		descriptor frame.MethodDescriptor
 		input      any
 	}{{contracts.Search.Descriptor(), input}, {contracts.Maintain.Descriptor(), rpc.MaintenanceInput{SessionID: "ses_former", Project: input.Project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}}} {
-		method, err := portable.AdmitMethod(call.descriptor)
+		method, err := frame.AdmitMethod(call.descriptor)
 		if err != nil {
 			t.Fatal(err)
 		}

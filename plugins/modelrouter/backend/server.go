@@ -11,11 +11,12 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func newServer(store *store) (*sdk.Server, error) {
-	if store == nil || store.db == nil {
+	if store == nil || !store.db.Valid() {
 		return nil, errors.New("model router: private store is required")
 	}
 	contracts, err := rpc.NewContracts()

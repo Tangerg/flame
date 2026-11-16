@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type testCodeIntelligence struct {

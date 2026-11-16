@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 type requirementCompositions struct {
@@ -46,7 +46,7 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "inner", contract)
 	store := requirementInstallations{snapshots: []plugin.Snapshot{first, second}}
 	choices := &requirementCompositions{}
-	owner, err := NewCompositions(choices, store, frame.NewAdmission().Admit, nil)
+	owner, err := NewCompositions(choices, store, framehost.NewAdmission().Admit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

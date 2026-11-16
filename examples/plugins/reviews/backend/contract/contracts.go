@@ -10,7 +10,8 @@ package reviews
 import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 type Contracts struct {
@@ -25,21 +26,21 @@ type ListResult struct {
 }
 
 func NewContracts() (Contracts, error) {
-	list, err := pluginmcp.NewMethod[struct{}, ListResult](portable.MethodConfig{
-		Name: "io.github.tangerg.flame.examples/reviews.list", Kind: portable.Query, Target: "installation",
+	list, err := pluginmcp.NewMethod[struct{}, ListResult](frame.MethodConfig{
+		Name: "io.github.tangerg.flame.examples/reviews.list", Kind: frame.Query, Target: "installation",
 		Description: "Read the review backend's current review and revision.",
 	})
 	if err != nil {
 		return Contracts{}, err
 	}
-	update, err := pluginmcp.NewMethod[Update, UpdateResult](portable.MethodConfig{
-		Name: "io.github.tangerg.flame.examples/reviews.update", Kind: portable.Command, Target: "installation",
+	update, err := pluginmcp.NewMethod[Update, UpdateResult](frame.MethodConfig{
+		Name: "io.github.tangerg.flame.examples/reviews.update", Kind: frame.Command, Target: "installation",
 		Description: "Change one review's status using its inspected revision.",
 	})
 	if err != nil {
 		return Contracts{}, err
 	}
-	analyzers, err := pluginmcp.NewMethod[struct{}, Analysis](portable.MethodConfig{Name: "io.github.tangerg.flame.examples/reviews.analyzers", Kind: portable.Query, Target: "installation", Description: "Analyze the current review through its installed analyzer collection and return admitted findings."})
+	analyzers, err := pluginmcp.NewMethod[struct{}, Analysis](frame.MethodConfig{Name: "io.github.tangerg.flame.examples/reviews.analyzers", Kind: frame.Query, Target: "installation", Description: "Analyze the current review through its installed analyzer collection and return admitted findings."})
 	if err != nil {
 		return Contracts{}, err
 	}

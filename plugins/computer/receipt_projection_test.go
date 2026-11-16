@@ -9,9 +9,7 @@ import (
 	"testing"
 
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"

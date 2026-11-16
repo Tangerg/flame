@@ -7,7 +7,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // ExecutorCheckpointStore persists one opaque checkpoint aggregate per
@@ -16,7 +17,7 @@ import (
 // the execution adapter.
 type ExecutorCheckpointStore struct {
 	db        *database
-	admission *frame.Admission
+	admission framehost.Admission
 }
 
 func newExecutorCheckpointStore(db *database) *ExecutorCheckpointStore {
@@ -30,7 +31,7 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		return fmt.Errorf("sqlite: save executor checkpoint: %w", err)
 	}
 	_, admittedWrite := ctx.Value(referenceWriteKey{}).(referenceWrite)
-	if s.admission != nil && (admittedWrite || len(checkpoint.Bindings) != 0 || len(checkpoint.Resources) != 0) {
+	if s.admission.Valid() && (admittedWrite || len(checkpoint.Bindings) != 0 || len(checkpoint.Resources) != 0) {
 		if err := s.admission.CheckAdmitted(ctx); err != nil {
 			return err
 		}

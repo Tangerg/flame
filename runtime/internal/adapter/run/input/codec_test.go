@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {

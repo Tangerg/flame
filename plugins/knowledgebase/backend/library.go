@@ -7,14 +7,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type embed func(context.Context, []string) (pluginsdk.TextEmbeddings, error)
@@ -36,7 +35,7 @@ type library struct {
 }
 
 func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
-	if store == nil || store.db == nil || resolve == nil {
+	if store == nil || !store.db.Valid() || resolve == nil {
 		return nil, errors.New("knowledge base: store and embedding resolver are required")
 	}
 	return &library{store: store, resolve: resolve}, nil

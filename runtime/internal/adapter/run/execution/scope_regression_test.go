@@ -201,7 +201,7 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 				ContextProcessor: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil),
 			})
 			if test.invalidDefinition {
-				if !errors.Is(err, interaction.ErrInvalidDefinitionConfig) {
+				if !errors.Is(err, interaction.ErrInvalidConfig) {
 					t.Fatalf("unusable response budget admitted: %v", err)
 				}
 				select {

@@ -10,13 +10,11 @@ import (
 	"sync"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func openTestStore(t *testing.T, directory string) *store {

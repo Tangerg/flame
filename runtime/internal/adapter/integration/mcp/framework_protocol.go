@@ -7,7 +7,9 @@ import (
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process"
 	"github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -15,6 +17,7 @@ import (
 
 // Process exports are Flame's frozen business mapping. Frame alone admits the
 // neutral service contract and owns the attached process and its release proof.
+
 type processExport struct {
 	Name     string                              `json:"name"`
 	Contract plugincontract.CapabilityDescriptor `json:"contract"`
@@ -22,7 +25,7 @@ type processExport struct {
 
 type processConnection struct {
 	source    *ProcessSource
-	setup     *frame.Setup
+	setup     framehost.Setup
 	maximum   int
 	exports   map[string]processExport
 	contracts map[string]*plugincontract.Capability
@@ -41,10 +44,10 @@ func (w frameWriter) Write(data []byte) (int, error) {
 	return n, err
 }
 
-func (s *ProcessSource) Profile() frame.Profile { return pluginmcp.ProcessProfile }
+func (s *ProcessSource) Profile() framehost.Profile { return pluginmcp.ProcessProfile }
 
-func (s *ProcessSource) Prepare(setup *frame.Setup, metadata process.ExportMetadata, maximum int) (process.Connection, error) {
-	if setup == nil || maximum <= 0 || len(metadata) != len(setup.Unit().Exports) {
+func (s *ProcessSource) Prepare(setup framehost.Setup, metadata process.ExportMetadata, maximum int) (process.Connection, error) {
+	if !setup.Valid() || maximum <= 0 || len(metadata) != len(setup.Unit().Exports) {
 		return nil, frame.ErrContractMismatch
 	}
 	connection := &processConnection{source: s, setup: setup, maximum: maximum,
@@ -66,7 +69,7 @@ func (s *ProcessSource) Prepare(setup *frame.Setup, metadata process.ExportMetad
 		if err != nil {
 			return nil, err
 		}
-		declared, err := process.DeclaredCapability(setup, export.Contract)
+		declared, err := setup.Capability(export.Contract)
 		if err != nil || declared.Identity() != contract.Service().Identity() {
 			return nil, errors.Join(frame.ErrContractMismatch, err)
 		}
@@ -83,7 +86,7 @@ func (s *ProcessSource) Prepare(setup *frame.Setup, metadata process.ExportMetad
 	return connection, nil
 }
 
-func (c *processConnection) Connect(ctx context.Context, channel io.ReadWriteCloser) ([]frame.ExportValue, error) {
+func (c *processConnection) Connect(ctx context.Context, channel io.ReadWriteCloser) ([]framehost.ExportValue, error) {
 	client, err := pluginmcp.NewProcessClient()
 	if err != nil {
 		return nil, err
@@ -110,13 +113,13 @@ func (c *processConnection) Connect(ctx context.Context, channel io.ReadWriteClo
 	if err != nil {
 		return nil, err
 	}
-	values := make([]frame.ExportValue, 0, len(c.contracts))
+	values := make([]framehost.ExportValue, 0, len(c.contracts))
 	for _, export := range c.setup.Unit().Exports {
 		binding, err := pluginmcp.NewCapabilityBinding(session, c.exports[export.Name].Name, c.contracts[export.Name])
 		if err != nil {
 			return nil, err
 		}
-		values = append(values, frame.ExportValue{Name: export.Name, Contract: export.Contract, Value: binding, Metadata: null})
+		values = append(values, framehost.ExportValue{Name: export.Name, Contract: export.Contract, Value: binding, Metadata: null})
 	}
 	return values, nil
 }

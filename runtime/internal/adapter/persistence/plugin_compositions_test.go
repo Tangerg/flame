@@ -6,16 +6,16 @@ import (
 	"reflect"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
 )
 
 func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *testing.T) {
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model-observer", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, portable.MethodDescriptor{Name: "observe", Kind: portable.Query, Target: extension.ScopeCall, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model-observer", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, frame.MethodDescriptor{Name: "observe", Kind: frame.Query, Target: extension.ScopeCall, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

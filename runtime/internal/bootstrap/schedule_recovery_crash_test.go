@@ -21,7 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process/runner"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -72,7 +73,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 
 	if phase == "resolution" {
 		commit := stores.CommitPluginReferences
-		stores.CommitPluginReferences = func(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
+		stores.CommitPluginReferences = func(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
 			if err := commit(ctx, host, identity, checkpoint, apply); err != nil {
 				return err
 			}

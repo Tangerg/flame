@@ -6,10 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -33,7 +32,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 			backend := testBackend(t, server)
-			if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
+			if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, frame.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
 				input := command.Input
 				digest, err := framevalue.EncodeJSON("input")
 				if err != nil || input.ID != "original" || input.Method != "review.update" || input.InputDigest != digest.Digest() {
@@ -43,7 +42,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := testMethod[string, string](t, "review.update", portable.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+			if err := testMethod[string, string](t, "review.update", frame.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
 				t.Error("receipt lookup executed mutation")
 				return "", nil
 			}); err != nil {

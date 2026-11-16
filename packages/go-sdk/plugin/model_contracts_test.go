@@ -6,8 +6,8 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
 
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
 

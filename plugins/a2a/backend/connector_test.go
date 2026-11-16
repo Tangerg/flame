@@ -12,15 +12,13 @@ import (
 	"sync"
 	"testing"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/a2a/internal/contract"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 

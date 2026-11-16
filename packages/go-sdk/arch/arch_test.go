@@ -126,7 +126,7 @@ func forbidExternalImports(t *testing.T, dir string, banned []string) {
 			ip := strings.Trim(imp.Path.Value, `"`)
 			// net/url and net/netip are deterministic syntax/value parsers, not network
 			// capability. All packages capable of network I/O remain excluded.
-			if ip == "net/url" || ip == "net/netip" || protocolInvocationValue(f, imp) {
+			if ip == "net/url" || ip == "net/netip" || protocolMCPValue(f, imp) {
 				continue
 			}
 			for _, bad := range banned {
@@ -285,7 +285,7 @@ func TestProtocolStaysWireOnly(t *testing.T) {
 
 // The Runtime wire projects Frame's original invocation value. Other symbols
 // from the mixed MCP package can create capabilities and stay outside protocol.
-func protocolInvocationValue(file *ast.File, imported *ast.ImportSpec) bool {
+func protocolMCPValue(file *ast.File, imported *ast.ImportSpec) bool {
 	if file.Name.Name != "protocol" || strings.Trim(imported.Path.Value, `"`) != frameModulePath+"/process/mcp" {
 		return false
 	}
@@ -305,23 +305,23 @@ func protocolInvocationValue(file *ast.File, imported *ast.ImportSpec) bool {
 		owner, ok := selector.X.(*ast.Ident)
 		if ok && owner.Name == name {
 			used = true
-			valueOnly = valueOnly && selector.Sel.Name == "Invocation"
+			valueOnly = valueOnly && (selector.Sel.Name == "Invocation" || selector.Sel.Name == "Target")
 		}
 		return true
 	})
 	return used && valueOnly
 }
 
-func TestProtocolInvocationDoesNotPermitMCPTransport(t *testing.T) {
+func TestProtocolMCPValuesDoNotPermitTransport(t *testing.T) {
 	for _, source := range []struct {
 		selector string
 		allowed  bool
-	}{{"Invocation", true}, {"NewCallbackReceiver", false}} {
+	}{{"Invocation", true}, {"Target", true}, {"NewCallbackReceiver", false}} {
 		file, err := parser.ParseFile(token.NewFileSet(), "projection.go", "package protocol\nimport mcp \""+frameModulePath+"/process/mcp\"\nvar _ = mcp."+source.selector, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if allowed := protocolInvocationValue(file, file.Imports[0]); allowed != source.allowed {
+		if allowed := protocolMCPValue(file, file.Imports[0]); allowed != source.allowed {
 			t.Fatalf("%s: allowed=%t, want %t", source.selector, allowed, source.allowed)
 		}
 	}

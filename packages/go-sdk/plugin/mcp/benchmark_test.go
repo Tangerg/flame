@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -50,8 +50,8 @@ func BenchmarkQueryRoundTrip(b *testing.B) {
 			b.Error(err)
 		}
 	})
-	method, err := pluginmcp.NewMethod[queryDocument, queryDocument](portable.MethodConfig{
-		Name: "benchmark/typed-echo", Kind: portable.Query, Target: "installation", Description: "Echo the input document.",
+	method, err := pluginmcp.NewMethod[queryDocument, queryDocument](frame.MethodConfig{
+		Name: "benchmark/typed-echo", Kind: frame.Query, Target: "installation", Description: "Echo the input document.",
 	})
 	if err != nil {
 		b.Fatal(err)

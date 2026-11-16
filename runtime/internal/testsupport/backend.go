@@ -5,11 +5,10 @@ import (
 	json "encoding/json/v2"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *plugincontract.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {

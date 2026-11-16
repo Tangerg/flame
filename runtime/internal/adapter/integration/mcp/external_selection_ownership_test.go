@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 func TestLateDirectoryReadCannotEraseTheCurrentConnectorSelection(t *testing.T) {
@@ -33,7 +34,7 @@ func TestLateDirectoryReadCannotEraseTheCurrentConnectorSelection(t *testing.T) 
 		t.Fatal(err)
 	}
 	selections := &observedConnectorSelections{captured: make(chan struct{}), resume: make(chan struct{})}
-	host, err := frame.NewHost(t.Context(), frame.HostConfig{})
+	host, err := framehost.New(t.Context(), framehost.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

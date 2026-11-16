@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
@@ -66,7 +67,7 @@ func (q *queueView) Draw(view grid.View) {
 		}
 		view.Text(0, index+1, q.glyphs.Vertical.String(), q.theme.Divider)
 		label := fmt.Sprintf("%s %d. %s", marker, index+1, queueEntryLabel(entry))
-		view.Text(2, index+1, text.Truncate(label, max(width-2, 1), q.glyphs.Ellipsis), style)
+		text.Of(label, style).Truncate(max(width-2, 1), q.glyphs.Ellipsis).Draw(view, 2, index+1)
 	}
 	if visible < capacity && visible < len(q.snapshot.Entries) {
 		remaining := len(q.snapshot.Entries) - visible

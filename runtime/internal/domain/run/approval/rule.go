@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type ruleSet []Rule

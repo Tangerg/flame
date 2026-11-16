@@ -10,17 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/google/uuid"
 )
 
@@ -92,12 +89,12 @@ type background struct {
 	store           *store
 	host            host
 	namespace       string
-	target          portable.Target
+	target          framemcp.Target
 	contribution    string
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, store *store, host host, namespace string, target portable.Target, contribution string, closeHost func() error) *background {
+func newBackground(ctx context.Context, store *store, host host, namespace string, target framemcp.Target, contribution string, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
 }

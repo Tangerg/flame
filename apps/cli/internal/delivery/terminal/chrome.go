@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
@@ -80,11 +81,11 @@ func (s *sessionHeader) Draw(view grid.View) {
 		workspace := displayWorkspace(s.session.Workspace)
 		title := displayTitle(s.session)
 		separator := "  " + s.glyphs.Bullet + "  "
-		workspace = text.Truncate(workspace, available, s.glyphs.Ellipsis)
-		x := view.Text(0, 0, workspace, s.theme.Context)
+		x := text.Of(workspace, s.theme.Context).Truncate(available, s.glyphs.Ellipsis).Draw(view, 0, 0)
 		remaining := available - x
 		if remaining > text.Width(separator) {
-			view.Text(x, 0, separator+text.Truncate(title, remaining-text.Width(separator), s.glyphs.Ellipsis), s.theme.Muted)
+			x += view.Text(x, 0, separator, s.theme.Muted)
+			text.Of(title, s.theme.Muted).Truncate(remaining-text.Width(separator), s.glyphs.Ellipsis).Draw(view, x, 0)
 		}
 	}
 	if height > 1 {
@@ -116,10 +117,10 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 	if available <= 0 {
 		return
 	}
-	x := view.Text(0, 0, text.Truncate(prefix, available, s.glyphs.Ellipsis), style)
+	x := text.Of(prefix, style).Truncate(available, s.glyphs.Ellipsis).Draw(view, 0, 0)
 	remaining := available - x
 	if remaining > 2 {
-		view.Text(x, 0, "  "+text.Truncate(s.goal.Objective, remaining-2, s.glyphs.Ellipsis), s.theme.Muted)
+		text.Of(s.goal.Objective, s.theme.Muted).Truncate(remaining-2, s.glyphs.Ellipsis).Draw(view, x+2, 0)
 	}
 }
 
@@ -249,7 +250,8 @@ func (a *activityView) Draw(view grid.View) {
 		view.Text(0, row, a.glyphs.Vertical.String(), a.theme.Divider)
 		labelWidth := text.Width(label)
 		contentWidth := max(width-labelWidth-4, 1)
-		view.Text(2, row, mark+" "+text.Truncate(item.Description, contentWidth, a.glyphs.Ellipsis), style)
+		x := 2 + view.Text(2, row, mark+" ", style)
+		text.Of(item.Description, style).Truncate(contentWidth, a.glyphs.Ellipsis).Draw(view, x, row)
 		if labelWidth+4 < width {
 			view.Text(width-labelWidth, row, label, style)
 		}

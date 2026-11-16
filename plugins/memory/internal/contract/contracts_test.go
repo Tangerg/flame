@@ -9,10 +9,10 @@ import (
 	"time"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {

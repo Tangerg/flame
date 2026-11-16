@@ -11,7 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -32,7 +34,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 	}{
 		{name: "original connection closed", definite: true, cause: sdk.ErrConnectionClosed},
 		{name: "original Frame channel closed", closedChannel: true, definite: true, cause: sdk.ErrConnectionClosed},
-		{name: "original process unavailable", setupFailure: frame.ErrUnavailable, definite: true, cause: plugin.ErrUnavailable},
+		{name: "original process unavailable", setupFailure: framehost.ErrUnavailable, definite: true, cause: plugin.ErrUnavailable},
 		{name: "preparation storage owner closed", setupFailure: frame.ErrClosed, cause: frame.ErrClosed},
 		{name: "Frame host closed during preparation", setupFailure: frame.ErrClosed, hostCloses: true, cause: frame.ErrClosed},
 		{name: "original source disabled", disabled: true, definite: true, cause: plugin.ErrUnavailable},
@@ -42,7 +44,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 		{name: "caller stopped waiting", canceled: true, cause: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			admission := frame.NewAdmission()
+			admission := framehost.NewAdmission()
 			var retained []plugin.Activation
 			permission, err := NewCatalogPermission(admission, func(context.Context) ([]plugin.Activation, error) {
 				if test.recordFailure != nil {
@@ -57,7 +59,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 				t.Fatal(err)
 			}
 			owner := frame.NewLifetime(context.Background())
-			host, err := frame.NewHost(context.Background(), frame.HostConfig{Lifetime: owner, Admission: admission, ReadAcceptedBinding: permission.Read})
+			host, err := framehost.New(context.Background(), framehost.Config{Lifetime: owner, Authority: admission, ReadAcceptedBinding: permission.Read})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -68,9 +70,9 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 					t.Errorf("original Frame instance did not retire: %+v, %v", outcome, err)
 				}
 			})
-			definition, err := frame.Define(frame.Definition{Revision: value.Hash([]byte("retained connection")), Units: []frame.Unit{{
-				Declaration: frame.UnitDeclaration{ID: "backend", Profile: frame.NativeGo},
-				Setup: func(ctx context.Context, _ *frame.Setup) ([]frame.ExportValue, error) {
+			definition, err := framehost.Define(framehost.Definition{Revision: value.Hash([]byte("retained connection")), Units: []framehost.Unit{{
+				Declaration: framehost.UnitDeclaration{ID: "backend", Profile: framehost.NativeGo},
+				Setup: func(ctx context.Context, _ framehost.Setup) ([]framehost.ExportValue, error) {
 					if test.hostCloses {
 						owner.BeginClose(frame.ErrClosed)
 						<-owner.Context().Done()
@@ -92,7 +94,7 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 				t.Fatal(err)
 			}
 			installation := testsupport.InstallationID(t)
-			record, err := host.Install(t.Context(), frame.InstallationConfig{ID: installation.Host(), Plugin: definition, Enabled: true})
+			record, err := host.Install(t.Context(), framehost.InstallationConfig{ID: installation.Host(), Plugin: definition, Enabled: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -128,10 +130,10 @@ func TestRetainedRestorationReadsOriginalOwnerThroughFrame(t *testing.T) {
 				if err := installed.restoreRetained(ctx, original, grant); err != nil {
 					t.Fatalf("settled original work blocked the catalog: %v", err)
 				}
-				if _, err := host.AcquireRecord(ctx, original.Identity.String(), frame.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, frame.ErrUnavailable) {
+				if _, err := host.AcquireRecord(ctx, original.Identity.String(), framehost.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, framehost.ErrUnavailable) {
 					t.Fatalf("settled original record authorized execution: %v", err)
 				}
-				if _, err := host.Acquire(ctx, plan, frame.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, sdk.ErrConnectionClosed) {
+				if _, err := host.Acquire(ctx, plan, framehost.UseConfig{Owner: owner, Scope: grant}); !errors.Is(err, sdk.ErrConnectionClosed) {
 					t.Fatalf("fresh catalog did not reach its current source: %v", err)
 				}
 				return

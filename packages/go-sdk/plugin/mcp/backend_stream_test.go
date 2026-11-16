@@ -8,8 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -40,7 +39,7 @@ func backendStreamingSession(t *testing.T, method *StreamingMethod[callbackInput
 }
 
 func TestDelayedBackendStreamRetainsItsMethodAndBinding(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Stream records."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Stream records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +64,7 @@ func TestDelayedBackendStreamRetainsItsMethodAndBinding(t *testing.T) {
 }
 
 func TestBackendStreamRetainsOriginalInvocationAndConsumerBackpressure(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Stream records."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Stream records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +109,7 @@ func TestBackendStreamRetainsOriginalInvocationAndConsumerBackpressure(t *testin
 }
 
 func TestStoppingBackendStreamCancelsProducerWithoutAnotherInvocation(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Cancelable stream."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Cancelable stream."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +142,7 @@ func TestStoppingBackendStreamCancelsProducerWithoutAnotherInvocation(t *testing
 }
 
 func TestBackendStreamFailureKeepsPartialEvidenceWithoutRetry(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Fail after a stream chunk."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Fail after a stream chunk."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +175,7 @@ func TestBackendStreamFailureKeepsPartialEvidenceWithoutRetry(t *testing.T) {
 }
 
 func TestNoncooperativeProducerCannotHoldStoppedConsumer(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Bounded stop."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Bounded stop."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +202,7 @@ func TestNoncooperativeProducerCannotHoldStoppedConsumer(t *testing.T) {
 }
 
 func TestBackendStreamParentCancellationDoesNotBecomeConsumerStop(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: "call", Description: "Parent cancellation."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: "call", Description: "Parent cancellation."})
 	if err != nil {
 		t.Fatal(err)
 	}

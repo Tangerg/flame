@@ -4,14 +4,14 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	"github.com/Tangerg/frame"
 )
 
 func TestRequiredBindingsCannotBeRetargetedThroughInputOrSnapshot(t *testing.T) {
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "model.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "model", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, frame.MethodDescriptor{Name: "model.read", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

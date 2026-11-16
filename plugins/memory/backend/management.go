@@ -9,11 +9,12 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func registerManagementCommands(backend *pluginmcp.Backend, db *framesqlite.Database, contracts rpc.Contracts, review *app.Coordinator) error {
+func registerManagementCommands(backend *pluginmcp.Backend, db framesqlite.Database, contracts rpc.Contracts, review *app.Coordinator) error {
 	return errors.Join(
 		pluginstorage.RegisterCommand(backend, db, contracts.Add, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (pluginstorage.CommandPlan[rpc.AddResult], error) {
 			mutation, err := review.PrepareAdd(ctx, input.Scope, input.CWD, input.Content)

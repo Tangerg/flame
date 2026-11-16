@@ -5,17 +5,17 @@ import (
 	"errors"
 	"iter"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) {
-	if store == nil || store.db == nil {
+	if store == nil || !store.db.Valid() {
 		return nil, errors.New("model provider: private store is required")
 	}
 	contract, err := modelprovider.Contract()

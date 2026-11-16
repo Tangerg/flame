@@ -5,18 +5,16 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/a2a/internal/contract"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -114,7 +112,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 	return server, nil
 }
 
-func commandTool[P any](name string, method portable.MethodDescriptor, execute func(context.Context, string, string, framevalue.JSON) (wire.Result, error)) (tool.Tool, error) {
+func commandTool[P any](name string, method frame.MethodDescriptor, execute func(context.Context, string, string, framevalue.JSON) (wire.Result, error)) (tool.Tool, error) {
 	return tool.NewFunc(tool.FuncConfig{Name: name, Description: method.Description}, func(ctx context.Context, _ P) (wire.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {

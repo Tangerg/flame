@@ -9,6 +9,7 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -19,7 +20,7 @@ const (
 
 var errStored = errors.New("filewatch: invalid private data")
 
-type store struct{ db *sqlite.Database }
+type store struct{ db sqlite.Database }
 
 func openStore(ctx context.Context, path string) (*store, error) {
 	initial, err := json.Marshal(filewatch.Initial().Snapshot())

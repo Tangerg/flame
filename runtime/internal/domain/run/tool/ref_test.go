@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const testInstallation = "8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746"

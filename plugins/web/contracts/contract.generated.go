@@ -11,6 +11,10 @@ const (
 	BrowseV1OutputDomainPageFormatText     BrowseV1OutputDomainPageFormat = "text"
 )
 
+func (BrowseV1OutputDomainPageFormat) JSONSchemaEnum() []string {
+	return []string{string(BrowseV1OutputDomainPageFormatMarkdown), string(BrowseV1OutputDomainPageFormatHtml), string(BrowseV1OutputDomainPageFormatText)}
+}
+
 type FetchRequestFormat string
 
 const (
@@ -18,6 +22,10 @@ const (
 	FetchRequestFormatHtml     FetchRequestFormat = "html"
 	FetchRequestFormatText     FetchRequestFormat = "text"
 )
+
+func (FetchRequestFormat) JSONSchemaEnum() []string {
+	return []string{string(FetchRequestFormatMarkdown), string(FetchRequestFormatHtml), string(FetchRequestFormatText)}
+}
 
 type FetchV1OutputDomainPageFormat string
 
@@ -27,12 +35,20 @@ const (
 	FetchV1OutputDomainPageFormatText     FetchV1OutputDomainPageFormat = "text"
 )
 
+func (FetchV1OutputDomainPageFormat) JSONSchemaEnum() []string {
+	return []string{string(FetchV1OutputDomainPageFormatMarkdown), string(FetchV1OutputDomainPageFormatHtml), string(FetchV1OutputDomainPageFormatText)}
+}
+
 type HTTPContentEncoding string
 
 const (
 	HTTPContentEncodingUtf8   HTTPContentEncoding = "utf8"
 	HTTPContentEncodingBase64 HTTPContentEncoding = "base64"
 )
+
+func (HTTPContentEncoding) JSONSchemaEnum() []string {
+	return []string{string(HTTPContentEncodingUtf8), string(HTTPContentEncodingBase64)}
+}
 
 type RequestMethod string
 
@@ -45,6 +61,10 @@ const (
 	RequestMethodDELETE RequestMethod = "DELETE"
 )
 
+func (RequestMethod) JSONSchemaEnum() []string {
+	return []string{string(RequestMethodGET), string(RequestMethodHEAD), string(RequestMethodPOST), string(RequestMethodPUT), string(RequestMethodPATCH), string(RequestMethodDELETE)}
+}
+
 type SearchRequestRecency string
 
 const (
@@ -54,6 +74,10 @@ const (
 	SearchRequestRecencyMonth SearchRequestRecency = "month"
 	SearchRequestRecencyYear  SearchRequestRecency = "year"
 )
+
+func (SearchRequestRecency) JSONSchemaEnum() []string {
+	return []string{string(SearchRequestRecencyHour), string(SearchRequestRecencyDay), string(SearchRequestRecencyWeek), string(SearchRequestRecencyMonth), string(SearchRequestRecencyYear)}
+}
 
 type BrowseInput struct {
 	Limit      framevalue.Number `json:"limit"`

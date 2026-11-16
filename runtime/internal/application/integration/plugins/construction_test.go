@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 
-	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 )
 
 type constructionContext struct{ context.Context }
@@ -18,7 +18,7 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 		catalog     catalog
 		packages    packages
 		connections connections
-		host        *frame.Host
+		host        framehost.Host
 	}
 	for _, test := range []struct {
 		name   string
@@ -34,7 +34,7 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 		{"typed nil packages", func(c *collaborators) { c.packages = (*installationPackages)(nil) }},
 		{"connections", func(c *collaborators) { c.connections = nil }},
 		{"typed nil connections", func(c *collaborators) { c.connections = (*installationConnections)(nil) }},
-		{"host", func(c *collaborators) { c.host = nil }},
+		{"host", func(c *collaborators) { c.host = framehost.Host{} }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			c := collaborators{t.Context(), &installationMemory{}, releaseMemory{}, installationPackages{}, installationConnections{}, testFramework(t, nil)}
@@ -72,9 +72,9 @@ func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 	}
 }
 
-func newTestCoordinator(lifetime context.Context, host *frame.Host, store Store, catalog catalog, packages packages, connections connections, publish invalidation.Publish) (*Coordinator, error) {
-	admission := frame.NewAdmission()
-	if host != nil {
+func newTestCoordinator(lifetime context.Context, host framehost.Host, store Store, catalog catalog, packages packages, connections connections, publish invalidation.Publish) (*Coordinator, error) {
+	admission := framehost.NewAdmission()
+	if host.Valid() {
 		admission = host.Admission()
 	}
 	return New(lifetime, host, store, catalog, packages, connections, admission.Admit, publish)

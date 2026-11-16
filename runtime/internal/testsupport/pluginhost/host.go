@@ -12,25 +12,23 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 type Fixture struct {
-	Host  *frame.Host
+	Host  framehost.Host
 	store *persistence.Bundle
 }
 
 func New(t testing.TB, store *persistence.Bundle) *Fixture {
 	t.Helper()
-	if store == nil || store.Frame == nil || store.Admission == nil {
+	if store == nil || !store.Frame.Valid() || !store.Admission.Valid() {
 		t.Fatal("pluginhost: original framework store is required")
 	}
-	host, err := frame.NewHost(context.Background(), frame.HostConfig{
-		Admission:           store.Admission,
-		Epoch:               store.Frame.Epoch(),
-		Installations:       store.Frame,
-		ExecutionProtection: store.Frame,
-		Drivers:             []frame.Driver{refusalDriver{pluginmcp.ProcessProfile}, refusalDriver{frame.BrowserJS}, refusalDriver{frame.StaticResource}},
+	host, err := framehost.New(context.Background(), framehost.Config{
+		Authority: store.Frame,
+		Drivers:   []framehost.Driver{refusalDriver{pluginmcp.ProcessProfile}, refusalDriver{framehost.BrowserJS}, refusalDriver{framehost.StaticResource}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +44,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var definitions []*frame.Plugin
+	var definitions []*framehost.Plugin
 	for _, record := range records {
 		flame, err := plugins.DecodeFrameworkConfiguration(record)
 		if err != nil {
@@ -65,7 +63,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 		}
 		definitions = append(definitions, projection.Plugin)
 	}
-	if err := host.Restore(context.Background(), records, definitions); err != nil {
+	if err := host.Restore(context.Background(), definitions); err != nil {
 		t.Fatal(err)
 	}
 	return &Fixture{Host: host, store: store}
@@ -90,7 +88,7 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	if err != nil {
 		return err
 	}
-	config := frame.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
+	config := framehost.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
 	previous, exists := f.Host.Installation(config.ID)
 	if exists {
 		err = f.Host.Update(ctx, previous, config)
@@ -108,10 +106,10 @@ func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) e
 	return nil
 }
 
-type refusalDriver struct{ profile frame.Profile }
+type refusalDriver struct{ profile framehost.Profile }
 
-func (d refusalDriver) Profile() frame.Profile { return d.profile }
-func (d refusalDriver) RealmBound() bool       { return d.profile == frame.BrowserJS }
-func (refusalDriver) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
+func (d refusalDriver) Profile() framehost.Profile { return d.profile }
+func (d refusalDriver) RealmBound() bool           { return d.profile == framehost.BrowserJS }
+func (refusalDriver) Prepare(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
 	return nil, errors.New("pluginhost: fixture does not execute plugins")
 }

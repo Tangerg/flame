@@ -8,6 +8,10 @@ const (
 	CancelV1OutputWireResultKindMessage CancelV1OutputWireResultKind = "message"
 )
 
+func (CancelV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(CancelV1OutputWireResultKindTask), string(CancelV1OutputWireResultKindMessage)}
+}
+
 type SendV1OutputWireResultKind string
 
 const (
@@ -15,12 +19,20 @@ const (
 	SendV1OutputWireResultKindMessage SendV1OutputWireResultKind = "message"
 )
 
+func (SendV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(SendV1OutputWireResultKindTask), string(SendV1OutputWireResultKindMessage)}
+}
+
 type StatusV1OutputWireResultKind string
 
 const (
 	StatusV1OutputWireResultKindTask    StatusV1OutputWireResultKind = "task"
 	StatusV1OutputWireResultKindMessage StatusV1OutputWireResultKind = "message"
 )
+
+func (StatusV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(StatusV1OutputWireResultKindTask), string(StatusV1OutputWireResultKindMessage)}
+}
 
 type Agent struct {
 	Description string `json:"description"`

@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

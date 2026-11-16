@@ -10,15 +10,16 @@ import (
 	"net/http"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func validateHostCall(ref CallbackRef, method *portable.Method, id CommandID) error {
+func validateHostCall(ref CallbackRef, method *frame.Method, id CommandID) error {
 	if err := ref.Validate(); err != nil {
 		return err
 	}
-	if method.Kind() == portable.Command {
+	if method.Kind() == frame.Command {
 		return id.Validate()
 	}
 	if id != "" {
@@ -29,7 +30,7 @@ func validateHostCall(ref CallbackRef, method *portable.Method, id CommandID) er
 
 // A callback's captured reference supplies its endpoint and authority. Business
 // input supplies neither, and is checked against the original method before I/O.
-func newHostRequest(ctx context.Context, ref CallbackRef, method *portable.Method, id CommandID, admitted framevalue.JSON) (*http.Request, error) {
+func newHostRequest(ctx context.Context, ref CallbackRef, method *frame.Method, id CommandID, admitted framevalue.JSON) (*http.Request, error) {
 	if err := method.ValidateInput(admitted); err != nil {
 		return nil, err
 	}

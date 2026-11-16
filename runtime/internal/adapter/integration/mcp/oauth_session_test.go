@@ -12,12 +12,11 @@ import (
 	"testing"
 	"time"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/go-sdk/auth"
 
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
 )
 

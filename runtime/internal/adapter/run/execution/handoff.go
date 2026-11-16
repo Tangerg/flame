@@ -88,7 +88,7 @@ func (i *interactionSession) encodeInteractionHandoff(tree scoperun.Log) (*inter
 		}
 		value := interactionInputTargetWire{ProcessID: input.ProcessID().String(), MemberID: member.MemberID,
 			RequestID: inputRequestID(input.ProcessID(), input.WaitKey()), WaitKey: input.WaitKey().String()}
-		prompt, err := runinput.DecodePrompt(input.Prompt())
+		prompt, err := runinput.DecodePrompt(input.Prompt().JSON())
 		if err != nil {
 			return nil, err
 		}

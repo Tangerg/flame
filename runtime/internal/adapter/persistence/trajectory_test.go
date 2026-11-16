@@ -9,11 +9,6 @@ import (
 	"testing"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -21,10 +16,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func insertTrajectorySession(t testing.TB, ctx context.Context, db *framesqlite.Database, id string) {
+func insertTrajectorySession(t testing.TB, ctx context.Context, db framesqlite.Database, id string) {
 	t.Helper()
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: id, Workspace: testsupport.MustWorkspace("/work"),
@@ -176,7 +173,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_session", "utility_session", root.SessionID}, {"endpoint_other", "utility_other", other.SessionID},
 		{"endpoint_global", "utility_global", ""},
 	} {
-		value := modelref.EndpointInvocation{ID: source.id, Caller: framemcp.Invocation{ID: source.caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
+		value := modelref.EndpointInvocation{ID: source.id, Caller: framemcp.Invocation{ID: source.caller, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: root.CreatedAt}
 		owner := ""
 		if source.caller == "call_run_root" {
 			owner = source.caller

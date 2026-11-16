@@ -9,7 +9,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/frame/portable"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type requiredPointValue struct {
@@ -27,7 +29,7 @@ func (r replacingPointResolver) ResolvePluginPoint(context.Context, protocol.Res
 }
 
 func TestPointResolutionKeepsOriginalSchemaAcrossTheCall(t *testing.T) {
-	schema, err := portable.SchemaFor[requiredPointValue]()
+	schema, err := framevalue.SchemaFor[requiredPointValue]()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +43,7 @@ func TestPointResolutionKeepsOriginalSchemaAcrossTheCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, err := client.ResolvePointValues[requiredPointValue](t.Context(), replacingPointResolver{contract, replacement}, contract, portable.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
+	values, err := client.ResolvePointValues[requiredPointValue](t.Context(), replacingPointResolver{contract, replacement}, contract, framemcp.Target{Scope: extension.ScopeInstallation, Reference: numericInstallation}, struct{}{}, nil, protocol.CallOptions{})
 	if err == nil || len(values) != 0 {
 		t.Fatalf("replacement schema admitted a value missing the original required field: %+v, %v", values, err)
 	}

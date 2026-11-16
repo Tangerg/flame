@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	framevalue "github.com/Tangerg/frame/value"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func (c *CommandCalls) PrepareFeedback(ctx context.Context, input extension.FeedbackDraft) (extension.AnnotationSource, framevalue.JSON, error) {

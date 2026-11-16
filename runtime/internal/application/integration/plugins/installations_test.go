@@ -9,15 +9,14 @@ import (
 	"testing/synctest"
 	"time"
 
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type installationMemory struct {
@@ -137,7 +136,7 @@ func (p installationPackages) Realize(ctx context.Context, i plugin.Installation
 }
 
 type installationDependencies struct {
-	admission        *frame.Admission
+	admission        framehost.Admission
 	inUse            bool
 	executionChanged bool
 }

@@ -7,15 +7,13 @@ import (
 	json "encoding/json/v2"
 	"iter"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID string, document []byte) (string, error) {
@@ -29,7 +27,7 @@ func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID stri
 	}
 	defer borrow.Close()
 	ctx = borrow.Context()
-	actor, err := operation.Capture(ctx, portable.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID})
+	actor, err := operation.Capture(ctx, framemcp.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID})
 	if err != nil {
 		return "", err
 	}

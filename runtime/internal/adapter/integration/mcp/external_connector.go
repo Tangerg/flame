@@ -9,19 +9,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/samber/lo"
 )
 
@@ -105,7 +106,7 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Start(ctx, extension.Automatic, m.Name(), "")
 	}
-	invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 	if err != nil {
 		return zero, err
 	}
@@ -113,7 +114,7 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.
 	if err != nil {
 		return zero, err
 	}
-	if m.Descriptor().Kind == portable.Query {
+	if m.Descriptor().Kind == frame.Query {
 		return method.Call(ctx, input)
 	}
 	return method.CallCommand(ctx, pluginmcp.CommandID(operation.Identity(ctx)), input)
@@ -244,7 +245,7 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 		if operation.Identity(ctx) == "" {
 			ctx = operation.Start(ctx, extension.Automatic, c.methods.Change.Name(), "")
 		}
-		invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
+		invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 		if err != nil {
 			return err
 		}

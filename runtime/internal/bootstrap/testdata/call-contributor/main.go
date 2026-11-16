@@ -12,15 +12,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Tangerg/frame/portable"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func main() {
@@ -107,7 +107,7 @@ func run(ctx context.Context) error {
 }
 
 func runDroppingStream(ctx context.Context, server *sdk.Server, backend *pluginmcp.Backend, mode, trace string) error {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, string, bool](portable.MethodConfig{Name: "example.records/stream.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream the captured command."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, string, bool](frame.MethodConfig{Name: "example.records/stream.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream the captured command."})
 	if err != nil {
 		return err
 	}

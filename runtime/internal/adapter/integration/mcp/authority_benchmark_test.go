@@ -11,15 +11,15 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
+
 	"github.com/Tangerg/frame/distribution"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // BenchmarkInstalledSourceAdmission measures the source verification that each

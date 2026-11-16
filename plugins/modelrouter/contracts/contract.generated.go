@@ -11,12 +11,20 @@ const (
 	GetPolicyV1OutputDomainRuleUseIndependent GetPolicyV1OutputDomainRuleUse = "independent"
 )
 
+func (GetPolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(GetPolicyV1OutputDomainRuleUseInteraction), string(GetPolicyV1OutputDomainRuleUseUtility), string(GetPolicyV1OutputDomainRuleUseIndependent)}
+}
+
 type GetPolicyV1OutputModelSelectionLimitsInputKind string
 
 const (
 	GetPolicyV1OutputModelSelectionLimitsInputKindText    GetPolicyV1OutputModelSelectionLimitsInputKind = "text"
 	GetPolicyV1OutputModelSelectionLimitsInputKindRequest GetPolicyV1OutputModelSelectionLimitsInputKind = "request"
 )
+
+func (GetPolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(GetPolicyV1OutputModelSelectionLimitsInputKindText), string(GetPolicyV1OutputModelSelectionLimitsInputKindRequest)}
+}
 
 type ReplacePolicyV1InputDomainRuleUse string
 
@@ -26,12 +34,20 @@ const (
 	ReplacePolicyV1InputDomainRuleUseIndependent ReplacePolicyV1InputDomainRuleUse = "independent"
 )
 
+func (ReplacePolicyV1InputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1InputDomainRuleUseInteraction), string(ReplacePolicyV1InputDomainRuleUseUtility), string(ReplacePolicyV1InputDomainRuleUseIndependent)}
+}
+
 type ReplacePolicyV1InputModelSelectionLimitsInputKind string
 
 const (
 	ReplacePolicyV1InputModelSelectionLimitsInputKindText    ReplacePolicyV1InputModelSelectionLimitsInputKind = "text"
 	ReplacePolicyV1InputModelSelectionLimitsInputKindRequest ReplacePolicyV1InputModelSelectionLimitsInputKind = "request"
 )
+
+func (ReplacePolicyV1InputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1InputModelSelectionLimitsInputKindText), string(ReplacePolicyV1InputModelSelectionLimitsInputKindRequest)}
+}
 
 type ReplacePolicyV1OutputDomainRuleUse string
 
@@ -41,12 +57,20 @@ const (
 	ReplacePolicyV1OutputDomainRuleUseIndependent ReplacePolicyV1OutputDomainRuleUse = "independent"
 )
 
+func (ReplacePolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1OutputDomainRuleUseInteraction), string(ReplacePolicyV1OutputDomainRuleUseUtility), string(ReplacePolicyV1OutputDomainRuleUseIndependent)}
+}
+
 type ReplacePolicyV1OutputModelSelectionLimitsInputKind string
 
 const (
 	ReplacePolicyV1OutputModelSelectionLimitsInputKindText    ReplacePolicyV1OutputModelSelectionLimitsInputKind = "text"
 	ReplacePolicyV1OutputModelSelectionLimitsInputKindRequest ReplacePolicyV1OutputModelSelectionLimitsInputKind = "request"
 )
+
+func (ReplacePolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1OutputModelSelectionLimitsInputKindText), string(ReplacePolicyV1OutputModelSelectionLimitsInputKindRequest)}
+}
 
 type GetPolicyV1Input struct {
 }

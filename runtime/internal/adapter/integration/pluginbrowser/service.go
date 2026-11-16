@@ -1,8 +1,6 @@
 package pluginbrowser
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-
 	"context"
 	"errors"
 	"math"
@@ -14,7 +12,10 @@ import (
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framebrowser "github.com/Tangerg/frame/browser"
+	framehost "github.com/Tangerg/frame/host"
 )
 
 type Config struct {
@@ -28,7 +29,7 @@ type Config struct {
 
 type Service struct {
 	config   Config
-	contract frame.ContractRef
+	contract framehost.ContractRef
 }
 
 func New(config Config) (*Service, error) {
@@ -101,9 +102,9 @@ func consumerError(err error) error {
 	switch {
 	case errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):
 		return errors.Join(plugin.ErrInvalid, err)
-	case errors.Is(err, frame.ErrStaleBinding), errors.Is(err, frame.ErrFenced), errors.Is(err, frame.ErrClosed):
+	case errors.Is(err, framehost.ErrStaleBinding), errors.Is(err, framehost.ErrFenced), errors.Is(err, frame.ErrClosed):
 		return errors.Join(plugin.ErrStale, err)
-	case errors.Is(err, frame.ErrUnavailable), errors.Is(err, frame.ErrCapacity):
+	case errors.Is(err, framehost.ErrUnavailable), errors.Is(err, frame.ErrCapacity):
 		return errors.Join(plugin.ErrUnavailable, err)
 	default:
 		return err

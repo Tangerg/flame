@@ -10,11 +10,12 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func registerManagementCommands(backend *pluginmcp.Backend, db *framesqlite.Database, contracts rpc.Contracts, coordinator *app.Coordinator) error {
+func registerManagementCommands(backend *pluginmcp.Backend, db framesqlite.Database, contracts rpc.Contracts, coordinator *app.Coordinator) error {
 	return errors.Join(
 		pluginstorage.RegisterCommand(backend, db, contracts.Create, classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (pluginstorage.CommandPlan[schedule.Snapshot], error) {
 			mutation, err := coordinator.PrepareCreate(ctx, input)

@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,7 +21,7 @@ type implementationRecord struct {
 }
 
 func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testing.T) {
-	config := portable.MethodConfig{Name: "reviews.update", Kind: portable.Command, Target: "installation", Description: "Update a review."}
+	config := frame.MethodConfig{Name: "reviews.update", Kind: frame.Command, Target: "installation", Description: "Update a review."}
 	defined, err := NewMethod[contractInput, contractInput](config)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testin
 }
 
 func TestStreamingImplementationRetainsPublishedInputChunkAndOutput(t *testing.T) {
-	defined, err := NewStreamingMethod[contractInput, contractInput, contractInput](portable.MethodConfig{Name: "reviews.stream", Kind: portable.Query, Target: "installation", Description: "Read reviews."})
+	defined, err := NewStreamingMethod[contractInput, contractInput, contractInput](frame.MethodConfig{Name: "reviews.stream", Kind: frame.Query, Target: "installation", Description: "Read reviews."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,11 +174,11 @@ func TestStreamingImplementationRetainsPublishedInputChunkAndOutput(t *testing.T
 }
 
 func TestImplementationRequiresAnExistingMethodAndMatchingDelivery(t *testing.T) {
-	unary, err := NewMethod[struct{}, bool](portable.MethodConfig{Name: "read", Kind: portable.Query, Target: "installation", Description: "Read."})
+	unary, err := NewMethod[struct{}, bool](frame.MethodConfig{Name: "read", Kind: frame.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := NewStreamingMethod[struct{}, bool, bool](portable.MethodConfig{Name: "stream", Kind: portable.Query, Target: "installation", Description: "Stream."})
+	stream, err := NewStreamingMethod[struct{}, bool, bool](frame.MethodConfig{Name: "stream", Kind: frame.Query, Target: "installation", Description: "Stream."})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,12 +7,13 @@ import (
 	"testing"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func commandDatabase(t *testing.T) (*framesqlite.Database, string) {
+func commandDatabase(t *testing.T) (framesqlite.Database, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "command.db")
 	db, err := framesqlite.OpenSchema(t.Context(), path, []string{
@@ -25,7 +26,7 @@ func commandDatabase(t *testing.T) (*framesqlite.Database, string) {
 	return db, path
 }
 
-func assertCommandState(t *testing.T, db *framesqlite.Database, counter, receipts int) {
+func assertCommandState(t *testing.T, db framesqlite.Database, counter, receipts int) {
 	t.Helper()
 	var actualCounter, actualReceipts int
 	if err := db.Read(t.Context(), func(reader framesqlite.Reader) error {

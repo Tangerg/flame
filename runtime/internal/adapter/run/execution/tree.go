@@ -254,7 +254,7 @@ func (i *interactionSession) pendingInterruptions(
 			// died with it: nobody can be shown it and nobody can answer it.
 			continue
 		}
-		prompt, err := runinput.DecodePrompt(pending.Prompt())
+		prompt, err := runinput.DecodePrompt(pending.Prompt().JSON())
 		if err != nil {
 			return nil, fmt.Errorf("decode Interaction member %s prompt: %w", member.MemberID, err)
 		}

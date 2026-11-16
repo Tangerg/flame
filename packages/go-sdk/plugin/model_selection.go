@@ -5,8 +5,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -47,7 +47,7 @@ func (r ModelSelectionRequest) Validate() error {
 	return nil
 }
 func ModelSelectionMethod() (*pluginmcp.Method[ModelSelectionRequest, ModelSelection], error) {
-	return pluginmcp.NewMethod[ModelSelectionRequest, ModelSelection](portable.MethodConfig{Name: "flame.model-selection/select.v2", Kind: portable.Query, Target: extension.ScopeCall, Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
+	return pluginmcp.NewMethod[ModelSelectionRequest, ModelSelection](frame.MethodConfig{Name: "flame.model-selection/select.v2", Kind: frame.Query, Target: extension.ScopeCall, Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
 }
 func ModelSelectionContract() (*plugincontract.Capability, error) {
 	method, err := ModelSelectionMethod()

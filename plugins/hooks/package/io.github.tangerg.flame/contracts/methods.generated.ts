@@ -11,7 +11,7 @@ export interface CommandDecision {
   injectContext?: string;
   reason?: string;
   rewriteArguments?: string;
-  verdict: (string) & ("allow" | "deny" | "ask");
+  verdict: "allow" | "deny" | "ask";
 }
 
 export interface Diagnostic {
@@ -25,11 +25,11 @@ export type DiscoverV1Output = Array<DiscoverV1OutputHookHook>;
 
 export interface DiscoverV1OutputHookHook {
   command?: string;
-  event: (string) & ("PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification");
-  failurePolicy?: (string) & ("advisory" | "required");
+  event: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification";
+  failurePolicy?: "advisory" | "required";
   inject?: string;
   matcher?: string;
-  scope: (string) & ("global" | "project");
+  scope: "global" | "project";
   source: string;
   timeoutMillis?: JSONNumber;
 }
@@ -45,11 +45,11 @@ export type EvaluateV1Input = Evaluation;
 
 export interface EvaluateV1InputHookHook {
   command?: string;
-  event: (string) & ("PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification");
-  failurePolicy?: (string) & ("advisory" | "required");
+  event: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification";
+  failurePolicy?: "advisory" | "required";
   inject?: string;
   matcher?: string;
-  scope: (string) & ("global" | "project");
+  scope: "global" | "project";
   source: string;
   timeoutMillis?: JSONNumber;
 }
@@ -64,7 +64,7 @@ export interface Evaluation {
 
 export interface Input {
   cwd?: string;
-  event: (string) & ("PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification");
+  event: "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification";
   prompt?: string;
   promptTruncated?: boolean;
   reason?: string;

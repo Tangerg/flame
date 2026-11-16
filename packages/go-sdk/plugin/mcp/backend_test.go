@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
 
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -17,16 +17,16 @@ func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T)
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 	backend := testBackend(t, server)
 	calls := 0
-	if err := testMethod[struct{}, string](t, "examples.read", portable.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "read", nil }); err != nil {
+	if err := testMethod[struct{}, string](t, "examples.read", frame.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "read", nil }); err != nil {
 		t.Fatal(err)
 	}
-	if err := testMethod[string, string](t, "examples.write", portable.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+	if err := testMethod[string, string](t, "examples.write", frame.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
 		calls++
 		return "written", nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := testMethod[struct{}, string](t, "examples.read", portable.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) {
+	if err := testMethod[struct{}, string](t, "examples.read", frame.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) {
 		return "replacement", nil
 	}); err == nil {
 		t.Fatal("duplicate export replaced its owner")
@@ -40,7 +40,7 @@ func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T)
 	if err != nil || description.Protocol != plugincontract.Protocol || len(description.Methods) != 2 {
 		t.Fatalf("published description = %+v, %v", description, err)
 	}
-	if description.Methods[0].Name != "examples.read" || description.Methods[0].Kind != portable.Query || description.Methods[1].Kind != portable.Command {
+	if description.Methods[0].Name != "examples.read" || description.Methods[0].Kind != frame.Query || description.Methods[1].Kind != frame.Command {
 		t.Fatalf("published semantics = %+v", description.Methods)
 	}
 	description.Methods[0].Input[0] = 'x'
@@ -48,19 +48,19 @@ func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T)
 	if err != nil || fresh.Methods[0].Input[0] != '{' {
 		t.Fatal("client changed a published schema")
 	}
-	if err := testMethod[struct{}, string](t, "late", portable.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "", nil }); err == nil {
+	if err := testMethod[struct{}, string](t, "late", frame.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "", nil }); err == nil {
 		t.Fatal("published exports changed")
 	}
-	if _, err := testMethod[struct{}, string](t, "examples.write", portable.Query).Call(t.Context(), session, struct{}{}); err == nil {
+	if _, err := testMethod[struct{}, string](t, "examples.write", frame.Query).Call(t.Context(), session, struct{}{}); err == nil {
 		t.Fatal("caller relabeled mutation as a query")
 	}
-	if _, err := testMethod[struct{}, string](t, "examples.read", portable.Command).CallCommand(t.Context(), session, "command", struct{}{}); err == nil {
+	if _, err := testMethod[struct{}, string](t, "examples.read", frame.Command).CallCommand(t.Context(), session, "command", struct{}{}); err == nil {
 		t.Fatal("query accepted mutation identity")
 	}
-	if _, err := testMethod[struct{}, string](t, "missing", portable.Query).Call(t.Context(), session, struct{}{}); err == nil {
+	if _, err := testMethod[struct{}, string](t, "missing", frame.Query).Call(t.Context(), session, struct{}{}); err == nil {
 		t.Fatal("missing export fell back to another method")
 	}
-	if result, err := testMethod[string, string](t, "examples.write", portable.Command).CallCommand(t.Context(), session, "command", "input"); err != nil || result != "written" || calls != 1 {
+	if result, err := testMethod[string, string](t, "examples.write", frame.Command).CallCommand(t.Context(), session, "command", "input"); err != nil || result != "written" || calls != 1 {
 		t.Fatalf("one generic command = %s, %d, %v", result, calls, err)
 	}
 	if err := sdk.AddSendingCustomMethod[*methodParams[struct{}], *methodResult[jsontext.Value]](client, "examples.read"); err != nil {

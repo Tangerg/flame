@@ -6,20 +6,19 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func toolReceipt(ctx context.Context, db *framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func toolReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
 	switch remote {
 	case createScheduleTool:

@@ -1,14 +1,14 @@
 package plugin
 
 import (
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"encoding/json/jsontext"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestModelInputTransformationPreservesRouteToolsAndOutputEnvelope(t *testing.T) {
@@ -20,7 +20,7 @@ func TestModelInputTransformationPreservesRouteToolsAndOutputEnvelope(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != portable.Query {
+	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != frame.Query {
 		t.Fatal("input transformation grants model execution")
 	}
 	original, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))

@@ -10,6 +10,10 @@ const (
 	AddInputScopeUser    AddInputScope = "user"
 )
 
+func (AddInputScope) JSONSchemaEnum() []string {
+	return []string{string(AddInputScopeProject), string(AddInputScopeUser)}
+}
+
 type AddV2OutputDomainItemSnapshotOrigin string
 
 const (
@@ -17,12 +21,20 @@ const (
 	AddV2OutputDomainItemSnapshotOriginUser AddV2OutputDomainItemSnapshotOrigin = "user"
 )
 
+func (AddV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
+	return []string{string(AddV2OutputDomainItemSnapshotOriginAuto), string(AddV2OutputDomainItemSnapshotOriginUser)}
+}
+
 type AddV2OutputDomainItemSnapshotScope string
 
 const (
 	AddV2OutputDomainItemSnapshotScopeProject AddV2OutputDomainItemSnapshotScope = "project"
 	AddV2OutputDomainItemSnapshotScopeUser    AddV2OutputDomainItemSnapshotScope = "user"
 )
+
+func (AddV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
+	return []string{string(AddV2OutputDomainItemSnapshotScopeProject), string(AddV2OutputDomainItemSnapshotScopeUser)}
+}
 
 type AddV2OutputDomainItemSnapshotStatus string
 
@@ -32,12 +44,20 @@ const (
 	AddV2OutputDomainItemSnapshotStatusRejected AddV2OutputDomainItemSnapshotStatus = "rejected"
 )
 
+func (AddV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
+	return []string{string(AddV2OutputDomainItemSnapshotStatusActive), string(AddV2OutputDomainItemSnapshotStatusPending), string(AddV2OutputDomainItemSnapshotStatusRejected)}
+}
+
 type ItemsInputScope string
 
 const (
 	ItemsInputScopeProject ItemsInputScope = "project"
 	ItemsInputScopeUser    ItemsInputScope = "user"
 )
+
+func (ItemsInputScope) JSONSchemaEnum() []string {
+	return []string{string(ItemsInputScopeProject), string(ItemsInputScopeUser)}
+}
 
 type ItemsV2OutputDomainItemSnapshotOrigin string
 
@@ -46,12 +66,20 @@ const (
 	ItemsV2OutputDomainItemSnapshotOriginUser ItemsV2OutputDomainItemSnapshotOrigin = "user"
 )
 
+func (ItemsV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
+	return []string{string(ItemsV2OutputDomainItemSnapshotOriginAuto), string(ItemsV2OutputDomainItemSnapshotOriginUser)}
+}
+
 type ItemsV2OutputDomainItemSnapshotScope string
 
 const (
 	ItemsV2OutputDomainItemSnapshotScopeProject ItemsV2OutputDomainItemSnapshotScope = "project"
 	ItemsV2OutputDomainItemSnapshotScopeUser    ItemsV2OutputDomainItemSnapshotScope = "user"
 )
+
+func (ItemsV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
+	return []string{string(ItemsV2OutputDomainItemSnapshotScopeProject), string(ItemsV2OutputDomainItemSnapshotScopeUser)}
+}
 
 type ItemsV2OutputDomainItemSnapshotStatus string
 
@@ -61,12 +89,20 @@ const (
 	ItemsV2OutputDomainItemSnapshotStatusRejected ItemsV2OutputDomainItemSnapshotStatus = "rejected"
 )
 
+func (ItemsV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
+	return []string{string(ItemsV2OutputDomainItemSnapshotStatusActive), string(ItemsV2OutputDomainItemSnapshotStatusPending), string(ItemsV2OutputDomainItemSnapshotStatusRejected)}
+}
+
 type ListInputScope string
 
 const (
 	ListInputScopeProject ListInputScope = "project"
 	ListInputScopeUser    ListInputScope = "user"
 )
+
+func (ListInputScope) JSONSchemaEnum() []string {
+	return []string{string(ListInputScopeProject), string(ListInputScopeUser)}
+}
 
 type ListV2OutputDomainItemSnapshotOrigin string
 
@@ -75,12 +111,20 @@ const (
 	ListV2OutputDomainItemSnapshotOriginUser ListV2OutputDomainItemSnapshotOrigin = "user"
 )
 
+func (ListV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
+	return []string{string(ListV2OutputDomainItemSnapshotOriginAuto), string(ListV2OutputDomainItemSnapshotOriginUser)}
+}
+
 type ListV2OutputDomainItemSnapshotScope string
 
 const (
 	ListV2OutputDomainItemSnapshotScopeProject ListV2OutputDomainItemSnapshotScope = "project"
 	ListV2OutputDomainItemSnapshotScopeUser    ListV2OutputDomainItemSnapshotScope = "user"
 )
+
+func (ListV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
+	return []string{string(ListV2OutputDomainItemSnapshotScopeProject), string(ListV2OutputDomainItemSnapshotScopeUser)}
+}
 
 type ListV2OutputDomainItemSnapshotStatus string
 
@@ -90,12 +134,20 @@ const (
 	ListV2OutputDomainItemSnapshotStatusRejected ListV2OutputDomainItemSnapshotStatus = "rejected"
 )
 
+func (ListV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
+	return []string{string(ListV2OutputDomainItemSnapshotStatusActive), string(ListV2OutputDomainItemSnapshotStatusPending), string(ListV2OutputDomainItemSnapshotStatusRejected)}
+}
+
 type ReviewInputDecision string
 
 const (
 	ReviewInputDecisionApprove ReviewInputDecision = "approve"
 	ReviewInputDecisionReject  ReviewInputDecision = "reject"
 )
+
+func (ReviewInputDecision) JSONSchemaEnum() []string {
+	return []string{string(ReviewInputDecisionApprove), string(ReviewInputDecisionReject)}
+}
 
 type SearchV2OutputDomainItemSnapshotOrigin string
 
@@ -104,12 +156,20 @@ const (
 	SearchV2OutputDomainItemSnapshotOriginUser SearchV2OutputDomainItemSnapshotOrigin = "user"
 )
 
+func (SearchV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
+	return []string{string(SearchV2OutputDomainItemSnapshotOriginAuto), string(SearchV2OutputDomainItemSnapshotOriginUser)}
+}
+
 type SearchV2OutputDomainItemSnapshotScope string
 
 const (
 	SearchV2OutputDomainItemSnapshotScopeProject SearchV2OutputDomainItemSnapshotScope = "project"
 	SearchV2OutputDomainItemSnapshotScopeUser    SearchV2OutputDomainItemSnapshotScope = "user"
 )
+
+func (SearchV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
+	return []string{string(SearchV2OutputDomainItemSnapshotScopeProject), string(SearchV2OutputDomainItemSnapshotScopeUser)}
+}
 
 type SearchV2OutputDomainItemSnapshotStatus string
 
@@ -119,12 +179,20 @@ const (
 	SearchV2OutputDomainItemSnapshotStatusRejected SearchV2OutputDomainItemSnapshotStatus = "rejected"
 )
 
+func (SearchV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
+	return []string{string(SearchV2OutputDomainItemSnapshotStatusActive), string(SearchV2OutputDomainItemSnapshotStatusPending), string(SearchV2OutputDomainItemSnapshotStatusRejected)}
+}
+
 type UpdateV2OutputDomainItemSnapshotOrigin string
 
 const (
 	UpdateV2OutputDomainItemSnapshotOriginAuto UpdateV2OutputDomainItemSnapshotOrigin = "auto"
 	UpdateV2OutputDomainItemSnapshotOriginUser UpdateV2OutputDomainItemSnapshotOrigin = "user"
 )
+
+func (UpdateV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
+	return []string{string(UpdateV2OutputDomainItemSnapshotOriginAuto), string(UpdateV2OutputDomainItemSnapshotOriginUser)}
+}
 
 type UpdateV2OutputDomainItemSnapshotScope string
 
@@ -133,6 +201,10 @@ const (
 	UpdateV2OutputDomainItemSnapshotScopeUser    UpdateV2OutputDomainItemSnapshotScope = "user"
 )
 
+func (UpdateV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
+	return []string{string(UpdateV2OutputDomainItemSnapshotScopeProject), string(UpdateV2OutputDomainItemSnapshotScopeUser)}
+}
+
 type UpdateV2OutputDomainItemSnapshotStatus string
 
 const (
@@ -140,6 +212,10 @@ const (
 	UpdateV2OutputDomainItemSnapshotStatusPending  UpdateV2OutputDomainItemSnapshotStatus = "pending"
 	UpdateV2OutputDomainItemSnapshotStatusRejected UpdateV2OutputDomainItemSnapshotStatus = "rejected"
 )
+
+func (UpdateV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
+	return []string{string(UpdateV2OutputDomainItemSnapshotStatusActive), string(UpdateV2OutputDomainItemSnapshotStatusPending), string(UpdateV2OutputDomainItemSnapshotStatusRejected)}
+}
 
 type AddInput struct {
 	CWD     string        `json:"CWD"`

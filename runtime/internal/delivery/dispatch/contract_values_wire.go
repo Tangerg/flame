@@ -3,8 +3,6 @@ package dispatch
 import (
 	"reflect"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
@@ -21,6 +19,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // The value constraints of wire shapes.

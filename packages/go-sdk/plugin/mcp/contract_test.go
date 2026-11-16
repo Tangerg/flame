@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
 
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -25,7 +25,7 @@ type contractInput struct {
 }
 
 func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
-	method, err := NewMethod[contractInput, contractInput](portable.MethodConfig{Name: "reviews.update", Kind: portable.Command, Target: "installation", Description: "Update a review."})
+	method, err := NewMethod[contractInput, contractInput](frame.MethodConfig{Name: "reviews.update", Kind: frame.Command, Target: "installation", Description: "Update a review."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 }
 
 func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
-	method, err := NewMethod[struct{}, contractInput](portable.MethodConfig{Name: "reviews.query", Kind: portable.Query, Target: "installation", Description: "Inspect a review."})
+	method, err := NewMethod[struct{}, contractInput](frame.MethodConfig{Name: "reviews.query", Kind: frame.Query, Target: "installation", Description: "Inspect a review."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,15 +106,15 @@ func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
 }
 
 func TestMethodConstructionRefusesInvalidAndUnsupportedContracts(t *testing.T) {
-	for _, config := range []portable.MethodConfig{{}, {Name: "valid", Kind: "unknown", Target: "installation", Description: "Read."}, {Name: strings.Repeat("x", 257), Kind: portable.Query, Target: "installation", Description: "Read."}} {
+	for _, config := range []frame.MethodConfig{{}, {Name: "valid", Kind: "unknown", Target: "installation", Description: "Read."}, {Name: strings.Repeat("x", 257), Kind: frame.Query, Target: "installation", Description: "Read."}} {
 		if _, err := NewMethod[struct{}, struct{}](config); err == nil {
 			t.Fatalf("invalid method admitted: %+v", config)
 		}
 	}
-	if _, err := NewMethod[chan int, struct{}](portable.MethodConfig{Name: "valid", Kind: portable.Query, Target: "installation", Description: "Read."}); err == nil {
+	if _, err := NewMethod[chan int, struct{}](frame.MethodConfig{Name: "valid", Kind: frame.Query, Target: "installation", Description: "Read."}); err == nil {
 		t.Fatal("unsupported input shape admitted")
 	}
-	if _, err := NewMethod[any, struct{}](portable.MethodConfig{Name: "valid", Kind: portable.Query, Target: "installation", Description: "Read."}); err == nil {
+	if _, err := NewMethod[any, struct{}](frame.MethodConfig{Name: "valid", Kind: frame.Query, Target: "installation", Description: "Read."}); err == nil {
 		t.Fatal("nullable input schema conflicts with required non-null method envelope")
 	}
 }
@@ -129,7 +129,7 @@ type rawContractParams struct {
 }
 
 func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *testing.T) {
-	method, err := NewMethod[contractInput, contractInput](portable.MethodConfig{Name: "reviews.update", Kind: portable.Command, Target: "installation", Description: "Update."})
+	method, err := NewMethod[contractInput, contractInput](frame.MethodConfig{Name: "reviews.update", Kind: frame.Command, Target: "installation", Description: "Update."})
 	if err != nil {
 		t.Fatal(err)
 	}

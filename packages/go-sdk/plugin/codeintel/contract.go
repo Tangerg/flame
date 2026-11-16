@@ -11,17 +11,17 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Worst-case JSON escaping still fits the standard 16 MiB MCP frame, including
 // the bounded diagnostic baseline and invocation envelope.
+
 const MaxDocumentBytes = 2 << 20
 const MaxProblems = 4096
 const MaxSummaryBytes = 64 << 10
@@ -121,11 +121,11 @@ func validateContent(value string) error {
 }
 
 func FormatMethod() (*pluginmcp.Method[Document, Transformation], error) {
-	return pluginmcp.NewMethod[Document, Transformation](portable.MethodConfig{Name: "flame.code-intelligence/format.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Compute a transformation of the supplied exact source version without writing workspace files. Absent content means unsupported formatting."})
+	return pluginmcp.NewMethod[Document, Transformation](frame.MethodConfig{Name: "flame.code-intelligence/format.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Compute a transformation of the supplied exact source version without writing workspace files. Absent content means unsupported formatting."})
 }
 
 func InspectMethod() (*pluginmcp.Method[Inspection, Report], error) {
-	return pluginmcp.NewMethod[Inspection, Report](portable.MethodConfig{Name: "flame.code-intelligence/inspect.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Analyze the supplied source version and render newly introduced problems against the captured baseline. Unavailable or stale diagnostics are explicit failures."})
+	return pluginmcp.NewMethod[Inspection, Report](frame.MethodConfig{Name: "flame.code-intelligence/inspect.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Analyze the supplied source version and render newly introduced problems against the captured baseline. Unavailable or stale diagnostics are explicit failures."})
 }
 
 func Contract() (*plugincontract.Capability, error) {

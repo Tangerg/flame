@@ -3,10 +3,10 @@ package plugin
 import (
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
 	"github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 type toolResultProjection struct {

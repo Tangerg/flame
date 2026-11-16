@@ -11,11 +11,10 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -36,9 +35,9 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 				session := replySession(t, reply.result)
 				var err error
 				if caller.command {
-					_, err = testMethod[string, string](t, "flame.test/reply.v1", portable.Command).CallCommand(t.Context(), session, "command", "input")
+					_, err = testMethod[string, string](t, "flame.test/reply.v1", frame.Command).CallCommand(t.Context(), session, "command", "input")
 				} else {
-					_, err = testMethod[string, string](t, "flame.test/reply.v1", portable.Query).Call(t.Context(), session, "input")
+					_, err = testMethod[string, string](t, "flame.test/reply.v1", frame.Query).Call(t.Context(), session, "input")
 				}
 				if err == nil {
 					t.Fatal("malformed backend reply succeeded")
@@ -55,8 +54,8 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 	refused, storage := errors.New("revision conflict"), errors.New("commit result unknown")
 	for _, operation := range []struct {
 		name string
-		kind portable.MethodKind
-	}{{"query", portable.Query}, {"command", portable.Command}} {
+		kind frame.MethodKind
+	}{{"query", frame.Query}, {"command", frame.Command}} {
 		for _, cause := range []error{refused, storage} {
 			t.Run(cause.Error()+"/"+operation.name, func(t *testing.T) {
 				session := methodSession(t, func(server *Backend) error {
@@ -66,10 +65,10 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 					return testMethod[string, string](t, "flame.test/failure", operation.kind).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
 				}, "flame.test/failure")
 				var err error
-				if operation.kind == portable.Command {
-					_, err = testMethod[string, string](t, "flame.test/failure", portable.Command).CallCommand(t.Context(), session, "logical-command", "input")
+				if operation.kind == frame.Command {
+					_, err = testMethod[string, string](t, "flame.test/failure", frame.Command).CallCommand(t.Context(), session, "logical-command", "input")
 				} else {
-					_, err = testMethod[string, string](t, "flame.test/failure", portable.Query).Call(t.Context(), session, "input")
+					_, err = testMethod[string, string](t, "flame.test/failure", frame.Query).Call(t.Context(), session, "input")
 				}
 				if err == nil {
 					t.Fatal("failed operation succeeded")
@@ -100,7 +99,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 	var calls atomic.Int64
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 	backend := testBackend(t, server)
-	if err := testMethod[string, string](t, "flame.test/admission", portable.Command).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
+	if err := testMethod[string, string](t, "flame.test/admission", frame.Command).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 		calls.Add(1)
 		return command.Input, nil
 	}); err != nil {
@@ -111,7 +110,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
-	method, err := NewMethod[string, string](portable.MethodConfig{Name: "flame.test/admission", Kind: portable.Command, Target: "installation", Description: "admission"})
+	method, err := NewMethod[string, string](frame.MethodConfig{Name: "flame.test/admission", Kind: frame.Command, Target: "installation", Description: "admission"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +232,7 @@ func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client)
 
 func TestCallsPreserveBackendFailureClassification(t *testing.T) {
 	session := replySession(t, &methodResult[string]{Failure: &framemcp.Refusal{Code: "refused", Message: "failed"}})
-	_, err := testMethod[string, string](t, "flame.test/reply.v1", portable.Command).CallCommand(t.Context(), session, "command", "input")
+	_, err := testMethod[string, string](t, "flame.test/reply.v1", frame.Command).CallCommand(t.Context(), session, "command", "input")
 	failure, ok := errors.AsType[*framemcp.Refusal](err)
 	if !ok || failure.Code != "refused" || failure.Message != "failed" || err.Error() != "failed" {
 		t.Fatalf("backend classification lost: %v", err)
@@ -243,12 +242,12 @@ func TestCallsPreserveBackendFailureClassification(t *testing.T) {
 func replySession(t *testing.T, result *methodResult[string]) *sdk.ClientSession {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "backend"}, nil)
-	method, err := NewMethod[string, string](portable.MethodConfig{Name: "flame.test/reply.v1", Kind: portable.Command, Target: "installation", Description: "reply"})
+	method, err := NewMethod[string, string](frame.MethodConfig{Name: "flame.test/reply.v1", Kind: frame.Command, Target: "installation", Description: "reply"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {
-		return reply(Description{Protocol: plugincontract.Protocol, Methods: []portable.MethodDescriptor{method.Descriptor()}}, nil, nil)
+		return reply(Description{Protocol: plugincontract.Protocol, Methods: []frame.MethodDescriptor{method.Descriptor()}}, nil, nil)
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -291,9 +290,9 @@ func connectPublishedBackend(t *testing.T, backend *Backend, client *sdk.Client)
 	return connectMethodSessions(t, backend.server, client)
 }
 
-func testMethod[P, R any](t *testing.T, name string, kind portable.MethodKind) *Method[P, R] {
+func testMethod[P, R any](t *testing.T, name string, kind frame.MethodKind) *Method[P, R] {
 	t.Helper()
-	method, err := NewMethod[P, R](portable.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
+	method, err := NewMethod[P, R](frame.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
 	if err != nil {
 		t.Fatal(err)
 	}

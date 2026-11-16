@@ -12,7 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const scopeDefinitionPrefix = "go_"
@@ -20,7 +21,7 @@ const scopeDefinitionPrefix = "go_"
 // Scope's encoded Go identity is a JSON Pointer token, not a display name.
 // Only the temporary consumer projection changes these tokens; the published
 // descriptor remains the callable authority and is embedded unchanged.
-func projectFeatureNames(descriptor portable.CapabilityDescriptor) (portable.CapabilityDescriptor, error) {
+func projectFeatureNames(descriptor frame.CapabilityDescriptor) (frame.CapabilityDescriptor, error) {
 	descriptor.Methods = slices.Clone(descriptor.Methods)
 	for index := range descriptor.Methods {
 		method := &descriptor.Methods[index]
@@ -30,7 +31,7 @@ func projectFeatureNames(descriptor portable.CapabilityDescriptor) (portable.Cap
 			}
 			projected, err := projectSchemaNames(*schema)
 			if err != nil {
-				return portable.CapabilityDescriptor{}, fmt.Errorf("feature contracts: %s definition names: %w", method.Name, err)
+				return frame.CapabilityDescriptor{}, fmt.Errorf("feature contracts: %s definition names: %w", method.Name, err)
 			}
 			*schema = projected
 		}
@@ -47,7 +48,7 @@ func projectSchemaNames(raw jsontext.Value) (jsontext.Value, error) {
 		return nil, err
 	}
 	var definitions map[string]jsontext.Value
-	if encoded := schema[portable.KeywordDefs]; len(encoded) != 0 {
+	if encoded := schema[framevalue.KeywordDefs]; len(encoded) != 0 {
 		if err := json.Unmarshal(encoded, &definitions); err != nil {
 			return nil, err
 		}
@@ -64,7 +65,7 @@ func projectSchemaNames(raw jsontext.Value) (jsontext.Value, error) {
 		projected[name] = body
 	}
 	var err error
-	schema[portable.KeywordDefs], err = json.Marshal(projected, json.Deterministic(true))
+	schema[framevalue.KeywordDefs], err = json.Marshal(projected, json.Deterministic(true))
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func projectSchemaNames(raw jsontext.Value) (jsontext.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return (definitionReferences{names: names, profile: portable.ProfileSchema()}).rewrite(raw)
+	return (definitionReferences{names: names, profile: framevalue.ProfileSchema()}).rewrite(raw)
 }
 
 type definitionName struct {
@@ -152,7 +153,7 @@ func readableDefinitionNames(definitions map[string]jsontext.Value) map[string]s
 // defaults and annotations may contain identical member names and references.
 type definitionReferences struct {
 	names   map[string]string
-	profile portable.SchemaProfile
+	profile framevalue.SchemaProfile
 }
 
 func (r definitionReferences) rewrite(raw jsontext.Value) (jsontext.Value, error) {
@@ -163,12 +164,12 @@ func (r definitionReferences) rewrite(raw jsontext.Value) (jsontext.Value, error
 	if err := json.Unmarshal(raw, &schema); err != nil {
 		return nil, err
 	}
-	if reference := schema[portable.KeywordRef]; len(reference) != 0 {
+	if reference := schema[framevalue.KeywordRef]; len(reference) != 0 {
 		projected, err := r.reference(reference)
 		if err != nil {
 			return nil, err
 		}
-		schema[portable.KeywordRef] = projected
+		schema[framevalue.KeywordRef] = projected
 	}
 	for key, child := range schema {
 		projected, err := r.children(child, r.profile.Keywords[key].Children)
@@ -198,7 +199,7 @@ func (r definitionReferences) reference(raw jsontext.Value) (jsontext.Value, err
 		return nil, fmt.Errorf("invalid schema reference %q", reference)
 	}
 	tokens := slices.Collect(pointer.Tokens())
-	if len(tokens) < 2 || tokens[0] != portable.KeywordDefs {
+	if len(tokens) < 2 || tokens[0] != framevalue.KeywordDefs {
 		return raw, nil
 	}
 	name, found := r.names[tokens[1]]
@@ -214,11 +215,11 @@ func (r definitionReferences) reference(raw jsontext.Value) (jsontext.Value, err
 	return json.Marshal(projected.String())
 }
 
-func (r definitionReferences) children(raw jsontext.Value, kind portable.SchemaChildren) (jsontext.Value, error) {
+func (r definitionReferences) children(raw jsontext.Value, kind framevalue.SchemaChildren) (jsontext.Value, error) {
 	switch kind {
-	case portable.SchemaChild:
+	case framevalue.SchemaChild:
 		return r.rewrite(raw)
-	case portable.SchemaMap:
+	case framevalue.SchemaMap:
 		var children map[string]jsontext.Value
 		if err := json.Unmarshal(raw, &children); err != nil {
 			return nil, err
@@ -231,7 +232,7 @@ func (r definitionReferences) children(raw jsontext.Value, kind portable.SchemaC
 			children[name] = projected
 		}
 		return json.Marshal(children, json.Deterministic(true))
-	case portable.SchemaArray:
+	case framevalue.SchemaArray:
 		var children []jsontext.Value
 		if err := json.Unmarshal(raw, &children); err != nil {
 			return nil, err

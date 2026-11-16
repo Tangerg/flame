@@ -10,12 +10,20 @@ const (
 	SandboxOutputEncodingBase64 SandboxOutputEncoding = "base64"
 )
 
+func (SandboxOutputEncoding) JSONSchemaEnum() []string {
+	return []string{string(SandboxOutputEncodingUtf8), string(SandboxOutputEncodingBase64)}
+}
+
 type SandboxResultStatus string
 
 const (
 	SandboxResultStatusCompleted SandboxResultStatus = "completed"
 	SandboxResultStatusTimedOut  SandboxResultStatus = "timed_out"
 )
+
+func (SandboxResultStatus) JSONSchemaEnum() []string {
+	return []string{string(SandboxResultStatusCompleted), string(SandboxResultStatusTimedOut)}
+}
 
 type SandboxExecuteInput struct {
 	Script        string            `json:"script"`

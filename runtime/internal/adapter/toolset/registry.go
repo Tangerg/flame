@@ -99,12 +99,12 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	return directResult(output.Output)
 }
 
-func diagnosticRegistry(tools []toolcontract.Tool, telemetry oteltool.Middleware) (*toolcontract.Registry, error) {
+func diagnosticRegistry(tools []toolcontract.Tool, telemetry oteltool.Middleware) (toolcontract.Registry, error) {
 	bindings := make([]toolcontract.Binding, len(tools))
 	for index, executable := range tools {
 		binding, err := toolcontract.Bind(executable, telemetry.Call)
 		if err != nil {
-			return nil, err
+			return toolcontract.Registry{}, err
 		}
 		bindings[index] = binding
 	}

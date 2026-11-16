@@ -10,12 +10,20 @@ const (
 	UsageReportsCaptureInputPeriodWeekly UsageReportsCaptureInputPeriod = "weekly"
 )
 
+func (UsageReportsCaptureInputPeriod) JSONSchemaEnum() []string {
+	return []string{string(UsageReportsCaptureInputPeriodDaily), string(UsageReportsCaptureInputPeriodWeekly)}
+}
+
 type UsageReportsCaptureV1OutputRpcHeaderPeriod string
 
 const (
 	UsageReportsCaptureV1OutputRpcHeaderPeriodDaily  UsageReportsCaptureV1OutputRpcHeaderPeriod = "daily"
 	UsageReportsCaptureV1OutputRpcHeaderPeriodWeekly UsageReportsCaptureV1OutputRpcHeaderPeriod = "weekly"
 )
+
+func (UsageReportsCaptureV1OutputRpcHeaderPeriod) JSONSchemaEnum() []string {
+	return []string{string(UsageReportsCaptureV1OutputRpcHeaderPeriodDaily), string(UsageReportsCaptureV1OutputRpcHeaderPeriodWeekly)}
+}
 
 type UsageReportsListV2OutputRpcHeaderPeriod string
 
@@ -24,12 +32,20 @@ const (
 	UsageReportsListV2OutputRpcHeaderPeriodWeekly UsageReportsListV2OutputRpcHeaderPeriod = "weekly"
 )
 
+func (UsageReportsListV2OutputRpcHeaderPeriod) JSONSchemaEnum() []string {
+	return []string{string(UsageReportsListV2OutputRpcHeaderPeriodDaily), string(UsageReportsListV2OutputRpcHeaderPeriodWeekly)}
+}
+
 type UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod string
 
 const (
 	UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodDaily  UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod = "daily"
 	UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodWeekly UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod = "weekly"
 )
+
+func (UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod) JSONSchemaEnum() []string {
+	return []string{string(UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodDaily), string(UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodWeekly)}
+}
 
 type UsageReportsCaptureInput struct {
 	Period UsageReportsCaptureInputPeriod `json:"period"`

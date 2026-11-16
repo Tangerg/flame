@@ -8,11 +8,9 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -23,9 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	corecontent "github.com/Tangerg/scope/core/content"
@@ -220,7 +217,7 @@ func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invoc
 	}
 	server, _, _ := proof.Tool.MCP()
 	installation, _ := server.Origin().Installation()
-	calling, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
+	calling, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 	if err != nil {
 		return runs.ToolCallPrepared{}, err
 	}
@@ -429,7 +426,7 @@ func (o *observedInteractionTool) prepare(
 		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
 			return tool.Arguments{}, false, "", nil, plugin.ErrStale
 		}
-		invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeCall, Reference: callID})
+		invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeCall, Reference: callID})
 		if err != nil {
 			return tool.Arguments{}, false, "", nil, err
 		}

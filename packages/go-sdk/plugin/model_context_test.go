@@ -5,8 +5,8 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
 )
@@ -20,7 +20,7 @@ func TestModelContextContractAdmitsCapturedUseAndReferenceData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != portable.Query {
+	if contract.Descriptor().Composition != plugincontract.Decoration || method.Descriptor().Kind != frame.Query {
 		t.Fatal("context contribution grants execution")
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))

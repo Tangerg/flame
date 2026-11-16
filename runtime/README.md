@@ -1,5 +1,13 @@
 # Flame Runtime
 
+Frame v0.3.0 requires matching Host, runner, backend SDK and rebuilt plugin bytes.
+The SQLite authority and runner journal use new private formats. Finish accepted
+work with its original executable and preserve the old data directory; start the
+upgraded application with a fresh development directory. There is no automatic
+state migration or old-protocol adapter. Host restoration reads its original
+Authority under maintenance admission, while Flame supplies exact retained
+plugin definitions and restores its own business bindings.
+
 Delivery selects an operation problem's registered kind explicitly. Diagnostic
 causes cannot reclassify an output defect as a caller error; cancellation stays
 observable beside the original public failure for in-process callers.
@@ -68,7 +76,7 @@ Session, Goal or physical-model invocation for detached title generation.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
-Scope v0.61.0 owns complete Tool failure classification. Runtime uses
+Scope v0.62.0 owns complete Tool failure classification. Runtime uses
 `tool.ClassifyFailure` for dispatch and original-result recovery: independent
 joined errors cannot establish a definite result. A plugin's classified Failure
 retains its diagnostic cause inside that outcome instead of joining it as a
@@ -162,7 +170,7 @@ Replace the complete distribution only while quiescent. Desktop attaches to a
 Runtime and does not host backends; it does not ship an unused interpreter.
 Core `2026-10-24.1` projects managed server declarations explicitly. Rebuild its
 Go/TypeScript/CLI/Desktop consumers together. Backend protocol identity remains
-owned by the compiled `portable.Protocol` in `frame/portable`. Usage Reports has a new private SQLite owner and
+owned by the compiled `frame.CapabilityProtocol` in `frame`. Usage Reports has a new private SQLite owner and
 requires fresh installation data; retain the former installation/data separately.
 
 Run accounting facts report every physically dispatched model call, including
@@ -381,7 +389,7 @@ migration. Use a fresh data directory when upgrading.
   [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
   manifest, OpenRPC and schema are projections of the operation catalog.
 - [Frame](https://github.com/Tangerg/frame) owns the Host, process driver and runner,
-  Browser executions, Uses, lifetimes and release storage. `frame/portable` owns
+  Browser executions, Uses, lifetimes and release storage. `frame` owns
   neutral method/schema identity. Flame's `plugin/contract` owns product capability
   and value-point composition; `plugin/mcp` owns the MCP business binding and its
   generated Go/TypeScript wire vocabulary.
@@ -560,7 +568,7 @@ release must contain Frame's `manifest.json`, `plugin.lock.json` and exactly its
 listed artifacts. The neutral manifest supplies the sole immutable release
 identity. `plugin.json` remains Flame product metadata using Agent Plugins 1.0.
 Its `io.github.tangerg.flame` namespace names one local declaration document with
-`plugin.DeclarationProtocol`, independently of `portable.Protocol` used by
+`plugin.DeclarationProtocol`, independently of `frame.CapabilityProtocol` used by
 callable contracts. Raw legacy source trees without the neutral release files
 are refused.
 
@@ -759,9 +767,9 @@ refused. This change does not convert storage or pending command identities.
 The Reviews analyzer example interprets a value as a same-release callable
 contribution and invokes it through its declared optional capability dependency.
 
-The same `frame/portable` owner admits callable metadata, schemas and canonical
+The same `frame` owner admits callable metadata, schemas and canonical
 identity without importing MCP or Runtime internals. `packages/go-sdk/plugin/mcp`, Flame's product
-contracts and `frame/portable/contractgen` consume those admitted values. Installation domain
+contracts and `frame/contractgen` consume those admitted values. Installation domain
 code can validate a contract without activating a backend. Flame's `extension`
 package retains only its product origin and scope vocabulary.
 The Frame integration requires rebuilt contracts and a fresh host database.
@@ -1160,7 +1168,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 
 - Runtime is a product backend. Scope owns Process, program, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`Frame MCP`](https://github.com/Tangerg/frame/blob/v0.2.0/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `frame/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
+- [`Frame MCP`](https://github.com/Tangerg/frame/blob/v0.3.0/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `frame` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1863,7 +1871,7 @@ only inside that owner's transaction scope; independent reads use `Database.Read
 `RunReadSnapshot`. Nested work for one database joins its transaction; an independent
 transaction for that same active database is refused before connection acquisition.
 Separate owners do not become a distributed transaction.
-See [SQLite ownership](https://github.com/Tangerg/frame/blob/v0.2.0/sqlite/README.md) and
+See [SQLite ownership](https://github.com/Tangerg/frame/blob/v0.3.0/sqlite/README.md) and
 [private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
@@ -2266,7 +2274,7 @@ compaction's mutable candidate or the transcript. Compaction budgets count it. R
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
-Scope v0.61.0 retains advertised tools and rebuilds their ordinary function definitions
+Scope v0.62.0 retains advertised tools and rebuilds their ordinary function definitions
 in canonical name order. Loading another tool can therefore change the tools prefix;
 Flame does not claim native provider tool-search or append-only wire ordering. That
 framework capability must be implemented and released by Scope rather than shadowed

@@ -7,22 +7,21 @@ import (
 	"sync/atomic"
 	"testing"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 type observedRunHost struct {
 	seen    chan schedule.RunRequest
 	noticed chan struct{}
 
-	db        *framesqlite.Database
+	db        framesqlite.Database
 	namespace string
 	calls     atomic.Int32
 	lost      atomic.Bool

@@ -10,7 +10,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/frame/portable"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -49,7 +49,7 @@ func TestModelStreamSettlesBeforePublishingItsTerminalFailure(t *testing.T) {
 	}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{
 		ID: "terminal-stream", Origin: extension.Model, Parent: "original-operation",
-		Target: portable.Target{Scope: extension.ScopeCall, Reference: "terminal-stream"},
+		Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "terminal-stream"},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -15,8 +15,6 @@ import (
 	"time"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -26,6 +24,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -223,13 +222,13 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	if err := json.Unmarshal(contract.Bytes(), &document); err != nil {
 		t.Fatalf("original contract not captured: %v", err)
 	}
-	var add portable.MethodDescriptor
+	var add frame.MethodDescriptor
 	for _, method := range document.Methods {
 		if method.Name == "flame.memory/add.v2" {
 			add = method
 		}
 	}
-	if add.Kind != portable.Command || len(add.Input) == 0 || len(add.Output) == 0 {
+	if add.Kind != frame.Command || len(add.Input) == 0 || len(add.Output) == 0 {
 		t.Fatalf("original contract did not capture flame.memory/add.v2: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)

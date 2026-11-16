@@ -1,13 +1,11 @@
 import {
-  definePlugin as defineContractPlugin,
   type AnyPlugin,
-  type Awaitable,
+  type Plugin,
   type PluginContext as ContractContext,
-  type ProvidedServices,
   type Provisions,
   type Requirements,
 } from "dougong";
-import { normalizePlainRecord } from "dougong/advanced";
+import { capturePluginDeclaration, normalizePlainRecord } from "dougong/advanced";
 import { ContributionScope } from "@/extensions/contributionScope";
 import { type AmbientShell } from "@/extensions/context";
 import { startTask, type TaskStartOptions } from "@/extensions/tasksStore";
@@ -23,19 +21,14 @@ export type PluginContext<Requires extends Requirements = Requirements> = Omit<
     readonly contributions: ContributionScope;
   };
 
-export interface PluginSpec<
-  Requires extends Requirements = Requirements,
-  Provides extends Provisions = Provisions,
-> {
-  readonly name: string;
-  readonly requires?: Requires;
-  readonly provides?: Provides;
+export type PluginSpec<Requires extends Requirements = {}, Provides extends Provisions = {}> = Pick<
+  Plugin<void, Requires, Provides>,
+  "name" | "requires" | "provides"
+> & {
   readonly setup: (
-    ctx: PluginContext<Requires>,
-  ) => Awaitable<
-    keyof NoInfer<Provides> extends never ? void : ProvidedServices<NoInfer<Provides>>
-  >;
-}
+    ctx: PluginContext<NoInfer<Requires>>,
+  ) => ReturnType<Plugin<void, Requires, NoInfer<Provides>>["setup"]>;
+};
 
 const specFields: ReadonlySet<string> = new Set(["name", "requires", "provides", "setup"]);
 
@@ -48,11 +41,11 @@ export function definePlugin<Requires extends Requirements = {}, Provides extend
     { fields: specFields },
   );
   if (typeof setup !== "function") throw new TypeError("plugin setup must be a function");
-  return defineContractPlugin<void, Requires, Provides>({
+  return capturePluginDeclaration({
     name,
     ...(requires === undefined ? {} : { requires }),
     ...(provides === undefined ? {} : { provides }),
-    setup: (ctx) =>
+    setup: (ctx: ContractContext<Requires>) =>
       setup({
         ...ctx,
         contributions: new ContributionScope(
@@ -62,7 +55,7 @@ export function definePlugin<Requires extends Requirements = {}, Provides extend
         ),
         storage: createStorage(ctx.metadata.pluginName),
         startTask: (options: TaskStartOptions) => startTask(ctx.metadata.pluginName, options),
-      }) as never,
+      }),
   });
 }
 

@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -29,7 +27,7 @@ type ToolResult struct {
 }
 
 func ToolReceiptQuery() (*pluginmcp.Method[pluginmcp.ReceiptRequest, ToolReceipt], error) {
-	return pluginmcp.NewMethod[pluginmcp.ReceiptRequest, ToolReceipt](portable.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
+	return pluginmcp.NewMethod[pluginmcp.ReceiptRequest, ToolReceipt](frame.MethodConfig{Name: ToolReceiptMethod, Kind: frame.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
 }
 
 func NewToolReceipt(output tool.Output, failed bool) (ToolReceipt, error) {

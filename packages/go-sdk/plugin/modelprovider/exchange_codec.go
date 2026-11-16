@@ -3,10 +3,10 @@ package modelprovider
 import (
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
 	"github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 )
 
 type chatRequestProjection struct {

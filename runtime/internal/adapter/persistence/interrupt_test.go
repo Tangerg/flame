@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 // seededInterruptStore opens each hand-off after writing the Runs it names.
 type seededInterruptStore struct {
 	*InterruptStore
-	db *framesqlite.Database
+	db framesqlite.Database
 	t  *testing.T
 }
 

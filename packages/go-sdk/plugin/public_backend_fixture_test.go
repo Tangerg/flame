@@ -3,9 +3,9 @@ package plugin
 import (
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -55,9 +55,9 @@ func testBackend(t *testing.T, server *sdk.Server) *pluginmcp.Backend {
 	return backend
 }
 
-func testMethod[P, R any](t *testing.T, name string, kind portable.MethodKind) *pluginmcp.Method[P, R] {
+func testMethod[P, R any](t *testing.T, name string, kind frame.MethodKind) *pluginmcp.Method[P, R] {
 	t.Helper()
-	method, err := pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
+	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
 	if err != nil {
 		t.Fatal(err)
 	}

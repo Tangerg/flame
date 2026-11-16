@@ -12,13 +12,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestReceiptHistoryRuntimeFixture(t *testing.T) {

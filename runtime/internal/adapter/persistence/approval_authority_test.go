@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-func openStore(t *testing.T) *framesqlite.Database {
+func openStore(t *testing.T) framesqlite.Database {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -190,7 +190,7 @@ func TestMCPSourceSchemaRejectsMixedOrigins(t *testing.T) {
 	}
 }
 
-func requireRows(t *testing.T, db *framesqlite.Database, want map[string]int) {
+func requireRows(t *testing.T, db framesqlite.Database, want map[string]int) {
 	t.Helper()
 	for table, count := range want {
 		var got int

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/frame/value"
 )
 
@@ -35,28 +35,28 @@ type CapabilityConfig struct {
 }
 
 type CapabilityDescriptor struct {
-	Protocol    string                      `json:"protocol"`
-	Reference   string                      `json:"reference"`
-	Composition Composition                 `json:"composition"`
-	Scope       string                      `json:"scope"`
-	Methods     []portable.MethodDescriptor `json:"methods"`
+	Protocol    string                   `json:"protocol"`
+	Reference   string                   `json:"reference"`
+	Composition Composition              `json:"composition"`
+	Scope       string                   `json:"scope"`
+	Methods     []frame.MethodDescriptor `json:"methods"`
 }
 
 // Frame owns callable service identity. Flame's scope and selection policy are
 // product metadata and cannot change that service's schema or implementation.
 type Capability struct {
-	service     *portable.Capability
+	service     *frame.Capability
 	composition Composition
 	scope       string
 	identity    value.JSON
 }
 
-func NewCapability(config CapabilityConfig, methods ...portable.MethodDescriptor) (*Capability, error) {
+func NewCapability(config CapabilityConfig, methods ...frame.MethodDescriptor) (*Capability, error) {
 	return AdmitCapability(CapabilityDescriptor{Protocol: Protocol, Reference: config.Reference, Composition: config.Composition, Scope: config.Scope, Methods: methods})
 }
 
 func ParseCapability(data []byte) (*Capability, error) {
-	if err := portable.CheckDescriptor(data); err != nil {
+	if err := value.CheckDescriptor(data); err != nil {
 		return nil, err
 	}
 	var descriptor CapabilityDescriptor
@@ -67,18 +67,18 @@ func ParseCapability(data []byte) (*Capability, error) {
 }
 
 func AdmitCapability(descriptor CapabilityDescriptor) (*Capability, error) {
-	if descriptor.Protocol != Protocol || !portable.ValidToken(descriptor.Scope) {
+	if descriptor.Protocol != Protocol || !frame.ValidName(descriptor.Scope) {
 		return nil, errors.New("plugin contract: current protocol and target scope are required")
 	}
 	if err := descriptor.Composition.Validate(); err != nil {
 		return nil, err
 	}
 	for _, method := range descriptor.Methods {
-		if !portable.ValidToken(method.Target) {
+		if !frame.ValidName(method.Target) {
 			return nil, errors.New("plugin contract: each method requires a concrete target scope")
 		}
 	}
-	service, err := portable.NewCapability(descriptor.Reference, descriptor.Methods...)
+	service, err := frame.NewCapability(descriptor.Reference, descriptor.Methods...)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func AdmitCapability(descriptor CapabilityDescriptor) (*Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := portable.CheckDescriptor(capability.identity.Bytes()); err != nil {
+	if err := value.CheckDescriptor(capability.identity.Bytes()); err != nil {
 		return nil, err
 	}
 	return capability, nil
@@ -103,21 +103,21 @@ func (c *Capability) Descriptor() CapabilityDescriptor {
 }
 
 func (c *Capability) Identity() value.JSON { return c.identity }
-func (c *Capability) Service() *portable.Capability {
+func (c *Capability) Service() *frame.Capability {
 	if c.service == nil {
 		return nil
 	}
 	return new(*c.service)
 }
 
-func (c *Capability) Method(name string) (*portable.Method, bool) {
+func (c *Capability) Method(name string) (*frame.Method, bool) {
 	if c == nil || c.service == nil {
 		return nil, false
 	}
 	return c.service.Method(name)
 }
 
-func MethodKindFor(encoded []byte, name string) (portable.MethodKind, error) {
+func MethodKindFor(encoded []byte, name string) (frame.MethodKind, error) {
 	capability, err := ParseCapability(encoded)
 	if err != nil {
 		return "", err

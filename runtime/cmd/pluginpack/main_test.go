@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/frame/distribution"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func authorSource(t *testing.T) string {

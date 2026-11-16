@@ -10,12 +10,20 @@ const (
 	OutputEncodingBase64 OutputEncoding = "base64"
 )
 
+func (OutputEncoding) JSONSchemaEnum() []string {
+	return []string{string(OutputEncodingUtf8), string(OutputEncodingBase64)}
+}
+
 type ResultStatus string
 
 const (
 	ResultStatusCompleted ResultStatus = "completed"
 	ResultStatusTimedOut  ResultStatus = "timed_out"
 )
+
+func (ResultStatus) JSONSchemaEnum() []string {
+	return []string{string(ResultStatusCompleted), string(ResultStatusTimedOut)}
+}
 
 type ExecuteInput struct {
 	Script        string            `json:"script"`

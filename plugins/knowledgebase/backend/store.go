@@ -8,10 +8,11 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+
 	"github.com/Tangerg/frame/sqlite"
 )
 
-type store struct{ db *sqlite.Database }
+type store struct{ db sqlite.Database }
 
 var errStoredDocument = errors.New("knowledge base: invalid stored document")
 

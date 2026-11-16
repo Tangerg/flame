@@ -3,20 +3,19 @@ package goal
 import (
 	"errors"
 	"fmt"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func goalTestCost(t *testing.T, usd float64) accounting.Cost {

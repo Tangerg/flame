@@ -4,18 +4,18 @@ import (
 	"errors"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
 )
 
 func TestUnaryInstalledAdmissionRefusesStreamBeforeAccessingRouteOwners(t *testing.T) {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, string, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream installed records."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, string, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream installed records."})
 	if err != nil {
 		t.Fatal(err)
 	}

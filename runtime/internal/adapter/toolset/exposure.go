@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
@@ -13,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
+	framevalue "github.com/Tangerg/frame/value"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )

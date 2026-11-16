@@ -9,20 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
@@ -82,7 +79,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := framemcp.Invocation{ID: "original-manual", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	invocation := framemcp.Invocation{ID: "original-manual", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "captured-installation"}}
 	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		t.Fatal(err)

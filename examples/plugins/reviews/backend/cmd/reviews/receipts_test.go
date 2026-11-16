@@ -6,14 +6,12 @@ import (
 	"reflect"
 	"testing"
 
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testing.T) {

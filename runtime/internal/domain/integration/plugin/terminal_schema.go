@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/frame/portable"
+
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -75,7 +76,7 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 	}
 	current := n
 	for _, segment := range segments {
-		if !current.acceptsType(portable.TypeObject) {
+		if !current.acceptsType(framevalue.TypeObject) {
 			return schemaNode{}, false
 		}
 		var ok bool
@@ -88,7 +89,7 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 }
 
 func (n schemaNode) items() (schemaNode, bool) {
-	if !n.isType(portable.TypeArray) {
+	if !n.isType(framevalue.TypeArray) {
 		return schemaNode{}, false
 	}
 	var items []*jsonschema.Schema
@@ -103,7 +104,7 @@ func (n schemaNode) items() (schemaNode, bool) {
 	return conjoinedSchema(items...), true
 }
 
-func (n schemaNode) acceptsType(kind portable.SchemaType) bool {
+func (n schemaNode) acceptsType(kind framevalue.SchemaType) bool {
 	for _, part := range n.parts {
 		if part.Bool != nil && !*part.Bool {
 			return false
@@ -115,7 +116,7 @@ func (n schemaNode) acceptsType(kind portable.SchemaType) bool {
 		if slices.Contains(allowed, string(kind)) {
 			continue
 		}
-		if kind == portable.TypeInteger && slices.Contains(allowed, string(portable.TypeNumber)) {
+		if kind == framevalue.TypeInteger && slices.Contains(allowed, string(framevalue.TypeNumber)) {
 			continue
 		}
 		return false
@@ -123,23 +124,23 @@ func (n schemaNode) acceptsType(kind portable.SchemaType) bool {
 	return true
 }
 
-func (n schemaNode) types() []portable.SchemaType {
-	types := slices.DeleteFunc(portable.ProfileSchema().Types, func(kind portable.SchemaType) bool {
+func (n schemaNode) types() []framevalue.SchemaType {
+	types := slices.DeleteFunc(framevalue.ProfileSchema().Types, func(kind framevalue.SchemaType) bool {
 		return !n.acceptsType(kind)
 	})
-	if slices.Contains(types, portable.TypeNumber) {
-		types = slices.DeleteFunc(types, func(kind portable.SchemaType) bool { return kind == portable.TypeInteger })
+	if slices.Contains(types, framevalue.TypeNumber) {
+		types = slices.DeleteFunc(types, func(kind framevalue.SchemaType) bool { return kind == framevalue.TypeInteger })
 	}
 	return types
 }
 
 // Entered values can choose the non-null alternative; observed values cannot.
-func (n schemaNode) inputTypes() []portable.SchemaType {
-	return slices.DeleteFunc(n.types(), func(kind portable.SchemaType) bool { return kind == portable.TypeNull })
+func (n schemaNode) inputTypes() []framevalue.SchemaType {
+	return slices.DeleteFunc(n.types(), func(kind framevalue.SchemaType) bool { return kind == framevalue.TypeNull })
 }
 
-func (n schemaNode) isType(kind portable.SchemaType) bool {
-	return slices.Equal(n.types(), []portable.SchemaType{kind})
+func (n schemaNode) isType(kind framevalue.SchemaType) bool {
+	return slices.Equal(n.types(), []framevalue.SchemaType{kind})
 }
 
 func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
@@ -153,13 +154,13 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 		return "", nil, false
 	}
 	switch types[0] {
-	case portable.TypeString:
+	case framevalue.TypeString:
 		return extension.TerminalFormText, nil, true
-	case portable.TypeInteger:
+	case framevalue.TypeInteger:
 		return extension.TerminalFormInteger, nil, true
-	case portable.TypeNumber:
+	case framevalue.TypeNumber:
 		return extension.TerminalFormNumber, nil, true
-	case portable.TypeBoolean:
+	case framevalue.TypeBoolean:
 		return extension.TerminalFormBoolean, nil, true
 	default:
 		return "", nil, false

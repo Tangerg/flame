@@ -10,19 +10,19 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Tangerg/frame/portable"
-	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/tool"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/tool"
 )
 
-func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
+func decodeWriteReply[R any](method *frame.Method, reply []byte) (R, error) {
 	var result R
 	raw, err := pluginmcp.DecodeReply[jsontext.Value](reply)
 	if err != nil {
@@ -35,7 +35,7 @@ func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
 	return result, err
 }
 
-func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, admitted framevalue.JSON, call func(context.Context, P) (R, error)) (R, error) {
+func mutate[P, R any](ctx context.Context, c *connector, method *frame.Method, id string, admitted framevalue.JSON, call func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	var input P
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, c.store.db, method.Name(), id, admitted, func(ctx context.Context) error {
@@ -82,7 +82,7 @@ func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method
 type toolReceiptReader func(context.Context, pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error)
 
 func registerWrite[P, R any](backend *pluginmcp.Backend, tools *[]tool.Tool, receipts map[string]toolReceiptReader, c *connector, method *pluginmcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
-	contract, err := portable.AdmitMethod(method.Descriptor())
+	contract, err := frame.AdmitMethod(method.Descriptor())
 	if err != nil {
 		return err
 	}

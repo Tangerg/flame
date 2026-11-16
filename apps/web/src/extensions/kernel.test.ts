@@ -1,5 +1,5 @@
 import { asyncDisposeSymbol } from "dougong";
-import { createHost, type AnyPlugin, type Host } from "dougong";
+import { createResourceAuthority, createHost, type AnyPlugin, type Host } from "dougong";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineExtensionPoint } from "@/extensions/contracts";
 import {
@@ -30,6 +30,7 @@ afterEach(async () => {
 
 function stand(plugins: AnyPlugin[]): Host {
   return createHost({
+    resourceAuthority: createResourceAuthority(),
     name: "test",
     onError: () => {},
     installations: plugins.map((plugin) => ({ id: plugin.name, plugin })),

@@ -7,15 +7,14 @@ import (
 	"fmt"
 	"slices"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type referenceWriteKey struct{}
@@ -28,10 +27,10 @@ type referenceWrite struct {
 // It joins the original product write-set to Frame's one
 // admission and stable storage settlement. Product receipts remain in fn's
 // original tables; the framework receipt identifies only this storage attempt.
-type PluginReferenceTransactor func(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error
+type PluginReferenceTransactor func(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error
 
-func (b *Bundle) commitPluginReferences(ctx context.Context, host *frame.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
-	if host == nil || host.Admission() != b.Admission || identity == "" || fn == nil {
+func (b *Bundle) commitPluginReferences(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
+	if !host.Valid() || host.Admission() != b.Admission || identity == "" || fn == nil {
 		return errors.New("persistence: original host, checkpoint identity and write-set are required")
 	}
 	if err := checkpoint.Validate(); err != nil {
@@ -74,7 +73,7 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host *frame.Host, i
 				}
 				installation, exists := host.Installation(resource.InstallationID.Host())
 				if !exists || !installation.Enabled || installation.Release.String() != resource.Digest.String() {
-					return fmt.Errorf("%w: retained content source changed", frame.ErrStaleBinding)
+					return fmt.Errorf("%w: retained content source changed", framehost.ErrStaleBinding)
 				}
 			}
 			return fn(context.WithValue(txCtx, referenceWriteKey{}, referenceWrite{checkpoint: checkpoint}))
@@ -125,9 +124,9 @@ func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(
 		}
 		return request, nil
 	}, nil)
-	if settlement.State == frame.CommitIndeterminate || !settlement.Synchronized {
+	if settlement.State == framehost.CommitIndeterminate || !settlement.Synchronized {
 		b.Admission.RequireRecovery(errors.Join(sqlite.ErrUnsettled, err))
-		return errors.Join(frame.ErrRecoveryRequired, err)
+		return errors.Join(framehost.ErrRecoveryRequired, err)
 	}
 	return errors.Join(err, b.PluginUses.CompactSettledUnder(ctx))
 }
@@ -144,7 +143,7 @@ func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
 		return err
 	}
 	for _, settlement := range pending {
-		if settlement.State != frame.CommitSucceeded && settlement.State != frame.CommitRejected {
+		if settlement.State != framehost.Committed && settlement.State != framehost.NotCommitted {
 			return sqlite.ErrUnsettled
 		}
 		if err := b.PluginUses.Confirm(ctx, settlement.ID); err != nil {

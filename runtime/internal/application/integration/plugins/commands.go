@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
+// Get returns a caller-owned aggregate; only Save advances durable routing.
+
 type CommandStore interface {
-	// Get returns a caller-owned aggregate; only Save advances durable routing.
 	Get(context.Context, string) (*plugin.Command, bool, error)
 	Save(context.Context, *plugin.Command) error
 }
@@ -25,11 +25,11 @@ type CommandStore interface {
 // replacement. All network I/O happens after this boundary has been released.
 type Commands struct {
 	store     CommandStore
-	admission *frame.Admission
+	admission framehost.Admission
 }
 
-func NewCommands(store CommandStore, admission *frame.Admission) (*Commands, error) {
-	if lo.IsNil(store) || admission == nil {
+func NewCommands(store CommandStore, admission framehost.Admission) (*Commands, error) {
+	if lo.IsNil(store) || !admission.Valid() {
 		return nil, errors.New("plugins: command store and admission are required")
 	}
 	return &Commands{store: store, admission: admission}, nil

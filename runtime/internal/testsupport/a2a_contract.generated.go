@@ -8,6 +8,10 @@ const (
 	A2ACancelV1OutputWireResultKindMessage A2ACancelV1OutputWireResultKind = "message"
 )
 
+func (A2ACancelV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(A2ACancelV1OutputWireResultKindTask), string(A2ACancelV1OutputWireResultKindMessage)}
+}
+
 type A2ASendV1OutputWireResultKind string
 
 const (
@@ -15,12 +19,20 @@ const (
 	A2ASendV1OutputWireResultKindMessage A2ASendV1OutputWireResultKind = "message"
 )
 
+func (A2ASendV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(A2ASendV1OutputWireResultKindTask), string(A2ASendV1OutputWireResultKindMessage)}
+}
+
 type A2AStatusV1OutputWireResultKind string
 
 const (
 	A2AStatusV1OutputWireResultKindTask    A2AStatusV1OutputWireResultKind = "task"
 	A2AStatusV1OutputWireResultKindMessage A2AStatusV1OutputWireResultKind = "message"
 )
+
+func (A2AStatusV1OutputWireResultKind) JSONSchemaEnum() []string {
+	return []string{string(A2AStatusV1OutputWireResultKindTask), string(A2AStatusV1OutputWireResultKindMessage)}
+}
 
 type A2AAgent struct {
 	Description string `json:"description"`

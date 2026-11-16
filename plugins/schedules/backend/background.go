@@ -8,11 +8,6 @@ import (
 	"sync"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -20,6 +15,8 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -32,15 +29,15 @@ type background struct {
 	cancel          context.CancelFunc
 	done            chan struct{}
 	started, closed bool
-	db              *framesqlite.Database
+	db              framesqlite.Database
 	store           store
 	scanner         *app.Scanner
 	host            runHost
-	target          portable.Target
+	target          framemcp.Target
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, db *framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target portable.Target, closeHost func() error) *background {
+func newBackground(ctx context.Context, db framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target framemcp.Target, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{contribution: contribution, closeDone: make(chan struct{}), ctx: lifetime, cancel: cancel, done: make(chan struct{}), db: db, store: store, scanner: scanner, host: host, target: target, closeHost: closeHost}
 }
@@ -139,7 +136,7 @@ func (b *background) report(stage string, err error) {
 	}
 }
 
-func resumeCaptured(ctx context.Context, db *framesqlite.Database, store store, host runHost, request schedule.RunRequest) (app.RunReference, error) {
+func resumeCaptured(ctx context.Context, db framesqlite.Database, store store, host runHost, request schedule.RunRequest) (app.RunReference, error) {
 	if err := request.Validate(); err != nil {
 		return app.RunReference{}, err
 	}

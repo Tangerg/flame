@@ -1,10 +1,20 @@
-import { createHost, type AnyPlugin, type Host } from "dougong";
+import {
+  DougongError,
+  isCancellationReason,
+  createResourceAuthority,
+  createHost,
+  type AnyPlugin,
+  type Host,
+} from "dougong";
 import { reportPluginError } from "@/extensions/errors";
 import { kernelLogger } from "@/extensions/hostLog";
 import { contributionsTo, publishKernel, retractKernel } from "@/extensions/kernel";
 import { READY_HANDLER } from "@/extensions/lifecycle";
+const resourceAuthority = createResourceAuthority();
+
 export function createKernel(plugins: ReadonlyArray<AnyPlugin>): Host {
   const host = createHost({
+    resourceAuthority,
     name: "flame",
     logger: kernelLogger,
     onError: (error) => reportPluginError("kernel", "setup", error),
@@ -20,7 +30,7 @@ export async function startKernel(
   const host = createKernel(plugins);
   try {
     signal?.throwIfAborted();
-    await host.start();
+    await host.start(signal);
     signal?.throwIfAborted();
     publishKernel(host);
     fireReadyHandlers();
@@ -30,6 +40,14 @@ export async function startKernel(
       await host.stop();
     } catch (stopError) {
       throw new AggregateError([error, stopError], "Kernel startup and rollback both failed");
+    }
+    if (
+      signal &&
+      error instanceof DougongError &&
+      error.details.outcome === "restored" &&
+      isCancellationReason(signal, error.cause)
+    ) {
+      throw signal.reason;
     }
     throw error;
   }

@@ -12,23 +12,22 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	hookmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider/mcp"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/frame"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type streamFixture struct {
@@ -130,11 +129,11 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}
-	kind := portable.Command
+	kind := frame.Command
 	if mode == "query" {
-		kind = portable.Query
+		kind = frame.Query
 	}
-	method, err := pluginmcp.NewStreamingMethod[streamInput, string, bool](portable.MethodConfig{Name: "records.stream", Kind: kind, Target: extension.ScopeInstallation, Description: "Stream owned records."})
+	method, err := pluginmcp.NewStreamingMethod[streamInput, string, bool](frame.MethodConfig{Name: "records.stream", Kind: kind, Target: extension.ScopeInstallation, Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +248,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}}
+	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}}
 	return f
 }
 
@@ -394,7 +393,7 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if call.Kind() != portable.Query {
+	if call.Kind() != frame.Query {
 		t.Fatal("query stream became a command")
 	}
 	for range 2 {
@@ -431,7 +430,7 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared := call.(*installedStream)
-	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) portable.Target { return f.request.Target }, true)
+	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) framemcp.Target { return f.request.Target }, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +447,7 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 	admit := func(record plugin.CommandBinding) error {
 		return f.host.Admission.Admit(ctx, func(ctx context.Context) error { return f.calls.admitDispatch(ctx, record) })
 	}
-	if err := admit(changed); !errors.Is(err, frame.ErrStaleBinding) {
+	if err := admit(changed); !errors.Is(err, framehost.ErrStaleBinding) {
 		t.Fatalf("same-release graph change admitted: %v", err)
 	}
 	if err := admit(record); err != nil {

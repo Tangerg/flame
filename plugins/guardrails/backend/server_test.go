@@ -9,21 +9,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -72,7 +67,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "edit-policy", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "guardrails"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "edit-policy", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "guardrails"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +98,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err = pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "inspect-input", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "inspect-input"}})
+			ctx, err = pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "inspect-input", Origin: extension.Model, Target: framemcp.Target{Scope: "call", Reference: "inspect-input"}})
 			if err != nil {
 				t.Fatal(err)
 			}

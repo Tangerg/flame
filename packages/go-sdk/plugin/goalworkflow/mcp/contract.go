@@ -5,11 +5,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 func DecideMethod() (*pluginmcp.Method[goalworkflow.Request, goalworkflow.Decision], error) {
-	return pluginmcp.NewMethod[goalworkflow.Request, goalworkflow.Decision](portable.MethodConfig{Name: "flame.goal-workflow/decide.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Decide a lifecycle transition for the captured objective or retain its current state."})
+	return pluginmcp.NewMethod[goalworkflow.Request, goalworkflow.Decision](frame.MethodConfig{Name: "flame.goal-workflow/decide.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Decide a lifecycle transition for the captured objective or retain its current state."})
 }
 func Contract() (*plugincontract.Capability, error) {
 	m, err := DecideMethod()

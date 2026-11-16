@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func BenchmarkInstalledPointResolution(b *testing.B) {
@@ -51,7 +51,7 @@ func BenchmarkInstalledPointResolution(b *testing.B) {
 					store.snapshots = append(store.snapshots, producer)
 					order[i] = PointReference{Installation: producer.Installation.ID(), Contribution: "source"}
 				}
-				context := plugincontract.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+				context := plugincontract.PointContext{Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
 				host := testFramework(b, store)
 				b.ReportAllocs()
 				for b.Loop() {

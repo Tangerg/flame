@@ -1,14 +1,14 @@
 module github.com/Tangerg/flame/packages/go-sdk
 
-go 1.27.3
+go 1.27.4
 
 require (
-	github.com/Tangerg/frame v0.2.0
+	github.com/Tangerg/frame v0.3.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
-	github.com/Tangerg/scope/core v0.61.0
-	github.com/Tangerg/scope/mcp v0.61.0
-	github.com/Tangerg/scope/models/catalog v0.61.0
-	github.com/Tangerg/scope/tools v0.61.0
+	github.com/Tangerg/scope/core v0.62.0
+	github.com/Tangerg/scope/mcp v0.62.0
+	github.com/Tangerg/scope/models/catalog v0.62.0
+	github.com/Tangerg/scope/tools v0.62.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/google/uuid v1.6.0
 	github.com/samber/lo v1.53.0
@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/scope/otel v0.61.0 // indirect
+	github.com/Tangerg/scope/otel v0.62.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

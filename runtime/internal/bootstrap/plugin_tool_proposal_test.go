@@ -15,14 +15,13 @@ import (
 	"testing"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -233,7 +232,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if !found || transformations.Load() != 1 {
 				t.Fatalf("proposal missing or replayed across approval/restart: found=%v transformations=%d", found, transformations.Load())
 			}
-			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
+			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
 			var current struct {
 				Reviews []struct {
 					Revision int64  `json:"revision"`

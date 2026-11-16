@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"slices"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ContributionBinding captures one concrete implementation of a consumer contract.
 // Installation availability and composition choice remain with their own owners.
+
 type ContributionBinding struct {
 	InstallationID identity.InstallationID
 	ContributionID plugin.ContributionID
@@ -37,7 +37,7 @@ func (b ContributionBinding) SameContribution(other ContributionBinding) bool {
 	return b == other
 }
 
-func SelectedContribution(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, required *plugincontract.Capability) (ContributionBinding, bool, error) {
+func SelectedContribution(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, required *plugincontract.Capability) (ContributionBinding, bool, error) {
 	if required == nil {
 		return ContributionBinding{}, false, plugin.ErrInvalid
 	}
@@ -53,8 +53,8 @@ const (
 	SelectionActive
 )
 
-func SelectedContributionForRole(ctx context.Context, host *frame.Host, store Store, selections SelectionStore, required *plugincontract.Capability, role string) (ContributionBinding, SelectionState, error) {
-	if host == nil || required == nil || required.Descriptor().Composition != plugincontract.Selection {
+func SelectedContributionForRole(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, required *plugincontract.Capability, role string) (ContributionBinding, SelectionState, error) {
+	if !host.Valid() || required == nil || required.Descriptor().Composition != plugincontract.Selection {
 		return ContributionBinding{}, SelectionAbsent, plugin.ErrInvalid
 	}
 	choice, found, err := selections.Get(ctx, role)
@@ -68,7 +68,7 @@ func SelectedContributionForRole(ctx context.Context, host *frame.Host, store St
 	return binding, SelectionActive, err
 }
 
-func CapturedContribution(ctx context.Context, host *frame.Host, store Store, required *plugincontract.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {
+func CapturedContribution(ctx context.Context, host framehost.Host, store Store, required *plugincontract.Capability, source extension.ContributionSource) (ContributionBinding, bool, error) {
 	if err := source.Validate(); err != nil {
 		return ContributionBinding{}, false, err
 	}
@@ -88,7 +88,7 @@ func (b ContributionBinding) ContributionSource() extension.ContributionSource {
 	return extension.ContributionSource{InstallationID: b.InstallationID.String(), Release: b.Digest.String(), Contribution: b.ContributionID.String()}
 }
 
-func resolveContribution(ctx context.Context, host *frame.Host, store Store, required *plugincontract.Capability, record plugin.SelectionRecord, release framevalue.Digest) (ContributionBinding, bool, error) {
+func resolveContribution(ctx context.Context, host framehost.Host, store Store, required *plugincontract.Capability, record plugin.SelectionRecord, release framevalue.Digest) (ContributionBinding, bool, error) {
 	snapshot, found, err := store.Get(ctx, record.Installation)
 	if err != nil || !found {
 		return ContributionBinding{}, false, err

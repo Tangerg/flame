@@ -10,14 +10,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -74,7 +71,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			}
 			ctx := t.Context()
 			if owning {
-				ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: portable.Target{Scope: "call", Reference: "original-owner"}})
+				ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: framemcp.Target{Scope: "call", Reference: "original-owner"}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -95,7 +92,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				return
 			}
 			actual := <-recorded
-			want := framemcp.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: portable.Target{Scope: "call", Reference: "fresh-model-call"}}
+			want := framemcp.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: framemcp.Target{Scope: "call", Reference: "fresh-model-call"}}
 			if err != nil || response == nil || !reflect.DeepEqual(actual, want) {
 				t.Fatalf("original owner changed: %+v %+v %v", actual, response, err)
 			}
@@ -123,7 +120,7 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	original := framemcp.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: portable.Target{Scope: "call", Reference: "retained-operation"}}
+	original := framemcp.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: framemcp.Target{Scope: "call", Reference: "retained-operation"}}
 	records := make(chan framemcp.Invocation, 2)
 	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ pluginmcp.Command[ModelCallRequest]) (*chat.Response, error) {
 		inv, _ := pluginmcp.InvocationFromContext(ctx)

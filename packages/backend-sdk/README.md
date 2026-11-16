@@ -98,7 +98,7 @@ In the Flame declaration, a managed Node backend names the packaged entry:
 The package builder maps the entry to author source and bundles the complete
 module graph. Installation does not run npm or a compiler. The Runtime selects
 its managed Node executable and leases the release. Portable packages need no
-OS suffix. See the [Frame SDK](https://github.com/Tangerg/frame/tree/v0.2.0/sdk)
+OS suffix. See the [Frame SDK](https://github.com/Tangerg/frame/tree/v0.3.0/sdk)
 for portable admission and lifetime rules and [Usage Reports](../../plugins/usagereports/README.md)
 for a Flame consumer with durable business receipts.
 

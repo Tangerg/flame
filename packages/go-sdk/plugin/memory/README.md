@@ -12,7 +12,7 @@ The workspace coordinator runs this before generating backend package resources.
 Generated files are projections, never independently edited definitions.
 
 Implementations parse `CapabilityJSON` through `portable.ParseCapability` from
-`github.com/Tangerg/frame/portable` and bind their own codecs with
+`github.com/Tangerg/frame` and bind their own codecs with
 `pluginmcp.ImplementMethod` from `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`.
 The first-party backend uses this same
 path. Changing an implementation's module namespace cannot change the contract's

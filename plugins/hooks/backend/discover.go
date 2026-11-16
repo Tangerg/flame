@@ -10,11 +10,11 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a

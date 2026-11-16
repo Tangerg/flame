@@ -8,16 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -55,12 +52,12 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name        string              `json:"name"`
-		Kind        portable.MethodKind `json:"kind"`
-		Target      string              `json:"target"`
-		Description string              `json:"description"`
-		Input       string              `json:"input"`
-		Output      string              `json:"output"`
+		Name        string           `json:"name"`
+		Kind        frame.MethodKind `json:"kind"`
+		Target      string           `json:"target"`
+		Description string           `json:"description"`
+		Input       string           `json:"input"`
+		Output      string           `json:"output"`
 	}
 	if err := json.Unmarshal(methodsData, &methods, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)

@@ -1,11 +1,6 @@
 package pluginservices
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -15,16 +10,18 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/google/uuid"
 )
 
@@ -313,7 +310,7 @@ func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Reque
 	if caller.ID == id {
 		id = "endpoint_00000000-0000-0000-0000-000000000001"
 	}
-	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}})
 	if err != nil {
 		return false, err
 	}

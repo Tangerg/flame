@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestServerNameOwnsCanonicalLocalName(t *testing.T) {

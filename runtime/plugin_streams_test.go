@@ -6,15 +6,15 @@ import (
 	"iter"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 type typedStreamCaller struct {
@@ -42,7 +42,7 @@ func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.Cal
 
 func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtimeclient.PluginStreamingMethod[map[string]string, uint64, bool] {
 	t.Helper()
-	method, err := pluginmcp.NewStreamingMethod[map[string]string, uint64, bool](portable.MethodConfig{Name: "records.stream", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream original records."})
+	method, err := pluginmcp.NewStreamingMethod[map[string]string, uint64, bool](frame.MethodConfig{Name: "records.stream", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream original records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtime
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t).String()
-	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
+	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 }
 
 func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *testing.T) {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, uint64, bool](portable.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, uint64, bool](frame.MethodConfig{Name: "records.query", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
-		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
+		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 		if err != nil {
 			t.Fatal(err)
 		}

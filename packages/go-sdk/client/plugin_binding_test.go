@@ -9,7 +9,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 type bindingRecorder struct {
@@ -39,7 +40,7 @@ func replaceContract(t *testing.T, binding client.PluginBinding) {
 }
 
 func TestBoundPluginCallCapturesCapabilityBeforeCallerReplacement(t *testing.T) {
-	method, err := pluginmcp.NewMethod[struct{}, map[string]any](portable.MethodConfig{Name: "numbers.read", Description: "Read numbers.", Kind: portable.Query, Target: "installation"})
+	method, err := pluginmcp.NewMethod[struct{}, map[string]any](frame.MethodConfig{Name: "numbers.read", Description: "Read numbers.", Kind: frame.Query, Target: "installation"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestBoundPluginCallCapturesCapabilityBeforeCallerReplacement(t *testing.T) 
 }
 
 func TestBoundPluginStreamCapturesCapabilityBeforeLazyDelivery(t *testing.T) {
-	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](portable.MethodConfig{Name: "numbers.stream", Description: "Stream numbers.", Kind: portable.Query, Target: "installation"})
+	method, err := pluginmcp.NewStreamingMethod[struct{}, map[string]any, map[string]any](frame.MethodConfig{Name: "numbers.stream", Description: "Stream numbers.", Kind: frame.Query, Target: "installation"})
 	if err != nil {
 		t.Fatal(err)
 	}

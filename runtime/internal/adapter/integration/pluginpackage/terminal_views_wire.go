@@ -5,11 +5,10 @@ import (
 	"maps"
 	"slices"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type wireTerminalView struct {

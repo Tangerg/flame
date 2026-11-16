@@ -5,16 +5,16 @@ import (
 	"errors"
 	"iter"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type pluginCallUseCases interface {
@@ -122,7 +122,7 @@ func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
 	if err != nil {
 		return "", protocol.InvalidParameters(err)
 	}
-	if kind == portable.Command {
+	if kind == frame.Command {
 		return OperationCommand, nil
 	}
 	return OperationQuery, nil
@@ -141,7 +141,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 		return "", nil, wirePluginError(err)
 	}
 	kind := OperationQuery
-	if call.Kind() == portable.Command {
+	if call.Kind() == frame.Command {
 		kind = OperationCommand
 	}
 	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
@@ -189,11 +189,11 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 		return "", nil, wirePluginError(err)
 	}
 	kind := OperationQuery
-	if call.Kind() == portable.Command {
+	if call.Kind() == frame.Command {
 		kind = OperationCommand
 	}
 	unconfirmed := errors.New("plugin stream final outcome is unconfirmed")
-	if call.Kind() == portable.Command {
+	if call.Kind() == frame.Command {
 		unconfirmed = errors.Join(plugin.ErrCommandUnconfirmed, unconfirmed)
 	}
 	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {

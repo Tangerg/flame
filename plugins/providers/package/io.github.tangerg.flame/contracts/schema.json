@@ -415,15 +415,6 @@
     "CallV1Output": {
       "$ref": "#/$defs/CallV1OutputModelproviderChatResult"
     },
-    "CallV1OutputChatOutputMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "extra": {
-          "$ref": "#/$defs/CallV1OutputMetadataMap"
-        }
-      },
-      "type": "object"
-    },
     "CallV1OutputChatToolCall": {
       "additionalProperties": false,
       "properties": {
@@ -695,9 +686,6 @@
         },
         "message": {
           "$ref": "#/$defs/CallV1OutputScopewireMessageProjection"
-        },
-        "metadata": {
-          "$ref": "#/$defs/CallV1OutputChatOutputMetadata"
         }
       },
       "type": "object"
@@ -1558,6 +1546,15 @@
         "citation": {
           "$ref": "#/$defs/StreamV1ChunkContentCitation"
         },
+        "index": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
         "kind": {
           "type": "string"
         },
@@ -1754,9 +1751,6 @@
         "metadata": {
           "$ref": "#/$defs/StreamV1ChunkScopewireResponseMetadataProjection"
         },
-        "output_metadata": {
-          "$ref": "#/$defs/StreamV1ChunkChatOutputMetadata"
-        },
         "parts": {
           "items": {
             "$ref": "#/$defs/PartDeltaProjection"
@@ -1768,15 +1762,6 @@
     },
     "StreamV1Chunk": {
       "$ref": "#/$defs/ResponseDelta"
-    },
-    "StreamV1ChunkChatOutputMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "extra": {
-          "$ref": "#/$defs/StreamV1ChunkMetadataMap"
-        }
-      },
-      "type": "object"
     },
     "StreamV1ChunkChatUsage": {
       "additionalProperties": false,
@@ -2357,15 +2342,6 @@
     "StreamV1Output": {
       "$ref": "#/$defs/StreamV1OutputModelproviderChatResult"
     },
-    "StreamV1OutputChatOutputMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "extra": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        }
-      },
-      "type": "object"
-    },
     "StreamV1OutputChatToolCall": {
       "additionalProperties": false,
       "properties": {
@@ -2637,9 +2613,6 @@
         },
         "message": {
           "$ref": "#/$defs/StreamV1OutputScopewireMessageProjection"
-        },
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputChatOutputMetadata"
         }
       },
       "type": "object"

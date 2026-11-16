@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type agentSpec struct {

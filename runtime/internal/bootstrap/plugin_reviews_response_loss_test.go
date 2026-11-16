@@ -15,21 +15,19 @@ import (
 	"testing"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -64,7 +62,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
@@ -198,7 +196,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	}
 	var method string
 	for _, descriptor := range contract.Descriptor().Methods {
-		if descriptor.Kind == portable.Command {
+		if descriptor.Kind == frame.Command {
 			if method != "" {
 				t.Fatal("fixture requires one mutation")
 			}
@@ -321,15 +319,15 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name string              `json:"name"`
-		Kind portable.MethodKind `json:"kind"`
+		Name string           `json:"name"`
+		Kind frame.MethodKind `json:"kind"`
 	}
 	if err := json.Unmarshal(metadata, &methods); err != nil {
 		t.Fatal(err)
 	}
 	var updateMethod string
 	for _, method := range methods {
-		if method.Kind == portable.Command {
+		if method.Kind == frame.Command {
 			if updateMethod != "" {
 				t.Fatal("receipt fixture requires one declared mutation")
 			}

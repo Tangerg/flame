@@ -27,7 +27,7 @@ method schemas; the former per-operation MCP endpoints are not registered.
 `backend/contract` publishes only the consumer-facing types and contracts.
 Private review transitions, storage, receipts and analyzer orchestration live in
 `backend/cmd/reviews`. `backend/contract/contracts.go` owns the method descriptions, typed bindings and
-the consumer's callable capability contract. The pure public `frame/portable`
+the consumer's callable capability contract. The pure public `frame`
 package admits that contract; `packages/go-sdk/plugin/mcp` binds it to MCP without a second
 schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
@@ -262,7 +262,7 @@ Integer schemas can accept spellings such as `0.0` and `1e0` that the typed Go
 input owner refuses. Runtime performs that same typed structural admission before
 saving a command route. A malformed request never consumes its key; a later
 canonical input with that key can reach the business owner. The current backend
-protocol is the compiled `portable.Protocol` in `frame/portable`; rebuild the
+protocol is the compiled `frame.CapabilityProtocol` in `frame`; rebuild the
 backend, contracts and components together. Flame's package declaration uses
 its separate `plugin.DeclarationProtocol`.
 

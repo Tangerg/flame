@@ -2,14 +2,13 @@ package reviews
 
 import (
 	"errors"
-
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"unicode/utf8"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type Analysis struct {
@@ -48,8 +47,8 @@ type AnalyzerContracts struct {
 }
 
 func NewAnalyzerContracts() (AnalyzerContracts, error) {
-	method, err := pluginmcp.NewMethod[Snapshot, Findings](portable.MethodConfig{
-		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: portable.Query, Target: "installation",
+	method, err := pluginmcp.NewMethod[Snapshot, Findings](frame.MethodConfig{
+		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: frame.Query, Target: "installation",
 		Description: "Analyze an inspected review snapshot and return findings without changing its records.",
 	})
 	if err != nil {
@@ -63,7 +62,7 @@ func NewAnalyzerContracts() (AnalyzerContracts, error) {
 }
 
 func NewAnalyzerPoint() (*plugincontract.Point, error) {
-	schema, err := portable.SchemaFor[Analyzer]()
+	schema, err := framevalue.SchemaFor[Analyzer]()
 	if err != nil {
 		return nil, err
 	}

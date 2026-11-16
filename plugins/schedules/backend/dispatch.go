@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 type runHost interface {
@@ -20,7 +19,7 @@ type runHost interface {
 
 type runConnector func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error)
 
-func connectRuntime(ctx context.Context, db *framesqlite.Database, connect runConnector) (runHost, func() error, error) {
+func connectRuntime(ctx context.Context, db framesqlite.Database, connect runConnector) (runHost, func() error, error) {
 	ref, err := pluginmcp.CallbackFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -41,7 +40,7 @@ func connectRuntime(ctx context.Context, db *framesqlite.Database, connect runCo
 
 type dispatchCommit struct {
 	app.DispatchStore
-	db      *framesqlite.Database
+	db      framesqlite.Database
 	command *pluginstorage.PreparedCommand
 }
 

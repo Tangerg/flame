@@ -1,18 +1,18 @@
 package modelprovider
 
 import (
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"encoding/json/jsontext"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/Tangerg/scope/models/catalog"
 )
 
@@ -134,7 +134,7 @@ func TestCheckpointIdentityIsIndependentOfExecutableHandles(t *testing.T) {
 	if !ok {
 		t.Fatal("missing declared method")
 	}
-	*method = portable.Method{}
+	*method = frame.Method{}
 	*c = plugincontract.Capability{}
 	id.Bytes()[0] = 0
 	after, err := ContractIdentity()
@@ -159,7 +159,7 @@ func TestProviderMethodsKeepHandlesAndSchemasIsolated(t *testing.T) {
 
 func verifyMethodHandle[T any, P interface {
 	*T
-	Descriptor() portable.MethodDescriptor
+	Descriptor() frame.MethodDescriptor
 }](t *testing.T, load func() (P, error)) {
 	t.Helper()
 	method, err := load()

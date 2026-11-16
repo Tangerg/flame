@@ -7,11 +7,10 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -30,7 +29,7 @@ type research struct {
 }
 
 func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, error) {
-	if store == nil || store.db == nil || fetch == nil || search == nil {
+	if store == nil || !store.db.Valid() || fetch == nil || search == nil {
 		return nil, errors.New("web: archive, fetch and search boundaries are required")
 	}
 	return &research{store: store, fetch: fetch, search: search}, nil

@@ -1,9 +1,6 @@
 package pluginbrowser
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -11,10 +8,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
-
+	framebrowser "github.com/Tangerg/frame/browser"
 	"github.com/Tangerg/frame/distribution"
-
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -37,7 +36,7 @@ func NewSource(installations plugins.Store, resources resources) (*Source, error
 	return &Source{installations: installations, resources: resources}, nil
 }
 
-func (s *Source) component(ctx context.Context, binding frame.UnitBinding) (plugin.Snapshot, plugin.ClientComponent, error) {
+func (s *Source) component(ctx context.Context, binding framehost.UnitBinding) (plugin.Snapshot, plugin.ClientComponent, error) {
 	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
@@ -63,12 +62,12 @@ func (s *Source) component(ctx context.Context, binding frame.UnitBinding) (plug
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
 	if err != nil || framevalue.Hash(configuration) != binding.Configuration {
-		return plugin.Snapshot{}, plugin.ClientComponent{}, errors.Join(frame.ErrStaleBinding, err)
+		return plugin.Snapshot{}, plugin.ClientComponent{}, errors.Join(framehost.ErrStaleBinding, err)
 	}
 	return snapshot, component, nil
 }
 
-func (s *Source) Module(ctx context.Context, binding frame.UnitBinding) (framebrowser.Artifact, error) {
+func (s *Source) Module(ctx context.Context, binding framehost.UnitBinding) (framebrowser.Artifact, error) {
 	snapshot, component, err := s.component(ctx, binding)
 	if err != nil {
 		return framebrowser.Artifact{}, err
@@ -80,8 +79,8 @@ func (s *Source) Module(ctx context.Context, binding frame.UnitBinding) (framebr
 	return framebrowser.Artifact{Path: component.Entry, Digest: framevalue.Hash(content)}, nil
 }
 
-func (s *Source) Configuration(ctx context.Context, setup *frame.Setup) ([]byte, error) {
-	if setup == nil {
+func (s *Source) Configuration(ctx context.Context, setup framehost.Setup) ([]byte, error) {
+	if !setup.Valid() {
 		return nil, plugin.ErrInvalid
 	}
 	snapshot, component, err := s.component(ctx, setup.Binding())

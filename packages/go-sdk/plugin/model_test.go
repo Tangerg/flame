@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type modelAuthorityKey struct{}
@@ -25,7 +25,7 @@ func TestModelMethodUsesScopeExchangeContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.AdmitMethod(method.Descriptor())
+	contract, err := frame.AdmitMethod(method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	parent := framemcp.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	parent := framemcp.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: framemcp.Target{Scope: "installation", Reference: "captured-installation"}}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), parent)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 			t.Fatal(err)
 		}
 		actual := <-seen
-		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (portable.Target{Scope: "call", Reference: id}) {
+		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (framemcp.Target{Scope: "call", Reference: id}) {
 			t.Fatalf("call lost original ancestry: %+v", actual)
 		}
 	}

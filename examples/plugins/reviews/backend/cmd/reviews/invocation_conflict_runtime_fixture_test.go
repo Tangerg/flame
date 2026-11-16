@@ -4,10 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,9 +14,11 @@ import (
 	"testing"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestInvocationConflictRuntimeFixture(t *testing.T) {

@@ -23,13 +23,13 @@ export type LimitsV1Output = Limits;
 
 export interface Output {
   content: string;
-  encoding: (string) & ("utf8" | "base64");
+  encoding: "utf8" | "base64";
 }
 
 export interface Result {
   durationMillis: JSONNumber;
   exitCode: JSONNumber;
-  status: (string) & ("completed" | "timed_out");
+  status: "completed" | "timed_out";
   stderr: Output;
   stdout: Output;
 }

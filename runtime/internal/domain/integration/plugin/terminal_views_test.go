@@ -6,12 +6,12 @@ import (
 	"slices"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
@@ -39,8 +39,8 @@ func terminalViewRelease(t *testing.T, views ...TerminalView) (Release, error) {
 	}`
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "memory/list", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(listInput), Output: jsontext.Value(listOutput)},
-		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Command, Target: extension.ScopeInstallation, Input: jsontext.Value(updateInput), Output: jsontext.Value(`{"type":"object"}`)},
+		frame.MethodDescriptor{Name: "memory/list", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(listInput), Output: jsontext.Value(listOutput)},
+		frame.MethodDescriptor{Name: "memory/update", Kind: frame.Command, Target: extension.ScopeInstallation, Input: jsontext.Value(updateInput), Output: jsontext.Value(`{"type":"object"}`)},
 	)
 	if err != nil {
 		t.Fatal(err)

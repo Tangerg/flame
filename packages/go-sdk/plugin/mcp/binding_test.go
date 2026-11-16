@@ -7,17 +7,16 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 	var calls atomic.Int32
 	session := methodSession(t, func(backend *Backend) error {
-		return testMethod[string, string](t, "owner.write", portable.Command).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
+		return testMethod[string, string](t, "owner.write", frame.Command).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 			calls.Add(1)
 			return command.Input, nil
 		})
@@ -32,13 +31,13 @@ func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 	}
 	for _, change := range []struct {
 		name   string
-		change func(*portable.MethodDescriptor)
+		change func(*frame.MethodDescriptor)
 	}{
-		{"method", func(d *portable.MethodDescriptor) { d.Name = "another.write" }},
-		{"target", func(d *portable.MethodDescriptor) { d.Target = "another-target" }},
-		{"kind", func(d *portable.MethodDescriptor) { d.Kind = portable.Query }},
-		{"input", func(d *portable.MethodDescriptor) { d.Input = jsontext.Value(`{"type":"string","minLength":1}`) }},
-		{"output", func(d *portable.MethodDescriptor) { d.Output = jsontext.Value(`{"type":"string","minLength":1}`) }},
+		{"method", func(d *frame.MethodDescriptor) { d.Name = "another.write" }},
+		{"target", func(d *frame.MethodDescriptor) { d.Target = "another-target" }},
+		{"kind", func(d *frame.MethodDescriptor) { d.Kind = frame.Query }},
+		{"input", func(d *frame.MethodDescriptor) { d.Input = jsontext.Value(`{"type":"string","minLength":1}`) }},
+		{"output", func(d *frame.MethodDescriptor) { d.Output = jsontext.Value(`{"type":"string","minLength":1}`) }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			descriptor := original.Descriptor()
@@ -48,7 +47,7 @@ func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 				t.Fatal(err)
 			}
 			id := "command"
-			if descriptor.Kind == portable.Query {
+			if descriptor.Kind == frame.Query {
 				id = ""
 			}
 			if _, err := binding.Invoke(t.Context(), CommandID(id), input); err == nil {
@@ -80,7 +79,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 	}
 	var mutations, reads atomic.Int32
 	reply := jsontext.Value(`{"value":{}}`)
-	method, err := NewMethod[string, output](portable.MethodConfig{Name: "owner.update", Kind: portable.Command, Target: "workspace", Description: "update"})
+	method, err := NewMethod[string, output](frame.MethodConfig{Name: "owner.update", Kind: frame.Command, Target: "workspace", Description: "update"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +90,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 		}); err != nil {
 			return err
 		}
-		return testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, portable.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[ReceiptRequest]) (Receipt, error) {
+		return testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, frame.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[ReceiptRequest]) (Receipt, error) {
 			reads.Add(1)
 			return Receipt{Found: true, Reply: reply}, nil
 		})
@@ -124,7 +123,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 
 func TestBindingRefusesUnavailableOrExternallyReferencedContract(t *testing.T) {
 	session := methodSession(t, func(backend *Backend) error {
-		return testMethod[struct{}, string](t, "owner.read", portable.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "value", nil })
+		return testMethod[struct{}, string](t, "owner.read", frame.Query).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (string, error) { return "value", nil })
 	}, "owner.read")
 	if _, err := Resolve(t.Context(), session, "missing"); err == nil {
 		t.Fatal("missing contract resolved")

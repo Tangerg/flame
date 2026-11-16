@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
 	"github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -29,7 +28,7 @@ func TestPortableProjectionsPreserveCompleteScopePayloads(t *testing.T) {
 	}
 	checkPortableRoundTrip(t, Response(completed))
 	delta := chat.ResponseDelta{
-		Parts:    []chat.PartDelta{chat.NewReasoningDelta("basis", []byte{0, 1, 255})},
+		Parts:    []chat.PartDelta{{Index: 2, Kind: chat.PartDeltaReasoning, Text: "basis", ReasoningState: []byte{0, 1, 255}}, {Index: 5, Kind: chat.PartDeltaText, Text: "answer"}},
 		Metadata: completed.Metadata,
 	}
 	checkPortableRoundTrip(t, ResponseDelta(delta))
@@ -85,11 +84,11 @@ func TestProjectionCannotBypassScopeAdmissionOrPublishPartialDecoding(t *testing
 
 func checkPortableRoundTrip[T any](t *testing.T, original T) {
 	t.Helper()
-	definition, err := portable.SchemaFor[T]()
+	definition, err := value.SchemaFor[T]()
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := portable.AdmitSchema(definition)
+	schema, err := value.AdmitSchema(definition)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,16 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/google/uuid"
 )
 
@@ -44,7 +42,7 @@ func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.D
 
 func captureFixture(t *testing.T, sequence uint64, generation string) filewatch.Observation {
 	t.Helper()
-	value, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: filewatch.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
+	value, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: filewatch.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: framemcp.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

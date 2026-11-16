@@ -9,17 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
 
 // A cooperative backend can settle its original outcome after a negative chunk
 // acknowledgement. A peer that ignores it cannot hold the consumer indefinitely.
+
 const streamStopGrace = 2 * time.Second
 
 const StreamMetadataKey = "io.github.tangerg.flame/stream.v1"
@@ -30,15 +29,15 @@ type deliveredChunk struct {
 }
 
 func chunkDeliveryMethod() (*Method[deliveredChunk, bool], error) {
-	return NewMethod[deliveredChunk, bool](portable.MethodConfig{Name: "flame.stream/deliver.v1", Kind: portable.Command, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
+	return NewMethod[deliveredChunk, bool](frame.MethodConfig{Name: "flame.stream/deliver.v1", Kind: frame.Command, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
 }
 
 // StreamDeliveryContract projects the existing acknowledged chunk callback for
 // independent language bindings. Its schema identity remains owned here.
-func StreamDeliveryContract() (portable.MethodDescriptor, error) {
+func StreamDeliveryContract() (frame.MethodDescriptor, error) {
 	method, err := chunkDeliveryMethod()
 	if err != nil {
-		return portable.MethodDescriptor{}, err
+		return frame.MethodDescriptor{}, err
 	}
 	return method.Descriptor(), nil
 }

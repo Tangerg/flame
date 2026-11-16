@@ -238,6 +238,7 @@ export type WireTypeName =
   | "PluginBrowserLocalExport"
   | "PluginBrowserObjectRef"
   | "PluginBrowserRealm"
+  | "PluginBrowserScopeRef"
   | "PluginBrowserSession"
   | "PluginBrowserUseGrant"
   | "PluginCallFailure"
@@ -2594,6 +2595,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     epoch: text(),
     id: text(),
   }, ["epoch", "id"]),
+  PluginBrowserScopeRef: object({
+    scopeGeneration: text(),
+    scopeId: text(),
+  }, ["scopeGeneration", "scopeId"]),
   PluginBrowserSession: object({
     authority: ref(() => CHECKS.PluginBrowserAuthority),
     componentContract: ref(() => CHECKS.PluginBrowserContractRef),

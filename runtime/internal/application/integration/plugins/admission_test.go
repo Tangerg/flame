@@ -7,14 +7,16 @@ import (
 	"testing/synctest"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // A publication waiting for a durable change keeps its own cancellation; it
 // cannot enter later using a request whose caller has already left.
 func TestInstallationAdmissionHonorsCancellationWhileAChangeOwnsTheGate(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		admission := frame.NewAdmission()
+		admission := framehost.NewAdmission()
 		entered, release := make(chan struct{}), make(chan struct{})
 		finished := make(chan error, 1)
 		go func() {
@@ -51,7 +53,7 @@ func TestInstallationAdmissionHonorsCancellationWhileAChangeOwnsTheGate(t *testi
 }
 
 func TestAdmissionRefusesCanceledAndInactivePublication(t *testing.T) {
-	admission := frame.NewAdmission()
+	admission := framehost.NewAdmission()
 	cause := errors.New("command abandoned")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)

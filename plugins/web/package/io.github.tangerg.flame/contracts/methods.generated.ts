@@ -10,7 +10,7 @@ export type BrowseV1Output = BrowseV1OutputDomainPage;
 
 export interface BrowseV1OutputDomainPage {
   content: string;
-  format: (string) & ("markdown" | "html" | "text");
+  format: "markdown" | "html" | "text";
   nextOffset?: JSONNumber;
   offset: JSONNumber;
   snapshotId: string;
@@ -19,7 +19,7 @@ export interface BrowseV1OutputDomainPage {
 }
 
 export interface FetchRequest {
-  format?: (string) & ("markdown" | "html" | "text");
+  format?: "markdown" | "html" | "text";
   url: string;
 }
 
@@ -29,7 +29,7 @@ export type FetchV1Output = FetchV1OutputDomainPage;
 
 export interface FetchV1OutputDomainPage {
   content: string;
-  format: (string) & ("markdown" | "html" | "text");
+  format: "markdown" | "html" | "text";
   nextOffset?: JSONNumber;
   offset: JSONNumber;
   snapshotId: string;
@@ -39,7 +39,7 @@ export interface FetchV1OutputDomainPage {
 
 export interface HTTPContent {
   data: string;
-  encoding: ("utf8" | "base64") & (string);
+  encoding: "utf8" | "base64";
 }
 
 export interface HTTPResponse {
@@ -50,13 +50,13 @@ export interface HTTPResponse {
   truncated?: boolean;
 }
 
-export type Request = ({ body?: string; headers?: Record<string, string>; method?: (string) & ("GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE"); query?: Record<string, string>; timeout_ms?: JSONNumber; url: string }) & ({ timeout_ms?: unknown } & Record<string, unknown>);
+export type Request = ({ body?: string; headers?: Record<string, string>; method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE"; query?: Record<string, string>; timeout_ms?: JSONNumber; url: string }) & ({ timeout_ms?: unknown } & Record<string, unknown>);
 
 export type RequestV1Input = Request;
 
 export type RequestV1Output = HTTPResponse;
 
-export type SearchRequest = ({ allowed_domains?: Array<string>; blocked_domains?: Array<string>; max_results?: JSONNumber; query: string; recency?: (string) & ("hour" | "day" | "week" | "month" | "year") }) & ({ allowed_domains?: unknown; blocked_domains?: unknown; max_results?: unknown } & Record<string, unknown>);
+export type SearchRequest = ({ allowed_domains?: Array<string>; blocked_domains?: Array<string>; max_results?: JSONNumber; query: string; recency?: "hour" | "day" | "week" | "month" | "year" }) & ({ allowed_domains?: unknown; blocked_domains?: unknown; max_results?: unknown } & Record<string, unknown>);
 
 export interface SearchResponse {
   query: string;

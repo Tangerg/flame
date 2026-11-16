@@ -4,21 +4,21 @@ import (
 	"context"
 	"errors"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // The framework authority and original Flame business owners share one file
 // and one admission. The installation tables are indexes of committed Host
 // records; only the Host's transaction can advance them.
-func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *frame.Admission, *InstallationStore, error) {
-	admission := frame.NewAdmission()
-	var store *sqlite.Store
+
+func openFrameworkDatabase(ctx context.Context, path string) (sqlite.Store, framehost.Admission, *InstallationStore, error) {
+	admission := framehost.NewAdmission()
+	var store sqlite.Store
 	var db *database
 	var installations *InstallationStore
 	var err error
@@ -26,8 +26,8 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *fr
 		Path: path, Admission: admission,
 		Owners: []sqlite.OwnerSchema{{
 			ID: "flame", Statements: currentSchema(),
-			References: func(ctx context.Context, executor sqlite.Reader, installation frame.InstallationID) ([]frame.Dependency, error) {
-				var dependencies []frame.Dependency
+			References: func(ctx context.Context, executor sqlite.Reader, installation framehost.InstallationID) ([]framehost.Dependency, error) {
+				var dependencies []framehost.Dependency
 				err := db.withReader(ctx, executor, func(ctx context.Context) error {
 					checkpoints, err := newExecutorCheckpointStore(db).PendingCheckpointDependencies(ctx)
 					if err != nil {
@@ -39,14 +39,14 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *fr
 					}
 					for _, dependency := range append(checkpoints, commands...) {
 						if dependency.InstallationID.String() == installation.String() {
-							dependencies = append(dependencies, frame.Dependency{InstallationID: installation, Release: dependency.Digest})
+							dependencies = append(dependencies, framehost.Dependency{InstallationID: installation, Release: dependency.Digest})
 						}
 					}
 					return nil
 				})
-				return frame.CompactDependencies(dependencies), err
+				return framehost.CompactDependencies(dependencies), err
 			},
-			ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change frame.InstallationChange) error {
+			ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change framehost.InstallationChange) error {
 				return db.withExecutor(ctx, executor, func(ctx context.Context) error {
 					if change.After == nil {
 						if change.Before == nil {
@@ -78,14 +78,14 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *fr
 		}},
 	})
 	if err != nil {
-		if store != nil {
+		if store.Valid() {
 			err = errors.Join(err, store.Close())
 		}
-		return nil, nil, nil, err
+		return sqlite.Store{}, framehost.Admission{}, nil, err
 	}
 	db, err = newDatabase(store, admission)
 	if err != nil {
-		return nil, nil, nil, errors.Join(err, store.Close())
+		return sqlite.Store{}, framehost.Admission{}, nil, errors.Join(err, store.Close())
 	}
 	installations = newInstallationStore(newReleaseStore(db))
 	owner, err := store.Owner("flame")
@@ -93,7 +93,7 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *fr
 		err = admission.RegisterUseOwner(owner)
 	}
 	if err != nil {
-		return nil, nil, nil, errors.Join(err, store.Close())
+		return sqlite.Store{}, framehost.Admission{}, nil, errors.Join(err, store.Close())
 	}
 	return store, admission, installations, nil
 }

@@ -8,21 +8,19 @@ import (
 	"errors"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
-func runNow(ctx context.Context, db *framesqlite.Database, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
+func runNow(ctx context.Context, db framesqlite.Database, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
@@ -44,7 +42,7 @@ type manualCommand struct {
 
 // A logical caller and its private receipt command have distinct identities.
 // The queue retains both so recovery never guesses a Tool's command namespace.
-func captureManual(ctx context.Context, db *framesqlite.Database, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
+func captureManual(ctx context.Context, db framesqlite.Database, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
 	var input wire.ItemInput
 	if err := json.Unmarshal(command.admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 		return result, err

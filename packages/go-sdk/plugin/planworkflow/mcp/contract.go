@@ -5,15 +5,16 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 func ReviewMethod() (*pluginmcp.Method[planworkflow.Document, string], error) {
-	return pluginmcp.NewMethod[planworkflow.Document, string](portable.MethodConfig{Name: "flame.plan-workflow/review.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prepare the human review of one exact immutable plan."})
+	return pluginmcp.NewMethod[planworkflow.Document, string](frame.MethodConfig{Name: "flame.plan-workflow/review.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Prepare the human review of one exact immutable plan."})
 }
 
 func AuthorMethod() (*pluginmcp.Method[planworkflow.Proposal, planworkflow.Decision], error) {
-	return pluginmcp.NewMethod[planworkflow.Proposal, planworkflow.Decision](portable.MethodConfig{Name: "flame.plan-workflow/author.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Admit a complete checklist and issue its immutable version."})
+	return pluginmcp.NewMethod[planworkflow.Proposal, planworkflow.Decision](frame.MethodConfig{Name: "flame.plan-workflow/author.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Admit a complete checklist and issue its immutable version."})
 }
 
 func Contract() (*plugincontract.Capability, error) {

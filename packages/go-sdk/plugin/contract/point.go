@@ -7,7 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -42,12 +43,12 @@ func (d PointDescriptor) clone() PointDescriptor {
 type Point struct {
 	descriptor    PointDescriptor
 	identity      framevalue.JSON
-	value         portable.Schema
-	applicability portable.Schema
+	value         framevalue.Schema
+	applicability framevalue.Schema
 }
 
 func ParsePoint(data []byte) (*Point, error) {
-	if err := portable.CheckDescriptor(data); err != nil {
+	if err := framevalue.CheckDescriptor(data); err != nil {
 		return nil, err
 	}
 	var descriptor PointDescriptor
@@ -58,7 +59,7 @@ func ParsePoint(data []byte) (*Point, error) {
 }
 
 func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
-	if descriptor.Protocol != Protocol || !portable.ValidToken(descriptor.Reference) || !portable.ValidToken(descriptor.Scope) {
+	if descriptor.Protocol != Protocol || !frame.ValidName(descriptor.Reference) || !frame.ValidName(descriptor.Scope) {
 		return nil, errors.New("point: current protocol, reference and scope are required")
 	}
 	if descriptor.Composition != Collection && descriptor.Composition != Selection && descriptor.Composition != Decoration {
@@ -68,7 +69,7 @@ func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
 		return nil, errors.New("point: selection and decoration require explicit composition")
 	}
 	for _, raw := range []jsontext.Value{descriptor.Value, descriptor.Applicability} {
-		if err := portable.CheckDescriptor(raw); err != nil {
+		if err := framevalue.CheckDescriptor(raw); err != nil {
 			return nil, err
 		}
 	}
@@ -76,15 +77,15 @@ func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := portable.CheckDescriptor(encoded.Bytes()); err != nil {
+	if err := framevalue.CheckDescriptor(encoded.Bytes()); err != nil {
 		return nil, err
 	}
 	descriptor = descriptor.clone()
-	value, err := portable.AdmitSchema(descriptor.Value)
+	value, err := framevalue.AdmitSchema(descriptor.Value)
 	if err != nil {
 		return nil, fmt.Errorf("point: value schema: %w", err)
 	}
-	applicability, err := portable.AdmitSchema(descriptor.Applicability)
+	applicability, err := framevalue.AdmitSchema(descriptor.Applicability)
 	if err != nil {
 		return nil, fmt.Errorf("point: applicability schema: %w", err)
 	}
@@ -107,7 +108,7 @@ func (c *Point) ValidateValue(value framevalue.JSON) error {
 // Applicability uses a frozen caller projection so it cannot discover or mutate
 // a screen, workspace or business owner while resolving contributions.
 type PointContext struct {
-	Target     portable.Target `json:"target"`
+	Target     framemcp.Target `json:"target"`
 	Attributes jsontext.Value  `json:"attributes"`
 }
 
@@ -128,7 +129,7 @@ func (c *Point) Applicable(context PointContext) (bool, error) {
 		return false, err
 	}
 	if err := c.applicability.Validate(input.Bytes()); err != nil {
-		if errors.Is(err, portable.ErrLimit) {
+		if errors.Is(err, framevalue.ErrLimit) {
 			return false, err
 		}
 		return false, nil

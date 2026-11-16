@@ -10,9 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -20,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -46,7 +44,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	subject := &embedder{id: "space", model: embeddingModelFixture{served: "served-embed"}, selection: testsupport.MustModelSelection("openai", "embed-model"), journal: store}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: "embed-call"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "embed-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +86,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 		selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
 		pricing: func(string, string, *chat.Usage) (accounting.Cost, error) { return accounting.Cost{}, cause },
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "embed-pricing"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "embed-pricing"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +122,7 @@ func TestEmbeddingRefusesUnrepresentableIndexCoordinatesAndRetainsEvidence(t *te
 				}),
 				selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: invocationID, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: invocationID}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: invocationID, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: invocationID}})
 			if err != nil {
 				t.Fatal(err)
 			}

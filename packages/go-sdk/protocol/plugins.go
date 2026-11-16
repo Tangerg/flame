@@ -3,7 +3,8 @@ package protocol
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/frame/portable"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 // PluginCommandRequest addresses original routing without another copy of input.
@@ -23,7 +24,7 @@ type CallPluginRequest struct {
 	Contract       string          `json:"contract"`
 	Method         string          `json:"method"`
 	Input          string          `json:"input"`
-	Target         portable.Target `json:"target"`
+	Target         framemcp.Target `json:"target"`
 }
 
 type CallPluginResponse struct {
@@ -401,7 +402,7 @@ type PluginPointReference struct {
 
 type ResolvePluginPointRequest struct {
 	Contract   string                 `json:"contract"`
-	Target     portable.Target        `json:"target"`
+	Target     framemcp.Target        `json:"target"`
 	Attributes string                 `json:"attributes"`
 	Order      []PluginPointReference `json:"order"`
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/scope/core/chat"
 	sqlitedriver "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"
@@ -25,7 +26,7 @@ func TestOpenHonorsCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if db, err := openDatabase(ctx, filepath.Join(t.TempDir(), "flame.db")); !errors.Is(err, context.Canceled) {
-		if db != nil {
+		if db.Valid() {
 			_ = db.Close()
 		}
 		t.Fatalf("Open error = %v, want context.Canceled", err)

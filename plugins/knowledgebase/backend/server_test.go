@@ -10,20 +10,17 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -79,7 +76,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
+	owner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +123,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	toolMeta := maps.Clone(metadata.Meta)
-	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-search", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-search", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -151,7 +148,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatalf("typed original read: %+v %v", read, err)
 	}
 	var readMeta sdk.Meta
-	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-read", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-read", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ReadInput{ID: input.Content.ID}, Meta: readMeta})
@@ -189,7 +186,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	contextOwner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "context-entry", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "context-entry"}})
+	contextOwner, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "context-entry", Origin: extension.Model, Target: framemcp.Target{Scope: "call", Reference: "context-entry"}})
 	if err != nil {
 		t.Fatal(err)
 	}

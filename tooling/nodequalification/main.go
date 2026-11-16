@@ -16,12 +16,12 @@ import (
 	"runtime"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func main() {
@@ -216,7 +216,7 @@ func (d *distribution) captureRequest(ctx context.Context) (protocol.CallPluginR
 		if err != nil {
 			return protocol.CallPluginRequest{}, err
 		}
-		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: usage.ID}}, nil
+		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: string(input), Target: framemcp.Target{Scope: "installation", Reference: usage.ID}}, nil
 	}
 	return protocol.CallPluginRequest{}, errors.New("qualification: complete managed usage package is absent")
 }

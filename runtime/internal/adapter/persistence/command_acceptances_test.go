@@ -10,7 +10,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 func sampleAcceptance() runs.CommandAcceptance {
@@ -50,7 +51,7 @@ func TestCommandAcceptanceLookupRemainsReadOnlyDuringRecovery(t *testing.T) {
 	if err := stores.Admission.RecoveryError(); !errors.Is(err, cause) {
 		t.Fatalf("lookup cleared the original recovery barrier: %v", err)
 	}
-	if err := stores.CommandAcceptances.Save(ctx, acceptance); !errors.Is(err, frame.ErrRecoveryRequired) || !errors.Is(err, cause) {
+	if err := stores.CommandAcceptances.Save(ctx, acceptance); !errors.Is(err, framehost.ErrRecoveryRequired) || !errors.Is(err, cause) {
 		t.Fatalf("lookup reopened write admission: %v", err)
 	}
 }

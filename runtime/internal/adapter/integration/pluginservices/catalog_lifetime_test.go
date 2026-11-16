@@ -17,7 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -94,7 +95,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 		t.Fatal(t.Context().Err())
 	}
 	id := installation.ID().Host()
-	if err := managed.Host.Uninstall(t.Context(), id); !errors.Is(err, frame.ErrInUse) {
+	if err := managed.Host.Uninstall(t.Context(), id); !errors.Is(err, framehost.ErrInUse) {
 		t.Fatalf("active call lost its exact Use: %v", err)
 	}
 	finish()

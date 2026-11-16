@@ -10,8 +10,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -20,6 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -41,28 +41,28 @@ type pendingInstallationCheckpoints map[identity.InstallationID]bool
 
 func (pendingInstallationCheckpoints) ID() string { return "fixture.checkpoints" }
 
-func (p pendingInstallationCheckpoints) Held(_ context.Context, id frame.InstallationID) ([]frame.Dependency, error) {
+func (p pendingInstallationCheckpoints) Held(_ context.Context, id framehost.InstallationID) ([]framehost.Dependency, error) {
 	for installation, pending := range p {
 		if pending && installation.String() == id.String() {
-			return []frame.Dependency{{InstallationID: id, Release: testsupport.Digest("checkpoint release")}}, nil
+			return []framehost.Dependency{{InstallationID: id, Release: testsupport.Digest("checkpoint release")}}, nil
 		}
 	}
 	return nil, nil
 }
 
-func installationTestPlugin(t testing.TB, revision string) *frame.Plugin {
+func installationTestPlugin(t testing.TB, revision string) *framehost.Plugin {
 	t.Helper()
-	definition, err := frame.Define(frame.Definition{Revision: testsupport.Digest(revision)})
+	definition, err := framehost.Define(framehost.Definition{Revision: testsupport.Digest(revision)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return definition
 }
 
-func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ...frame.UseOwner) *frame.Host {
+func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ...framehost.UseOwner) framehost.Host {
 	t.Helper()
 	owners = append(owners, executor)
-	host, err := frame.NewHost(context.Background(), frame.HostConfig{Admission: executor.installations, UseOwners: owners})
+	host, err := framehost.New(context.Background(), framehost.Config{Authority: executor.installations, UseOwners: owners})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func installationTestHost(t *testing.T, executor *InteractionExecutor, owners ..
 		if id == dependedInstallation {
 			revision = "depended release"
 		}
-		if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: id.Host(), Plugin: installationTestPlugin(t, revision), Enabled: true}); err != nil {
+		if _, err := host.Install(t.Context(), framehost.InstallationConfig{ID: id.Host(), Plugin: installationTestPlugin(t, revision), Enabled: true}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -134,7 +134,7 @@ func TestQuiescentInstallationChangeReadsOnlyDependencyProjections(t *testing.T)
 				err = host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "replacement"), nil)
 			}
 			if test.refused {
-				if !errors.Is(err, frame.ErrInUse) {
+				if !errors.Is(err, framehost.ErrInUse) {
 					t.Fatalf("unsafe replacement admitted: %v", err)
 				}
 			} else if err != nil {
@@ -187,7 +187,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("assembly behind a pending change: %v", err)
 		}
-		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, frame.ErrInUse) {
+		if err := host.Replace(t.Context(), dependedInstallation.Host(), installationTestPlugin(t, "depended replacement"), nil); !errors.Is(err, framehost.ErrInUse) {
 			t.Fatalf("change under a published dependency = %v", err)
 		}
 		if err := executor.Release(t.Context(), ref); err != nil {
@@ -198,7 +198,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		}
 
 		close(proceed)
-		if err := <-slow; !errors.Is(err, frame.ErrStaleBinding) {
+		if err := <-slow; !errors.Is(err, framehost.ErrStaleBinding) {
 			t.Fatalf("assembly raced by a dependency change = %v, want stale refusal", err)
 		}
 		if live := executor.sessions.snapshot(); len(live) != 0 {
@@ -264,7 +264,7 @@ func TestStagedModelTransitiveDependenciesBlockReplacementUntilRelease(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = executor.Release(context.Background(), ref) })
-	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, frame.ErrInUse) {
+	if err := host.Replace(t.Context(), leaf.InstallationID.Host(), installationTestPlugin(t, "leaf replacement"), nil); !errors.Is(err, framehost.ErrInUse) {
 		t.Fatalf("transitive replacement admitted: %v", err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {

@@ -11,20 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -83,12 +79,12 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "web-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "web"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "web-entry", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "web"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "web"}}); err != nil {
+	if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "web"}}); err != nil {
 		t.Fatal(err)
 	}
 	compare := func(method, name string, input any) framevalue.JSON {

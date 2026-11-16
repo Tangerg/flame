@@ -18,8 +18,9 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
-	"github.com/Tangerg/frame/portable/contractgen"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/contractgen"
 	"github.com/Tangerg/frame/value"
 )
 
@@ -45,8 +46,8 @@ func (r *ProjectionRecord) UnmarshalJSON(data []byte) error {
 }
 
 func TestFeatureNamesGenerateReadableConsumersWithoutChangingTheContract(t *testing.T) {
-	method, err := pluginmcp.NewMethod[ProjectionInput, ProjectionRecord](portable.MethodConfig{
-		Name: "fixture/read.v1", Kind: portable.Query, Target: "installation", Description: "Read the original typed record.",
+	method, err := pluginmcp.NewMethod[ProjectionInput, ProjectionRecord](frame.MethodConfig{
+		Name: "fixture/read.v1", Kind: frame.Query, Target: "installation", Description: "Read the original typed record.",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -134,11 +135,11 @@ var _ = ProjectionRecord{Name: "root", Next: &ProjectionRecord{Name: "child"}}
 
 func assertSameSchemaAdmission(t *testing.T, before, after jsontext.Value, samples ...string) {
 	t.Helper()
-	original, err := portable.AdmitSchema(before)
+	original, err := value.AdmitSchema(before)
 	if err != nil {
 		t.Fatal(err)
 	}
-	projected, err := portable.AdmitSchema(after)
+	projected, err := value.AdmitSchema(after)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +191,7 @@ func TestFeatureNamesDoNotOverwriteDefinitionsWhenPackageLabelsCollide(t *testin
 
 func TestFeatureNamesPreservePointersExactNumbersAndLiteralSchemaMembers(t *testing.T) {
 	key := scopeDefinitionKey("example.com/model", "wire[example.com/model.Record]")
-	pointer := jsontext.Pointer("").AppendToken(portable.KeywordDefs).AppendToken(key).AppendToken(portable.KeywordProperties).AppendToken("a/b~c")
+	pointer := jsontext.Pointer("").AppendToken(value.KeywordDefs).AppendToken(key).AppendToken(value.KeywordProperties).AppendToken("a/b~c")
 	reference := (&url.URL{Fragment: string(pointer)}).String()
 	literal := map[string]any{"$ref": reference, "$defs": map[string]any{key: true}}
 	raw, err := json.Marshal(map[string]any{
@@ -223,7 +224,7 @@ func TestFeatureNamesPreservePointersExactNumbersAndLiteralSchemaMembers(t *test
 		}
 	}
 	var properties map[string]jsontext.Value
-	if err := json.Unmarshal(changed[portable.KeywordProperties], &properties); err != nil {
+	if err := json.Unmarshal(changed[value.KeywordProperties], &properties); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"$defs", "$ref"} {

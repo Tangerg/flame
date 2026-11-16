@@ -9,7 +9,7 @@ export type GetPolicyV1Output = GetPolicyV1OutputDomainSnapshot;
 export interface GetPolicyV1OutputDomainRule {
   ceiling?: GetPolicyV1OutputModelSelectionLimits;
   selection: GetPolicyV1OutputModelSelection;
-  use: (string) & ("interaction" | "utility" | "independent");
+  use: "interaction" | "utility" | "independent";
 }
 
 export type GetPolicyV1OutputDomainSnapshot = ({ revision: JSONNumber; rules: Array<GetPolicyV1OutputDomainRule> }) & ({ rules?: unknown } & Record<string, unknown>);
@@ -21,7 +21,7 @@ export interface GetPolicyV1OutputModelSelection {
 }
 
 export interface GetPolicyV1OutputModelSelectionLimits {
-  inputKind: (string) & ("text" | "request");
+  inputKind: "text" | "request";
   maxInputBytes: JSONNumber;
   maxOutputTokens: JSONNumber;
 }
@@ -33,7 +33,7 @@ export type ReplacePolicyV1Input = ReplaceInput;
 export interface ReplacePolicyV1InputDomainRule {
   ceiling?: ReplacePolicyV1InputModelSelectionLimits;
   selection: ReplacePolicyV1InputModelSelection;
-  use: (string) & ("interaction" | "utility" | "independent");
+  use: "interaction" | "utility" | "independent";
 }
 
 export interface ReplacePolicyV1InputModelSelection {
@@ -43,7 +43,7 @@ export interface ReplacePolicyV1InputModelSelection {
 }
 
 export interface ReplacePolicyV1InputModelSelectionLimits {
-  inputKind: (string) & ("text" | "request");
+  inputKind: "text" | "request";
   maxInputBytes: JSONNumber;
   maxOutputTokens: JSONNumber;
 }
@@ -53,7 +53,7 @@ export type ReplacePolicyV1Output = ReplacePolicyV1OutputDomainSnapshot;
 export interface ReplacePolicyV1OutputDomainRule {
   ceiling?: ReplacePolicyV1OutputModelSelectionLimits;
   selection: ReplacePolicyV1OutputModelSelection;
-  use: (string) & ("interaction" | "utility" | "independent");
+  use: "interaction" | "utility" | "independent";
 }
 
 export type ReplacePolicyV1OutputDomainSnapshot = ({ revision: JSONNumber; rules: Array<ReplacePolicyV1OutputDomainRule> }) & ({ rules?: unknown } & Record<string, unknown>);
@@ -65,7 +65,7 @@ export interface ReplacePolicyV1OutputModelSelection {
 }
 
 export interface ReplacePolicyV1OutputModelSelectionLimits {
-  inputKind: (string) & ("text" | "request");
+  inputKind: "text" | "request";
   maxInputBytes: JSONNumber;
   maxOutputTokens: JSONNumber;
 }

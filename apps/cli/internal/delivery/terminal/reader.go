@@ -3,7 +3,6 @@ package terminal
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/scene"
 	"image"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/core/keymap"
 	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -483,7 +483,7 @@ func (r *readerSectionBlock) Draw(view grid.View) {
 func (r *readerSectionBlock) Rows(width int) []text.Row {
 	rows := make([]text.Row, 0, r.HeightForWidth(width))
 	if r.title != "" {
-		rows = append(rows, text.Row{Text: r.title})
+		rows = append(rows, text.Row{Content: text.Of(r.title, r.theme.Heading)})
 	}
 	if copyable, ok := r.content.(text.Projector); ok {
 		rows = append(rows, copyable.Rows(width)...)

@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {

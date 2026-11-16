@@ -6,15 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+
+	"github.com/Tangerg/frame"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -75,7 +74,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 			if published.Name != method.Name {
 				continue
 			}
-			actual, err := portable.AdmitMethod(published)
+			actual, err := frame.AdmitMethod(published)
 			if err != nil {
 				t.Fatal(err)
 			}

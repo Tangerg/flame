@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -34,8 +34,8 @@ func (r *frameRecorder) Write(data []byte) (int, error) {
 func TestRequestFrameBudgetIncludesActualSDKEnvelopeAndStreamGrant(t *testing.T) {
 	for _, streaming := range []bool{false, true} {
 		t.Run(map[bool]string{false: "call", true: "stream"}[streaming], func(t *testing.T) {
-			method := testMethod[string, string](t, "frame.write", portable.Command)
-			stream, err := NewStreamingMethod[string, string, string](portable.MethodConfig{Name: "frame.stream", Kind: portable.Command, Target: "installation", Description: "Stream."})
+			method := testMethod[string, string](t, "frame.write", frame.Command)
+			stream, err := NewStreamingMethod[string, string, string](frame.MethodConfig{Name: "frame.stream", Kind: frame.Command, Target: "installation", Description: "Stream."})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +88,7 @@ func TestRequestFrameBudgetIncludesActualSDKEnvelopeAndStreamGrant(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation := framemcp.Invocation{ID: "original-frame", Origin: "human", Parent: "original-owner", Target: portable.Target{Scope: "installation", Reference: "original-installation"}}
+			invocation := framemcp.Invocation{ID: "original-frame", Origin: "human", Parent: "original-owner", Target: framemcp.Target{Scope: "installation", Reference: "original-installation"}}
 			ctx, err := WithInvocation(t.Context(), invocation)
 			if err != nil {
 				t.Fatal(err)

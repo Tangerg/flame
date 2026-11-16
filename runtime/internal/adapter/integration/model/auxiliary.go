@@ -6,17 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
@@ -131,7 +128,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
+	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}

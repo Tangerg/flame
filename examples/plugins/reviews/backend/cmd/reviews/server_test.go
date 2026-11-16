@@ -10,24 +10,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
 	var meta sdk.Meta
 	if id != "" {
-		if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+		if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -9,15 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
@@ -123,7 +122,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if method.Descriptor().Kind != portable.Query {
+		if method.Descriptor().Kind != frame.Query {
 			t.Fatal("read operation acquired mutation authority")
 		}
 		typed, err := method.Invoke(t.Context(), "", input)

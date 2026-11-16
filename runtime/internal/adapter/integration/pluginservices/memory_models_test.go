@@ -9,15 +9,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -143,7 +142,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if method.Descriptor().Kind != portable.Command {
+			if method.Descriptor().Kind != frame.Command {
 				t.Fatal("external model call was declared as a query")
 			}
 			value, err := pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest())
@@ -228,7 +227,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := pluginmcp.NewMethod[pluginmcp.CallbackRef, string](portable.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the model callback captured by the Host."})
+	method, err := pluginmcp.NewMethod[pluginmcp.CallbackRef, string](frame.MethodConfig{Name: "fixture.memory/test.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Exercise the model callback captured by the Host."})
 	if err != nil {
 		t.Fatal(err)
 	}

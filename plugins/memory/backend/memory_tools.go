@@ -6,21 +6,18 @@ import (
 	"errors"
 	"fmt"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/jsonschema"
 	tool "github.com/Tangerg/scope/core/tool"
 )
@@ -107,11 +104,11 @@ type reviewMemoryArgs struct {
 
 type memoryTools struct {
 	coordinator *app.Coordinator
-	db          *framesqlite.Database
+	db          framesqlite.Database
 }
 
-func buildMemoryTools(coordinator *app.Coordinator, db *framesqlite.Database) ([]tool.Tool, error) {
-	if coordinator == nil || db == nil {
+func buildMemoryTools(coordinator *app.Coordinator, db framesqlite.Database) ([]tool.Tool, error) {
+	if coordinator == nil || !db.Valid() {
 		return nil, errors.New("memory: coordinator and database are required")
 	}
 	t := memoryTools{coordinator: coordinator, db: db}
@@ -227,7 +224,7 @@ func (t memoryTools) review(ctx context.Context, _ reviewMemoryArgs) (rpc.Ack, e
 	})
 }
 
-func memoryToolCommand[P, R any](ctx context.Context, db *framesqlite.Database, name string, prepare func(context.Context, P) (pluginstorage.CommandPlan[R], error)) (R, error) {
+func memoryToolCommand[P, R any](ctx context.Context, db framesqlite.Database, name string, prepare func(context.Context, P) (pluginstorage.CommandPlan[R], error)) (R, error) {
 	var zero R
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
@@ -252,7 +249,7 @@ func memoryToolFailure(name string, err error) error {
 	return wrapped
 }
 
-func memoryToolReceipt(ctx context.Context, db *framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func memoryToolReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	switch input.Method {
 	case addMemoryTool, updateMemoryTool, deleteMemoryTool, reviewMemoryTool:
 	default:

@@ -11,12 +11,20 @@ const (
 	ModelrouterGetPolicyV1OutputDomainRuleUseIndependent ModelrouterGetPolicyV1OutputDomainRuleUse = "independent"
 )
 
+func (ModelrouterGetPolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterGetPolicyV1OutputDomainRuleUseInteraction), string(ModelrouterGetPolicyV1OutputDomainRuleUseUtility), string(ModelrouterGetPolicyV1OutputDomainRuleUseIndependent)}
+}
+
 type ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKind string
 
 const (
 	ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKindText    ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKind = "text"
 	ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKindRequest ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKind = "request"
 )
+
+func (ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKindText), string(ModelrouterGetPolicyV1OutputModelSelectionLimitsInputKindRequest)}
+}
 
 type ModelrouterReplacePolicyV1InputDomainRuleUse string
 
@@ -26,12 +34,20 @@ const (
 	ModelrouterReplacePolicyV1InputDomainRuleUseIndependent ModelrouterReplacePolicyV1InputDomainRuleUse = "independent"
 )
 
+func (ModelrouterReplacePolicyV1InputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterReplacePolicyV1InputDomainRuleUseInteraction), string(ModelrouterReplacePolicyV1InputDomainRuleUseUtility), string(ModelrouterReplacePolicyV1InputDomainRuleUseIndependent)}
+}
+
 type ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKind string
 
 const (
 	ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKindText    ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKind = "text"
 	ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKindRequest ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKind = "request"
 )
+
+func (ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKindText), string(ModelrouterReplacePolicyV1InputModelSelectionLimitsInputKindRequest)}
+}
 
 type ModelrouterReplacePolicyV1OutputDomainRuleUse string
 
@@ -41,12 +57,20 @@ const (
 	ModelrouterReplacePolicyV1OutputDomainRuleUseIndependent ModelrouterReplacePolicyV1OutputDomainRuleUse = "independent"
 )
 
+func (ModelrouterReplacePolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterReplacePolicyV1OutputDomainRuleUseInteraction), string(ModelrouterReplacePolicyV1OutputDomainRuleUseUtility), string(ModelrouterReplacePolicyV1OutputDomainRuleUseIndependent)}
+}
+
 type ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKind string
 
 const (
 	ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKindText    ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKind = "text"
 	ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKindRequest ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKind = "request"
 )
+
+func (ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []string {
+	return []string{string(ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKindText), string(ModelrouterReplacePolicyV1OutputModelSelectionLimitsInputKindRequest)}
+}
 
 type ModelrouterGetPolicyV1Input struct {
 }

@@ -10,14 +10,14 @@ import (
 	"unicode/utf8"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type Method[P, R any] struct {
-	contract *portable.Method
+	contract *frame.Method
 }
 
 // ImplementMethod binds local codecs to a published contract. Only the contract
@@ -40,14 +40,14 @@ func ImplementMethod[P, R any](owner *plugincontract.Capability, name string) (*
 	return &Method[P, R]{contract: method}, nil
 }
 
-func NewMethod[P, R any](config portable.MethodConfig) (*Method[P, R], error) {
+func NewMethod[P, R any](config frame.MethodConfig) (*Method[P, R], error) {
 	if err := validateMethodCodecs[P, R](config.Name); err != nil {
 		return nil, err
 	}
 	if config.Description == "" || !utf8.ValidString(config.Description) {
 		return nil, errors.New("plugin: method description is required")
 	}
-	contract, err := portable.NewMethod[P, R](config)
+	contract, err := frame.NewMethod[P, R](config)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func validateMethodCodecs[P, R any](name string) error {
 	return nil
 }
 
-func (m *Method[P, R]) Name() string                          { return m.contract.Name() }
-func (m *Method[P, R]) Descriptor() portable.MethodDescriptor { return m.contract.Descriptor() }
+func (m *Method[P, R]) Name() string                       { return m.contract.Name() }
+func (m *Method[P, R]) Descriptor() frame.MethodDescriptor { return m.contract.Descriptor() }
 
 // Raw input admission precedes typed business execution. Re-encoding the decoded
 // value would erase missing required members by inserting their Go zero values.
@@ -111,7 +111,7 @@ func (m *Method[P, R]) bind(classify Classifier, handler func(context.Context, *
 
 // Typed decoders may enforce constraints Schema cannot express. Validation must
 // stay pure so a host can establish admission before retaining mutation work.
-func validateMethodInput[P any](contract *portable.Method) func(jsontext.Value) error {
+func validateMethodInput[P any](contract *frame.Method) func(jsontext.Value) error {
 	return func(data jsontext.Value) error {
 		_, input, err := decodeMethodInput[P](data)
 		if err != nil {
@@ -123,7 +123,7 @@ func validateMethodInput[P any](contract *portable.Method) func(jsontext.Value) 
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {
 	var zero R
-	if m.contract.Kind() != portable.Query {
+	if m.contract.Kind() != frame.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
 	return m.call(ctx, session, &methodParams[P]{Input: input})
@@ -131,7 +131,7 @@ func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, inp
 
 func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id CommandID, input P) (R, error) {
 	var zero R
-	if m.contract.Kind() != portable.Command {
+	if m.contract.Kind() != frame.Command {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := id.Validate(); err != nil {
@@ -191,7 +191,7 @@ func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
 
 func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	if m.method.contract.Kind() != portable.Query {
+	if m.method.contract.Kind() != frame.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
 	return m.method.callBinding(ctx, m.binding, &methodParams[P]{Input: input, ParamsBase: metadata})
@@ -199,7 +199,7 @@ func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metad
 
 func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id CommandID, input P) (R, error) {
 	var zero R
-	if m.method.contract.Kind() != portable.Command {
+	if m.method.contract.Kind() != frame.Command {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := id.Validate(); err != nil {
@@ -225,7 +225,7 @@ func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id CommandID, input
 	return result, true, nil
 }
 
-func admitCommand[P any](ctx context.Context, contract *portable.Method, wire *invokeParams) (context.Context, Command[P], error) {
+func admitCommand[P any](ctx context.Context, contract *frame.Method, wire *invokeParams) (context.Context, Command[P], error) {
 	encoded, err := json.Marshal(struct {
 		sdk.ParamsBase
 		Input     jsontext.Value `json:"input"`
@@ -241,10 +241,10 @@ func admitCommand[P any](ctx context.Context, contract *portable.Method, wire *i
 	if params.inputJSON.Validate() != nil {
 		return ctx, Command[P]{}, errors.New("plugin: method input is required")
 	}
-	if contract.Kind() == portable.Query && params.CommandID != "" {
+	if contract.Kind() == frame.Query && params.CommandID != "" {
 		return ctx, Command[P]{}, errors.New("plugin: query must not carry a command identity")
 	}
-	if contract.Kind() == portable.Command {
+	if contract.Kind() == frame.Command {
 		if err := CommandID(params.CommandID).Validate(); err != nil {
 			return ctx, Command[P]{}, err
 		}

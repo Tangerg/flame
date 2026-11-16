@@ -7,14 +7,12 @@ import (
 	"fmt"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -29,13 +27,13 @@ type PluginBinding struct {
 	Digest         string
 	Contribution   string
 	Contract       *plugincontract.Capability
-	Target         portable.Target
+	Target         framemcp.Target
 }
 
 type PluginMethod[P, R any] struct {
 	caller  PluginCaller
 	binding PluginBinding
-	method  *portable.Method
+	method  *frame.Method
 }
 
 func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *pluginmcp.Method[P, R]) (*PluginMethod[P, R], error) {
@@ -49,13 +47,13 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	return &PluginMethod[P, R]{caller: caller, binding: captured, method: required}, nil
 }
 
-func admitPluginBinding(binding PluginBinding, descriptor portable.MethodDescriptor) (PluginBinding, *portable.Method, error) {
+func admitPluginBinding(binding PluginBinding, descriptor frame.MethodDescriptor) (PluginBinding, *frame.Method, error) {
 	if binding.Contract == nil {
 		return PluginBinding{}, nil, errors.New("runtime: plugin binding contract is required")
 	}
 	binding.Contract = new(*binding.Contract)
 	required, found := binding.Contract.Method(descriptor.Name)
-	actual, err := portable.AdmitMethod(descriptor)
+	actual, err := frame.AdmitMethod(descriptor)
 	if err != nil {
 		return PluginBinding{}, nil, err
 	}
@@ -82,7 +80,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 	if m == nil || m.method == nil {
 		return zero, errors.New("runtime: bound plugin method is required")
 	}
-	if m.method.Kind() == portable.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
+	if m.method.Kind() == frame.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
 		return zero, errors.New("runtime: plugin query cannot carry a command identity")
 	}
 	inputJSON, err := framevalue.EncodeJSON(input)

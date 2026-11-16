@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
 
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )

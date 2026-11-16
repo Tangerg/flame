@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -98,7 +99,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 		config.ChatResolver = resolver
 		config.ModelEvidence = journal
 	}
-	if config.Admission == nil {
+	if !config.Admission.Valid() {
 		config.Admission = testTrees(t).stores.Admission
 	}
 	if config.ExecutionTrees == nil {

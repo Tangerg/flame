@@ -5,8 +5,6 @@ import (
 	"errors"
 	"io"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -17,6 +15,8 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/google/uuid"
 )
@@ -30,7 +30,7 @@ type store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db *framesqlite.Database, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
+func registerServer(server *sdk.Server, db framesqlite.Database, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
 	if connect == nil {
 		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
@@ -134,7 +134,7 @@ func registerServer(server *sdk.Server, db *framesqlite.Database, store store, p
 
 type toolCommands struct {
 	coordinator *app.Coordinator
-	db          *framesqlite.Database
+	db          framesqlite.Database
 	store       store
 	connect     runConnector
 }

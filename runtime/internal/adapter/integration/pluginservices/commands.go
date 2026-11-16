@@ -6,27 +6,25 @@ import (
 	"errors"
 	"fmt"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/samber/lo"
 )
 
 type CommandCalls struct {
-	framework     *frame.Host
+	framework     framehost.Host
 	publish       invalidation.Publish
 	installations plugins.Store
 	selections    plugins.SelectionStore
@@ -35,8 +33,8 @@ type CommandCalls struct {
 	routing       *plugins.Commands
 }
 
-func NewCommandCalls(host *frame.Host, store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
-	if host == nil || lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil {
+func NewCommandCalls(host framehost.Host, store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
+	if !host.Valid() || lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
 	return &CommandCalls{framework: host, publish: publish, installations: store, selections: selections, compositions: compositions, pool: pool, routing: routing}, nil
@@ -92,8 +90,8 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 			return validate(value)
 		}
 		return nil
-	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) portable.Target {
-		return portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
+	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) framemcp.Target {
+		return framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
 	})
 	if err != nil {
 		var zero R
@@ -102,7 +100,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) portable.Target) (_ commandReply[framevalue.JSON], returned error) {
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) framemcp.Target) (_ commandReply[framevalue.JSON], returned error) {
 	var zero commandReply[framevalue.JSON]
 	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
@@ -139,7 +137,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
 	bound, err := exported.Method(method)
-	if err != nil || bound.Descriptor().Kind != portable.Command {
+	if err != nil || bound.Descriptor().Kind != frame.Command {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
 	var result framevalue.JSON
@@ -215,7 +213,7 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) portable.Target, streaming bool) (plugin.CommandBinding, error) {
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framemcp.Target, streaming bool) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
 	capture := func(binding plugins.ContributionBinding) (framemcp.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
@@ -250,7 +248,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if (len(binding.Descriptor().Stream) != 0) != streaming {
 			return plugin.CommandBinding{}, plugin.ErrInvalid
 		}
-		if binding.Descriptor().Kind != portable.Command {
+		if binding.Descriptor().Kind != frame.Command {
 			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
 		}
 		if err := validateInput(ctx, binding, admitted); err != nil {

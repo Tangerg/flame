@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/google/uuid"
 )
 
@@ -26,8 +25,8 @@ type DefaultProvider struct {
 
 // Initialize commits the distribution catalog and configured provider choices
 // once. Installation and composition owners advance their own facts thereafter.
-func Initialize(ctx context.Context, host *frame.Host, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
-	if host == nil {
+func Initialize(ctx context.Context, host framehost.Host, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
+	if !host.Valid() {
 		return plugin.ErrInvalid
 	}
 	initialized, err := store.Initialized(ctx)
@@ -52,7 +51,7 @@ func Initialize(ctx context.Context, host *frame.Host, store initializationStore
 
 // Preflight holds the same immutable candidates through publication. Failure to
 // identify any source leaves existing installation decisions untouched.
-func installDistribution(ctx context.Context, host *frame.Host, store Store, packages packages, paths []string) (err error) {
+func installDistribution(ctx context.Context, host framehost.Host, store Store, packages packages, paths []string) (err error) {
 	distribution := make([]distributionCandidate, 0, len(paths))
 	defer func() {
 		for _, source := range distribution {
@@ -85,7 +84,7 @@ type distributionCandidate struct {
 	candidate Candidate
 }
 
-func (entry distributionCandidate) install(ctx context.Context, host *frame.Host, store Store, packages packages) error {
+func (entry distributionCandidate) install(ctx context.Context, host framehost.Host, store Store, packages packages) error {
 	release := entry.candidate.Release()
 	source := entry.source
 	id, err := firstPartyID(release.Declaration().Name)
@@ -126,7 +125,7 @@ func (entry distributionCandidate) install(ctx context.Context, host *frame.Host
 	if err != nil {
 		return err
 	}
-	if _, err := host.Install(ctx, frame.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
+	if _, err := host.Install(ctx, framehost.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
 		return err
 	}
 	return packages.Prepare(ctx, installation, release)

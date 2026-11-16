@@ -12,8 +12,9 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/portable"
+
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -51,8 +52,8 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 				}
 				record := installation.Snapshot()
 				store := &installationMemory{record: &record, catalog: releaseMemory{original.Digest(): original, replacement.Digest(): replacement}}
-				admission := frame.NewAdmission()
-				host, err := frame.NewHost(t.Context(), frame.HostConfig{Admission: admission, Installations: &frameworkTestStore{memory: store, admission: admission}})
+				admission := framehost.NewAdmission()
+				host, err := framehost.New(t.Context(), framehost.Config{Authority: &frameworkTestStore{store: store, memory: store, admission: admission}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -73,14 +74,14 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 						continue
 					}
 					setup := unit.Setup
-					definition.Units[i].Setup = func(ctx context.Context, instance *frame.Setup) ([]frame.ExportValue, error) {
+					definition.Units[i].Setup = func(ctx context.Context, instance framehost.Setup) ([]framehost.ExportValue, error) {
 						if _, err := instance.Cleanup("original point values", func() error { close(started); <-released; return nil }); err != nil {
 							return nil, err
 						}
 						return setup(ctx, instance)
 					}
 				}
-				compiled, err := frame.Define(frame.Definition{Revision: original.Digest(), Units: definition.Units})
+				compiled, err := framehost.Define(framehost.Definition{Revision: original.Digest(), Units: definition.Units})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -91,10 +92,10 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := host.Restore(t.Context(), []frame.InstallationRecord{{ID: record.ID.Host(), Release: original.Digest(), Configuration: configuration, Enabled: true, Units: compiled.Units()}}, []*frame.Plugin{compiled}); err != nil {
+				if err := host.Restore(t.Context(), []*framehost.Plugin{compiled}); err != nil {
 					t.Fatal(err)
 				}
-				target := plugincontract.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: record.ID.String()}, Attributes: jsontext.Value(`{}`)}
+				target := plugincontract.PointContext{Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: record.ID.String()}, Attributes: jsontext.Value(`{}`)}
 				if bindings, err := ResolvePoint(t.Context(), host, store, contract, target, nil); err != nil || len(bindings) != 1 || bindings[0].Digest != original.Digest() {
 					t.Fatalf("original point values: %+v, %v", bindings, err)
 				}
@@ -106,7 +107,7 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 				if !found {
 					t.Fatal("original installation is missing")
 				}
-				if err := host.Update(t.Context(), expected, frame.InstallationConfig{ID: expected.ID, Plugin: projected.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+				if err := host.Update(t.Context(), expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projected.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 					t.Fatal(err)
 				}
 				<-started
@@ -134,7 +135,7 @@ func TestPointResolutionJoinsPreviousGeneration(t *testing.T) {
 					if value := <-result; !errors.Is(value.err, context.Canceled) || !errors.Is(value.err, cause) {
 						t.Fatalf("canceled retirement wait: %v", value.err)
 					}
-					if _, err := host.ActivateUnit(t.Context(), "", frame.UnitRef{InstallationID: record.ID.Host(), Release: replacement.Digest(), UnitID: PointValuesUnit}); !errors.Is(err, frame.ErrInUse) {
+					if _, err := host.ActivateUnit(t.Context(), "", framehost.UnitRef{InstallationID: record.ID.Host(), Release: replacement.Digest(), UnitID: PointValuesUnit}); !errors.Is(err, framehost.ErrInUse) {
 						t.Fatalf("caller cancellation released the original resource: %v", err)
 					}
 				}

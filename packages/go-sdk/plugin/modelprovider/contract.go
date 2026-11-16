@@ -15,19 +15,19 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/embedding"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-	"github.com/Tangerg/scope/models/catalog"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/embedding"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 const Reference = extension.ModelProviderContract
@@ -362,7 +362,7 @@ func (r TokenCount) Validate() error {
 
 // The typed handle contains only a private pointer to the admitted schema.
 // Copying the handle preserves client ownership without compiling the schema again.
-func declaredMethod[T any](compile func(portable.MethodConfig) (*T, error), config portable.MethodConfig) func() (*T, error) {
+func declaredMethod[T any](compile func(frame.MethodConfig) (*T, error), config frame.MethodConfig) func() (*T, error) {
 	admitted := sync.OnceValues(func() (*T, error) { return compile(config) })
 	return func() (*T, error) {
 		method, err := admitted()
@@ -373,51 +373,51 @@ func declaredMethod[T any](compile func(portable.MethodConfig) (*T, error), conf
 	}
 }
 
-var profilesMethod = declaredMethod(pluginmcp.NewMethod[struct{}, []Profile], portable.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
+var profilesMethod = declaredMethod(pluginmcp.NewMethod[struct{}, []Profile], frame.MethodConfig{Name: "flame.model-provider/profiles.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read this installed adapter's provider policies and published model facts."})
 
 func ProfilesMethod() (*pluginmcp.Method[struct{}, []Profile], error) { return profilesMethod() }
 
-var remoteModelsMethod = declaredMethod(pluginmcp.NewMethod[Connection, []string], portable.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
+var remoteModelsMethod = declaredMethod(pluginmcp.NewMethod[Connection, []string], frame.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
 
 func RemoteModelsMethod() (*pluginmcp.Method[Connection, []string], error) {
 	return remoteModelsMethod()
 }
 
-var verifyMethod = declaredMethod(pluginmcp.NewMethod[Connection, struct{}], portable.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
+var verifyMethod = declaredMethod(pluginmcp.NewMethod[Connection, struct{}], frame.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
 
 func VerifyMethod() (*pluginmcp.Method[Connection, struct{}], error) { return verifyMethod() }
 
-var openChatMethod = declaredMethod(pluginmcp.NewMethod[Open, Chat], portable.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
+var openChatMethod = declaredMethod(pluginmcp.NewMethod[Open, Chat], frame.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
 
 func OpenChatMethod() (*pluginmcp.Method[Open, Chat], error) { return openChatMethod() }
 
-var openEmbeddingMethod = declaredMethod(pluginmcp.NewMethod[Open, Embedder], portable.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
+var openEmbeddingMethod = declaredMethod(pluginmcp.NewMethod[Open, Embedder], frame.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
 
 func OpenEmbeddingMethod() (*pluginmcp.Method[Open, Embedder], error) { return openEmbeddingMethod() }
 
-var reopenChatMethod = declaredMethod(pluginmcp.NewMethod[Reopen, Chat], portable.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
+var reopenChatMethod = declaredMethod(pluginmcp.NewMethod[Reopen, Chat], frame.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
 
 func ReopenChatMethod() (*pluginmcp.Method[Reopen, Chat], error) { return reopenChatMethod() }
 
-var closeMethod = declaredMethod(pluginmcp.NewMethod[Handle, struct{}], portable.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
+var closeMethod = declaredMethod(pluginmcp.NewMethod[Handle, struct{}], frame.MethodConfig{Name: "flame.model-provider/close.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
 
 func CloseMethod() (*pluginmcp.Method[Handle, struct{}], error) { return closeMethod() }
 
-var callMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, ChatResult], portable.MethodConfig{Name: "flame.model-provider/call.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
+var callMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, ChatResult], frame.MethodConfig{Name: "flame.model-provider/call.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Execute one original provider exchange using the captured client and preserve its complete outcome."})
 
 func CallMethod() (*pluginmcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
 
-var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], portable.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
+var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], frame.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
 
 func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], error) {
 	return streamMethod()
 }
 
-var countMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, TokenCount], portable.MethodConfig{Name: "flame.model-provider/count.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
+var countMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, TokenCount], frame.MethodConfig{Name: "flame.model-provider/count.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Count the complete request using the same captured provider instance, only when that capability was advertised."})
 
 func CountMethod() (*pluginmcp.Method[ChatRequest, TokenCount], error) { return countMethod() }
 
-var embedMethod = declaredMethod(pluginmcp.NewMethod[EmbeddingRequest, EmbeddingResult], portable.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
+var embedMethod = declaredMethod(pluginmcp.NewMethod[EmbeddingRequest, EmbeddingResult], frame.MethodConfig{Name: "flame.model-provider/embed.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Execute one original embedding exchange and preserve the complete provider response."})
 
 func EmbedMethod() (*pluginmcp.Method[EmbeddingRequest, EmbeddingResult], error) {
 	return embedMethod()

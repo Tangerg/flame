@@ -1,13 +1,13 @@
 package delivery
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"bytes"
 	json "encoding/json/v2"
 	"reflect"
 	"testing"
+
+	framebrowser "github.com/Tangerg/frame/browser"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Populate every actual source field, including fields added by a future Frame

@@ -8,16 +8,16 @@ import (
 	"fmt"
 	"sync"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/models/catalog"
 	otelchat "github.com/Tangerg/scope/otel/chat"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 )
 
 type inputTokenCounter interface {
@@ -42,7 +42,7 @@ type client struct {
 }
 
 type store struct {
-	db      *sqlite.Database
+	db      sqlite.Database
 	mu      sync.Mutex
 	retired bool
 	clients map[modelprovider.HandleID]*client
@@ -133,7 +133,7 @@ func prepareClient(ctx context.Context, kind clientKind, input modelprovider.Ope
 	return clientConstruction{handle: modelprovider.Handle{ID: id}, kind: kind, snapshot: encoded, client: created}, nil
 }
 
-func (c clientConstruction) insert(ctx context.Context, db *sqlite.Database) error {
+func (c clientConstruction) insert(ctx context.Context, db sqlite.Database) error {
 	_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, c.handle.ID, string(c.kind), string(c.snapshot))
 	return err
 }

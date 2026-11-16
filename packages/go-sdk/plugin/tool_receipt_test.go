@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -46,7 +45,7 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "independent records"}, nil)
 			backend := testBackend(t, server)
-			if err := testMethod[pluginmcp.ReceiptRequest, ToolReceipt](t, ToolReceiptMethod, portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (ToolReceipt, error) {
+			if err := testMethod[pluginmcp.ReceiptRequest, ToolReceipt](t, ToolReceiptMethod, frame.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (ToolReceipt, error) {
 				request := command.Input
 				if request.ID != "tool:original" || request.Method != "append_record" || request.InputDigest != input.Digest() {
 					t.Fatalf("read changed original identity: %+v", request)
@@ -55,7 +54,7 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := testMethod[string, string](t, "append_record", portable.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, pluginmcp.Command[string]) (string, error) {
+			if err := testMethod[string, string](t, "append_record", frame.Command).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, pluginmcp.Command[string]) (string, error) {
 				t.Error("receipt lookup replayed the mutation")
 				return "", nil
 			}); err != nil {
@@ -92,7 +91,7 @@ func TestToolReceiptSchemaRequiresOneStructuredResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := portable.AdmitMethod(typed.Descriptor())
+	method, err := frame.AdmitMethod(typed.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

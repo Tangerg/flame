@@ -14,36 +14,35 @@ import (
 	"strings"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/distribution"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/distribution"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content","version":"1.0.0"}`
 
 // The profile is registered to validate declarations. Metadata tests must never
 // execute code; real process and browser drivers have their own integration tests.
-type unopenedProfile frame.Profile
+type unopenedProfile framehost.Profile
 
-func (p unopenedProfile) Profile() frame.Profile { return frame.Profile(p) }
-func (p unopenedProfile) Prepare(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
+func (p unopenedProfile) Profile() framehost.Profile { return framehost.Profile(p) }
+func (p unopenedProfile) Prepare(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
 	return nil, errors.New("metadata fixture attempted execution")
 }
 
 type installationFixture struct {
 	*persistence.InstallationStore
-	host    *frame.Host
+	host    framehost.Host
 	catalog releaseCatalog
 }
 
@@ -67,11 +66,11 @@ func (s *installationFixture) Save(ctx context.Context, installation plugin.Inst
 	if err != nil {
 		return err
 	}
-	config := frame.InstallationConfig{ID: installation.ID().Host(), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
+	config := framehost.InstallationConfig{ID: installation.ID().Host(), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
 	if found {
 		original, ok := s.host.Installation(config.ID)
 		if !ok {
-			return frame.ErrUnavailable
+			return framehost.ErrUnavailable
 		}
 		return s.host.Update(ctx, original, config)
 	}
@@ -87,7 +86,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := frame.NewHost(t.Context(), frame.HostConfig{Admission: db.Admission, Epoch: db.Frame.Epoch(), Installations: db.Frame, ExecutionProtection: db.Frame, Drivers: []frame.Driver{unopenedProfile(pluginmcp.ProcessProfile), unopenedProfile(frame.BrowserJS)}})
+	host, err := framehost.New(t.Context(), framehost.Config{Authority: db.Frame, Drivers: []framehost.Driver{unopenedProfile(pluginmcp.ProcessProfile), unopenedProfile(framehost.BrowserJS)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +390,7 @@ func TestNeutralProjectionCannotAddAnExecutableUnit(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest := built.Manifest
-	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: frame.NativeGo})
+	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: framehost.NativeGo})
 	var output bytes.Buffer
 	lock, err := distribution.Build(t.Context(), source, manifest, &output)
 	if err != nil {

@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/testsupport"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -25,7 +25,7 @@ func newScheduleStore(t *testing.T) *ScheduleStore {
 	return store
 }
 
-func newScheduleStores(t *testing.T) (*ScheduleStore, *framesqlite.Database) {
+func newScheduleStores(t *testing.T) (*ScheduleStore, framesqlite.Database) {
 	t.Helper()
 	db, err := Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {

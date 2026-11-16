@@ -8,17 +8,17 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
 )
 
-func frameDatabaseFixture(t *testing.T) (*database, *frame.Admission) {
+func frameDatabaseFixture(t *testing.T) (*database, framehost.Admission) {
 	t.Helper()
-	admission := frame.NewAdmission()
+	admission := framehost.NewAdmission()
 	store, err := sqlite.Open(t.Context(), sqlite.Config{
 		Path: filepath.Join(t.TempDir(), "owner.db"), Admission: admission,
 		Owners: []sqlite.OwnerSchema{{ID: "flame", Statements: []string{`CREATE TABLE entries (id TEXT PRIMARY KEY)`},
-			References: func(context.Context, sqlite.Reader, frame.InstallationID) ([]frame.Dependency, error) {
+			References: func(context.Context, sqlite.Reader, framehost.InstallationID) ([]framehost.Dependency, error) {
 				return nil, nil
 			},
 		}},

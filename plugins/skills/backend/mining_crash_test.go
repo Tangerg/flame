@@ -8,12 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const miningCrashExit = 93

@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -16,7 +16,7 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 	type input struct {
 		N framevalue.Number `json:"n"`
 	}
-	method, err := NewMethod[input, struct{}](portable.MethodConfig{Name: "example.update", Kind: portable.Command, Target: "installation", Description: "Update a number."})
+	method, err := NewMethod[input, struct{}](frame.MethodConfig{Name: "example.update", Kind: frame.Command, Target: "installation", Description: "Update a number."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +70,8 @@ func TestDynamicNumbersRemainExactThroughMethodAndReceiptCodecs(t *testing.T) {
 	type payload struct {
 		Value any `json:"value"`
 	}
-	method := testMethod[payload, payload](t, "example.numbers/echo", portable.Command)
-	bare := testMethod[payload, payload](t, "example.numbers/direct", portable.Command)
+	method := testMethod[payload, payload](t, "example.numbers/echo", frame.Command)
+	bare := testMethod[payload, payload](t, "example.numbers/direct", frame.Command)
 	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "example.numbers", Composition: plugincontract.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestDynamicNumbersRemainExactThroughBothStreamingDirections(t *testing.T) {
 	type payload struct {
 		Value any `json:"value"`
 	}
-	method, err := NewStreamingMethod[payload, payload, payload](portable.MethodConfig{Name: "example.numbers/stream", Kind: portable.Command, Target: "call", Description: "Stream exact numbers."})
+	method, err := NewStreamingMethod[payload, payload, payload](frame.MethodConfig{Name: "example.numbers/stream", Kind: frame.Command, Target: "call", Description: "Stream exact numbers."})
 	if err != nil {
 		t.Fatal(err)
 	}

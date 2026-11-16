@@ -9,16 +9,15 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t *testing.T) {
@@ -36,7 +35,7 @@ func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t 
 			if _, advertised := bound.(chat.Streamer); advertised {
 				t.Fatal("unary provider advertised a fabricated stream capability")
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-model", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-model"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-model", Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-model"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +71,7 @@ func TestInstalledModelObserverStreamsCanonicalChunksThroughCapturedNext(t *test
 			observer, bindings, _ := installedPublishedObserverFixture(t, mode)
 			model := &observerStreamModel{done: make(chan struct{})}
 			_, streamer := observer.Bind(model, model, bindings)
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-stream"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-stream", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-stream"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -130,7 +129,7 @@ func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
 	observer, bindings, _ := installedPublishedObserverFixture(t, "transparent")
 	model := &observerStreamModel{done: make(chan struct{})}
 	_, streamer := observer.Bind(model, model, bindings)
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "stopped-stream", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "stopped-stream"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "stopped-stream", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "stopped-stream"}})
 	if err != nil {
 		t.Fatal(err)
 	}

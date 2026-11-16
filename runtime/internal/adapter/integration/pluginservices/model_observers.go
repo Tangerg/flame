@@ -7,29 +7,29 @@ import (
 	"iter"
 	"sync"
 
-	"github.com/Tangerg/frame"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-	"github.com/Tangerg/scope/core/chat"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type CallComposition struct {
 	calls     *CommandCalls
 	callbacks *pluginmcp.Callbacks
-	admission *frame.Admission
+	admission framehost.Admission
 	mu        sync.Mutex
 	captures  map[*modelCapture]struct{}
 }
 
-func NewCallComposition(calls *CommandCalls, callbacks *pluginmcp.Callbacks, admission *frame.Admission) (*CallComposition, error) {
-	if calls == nil || callbacks == nil || admission == nil {
+func NewCallComposition(calls *CommandCalls, callbacks *pluginmcp.Callbacks, admission framehost.Admission) (*CallComposition, error) {
+	if calls == nil || callbacks == nil || !admission.Valid() {
 		return nil, errors.New("model composition: installed calls and callbacks are required")
 	}
 	return &CallComposition{calls: calls, callbacks: callbacks, admission: admission, captures: make(map[*modelCapture]struct{})}, nil

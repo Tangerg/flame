@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -36,6 +37,7 @@ func (i *InteractionExecutor) bindInteractionToolGroup(ctx context.Context, mani
 	group.tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
 		Revision: i.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
 		Tools:    visible, DeferredTools: deferred,
+		MaxConcurrentCalls: i.policy.maxConcurrentToolCalls,
 	})
 	if err != nil {
 		return interactionToolGroup{}, err

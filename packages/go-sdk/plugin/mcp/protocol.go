@@ -7,7 +7,8 @@ import (
 	json "encoding/json/v2"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -34,7 +35,7 @@ type ProtocolConstants struct {
 func ProtocolJSON() ([]byte, error) {
 	constants := ProtocolConstants{
 		Protocol:                plugincontract.Protocol,
-		PortableProtocol:        portable.Protocol,
+		PortableProtocol:        frame.CapabilityProtocol,
 		InvokeMethod:            InvokeMethod,
 		DescribeMethod:          DescribeMethod,
 		ValidateMethod:          ValidateMethod,
@@ -90,15 +91,15 @@ func ProtocolJSON() ([]byte, error) {
 		return nil, err
 	}
 	data, err := json.Marshal(struct {
-		Constants          ProtocolConstants `json:"constants"`
-		Limits             portable.Limits   `json:"limits"`
-		Receipt            string            `json:"receipt"`
-		ReceiptIdentity    framevalue.Digest `json:"receiptIdentity"`
-		StreamDelivery     string            `json:"streamDelivery"`
-		Inputs             []inputVector     `json:"inputs"`
-		Capability         string            `json:"capability"`
-		CapabilityIdentity framevalue.Digest `json:"capabilityIdentity"`
-	}{constants, portable.ProfileLimits(), receiptJSON.String(), receipt.contract.Identity().Digest(), deliveryJSON.String(), vectors, contractJSON.String(), contract.Identity().Digest()}, jsontext.WithIndent("  "), json.Deterministic(true))
+		Constants          ProtocolConstants           `json:"constants"`
+		Limits             frame.PortableProfileLimits `json:"limits"`
+		Receipt            string                      `json:"receipt"`
+		ReceiptIdentity    framevalue.Digest           `json:"receiptIdentity"`
+		StreamDelivery     string                      `json:"streamDelivery"`
+		Inputs             []inputVector               `json:"inputs"`
+		Capability         string                      `json:"capability"`
+		CapabilityIdentity framevalue.Digest           `json:"capabilityIdentity"`
+	}{constants, frame.CurrentPortableProfile().Limits, receiptJSON.String(), receipt.contract.Identity().Digest(), deliveryJSON.String(), vectors, contractJSON.String(), contract.Identity().Digest()}, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return nil, err
 	}

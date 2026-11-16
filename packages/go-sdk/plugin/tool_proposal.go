@@ -3,17 +3,16 @@ package plugin
 import (
 	"errors"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func ToolProposalMethod() (*pluginmcp.Method[chat.ToolCall, chat.ToolCall], error) {
-	return pluginmcp.NewMethod[chat.ToolCall, chat.ToolCall](portable.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
+	return pluginmcp.NewMethod[chat.ToolCall, chat.ToolCall](frame.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
 }
 
 func ToolProposalContract() (*plugincontract.Capability, error) { return toolProposalContract() }

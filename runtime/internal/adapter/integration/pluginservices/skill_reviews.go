@@ -7,19 +7,18 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -272,7 +271,7 @@ func (s *SkillGovernance) admitted(ctx context.Context, root string, ref skills.
 	if doc.review().Ref != ref {
 		return doc, skills.ErrProposalChanged
 	}
-	caller, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: doc.source.InstallationID.String()})
+	caller, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: doc.source.InstallationID.String()})
 	if err != nil || caller.Origin != extension.Human {
 		return doc, plugin.ErrInvalid
 	}

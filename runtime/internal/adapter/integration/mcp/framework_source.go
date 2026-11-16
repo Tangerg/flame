@@ -7,22 +7,20 @@ import (
 	"slices"
 	"sync"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
 )
 
@@ -44,7 +42,7 @@ type ProcessSource struct {
 }
 
 type processProjection struct {
-	source      frame.UnitRef
+	source      framehost.UnitRef
 	session     *sdk.ClientSession
 	actor       operation.Actor
 	fingerprint framevalue.Digest
@@ -58,7 +56,7 @@ func NewProcessSource(installations plugins.Store, packages installedPackages, c
 	return &ProcessSource{installations: installations, packages: packages, callbacks: callbacks, commands: commands, projections: map[string]processProjection{}}, nil
 }
 
-func (s *ProcessSource) snapshot(ctx context.Context, binding frame.UnitBinding) (plugin.Snapshot, mcpserver.ServerName, error) {
+func (s *ProcessSource) snapshot(ctx context.Context, binding framehost.UnitBinding) (plugin.Snapshot, mcpserver.ServerName, error) {
 	id, err := identity.ParseHostInstallation(binding.Source.InstallationID)
 	if err != nil {
 		return plugin.Snapshot{}, mcpserver.ServerName{}, err
@@ -72,16 +70,16 @@ func (s *ProcessSource) snapshot(ctx context.Context, binding frame.UnitBinding)
 		return plugin.Snapshot{}, server, err
 	}
 	if !found || !snapshot.Installation.ServerEnabled(server) || snapshot.Selected.Digest().String() != binding.Source.Release.String() {
-		return plugin.Snapshot{}, server, frame.ErrStaleBinding
+		return plugin.Snapshot{}, server, framehost.ErrStaleBinding
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
 	if err != nil || framevalue.Hash(configuration) != binding.Configuration {
-		return plugin.Snapshot{}, server, errors.Join(frame.ErrStaleBinding, err)
+		return plugin.Snapshot{}, server, errors.Join(framehost.ErrStaleBinding, err)
 	}
 	return snapshot, server, nil
 }
 
-func (s *ProcessSource) Program(ctx context.Context, binding frame.UnitBinding) (program process.Program, err error) {
+func (s *ProcessSource) Program(ctx context.Context, binding framehost.UnitBinding) (program process.Program, err error) {
 	snapshot, server, err := s.snapshot(ctx, binding)
 	if err != nil {
 		return program, err
@@ -122,7 +120,7 @@ func (s *ProcessSource) Program(ctx context.Context, binding frame.UnitBinding) 
 	return program, nil
 }
 
-func (s *ProcessSource) Configure(ctx context.Context, setup *frame.Setup, session *sdk.ClientSession) ([]pluginmcp.SetupContribution, sdk.ParamsBase, error) {
+func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, session *sdk.ClientSession) ([]pluginmcp.SetupContribution, sdk.ParamsBase, error) {
 	snapshot, serverName, err := s.snapshot(ctx, setup.Binding())
 	if err != nil {
 		return nil, sdk.ParamsBase{}, err

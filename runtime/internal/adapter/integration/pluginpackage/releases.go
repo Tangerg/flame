@@ -12,14 +12,13 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/distribution"
 
+	"github.com/Tangerg/frame/distribution"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -34,13 +33,13 @@ type releaseCatalog interface {
 }
 
 type Releases struct {
-	content       *distribution.Store
+	content       distribution.Store
 	dataDirectory string
 	catalog       releaseCatalog
 }
 
-func New(content *distribution.Store, dataDirectory string, catalog releaseCatalog) (*Releases, error) {
-	if content == nil || lo.IsNil(catalog) || !filepath.IsAbs(dataDirectory) {
+func New(content distribution.Store, dataDirectory string, catalog releaseCatalog) (*Releases, error) {
+	if !content.Valid() || lo.IsNil(catalog) || !filepath.IsAbs(dataDirectory) {
 		return nil, errors.New("pluginpackage: content store, absolute data directory and release catalog are required")
 	}
 	for len(dataDirectory) > 0 && os.IsPathSeparator(dataDirectory[len(dataDirectory)-1]) {
@@ -70,7 +69,7 @@ func (r *Releases) Root(digest framevalue.Digest) (string, error) {
 
 type Candidate struct {
 	releases *Releases
-	lease    *distribution.Lease
+	lease    distribution.Lease
 	release  plugin.Release
 }
 
@@ -100,7 +99,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 	if err != nil {
 		return nil, err
 	}
-	var lease *distribution.Lease
+	var lease distribution.Lease
 	if info.IsDir() {
 		lease, err = r.content.ImportDirectoryHeld(ctx, source)
 	} else if info.Mode().IsRegular() {
@@ -159,7 +158,7 @@ func (r *Releases) Reclaim(ctx context.Context) error {
 	}
 	var failures []error
 	for _, digest := range digests {
-		if err := r.content.Remove(ctx, digest); err != nil && !errors.Is(err, frame.ErrInUse) {
+		if err := r.content.Remove(ctx, digest); err != nil && !errors.Is(err, framehost.ErrInUse) {
 			failures = append(failures, err)
 		}
 	}

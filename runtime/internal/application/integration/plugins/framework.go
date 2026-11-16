@@ -8,20 +8,21 @@ import (
 	"slices"
 	"strings"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type FrameworkRelease struct {
-	Plugin    *frame.Plugin
-	Contracts []frame.Declaration
+	Plugin    *framehost.Plugin
+	Contracts []framehost.Declaration
 }
 
 const (
@@ -59,7 +60,7 @@ func EncodeFrameworkConfiguration(record plugin.Record) ([]byte, error) {
 	return encoded.Bytes(), nil
 }
 
-func DecodeFrameworkConfiguration(record frame.InstallationRecord) (plugin.Record, error) {
+func DecodeFrameworkConfiguration(record framehost.InstallationRecord) (plugin.Record, error) {
 	var value FrameworkConfiguration
 	if err := json.Unmarshal(record.Configuration, &value, json.RejectUnknownMembers(true)); err != nil {
 		return plugin.Record{}, err
@@ -75,11 +76,11 @@ func DecodeFrameworkConfiguration(record frame.InstallationRecord) (plugin.Recor
 	return plugin.Record{ID: id, Source: value.Source, Selected: digest, Enabled: record.Enabled, Values: value.Values, DisabledServers: value.DisabledServers, DisabledSkills: value.DisabledSkills}, nil
 }
 
-func BackendUnit(server mcpserver.ServerName) frame.UnitID {
-	return frame.UnitID(backendUnitPrefix + server.String())
+func BackendUnit(server mcpserver.ServerName) framehost.UnitID {
+	return framehost.UnitID(backendUnitPrefix + server.String())
 }
 
-func BackendServer(unit frame.UnitID) (mcpserver.ServerName, error) {
+func BackendServer(unit framehost.UnitID) (mcpserver.ServerName, error) {
 	value, found := strings.CutPrefix(string(unit), backendUnitPrefix)
 	if !found {
 		return mcpserver.ServerName{}, plugin.ErrInvalid
@@ -91,14 +92,14 @@ func RequirementSlot(contribution, requirement plugin.ContributionID) string {
 	return contribution.String() + "/" + requirement.String()
 }
 
-const PointValuesUnit frame.UnitID = "point-values"
+const PointValuesUnit framehost.UnitID = "point-values"
 
-func ComponentUnit(id plugin.ContributionID) frame.UnitID {
-	return frame.UnitID(componentUnitPrefix + id.String())
+func ComponentUnit(id plugin.ContributionID) framehost.UnitID {
+	return framehost.UnitID(componentUnitPrefix + id.String())
 }
 
-func ComponentContract() (frame.Contract[any], error) {
-	return frame.NewContract[any]("io.github.tangerg.flame/component", "1")
+func ComponentContract() (framehost.Contract[any], error) {
+	return framehost.NewContract[any]("io.github.tangerg.flame/component", "1")
 }
 
 type ComponentConfiguration struct {
@@ -148,76 +149,76 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 	return nil, plugin.ErrNotFound
 }
 
-func capabilityContract(contract *plugincontract.Capability) (frame.Contract[any], error) {
+func capabilityContract(contract *plugincontract.Capability) (framehost.Contract[any], error) {
 	if contract == nil {
-		return frame.Contract[any]{}, plugin.ErrInvalid
+		return framehost.Contract[any]{}, plugin.ErrInvalid
 	}
-	return frame.NewPortableContract[any]("1", contract.Service())
+	return framehost.NewPortableContract[any]("1", contract.Service())
 }
 
 // CapabilityPoint is Flame's collection of implementations of a portable
 // callable contract. Selection and decoration order are consumer policies;
 // membership and callable value have separate original descriptors.
-func CapabilityPoint(contract *plugincontract.Capability) (frame.Point[framevalue.JSON, any], error) {
+func CapabilityPoint(contract *plugincontract.Capability) (framehost.Point[framevalue.JSON, any], error) {
 	value, err := capabilityContract(contract)
 	if err != nil {
-		return frame.Point[framevalue.JSON, any]{}, err
+		return framehost.Point[framevalue.JSON, any]{}, err
 	}
-	return frame.NewPortablePoint[framevalue.JSON](contract.Descriptor().Reference, "1", []byte(`{"type":"null"}`), value)
+	return framehost.NewPortablePoint[framevalue.JSON](contract.Descriptor().Reference, "1", []byte(`{"type":"null"}`), value)
 }
 
-func DataPoint(contract *plugincontract.Point) (frame.Point[framevalue.JSON, framevalue.JSON], error) {
+func DataPoint(contract *plugincontract.Point) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
 	if contract == nil {
-		return frame.Point[framevalue.JSON, framevalue.JSON]{}, plugin.ErrInvalid
+		return framehost.Point[framevalue.JSON, framevalue.JSON]{}, plugin.ErrInvalid
 	}
-	ref := frame.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: framevalue.Hash(contract.Identity().Bytes()), Kind: frame.ServiceKind, Mode: frame.PortableMode}
-	value, err := frame.BindContract[framevalue.JSON](ref, contract.Identity().Bytes())
+	ref := framehost.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: framevalue.Hash(contract.Identity().Bytes()), Kind: framehost.ServiceKind, Mode: framehost.PortableMode}
+	value, err := framehost.BindContract[framevalue.JSON](ref, contract.Identity().Bytes())
 	if err != nil {
-		return frame.Point[framevalue.JSON, framevalue.JSON]{}, err
+		return framehost.Point[framevalue.JSON, framevalue.JSON]{}, err
 	}
-	return frame.NewPortablePoint[framevalue.JSON](ref.Name, "1", contract.Definition().Value, value)
+	return framehost.NewPortablePoint[framevalue.JSON](ref.Name, "1", contract.Definition().Value, value)
 }
 
 // FrameworkDefinition is the one Flame-to-Frame declaration projection shared
 // by author tooling and Runtime. Typed declarations retain the local Go binding;
 // a descriptor alone cannot admit an in-process implementation.
 type FrameworkDefinition struct {
-	Units     []frame.Unit
-	Contracts []frame.Declaration
+	Units     []framehost.Unit
+	Contracts []framehost.Declaration
 }
 
-func ProjectFrameworkRelease(release plugin.Release, backendProfile frame.Profile) (FrameworkRelease, error) {
+func ProjectFrameworkRelease(release plugin.Release, backendProfile framehost.Profile) (FrameworkRelease, error) {
 	projection, err := ProjectFrameworkDeclaration(release.Declaration(), backendProfile)
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
-	plugin, err := frame.Define(frame.Definition{Revision: release.Digest(), Units: projection.Units})
+	plugin, err := framehost.Define(framehost.Definition{Revision: release.Digest(), Units: projection.Units})
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
 	return FrameworkRelease{Plugin: plugin, Contracts: projection.Contracts}, nil
 }
 
-func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile frame.Profile) (FrameworkDefinition, error) {
-	contracts := map[frame.ContractRef]frame.Declaration{}
-	addCapability := func(encoded framevalue.JSON) (frame.ContractRef, error) {
+func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile framehost.Profile) (FrameworkDefinition, error) {
+	contracts := map[framehost.ContractRef]framehost.Declaration{}
+	addCapability := func(encoded framevalue.JSON) (framehost.ContractRef, error) {
 		contract, err := plugincontract.ParseCapability(encoded.Bytes())
 		if err != nil {
-			return frame.ContractRef{}, err
+			return framehost.ContractRef{}, err
 		}
 		value, err := capabilityContract(contract)
 		if err != nil {
-			return frame.ContractRef{}, err
+			return framehost.ContractRef{}, err
 		}
 		point, err := CapabilityPoint(contract)
 		if err != nil {
-			return frame.ContractRef{}, err
+			return framehost.ContractRef{}, err
 		}
 		contracts[value.Ref()] = value
 		contracts[point.Ref()] = point
 		return point.Ref(), nil
 	}
-	addDataPoint := func(encoded framevalue.JSON) (frame.Point[framevalue.JSON, framevalue.JSON], error) {
+	addDataPoint := func(encoded framevalue.JSON) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
 		point, value, err := dataPointDeclarations(encoded)
 		if err != nil {
 			return point, err
@@ -227,9 +228,9 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 		return point, nil
 	}
 
-	units := make([]frame.Unit, 0, len(declaration.Servers)+1)
+	units := make([]framehost.Unit, 0, len(declaration.Servers)+1)
 	for _, server := range declaration.Servers {
-		unit := frame.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{}}
+		unit := framehost.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
 		for _, contribution := range declaration.Contributions {
 			if contribution.Server != server.Name {
 				continue
@@ -238,16 +239,16 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 			if err != nil {
 				return FrameworkDefinition{}, err
 			}
-			unit.Exports = append(unit.Exports, frame.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
+			unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
 			for _, requirement := range contribution.Requires {
 				ref, err := addCapability(requirement.Contract)
 				if err != nil {
 					return FrameworkDefinition{}, err
 				}
-				unit.Imports = append(unit.Imports, frame.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
+				unit.Imports = append(unit.Imports, framehost.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
 			}
 		}
-		units = append(units, frame.Unit{Declaration: unit})
+		units = append(units, framehost.Unit{Declaration: unit})
 	}
 	for _, definition := range declaration.Points {
 		if _, err := addDataPoint(definition.Contract); err != nil {
@@ -255,17 +256,19 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 		}
 	}
 	if len(declaration.PointValues) > 0 {
-		unit := frame.UnitDeclaration{ID: PointValuesUnit, Profile: frame.NativeGo, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{}}
-		values := make([]frame.ExportValue, 0, len(declaration.PointValues))
+		unit := framehost.UnitDeclaration{ID: PointValuesUnit, Profile: framehost.NativeGo, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
+		values := make([]framehost.ExportValue, 0, len(declaration.PointValues))
 		for _, contribution := range declaration.PointValues {
 			point, err := addDataPoint(contribution.Contract)
 			if err != nil {
 				return FrameworkDefinition{}, err
 			}
-			unit.Exports = append(unit.Exports, frame.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
-			values = append(values, frame.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
+			unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
+			values = append(values, framehost.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
 		}
-		units = append(units, frame.Unit{Declaration: unit, Setup: func(context.Context, *frame.Setup) ([]frame.ExportValue, error) { return slices.Clone(values), nil }})
+		units = append(units, framehost.Unit{Declaration: unit, Setup: func(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
+			return slices.Clone(values), nil
+		}})
 	}
 	if len(declaration.Components) > 0 {
 		contract, err := ComponentContract()
@@ -274,22 +277,22 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 		}
 		contracts[contract.Ref()] = contract
 		for _, component := range declaration.Components {
-			units = append(units, frame.Unit{Declaration: frame.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: frame.BrowserJS, Imports: []frame.ImportDeclaration{}, Exports: []frame.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
+			units = append(units, framehost.Unit{Declaration: framehost.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: framehost.BrowserJS, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
 		}
 	}
 	result := FrameworkDefinition{Units: units}
 	for _, contract := range contracts {
 		result.Contracts = append(result.Contracts, contract)
 	}
-	slices.SortFunc(result.Contracts, func(a, b frame.Declaration) int {
+	slices.SortFunc(result.Contracts, func(a, b framehost.Declaration) int {
 		return strings.Compare(string(a.Ref().Kind)+a.Ref().String(), string(b.Ref().Kind)+b.Ref().String())
 	})
 	return result, nil
 }
 
-func dataPointDeclarations(encoded framevalue.JSON) (frame.Point[framevalue.JSON, framevalue.JSON], frame.Contract[framevalue.JSON], error) {
-	var point frame.Point[framevalue.JSON, framevalue.JSON]
-	var value frame.Contract[framevalue.JSON]
+func dataPointDeclarations(encoded framevalue.JSON) (framehost.Point[framevalue.JSON, framevalue.JSON], framehost.Contract[framevalue.JSON], error) {
+	var point framehost.Point[framevalue.JSON, framevalue.JSON]
+	var value framehost.Contract[framevalue.JSON]
 	contract, err := plugincontract.ParsePoint(encoded.Bytes())
 	if err != nil {
 		return point, value, err
@@ -298,41 +301,41 @@ func dataPointDeclarations(encoded framevalue.JSON) (frame.Point[framevalue.JSON
 	if err != nil {
 		return point, value, err
 	}
-	value, err = frame.BindContract[framevalue.JSON](point.ValueContract(), contract.Identity().Bytes())
+	value, err = framehost.BindContract[framevalue.JSON](point.ValueContract(), contract.Identity().Bytes())
 	return point, value, err
 }
 
-func ContributionSource(binding ContributionBinding) (frame.ExportRef, error) {
+func ContributionSource(binding ContributionBinding) (framehost.ExportRef, error) {
 	contract, err := plugincontract.ParseCapability(binding.Contract.Bytes())
 	if err != nil {
-		return frame.ExportRef{}, err
+		return framehost.ExportRef{}, err
 	}
 	point, err := CapabilityPoint(contract)
 	if err != nil {
-		return frame.ExportRef{}, err
+		return framehost.ExportRef{}, err
 	}
-	return frame.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
+	return framehost.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
 // FrameworkError gives Core failures one Flame category without losing their
 // original cause at installation, binding, or execution boundaries.
 func FrameworkError(err error) error {
 	switch {
-	case errors.Is(err, frame.ErrDependencyCycle), errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):
+	case errors.Is(err, framehost.ErrDependencyCycle), errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):
 		return errors.Join(plugin.ErrInvalid, err)
-	case errors.Is(err, frame.ErrStaleBinding):
+	case errors.Is(err, framehost.ErrStaleBinding):
 		return errors.Join(plugin.ErrStale, err)
-	case errors.Is(err, frame.ErrInUse):
+	case errors.Is(err, framehost.ErrInUse):
 		return errors.Join(plugin.ErrInUse, err)
-	case errors.Is(err, frame.ErrUnavailable), errors.Is(err, frame.ErrAmbiguous), errors.Is(err, frame.ErrFenced):
+	case errors.Is(err, framehost.ErrUnavailable), errors.Is(err, framehost.ErrAmbiguous), errors.Is(err, framehost.ErrFenced):
 		return errors.Join(plugin.ErrUnavailable, err)
 	default:
 		return err
 	}
 }
 
-func RegisterFrameworkRelease(host *frame.Host, release FrameworkRelease) error {
-	if host == nil || release.Plugin == nil {
+func RegisterFrameworkRelease(host framehost.Host, release FrameworkRelease) error {
+	if !host.Valid() || release.Plugin == nil {
 		return fmt.Errorf("plugins: framework host and release are required")
 	}
 	return host.Register(release.Contracts...)

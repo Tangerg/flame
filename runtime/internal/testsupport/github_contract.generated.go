@@ -10,12 +10,20 @@ const (
 	GitHubCreateIssueV1OutputWireIssueStateClosed GitHubCreateIssueV1OutputWireIssueState = "closed"
 )
 
+func (GitHubCreateIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(GitHubCreateIssueV1OutputWireIssueStateOpen), string(GitHubCreateIssueV1OutputWireIssueStateClosed)}
+}
+
 type GitHubCreatePullRequestCommentV1InputWireInlineCommentSide string
 
 const (
 	GitHubCreatePullRequestCommentV1InputWireInlineCommentSideLEFT  GitHubCreatePullRequestCommentV1InputWireInlineCommentSide = "LEFT"
 	GitHubCreatePullRequestCommentV1InputWireInlineCommentSideRIGHT GitHubCreatePullRequestCommentV1InputWireInlineCommentSide = "RIGHT"
 )
+
+func (GitHubCreatePullRequestCommentV1InputWireInlineCommentSide) JSONSchemaEnum() []string {
+	return []string{string(GitHubCreatePullRequestCommentV1InputWireInlineCommentSideLEFT), string(GitHubCreatePullRequestCommentV1InputWireInlineCommentSideRIGHT)}
+}
 
 type GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSide string
 
@@ -24,12 +32,20 @@ const (
 	GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSideRIGHT GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSide = "RIGHT"
 )
 
+func (GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSide) JSONSchemaEnum() []string {
+	return []string{string(GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSideLEFT), string(GitHubCreatePullRequestCommentV1InputWireInlineCommentStartSideRIGHT)}
+}
+
 type GitHubCreatePullRequestV1OutputWirePullRequestState string
 
 const (
 	GitHubCreatePullRequestV1OutputWirePullRequestStateOpen   GitHubCreatePullRequestV1OutputWirePullRequestState = "open"
 	GitHubCreatePullRequestV1OutputWirePullRequestStateClosed GitHubCreatePullRequestV1OutputWirePullRequestState = "closed"
 )
+
+func (GitHubCreatePullRequestV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(GitHubCreatePullRequestV1OutputWirePullRequestStateOpen), string(GitHubCreatePullRequestV1OutputWirePullRequestStateClosed)}
+}
 
 type GitHubGetIssueV1OutputWireIssueState string
 
@@ -38,12 +54,20 @@ const (
 	GitHubGetIssueV1OutputWireIssueStateClosed GitHubGetIssueV1OutputWireIssueState = "closed"
 )
 
+func (GitHubGetIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(GitHubGetIssueV1OutputWireIssueStateOpen), string(GitHubGetIssueV1OutputWireIssueStateClosed)}
+}
+
 type GitHubGetPullRequestV1OutputWirePullRequestState string
 
 const (
 	GitHubGetPullRequestV1OutputWirePullRequestStateOpen   GitHubGetPullRequestV1OutputWirePullRequestState = "open"
 	GitHubGetPullRequestV1OutputWirePullRequestStateClosed GitHubGetPullRequestV1OutputWirePullRequestState = "closed"
 )
+
+func (GitHubGetPullRequestV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(GitHubGetPullRequestV1OutputWirePullRequestStateOpen), string(GitHubGetPullRequestV1OutputWirePullRequestStateClosed)}
+}
 
 type GitHubListInputState string
 
@@ -53,6 +77,10 @@ const (
 	GitHubListInputStateAll    GitHubListInputState = "all"
 )
 
+func (GitHubListInputState) JSONSchemaEnum() []string {
+	return []string{string(GitHubListInputStateOpen), string(GitHubListInputStateClosed), string(GitHubListInputStateAll)}
+}
+
 type GitHubListIssuesV1OutputWireIssueState string
 
 const (
@@ -60,12 +88,20 @@ const (
 	GitHubListIssuesV1OutputWireIssueStateClosed GitHubListIssuesV1OutputWireIssueState = "closed"
 )
 
+func (GitHubListIssuesV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(GitHubListIssuesV1OutputWireIssueStateOpen), string(GitHubListIssuesV1OutputWireIssueStateClosed)}
+}
+
 type GitHubListPullRequestsV1OutputWirePullRequestState string
 
 const (
 	GitHubListPullRequestsV1OutputWirePullRequestStateOpen   GitHubListPullRequestsV1OutputWirePullRequestState = "open"
 	GitHubListPullRequestsV1OutputWirePullRequestStateClosed GitHubListPullRequestsV1OutputWirePullRequestState = "closed"
 )
+
+func (GitHubListPullRequestsV1OutputWirePullRequestState) JSONSchemaEnum() []string {
+	return []string{string(GitHubListPullRequestsV1OutputWirePullRequestStateOpen), string(GitHubListPullRequestsV1OutputWirePullRequestStateClosed)}
+}
 
 type GitHubMergePullInputMergeMethod string
 
@@ -75,6 +111,10 @@ const (
 	GitHubMergePullInputMergeMethodRebase GitHubMergePullInputMergeMethod = "rebase"
 )
 
+func (GitHubMergePullInputMergeMethod) JSONSchemaEnum() []string {
+	return []string{string(GitHubMergePullInputMergeMethodMerge), string(GitHubMergePullInputMergeMethodSquash), string(GitHubMergePullInputMergeMethodRebase)}
+}
+
 type GitHubPullListInputState string
 
 const (
@@ -83,6 +123,10 @@ const (
 	GitHubPullListInputStateAll    GitHubPullListInputState = "all"
 )
 
+func (GitHubPullListInputState) JSONSchemaEnum() []string {
+	return []string{string(GitHubPullListInputStateOpen), string(GitHubPullListInputStateClosed), string(GitHubPullListInputStateAll)}
+}
+
 type GitHubSubmitPullRequestReviewV1InputWireInlineCommentSide string
 
 const (
@@ -90,12 +134,20 @@ const (
 	GitHubSubmitPullRequestReviewV1InputWireInlineCommentSideRIGHT GitHubSubmitPullRequestReviewV1InputWireInlineCommentSide = "RIGHT"
 )
 
+func (GitHubSubmitPullRequestReviewV1InputWireInlineCommentSide) JSONSchemaEnum() []string {
+	return []string{string(GitHubSubmitPullRequestReviewV1InputWireInlineCommentSideLEFT), string(GitHubSubmitPullRequestReviewV1InputWireInlineCommentSideRIGHT)}
+}
+
 type GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSide string
 
 const (
 	GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSideLEFT  GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSide = "LEFT"
 	GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSideRIGHT GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSide = "RIGHT"
 )
+
+func (GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSide) JSONSchemaEnum() []string {
+	return []string{string(GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSideLEFT), string(GitHubSubmitPullRequestReviewV1InputWireInlineCommentStartSideRIGHT)}
+}
 
 type GitHubSubmitReviewInputEvent string
 
@@ -105,12 +157,20 @@ const (
 	GitHubSubmitReviewInputEventCOMMENT        GitHubSubmitReviewInputEvent = "COMMENT"
 )
 
+func (GitHubSubmitReviewInputEvent) JSONSchemaEnum() []string {
+	return []string{string(GitHubSubmitReviewInputEventAPPROVE), string(GitHubSubmitReviewInputEventREQUESTCHANGES), string(GitHubSubmitReviewInputEventCOMMENT)}
+}
+
 type GitHubUpdateIssueInputState string
 
 const (
 	GitHubUpdateIssueInputStateOpen   GitHubUpdateIssueInputState = "open"
 	GitHubUpdateIssueInputStateClosed GitHubUpdateIssueInputState = "closed"
 )
+
+func (GitHubUpdateIssueInputState) JSONSchemaEnum() []string {
+	return []string{string(GitHubUpdateIssueInputStateOpen), string(GitHubUpdateIssueInputStateClosed)}
+}
 
 type GitHubUpdateIssueInputStateReason string
 
@@ -121,12 +181,20 @@ const (
 	GitHubUpdateIssueInputStateReasonReopened   GitHubUpdateIssueInputStateReason = "reopened"
 )
 
+func (GitHubUpdateIssueInputStateReason) JSONSchemaEnum() []string {
+	return []string{string(GitHubUpdateIssueInputStateReasonCompleted), string(GitHubUpdateIssueInputStateReasonNotPlanned), string(GitHubUpdateIssueInputStateReasonDuplicate), string(GitHubUpdateIssueInputStateReasonReopened)}
+}
+
 type GitHubUpdateIssueV1OutputWireIssueState string
 
 const (
 	GitHubUpdateIssueV1OutputWireIssueStateOpen   GitHubUpdateIssueV1OutputWireIssueState = "open"
 	GitHubUpdateIssueV1OutputWireIssueStateClosed GitHubUpdateIssueV1OutputWireIssueState = "closed"
 )
+
+func (GitHubUpdateIssueV1OutputWireIssueState) JSONSchemaEnum() []string {
+	return []string{string(GitHubUpdateIssueV1OutputWireIssueStateOpen), string(GitHubUpdateIssueV1OutputWireIssueStateClosed)}
+}
 
 type GitHubAnnotation struct {
 	EndColumn   framevalue.Number `json:"endColumn,omitzero"`

@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/frame/portable"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))`
@@ -40,7 +39,7 @@ func NewCommandPlan[R any](result R, apply func(context.Context) error) (Command
 	return CommandPlan[R]{reply: reply, apply: apply}, nil
 }
 
-func (p CommandPlan[R]) validateOutput(schema portable.Schema) error {
+func (p CommandPlan[R]) validateOutput(schema framevalue.Schema) error {
 	value, err := pluginmcp.DecodeReply[framevalue.JSON](p.reply.Bytes())
 	if err != nil {
 		return err
@@ -48,7 +47,7 @@ func (p CommandPlan[R]) validateOutput(schema portable.Schema) error {
 	return schema.Validate(value.Bytes())
 }
 
-func Command[P, R any](ctx context.Context, db *framesqlite.Database, method, id string, admitted framevalue.JSON, classify pluginmcp.Classifier, prepare func(context.Context, P) (CommandPlan[R], error)) (R, error) {
+func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id string, admitted framevalue.JSON, classify pluginmcp.Classifier, prepare func(context.Context, P) (CommandPlan[R], error)) (R, error) {
 	var zero R
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return zero, err
@@ -105,7 +104,7 @@ func Command[P, R any](ctx context.Context, db *framesqlite.Database, method, id
 	return pluginmcp.DecodeReply[R](reply)
 }
 
-func executeCommandPlan[R any](ctx context.Context, db *framesqlite.Database, classify pluginmcp.Classifier, prepare func(context.Context) (CommandPlan[R], error)) ([]byte, error) {
+func executeCommandPlan[R any](ctx context.Context, db framesqlite.Database, classify pluginmcp.Classifier, prepare func(context.Context) (CommandPlan[R], error)) ([]byte, error) {
 	var plan CommandPlan[R]
 	var decisionErr error
 	if err := framesqlite.RunReadSnapshot(ctx, db, func(ctx context.Context) error {
@@ -130,15 +129,15 @@ func executeCommandPlan[R any](ctx context.Context, db *framesqlite.Database, cl
 	return plan.reply.Bytes(), nil
 }
 
-func RegisterCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Database, method *pluginmcp.Method[P, R], classify pluginmcp.Classifier, prepare func(context.Context, *sdk.ServerSession, P) (CommandPlan[R], error)) error {
-	if method == nil || method.Descriptor().Kind != portable.Command {
+func RegisterCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database, method *pluginmcp.Method[P, R], classify pluginmcp.Classifier, prepare func(context.Context, *sdk.ServerSession, P) (CommandPlan[R], error)) error {
+	if method == nil || method.Descriptor().Kind != frame.Command {
 		return errors.New("managed plugin: command method is required")
 	}
-	if server == nil || db == nil || prepare == nil {
+	if server == nil || !db.Valid() || prepare == nil {
 		return errors.New("managed plugin: backend, database and command preparation are required")
 	}
 	method = new(*method)
-	output, err := portable.AdmitSchema(method.Descriptor().Output)
+	output, err := framevalue.AdmitSchema(method.Descriptor().Output)
 	if err != nil {
 		return err
 	}
@@ -161,8 +160,8 @@ func RegisterCommand[P, R any](server *pluginmcp.Backend, db *framesqlite.Databa
 	})
 }
 
-func validateCommandIdentity(db *framesqlite.Database, method, id string) error {
-	if db == nil || !portable.ValidToken(method) {
+func validateCommandIdentity(db framesqlite.Database, method, id string) error {
+	if !db.Valid() || !frame.ValidName(method) {
 		return errors.New("managed plugin: database and valid method identity are required")
 	}
 	if err := pluginmcp.CommandID(id).Validate(); err != nil {
@@ -171,8 +170,8 @@ func validateCommandIdentity(db *framesqlite.Database, method, id string) error 
 	return nil
 }
 
-func RegisterReceipts(server *pluginmcp.Backend, db *framesqlite.Database) error {
-	if server == nil || db == nil {
+func RegisterReceipts(server *pluginmcp.Backend, db framesqlite.Database) error {
+	if server == nil || !db.Valid() {
 		return errors.New("managed plugin: backend and database are required")
 	}
 	method, err := pluginmcp.ReceiptQuery()
@@ -185,8 +184,8 @@ func RegisterReceipts(server *pluginmcp.Backend, db *framesqlite.Database) error
 }
 
 // ReadReceipt only projects the private owner's original method/input evidence.
-func ReadReceipt(ctx context.Context, db *framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginmcp.Receipt, error) {
-	if db == nil {
+func ReadReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginmcp.Receipt, error) {
+	if !db.Valid() {
 		return pluginmcp.Receipt{}, errors.New("managed plugin: database is required")
 	}
 	if err := input.Validate(); err != nil {

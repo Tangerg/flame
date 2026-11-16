@@ -7,19 +7,16 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -69,7 +66,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "policy-edit", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "router"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "policy-edit", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "router"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -95,7 +92,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			routeContext, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "route", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "route"}})
+			routeContext, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "route", Origin: extension.Automatic, Target: framemcp.Target{Scope: "call", Reference: "route"}})
 			if err != nil {
 				t.Fatal(err)
 			}

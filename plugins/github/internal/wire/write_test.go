@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -16,20 +16,20 @@ func TestWriteSchemasPreserveOwnedConstraints(t *testing.T) {
 		invalid string
 	}{
 		{
-			name: "confirmed deletion", schema: portable.SchemaFor[DeletedComment],
+			name: "confirmed deletion", schema: framevalue.SchemaFor[DeletedComment],
 			valid: `{"id":1}`, invalid: `{"id":1,"deleted":false}`,
 		},
 		{
-			name: "confirmed merge", schema: portable.SchemaFor[MergeResult],
+			name: "confirmed merge", schema: framevalue.SchemaFor[MergeResult],
 			valid: `{"sha":"` + strings.Repeat("a", 40) + `","message":"merged"}`, invalid: `{"sha":"` + strings.Repeat("a", 40) + `","merged":false,"message":"merged"}`,
 		},
 		{
-			name: "inspected commit", schema: portable.SchemaFor[SubmitReviewInput],
+			name: "inspected commit", schema: framevalue.SchemaFor[SubmitReviewInput],
 			valid:   `{"repository":"owner/repo","number":1,"commitId":"` + strings.Repeat("a", 40) + `","event":"APPROVE"}`,
 			invalid: `{"repository":"owner/repo","number":1,"commitId":"latest","event":"APPROVE"}`,
 		},
 		{
-			name: "bounded title", schema: portable.SchemaFor[CreateIssueInput],
+			name: "bounded title", schema: framevalue.SchemaFor[CreateIssueInput],
 			valid:   `{"repository":"owner/repo","title":"` + strings.Repeat("x", MaxTitleRunes) + `"}`,
 			invalid: `{"repository":"owner/repo","title":"` + strings.Repeat("x", MaxTitleRunes+1) + `"}`,
 		},

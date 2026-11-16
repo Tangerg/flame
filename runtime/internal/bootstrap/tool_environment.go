@@ -22,7 +22,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -44,7 +45,7 @@ type toolEnvironment struct {
 	modelCallbacks        []pluginmcp.Callback
 	utilityModel          modeladapter.AuxiliaryResolver
 	closers               []*teardownStep
-	admission             *frame.Admission
+	admission             framehost.Admission
 	validatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
 }
 

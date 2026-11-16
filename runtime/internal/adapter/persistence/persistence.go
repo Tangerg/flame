@@ -12,7 +12,8 @@ import (
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -20,8 +21,8 @@ import (
 // Managed plugin processes open their private stores separately.
 type Bundle struct {
 	db                *database
-	Frame             *sqlite.Store
-	Admission         *frame.Admission
+	Frame             sqlite.Store
+	Admission         framehost.Admission
 	PluginUses        sqlite.Owner
 	closeOnce         sync.Once
 	closeErr          error
@@ -195,7 +196,7 @@ func (b *Bundle) Close() error {
 		return nil
 	}
 	b.closeOnce.Do(func() {
-		if b.Frame != nil {
+		if b.Frame.Valid() {
 			b.closeErr = b.Frame.Close()
 		}
 	})

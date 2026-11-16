@@ -6,11 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/google/uuid"
 )
 
@@ -66,7 +64,7 @@ func Identity(ctx context.Context) string {
 	return value.id
 }
 
-func Capture(ctx context.Context, target portable.Target) (framemcp.Invocation, error) {
+func Capture(ctx context.Context, target framemcp.Target) (framemcp.Invocation, error) {
 	value, _ := ctx.Value(identityKey{}).(caller)
 	invocation := framemcp.Invocation{ID: value.id, Origin: value.origin, Parent: value.parent, Target: target}
 	return invocation, extension.ValidateInvocation(invocation)

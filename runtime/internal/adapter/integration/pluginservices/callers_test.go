@@ -5,16 +5,14 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 type emptyCallerCommands struct{}
@@ -36,13 +34,13 @@ func (r retainedToolCaller) ToolCaller(_ context.Context, id string) (plugin.Too
 }
 
 func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testing.T) {
-	commands, err := plugins.NewCommands(emptyCallerCommands{}, frame.NewAdmission())
+	commands, err := plugins.NewCommands(emptyCallerCommands{}, framehost.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)

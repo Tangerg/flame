@@ -1,10 +1,6 @@
 package execution
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"context"
 	"errors"
 	"fmt"
@@ -13,13 +9,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	corechat "github.com/Tangerg/scope/core/chat"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 	"github.com/samber/lo"
 )
 
@@ -70,7 +67,7 @@ func (o *observedInteractionModel) Call(
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
-	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
 	}
@@ -108,7 +105,7 @@ func (o *observedInteractionModel) Stream(
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
-		ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
+		ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framemcp.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
 			return

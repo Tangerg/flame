@@ -3,15 +3,13 @@ package plugin
 import (
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // ToolCaller freezes the installed source admitted for one logical model call.
@@ -41,7 +39,7 @@ func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {
 	}
 	server, _, mcp := value.Tool.MCP()
 	installation, installed := server.Origin().Installation()
-	if !mcp || !installed || value.Invocation.Origin != extension.Model || value.Invocation.Parent == "" || value.Invocation.Target != (portable.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}) {
+	if !mcp || !installed || value.Invocation.Origin != extension.Model || value.Invocation.Parent == "" || value.Invocation.Target != (framemcp.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}) {
 		return ToolCaller{}, errors.New("plugin: model Tool caller must name its admitted installation and execution member")
 	}
 	return ToolCaller{value: value}, nil

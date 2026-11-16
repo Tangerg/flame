@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -69,7 +69,7 @@ func TestZeroExportBackendRetainsItsRealSetupActivationAndClose(t *testing.T) {
 func TestSetupProvidesNamedImmutableBindingsAndJoinsResources(t *testing.T) {
 	for _, refuses := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "refusal"}[refuses], func(t *testing.T) {
-			method, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "records.read", Kind: portable.Query, Target: "workspace", Description: "Read records."})
+			method, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "records.read", Kind: frame.Query, Target: "workspace", Description: "Read records."})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,7 +136,7 @@ type activationTestResource struct{ starts, closes *atomic.Int32 }
 func (r activationTestResource) Start() error { r.starts.Add(1); return nil }
 func (r activationTestResource) Close() error { r.closes.Add(1); return nil }
 func TestActivationStartsOnceOnlyAfterSuccessfulSetup(t *testing.T) {
-	method, err := NewMethod[struct{}, string](portable.MethodConfig{Name: "background.read", Kind: portable.Query, Target: "installation", Description: "Read background records."})
+	method, err := NewMethod[struct{}, string](frame.MethodConfig{Name: "background.read", Kind: frame.Query, Target: "installation", Description: "Read background records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestActivationStartsOnceOnlyAfterSuccessfulSetup(t *testing.T) {
 	if err := Activate(t.Context(), session); err == nil {
 		t.Fatal("activation bypassed setup")
 	}
-	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
+	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
 	if err := SetUp(t.Context(), session, values, sdk.ParamsBase{}); err != nil {
 		t.Fatal(err)
 	}

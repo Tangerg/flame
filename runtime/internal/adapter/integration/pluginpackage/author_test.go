@@ -9,11 +9,11 @@ import (
 	"runtime"
 	"testing"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/frame/distribution"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testing.T) {

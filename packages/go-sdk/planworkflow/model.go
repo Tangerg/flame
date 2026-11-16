@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const Reference = "flame.plan-workflow.v1"

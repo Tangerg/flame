@@ -8,9 +8,9 @@ import (
 	"reflect"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
 )
 
 type callResult struct {
@@ -81,7 +81,7 @@ func invocationOperation(meta methodMeta, request any) (operation, error) {
 		// before any transport, so errors.Is/As stay recognizable to callers.
 		return 0, protocol.InvalidParameters(err)
 	}
-	if kind == portable.Command {
+	if kind == frame.Command {
 		return commandOperation, nil
 	}
 	return queryOperation, nil

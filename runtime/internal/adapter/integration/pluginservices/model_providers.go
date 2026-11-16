@@ -8,13 +8,10 @@ import (
 	"slices"
 	"sync"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -22,10 +19,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -33,8 +30,8 @@ import (
 
 type ModelProvidersConfig struct {
 	Lifetime      context.Context
-	Framework     *frame.Host
-	Admission     *frame.Admission
+	Framework     framehost.Host
+	Admission     framehost.Admission
 	Installations plugins.Store
 	Selections    plugins.SelectionStore
 	Connections   *mcp.Pool
@@ -52,7 +49,7 @@ type ModelProviders struct {
 }
 
 func NewModelProviders(config ModelProvidersConfig) (*ModelProviders, error) {
-	if config.Lifetime == nil || config.Framework == nil || config.Admission == nil || lo.IsNil(config.Installations) || lo.IsNil(config.Selections) || config.Connections == nil || config.Callbacks == nil {
+	if config.Lifetime == nil || !config.Framework.Valid() || !config.Admission.Valid() || lo.IsNil(config.Installations) || lo.IsNil(config.Selections) || config.Connections == nil || config.Callbacks == nil {
 		return nil, errors.New("model providers: lifetime, installed sources, admission, connections and callbacks are required")
 	}
 	contract, err := modelprovider.Contract()
@@ -68,14 +65,14 @@ func NewModelProviders(config ModelProvidersConfig) (*ModelProviders, error) {
 
 func (*ModelProviders) ID() string { return "flame.model-provider-captures" }
 
-func (p *ModelProviders) Held(_ context.Context, installation frame.InstallationID) ([]frame.Dependency, error) {
+func (p *ModelProviders) Held(_ context.Context, installation framehost.InstallationID) ([]framehost.Dependency, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	var result []frame.Dependency
+	var result []framehost.Dependency
 	for use := range p.uses {
 		for _, dependency := range use.binding.Activation.Dependencies {
 			if dependency.InstallationID.String() == installation.String() {
-				value := frame.Dependency{InstallationID: installation, Release: dependency.Digest}
+				value := framehost.Dependency{InstallationID: installation, Release: dependency.Digest}
 				if !slices.Contains(result, value) {
 					result = append(result, value)
 				}
@@ -518,7 +515,7 @@ func providerContext(ctx context.Context, binding plugins.ContributionBinding, i
 		if operation.Identity(ctx) == "" {
 			ctx = operation.Bind(ctx, "models.provider", "")
 		}
-		caller, err = operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()})
+		caller, err = operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()})
 		if err != nil {
 			return nil, err
 		}
@@ -530,5 +527,5 @@ func providerContext(ctx context.Context, binding plugins.ContributionBinding, i
 	if parent == id {
 		parent = caller.Parent
 	}
-	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
+	return pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: id, Origin: caller.Origin, Parent: parent, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}})
 }

@@ -8,14 +8,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -27,7 +26,7 @@ type roleCallbackEmbedder struct {
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
-	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
+	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (framemcp.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
 	e.calls.Add(1)
@@ -68,7 +67,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}

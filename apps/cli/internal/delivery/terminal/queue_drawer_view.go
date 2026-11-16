@@ -5,11 +5,11 @@ import (
 	"image"
 	"strings"
 
-	"github.com/Tangerg/oolong/ui/core/scene"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -82,7 +82,7 @@ func (q *queueDrawer) drawEditor(frame scene.Frame, inner image.Rectangle) {
 	if attachments := len(entry.Message.Attachments); attachments > 0 {
 		label += " · keeps " + countedNoun(attachments, "attachment")
 	}
-	frame.Text(header.Min.X, header.Min.Y, text.Truncate(label, header.Dx(), q.glyphs.Ellipsis), q.theme.Heading)
+	text.Of(label, q.theme.Heading).Truncate(header.Dx(), q.glyphs.Ellipsis).Draw(frame.View, header.Min.X, header.Min.Y)
 }
 
 func (q *queueDrawer) drawEntries(frame scene.Frame) []queueHit {
@@ -126,7 +126,7 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 				if y >= height-1 {
 					break
 				}
-				view.Text(2, y, text.Truncate(cleanQueueText(line), max(width-2, 1), q.glyphs.Ellipsis), q.theme.Accent)
+				text.Of(cleanQueueText(line), q.theme.Accent).Truncate(max(width-2, 1), q.glyphs.Ellipsis).Draw(view, 2, y)
 				y++
 			}
 			return y
@@ -159,7 +159,7 @@ func (q *queueDrawer) drawEntry(view grid.View, entry authoring.QueueEntry, inde
 	}
 	view.Text(0, 0, prefix, style.Merge(q.theme.Muted))
 	left := text.Width(prefix)
-	view.Text(left, 0, text.Truncate(queueEntryLabel(entry), max(right-left, 1), q.glyphs.Ellipsis), style)
+	text.Of(queueEntryLabel(entry), style).Truncate(max(right-left, 1), q.glyphs.Ellipsis).Draw(view, left, 0)
 	return hits
 }
 

@@ -6,14 +6,13 @@ import (
 	"log"
 	"os"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
+
+	"github.com/Tangerg/frame"
 )
 
 func main() {
@@ -31,11 +30,11 @@ func main() {
 }
 
 func define() (*plugincontract.Capability, error) {
-	get, err := pluginmcp.NewMethod[struct{}, routing.Snapshot](portable.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Inspect the private routing policy and revision before editing."})
+	get, err := pluginmcp.NewMethod[struct{}, routing.Snapshot](frame.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Inspect the private routing policy and revision before editing."})
 	if err != nil {
 		return nil, err
 	}
-	replace, err := pluginmcp.NewMethod[wire.ReplaceInput, routing.Snapshot](portable.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
+	replace, err := pluginmcp.NewMethod[wire.ReplaceInput, routing.Snapshot](frame.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
 	if err != nil {
 		return nil, err
 	}

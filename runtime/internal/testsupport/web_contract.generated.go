@@ -11,6 +11,10 @@ const (
 	WebBrowseV1OutputDomainPageFormatText     WebBrowseV1OutputDomainPageFormat = "text"
 )
 
+func (WebBrowseV1OutputDomainPageFormat) JSONSchemaEnum() []string {
+	return []string{string(WebBrowseV1OutputDomainPageFormatMarkdown), string(WebBrowseV1OutputDomainPageFormatHtml), string(WebBrowseV1OutputDomainPageFormatText)}
+}
+
 type WebFetchRequestFormat string
 
 const (
@@ -18,6 +22,10 @@ const (
 	WebFetchRequestFormatHtml     WebFetchRequestFormat = "html"
 	WebFetchRequestFormatText     WebFetchRequestFormat = "text"
 )
+
+func (WebFetchRequestFormat) JSONSchemaEnum() []string {
+	return []string{string(WebFetchRequestFormatMarkdown), string(WebFetchRequestFormatHtml), string(WebFetchRequestFormatText)}
+}
 
 type WebFetchV1OutputDomainPageFormat string
 
@@ -27,12 +35,20 @@ const (
 	WebFetchV1OutputDomainPageFormatText     WebFetchV1OutputDomainPageFormat = "text"
 )
 
+func (WebFetchV1OutputDomainPageFormat) JSONSchemaEnum() []string {
+	return []string{string(WebFetchV1OutputDomainPageFormatMarkdown), string(WebFetchV1OutputDomainPageFormatHtml), string(WebFetchV1OutputDomainPageFormatText)}
+}
+
 type WebHTTPContentEncoding string
 
 const (
 	WebHTTPContentEncodingUtf8   WebHTTPContentEncoding = "utf8"
 	WebHTTPContentEncodingBase64 WebHTTPContentEncoding = "base64"
 )
+
+func (WebHTTPContentEncoding) JSONSchemaEnum() []string {
+	return []string{string(WebHTTPContentEncodingUtf8), string(WebHTTPContentEncodingBase64)}
+}
 
 type WebRequestMethod string
 
@@ -45,6 +61,10 @@ const (
 	WebRequestMethodDELETE WebRequestMethod = "DELETE"
 )
 
+func (WebRequestMethod) JSONSchemaEnum() []string {
+	return []string{string(WebRequestMethodGET), string(WebRequestMethodHEAD), string(WebRequestMethodPOST), string(WebRequestMethodPUT), string(WebRequestMethodPATCH), string(WebRequestMethodDELETE)}
+}
+
 type WebSearchRequestRecency string
 
 const (
@@ -54,6 +74,10 @@ const (
 	WebSearchRequestRecencyMonth WebSearchRequestRecency = "month"
 	WebSearchRequestRecencyYear  WebSearchRequestRecency = "year"
 )
+
+func (WebSearchRequestRecency) JSONSchemaEnum() []string {
+	return []string{string(WebSearchRequestRecencyHour), string(WebSearchRequestRecencyDay), string(WebSearchRequestRecencyWeek), string(WebSearchRequestRecencyMonth), string(WebSearchRequestRecencyYear)}
+}
 
 type WebBrowseInput struct {
 	Limit      framevalue.Number `json:"limit"`

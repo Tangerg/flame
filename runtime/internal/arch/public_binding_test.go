@@ -20,7 +20,7 @@ func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	root := moduleRoot(t)
 	goMod := `module example.com/runtimeconsumer
 
-go 1.27.3
+go 1.27.4
 
 
 `
@@ -45,7 +45,7 @@ pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 sqlitebase "github.com/Tangerg/frame/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
-"github.com/Tangerg/frame/portable"
+"github.com/Tangerg/frame"
 framevalue "github.com/Tangerg/frame/value"
 plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 framemcp "github.com/Tangerg/frame/process/mcp"
@@ -71,7 +71,7 @@ var _ = (*pluginmcp.Method[string, string]).CallCommand
 var _ pluginmcp.Command[string]
 var _ = pluginmcp.NewMethod[struct{}, string]
 var _ = pluginmcp.NewStreamingMethod[struct{}, uint64, bool]
-var _ portable.MethodDescriptor
+var _ frame.MethodDescriptor
 var _ = pluginmcp.NewBinding
 var _ = pluginmcp.Resolve
 var _ *pluginmcp.Binding
@@ -84,7 +84,7 @@ var _ = plugincontract.AdmitPoint
 var _ = runtimeclient.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "example.com/records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "example.com/records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, frame.MethodDescriptor{Name: "records/read", Kind: frame.Query, Target: extension.ScopeInstallation, Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestPublicToolCollaboratorsHaveNoFeatureDependency(t *testing.T) {
  actual, err := pluginsdk.ToolContextFromContext(ctx)
  if err != nil || actual != want { t.Fatalf("public Tool context = %+v, %v", actual, err) }
  method, err := pluginsdk.TextEmbeddingMethod()
- if err != nil || method.Descriptor().Kind != portable.Command || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
+ if err != nil || method.Descriptor().Kind != frame.Command || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
 }
 
 func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
@@ -177,7 +177,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root))
+	workspace := fmt.Sprintf("go 1.27.4\n\nuse (\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory

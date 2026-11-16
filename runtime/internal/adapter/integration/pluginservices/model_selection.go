@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -17,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/google/uuid"
 )
 
@@ -77,7 +74,7 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		return modelchoice.Selection{}, err
 	}
 	id := uuid.NewString()
-	target := portable.Target{Scope: extension.ScopeCall, Reference: id}
+	target := framemcp.Target{Scope: extension.ScopeCall, Reference: id}
 	invocation := framemcp.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin

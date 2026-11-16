@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestReceiptRetainsOriginalMethodAndRawInputAcrossRestart(t *testing.T) {
@@ -35,7 +34,7 @@ func TestReceiptRetainsOriginalMethodAndRawInputAcrossRestart(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		method, err := pluginmcp.NewMethod[input, string](portable.MethodConfig{Name: "update", Kind: portable.Command, Target: "installation", Description: "update"})
+		method, err := pluginmcp.NewMethod[input, string](frame.MethodConfig{Name: "update", Kind: frame.Command, Target: "installation", Description: "update"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +52,7 @@ func TestReceiptRetainsOriginalMethodAndRawInputAcrossRestart(t *testing.T) {
 		if err := binding.Publish(); err != nil {
 			t.Fatal(err)
 		}
-		replacement, err := pluginmcp.NewMethod[input, string](portable.MethodConfig{Name: "replacement", Kind: portable.Command, Target: "installation", Description: "another command"})
+		replacement, err := pluginmcp.NewMethod[input, string](frame.MethodConfig{Name: "replacement", Kind: frame.Command, Target: "installation", Description: "another command"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -136,12 +135,12 @@ func TestReceiptRegistrationRequiresACommandMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	query, err := pluginmcp.NewMethod[struct{}, string](portable.MethodConfig{Name: "read", Kind: portable.Query, Target: "installation", Description: "read"})
+	query, err := pluginmcp.NewMethod[struct{}, string](frame.MethodConfig{Name: "read", Kind: frame.Query, Target: "installation", Description: "read"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, method := range []*pluginmcp.Method[struct{}, string]{nil, query} {
-		if err := RegisterCommand(backend, nil, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (CommandPlan[string], error) {
+		if err := RegisterCommand(backend, sqlite.Database{}, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (CommandPlan[string], error) {
 			return NewCommandPlan("unexpected", nil)
 		}); err == nil {
 			t.Fatal("receipt registration accepted a non-command method")
@@ -188,8 +187,8 @@ func TestRegisteredCommandValidatesPublishedOutputBeforeItsMutation(t *testing.T
 		Value int `json:"value" jsonschema:"minimum=1"`
 	}
 	db, _ := commandDatabase(t)
-	method, err := pluginmcp.NewMethod[string, result](portable.MethodConfig{
-		Name: "bounded.update", Kind: portable.Command, Target: "installation", Description: "Commit a positive value.",
+	method, err := pluginmcp.NewMethod[string, result](frame.MethodConfig{
+		Name: "bounded.update", Kind: frame.Command, Target: "installation", Description: "Commit a positive value.",
 	})
 	if err != nil {
 		t.Fatal(err)

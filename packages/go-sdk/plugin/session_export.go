@@ -4,14 +4,13 @@ import (
 	"encoding/base64"
 	"errors"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const SessionMarkdownReference = "flame.session-markdown.v1"
@@ -51,11 +50,11 @@ func (d DocumentIdentity) Read(source []byte, r DocumentRange) (string, error) {
 }
 
 func ReadDocumentRangeMethod() (*pluginmcp.Method[DocumentRange, string], error) {
-	return pluginmcp.NewMethod[DocumentRange, string](portable.MethodConfig{Name: "flame.session-document/read-range.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read a base64 range of the original immutable session document for this call."})
+	return pluginmcp.NewMethod[DocumentRange, string](frame.MethodConfig{Name: "flame.session-document/read-range.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Read a base64 range of the original immutable session document for this call."})
 }
 
 func RenderSessionMarkdownMethod() (*pluginmcp.StreamingMethod[DocumentIdentity, string, DocumentIdentity], error) {
-	return pluginmcp.NewStreamingMethod[DocumentIdentity, string, DocumentIdentity](portable.MethodConfig{Name: "flame.session-markdown/render.v1", Kind: portable.Query, Target: string(extension.ComponentScopeSession), Description: "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity."})
+	return pluginmcp.NewStreamingMethod[DocumentIdentity, string, DocumentIdentity](frame.MethodConfig{Name: "flame.session-markdown/render.v1", Kind: frame.Query, Target: string(extension.ComponentScopeSession), Description: "Render a coherent session snapshot into ordered Markdown fragments and report the completed document identity."})
 }
 
 func SessionMarkdownContract() (*plugincontract.Capability, error) {

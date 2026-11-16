@@ -15,9 +15,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 const (
@@ -34,7 +34,7 @@ type connector struct {
 }
 
 func newConnector(store *store, transport http.RoundTripper, credential credential) (*connector, error) {
-	if store == nil || store.db == nil || transport == nil {
+	if store == nil || !store.db.Valid() || transport == nil {
 		return nil, errors.New("github: store and HTTP transport are required")
 	}
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

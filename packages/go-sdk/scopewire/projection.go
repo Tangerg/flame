@@ -6,14 +6,14 @@ package scopewire
 import (
 	"encoding/json/jsontext"
 
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+
 	"github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
 	"github.com/Tangerg/scope/core/media"
 	"github.com/Tangerg/scope/core/metadata"
 	"github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/instant"
 )
 
 type requestProjection struct {
@@ -95,9 +95,8 @@ type responseProjection struct {
 }
 
 type outputProjection struct {
-	Message      *messageProjection   `json:"message,omitzero"`
-	FinishReason chat.FinishReason    `json:"finish_reason,omitempty"`
-	Metadata     *chat.OutputMetadata `json:"metadata,omitzero"`
+	Message      *messageProjection `json:"message,omitzero"`
+	FinishReason chat.FinishReason  `json:"finish_reason,omitempty"`
 }
 
 type responseMetadataProjection struct {
@@ -112,11 +111,11 @@ type responseDeltaProjection struct {
 	Parts           []partDeltaProjection       `json:"parts,omitempty"`
 	MessageMetadata metadata.Map                `json:"message_metadata,omitzero"`
 	FinishReason    chat.FinishReason           `json:"finish_reason,omitempty"`
-	OutputMetadata  *chat.OutputMetadata        `json:"output_metadata,omitzero"`
 	Metadata        *responseMetadataProjection `json:"metadata,omitzero"`
 }
 
 type partDeltaProjection struct {
+	Index          int                 `json:"index,omitzero"`
 	Kind           chat.PartDeltaKind  `json:"kind"`
 	Text           string              `json:"text,omitempty"`
 	Media          *mediaProjection    `json:"media,omitzero"`

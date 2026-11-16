@@ -51,7 +51,7 @@ func (s *readingSearch) Submit(rows []text.Row, query string, start int) {
 		s.current.cancel()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	request := &readingSearchRequest{config: base.ScanConfig{Query: query, Rows: rows, StartRow: start}, context: ctx, cancel: cancel}
+	request := &readingSearchRequest{config: base.ScanConfig{Query: query, Rows: text.CloneRows(rows), StartRow: start}, context: ctx, cancel: cancel}
 	s.current = request
 	select {
 	case <-s.requests:

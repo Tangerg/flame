@@ -169,7 +169,7 @@ func (canceledPrefixModel) Call(context.Context, *chat.Request) (*chat.Response,
 }
 func (m canceledPrefixModel) Stream(ctx context.Context, _ *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return func(yield func(*chat.ResponseDelta, error) bool) {
-		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewReasoningDelta("thinking", nil), chat.NewTextDelta("prefix")}}, nil) {
+		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{{Index: 0, Kind: chat.PartDeltaReasoning, Text: "thinking"}, {Index: 1, Kind: chat.PartDeltaText, Text: "prefix"}}}, nil) {
 			return
 		}
 		m.cancel()

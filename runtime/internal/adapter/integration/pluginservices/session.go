@@ -6,25 +6,23 @@ import (
 	"errors"
 	"fmt"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/frame"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framehost "github.com/Tangerg/frame/host"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func contributionSession(ctx context.Context, host *frame.Host, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *plugincontract.Capability) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
+func contributionSession(ctx context.Context, host framehost.Host, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *plugincontract.Capability) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
 	binding, found, err := plugins.SelectedContribution(ctx, host, store, selections, required)
 	if err != nil {
 		return binding, nil, err
@@ -114,7 +112,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
 	}
-	invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: location.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, framemcp.Target{Scope: extension.ScopeInstallation, Reference: location.InstallationID.String()})
 	if err != nil {
 		return nil, err
 	}

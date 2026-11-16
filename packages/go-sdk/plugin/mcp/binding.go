@@ -8,37 +8,38 @@ import (
 	"fmt"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 // Binding freezes one public operation contract against one concrete session.
 // Capability supplies Schema admission; the backend owns typed input admission
 // and the feature owns its business receipt.
+
 type Binding struct {
 	session    *sdk.ClientSession
-	method     *portable.Method
+	method     *frame.Method
 	export     string
 	capability framevalue.Digest
 }
 
 // NewBinding accepts an already captured contract. The backend checks its exact
 // fingerprint before invocation; restoration does not discover a replacement.
-func NewBinding(session *sdk.ClientSession, descriptor portable.MethodDescriptor) (*Binding, error) {
+func NewBinding(session *sdk.ClientSession, descriptor frame.MethodDescriptor) (*Binding, error) {
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
-	method, err := portable.AdmitMethod(descriptor)
+	method, err := frame.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
 	return &Binding{session: session, method: method}, nil
 }
 
-func (b *Binding) Descriptor() portable.MethodDescriptor { return b.method.Descriptor() }
-func (b *Binding) Contract() framevalue.JSON             { return b.method.Identity() }
+func (b *Binding) Descriptor() frame.MethodDescriptor { return b.method.Descriptor() }
+func (b *Binding) Contract() framevalue.JSON          { return b.method.Identity() }
 
 var ErrInvalidInput = errors.New("plugin: input is not structurally admitted")
 
@@ -72,7 +73,7 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 	if err != nil {
 		return nil, err
 	}
-	var selected *portable.MethodDescriptor
+	var selected *frame.MethodDescriptor
 	seen := make(map[string]bool, len(description.Methods))
 	for _, descriptor := range description.Methods {
 		if seen[descriptor.Name] {
@@ -123,7 +124,7 @@ func (b *Binding) invocationParams(ctx context.Context, id CommandID, input fram
 	if b == nil {
 		return nil, errors.New("plugin: operation binding is required")
 	}
-	if b.method.Kind() == portable.Command {
+	if b.method.Kind() == frame.Command {
 		if err := CommandID(id).Validate(); err != nil {
 			return nil, err
 		}
@@ -153,7 +154,7 @@ func (b *Binding) InvokeWithMetadata(ctx context.Context, id CommandID, input fr
 }
 
 func (b *Binding) ReadReceipt(ctx context.Context, id CommandID, input framevalue.JSON) (framevalue.JSON, bool, error) {
-	if b == nil || b.method.Kind() != portable.Command {
+	if b == nil || b.method.Kind() != frame.Command {
 		return framevalue.JSON{}, false, errors.New("plugin: command binding is required")
 	}
 	// Receipt lookup compares the original admitted evidence. A Tool may have

@@ -10,9 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -170,7 +169,7 @@ func (r *Releases) Realize(ctx context.Context, installation plugin.Installation
 	lease, verifyErr := r.content.Acquire(ctx, release.Digest())
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		cause = errors.Join(cause, verifyErr)
-		if lease != nil {
+		if lease.Valid() {
 			cause = errors.Join(cause, lease.Close())
 		}
 		return plugins.Realization{}, cause

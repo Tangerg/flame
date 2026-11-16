@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"regexp"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const (

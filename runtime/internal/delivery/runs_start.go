@@ -7,16 +7,16 @@ import (
 	"iter"
 	"slices"
 
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/frame"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+
+	framehost "github.com/Tangerg/frame/host"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -162,7 +162,7 @@ func wireRunStartErr(err error) error {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy
-	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, frame.ErrStaleBinding):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, framehost.ErrStaleBinding):
 		return pluginChanged(err)
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound

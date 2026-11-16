@@ -225,9 +225,6 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 		Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
 		Model:    model, ContextProcessor: contextProcessor, Tools: bound.tools, Delegates: delegates,
 	}
-	if bound.tools.Configured() {
-		config.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
-	}
 	program, err := interaction.Compile(i.session.engine.Compiler(), config)
 	if err != nil {
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, fmt.Errorf("execution: compile Interaction at depth %d: %w", depth, err)

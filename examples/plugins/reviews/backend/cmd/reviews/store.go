@@ -10,22 +10,19 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	framevalue "github.com/Tangerg/frame/value"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
 	"github.com/Tangerg/frame/sqlite"
-
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
-	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 // store owns this backend's business transitions and immutable invocation
 // receipts. The review and its receipt commit together in the private database.
 type store struct {
-	db          *sqlite.Database
+	db          sqlite.Database
 	inputSchema jsonschema.Schema
 }
 

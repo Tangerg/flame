@@ -7,10 +7,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
 	"github.com/Tangerg/frame/sqlite"
 )
 
-func Open(ctx context.Context, path string) (*sqlite.Database, error) {
+func Open(ctx context.Context, path string) (sqlite.Database, error) {
 	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema,
 		// Digest uniqueness is independent of batch membership so re-extracting old facts cannot discard new ones.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_ledger (

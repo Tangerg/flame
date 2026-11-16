@@ -9,14 +9,14 @@ import (
 	"slices"
 	"strings"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const installedCommandsName = "installed-commands.json"
@@ -41,7 +41,7 @@ type installedCommandRecord struct {
 	Contract       string                `json:"contract"`
 	Method         string                `json:"method"`
 	Input          []byte                `json:"input"`
-	Target         portable.Target       `json:"target"`
+	Target         framemcp.Target       `json:"target"`
 	Replay         authoring.ReplayGuard `json:"replay"`
 }
 
@@ -75,7 +75,7 @@ func (p PendingInstalledCommand) validate() error {
 		return err
 	}
 	method, found := contract.Method(p.Request.Method)
-	if !found || method.Kind() != portable.Command {
+	if !found || method.Kind() != frame.Command {
 		return errors.New("installed command method is not a command")
 	}
 	if method.Descriptor().Target != p.Request.Target.Scope {

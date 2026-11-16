@@ -1,9 +1,6 @@
 package bootstrap
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	mcpadapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	browseradapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
@@ -19,19 +17,20 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+
 	"github.com/Tangerg/frame"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	framebrowser "github.com/Tangerg/frame/browser"
 	"github.com/Tangerg/frame/distribution"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const browserPendingCapacity = 4096
 
 type frameworkComposition struct {
-	host      *frame.Host
+	host      framehost.Host
 	process   *process.Driver
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
@@ -127,7 +126,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	}
 	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
 	lifetime.frameworkCauses = owner.ObserveCloseCauses()
-	host, err := frame.NewHost(ctx, frame.HostConfig{ReadAcceptedBinding: permission.Read, Admission: cfg.stores.Admission, Lifetime: owner, Epoch: cfg.stores.Frame.Epoch(), Limits: frame.HostLimits{MaxInstallations: 128}, Drivers: []frame.Driver{profile}, Installations: cfg.stores.Frame, ExecutionProtection: cfg.stores.Frame})
+	host, err := framehost.New(ctx, framehost.Config{ReadAcceptedBinding: permission.Read, Authority: cfg.stores.Frame, Lifetime: owner, Limits: framehost.Limits{MaxInstallations: 128}, Drivers: []framehost.Driver{profile}})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -161,7 +160,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		return frameworkComposition{}, err
 	}
 	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, pending: true, ready: make(chan struct{})}
-	if err := recovery.restore(ctx); err != nil && !errors.Is(err, frame.ErrRecoveryRequired) {
+	if err := recovery.restore(ctx); err != nil && !errors.Is(err, framehost.ErrRecoveryRequired) {
 		return frameworkComposition{}, err
 	}
 	if cfg.firstPartyDirectory != "" {
@@ -189,12 +188,12 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	return frameworkComposition{host: host, process: profile, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil
 }
 
-func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *frame.Host, backendProfile frame.Profile) error {
+func restoreFramework(ctx context.Context, stores *persistence.Bundle, host framehost.Host, backendProfile framehost.Profile) error {
 	records, err := stores.Frame.RecoverInstallations(ctx)
 	if err != nil {
 		return err
 	}
-	definitions := make([]*frame.Plugin, 0, len(records))
+	definitions := make([]*framehost.Plugin, 0, len(records))
 	for _, record := range records {
 		digest := record.Release
 		if err := digest.Validate(); err != nil {
@@ -213,7 +212,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *fra
 		}
 		definitions = append(definitions, projection.Plugin)
 	}
-	if err := host.Restore(ctx, records, definitions); err != nil {
+	if err := host.Restore(ctx, definitions); err != nil {
 		return fmt.Errorf("plugins: restore original framework records: %w", err)
 	}
 	if err := stores.Frame.ConfirmRestoredInstallations(ctx); err != nil {
@@ -238,7 +237,7 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 	}
 	if err := r.process.Recover(ctx); err != nil {
 		r.stores.Admission.RequireRecovery(err)
-		return errors.Join(frame.ErrRecoveryRequired, err)
+		return errors.Join(framehost.ErrRecoveryRequired, err)
 	}
 	err := r.stores.Admission.Recover(ctx, func() error {
 		pending, err := r.stores.PluginUses.Pending(ctx)
@@ -246,14 +245,14 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 			return err
 		}
 		if len(pending) != 0 {
-			return frame.ErrRecoveryRequired
+			return framehost.ErrRecoveryRequired
 		}
 		dependencies, err := r.stores.Frame.ExecutionDependencies(ctx)
 		if err != nil {
 			return err
 		}
 		if len(dependencies) != 0 {
-			return frame.ErrRecoveryRequired
+			return framehost.ErrRecoveryRequired
 		}
 		return nil
 	})

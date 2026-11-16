@@ -5,12 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
 	"github.com/Tangerg/frame/value"
 )
 
 func TestEmbeddingWireProjectionKeepsFiniteBinary32Values(t *testing.T) {
-	if _, err := portable.SchemaFor[TextEmbeddings](); err != nil {
+	if _, err := value.SchemaFor[TextEmbeddings](); err != nil {
 		t.Fatal(err)
 	}
 	original := TextEmbeddings{Space: "original", Vectors: [][]float32{{math.SmallestNonzeroFloat32, math.MaxFloat32, -0.25}}}

@@ -20,7 +20,7 @@
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
-    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.2.0/frame-sdk-0.2.0.tgz",
+    "@frame/sdk": "https://github.com/Tangerg/frame/releases/download/v0.3.0/frame-sdk-0.3.0.tgz",
     "@js-temporal/polyfill": "^0.5.1",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@openuidev/lang-core": "1.1.0",

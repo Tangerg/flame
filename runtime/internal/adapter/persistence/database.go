@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
 )
 
@@ -21,12 +21,12 @@ type databaseBoundary interface {
 type database struct{ boundary databaseBoundary }
 
 type frameDatabase struct {
-	store     *sqlite.Store
+	store     sqlite.Store
 	owner     sqlite.Owner
-	admission *frame.Admission
+	admission framehost.Admission
 }
 
-func newDatabase(store *sqlite.Store, admission *frame.Admission) (*database, error) {
+func newDatabase(store sqlite.Store, admission framehost.Admission) (*database, error) {
 	owner, err := store.Owner("flame")
 	if err != nil {
 		return nil, err

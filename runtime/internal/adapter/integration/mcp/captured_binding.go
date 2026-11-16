@@ -5,7 +5,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // ValidateCapturedBindingUnder accepts only a live catalog capture or a graph
@@ -37,7 +38,7 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 		}
 	}
 	p.inner.mu.Unlock()
-	if captured != nil && captured.plan != nil {
+	if captured != nil && captured.plan.Valid() {
 		binding, err := host.ValidatePlanUnder(ctx, captured.plan)
 		if err != nil {
 			return err
@@ -47,14 +48,14 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 			return err
 		}
 		if !original.Equal(activation) {
-			return frame.ErrStaleBinding
+			return framehost.ErrStaleBinding
 		}
 		for _, instance := range host.Observations() {
-			if instance.ID == captured.instanceID && instance.State == frame.Ready {
+			if instance.ID == captured.instanceID && instance.State == framehost.Ready {
 				return nil
 			}
 		}
-		return frame.ErrStaleBinding
+		return framehost.ErrStaleBinding
 	}
 	permission := p.installed.permission
 	permission.mu.Lock()

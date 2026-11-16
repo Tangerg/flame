@@ -7,10 +7,11 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+
 	"github.com/Tangerg/frame/sqlite"
 )
 
-type store struct{ db *sqlite.Database }
+type store struct{ db sqlite.Database }
 
 var errStoredPolicy = errors.New("guardrails: invalid stored policy")
 

@@ -14,13 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/media"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -36,6 +29,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/media"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type routedCallResolver struct {
@@ -70,7 +69,7 @@ func selectedCallRef(t *testing.T, composition *CallComposition, resolver models
 	if err := composition.callbacks.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +387,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
 	ctx = executionctx.WithInvocationOwner(ctx, "logical_executing_owner")
 	ctx = executionctx.WithModelCalls(ctx, sourceAdmissionPublisher{journal: journal, draft: draft})
-	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "logical_executing_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
+	ctx, err = pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "logical_executing_owner", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +399,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	input := selectedCallInput("independent-route")
 	forged := executionctx.WithInvocationOwner(t.Context(), "foreign-wire-owner")
 	forged = executionctx.WithScope(forged, runs.ExecutionScope{SessionID: "ses_foreign"})
-	forged, err = pluginmcp.WithInvocation(forged, framemcp.Invocation{ID: "foreign-wire-owner", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "foreign-wire-owner"}})
+	forged, err = pluginmcp.WithInvocation(forged, framemcp.Invocation{ID: "foreign-wire-owner", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "foreign-wire-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +432,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if _, err := auxiliary.Model().Call(executionctx.WithInvocationOwner(ctx, "original-plugin-operation"), &input.Request); err == nil {
 		t.Fatal("auxiliary capture claimed its executing owner identity")
 	}
-	fresh, err := pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "auxiliary-owned", Origin: extension.Model, Parent: "original-plugin-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: "auxiliary-owned"}})
+	fresh, err := pluginmcp.WithInvocation(ctx, framemcp.Invocation{ID: "auxiliary-owned", Origin: extension.Model, Parent: "original-plugin-operation", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "auxiliary-owned"}})
 	if err != nil {
 		t.Fatal(err)
 	}

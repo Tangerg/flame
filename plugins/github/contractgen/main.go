@@ -5,12 +5,12 @@ import (
 	"log"
 	"os"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/github/internal/wire"
+
+	"github.com/Tangerg/frame"
 )
 
 func main() {
@@ -128,9 +128,9 @@ func define() (*plugincontract.Capability, error) {
 }
 
 func readMethod[P, R any](name, description string) (*pluginmcp.Method[P, R], error) {
-	return pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: description})
+	return pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: description})
 }
 
 func writeMethod[P, R any](name, description string) (*pluginmcp.Method[P, R], error) {
-	return pluginmcp.NewMethod[P, R](portable.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
+	return pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
 }

@@ -11,7 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 const terminalRowsSchema = `{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"}}}}}}`
@@ -20,7 +21,7 @@ func terminalSchemaRelease(t *testing.T, input, output string, paths ...string) 
 	t.Helper()
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "records", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "records/list", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(input), Output: jsontext.Value(output)},
+		frame.MethodDescriptor{Name: "records/list", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(input), Output: jsontext.Value(output)},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -310,7 +311,7 @@ func TestTerminalViewsKeepExactAndNullableLiteralBindings(t *testing.T) {
 
 func terminalReferenceChain(t *testing.T) string {
 	t.Helper()
-	depth := portable.ProfileLimits().MaxReferenceDepth - 1
+	depth := frame.CurrentPortableProfile().Limits.MaxReferenceDepth - 1
 	definitions := make(map[string]jsontext.Value, depth)
 	for index := range depth {
 		value := `{"type":"object","properties":{"Value":{"type":"string"}}}`

@@ -5,15 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	framevalue "github.com/Tangerg/frame/value"
-	"github.com/Tangerg/scope/agent/interaction"
-	"github.com/Tangerg/scope/core/metadata"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
+	framevalue "github.com/Tangerg/frame/value"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/core/metadata"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )

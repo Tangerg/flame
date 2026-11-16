@@ -1,11 +1,12 @@
 package mcp
 
 import (
+	"testing"
+
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	framevalue "github.com/Tangerg/frame/value"
 
-	"testing"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {

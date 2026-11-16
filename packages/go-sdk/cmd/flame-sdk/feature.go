@@ -14,8 +14,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	"github.com/Tangerg/frame/portable/contractgen"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/frame/contractgen"
 	"github.com/Tangerg/frame/value"
 )
 
@@ -42,7 +43,7 @@ func runFeature(args []string) error {
 		defer file.Close()
 		reader = file
 	}
-	data, err := io.ReadAll(io.LimitReader(reader, int64(portable.ProfileLimits().MaxDescriptorBytes)+1))
+	data, err := io.ReadAll(io.LimitReader(reader, int64(frame.CurrentPortableProfile().Limits.MaxDescriptorBytes)+1))
 	if err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func writeFeatureTypeScript(capability *contract.Capability, file string) error 
 	return nil
 }
 
-func writeFeatureGo(projection portable.CapabilityDescriptor, descriptor value.JSON, file string) error {
+func writeFeatureGo(projection frame.CapabilityDescriptor, descriptor value.JSON, file string) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return err

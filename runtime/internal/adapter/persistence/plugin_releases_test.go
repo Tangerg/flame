@@ -9,16 +9,15 @@ import (
 	"sync"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestReleaseReadCannotRetainRolledBackAdmission(t *testing.T) {
@@ -177,7 +176,7 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 	catalog := newReleaseStore(databaseFor(db))
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "consumer.role", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "owner.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)},
+		frame.MethodDescriptor{Name: "owner.read", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -291,10 +290,10 @@ func TestReleaseStoresTerminalViewsWithTheirBindings(t *testing.T) {
 	catalog := newReleaseStore(databaseFor(db))
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "notes", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "notes/list", Kind: portable.Query, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "notes/list", Kind: frame.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","required":["CWD","Cursor"],"properties":{"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object","properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}},"Next":{"type":"string"}}}`)},
-		portable.MethodDescriptor{Name: "notes/pin", Kind: portable.Command, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "notes/pin", Kind: frame.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","required":["ID","Pinned"],"properties":{"ID":{"type":"string"},"Pinned":{"type":"boolean"}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)

@@ -9,9 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,7 +20,7 @@ func TestDelayedHostStreamRetainsItsPublishedMethod(t *testing.T) {
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "test/stream", Kind: portable.Command, Target: "call", Description: "Stream the captured owner."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "test/stream", Kind: frame.Command, Target: "call", Description: "Stream the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {
 	if err := host.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "test/stream", Kind: portable.Command, Target: "call", Description: "Stream the captured owner."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "test/stream", Kind: frame.Command, Target: "call", Description: "Stream the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +99,7 @@ func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {
 }
 
 func TestStreamingWriteStopsTheSourceWithoutAnEventQueue(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "test/stream", Kind: portable.Command, Target: "call", Description: "Stream with transport backpressure."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "test/stream", Kind: frame.Command, Target: "call", Description: "Stream with transport backpressure."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,17 +128,17 @@ func TestStreamingWriteStopsTheSourceWithoutAnEventQueue(t *testing.T) {
 }
 
 func TestStreamSchemaOwnsIdentityAndUnaryInvocationRefusal(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](portable.MethodConfig{Name: "test/stream", Kind: portable.Command, Target: "call", Description: "Stream the captured source."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](frame.MethodConfig{Name: "test/stream", Kind: frame.Command, Target: "call", Description: "Stream the captured source."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor := method.Descriptor()
-	stream, err := portable.AdmitMethod(descriptor)
+	stream, err := frame.AdmitMethod(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor.Stream = nil
-	unary, err := portable.AdmitMethod(descriptor)
+	unary, err := frame.AdmitMethod(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +147,7 @@ func TestStreamSchemaOwnsIdentityAndUnaryInvocationRefusal(t *testing.T) {
 	}
 	descriptor = stream.Descriptor()
 	descriptor.Stream[0] = '!'
-	if _, err := portable.AdmitMethod(descriptor); err == nil {
+	if _, err := frame.AdmitMethod(descriptor); err == nil {
 		t.Fatal("invalid stream schema admitted")
 	}
 	if err := stream.ValidateChunk([]byte(`1`)); err != nil {

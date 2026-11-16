@@ -106,7 +106,7 @@ export interface CreateIssueV1OutputWireIssue {
   number: JSONNumber;
   pullRequest: boolean;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   stateReason?: string;
   title: string;
   updatedAt: CreateIssueV1OutputInstantTimestamp;
@@ -117,7 +117,7 @@ export type CreatePullInput = ({ base: string; body?: string; draft?: boolean; h
 
 export type CreatePullRequestCommentV1Input = CreateReviewCommentInput;
 
-export type CreatePullRequestCommentV1InputWireInlineComment = ({ body: string; line: JSONNumber; path: string; side: (string) & ("LEFT" | "RIGHT"); startLine?: JSONNumber; startSide?: (string) & ("LEFT" | "RIGHT") }) & ({ body?: unknown } & Record<string, unknown>);
+export type CreatePullRequestCommentV1InputWireInlineComment = ({ body: string; line: JSONNumber; path: string; side: "LEFT" | "RIGHT"; startLine?: JSONNumber; startSide?: "LEFT" | "RIGHT" }) & ({ body?: unknown } & Record<string, unknown>);
 
 export type CreatePullRequestCommentV1Output = CreatePullRequestCommentV1OutputWireReviewComment;
 
@@ -171,7 +171,7 @@ export interface CreatePullRequestV1OutputWirePullRequest {
   mergedAt?: CreatePullRequestV1OutputInstantTimestamp;
   number: JSONNumber;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   title: string;
   updatedAt: CreatePullRequestV1OutputInstantTimestamp;
   url: string;
@@ -250,7 +250,7 @@ export interface GetIssueV1OutputWireIssue {
   number: JSONNumber;
   pullRequest: boolean;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   stateReason?: string;
   title: string;
   updatedAt: GetIssueV1OutputInstantTimestamp;
@@ -290,7 +290,7 @@ export interface GetPullRequestV1OutputWirePullRequest {
   mergedAt?: GetPullRequestV1OutputInstantTimestamp;
   number: JSONNumber;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   title: string;
   updatedAt: GetPullRequestV1OutputInstantTimestamp;
   url: string;
@@ -335,7 +335,7 @@ export interface ListInput {
   limit: JSONNumber;
   page: JSONNumber;
   repository: string;
-  state: (string) & ("open" | "closed" | "all");
+  state: "open" | "closed" | "all";
 }
 
 export type ListIssueCommentsV1Input = ListIssueCommentsV1InputWireThreadInput;
@@ -375,7 +375,7 @@ export interface ListIssuesV1OutputWireIssue {
   number: JSONNumber;
   pullRequest: boolean;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   stateReason?: string;
   title: string;
   updatedAt: ListIssuesV1OutputInstantTimestamp;
@@ -477,13 +477,13 @@ export interface ListPullRequestsV1OutputWirePullRequest {
   mergedAt?: ListPullRequestsV1OutputInstantTimestamp;
   number: JSONNumber;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   title: string;
   updatedAt: ListPullRequestsV1OutputInstantTimestamp;
   url: string;
 }
 
-export type MergePullInput = ({ commitMessage?: string; commitTitle?: string; headSha: string; mergeMethod: (string) & ("merge" | "squash" | "rebase"); number: JSONNumber; repository: string }) & ({ commitMessage?: unknown; commitTitle?: unknown } & Record<string, unknown>);
+export type MergePullInput = ({ commitMessage?: string; commitTitle?: string; headSha: string; mergeMethod: "merge" | "squash" | "rebase"; number: JSONNumber; repository: string }) & ({ commitMessage?: unknown; commitTitle?: unknown } & Record<string, unknown>);
 
 export type MergePullRequestV1Input = MergePullInput;
 
@@ -500,7 +500,7 @@ export interface PullListInput {
   limit: JSONNumber;
   page: JSONNumber;
   repository: string;
-  state: (string) & ("open" | "closed" | "all");
+  state: "open" | "closed" | "all";
 }
 
 export interface PullPage {
@@ -557,7 +557,7 @@ export interface StatusPage {
 
 export type SubmitPullRequestReviewV1Input = SubmitReviewInput;
 
-export type SubmitPullRequestReviewV1InputWireInlineComment = ({ body: string; line: JSONNumber; path: string; side: (string) & ("LEFT" | "RIGHT"); startLine?: JSONNumber; startSide?: (string) & ("LEFT" | "RIGHT") }) & ({ body?: unknown } & Record<string, unknown>);
+export type SubmitPullRequestReviewV1InputWireInlineComment = ({ body: string; line: JSONNumber; path: string; side: "LEFT" | "RIGHT"; startLine?: JSONNumber; startSide?: "LEFT" | "RIGHT" }) & ({ body?: unknown } & Record<string, unknown>);
 
 export type SubmitPullRequestReviewV1Output = SubmitPullRequestReviewV1OutputWireReview;
 
@@ -573,7 +573,7 @@ export interface SubmitPullRequestReviewV1OutputWireReview {
   url: string;
 }
 
-export type SubmitReviewInput = ({ body?: string; comments?: Array<SubmitPullRequestReviewV1InputWireInlineComment>; commitId: string; event: (string) & ("APPROVE" | "REQUEST_CHANGES" | "COMMENT"); number: JSONNumber; repository: string }) & ({ body?: unknown } & Record<string, unknown>);
+export type SubmitReviewInput = ({ body?: string; comments?: Array<SubmitPullRequestReviewV1InputWireInlineComment>; commitId: string; event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT"; number: JSONNumber; repository: string }) & ({ body?: unknown } & Record<string, unknown>);
 
 export type UpdateIssueCommentV1Input = UpdateIssueCommentV1InputWireUpdateCommentInput;
 
@@ -592,7 +592,7 @@ export interface UpdateIssueCommentV1OutputWireComment {
   url: string;
 }
 
-export type UpdateIssueInput = ({ assignees?: Array<string>; body?: string; duplicateIssueId?: JSONNumber; labels?: Array<string>; number: JSONNumber; repository: string; state?: (string) & ("open" | "closed"); stateReason?: (string) & ("completed" | "not_planned" | "duplicate" | "reopened"); title?: string }) & ({ body?: unknown; title?: unknown } & Record<string, unknown>);
+export type UpdateIssueInput = ({ assignees?: Array<string>; body?: string; duplicateIssueId?: JSONNumber; labels?: Array<string>; number: JSONNumber; repository: string; state?: "open" | "closed"; stateReason?: "completed" | "not_planned" | "duplicate" | "reopened"; title?: string }) & ({ body?: unknown; title?: unknown } & Record<string, unknown>);
 
 export type UpdateIssueV1Input = UpdateIssueInput;
 
@@ -609,7 +609,7 @@ export interface UpdateIssueV1OutputWireIssue {
   number: JSONNumber;
   pullRequest: boolean;
   repository: string;
-  state: (string) & ("open" | "closed");
+  state: "open" | "closed";
   stateReason?: string;
   title: string;
   updatedAt: UpdateIssueV1OutputInstantTimestamp;

@@ -6,14 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) {
@@ -28,7 +26,7 @@ func TestInstalledCallerCommitsWithDispatchAndOutlivesRunDeletion(t *testing.T) 
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t)
-	source := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(testsupport.InstallationMCPServer(id, "schedules"), "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	source := plugin.ToolCallerSnapshot{Invocation: framemcp.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(testsupport.InstallationMCPServer(id, "schedules"), "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(source)
 	if err != nil {
 		t.Fatal(err)

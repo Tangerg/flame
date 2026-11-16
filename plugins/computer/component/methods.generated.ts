@@ -11,9 +11,9 @@ export interface CloseV1Output {
   expiresAt: string;
   id: string;
   openedAt: string;
-  operation?: { id: string; startedAt: string; tool: ("js" | "js_reset") & (string) };
-  reason?: ("user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled") & (string);
-  state: ("opening" | "ready" | "executing" | "stopping" | "closed" | "faulted") & (string);
+  operation?: { id: string; startedAt: string; tool: "js" | "js_reset" };
+  reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled";
+  state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted";
   surfaceDigest?: string;
   workerId: string;
 }
@@ -35,12 +35,12 @@ export interface ExecuteV1Input {
   argumentsJSON: string;
   sessionId: string;
   surfaceDigest: string;
-  tool: ("js" | "js_reset") & (string);
+  tool: "js" | "js_reset";
   workerId: string;
 }
 
 export interface ExecuteV1Output {
-  cleanup: ("ended" | "unconfirmed") & (string);
+  cleanup: "ended" | "unconfirmed";
   commandId: string;
   result: Record<string, unknown>;
 }
@@ -51,7 +51,7 @@ export interface HistoryV1Input {
 }
 
 export interface HistoryV1Output {
-  entries: Array<{ admittedAt: string; dispatched: boolean; id: string; kind: ("tool" | "command") & (string); method: string; settled: boolean }>;
+  entries: Array<{ admittedAt: string; dispatched: boolean; id: string; kind: "tool" | "command"; method: string; settled: boolean }>;
   next?: string;
 }
 
@@ -64,9 +64,9 @@ export interface OpenV1Output {
   expiresAt: string;
   id: string;
   openedAt: string;
-  operation?: { id: string; startedAt: string; tool: ("js" | "js_reset") & (string) };
-  reason?: ("user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled") & (string);
-  state: ("opening" | "ready" | "executing" | "stopping" | "closed" | "faulted") & (string);
+  operation?: { id: string; startedAt: string; tool: "js" | "js_reset" };
+  reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled";
+  state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted";
   surfaceDigest?: string;
   workerId: string;
 }
@@ -77,7 +77,7 @@ export interface ReadV1Output {
   configured: boolean;
   host: { arch: string; hostname: string; platform: string };
   receipts: { bytes: JSONNumber; maxBytes: JSONNumber; maxRecords: JSONNumber; pending: JSONNumber; records: JSONNumber };
-  session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: ("js" | "js_reset") & (string) }; reason?: ("user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled") & (string); state: ("opening" | "ready" | "executing" | "stopping" | "closed" | "faulted") & (string); surfaceDigest?: string; workerId: string };
+  session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: "js" | "js_reset" }; reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled"; state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted"; surfaceDigest?: string; workerId: string };
 }
 
 export interface ReplyV1Input {
@@ -98,7 +98,7 @@ export interface ResultV1Output {
   id: string;
   inputJSON: string;
   invocationJSON: string;
-  kind: ("tool" | "command") & (string);
+  kind: "tool" | "command";
   method: string;
   outcomeJSON?: string;
   settled: boolean;
@@ -114,9 +114,9 @@ export interface StopV1Output {
   expiresAt: string;
   id: string;
   openedAt: string;
-  operation?: { id: string; startedAt: string; tool: ("js" | "js_reset") & (string) };
-  reason?: ("user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled") & (string);
-  state: ("opening" | "ready" | "executing" | "stopping" | "closed" | "faulted") & (string);
+  operation?: { id: string; startedAt: string; tool: "js" | "js_reset" };
+  reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled";
+  state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted";
   surfaceDigest?: string;
   workerId: string;
 }
@@ -125,7 +125,7 @@ export interface WatchV1Chunk {
   configured: boolean;
   host: { arch: string; hostname: string; platform: string };
   receipts: { bytes: JSONNumber; maxBytes: JSONNumber; maxRecords: JSONNumber; pending: JSONNumber; records: JSONNumber };
-  session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: ("js" | "js_reset") & (string) }; reason?: ("user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled") & (string); state: ("opening" | "ready" | "executing" | "stopping" | "closed" | "faulted") & (string); surfaceDigest?: string; workerId: string };
+  session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: "js" | "js_reset" }; reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled"; state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted"; surfaceDigest?: string; workerId: string };
 }
 
 export type WatchV1Input = Record<string, never>;

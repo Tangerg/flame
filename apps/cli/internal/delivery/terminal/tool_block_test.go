@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	"github.com/Tangerg/oolong/extensions/highlight"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
@@ -301,7 +302,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 	}
 
 	rows := block.Rows(width)
-	if len(rows) != height || strings.HasPrefix(rows[0].Text, glyphs.Vertical.String()) {
+	if len(rows) != height || strings.HasPrefix(rows[0].Content.String(), glyphs.Vertical.String()) {
 		t.Fatalf("copied rows include visual rail or have wrong height: %+v", rows)
 	}
 }

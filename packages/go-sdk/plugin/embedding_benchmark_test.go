@@ -7,12 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -43,7 +41,7 @@ func BenchmarkTextEmbeddingCallback(b *testing.B) {
 			if err := callbacks.PublishRPC(http.NotFoundHandler(), callback); err != nil {
 				b.Fatal(err)
 			}
-			ctx, err := pluginmcp.WithInvocation(b.Context(), framemcp.Invocation{ID: "knowledge-operation", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "knowledge"}})
+			ctx, err := pluginmcp.WithInvocation(b.Context(), framemcp.Invocation{ID: "knowledge-operation", Origin: extension.Human, Target: framemcp.Target{Scope: "installation", Reference: "knowledge"}})
 			if err != nil {
 				b.Fatal(err)
 			}

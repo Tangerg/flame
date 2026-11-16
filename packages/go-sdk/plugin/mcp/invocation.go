@@ -5,11 +5,9 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
 
@@ -50,7 +48,7 @@ func invocationMetadata(ctx context.Context, metadata sdk.ParamsBase) (sdk.Param
 	return metadata, nil
 }
 
-func bindInvocationMetadata(ctx context.Context, metadata sdk.Meta, method *portable.Method) (context.Context, error) {
+func bindInvocationMetadata(ctx context.Context, metadata sdk.Meta, method *frame.Method) (context.Context, error) {
 	value, found := metadata[InvocationMetadataKey]
 	if !found {
 		return ctx, nil

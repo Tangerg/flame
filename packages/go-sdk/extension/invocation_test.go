@@ -3,16 +3,15 @@ package extension_test
 import (
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestOriginVocabularyBelongsToTheConsumer(t *testing.T) {
 	invocation := framemcp.Invocation{
 		ID: "document-convert", Origin: "document-workbench",
-		Target: portable.Target{Scope: "document", Reference: "document-1"},
+		Target: framemcp.Target{Scope: "document", Reference: "document-1"},
 	}
 	if err := invocation.Validate(); err != nil {
 		t.Fatalf("independent consumer origin: %v", err)

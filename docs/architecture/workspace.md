@@ -45,7 +45,7 @@ sets remain projections of their existing descriptor owners. Runtime's schema an
 `protocol.WireFields` and `DecodeWire` describe the same DTO field ownership, required
 presence, timestamp and measurement rules. Opaque numbers use Frame's exact JSON codec.
 
-Frame is an external dependency, pinned in Go and npm manifests. `frame/portable`
+Frame is an external dependency, pinned in Go and npm manifests. `frame`
 and `frame/value` own portable schema admission, method identity and exact JSON;
 the root owns Host and lifetimes. Browser, SQLite, process, runner and distribution
 remain the framework's execution/storage owners. Flame's `plugin/contract` owns

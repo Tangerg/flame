@@ -1,10 +1,6 @@
 package pluginservices
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"errors"
 	"strings"
 	"testing"
@@ -14,9 +10,11 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
 func TestModelProviderRejectsOversizedCompleteFrameBeforeDispatch(t *testing.T) {
@@ -33,7 +31,7 @@ func TestModelProviderRejectsOversizedCompleteFrameBeforeDispatch(t *testing.T) 
 		t.Fatal(err)
 	}
 	use := &providerUse{owner: &ModelProviders{contract: contract}, binding: plugins.ContributionBinding{InstallationID: installation, Export: "model-provider"}, handle: modelprovider.Handle{ID: modelprovider.HandleID(strings.Repeat("a", 64))}, requestMethods: []string{method.Name()}}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-call", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-call"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-call", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,22 +10,22 @@ import (
 	"strings"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	"github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/value"
 )
 
 func TestPluginRequestEntrancesShareLocalInputAdmission(t *testing.T) {
-	method, err := pluginmcp.NewMethod[struct{}, struct{}](portable.MethodConfig{
-		Name: "test.input/read.v1", Kind: portable.Query, Target: "installation", Description: "Read input.",
+	method, err := pluginmcp.NewMethod[struct{}, struct{}](frame.MethodConfig{
+		Name: "test.input/read.v1", Kind: frame.Query, Target: "installation", Description: "Read input.",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -56,8 +56,8 @@ func TestPluginRequestEntrancesShareLocalInputAdmission(t *testing.T) {
 		{"get-command", protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original"}},
 		{"resolve-composition", protocol.ResolvePluginCompositionRequest{Contract: string(composition.Identity().Bytes())}},
 		{"requirements", protocol.ResolvePluginRequirementsRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example"}},
-		{"point", protocol.ResolvePluginPointRequest{Contract: string(point.Identity().Bytes()), Target: portable.Target{Scope: "installation", Reference: installation}, Attributes: "{}", Order: []protocol.PluginPointReference{}}},
-		{"call", protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example", Contract: string(callable.Identity().Bytes()), Method: method.Name(), Input: "{}", Target: portable.Target{Scope: "installation", Reference: installation}}},
+		{"point", protocol.ResolvePluginPointRequest{Contract: string(point.Identity().Bytes()), Target: framemcp.Target{Scope: "installation", Reference: installation}, Attributes: "{}", Order: []protocol.PluginPointReference{}}},
+		{"call", protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example", Contract: string(callable.Identity().Bytes()), Method: method.Name(), Input: "{}", Target: framemcp.Target{Scope: "installation", Reference: installation}}},
 		{"install", protocol.InstallPluginRequest{Source: "/runtime/plugin"}},
 	} {
 		t.Run(test.command, func(t *testing.T) {
@@ -340,7 +340,7 @@ func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
 		Scale value.Number `json:"scale"`
 	}, struct {
 		Saved bool `json:"saved"`
-	}](portable.MethodConfig{Name: "test.retained/save.v1", Kind: portable.Command, Target: "installation", Description: "Retain one authored input."})
+	}](frame.MethodConfig{Name: "test.retained/save.v1", Kind: frame.Command, Target: "installation", Description: "Retain one authored input."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: portable.Target{Scope: "installation", Reference: installation}}
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().Bytes()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: framemcp.Target{Scope: "installation", Reference: installation}}
 	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
 	encoded, err := json.Marshal(query)
 	if err != nil {

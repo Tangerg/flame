@@ -4,11 +4,11 @@ import (
 	"context"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type compositionUseCases interface {

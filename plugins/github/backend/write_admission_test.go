@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
@@ -86,7 +86,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	merge, err := portable.AdmitMethod(contracts.MergePull.Descriptor())
+	merge, err := frame.AdmitMethod(contracts.MergePull.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 			t.Fatalf("merge head admission %q: %v", sha, err)
 		}
 	}
-	comment, err := portable.AdmitMethod(contracts.CreateComment.Descriptor())
+	comment, err := frame.AdmitMethod(contracts.CreateComment.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

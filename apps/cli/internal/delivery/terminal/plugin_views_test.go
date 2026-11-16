@@ -4,8 +4,6 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
 	"strings"
 	"sync"
 	"testing"
@@ -14,7 +12,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/pluginview"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/uitest"
 )
@@ -66,10 +67,10 @@ func notesInstallation(t *testing.T) *protocol.PluginInstallation {
 	t.Helper()
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "notes", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "notes/list", Kind: portable.Query, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "notes/list", Kind: frame.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["CWD"],"properties":{"CWD":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object"}}}}`)},
-		portable.MethodDescriptor{Name: "notes/update", Kind: portable.Command, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "notes/update", Kind: frame.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["ID","Revision","Content"],"properties":{"ID":{"type":"string"},"Revision":{"type":"integer"},"Content":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)

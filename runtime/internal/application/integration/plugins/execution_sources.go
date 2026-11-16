@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // ValidateExecutionSourcesUnder admits an already assembled execution. Backend
@@ -13,12 +14,12 @@ import (
 // resources retain their exact release. No source is selected in this boundary.
 func ValidateExecutionSourcesUnder(
 	ctx context.Context,
-	host *frame.Host,
+	host framehost.Host,
 	validateBinding func(context.Context, plugin.Activation) error,
 	bindings []plugin.Activation,
 	resources []plugin.Dependency,
 ) error {
-	if host == nil || validateBinding == nil {
+	if !host.Valid() || validateBinding == nil {
 		return plugin.ErrInvalid
 	}
 	if err := host.Admission().CheckAdmitted(ctx); err != nil {
@@ -35,7 +36,7 @@ func ValidateExecutionSourcesUnder(
 		}
 		record, found := host.Installation(dependency.InstallationID.Host())
 		if !found || !record.Enabled || record.Release != dependency.Digest {
-			return fmt.Errorf("%w: captured package resource is no longer available", frame.ErrStaleBinding)
+			return fmt.Errorf("%w: captured package resource is no longer available", framehost.ErrStaleBinding)
 		}
 	}
 	return nil

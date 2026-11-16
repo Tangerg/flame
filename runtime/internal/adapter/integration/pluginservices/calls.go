@@ -5,29 +5,27 @@ import (
 	"errors"
 	"fmt"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type installedCall struct {
 	calls   *CommandCalls
 	request plugins.CallRequest
-	method  *portable.Method
+	method  *frame.Method
 }
 
 func (c *CommandCalls) Command(ctx context.Context, id string) (*plugin.Command, error) {
@@ -54,7 +52,7 @@ func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *plugincontrac
 	return plugins.ResolvePoint(ctx, c.framework, c.installations, contract, target, order)
 }
 
-func (c *installedCall) Kind() portable.MethodKind { return c.method.Kind() }
+func (c *installedCall) Kind() frame.MethodKind { return c.method.Kind() }
 
 func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBinding, error) {
 	r := c.request
@@ -102,14 +100,14 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 }
 
 func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
-	if c.Kind() == portable.Command {
+	if c.Kind() == frame.Command {
 		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
 			if err != nil {
 				return metadata, nil, err
 			}
 			return metadata, func() error { release(); return nil }, nil
-		}, func(plugins.ContributionBinding) portable.Target { return c.request.Target })
+		}, func(plugins.ContributionBinding) framemcp.Target { return c.request.Target })
 		return reply.value, err
 	}
 	location, err := c.resolve(ctx)
@@ -158,7 +156,7 @@ func validateInput(ctx context.Context, binding *pluginmcp.Binding, input framev
 	return err
 }
 
-func admitCallRequest(request plugins.CallRequest, streaming bool) (*portable.Method, error) {
+func admitCallRequest(request plugins.CallRequest, streaming bool) (*frame.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -193,7 +191,7 @@ func admitCallRequest(request plugins.CallRequest, streaming bool) (*portable.Me
 	if err := request.Input.Validate(); err != nil {
 		return nil, errors.Join(plugin.ErrInvalid, err)
 	}
-	if method.Kind() == portable.Query {
+	if method.Kind() == frame.Query {
 		if err := method.ValidateInput(request.Input); err != nil {
 			return nil, errors.Join(plugin.ErrInvalid, err)
 		}

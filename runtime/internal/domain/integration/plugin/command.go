@@ -6,13 +6,13 @@ import (
 	"slices"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 var (
@@ -71,7 +71,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 		return nil, err
 	}
 	method, found := contract.Method(record.Method)
-	if !found || method.Kind() != portable.Command {
+	if !found || method.Kind() != frame.Command {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
 	}
 	if err := method.ValidateInput(record.Input); err != nil {

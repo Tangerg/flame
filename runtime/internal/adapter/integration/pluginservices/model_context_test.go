@@ -9,16 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
 )
@@ -27,7 +25,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			composition, bindings, store := installedContextFixture(t, mode, modelchoice.Interaction)
-			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
+			ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +56,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	composition, bindings, _ := installedContextFixture(t, "ordered", modelchoice.Interaction)
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original-context", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
 	}

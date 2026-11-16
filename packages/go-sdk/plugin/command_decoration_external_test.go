@@ -9,22 +9,20 @@ import (
 	"path/filepath"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
-	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/frame/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *testing.T) {
-	method, err := pluginmcp.NewMethod[string, int64](portable.MethodConfig{Name: "example.records/update.v1", Kind: portable.Command, Target: "workspace", Description: "Update the private record."})
+	method, err := pluginmcp.NewMethod[string, int64](frame.MethodConfig{Name: "example.records/update.v1", Kind: frame.Command, Target: "workspace", Description: "Update the private record."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +68,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		t.Fatal(err)
 	}
 	defer db.Close()
-	original := framemcp.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: portable.Target{Scope: "workspace", Reference: "original-workspace"}}
+	original := framemcp.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: framemcp.Target{Scope: "workspace", Reference: "original-workspace"}}
 	calling, err := pluginmcp.WithInvocation(t.Context(), original)
 	if err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+
 	"github.com/Tangerg/oolong/extensions/highlight"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
@@ -136,7 +137,7 @@ func (t *toolBlock) Draw(view grid.View) {
 		labelLimit = width - rightWidth - 1
 	}
 	if labelWidth := labelLimit - labelX; labelWidth > 0 {
-		view.Text(labelX, 0, text.Truncate(label, labelWidth, t.glyphs.Ellipsis), t.theme.Text)
+		text.Of(label, t.theme.Text).Truncate(labelWidth, t.glyphs.Ellipsis).Draw(view, labelX, 0)
 	}
 	if !t.Expanded() {
 		return
@@ -156,7 +157,7 @@ func (t *toolBlock) Rows(width int) []text.Row {
 	toggle, label, right, _ := t.header()
 	left := toggle + " " + label
 	header := strings.TrimSpace(left + " " + right)
-	rows := []text.Row{{Text: header}}
+	rows := []text.Row{{Content: text.Of(header, t.theme.Text)}}
 	if t.Expanded() {
 		bodyWidth := max(width-toolContentInset, 1)
 		for _, block := range t.body {

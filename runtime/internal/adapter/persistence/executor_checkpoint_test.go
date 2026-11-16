@@ -8,13 +8,13 @@ import (
 	"slices"
 	"testing"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-func newExecutorCheckpointStorage(t *testing.T) (*framesqlite.Database, *ExecutorCheckpointStore) {
+func newExecutorCheckpointStorage(t *testing.T) (framesqlite.Database, *ExecutorCheckpointStore) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), ":memory:")
 	if err != nil {

@@ -7,19 +7,18 @@ import (
 	"errors"
 	"time"
 
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame/sqlite"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // PreparedCommand is a projection of a durable private command admission.
 // Model or other external I/O cannot be repeated merely because no final reply
 // exists. The actual mutation owner completes it in its own short transaction.
 type PreparedCommand struct {
-	db         *sqlite.Database
+	db         sqlite.Database
 	id, method string
 	input      framevalue.JSON
 	fresh      bool
@@ -27,7 +26,7 @@ type PreparedCommand struct {
 
 // validateNew checks only local preconditions before the first durable admission.
 // Existing pending work and receipts must reconcile without acquiring new collaborators.
-func AdmitCommand(ctx context.Context, db *sqlite.Database, method, id string, input framevalue.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, input framevalue.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return nil, nil, err
 	}
@@ -69,7 +68,7 @@ func AdmitCommand(ctx context.Context, db *sqlite.Database, method, id string, i
 }
 
 // ResumeCommand reads original private input and admission without creating work.
-func ResumeCommand(ctx context.Context, db *sqlite.Database, method, id string) (*PreparedCommand, framevalue.JSON, []byte, error) {
+func ResumeCommand(ctx context.Context, db sqlite.Database, method, id string) (*PreparedCommand, framevalue.JSON, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return nil, framevalue.JSON{}, nil, err
 	}
@@ -114,7 +113,7 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	return c.complete(ctx, reply, nil, sqlite.RunInTx)
 }
 
-type replyTransaction func(context.Context, *sqlite.Database, func(context.Context) error) error
+type replyTransaction func(context.Context, sqlite.Database, func(context.Context) error) error
 
 func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record func(context.Context) error, transact replyTransaction) error {
 	if c == nil {

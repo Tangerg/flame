@@ -5,21 +5,21 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
 )
 
 func testView(t *testing.T) View {
 	t.Helper()
 	contract, err := plugincontract.NewCapability(
 		plugincontract.CapabilityConfig{Reference: "memory", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		portable.MethodDescriptor{Name: "memory/list", Kind: portable.Query, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "memory/list", Kind: frame.Query, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["Scope","CWD","Cursor"],"properties":{"Scope":{"enum":["project","user"],"type":"string"},"CWD":{"type":"string"},"Cursor":{"type":"string"}}}`),
 			Output: jsontext.Value(`{"type":"object","properties":{"Rows":{"type":"array","items":{"type":"object"}},"NextCursor":{"type":"string"}}}`)},
-		portable.MethodDescriptor{Name: "memory/update", Kind: portable.Command, Target: extension.ScopeInstallation,
+		frame.MethodDescriptor{Name: "memory/update", Kind: frame.Command, Target: extension.ScopeInstallation,
 			Input:  jsontext.Value(`{"type":"object","additionalProperties":false,"required":["ID","Revision","Model"],"properties":{"ID":{"type":"string"},"Revision":{"type":"integer"},"Pinned":{"type":"boolean"},"Model":{"type":"object","additionalProperties":false,"properties":{"Provider":{"type":"string"}}}}}`),
 			Output: jsontext.Value(`{"type":"object"}`)},
 	)

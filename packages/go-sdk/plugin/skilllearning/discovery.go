@@ -4,7 +4,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 )
 
 // An opaque source identifies an admitted reader. A provider can choose a
@@ -27,8 +28,8 @@ type Catalog struct {
 }
 
 func DiscoverMethod() (*pluginmcp.Method[Candidates, Catalog], error) {
-	return pluginmcp.NewMethod[Candidates, Catalog](portable.MethodConfig{Name: "flame.skills/discover.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Select among the host-admitted Skill readers for a human catalog."})
+	return pluginmcp.NewMethod[Candidates, Catalog](frame.MethodConfig{Name: "flame.skills/discover.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Select among the host-admitted Skill readers for a human catalog."})
 }
 func CaptureMethod() (*pluginmcp.Method[Candidates, Catalog], error) {
-	return pluginmcp.NewMethod[Candidates, Catalog](portable.MethodConfig{Name: "flame.skills/capture.v1", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Record an interaction's original Skill source choices for exact receipt recovery."})
+	return pluginmcp.NewMethod[Candidates, Catalog](frame.MethodConfig{Name: "flame.skills/capture.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Record an interaction's original Skill source choices for exact receipt recovery."})
 }

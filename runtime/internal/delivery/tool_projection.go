@@ -1,11 +1,11 @@
 package delivery
 
 import (
-	framevalue "github.com/Tangerg/frame/value"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	json "encoding/json/v2"
 	"fmt"
+
+	framevalue "github.com/Tangerg/frame/value"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // The public protocol represents schemas as objects. A schema states its bounds

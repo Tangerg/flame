@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+
 	"github.com/Tangerg/oolong/extensions/highlight"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
@@ -30,7 +31,7 @@ func TestReadingWindowKeepsLogicalSelectionAcrossUnrelatedProjection(t *testing.
 	var selected base.TextRange
 	found := false
 	for row, line := range layout.Rows(0, layout.Height()) {
-		if strings.Contains(line.Text, "keep this") {
+		if strings.Contains(line.Content.String(), "keep this") {
 			first, ok := layout.Hit(base.Point{Row: row, Col: line.Offset})
 			last, endOK := layout.Hit(base.Point{Row: row, Col: line.Offset + 3})
 			if !ok || !endOK {

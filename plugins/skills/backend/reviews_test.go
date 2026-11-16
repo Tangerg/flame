@@ -5,15 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
+
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
 func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *pluginmcp.Method[P, R], id string, origin framemcp.Origin, p P) (R, error) {
@@ -35,12 +34,12 @@ func reviewCall[P, R any](t *testing.T, session *sdk.ClientSession, method *plug
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: origin, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: origin, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := pluginmcp.CommandID(id)
-	if method.Descriptor().Kind == portable.Query {
+	if method.Descriptor().Kind == frame.Query {
 		command = ""
 	}
 	value, err := bound.Invoke(ctx, command, input)

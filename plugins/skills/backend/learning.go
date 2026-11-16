@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	"github.com/Tangerg/frame/sqlite"
 	skillspec "github.com/Tangerg/scope/skills"
 )
@@ -24,7 +25,7 @@ const (
 )
 
 type learner struct {
-	db          *sqlite.Database
+	db          sqlite.Database
 	mu          sync.Mutex
 	complexRuns map[string]*list.Element
 	recent      list.List

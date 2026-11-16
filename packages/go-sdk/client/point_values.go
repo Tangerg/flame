@@ -7,11 +7,10 @@ import (
 	"reflect"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -28,7 +27,7 @@ type PointValue[T any] struct {
 
 // ResolvePointValues checks the consumer's typed schema against its published
 // point before decoding immutable installed bindings into consumer-owned values.
-func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *plugincontract.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
+func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *plugincontract.Point, target framemcp.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}
@@ -36,7 +35,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
 		return nil, err
 	}
-	schema, err := portable.SchemaFor[T]()
+	schema, err := framevalue.SchemaFor[T]()
 	if err != nil {
 		return nil, err
 	}

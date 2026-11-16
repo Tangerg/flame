@@ -9,14 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/frame/sqlite"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
@@ -200,7 +199,7 @@ func TestCommandAdmissionRefusesMethodsWithoutReceiptIdentity(t *testing.T) {
 		{"space", "two methods"},
 		{"control", "two\tmethods"},
 		{"invalid utf8", "method\xff"},
-		{"overlong", strings.Repeat("m", portable.ProfileLimits().MaxTokenBytes+1)},
+		{"overlong", strings.Repeat("m", frame.CurrentPortableProfile().Limits.MaxTokenBytes+1)},
 	} {
 		t.Run(method.name, func(t *testing.T) {
 			calls := 0
@@ -231,13 +230,13 @@ func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
 		Name  jsontext.Value `json:"name"`
 		Value any            `json:"value"`
 	}
-	method, err := pluginmcp.NewMethod[input, bool](portable.MethodConfig{
-		Name: "numbers.save", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Save an optional name and original number.",
+	method, err := pluginmcp.NewMethod[input, bool](frame.MethodConfig{
+		Name: "numbers.save", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Save an optional name and original number.",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.AdmitMethod(method.Descriptor())
+	contract, err := frame.AdmitMethod(method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

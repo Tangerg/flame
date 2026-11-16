@@ -46,15 +46,19 @@ type PluginBrowserRealm struct {
 	Epoch string "json:\"epoch\""
 }
 
+type PluginBrowserScopeRef struct {
+	ScopeID         string "json:\"scopeId\""
+	ScopeGeneration string "json:\"scopeGeneration\""
+}
+
 type PluginBrowserUseGrant struct {
-	OperationID     string                   "json:\"operationId\""
-	ParentUseID     string                   "json:\"parentUseId,omitempty\""
-	ID              string                   "json:\"id\""
-	ApprovalToken   string                   "json:\"approvalToken\""
-	Authority       PluginBrowserAuthority   "json:\"authority\""
-	Realm           PluginBrowserRealm       "json:\"realm\""
-	Execution       PluginBrowserExecution   "json:\"execution\""
-	ScopeID         string                   "json:\"scopeId\""
-	ScopeGeneration string                   "json:\"scopeGeneration\""
-	Objects         []PluginBrowserObjectRef "json:\"objects\""
+	OperationID   string                 "json:\"operationId\""
+	ParentUseID   string                 "json:\"parentUseId,omitempty\""
+	ID            string                 "json:\"id\""
+	ApprovalToken string                 "json:\"approvalToken\""
+	Authority     PluginBrowserAuthority "json:\"authority\""
+	Realm         PluginBrowserRealm     "json:\"realm\""
+	Execution     PluginBrowserExecution "json:\"execution\""
+	PluginBrowserScopeRef
+	Objects []PluginBrowserObjectRef "json:\"objects\""
 }

@@ -2,15 +2,13 @@ package main
 
 import (
 	"context"
-
-	"github.com/Tangerg/frame/portable"
-
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
 	"fmt"
 
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 type analyzerCaller interface {
@@ -18,7 +16,7 @@ type analyzerCaller interface {
 	runtimeclient.PluginCaller
 }
 
-func analyzeReview(ctx context.Context, caller analyzerCaller, target portable.Target, review reviews.Snapshot) (reviews.Analysis, error) {
+func analyzeReview(ctx context.Context, caller analyzerCaller, target framemcp.Target, review reviews.Snapshot) (reviews.Analysis, error) {
 	contract, err := reviews.NewAnalyzerPoint()
 	if err != nil {
 		return reviews.Analysis{}, err
@@ -36,7 +34,7 @@ func analyzeReview(ctx context.Context, caller analyzerCaller, target portable.T
 		method, err := runtimeclient.BindPluginMethod(caller, runtimeclient.PluginBinding{
 			InstallationID: value.InstallationID, Digest: value.Digest,
 			Contribution: value.Value.Contribution, Contract: contracts.Capability,
-			Target: portable.Target{Scope: "installation", Reference: value.InstallationID},
+			Target: framemcp.Target{Scope: "installation", Reference: value.InstallationID},
 		}, contracts.Analyze)
 		if err != nil {
 			return reviews.Analysis{}, err

@@ -10,18 +10,18 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/a2aproject/a2a-go/v2/a2a"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
 )
 
 type connector struct {
-	db     *sqlite.Database
+	db     sqlite.Database
 	agents map[string]agent
 }
 

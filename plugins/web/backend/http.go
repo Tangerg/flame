@@ -5,26 +5,26 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
+
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/httpreq"
-
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/plugins/web/internal/wire"
 )
 
 type requests struct {
-	db      *sqlite.Database
+	db      sqlite.Database
 	binding *tool.Binding
 }
 
-func newRequests(db *sqlite.Database, config httpreq.ClientConfig) (*requests, error) {
-	if db == nil {
+func newRequests(db sqlite.Database, config httpreq.ClientConfig) (*requests, error) {
+	if !db.Valid() {
 		return nil, errors.New("web: request storage is required")
 	}
 	r := &requests{db: db}

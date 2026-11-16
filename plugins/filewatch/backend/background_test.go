@@ -11,13 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 type watchedFixture struct {
@@ -106,7 +105,7 @@ func TestBackgroundRetainsOriginalIntentAcrossLostReplyDisableAndRestart(t *test
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
 	host := &fixtureHost{store: s, admitErr: errors.New("fixture: acknowledgement lost"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 8)}
-	target := portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
+	target := framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
 	worker := newBackground(t.Context(), s, host, "original-runtime", target, "filewatch-operations", func() error { return nil })
 	select {
 	case <-host.watches:
@@ -182,7 +181,7 @@ func TestSourceFailureRequiresRearmAndNeverBecomesANoopWatch(t *testing.T) {
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
 	host := &fixtureHost{store: s, watchErr: errors.New("fixture: source unavailable"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 4)}
-	worker := newBackground(t.Context(), s, host, "runtime", portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}, "filewatch-operations", func() error { return nil })
+	worker := newBackground(t.Context(), s, host, "runtime", framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}, "filewatch-operations", func() error { return nil })
 	if err := worker.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +205,7 @@ func TestResyncAndGapsCaptureUncertaintyInsteadOfInventingFileWrites(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker := &background{target: portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}
+	worker := &background{target: framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}
 	generation := "22222222-2222-4222-8222-222222222222"
 	for _, gap := range []bool{false, true} {
 		event := protocol.RuntimeEvent{Type: protocol.RuntimeResync, Sequence: 7, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, WatchIDs: []string{generation}}

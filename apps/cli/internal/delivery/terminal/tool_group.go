@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/layout"
@@ -133,7 +134,7 @@ func (t *toolGroupBlock) Draw(view grid.View) {
 		labelLimit = width - statusWidth - 1
 	}
 	if labelLimit > labelX {
-		view.Text(labelX, 0, text.Truncate(label, labelLimit-labelX, t.glyphs.Ellipsis), t.theme.Text)
+		text.Of(label, t.theme.Text).Truncate(labelLimit-labelX, t.glyphs.Ellipsis).Draw(view, labelX, 0)
 	}
 	if !t.Expanded() {
 		return
@@ -157,7 +158,7 @@ func (t *toolGroupBlock) Rows(width int) []text.Row {
 		return t.tools[0].Rows(width)
 	}
 	toggle, label, status, _ := t.header()
-	rows := []text.Row{{Text: strings.TrimSpace(toggle + " " + label + " " + status)}}
+	rows := []text.Row{{Content: text.Of(strings.TrimSpace(toggle+" "+label+" "+status), t.theme.Text)}}
 	if t.Expanded() {
 		childWidth := max(width-toolContentInset, 1)
 		for _, tool := range t.tools {

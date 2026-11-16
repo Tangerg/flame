@@ -7,12 +7,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
@@ -26,7 +25,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	contract := testsupport.CommandContract(t, "review.update", "workspace")
 	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
 	dependencies := plugin.CompactDependencies([]plugin.Dependency{provider, leaf})
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: framemcp.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", dependencies...), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: framemcp.Invocation{ID: "command", Origin: extension.Human, Target: framemcp.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", dependencies...), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +136,7 @@ INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installa
 		t.Fatal(err)
 	}
 	store := newPluginCommandStore(databaseFor(db), nil)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: framemcp.Invocation{ID: "new", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: framemcp.Invocation{ID: "new", Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

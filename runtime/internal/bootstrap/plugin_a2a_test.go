@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
@@ -27,7 +27,7 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	call := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: "remote-agents", Contract: contract.Identity().String(),
-		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: testsupport.A2AAgentsV1Method, Input: `{}`,
 	}
 	result := r.must(delivery.PluginsCall, call, "").(*protocol.CallPluginResponse)

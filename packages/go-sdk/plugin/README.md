@@ -13,7 +13,7 @@ This guide uses the following package names:
 | ---------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `plugin`         | `github.com/Tangerg/flame/packages/go-sdk/plugin`          | Flame model, Tool and product receipt contracts                           |
 | `pluginmcp`      | `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`      | Typed methods, MCP backend/setup, callbacks, streams and generic receipts |
-| `portable`       | `github.com/Tangerg/frame/portable`                        | Neutral immutable method/schema contracts                                 |
+| `frame`          | `github.com/Tangerg/frame`                                 | Neutral immutable method/schema contracts                                 |
 | `plugincontract` | `github.com/Tangerg/flame/packages/go-sdk/plugin/contract` | Flame capability composition, scope and value points                      |
 | `framemcp`       | `github.com/Tangerg/frame/process/mcp`                     | Managed invocation, origin and refusal values                             |
 | `extension`      | `github.com/Tangerg/flame/packages/go-sdk/extension`       | Flame invocation origins and call/installation scope policy               |
@@ -110,13 +110,13 @@ Runtime validates fresh unary and streaming inputs before saving a command route
 or recording dispatch. A definite structural refusal leaves the identity unused.
 Structurally accepted business refusals still own their original receipts.
 Original-command recovery does not run new admission: it only queries the captured
-owner's receipt. The compiled `portable.Protocol` requires this validation
+owner's receipt. The compiled `frame.CapabilityProtocol` requires this validation
 operation. Rebuild contracts, backend and consumers together. Older backend
 protocols are refused without negotiation or a fallback. Flame's package metadata
 uses the separate `plugin.DeclarationProtocol`. Keep old data separately and
 complete old waiting work with its original binary.
 
-`github.com/Tangerg/frame/portable` owns immutable callable contracts
+`github.com/Tangerg/frame` owns immutable callable contracts
 independently of transport. `portable.AdmitMethod` admits local method metadata;
 typed methods, live bindings, callbacks and generation consume that owner. It
 provides exact schemas, validation and canonical identity. Descriptors are
@@ -137,7 +137,7 @@ operation references, reference prose and TypeScript input/output maps with a
 derived `CAPABILITY` token from that same source. The canonical descriptor keeps
 the original self-contained schemas. The presentation Schema rewrites local
 references for its data maps and never supplies the callable fingerprint. The
-generator accepts a complete capability descriptor. `frame/portable/contractgen` owns its
+generator accepts a complete capability descriptor. `frame/contractgen` owns its
 Schema-to-TypeScript emitter and consumes Frame-admitted schemas; no new IDL or Go DTO copy
 is introduced. Numeric/cross-field constraints remain in Schema and the business
 owner where TypeScript cannot express them. Output filenames are fixed; method
@@ -292,7 +292,7 @@ JSON. Query errors, missing methods and absent/malformed evidence remain unknown
 a valid failed Tool receipt is distinct from a failure to read it.
 
 The Flame MCP binding requires `plugincontract.Protocol` on invocation and
-description, and publishes Frame's `portable.Protocol` for neutral methods. These are
+description, and publishes Frame's `frame.CapabilityProtocol` for neutral methods. These are
 public wire contract identities, separate from internal build or data-directory
 versions. Only the compiled current protocols are interpreted. Installed admission validates
 the declared contract, complete live exports and exact activation before dispatch.
@@ -411,7 +411,7 @@ continuation or a stopped Scope effect's execution authority.
 Origin, parent and target are ephemeral transport context, not business input or
 credentials. Closing the callback observation leaves independently accepted Runs with
 their canonical Runtime owner. Rebuild backends and callers against the same
-compiled `portable.Protocol` and exact published contracts.
+compiled `frame.CapabilityProtocol` and exact published contracts.
 
 Known business refusals use `portable.Refusal`; classifiers and `errors.AsType`
 consume that contract directly. JSON refusal fields are `code` and `message`.
@@ -840,7 +840,7 @@ keep their formats. The Core wire epoch is unchanged.
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
 admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
-per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.2.0/sqlite/README.md).
+per-database transaction lifetime live in [`frame/sqlite`](https://github.com/Tangerg/frame/blob/v0.3.0/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
 `framemcp.ErrInvocationConflict` classifies changed original method/input under
 one invocation identity. Host replay retention and execution lifecycle remain

@@ -12,11 +12,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sqlite.Database, *ConversationStore, *RunStore, *conversationCompactions) {
+func newCompactionFixture(t *testing.T) (sqlite.Database, *ConversationStore, *RunStore, *conversationCompactions) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {

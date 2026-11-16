@@ -6,16 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -112,7 +110,7 @@ func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: framemcp.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: framemcp.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
 	input, err := framevalue.EncodeJSON(invocation)
 	if err != nil {
 		t.Fatal(err)

@@ -25,7 +25,7 @@ export interface AssessmentV1Output {
   assets: Array<{ filename: string; id: string; mime: string; sha256: string; size: JSONNumber }>;
   createdAt: string;
   id: string;
-  kind: ("render" | "review") & (string);
+  kind: "render" | "review";
   reportJSON: string;
   revision: string;
   sourceSha256: string;
@@ -41,7 +41,7 @@ export interface CatalogV1Output {
 
 export interface CreateV1Input {
   contentJSON: string;
-  format: ("docx" | "xlsx" | "pptx") & (string);
+  format: "docx" | "xlsx" | "pptx";
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   title: string;
 }
@@ -49,10 +49,10 @@ export interface CreateV1Input {
 export interface CreateV1Output {
   createdAt: string;
   documentId: string;
-  format: ("docx" | "xlsx" | "pptx" | "pdf") & (string);
+  format: "docx" | "xlsx" | "pptx" | "pdf";
   id: string;
   native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber };
-  operation: ("create" | "import" | "edit" | "recalculate") & (string);
+  operation: "create" | "import" | "edit" | "recalculate";
   parent?: string;
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   sha256: string;
@@ -88,10 +88,10 @@ export interface EditV1Input {
 export interface EditV1Output {
   createdAt: string;
   documentId: string;
-  format: ("docx" | "xlsx" | "pptx" | "pdf") & (string);
+  format: "docx" | "xlsx" | "pptx" | "pdf";
   id: string;
   native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber };
-  operation: ("create" | "import" | "edit" | "recalculate") & (string);
+  operation: "create" | "import" | "edit" | "recalculate";
   parent?: string;
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   sha256: string;
@@ -100,7 +100,7 @@ export interface EditV1Output {
 
 export interface ExportV1Input {
   id: string;
-  kind: ("native" | "pdf" | "bundle" | "csv") & (string);
+  kind: "native" | "pdf" | "bundle" | "csv";
   revision: string;
   sheetPart?: string;
 }
@@ -120,12 +120,12 @@ export interface HistoryV1Input {
 }
 
 export interface HistoryV1Output {
-  entries: Array<{ createdAt: string; documentId: string; format: ("docx" | "xlsx" | "pptx" | "pdf") & (string); id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: ("create" | "import" | "edit" | "recalculate") & (string); parent?: string; provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string }; sha256: string; size: JSONNumber }>;
+  entries: Array<{ createdAt: string; documentId: string; format: "docx" | "xlsx" | "pptx" | "pdf"; id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: "create" | "import" | "edit" | "recalculate"; parent?: string; provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string }; sha256: string; size: JSONNumber }>;
   next?: string;
 }
 
 export interface ImportV1Input {
-  format: ("docx" | "xlsx" | "pptx" | "pdf") & (string);
+  format: "docx" | "xlsx" | "pptx" | "pdf";
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   title: string;
   uploadId: string;
@@ -134,10 +134,10 @@ export interface ImportV1Input {
 export interface ImportV1Output {
   createdAt: string;
   documentId: string;
-  format: ("docx" | "xlsx" | "pptx" | "pdf") & (string);
+  format: "docx" | "xlsx" | "pptx" | "pdf";
   id: string;
   native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber };
-  operation: ("create" | "import" | "edit" | "recalculate") & (string);
+  operation: "create" | "import" | "edit" | "recalculate";
   parent?: string;
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   sha256: string;
@@ -150,7 +150,7 @@ export interface ListV1Input {
 }
 
 export interface ListV1Output {
-  entries: Array<{ createdAt: string; format: ("docx" | "xlsx" | "pptx" | "pdf") & (string); head: string; id: string; title: string }>;
+  entries: Array<{ createdAt: string; format: "docx" | "xlsx" | "pptx" | "pdf"; head: string; id: string; title: string }>;
   next?: string;
 }
 
@@ -160,11 +160,11 @@ export interface ReadV1Input {
 }
 
 export interface ReadV1Output {
-  assessments: Array<{ assets: Array<{ filename: string; id: string; mime: string; sha256: string; size: JSONNumber }>; createdAt: string; id: string; kind: ("render" | "review") & (string); revision: string; sourceSha256: string }>;
-  document: { createdAt: string; format: ("docx" | "xlsx" | "pptx" | "pdf") & (string); head: string; id: string; title: string };
+  assessments: Array<{ assets: Array<{ filename: string; id: string; mime: string; sha256: string; size: JSONNumber }>; createdAt: string; id: string; kind: "render" | "review"; revision: string; sourceSha256: string }>;
+  document: { createdAt: string; format: "docx" | "xlsx" | "pptx" | "pdf"; head: string; id: string; title: string };
   inspectionJSON: string;
   processingJSON?: string;
-  revision: { createdAt: string; documentId: string; format: ("docx" | "xlsx" | "pptx" | "pdf") & (string); id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: ("create" | "import" | "edit" | "recalculate") & (string); parent?: string; provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string }; sha256: string; size: JSONNumber };
+  revision: { createdAt: string; documentId: string; format: "docx" | "xlsx" | "pptx" | "pdf"; id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: "create" | "import" | "edit" | "recalculate"; parent?: string; provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string }; sha256: string; size: JSONNumber };
 }
 
 export interface RecalculateV1Input {
@@ -175,10 +175,10 @@ export interface RecalculateV1Input {
 export interface RecalculateV1Output {
   createdAt: string;
   documentId: string;
-  format: ("docx" | "xlsx" | "pptx" | "pdf") & (string);
+  format: "docx" | "xlsx" | "pptx" | "pdf";
   id: string;
   native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber };
-  operation: ("create" | "import" | "edit" | "recalculate") & (string);
+  operation: "create" | "import" | "edit" | "recalculate";
   parent?: string;
   provenance: { assumptions: Array<string>; reproduction: string; sources: Array<{ note: string; title: string; uri: string }>; units: string };
   sha256: string;
@@ -201,7 +201,7 @@ export interface RenderV1Output {
   assets: Array<{ filename: string; id: string; mime: string; sha256: string; size: JSONNumber }>;
   createdAt: string;
   id: string;
-  kind: ("render" | "review") & (string);
+  kind: "render" | "review";
   reportJSON: string;
   revision: string;
   sourceSha256: string;
@@ -213,14 +213,14 @@ export interface ReviewV1Input {
   pages: Array<JSONNumber>;
   renderId: string;
   revision: string;
-  verdict: ("accepted" | "changes_requested") & (string);
+  verdict: "accepted" | "changes_requested";
 }
 
 export interface ReviewV1Output {
   assets: Array<{ filename: string; id: string; mime: string; sha256: string; size: JSONNumber }>;
   createdAt: string;
   id: string;
-  kind: ("render" | "review") & (string);
+  kind: "render" | "review";
   reportJSON: string;
   revision: string;
   sourceSha256: string;

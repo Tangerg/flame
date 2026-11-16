@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -18,16 +17,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/mcpfixture"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/frame"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process"
 	"github.com/Tangerg/frame/process/runner"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 // The child forwards transport messages only. Test callbacks and their business
 // receipts stay with the original server while Frame owns a real local process.
+
 func TestManagedTransportHelper(t *testing.T) {
 	endpoint := os.Getenv("FLAME_TEST_MCP_PROXY")
 	if endpoint == "" {
@@ -89,7 +90,7 @@ func (p managedPackages) Connection(ctx context.Context, installation plugin.Ins
 
 type managedFixture struct {
 	Stores    *persistencefixture.Stores
-	Host      *frame.Host
+	Host      framehost.Host
 	Pool      *mcp.Pool
 	Routing   *plugins.Commands
 	directory string
@@ -181,7 +182,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 		t.Fatal(err)
 	}
 	owner := frame.NewLifetime(context.Background())
-	f.Host, err = frame.NewHost(context.Background(), frame.HostConfig{ReadAcceptedBinding: permission.Read, Admission: stores.Admission, Epoch: stores.Frame.Epoch(), Lifetime: owner, Drivers: []frame.Driver{driver}, Installations: stores.Frame, ExecutionProtection: stores.Frame})
+	f.Host, err = framehost.New(context.Background(), framehost.Config{ReadAcceptedBinding: permission.Read, Authority: stores.Frame, Lifetime: owner, Drivers: []framehost.Driver{driver}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,11 +207,11 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = f.Host.Install(t.Context(), frame.InstallationConfig{ID: f.store.snapshot.Installation.ID().Host(), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
+		_, err = f.Host.Install(t.Context(), framehost.InstallationConfig{ID: f.store.snapshot.Installation.ID().Host(), Plugin: definition.Plugin, Configuration: configuration, Enabled: f.store.snapshot.Installation.Enabled()})
 		if err != nil {
 			t.Fatal(err)
 		}
-	} else if err := f.Host.Restore(t.Context(), records, []*frame.Plugin{definition.Plugin}); err != nil {
+	} else if err := f.Host.Restore(t.Context(), []*framehost.Plugin{definition.Plugin}); err != nil {
 		t.Fatal(err)
 	}
 	if err := stores.RecoverPluginBindings(t.Context()); err != nil {
@@ -263,11 +264,11 @@ func (f *managedFixture) close(t *testing.T) {
 		}
 		f.Pool = nil
 	}
-	if f.Host != nil {
+	if f.Host.Valid() {
 		if outcome, err := f.Host.Close(ctx); err != nil || !outcome.Released {
 			t.Errorf("managed Host close: %+v, %v", outcome, err)
 		}
-		f.Host = nil
+		f.Host = framehost.Host{}
 	}
 	if f.Stores != nil {
 		if err := f.Stores.Close(); err != nil {
@@ -285,7 +286,7 @@ func (f *managedFixture) reopen(t *testing.T) {
 
 func (s *toolInstallationStore) disable(t *testing.T) {
 	t.Helper()
-	if s.host == nil {
+	if !s.host.Valid() {
 		t.Fatal("installation fixture has no Host authority")
 	}
 	if err := s.host.SetEnabled(t.Context(), s.snapshot.Installation.ID().Host(), false); err != nil {

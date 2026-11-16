@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -144,7 +144,7 @@ func admitDescription(description Description) (map[string]*plugincontract.Capab
 		if _, exists := methods[descriptor.Name]; exists {
 			return nil, errors.New("plugin: duplicate published method")
 		}
-		method, err := portable.AdmitMethod(descriptor)
+		method, err := frame.AdmitMethod(descriptor)
 		if err != nil {
 			return nil, err
 		}

@@ -1,5 +1,5 @@
 package mcp
 
-import "github.com/Tangerg/frame"
+import framehost "github.com/Tangerg/frame/host"
 
-const ProcessProfile frame.Profile = "flame-mcp"
+const ProcessProfile framehost.Profile = "flame-mcp"

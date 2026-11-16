@@ -11,11 +11,10 @@ import (
 	"reflect"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
+
+	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/sse"
 )
 
@@ -26,7 +25,7 @@ type StreamValue[C, R any] struct {
 	Result *R
 }
 
-type StreamingMethod[P, C, R any] struct{ contract *portable.Method }
+type StreamingMethod[P, C, R any] struct{ contract *frame.Method }
 
 func ImplementStreamingMethod[P, C, R any](owner *plugincontract.Capability, name string) (*StreamingMethod[P, C, R], error) {
 	if owner == nil {
@@ -48,11 +47,11 @@ func ImplementStreamingMethod[P, C, R any](owner *plugincontract.Capability, nam
 	return &StreamingMethod[P, C, R]{contract: method}, nil
 }
 
-func NewStreamingMethod[P, C, R any](config portable.MethodConfig) (*StreamingMethod[P, C, R], error) {
+func NewStreamingMethod[P, C, R any](config frame.MethodConfig) (*StreamingMethod[P, C, R], error) {
 	if _, err := NewMethod[P, R](config); err != nil {
 		return nil, err
 	}
-	contract, err := portable.NewStreamingMethod[P, C, R](config)
+	contract, err := frame.NewStreamingMethod[P, C, R](config)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func NewStreamingMethod[P, C, R any](config portable.MethodConfig) (*StreamingMe
 	return &StreamingMethod[P, C, R]{contract: contract}, nil
 }
 
-func (m *StreamingMethod[P, C, R]) Descriptor() portable.MethodDescriptor {
+func (m *StreamingMethod[P, C, R]) Descriptor() frame.MethodDescriptor {
 	return m.contract.Descriptor()
 }
 
@@ -241,7 +240,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 	}
 }
 
-func decodeStreamFrame[C, R any](method *portable.Method, data []byte) (StreamValue[C, R], error) {
+func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue[C, R], error) {
 	var frame streamValue
 	if err := json.Unmarshal(data, &frame, json.RejectUnknownMembers(true)); err != nil {
 		return StreamValue[C, R]{}, err

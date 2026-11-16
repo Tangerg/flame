@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -111,7 +112,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	}
 	return workspaceapp.FileReadResult{
 		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.StartLine,
-		EndLine: result.EndLine, Truncated: result.Truncated,
+		EndLine: result.EndLine, Truncated: result.Truncated(),
 	}, nil
 }
 
@@ -163,6 +164,5 @@ func scanFileWindow(ctx context.Context, source io.Reader, input workspaceapp.Fi
 		return textread.Result{}, err
 	}
 	result.Content = content.String()
-	result.Truncated = result.StartLine > 0 || result.EndLine < result.TotalLines
 	return result, nil
 }

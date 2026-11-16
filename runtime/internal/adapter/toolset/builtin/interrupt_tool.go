@@ -6,10 +6,10 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+
+	framevalue "github.com/Tangerg/frame/value"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -31,7 +31,7 @@ func newInterruptTool[Args any](
 	plan func(context.Context, Args) (runs.Interrupt, error),
 	resolve func(context.Context, Args, run.InterruptResolution) (string, error),
 ) (toolcontract.Tool, error) {
-	schema, err := portable.SchemaFor[Args]()
+	schema, err := framevalue.SchemaFor[Args]()
 	if err != nil {
 		return nil, fmt.Errorf("%s: derive input schema: %w", config.Name, err)
 	}

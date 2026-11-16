@@ -1,15 +1,15 @@
 package delivery
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-
 	"context"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framebrowser "github.com/Tangerg/frame/browser"
+	framehost "github.com/Tangerg/frame/host"
 )
 
 func (s *Handler) OpenPluginBrowserRealm(ctx context.Context, in protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error) {
@@ -70,7 +70,7 @@ func wireBrowserAuthority(value framebrowser.Authority) protocol.PluginBrowserAu
 	return protocol.PluginBrowserAuthority{ID: value.ID, Epoch: value.Epoch}
 }
 
-func wireBrowserContract(value frame.ContractRef) protocol.PluginBrowserContractRef {
+func wireBrowserContract(value framehost.ContractRef) protocol.PluginBrowserContractRef {
 	return protocol.PluginBrowserContractRef{
 		Name: value.Name, Version: value.Version,
 		Digest: protocol.PluginBrowserDigest(value.Digest.String()),

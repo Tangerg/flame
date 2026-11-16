@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+
+	"github.com/Tangerg/frame"
 )
 
 func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
@@ -33,7 +33,7 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 			if published.Name != method.Name {
 				continue
 			}
-			actual, err := portable.AdmitMethod(published)
+			actual, err := frame.AdmitMethod(published)
 			if err != nil {
 				t.Fatal(err)
 			}

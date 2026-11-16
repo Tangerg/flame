@@ -4,12 +4,13 @@ import (
 	"context"
 	"iter"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type CallRequest struct {
@@ -19,13 +20,13 @@ type CallRequest struct {
 	Contract     *plugincontract.Capability
 	Method       string
 	Input        framevalue.JSON
-	Target       portable.Target
+	Target       framemcp.Target
 }
 
 // Call retains an admitted consumer contract until its concrete invocation ends.
 // Preparation performs no backend I/O or business effect.
 type Call interface {
-	Kind() portable.MethodKind
+	Kind() frame.MethodKind
 	Invoke(context.Context) (framevalue.JSON, error)
 }
 
@@ -42,6 +43,6 @@ type StreamEvent struct {
 }
 
 type StreamCall interface {
-	Kind() portable.MethodKind
+	Kind() frame.MethodKind
 	Stream(context.Context) iter.Seq2[StreamEvent, error]
 }

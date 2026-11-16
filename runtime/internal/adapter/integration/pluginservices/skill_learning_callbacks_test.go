@@ -8,18 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 )
@@ -56,7 +53,7 @@ func openLearningGrant(t *testing.T, ctx context.Context, owner *SkillLearning) 
 
 func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 	var calls, releases atomic.Int32
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: "original", Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "skills"}})
 	if err != nil {
 		t.Fatal(err)
 	}

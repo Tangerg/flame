@@ -6,11 +6,11 @@ import (
 	"slices"
 	"testing"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 func testInstallationID(t *testing.T, text string) identity.InstallationID {
@@ -22,7 +22,7 @@ func testInstallationID(t *testing.T, text string) identity.InstallationID {
 	return id
 }
 
-func insertRunState(t *testing.T, db *framesqlite.Database, runID, sessionID, state string) {
+func insertRunState(t *testing.T, db framesqlite.Database, runID, sessionID, state string) {
 	t.Helper()
 	if _, err := execFixture(t.Context(), db, `INSERT INTO runs(run_id, session_id, state, created_at, updated_at) VALUES (?, ?, ?, 0, 0)`, runID, sessionID, state); err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
 				t.Fatal(err)
 			}
 			reopened, err := openDatabase(t.Context(), path)
-			if reopened != nil {
+			if reopened.Valid() {
 				_ = reopened.Close()
 			}
 			if err == nil {

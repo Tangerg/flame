@@ -6,17 +6,17 @@ import (
 	"errors"
 	"iter"
 
-	"github.com/Tangerg/frame/portable"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func ModelStreamMethod() (*pluginmcp.StreamingMethod[scopewire.Request, scopewire.ResponseDelta, ModelResult], error) {
-	return pluginmcp.NewStreamingMethod[scopewire.Request, scopewire.ResponseDelta, ModelResult](portable.MethodConfig{
-		Name: "flame.model/stream.v1", Kind: portable.Command, Target: extension.ScopeCall,
+	return pluginmcp.NewStreamingMethod[scopewire.Request, scopewire.ResponseDelta, ModelResult](frame.MethodConfig{
+		Name: "flame.model/stream.v1", Kind: frame.Command, Target: extension.ScopeCall,
 		Description: "Consume the captured model's canonical stream and final outcome.",
 	})
 }

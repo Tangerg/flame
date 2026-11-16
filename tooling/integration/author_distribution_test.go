@@ -12,11 +12,11 @@ import (
 	"time"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	flameruntime "github.com/Tangerg/flame/runtime"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *testing.T) {
@@ -132,7 +132,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if contract == "" {
 		t.Fatal("author did not publish its own contract")
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: framemcp.Target{Scope: "installation", Reference: installed.ID}}
 	if name == "memory" {
 		published, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 		if err != nil {

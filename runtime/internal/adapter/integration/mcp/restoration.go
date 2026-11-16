@@ -5,28 +5,29 @@ import (
 	"errors"
 	"sync"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process/runner"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
-
-type restorationEvidenceKey struct{}
 
 // Evidence is local to this acquisition. Only Frame's admitted read of the
 // original business owner may supply it; it grants no permission or lifecycle.
+
+type restorationEvidenceKey struct{}
+
 type restorationEvidence struct {
 	mu       sync.Mutex
 	recordID string
-	binding  frame.BindingSnapshot
+	binding  framehost.BindingSnapshot
 }
 
-func (e *restorationEvidence) observe(recordID string, binding frame.BindingSnapshot) {
+func (e *restorationEvidence) observe(recordID string, binding framehost.BindingSnapshot) {
 	if e.recordID != recordID {
 		return
 	}
@@ -35,16 +36,16 @@ func (e *restorationEvidence) observe(recordID string, binding frame.BindingSnap
 	e.mu.Unlock()
 }
 
-func (e *restorationEvidence) snapshot() frame.BindingSnapshot {
+func (e *restorationEvidence) snapshot() framehost.BindingSnapshot {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.binding.Clone()
 }
 
-func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activation, grant frame.ScopeGrant) error {
+func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activation, grant framehost.ScopeGrant) error {
 	evidence := &restorationEvidence{recordID: original.Identity.String()}
 	attempt := context.WithValue(ctx, restorationEvidenceKey{}, evidence)
-	use, err := s.host.AcquireRecord(attempt, evidence.recordID, frame.UseConfig{Owner: s.owner, Scope: grant})
+	use, err := s.host.AcquireRecord(attempt, evidence.recordID, framehost.UseConfig{Owner: s.owner, Scope: grant})
 	if err == errBindingNotRetained {
 		// The admitted owner settled after the catalog listed its work; that
 		// earlier observation cannot require restoration or authorize execution.
@@ -70,7 +71,7 @@ func (e *restorationFailure) Error() string {
 }
 func (e *restorationFailure) Unwrap() error { return e.cause }
 
-func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activation, attempted frame.BindingSnapshot, cause error) error {
+func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activation, attempted framehost.BindingSnapshot, cause error) error {
 	identity, err := attempted.Identity()
 	lifetime := s.owner.Context()
 	waitErr, lifetimeErr := ctx.Err(), lifetime.Err()
@@ -99,7 +100,7 @@ func (p *Pool) RestorationFailure(id mcpserver.ID, activation plugin.Activation)
 		return false, nil
 	}
 	cause := current.cause
-	if !failure.completed || errors.Is(cause, frame.ErrRecoveryRequired) || errors.Is(cause, runner.ErrUnknown) || errors.Is(cause, frame.ErrUnconfirmedRelease) {
+	if !failure.completed || errors.Is(cause, framehost.ErrRecoveryRequired) || errors.Is(cause, runner.ErrUnknown) || errors.Is(cause, frame.ErrUnconfirmedRelease) {
 		return false, cause
 	}
 	// Only the original MCP connection or an authoritative source refusal proves

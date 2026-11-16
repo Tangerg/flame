@@ -491,7 +491,7 @@
         "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
         "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
-        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame/process/mcp",
         "iter"
       ],
       "variables": [
@@ -531,7 +531,7 @@
         },
         {
           "name": "ResolvePointValues",
-          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *contract.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *contract.Point, target mcp.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
@@ -987,7 +987,7 @@
             },
             {
               "name": "Target",
-              "type": "portable.Target"
+              "type": "mcp.Target"
             }
           ]
         },
@@ -2538,7 +2538,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
       "imports": [
-        "github.com/Tangerg/frame",
+        "github.com/Tangerg/frame/host",
         "github.com/Tangerg/frame/value"
       ],
       "constants": [
@@ -2609,7 +2609,7 @@
         },
         {
           "name": "ParseHostInstallation",
-          "signature": "func(id frame.InstallationID) (InstallationID, error)"
+          "signature": "func(id host.InstallationID) (InstallationID, error)"
         },
         {
           "name": "ParseInstallation",
@@ -2671,7 +2671,7 @@
           "methods": [
             {
               "name": "Host",
-              "signature": "func() frame.InstallationID"
+              "signature": "func() host.InstallationID"
             },
             {
               "name": "String",
@@ -4666,7 +4666,8 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
       "imports": [
         "encoding/json/jsontext",
-        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame",
+        "github.com/Tangerg/frame/process/mcp",
         "github.com/Tangerg/frame/value"
       ],
       "constants": [
@@ -4712,11 +4713,11 @@
         },
         {
           "name": "MethodKindFor",
-          "signature": "func(encoded []byte, name string) (portable.MethodKind, error)"
+          "signature": "func(encoded []byte, name string) (frame.MethodKind, error)"
         },
         {
           "name": "NewCapability",
-          "signature": "func(config CapabilityConfig, methods ...portable.MethodDescriptor) (*Capability, error)"
+          "signature": "func(config CapabilityConfig, methods ...frame.MethodDescriptor) (*Capability, error)"
         },
         {
           "name": "ParseCapability",
@@ -4746,11 +4747,11 @@
             },
             {
               "name": "Method",
-              "signature": "func(name string) (*portable.Method, bool)"
+              "signature": "func(name string) (*frame.Method, bool)"
             },
             {
               "name": "Service",
-              "signature": "func() *portable.Capability"
+              "signature": "func() *frame.Capability"
             }
           ]
         },
@@ -4798,7 +4799,7 @@
             },
             {
               "name": "Methods",
-              "type": "[]portable.MethodDescriptor",
+              "type": "[]frame.MethodDescriptor",
               "tag": "json:\"methods\""
             }
           ]
@@ -4846,7 +4847,7 @@
           "fields": [
             {
               "name": "Target",
-              "type": "portable.Target",
+              "type": "mcp.Target",
               "tag": "json:\"target\""
             },
             {
@@ -5205,7 +5206,7 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/packages/go-sdk/plugin/contract",
         "github.com/Tangerg/frame",
-        "github.com/Tangerg/frame/portable",
+        "github.com/Tangerg/frame/host",
         "github.com/Tangerg/frame/process/mcp",
         "github.com/Tangerg/frame/value",
         "github.com/Tangerg/go-sdk/mcp",
@@ -5257,7 +5258,7 @@
         },
         {
           "name": "ProcessProfile",
-          "type": "frame.Profile",
+          "type": "host.Profile",
           "value": "\"flame-mcp\""
         },
         {
@@ -5354,7 +5355,7 @@
         },
         {
           "name": "NewBinding",
-          "signature": "func(session *mcp.ClientSession, descriptor portable.MethodDescriptor) (*Binding, error)"
+          "signature": "func(session *mcp.ClientSession, descriptor frame.MethodDescriptor) (*Binding, error)"
         },
         {
           "name": "NewCallback",
@@ -5378,7 +5379,7 @@
         },
         {
           "name": "NewMethod",
-          "signature": "func[P, R any](config portable.MethodConfig) (*Method[P, R], error)"
+          "signature": "func[P, R any](config frame.MethodConfig) (*Method[P, R], error)"
         },
         {
           "name": "NewProcessClient",
@@ -5390,7 +5391,7 @@
         },
         {
           "name": "NewStreamingMethod",
-          "signature": "func[P, C, R any](config portable.MethodConfig) (*StreamingMethod[P, C, R], error)"
+          "signature": "func[P, C, R any](config frame.MethodConfig) (*StreamingMethod[P, C, R], error)"
         },
         {
           "name": "ProcessRequestFrameBytes",
@@ -5434,7 +5435,7 @@
         },
         {
           "name": "StreamDeliveryContract",
-          "signature": "func() (portable.MethodDescriptor, error)"
+          "signature": "func() (frame.MethodDescriptor, error)"
         },
         {
           "name": "StreamHost",
@@ -5496,7 +5497,7 @@
             },
             {
               "name": "Descriptor",
-              "signature": "func() portable.MethodDescriptor"
+              "signature": "func() frame.MethodDescriptor"
             },
             {
               "name": "Invoke",
@@ -5725,7 +5726,7 @@
             },
             {
               "name": "Methods",
-              "type": "[]portable.MethodDescriptor",
+              "type": "[]frame.MethodDescriptor",
               "tag": "json:\"methods\""
             },
             {
@@ -5753,7 +5754,7 @@
             },
             {
               "name": "Descriptor",
-              "signature": "func() portable.MethodDescriptor"
+              "signature": "func() frame.MethodDescriptor"
             },
             {
               "name": "Name",
@@ -5948,7 +5949,7 @@
           "fields": [
             {
               "name": "Background",
-              "type": "*portable.Target",
+              "type": "*mcp.Target",
               "tag": "json:\"background,omitzero\""
             },
             {
@@ -6014,7 +6015,7 @@
           "methods": [
             {
               "name": "Descriptor",
-              "signature": "func() portable.MethodDescriptor"
+              "signature": "func() frame.MethodDescriptor"
             },
             {
               "name": "RegisterServer",
@@ -6410,7 +6411,13 @@
         {
           "name": "AddInputScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "AddResult",
@@ -6512,17 +6519,35 @@
         {
           "name": "AddV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "AddV2OutputDomainItemSnapshotScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "AddV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "AddV2OutputInstantTimestamp",
@@ -6612,7 +6637,13 @@
         {
           "name": "ItemsInputScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ItemsV2Output",
@@ -6703,17 +6734,35 @@
         {
           "name": "ItemsV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ItemsV2OutputDomainItemSnapshotScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ItemsV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ItemsV2OutputInstantTimestamp",
@@ -6777,7 +6826,13 @@
         {
           "name": "ListInputScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ListV2OutputDomainItemID",
@@ -6863,17 +6918,35 @@
         {
           "name": "ListV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ListV2OutputDomainItemSnapshotScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ListV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ListV2OutputInstantTimestamp",
@@ -6990,7 +7063,13 @@
         {
           "name": "ReviewInputDecision",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "ReviewV2OutputContractAck",
@@ -7111,17 +7190,35 @@
         {
           "name": "SearchV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "SearchV2OutputDomainItemSnapshotScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "SearchV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "SearchV2OutputInstantTimestamp",
@@ -7266,17 +7363,35 @@
         {
           "name": "UpdateV2OutputDomainItemSnapshotOrigin",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "UpdateV2OutputDomainItemSnapshotScope",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "UpdateV2OutputDomainItemSnapshotStatus",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "UpdateV2OutputInstantTimestamp",
@@ -8457,19 +8572,19 @@
       "functions": [
         {
           "name": "AdmitCommand",
-          "signature": "func(ctx context.Context, db *sqlite.Database, method string, id string, input value.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
+          "signature": "func(ctx context.Context, db sqlite.Database, method string, id string, input value.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
         },
         {
           "name": "BindRuntimeTarget",
-          "signature": "func(ctx context.Context, db *sqlite.Database, namespace string) error"
+          "signature": "func(ctx context.Context, db sqlite.Database, namespace string) error"
         },
         {
           "name": "CheckRuntimeTarget",
-          "signature": "func(ctx context.Context, db *sqlite.Database, namespace string) error"
+          "signature": "func(ctx context.Context, db sqlite.Database, namespace string) error"
         },
         {
           "name": "Command",
-          "signature": "func[P, R any](ctx context.Context, db *sqlite.Database, method string, id string, admitted value.JSON, classify mcp.Classifier, prepare func(context.Context, P) (CommandPlan[R], error)) (R, error)"
+          "signature": "func[P, R any](ctx context.Context, db sqlite.Database, method string, id string, admitted value.JSON, classify mcp.Classifier, prepare func(context.Context, P) (CommandPlan[R], error)) (R, error)"
         },
         {
           "name": "CompleteCommand",
@@ -8485,19 +8600,19 @@
         },
         {
           "name": "ReadReceipt",
-          "signature": "func(ctx context.Context, db *sqlite.Database, input mcp.ReceiptRequest) (mcp.Receipt, error)"
+          "signature": "func(ctx context.Context, db sqlite.Database, input mcp.ReceiptRequest) (mcp.Receipt, error)"
         },
         {
           "name": "RegisterCommand",
-          "signature": "func[P, R any](server *mcp.Backend, db *sqlite.Database, method *mcp.Method[P, R], classify mcp.Classifier, prepare func(context.Context, *mcp.ServerSession, P) (CommandPlan[R], error)) error"
+          "signature": "func[P, R any](server *mcp.Backend, db sqlite.Database, method *mcp.Method[P, R], classify mcp.Classifier, prepare func(context.Context, *mcp.ServerSession, P) (CommandPlan[R], error)) error"
         },
         {
           "name": "RegisterReceipts",
-          "signature": "func(server *mcp.Backend, db *sqlite.Database) error"
+          "signature": "func(server *mcp.Backend, db sqlite.Database) error"
         },
         {
           "name": "ResumeCommand",
-          "signature": "func(ctx context.Context, db *sqlite.Database, method string, id string) (*PreparedCommand, value.JSON, []byte, error)"
+          "signature": "func(ctx context.Context, db sqlite.Database, method string, id string) (*PreparedCommand, value.JSON, []byte, error)"
         }
       ],
       "types": [
@@ -8549,7 +8664,6 @@
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/hook",
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/frame/portable",
         "github.com/Tangerg/frame/process/mcp",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "reflect",
@@ -11277,7 +11391,7 @@
             },
             {
               "name": "Target",
-              "type": "portable.Target",
+              "type": "mcp.Target",
               "tag": "json:\"target\""
             }
           ]
@@ -14302,6 +14416,22 @@
           ]
         },
         {
+          "name": "PluginBrowserScopeRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ScopeID",
+              "type": "string",
+              "tag": "json:\"scopeId\""
+            },
+            {
+              "name": "ScopeGeneration",
+              "type": "string",
+              "tag": "json:\"scopeGeneration\""
+            }
+          ]
+        },
+        {
           "name": "PluginBrowserSession",
           "kind": "struct",
           "fields": [
@@ -14392,14 +14522,8 @@
               "tag": "json:\"execution\""
             },
             {
-              "name": "ScopeID",
-              "type": "string",
-              "tag": "json:\"scopeId\""
-            },
-            {
-              "name": "ScopeGeneration",
-              "type": "string",
-              "tag": "json:\"scopeGeneration\""
+              "name": "PluginBrowserScopeRef",
+              "type": "PluginBrowserScopeRef"
             },
             {
               "name": "Objects",
@@ -15974,7 +16098,7 @@
             },
             {
               "name": "Target",
-              "type": "portable.Target",
+              "type": "mcp.Target",
               "tag": "json:\"target\""
             },
             {
@@ -18790,11 +18914,6 @@
               "name": "FinishReason",
               "type": "chat.FinishReason",
               "tag": "json:\"finish_reason,omitempty\""
-            },
-            {
-              "name": "OutputMetadata",
-              "type": "*chat.OutputMetadata",
-              "tag": "json:\"output_metadata,omitzero\""
             },
             {
               "name": "Metadata",

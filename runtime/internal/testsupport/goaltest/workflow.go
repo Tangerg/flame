@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // These canned replies let coordinator tests exercise competing storage and Run

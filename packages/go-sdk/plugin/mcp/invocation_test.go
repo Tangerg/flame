@@ -3,14 +3,13 @@ package mcp
 import (
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestInvocationMetadataRefusesMalformedAndCompetingOwners(t *testing.T) {
-	owner := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent", Target: portable.Target{Scope: "installation", Reference: "producer"}}
+	owner := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("model"), Parent: "parent", Target: framemcp.Target{Scope: "installation", Reference: "producer"}}
 	ctx, err := WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +34,7 @@ func TestInvocationMetadataRefusesMalformedAndCompetingOwners(t *testing.T) {
 			}
 		})
 	}
-	method, err := NewMethod[struct{}, struct{}](portable.MethodConfig{Name: "owner.read", Kind: portable.Query, Target: "workspace", Description: "Read the captured workspace."})
+	method, err := NewMethod[struct{}, struct{}](frame.MethodConfig{Name: "owner.read", Kind: frame.Query, Target: "workspace", Description: "Read the captured workspace."})
 	if err != nil {
 		t.Fatal(err)
 	}

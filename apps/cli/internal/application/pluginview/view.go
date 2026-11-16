@@ -12,15 +12,17 @@ import (
 	"strconv"
 	"strings"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // View is one declared terminal view bound to the installation that serves it.
+
 type View struct {
 	protocol.PluginTerminalView
 	InstallationID string
@@ -131,7 +133,7 @@ func (v View) Action(id string) (protocol.PluginTerminalAction, bool) {
 // be staged durably.
 func (v View) Mutates(action protocol.PluginTerminalAction) bool {
 	method, found := v.capability.Method(action.Method)
-	return found && method.Kind() == portable.Command
+	return found && method.Kind() == frame.Command
 }
 
 // ListRequest reads one page; cursor is empty for the first.
@@ -182,7 +184,7 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 	return protocol.CallPluginRequest{
 		InstallationID: v.InstallationID, Digest: v.Digest, Contribution: v.Contribution, Contract: v.contract,
 		Method: method, Input: string(encoded),
-		Target: portable.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
+		Target: framemcp.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
 	}, nil
 }
 

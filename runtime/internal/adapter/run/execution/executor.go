@@ -10,10 +10,6 @@ import (
 	"strings"
 	"time"
 
-	framevalue "github.com/Tangerg/frame/value"
-
-	"github.com/Tangerg/frame"
-
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -25,6 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -66,7 +64,7 @@ type originalToolResults interface {
 // executable Interaction adapter or behavior-affecting dispatcher configuration
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
-	Admission *frame.Admission
+	Admission framehost.Admission
 	// ValidatePluginSources rechecks captured plans and package releases under the
 	// original shared admission before the execution becomes a live use owner.
 	ValidatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
@@ -102,7 +100,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations *frame.Admission
+	installations framehost.Admission
 	lifetime      context.Context
 	config        InteractionExecutorConfig
 	policy        interactionExecutionPolicy
@@ -127,7 +125,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if config.ValidatePluginSources == nil {
 		return nil, errors.New("execution: plugin source validation is required")
 	}
-	if config.Admission == nil {
+	if !config.Admission.Valid() {
 		return nil, errors.New("execution: installation admission is required")
 	}
 	if lo.IsNil(config.ExecutionTrees) {

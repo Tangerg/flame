@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	"github.com/Tangerg/frame"
 	"github.com/spf13/cobra"
 )
 
@@ -226,7 +225,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 			return errors.New("plugin method is absent from the required contract")
 		}
 		commandID := authoring.CommandID(key)
-		if method.Kind() == portable.Command {
+		if method.Kind() == frame.Command {
 			if commandID == "" {
 				commandID = mutation.NewCommandID()
 			}

@@ -1,6 +1,6 @@
 module github.com/Tangerg/flame/runtime
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -41,19 +41,19 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.15-dev.20261116.tf6a0c82df002
+	github.com/Tangerg/flame/packages/go-sdk v0.1.16-dev.20261116.t39dd98bada59
 	github.com/Tangerg/flame/packages/local-runtime v0.1.5-dev.20261114.tce557d2d26a4
-	github.com/Tangerg/frame v0.2.0
+	github.com/Tangerg/frame v0.3.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
-	github.com/Tangerg/scope/agent v0.61.0
-	github.com/Tangerg/scope/core v0.61.0
-	github.com/Tangerg/scope/mcp v0.61.0
-	github.com/Tangerg/scope/models/catalog v0.61.0
-	github.com/Tangerg/scope/otel v0.61.0
-	github.com/Tangerg/scope/otel/agent v0.61.0
-	github.com/Tangerg/scope/skills v0.61.0
-	github.com/Tangerg/scope/tools v0.61.0
-	github.com/Tangerg/scope/tools/skills v0.61.0
+	github.com/Tangerg/scope/agent v0.62.0
+	github.com/Tangerg/scope/core v0.62.0
+	github.com/Tangerg/scope/mcp v0.62.0
+	github.com/Tangerg/scope/models/catalog v0.62.0
+	github.com/Tangerg/scope/otel v0.62.0
+	github.com/Tangerg/scope/otel/agent v0.62.0
+	github.com/Tangerg/scope/skills v0.62.0
+	github.com/Tangerg/scope/tools v0.62.0
+	github.com/Tangerg/scope/tools/skills v0.62.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.5.0

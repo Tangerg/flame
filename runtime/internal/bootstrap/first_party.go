@@ -9,22 +9,22 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
-func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host *frame.Host, packages *pluginpackage.Releases, directory string) error {
+func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host framehost.Host, packages *pluginpackage.Releases, directory string) error {
 	return plugins.Initialize(ctx, host, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{

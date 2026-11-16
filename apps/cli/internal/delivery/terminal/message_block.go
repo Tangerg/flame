@@ -143,7 +143,7 @@ func (m *markdownBlock) Draw(view grid.View) {
 }
 
 func (m *markdownBlock) Rows(width int) []text.Row {
-	rows := []text.Row{{Text: m.speaker}}
+	rows := []text.Row{{Content: text.Of(m.speaker, m.theme.Context)}}
 	body := m.doc.Rows(max(width-2, 1))
 	if m.diagnostic != nil {
 		body = append(body, m.diagnostic.Rows(max(width-2, 1))...)

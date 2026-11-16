@@ -9,6 +9,7 @@ import (
 
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -23,7 +24,7 @@ const attemptsSchema = `CREATE TABLE IF NOT EXISTS attempts(
 )`
 
 type catalog struct {
-	db  *framesqlite.Database
+	db  framesqlite.Database
 	now func() time.Time
 }
 

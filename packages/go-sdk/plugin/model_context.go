@@ -3,13 +3,12 @@ package plugin
 import (
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
 )
@@ -33,7 +32,7 @@ type ModelContextResult struct {
 }
 
 func ModelContextMethod() (*pluginmcp.Method[ModelContextRequest, ModelContextResult], error) {
-	return pluginmcp.NewMethod[ModelContextRequest, ModelContextResult](portable.MethodConfig{Name: "flame.model-context/contribute.v3", Kind: portable.Query, Target: extension.ScopeCall, Description: "Contribute untrusted reference data for the captured model use and original user input before capacity admission."})
+	return pluginmcp.NewMethod[ModelContextRequest, ModelContextResult](frame.MethodConfig{Name: "flame.model-context/contribute.v3", Kind: frame.Query, Target: extension.ScopeCall, Description: "Contribute untrusted reference data for the captured model use and original user input before capacity admission."})
 }
 
 // ModelContextContract orders independent context contributions before the final

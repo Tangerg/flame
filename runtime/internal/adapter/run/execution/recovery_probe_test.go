@@ -18,8 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -47,7 +47,7 @@ func (c *failedRestorationComposition) RestorationFailure([]plugins.Contribution
 
 func TestWaitingContributionProbeUsesTheOriginalRestorationConclusion(t *testing.T) {
 	for _, definite := range []bool{false, true} {
-		name, cause := "inconclusive", errors.Join(plugin.ErrUnavailable, frame.ErrRecoveryRequired)
+		name, cause := "inconclusive", errors.Join(plugin.ErrUnavailable, framehost.ErrRecoveryRequired)
 		if definite {
 			name, cause = "failed", errors.New("original MCP initialization closed")
 		}

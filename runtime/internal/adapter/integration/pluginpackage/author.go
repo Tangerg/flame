@@ -13,15 +13,14 @@ import (
 	"runtime"
 	"slices"
 
-	framevalue "github.com/Tangerg/frame/value"
-
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/distribution"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/frame/distribution"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type BuildTarget struct {
@@ -116,7 +115,7 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 }
 
 func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Declaration, projection plugins.FrameworkDefinition, target BuildTarget) (distribution.Manifest, error) {
-	manifest := distribution.Manifest{SchemaVersion: distribution.ManifestSchemaVersion, Package: declaration.Name, Version: declaration.Version, Artifacts: []distribution.Artifact{}, Units: []distribution.Unit{}}
+	manifest := distribution.Manifest{Package: declaration.Name, Version: declaration.Version, Artifacts: []distribution.Artifact{}, Units: []distribution.Unit{}}
 	if manifest.Version == "" {
 		return manifest, fmt.Errorf("%w: a release version is required", plugin.ErrInvalid)
 	}
@@ -126,9 +125,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 	for _, projected := range projection.Units {
 		declarationUnit := projected.Declaration
 		unit := distribution.Unit{ID: declarationUnit.ID, Profile: declarationUnit.Profile, Exports: slices.Clone(declarationUnit.Exports)}
-		for _, imported := range declarationUnit.Imports {
-			unit.Imports = append(unit.Imports, distribution.Import{Slot: imported.Slot, Contract: imported.Contract, Optional: imported.Optional})
-		}
+		unit.Imports = slices.Clone(declarationUnit.Imports)
 		switch unit.Profile {
 		case pluginmcp.ProcessProfile:
 			name, err := plugins.BackendServer(unit.ID)
@@ -162,7 +159,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 				}
 				unit.Variants = []distribution.Variant{{OS: target.OS, Arch: target.Arch, Path: path}}
 			}
-		case frame.BrowserJS:
+		case framehost.BrowserJS:
 			index := slices.IndexFunc(declaration.Components, func(component plugin.ClientComponent) bool { return plugins.ComponentUnit(component.ID) == unit.ID })
 			if index < 0 {
 				return manifest, plugin.ErrInvalid
@@ -172,13 +169,13 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 				return manifest, err
 			}
 			unit.Module = module
-		case frame.NativeGo:
+		case framehost.NativeGo:
 		default:
 			return manifest, fmt.Errorf("%w: unsupported Flame profile %s", plugin.ErrInvalid, unit.Profile)
 		}
 		manifest.Units = append(manifest.Units, unit)
 		for _, exported := range unit.Exports {
-			if exported.Contract.Kind != frame.PointKind {
+			if exported.Contract.Kind != framehost.PointKind {
 				continue
 			}
 			metadata := []byte("null")

@@ -10,57 +10,59 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-var errBindingNotRetained = fmt.Errorf("mcp: original binding is no longer retained: %w", frame.ErrUnavailable)
+var errBindingNotRetained = fmt.Errorf("mcp: original binding is no longer retained: %w", framehost.ErrUnavailable)
 
 // CatalogPermission authorizes reconstruction only from Flame's original
 // unsettled business owners. A serialized graph cannot grant itself permission.
 type CatalogPermission struct {
-	admission *frame.Admission
+	admission framehost.Admission
 	bindings  func(context.Context) ([]plugin.Activation, error)
 	mu        sync.Mutex
-	scope     frame.ScopeGrant
+	scope     framehost.ScopeGrant
 }
 
-func NewCatalogPermission(admission *frame.Admission, bindings func(context.Context) ([]plugin.Activation, error)) (*CatalogPermission, error) {
-	if admission == nil || bindings == nil {
+func NewCatalogPermission(admission framehost.Admission, bindings func(context.Context) ([]plugin.Activation, error)) (*CatalogPermission, error) {
+	if !admission.Valid() || bindings == nil {
 		return nil, errors.New("mcp: catalog permission requires admission and original binding owners")
 	}
 	return &CatalogPermission{admission: admission, bindings: bindings}, nil
 }
 
-func (p *CatalogPermission) grant(ctx context.Context) (frame.ScopeGrant, error) {
+func (p *CatalogPermission) grant(ctx context.Context) (framehost.ScopeGrant, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.scope.ID() == "" {
 		grant, err := p.admission.OpenScope(ctx, "flame.mcp.catalog")
 		if err != nil {
-			return frame.ScopeGrant{}, err
+			return framehost.ScopeGrant{}, err
 		}
 		p.scope = grant
 	}
 	return p.scope, p.admission.ValidateScope(p.scope)
 }
 
-func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant frame.ScopeGrant) (frame.BindingSnapshot, error) {
+func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant framehost.ScopeGrant) (framehost.BindingSnapshot, error) {
 	p.mu.Lock()
 	accepted := p.scope.ID() != "" && grant == p.scope
 	p.mu.Unlock()
 	if !accepted {
-		return frame.BindingSnapshot{}, frame.ErrFenced
+		return framehost.BindingSnapshot{}, framehost.ErrFenced
 	}
 	if err := p.admission.CheckAdmitted(ctx); err != nil {
-		return frame.BindingSnapshot{}, err
+		return framehost.BindingSnapshot{}, err
 	}
 	if err := p.admission.ValidateScope(grant); err != nil {
-		return frame.BindingSnapshot{}, err
+		return framehost.BindingSnapshot{}, err
 	}
 	bindings, err := p.bindings(ctx)
 	if err != nil {
-		return frame.BindingSnapshot{}, err
+		return framehost.BindingSnapshot{}, err
 	}
 	for _, binding := range bindings {
 		if binding.Identity.String() == recordID {
@@ -73,31 +75,31 @@ func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant fra
 			return accepted, err
 		}
 	}
-	return frame.BindingSnapshot{}, errBindingNotRetained
+	return framehost.BindingSnapshot{}, errBindingNotRetained
 }
 
 // Installed projects Frame instances into Flame's MCP catalog. Observations
 // retain no execution lease; each use rechecks its original plan or business row.
 type Installed struct {
-	host       *frame.Host
+	host       framehost.Host
 	source     *ProcessSource
 	registry   *plugins.Registry
-	owner      *frame.Lifetime
+	owner      frame.Lifetime
 	permission *CatalogPermission
 	ready      <-chan struct{}
 }
 
 type InstalledConfig struct {
-	Host       *frame.Host
+	Host       framehost.Host
 	Source     *ProcessSource
 	Registry   *plugins.Registry
-	Lifetime   *frame.Lifetime
+	Lifetime   frame.Lifetime
 	Permission *CatalogPermission
 	Ready      <-chan struct{}
 }
 
 func NewInstalled(config InstalledConfig) (*Installed, error) {
-	if config.Host == nil || config.Source == nil || config.Registry == nil || config.Lifetime == nil || config.Permission == nil || config.Permission.admission != config.Host.Admission() || config.Ready == nil {
+	if !config.Host.Valid() || config.Source == nil || config.Registry == nil || !config.Lifetime.Valid() || config.Permission == nil || config.Permission.admission != config.Host.Admission() || config.Ready == nil {
 		return nil, errors.New("mcp: installed catalog requires the original Frame owners and recovery boundary")
 	}
 	return &Installed{host: config.Host, source: config.Source, registry: config.Registry,
@@ -107,8 +109,8 @@ func NewInstalled(config InstalledConfig) (*Installed, error) {
 type installedSession struct {
 	owner      *Installed
 	id         mcpserver.ID
-	use        *frame.Use
-	plan       *frame.BindingPlan
+	use        framehost.Use
+	plan       framehost.BindingPlan
 	recordID   string
 	instanceID string
 	session    *sdk.ClientSession
@@ -118,8 +120,8 @@ type installedSession struct {
 type installedObservation struct {
 	owner      *Installed
 	id         mcpserver.ID
-	binding    frame.BindingSnapshot
-	plan       *frame.BindingPlan
+	binding    framehost.BindingSnapshot
+	plan       framehost.BindingPlan
 	recordID   string
 	instanceID string
 	session    *sdk.ClientSession
@@ -144,7 +146,7 @@ func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedS
 	if err != nil {
 		return nil, err
 	}
-	units := make(map[frame.UnitRef]struct{}, len(binding.Units))
+	units := make(map[framehost.UnitRef]struct{}, len(binding.Units))
 	for _, unit := range binding.Units {
 		units[unit.Source] = struct{}{}
 	}
@@ -178,7 +180,7 @@ func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedS
 	return s.acquirePlan(ctx, id, plan)
 }
 
-func (s *Installed) waitRetired(ctx context.Context, binding frame.BindingSnapshot) error {
+func (s *Installed) waitRetired(ctx context.Context, binding framehost.BindingSnapshot) error {
 	for _, unit := range binding.Units {
 		if err := plugins.AwaitNativeUnitRetirement(ctx, s.host, unit.Source); err != nil {
 			return err
@@ -187,12 +189,12 @@ func (s *Installed) waitRetired(ctx context.Context, binding frame.BindingSnapsh
 	return nil
 }
 
-func (s *Installed) acquirePlan(ctx context.Context, id mcpserver.ID, plan *frame.BindingPlan) (*installedSession, error) {
+func (s *Installed) acquirePlan(ctx context.Context, id mcpserver.ID, plan framehost.BindingPlan) (*installedSession, error) {
 	grant, err := s.permission.grant(ctx)
 	if err != nil {
 		return nil, err
 	}
-	use, err := s.host.Acquire(ctx, plan, frame.UseConfig{Owner: s.owner, Scope: grant})
+	use, err := s.host.Acquire(ctx, plan, framehost.UseConfig{Owner: s.owner, Scope: grant})
 	if err != nil {
 		return nil, plugins.FrameworkError(err)
 	}
@@ -209,7 +211,7 @@ func (s *Installed) acquireRecord(ctx context.Context, id mcpserver.ID, recordID
 	if err != nil {
 		return nil, err
 	}
-	use, err := s.host.AcquireRecord(ctx, recordID, frame.UseConfig{Owner: s.owner, Scope: grant})
+	use, err := s.host.AcquireRecord(ctx, recordID, framehost.UseConfig{Owner: s.owner, Scope: grant})
 	if err != nil {
 		return nil, plugins.FrameworkError(err)
 	}
@@ -222,13 +224,13 @@ func (s *Installed) acquireRecord(ctx context.Context, id mcpserver.ID, recordID
 }
 
 func (s *installedObservation) acquire(ctx context.Context) (*installedSession, error) {
-	if s.plan != nil {
+	if s.plan.Valid() {
 		return s.owner.acquirePlan(ctx, s.id, s.plan)
 	}
 	return s.owner.acquireRecord(ctx, s.id, s.recordID)
 }
 
-func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use *frame.Use) (_ *installedSession, err error) {
+func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use framehost.Use) (_ *installedSession, err error) {
 	defer func() {
 		if err != nil {
 			_, closeErr := use.Close(context.WithoutCancel(ctx))
@@ -239,7 +241,7 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use *frame.
 	if !found {
 		return nil, plugin.ErrInvalid
 	}
-	var root frame.UnitRef
+	var root framehost.UnitRef
 	for _, candidate := range use.Binding().UnitRoots {
 		if candidate.InstallationID.String() == installation.String() && candidate.UnitID == plugins.BackendUnit(id.Name()) {
 			root = candidate
@@ -247,7 +249,7 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use *frame.
 		}
 	}
 	if root.InstallationID == "" {
-		return nil, frame.ErrStaleBinding
+		return nil, framehost.ErrStaleBinding
 	}
 	work, err := use.Lifetime().Enter(ctx)
 	if err != nil {
@@ -267,7 +269,7 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use *frame.
 	}
 	s.source.mu.Unlock()
 	if value.session == nil {
-		return nil, frame.ErrUnavailable
+		return nil, framehost.ErrUnavailable
 	}
 	// Frame prevents a replacement of an occupied unit until the original
 	// instance and all accepted Uses release. This map is only its MCP view.
@@ -296,7 +298,7 @@ func (s *installedObservation) retire() error { return s.owner.retire(s.instance
 func (s *Installed) retire(instanceID string) error {
 	ctx := context.Background()
 	err := s.host.RetireInstance(ctx, instanceID)
-	if !errors.Is(err, frame.ErrUnavailable) {
+	if !errors.Is(err, framehost.ErrUnavailable) {
 		return err
 	}
 	return s.host.WaitInstanceRetired(ctx, instanceID)

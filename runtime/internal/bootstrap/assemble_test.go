@@ -10,14 +10,8 @@ import (
 	"testing"
 	"time"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/frame/distribution"
-
-	"github.com/Tangerg/frame/process/runner"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -27,6 +21,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
+
+	"github.com/Tangerg/frame/distribution"
+	"github.com/Tangerg/frame/process/runner"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 

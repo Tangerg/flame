@@ -7,20 +7,20 @@ import (
 	"fmt"
 	"log/slog"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
 
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
 // catalog is the admitted release catalog, the only owner of release content.
 // Installations name releases by digest and read them here when needed.
+
 type catalog interface {
 	Get(context.Context, framevalue.Digest) (plugin.Release, error)
 }
@@ -57,7 +57,7 @@ type connections interface {
 
 type Coordinator struct {
 	lifetime    context.Context
-	framework   *frame.Host
+	framework   framehost.Host
 	store       Store
 	catalog     catalog
 	packages    packages
@@ -66,7 +66,10 @@ type Coordinator struct {
 	transact    func(context.Context, func(context.Context) error) error
 }
 
-func New(lifetime context.Context, host *frame.Host, store Store, catalog catalog, packages packages, connections connections, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish) (*Coordinator, error) {
+func New(lifetime context.Context, host framehost.Host, store Store, catalog catalog, packages packages, connections connections, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish) (*Coordinator, error) {
+	if !host.Valid() {
+		return nil, errors.New("plugins: framework host is required")
+	}
 	if lo.IsNil(lifetime) {
 		return nil, errors.New("plugins: runtime lifetime is required")
 	}
@@ -74,7 +77,6 @@ func New(lifetime context.Context, host *frame.Host, store Store, catalog catalo
 		name  string
 		value any
 	}{
-		{"framework host", host},
 		{"installation store", store}, {"release catalog", catalog}, {"packages", packages},
 		{"connections", connections}, {"transaction", transact},
 	} {
@@ -203,7 +205,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	if err != nil {
 		return Inspection{}, err
 	}
-	_, err = c.framework.Install(ctx, frame.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
+	_, err = c.framework.Install(ctx, framehost.InstallationConfig{ID: id.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
 	if err != nil {
 		return Inspection{}, FrameworkError(err)
 	}
@@ -331,7 +333,7 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	if err != nil {
 		return Inspection{}, err
 	}
-	if err := c.framework.Update(ctx, expected, frame.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
+	if err := c.framework.Update(ctx, expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
 		return Inspection{}, FrameworkError(err)
 	}
 	changed, err := installation.ChangedServers(snapshot.Installation, snapshot.Selected, after)

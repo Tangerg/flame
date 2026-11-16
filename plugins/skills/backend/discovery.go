@@ -6,17 +6,16 @@ import (
 	"maps"
 	"slices"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
-
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
+
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func registerDiscovery(server *pluginmcp.Backend, db *framesqlite.Database) error {
+func registerDiscovery(server *pluginmcp.Backend, db framesqlite.Database) error {
 	discover, err := skilllearning.DiscoverMethod()
 	if err != nil {
 		return err

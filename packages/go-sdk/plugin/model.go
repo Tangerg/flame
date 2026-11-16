@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type ModelResult struct {
@@ -44,8 +44,8 @@ func (f *ModelFailure) Is(target error) bool {
 
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
 func ModelMethod() (*pluginmcp.Method[scopewire.Request, ModelResult], error) {
-	return pluginmcp.NewMethod[scopewire.Request, ModelResult](portable.MethodConfig{
-		Name: "flame.model/call.v1", Kind: portable.Command, Target: extension.ScopeCall,
+	return pluginmcp.NewMethod[scopewire.Request, ModelResult](frame.MethodConfig{
+		Name: "flame.model/call.v1", Kind: frame.Command, Target: extension.ScopeCall,
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
 }
@@ -93,7 +93,7 @@ func NewModelCallback(call func(context.Context, pluginmcp.Command[scopewire.Req
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
+	call := framemcp.Invocation{ID: id, Origin: extension.Automatic, Target: framemcp.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil

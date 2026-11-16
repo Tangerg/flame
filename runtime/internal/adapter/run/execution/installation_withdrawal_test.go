@@ -17,7 +17,8 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
-	"github.com/Tangerg/frame"
+
+	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -226,7 +227,7 @@ func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
 		t.Fatalf("withdrawal = %+v, %v", result, err)
 	}
 	finishAssembly()
-	if err := <-assembled; !errors.Is(err, frame.ErrStaleBinding) {
+	if err := <-assembled; !errors.Is(err, framehost.ErrStaleBinding) {
 		t.Fatalf("assembly admitted after disablement = %v, want installation-changed refusal", err)
 	}
 	if live := executor.sessions.snapshot(); len(live) != 0 {
@@ -234,7 +235,7 @@ func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
 	}
 }
 
-func resourceSourceValidator(host *frame.Host) func(context.Context, []plugin.Activation, []plugin.Dependency) error {
+func resourceSourceValidator(host framehost.Host) func(context.Context, []plugin.Activation, []plugin.Dependency) error {
 	return func(ctx context.Context, bindings []plugin.Activation, resources []plugin.Dependency) error {
 		return plugins.ValidateExecutionSourcesUnder(ctx, host, func(context.Context, plugin.Activation) error {
 			return errors.New("resource fixture unexpectedly captured a backend binding")
@@ -285,7 +286,7 @@ func TestAssemblyPublicationFollowsCommittedExecutionChanges(t *testing.T) {
 				return nil
 			})
 			if outcome.changed {
-				if !errors.Is(err, frame.ErrStaleBinding) || published {
+				if !errors.Is(err, framehost.ErrStaleBinding) || published {
 					t.Fatalf("raced assembly = %v, published=%t; want installation-changed refusal", err, published)
 				}
 			} else if err != nil || !published {

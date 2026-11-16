@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
 
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -68,13 +68,13 @@ func (p *protocolParams) UnmarshalJSON(data []byte) error {
 }
 
 type Description struct {
-	Protocol     string                      `json:"protocol"`
-	Methods      []portable.MethodDescriptor `json:"methods"`
-	Capabilities []CapabilityExport          `json:"capabilities"`
+	Protocol     string                   `json:"protocol"`
+	Methods      []frame.MethodDescriptor `json:"methods"`
+	Capabilities []CapabilityExport       `json:"capabilities"`
 }
 
 type boundMethod struct {
-	contract *portable.Method
+	contract *frame.Method
 	validate func(jsontext.Value) error
 	invoke   func(context.Context, *sdk.ServerSession, *invokeParams) (*methodResult[jsontext.Value], error)
 	stream   func(context.Context, *sdk.ServerSession, *invokeParams) (iter.Seq2[streamValue, error], error)
@@ -140,11 +140,11 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		if !b.published || b.closed {
 			return nil, errors.New("plugin: backend is not published")
 		}
-		methods := make([]portable.MethodDescriptor, 0, len(b.methods))
+		methods := make([]frame.MethodDescriptor, 0, len(b.methods))
 		for _, method := range b.methods {
 			methods = append(methods, method.contract.Descriptor())
 		}
-		slices.SortFunc(methods, func(a, b portable.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
+		slices.SortFunc(methods, func(a, b frame.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
 		capabilities := make([]CapabilityExport, 0, len(b.capabilities))
 		for name, capability := range b.capabilities {
 			capabilities = append(capabilities, CapabilityExport{Name: name, Contract: capability.Descriptor()})

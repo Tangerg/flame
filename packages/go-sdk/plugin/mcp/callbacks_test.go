@@ -16,9 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
+	"github.com/Tangerg/frame"
 	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -33,7 +32,7 @@ type callbackOwnerKey struct{}
 
 func callbackTestMethod(t *testing.T, target string) *Method[callbackInput, int64] {
 	t.Helper()
-	method, err := NewMethod[callbackInput, int64](portable.MethodConfig{Name: "test.host/compute", Kind: portable.Query, Target: target, Description: "Compute for the captured owner."})
+	method, err := NewMethod[callbackInput, int64](frame.MethodConfig{Name: "test.host/compute", Kind: frame.Query, Target: target, Description: "Compute for the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +162,7 @@ func TestRPCContinuationsSharePublishedMethodsWithoutReplacingOrLeakingThem(t *t
 		t.Fatal(err)
 	}
 	makeCallback := func(name string) (*Method[callbackInput, int64], Callback) {
-		method, err := NewMethod[callbackInput, int64](portable.MethodConfig{Name: name, Kind: portable.Query, Target: "call", Description: "Read the captured owner."})
+		method, err := NewMethod[callbackInput, int64](frame.MethodConfig{Name: name, Kind: frame.Query, Target: "call", Description: "Read the captured owner."})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -469,10 +468,10 @@ func TestCallbackBackendProcess(t *testing.T) {
 		os.Exit(1)
 	}
 	method := callbackTestMethod(t, "captured")
-	err = errors.Join(testMethod[callbackInput, int64](t, "test.backend/inner", portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[callbackInput]) (int64, error) {
+	err = errors.Join(testMethod[callbackInput, int64](t, "test.backend/inner", frame.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[callbackInput]) (int64, error) {
 		input := command.Input
 		return input.Value + 10, nil
-	}), testMethod[callbackParentInput, int64](t, "test.backend/outer", portable.Query).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[callbackParentInput]) (int64, error) {
+	}), testMethod[callbackParentInput, int64](t, "test.backend/outer", frame.Query).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[callbackParentInput]) (int64, error) {
 		input := command.Input
 		return CallHost(ctx, input.Callback, method, "", callbackInput{input.Value})
 	}),
@@ -518,7 +517,7 @@ func TestPublicCallbacksAreReentrantThroughARealHeadlessBackend(t *testing.T) {
 		if ctx.Value(callbackOwnerKey{}) != "captured parent" {
 			return 0, errors.New("nested origin/parent changed")
 		}
-		return testMethod[callbackInput, int64](t, "test.backend/inner", portable.Query).Call(ctx, session, command.Input)
+		return testMethod[callbackInput, int64](t, "test.backend/inner", frame.Query).Call(ctx, session, command.Input)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -529,7 +528,7 @@ func TestPublicCallbacksAreReentrantThroughARealHeadlessBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	value, err := testMethod[callbackParentInput, int64](t, "test.backend/outer", portable.Query).Call(ctx, session, callbackParentInput{ref, 5})
+	value, err := testMethod[callbackParentInput, int64](t, "test.backend/outer", frame.Query).Call(ctx, session, callbackParentInput{ref, 5})
 	if err != nil || value != 15 {
 		t.Fatalf("nested headless invocation value=%d error=%v", value, err)
 	}
@@ -543,7 +542,7 @@ func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
 	}
 	var calls atomic.Int32
 	owner := context.WithValue(t.Context(), callbackOwnerKey{}, "activation")
-	original := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("automatic"), Target: portable.Target{Scope: "installation", Reference: "owner"}}
+	original := framemcp.Invocation{ID: "original", Origin: framemcp.Origin("automatic"), Target: framemcp.Target{Scope: "installation", Reference: "owner"}}
 	if err := host.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		invocation, err := InvocationFromContext(r.Context())
 		if err != nil || invocation != original || r.Context().Value(callbackOwnerKey{}) != "activation" {

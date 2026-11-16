@@ -6,13 +6,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
+	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // TerminalView is a management surface a package contributes to terminal
@@ -20,6 +19,7 @@ import (
 // its methods. Every input value is bound in the declaration, so a client
 // renders the view from the declaration and the contract alone, without
 // compiling in the package's types.
+
 type TerminalView struct {
 	ID           string
 	Title        string
@@ -173,7 +173,7 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 	if err != nil {
 		return err
 	}
-	if method.Kind() != portable.Query {
+	if method.Kind() != frame.Query {
 		return fmt.Errorf("method %q is not a query", list.Method)
 	}
 	input, err := newSchemaNode(method.Descriptor().Input)
@@ -186,10 +186,10 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 		if err != nil {
 			return err
 		}
-		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.inputTypes(), []portable.SchemaType{portable.TypeString}) {
+		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.inputTypes(), []framevalue.SchemaType{framevalue.TypeString}) {
 			return fmt.Errorf("paging input %q must be a string input property", list.Paging.Input)
 		}
-		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(portable.TypeString) {
+		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(framevalue.TypeString) {
 			return fmt.Errorf("paging output %q must be a string output property", list.Paging.Output)
 		}
 		bound = append(bound, list.Paging.Input)
@@ -210,7 +210,7 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	if err != nil {
 		return schemaNode{}, err
 	}
-	if !output.isType(portable.TypeObject) {
+	if !output.isType(framevalue.TypeObject) {
 		return schemaNode{}, fmt.Errorf("list output must be an object")
 	}
 	rows, ok := output.property(list.Rows)
@@ -221,7 +221,7 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	if !ok {
 		return schemaNode{}, fmt.Errorf("rows %q is not an array", list.Rows)
 	}
-	if !row.isType(portable.TypeObject) {
+	if !row.isType(framevalue.TypeObject) {
 		return schemaNode{}, fmt.Errorf("rows %q must contain objects", list.Rows)
 	}
 	if _, ok := row.property(list.Key); !ok {
@@ -266,7 +266,7 @@ func admitTerminalAction(contract *plugincontract.Capability, row schemaNode, ac
 	return admitBindings(input, action.Input, rows, nil)
 }
 
-func terminalMethod(contract *plugincontract.Capability, name string) (*portable.Method, error) {
+func terminalMethod(contract *plugincontract.Capability, name string) (*frame.Method, error) {
 	method, found := contract.Method(name)
 	if !found {
 		return nil, fmt.Errorf("method %q is not in the contribution contract", name)
@@ -282,7 +282,7 @@ func terminalMethod(contract *plugincontract.Capability, name string) (*portable
 // what its target can supply, and that every required property on each bound
 // object is bound. row is nil when no row is selected.
 func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, alsoBound []string) error {
-	if !input.acceptsType(portable.TypeObject) {
+	if !input.acceptsType(framevalue.TypeObject) {
 		return fmt.Errorf("terminal input must accept an object")
 	}
 	paths := slices.Clone(alsoBound)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
@@ -90,9 +91,9 @@ func (b *brandBanner) Draw(view grid.View) {
 	lines := b.lines(width, height)
 	top := max((height-len(lines))/3, 0)
 	for row, line := range lines {
-		value := text.Truncate(line.text, width, b.glyphs.Ellipsis)
-		x := max((width-text.Width(value))/2, 0)
-		view.Text(x, top+row, value, line.style)
+		value := text.Of(line.text, line.style).Truncate(width, b.glyphs.Ellipsis)
+		x := max((width-value.Width())/2, 0)
+		value.Draw(view, x, top+row)
 	}
 }
 

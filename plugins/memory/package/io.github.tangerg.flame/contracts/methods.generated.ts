@@ -5,7 +5,7 @@ import type { JSONNumber } from "@frame/sdk/json";
 export interface AddInput {
   CWD: string;
   Content: string;
-  Scope: (string) & ("project" | "user");
+  Scope: "project" | "user";
 }
 
 export interface AddResult {
@@ -19,7 +19,7 @@ export type AddV2Output = AddResult;
 
 export type AddV2OutputDomainItemID = string;
 
-export type AddV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: AddV2OutputInstantTimestamp; Day: string; Embedding: Array<AddV2OutputValueNumber>; EmbeddingSpace: string; ID: AddV2OutputDomainItemID; Origin: (string) & ("auto" | "user"); Pinned: boolean; Project: string; Revision: JSONNumber; Scope: (string) & ("project" | "user"); SessionID: string; Status: (string) & ("active" | "pending" | "rejected"); UpdatedAt: AddV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
+export type AddV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: AddV2OutputInstantTimestamp; Day: string; Embedding: Array<AddV2OutputValueNumber>; EmbeddingSpace: string; ID: AddV2OutputDomainItemID; Origin: "auto" | "user"; Pinned: boolean; Project: string; Revision: JSONNumber; Scope: "project" | "user"; SessionID: string; Status: "active" | "pending" | "rejected"; UpdatedAt: AddV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
 
 export type AddV2OutputInstantTimestamp = string;
 
@@ -40,7 +40,7 @@ export type ItemInput = ({ ExpectedRevision: JSONNumber; ID: string }) & ({ Expe
 
 export interface ItemsInput {
   Project: string;
-  Scope: (string) & ("project" | "user");
+  Scope: "project" | "user";
 }
 
 export type ItemsV2Input = ItemsInput;
@@ -49,13 +49,13 @@ export type ItemsV2Output = Array<ItemsV2OutputDomainItemSnapshot>;
 
 export type ItemsV2OutputDomainItemID = string;
 
-export type ItemsV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: ItemsV2OutputInstantTimestamp; Day: string; Embedding: Array<ItemsV2OutputValueNumber>; EmbeddingSpace: string; ID: ItemsV2OutputDomainItemID; Origin: (string) & ("auto" | "user"); Pinned: boolean; Project: string; Revision: JSONNumber; Scope: (string) & ("project" | "user"); SessionID: string; Status: (string) & ("active" | "pending" | "rejected"); UpdatedAt: ItemsV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
+export type ItemsV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: ItemsV2OutputInstantTimestamp; Day: string; Embedding: Array<ItemsV2OutputValueNumber>; EmbeddingSpace: string; ID: ItemsV2OutputDomainItemID; Origin: "auto" | "user"; Pinned: boolean; Project: string; Revision: JSONNumber; Scope: "project" | "user"; SessionID: string; Status: "active" | "pending" | "rejected"; UpdatedAt: ItemsV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
 
 export type ItemsV2OutputInstantTimestamp = string;
 
 export type ItemsV2OutputValueNumber = JSONNumber;
 
-export type ListInput = ({ CWD: string; Cursor: string; Limit?: JSONNumber; Scope: (string) & ("project" | "user") }) & ({ Limit?: unknown } & Record<string, unknown>);
+export type ListInput = ({ CWD: string; Cursor: string; Limit?: JSONNumber; Scope: "project" | "user" }) & ({ Limit?: unknown } & Record<string, unknown>);
 
 export type ListV2Input = ListInput;
 
@@ -63,7 +63,7 @@ export type ListV2Output = Page;
 
 export type ListV2OutputDomainItemID = string;
 
-export type ListV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: ListV2OutputInstantTimestamp; Day: string; Embedding: Array<ListV2OutputValueNumber>; EmbeddingSpace: string; ID: ListV2OutputDomainItemID; Origin: (string) & ("auto" | "user"); Pinned: boolean; Project: string; Revision: JSONNumber; Scope: (string) & ("project" | "user"); SessionID: string; Status: (string) & ("active" | "pending" | "rejected"); UpdatedAt: ListV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
+export type ListV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: ListV2OutputInstantTimestamp; Day: string; Embedding: Array<ListV2OutputValueNumber>; EmbeddingSpace: string; ID: ListV2OutputDomainItemID; Origin: "auto" | "user"; Pinned: boolean; Project: string; Revision: JSONNumber; Scope: "project" | "user"; SessionID: string; Status: "active" | "pending" | "rejected"; UpdatedAt: ListV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
 
 export type ListV2OutputInstantTimestamp = string;
 
@@ -86,7 +86,7 @@ export interface MaintenanceResult {
 
 export type Page = ({ Capacity: JSONNumber; NextCursor: string; Rows: Array<ListV2OutputDomainItemSnapshot> }) & ({ Capacity?: unknown; Rows?: unknown } & Record<string, unknown>);
 
-export type ReviewInput = ({ Decision: (string) & ("approve" | "reject"); ExpectedRevision: JSONNumber; ID: string }) & ({ ExpectedRevision?: unknown } & Record<string, unknown>);
+export type ReviewInput = ({ Decision: "approve" | "reject"; ExpectedRevision: JSONNumber; ID: string }) & ({ ExpectedRevision?: unknown } & Record<string, unknown>);
 
 export type ReviewV2Input = ReviewInput;
 
@@ -107,7 +107,7 @@ export type SearchV2Output = Array<SearchV2OutputDomainItemSnapshot>;
 
 export type SearchV2OutputDomainItemID = string;
 
-export type SearchV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: SearchV2OutputInstantTimestamp; Day: string; Embedding: Array<SearchV2OutputValueNumber>; EmbeddingSpace: string; ID: SearchV2OutputDomainItemID; Origin: (string) & ("auto" | "user"); Pinned: boolean; Project: string; Revision: JSONNumber; Scope: (string) & ("project" | "user"); SessionID: string; Status: (string) & ("active" | "pending" | "rejected"); UpdatedAt: SearchV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
+export type SearchV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: SearchV2OutputInstantTimestamp; Day: string; Embedding: Array<SearchV2OutputValueNumber>; EmbeddingSpace: string; ID: SearchV2OutputDomainItemID; Origin: "auto" | "user"; Pinned: boolean; Project: string; Revision: JSONNumber; Scope: "project" | "user"; SessionID: string; Status: "active" | "pending" | "rejected"; UpdatedAt: SearchV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
 
 export type SearchV2OutputInstantTimestamp = string;
 
@@ -121,7 +121,7 @@ export type UpdateV2Output = UpdateV2OutputDomainItemSnapshot;
 
 export type UpdateV2OutputDomainItemID = string;
 
-export type UpdateV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: UpdateV2OutputInstantTimestamp; Day: string; Embedding: Array<UpdateV2OutputValueNumber>; EmbeddingSpace: string; ID: UpdateV2OutputDomainItemID; Origin: (string) & ("auto" | "user"); Pinned: boolean; Project: string; Revision: JSONNumber; Scope: (string) & ("project" | "user"); SessionID: string; Status: (string) & ("active" | "pending" | "rejected"); UpdatedAt: UpdateV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
+export type UpdateV2OutputDomainItemSnapshot = ({ Content: string; CreatedAt: UpdateV2OutputInstantTimestamp; Day: string; Embedding: Array<UpdateV2OutputValueNumber>; EmbeddingSpace: string; ID: UpdateV2OutputDomainItemID; Origin: "auto" | "user"; Pinned: boolean; Project: string; Revision: JSONNumber; Scope: "project" | "user"; SessionID: string; Status: "active" | "pending" | "rejected"; UpdatedAt: UpdateV2OutputInstantTimestamp }) & ({ Content?: unknown; Revision?: unknown } & Record<string, unknown>);
 
 export type UpdateV2OutputInstantTimestamp = string;
 

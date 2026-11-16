@@ -3,9 +3,6 @@
 package main
 
 import (
-	framebrowser "github.com/Tangerg/frame/browser"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"bytes"
 	"flag"
 	"fmt"
@@ -15,7 +12,9 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/frame"
+	framebrowser "github.com/Tangerg/frame/browser"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 func main() {
@@ -56,7 +55,7 @@ func generate() ([]byte, error) {
 		if value.Kind() == reflect.Struct && value != reflect.TypeFor[framevalue.Digest]() {
 			for i := range value.NumField() {
 				field := value.Field(i)
-				if !field.IsExported() || field.Anonymous || field.Tag.Get("json") == "" {
+				if !projectableField(field) {
 					return fmt.Errorf("browser protocol field must be explicit: %s.%s", value, field.Name)
 				}
 				if err := walk(field.Type); err != nil {
@@ -68,7 +67,7 @@ func generate() ([]byte, error) {
 	}
 	for _, root := range []reflect.Type{
 		reflect.TypeFor[framebrowser.Authority](), reflect.TypeFor[framebrowser.Realm](),
-		reflect.TypeFor[frame.ContractRef](), reflect.TypeFor[framebrowser.UseGrant](),
+		reflect.TypeFor[framehost.ContractRef](), reflect.TypeFor[framebrowser.UseGrant](),
 	} {
 		if err := walk(root); err != nil {
 			return nil, err
@@ -85,9 +84,9 @@ func generate() ([]byte, error) {
 		value := types[name]
 		if value.Kind() == reflect.String || value == reflect.TypeFor[framevalue.Digest]() {
 			fmt.Fprintf(&out, "type %s string\n\n", name)
-			if vocabulary, ok := reflect.Zero(value).Interface().(interface{ Values() []string }); ok {
+			if vocabulary, ok := reflect.Zero(value).Interface().(interface{ JSONSchemaEnum() []string }); ok {
 				fmt.Fprintf(&out, "func (%s) Values() []string { return []string{", name)
-				for _, text := range vocabulary.Values() {
+				for _, text := range vocabulary.JSONSchemaEnum() {
 					fmt.Fprintf(&out, "%q,", text)
 				}
 				out.WriteString("} }\n\n")
@@ -97,7 +96,11 @@ func generate() ([]byte, error) {
 		fmt.Fprintf(&out, "type %s struct {\n", name)
 		for i := range value.NumField() {
 			field := value.Field(i)
-			fmt.Fprintf(&out, "%s %s %s\n", field.Name, pureType(field.Type), strconv.Quote(string(field.Tag)))
+			if field.Anonymous {
+				fmt.Fprintln(&out, pureType(field.Type))
+			} else {
+				fmt.Fprintf(&out, "%s %s %s\n", field.Name, pureType(field.Type), strconv.Quote(string(field.Tag)))
+			}
 		}
 		out.WriteString("}\n\n")
 	}
@@ -116,4 +119,14 @@ func pureType(value reflect.Type) string {
 		}
 		return value.String()
 	}
+}
+
+func projectableField(field reflect.StructField) bool {
+	if !field.IsExported() {
+		return false
+	}
+	if field.Anonymous {
+		return field.Type.Kind() == reflect.Struct && field.Tag.Get("json") == ""
+	}
+	return field.Tag.Get("json") != ""
 }

@@ -13,18 +13,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	"github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const inspectedSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -88,7 +88,7 @@ func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contr
 
 func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input framevalue.JSON) (framevalue.JSON, error) {
 	t.Helper()
-	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
+	ctx, err := pluginmcp.WithInvocation(t.Context(), framemcp.Invocation{ID: id, Origin: extension.Human, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
 			}
 			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "model", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			commandID = "tool:model"
@@ -290,7 +290,7 @@ func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *t
 			input := contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: contractwire.Merge}
 			admitted, _ := framevalue.EncodeJSON(input)
 			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})
@@ -369,7 +369,7 @@ func TestConfirmedDeleteSurvivesCancellationBeforeSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := portable.AdmitMethod(contracts.DeleteComment.Descriptor())
+	method, err := frame.AdmitMethod(contracts.DeleteComment.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

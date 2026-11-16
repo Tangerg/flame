@@ -8,8 +8,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -17,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 
+	framevalue "github.com/Tangerg/frame/value"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 

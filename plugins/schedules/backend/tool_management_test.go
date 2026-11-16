@@ -1,12 +1,6 @@
 package main
 
 import (
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framesqlite "github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
@@ -17,18 +11,20 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framesqlite "github.com/Tangerg/frame/sqlite"
+	framevalue "github.com/Tangerg/frame/value"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func scheduleToolSession(t *testing.T, db *framesqlite.Database, host *observedRunHost) (*sdk.ClientSession, func() error) {
+func scheduleToolSession(t *testing.T, db framesqlite.Database, host *observedRunHost) (*sdk.ClientSession, func() error) {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-tool-test"}, nil)
 	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, pluginmcp.CallbackRef) (runHost, func() error, error) {
@@ -61,7 +57,7 @@ func scheduleToolMetadata(t *testing.T, id string) sdk.Meta {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	return metadata.Meta

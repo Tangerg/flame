@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/frame"
+
 	"github.com/Tangerg/frame/distribution"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type sourceStore struct{ snapshot plugin.Snapshot }
@@ -46,7 +46,7 @@ func (s *sourceResources) ReadResource(_ context.Context, _ plugin.Installation,
 	return bytes.Clone(s.body), nil
 }
 
-func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, frame.UnitBinding) {
+func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, framehost.UnitBinding) {
 	t.Helper()
 	digest, err := framevalue.ParseDigest(strings.Repeat("a", 64))
 	if err != nil {
@@ -78,7 +78,7 @@ func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, frame
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding := frame.UnitBinding{Source: frame.UnitRef{InstallationID: id.Host(), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: framevalue.Hash(configuration), Imports: []frame.ImportDeclaration{}}
+	binding := framehost.UnitBinding{Source: framehost.UnitRef{InstallationID: id.Host(), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: framevalue.Hash(configuration), Imports: []framehost.ImportBinding{}}
 	return source, store, resources, binding
 }
 
@@ -93,7 +93,7 @@ func TestComponentArtifactUsesExactAdmittedBytesAndRefusesChangedConfiguration(t
 	}
 	changed := binding.Clone()
 	changed.Configuration = framevalue.Hash([]byte("different configuration"))
-	if _, err := source.Module(t.Context(), changed); !errors.Is(err, frame.ErrStaleBinding) {
+	if _, err := source.Module(t.Context(), changed); !errors.Is(err, framehost.ErrStaleBinding) {
 		t.Fatalf("changed configuration = %v", err)
 	}
 	changed = binding.Clone()
@@ -115,8 +115,8 @@ type configurationDriver struct {
 	observed []byte
 }
 
-func (*configurationDriver) Profile() frame.Profile { return frame.BrowserJS }
-func (d *configurationDriver) Prepare(ctx context.Context, setup *frame.Setup) ([]frame.ExportValue, error) {
+func (*configurationDriver) Profile() framehost.Profile { return framehost.BrowserJS }
+func (d *configurationDriver) Prepare(ctx context.Context, setup framehost.Setup) ([]framehost.ExportValue, error) {
 	var err error
 	d.observed, err = d.source.Configuration(ctx, setup)
 	if err != nil {
@@ -126,13 +126,13 @@ func (d *configurationDriver) Prepare(ctx context.Context, setup *frame.Setup) (
 	if err != nil {
 		return nil, err
 	}
-	return []frame.ExportValue{frame.Provide[any]("component", contract, struct{}{})}, nil
+	return []framehost.ExportValue{framehost.Provide[any]("component", contract, struct{}{})}, nil
 }
 
 func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T) {
 	source, store, _, binding := sourceFixture(t)
 	driver := &configurationDriver{source: source}
-	host, err := frame.NewHost(t.Context(), frame.HostConfig{Drivers: []frame.Driver{driver}})
+	host, err := framehost.New(t.Context(), framehost.Config{Drivers: []framehost.Driver{driver}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,14 +153,14 @@ func TestBrowserConfigurationIsThePublicProjectionOfTheApprovedUnit(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: binding.Source.InstallationID, Plugin: release.Plugin, Configuration: configuration, Enabled: true}); err != nil {
+	if _, err := host.Install(t.Context(), framehost.InstallationConfig{ID: binding.Source.InstallationID, Plugin: release.Plugin, Configuration: configuration, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
 	contract, err := plugins.ComponentContract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Activate(t.Context(), frame.ExportRef{InstallationID: binding.Source.InstallationID, Release: binding.Source.Release, UnitID: binding.Source.UnitID, Export: "component", Contract: contract.Ref()}); err != nil {
+	if _, err := host.Activate(t.Context(), framehost.ExportRef{InstallationID: binding.Source.InstallationID, Release: binding.Source.Release, UnitID: binding.Source.UnitID, Export: "component", Contract: contract.Ref()}); err != nil {
 		t.Fatal(err)
 	}
 	expected, err := plugins.PublicComponentConfiguration(store.snapshot.Selected, "panel")

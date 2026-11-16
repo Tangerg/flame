@@ -8,11 +8,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -20,6 +15,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type continuationOwnerModel struct {
@@ -49,7 +48,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			original := framemcp.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-model"}}
+			original := framemcp.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "original-model"}}
 			refs := make(chan pluginmcp.CallbackRef, 1)
 			beforeNext := func(ctx context.Context) (pluginmcp.CallbackRef, error) {
 				ref, err := pluginmcp.CallbackFromContext(ctx)

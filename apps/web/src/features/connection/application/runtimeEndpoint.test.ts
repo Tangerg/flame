@@ -10,7 +10,13 @@ import { Configuration } from "@/extensions/config";
 let config: Configuration;
 import { type ConfigService } from "@/extensions/config";
 import { type KeyValueStore } from "@/extensions/storage";
-import { createHost, definePlugin, type Host, type LifetimeContext } from "dougong";
+import {
+  createResourceAuthority,
+  createHost,
+  definePlugin,
+  type Host,
+  type LifetimeContext,
+} from "dougong";
 import {
   createRuntimeEndpoint,
   type RuntimeEndpoint,
@@ -59,6 +65,7 @@ let configuration: RuntimeEndpointConfiguration;
 
 beforeEach(async () => {
   endpointHost = createHost({
+    resourceAuthority: createResourceAuthority(),
     name: "runtime-endpoint-test",
     installations: [
       {

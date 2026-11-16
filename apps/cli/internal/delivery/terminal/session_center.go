@@ -2,13 +2,14 @@ package terminal
 
 import (
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/scene"
 	"slices"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/core/layout"
+	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -134,15 +135,15 @@ func (s *sessionCenterPane) drawPreview(view grid.View) {
 		view.Text(0, 1, "No loaded sessions", s.theme.Muted)
 		return
 	}
-	view.Text(0, 0, text.Truncate(displayTitle(session), width, s.glyphs.Ellipsis), s.theme.Strong)
-	view.Text(0, 1, text.Truncate(displayWorkspace(session.Workspace), width, s.glyphs.Ellipsis), s.theme.Context)
+	text.Of(displayTitle(session), s.theme.Strong).Truncate(width, s.glyphs.Ellipsis).Draw(view, 0, 0)
+	text.Of(displayWorkspace(session.Workspace), s.theme.Context).Truncate(width, s.glyphs.Ellipsis).Draw(view, 0, 1)
 	detail := session.Model
 	if detail != "" {
 		detail += " · "
 	}
 	detail += string(session.Status) + " · updated " + compactRelativeAge(session.UpdatedAt)
-	view.Text(0, 2, text.Truncate(detail, width, s.glyphs.Ellipsis), s.theme.Subtle)
-	view.Text(0, 3, text.Truncate(session.ID, width, s.glyphs.Ellipsis), s.theme.Muted)
+	text.Of(detail, s.theme.Subtle).Truncate(width, s.glyphs.Ellipsis).Draw(view, 0, 2)
+	text.Of(session.ID, s.theme.Muted).Truncate(width, s.glyphs.Ellipsis).Draw(view, 0, 3)
 }
 
 func (s *sessionCenterPane) Handle(event input.Event) bool {

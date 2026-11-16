@@ -6,15 +6,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/frame"
+	framehost "github.com/Tangerg/frame/host"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testing.T) {
-	method := testMethod[string, string](t, "records.write", portable.Command)
+	method := testMethod[string, string](t, "records.write", frame.Command)
 	var calls atomic.Int64
 	session := methodSession(t, func(backend *Backend) error {
 		return method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
@@ -25,7 +24,7 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 			return "committed-result", nil
 		})
 	}, method.Name())
-	host, err := frame.NewHost(t.Context(), frame.HostConfig{})
+	host, err := framehost.New(t.Context(), framehost.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +33,7 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 			t.Errorf("Host close: %+v, %v", outcome, err)
 		}
 	})
-	contract, err := frame.NewContract[func(context.Context) (string, error)]("consumer.accepted-result", "1")
+	contract, err := framehost.NewContract[func(context.Context) (string, error)]("consumer.accepted-result", "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,10 +44,10 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 	defer cancel(nil)
 	cause := errors.New("caller stopped after receiving the original response")
 	parsed := false
-	plugin, err := frame.Define(frame.Definition{Revision: framevalue.Hash([]byte("known-result-consumer")), Units: []frame.Unit{{
-		Declaration: frame.UnitDeclaration{ID: "main", Profile: frame.NativeGo, Exports: []frame.ExportDeclaration{{Name: "invoke", Contract: contract.Ref()}}},
-		Setup: func(context.Context, *frame.Setup) ([]frame.ExportValue, error) {
-			return []frame.ExportValue{frame.Provide("invoke", contract, func(ctx context.Context) (string, error) {
+	plugin, err := framehost.Define(framehost.Definition{Revision: framevalue.Hash([]byte("known-result-consumer")), Units: []framehost.Unit{{
+		Declaration: framehost.UnitDeclaration{ID: "main", Profile: framehost.NativeGo, Exports: []framehost.ExportDeclaration{{Name: "invoke", Contract: contract.Ref()}}},
+		Setup: func(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
+			return []framehost.ExportValue{framehost.Provide("invoke", contract, func(ctx context.Context) (string, error) {
 				value, err := method.CallCommand(ctx, session, "original-operation", "original-input")
 				if err == nil {
 					parsed = true
@@ -61,10 +60,10 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Install(t.Context(), frame.InstallationConfig{ID: "consumer", Plugin: plugin, Enabled: true}); err != nil {
+	if _, err := host.Install(t.Context(), framehost.InstallationConfig{ID: "consumer", Plugin: plugin, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	root := frame.ExportRef{InstallationID: "consumer", Release: plugin.Revision(), UnitID: "main", Export: "invoke", Contract: contract.Ref()}
+	root := framehost.ExportRef{InstallationID: "consumer", Release: plugin.Revision(), UnitID: "main", Export: "invoke", Contract: contract.Ref()}
 	plan, err := host.Plan(t.Context(), root)
 	if err != nil {
 		t.Fatal(err)
@@ -75,11 +74,11 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 	}
 	var result string
 	var closes atomic.Int64
-	err = frame.WithPlan(caller, host, plan, scope, func(use *frame.Use) error {
+	err = framehost.WithPlan(caller, host, plan, scope, func(use framehost.Use) error {
 		if _, err := use.Lifetime().Cleanup("original call resource", func() error { closes.Add(1); return nil }); err != nil {
 			return err
 		}
-		return frame.BorrowExport(caller, use, root, func(ctx context.Context, invoke func(context.Context) (string, error)) error {
+		return framehost.BorrowExport(caller, use, root, func(ctx context.Context, invoke func(context.Context) (string, error)) error {
 			var err error
 			result, err = invoke(ctx)
 			return err

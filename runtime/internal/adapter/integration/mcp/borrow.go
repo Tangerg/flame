@@ -5,21 +5,22 @@ import (
 	"errors"
 	"sync"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/frame"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 // BorrowedSession holds one call in the original Use. Context propagates
 // withdrawal to the call; Close joins its work without closing the process.
+
 type BorrowedSession struct {
 	ctx     context.Context
 	session *sdk.ClientSession
-	work    *frame.Work
+	work    frame.Work
 	once    sync.Once
 	managed *installedSession
 	release func() error
@@ -30,7 +31,7 @@ func (b *BorrowedSession) Context() context.Context    { return b.ctx }
 func (b *BorrowedSession) Session() *sdk.ClientSession { return b.session }
 func (b *BorrowedSession) Close() error {
 	b.once.Do(func() {
-		if b.work != nil {
+		if b.work.Valid() {
 			b.work.Finish()
 		}
 		if b.release != nil {

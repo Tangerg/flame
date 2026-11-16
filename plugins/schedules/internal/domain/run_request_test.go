@@ -4,10 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
 )
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
@@ -65,5 +64,5 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 }
 
 func testInvocation() framemcp.Invocation {
-	return framemcp.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
+	return framemcp.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: framemcp.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

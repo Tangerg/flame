@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -32,10 +33,10 @@ func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T
 	if len(rows) != height {
 		t.Fatalf("copied rows = %d, measured height = %d", len(rows), height)
 	}
-	if rows[0].Text != "you" || rows[0].Offset != userMessageInset {
+	if rows[0].Content.String() != "you" || rows[0].Offset != userMessageInset {
 		t.Fatalf("copied speaker row = %+v", rows[0])
 	}
-	if rows[1].Text != "first line" || rows[1].Offset != userMessageInset+2 {
+	if rows[1].Content.String() != "first line" || rows[1].Offset != userMessageInset+2 {
 		t.Fatalf("copied body row = %+v", rows[1])
 	}
 }

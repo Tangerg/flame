@@ -1,10 +1,10 @@
 package terminal
 
 import (
-	"github.com/Tangerg/oolong/ui/core/content"
 	"strings"
 
 	"github.com/Tangerg/oolong/ui/base"
+	"github.com/Tangerg/oolong/ui/core/content"
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/core/text"
@@ -96,7 +96,7 @@ func copyableRowsText(rows []text.Row) string {
 		if index > 0 {
 			copied.WriteString(row.Separator())
 		}
-		copied.WriteString(strings.TrimRight(row.Text, " "))
+		copied.WriteString(strings.TrimRight(row.Content.String(), " "))
 	}
 	return strings.TrimRight(copied.String(), "\n")
 }

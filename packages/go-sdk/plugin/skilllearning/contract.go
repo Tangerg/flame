@@ -5,13 +5,13 @@ import (
 	"errors"
 	"time"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/flame/packages/go-sdk/skill"
-	"github.com/Tangerg/frame/portable"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/skill"
+
+	"github.com/Tangerg/frame"
 )
 
 const (
@@ -90,19 +90,19 @@ type ReadResult struct {
 }
 
 func MineMethod() (*pluginmcp.Method[Run, MineResult], error) {
-	return pluginmcp.NewMethod[Run, MineResult](portable.MethodConfig{Name: "flame.skill-learning/mine.v2", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction."})
+	return pluginmcp.NewMethod[Run, MineResult](frame.MethodConfig{Name: "flame.skill-learning/mine.v2", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Mine a completed Run using bounded collaborators. Commit an admitted proposal and its original mining receipt in the same transaction."})
 }
 
 func ArchiveMethod() (*pluginmcp.Method[ArchiveRequest, ArchiveAdvice], error) {
-	return pluginmcp.NewMethod[ArchiveRequest, ArchiveAdvice](portable.MethodConfig{Name: "flame.skill-learning/archive.v2", Kind: portable.Command, Target: extension.ScopeInstallation, Description: "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival."})
+	return pluginmcp.NewMethod[ArchiveRequest, ArchiveAdvice](frame.MethodConfig{Name: "flame.skill-learning/archive.v2", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Return an optional absolute activity cutoff for the supplied observation time. The caller alone admits and commits archival."})
 }
 
 func ConversationMethod() (*pluginmcp.Method[struct{}, Conversation], error) {
-	return pluginmcp.NewMethod[struct{}, Conversation](portable.MethodConfig{Name: "flame.skill-learning/conversation.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read the committed conversation captured for this maintenance call."})
+	return pluginmcp.NewMethod[struct{}, Conversation](frame.MethodConfig{Name: "flame.skill-learning/conversation.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Read the committed conversation captured for this maintenance call."})
 }
 
 func ReadSkillMethod() (*pluginmcp.Method[ReadSkill, ReadResult], error) {
-	return pluginmcp.NewMethod[ReadSkill, ReadResult](portable.MethodConfig{Name: "flame.skill-learning/read.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Read one admitted current user skill before proposing its revision. Absent or invalid documents return no skill."})
+	return pluginmcp.NewMethod[ReadSkill, ReadResult](frame.MethodConfig{Name: "flame.skill-learning/read.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Read one admitted current user skill before proposing its revision. Absent or invalid documents return no skill."})
 }
 
 type Admission struct {
@@ -110,7 +110,7 @@ type Admission struct {
 }
 
 func AdmitMethod() (*pluginmcp.Method[Proposal, Admission], error) {
-	return pluginmcp.NewMethod[Proposal, Admission](portable.MethodConfig{Name: "flame.skill-learning/admit.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Validate a mined proposal against the source and user library admitted for this mining call."})
+	return pluginmcp.NewMethod[Proposal, Admission](frame.MethodConfig{Name: "flame.skill-learning/admit.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Validate a mined proposal against the source and user library admitted for this mining call."})
 }
 func (p Proposal) Draft(run Run) Draft {
 	return Draft{Library: run.Library, Scope: skill.User, Skill: p.Skill, Origin: skill.Mined, SourceSession: run.SessionID, Revises: p.Revises, Previous: p.Previous}

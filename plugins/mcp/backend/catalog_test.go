@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+
+	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
-	"github.com/Tangerg/frame/sqlite"
 )
 
 func TestDirectoryAndAuthorizationSurviveRestartAndFenceWithdrawnGrants(t *testing.T) {

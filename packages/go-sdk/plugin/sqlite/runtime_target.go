@@ -20,7 +20,7 @@ var ErrRuntimeTargetConflict = errors.New("managed plugin: private data belongs 
 // CheckRuntimeTarget accepts an unbound database or one already bound to
 // namespace; any other binding is ErrRuntimeTargetConflict. It reads through
 // the ambient transaction when one is open.
-func CheckRuntimeTarget(ctx context.Context, db *framesqlite.Database, namespace string) error {
+func CheckRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace string) error {
 	if namespace == "" {
 		return errors.New("managed plugin: Runtime store namespace is required")
 	}
@@ -42,7 +42,7 @@ func CheckRuntimeTarget(ctx context.Context, db *framesqlite.Database, namespace
 
 // BindRuntimeTarget binds the database to namespace, idempotent for the same
 // namespace and ErrRuntimeTargetConflict for any other.
-func BindRuntimeTarget(ctx context.Context, db *framesqlite.Database, namespace string) error {
+func BindRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace string) error {
 	return framesqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		if err := CheckRuntimeTarget(ctx, db, namespace); err != nil {
 			return err

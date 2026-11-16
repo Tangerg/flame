@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"slices"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Dependency names the exact release an execution admitted from one

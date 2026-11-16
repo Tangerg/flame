@@ -1,11 +1,6 @@
 package bootstrap
 
 import (
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-	"github.com/Tangerg/frame/portable"
-	framevalue "github.com/Tangerg/frame/value"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	json "encoding/json/v2"
 	"os"
@@ -17,13 +12,18 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 
+	"github.com/Tangerg/frame"
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *testing.T) {
@@ -32,7 +32,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}
-	method, err := pluginmcp.NewMethod[protocol.UsageSummaryRequest, framevalue.JSON](portable.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
+	method, err := pluginmcp.NewMethod[protocol.UsageSummaryRequest, framevalue.JSON](frame.MethodConfig{Name: "fixture.usage", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "managed"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	toolName = tools[0].ModelName
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: framemcp.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	response := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var summary protocol.UsageSummary
 	if response.Failure != nil || json.Unmarshal([]byte(response.Output), &summary) != nil || summary.ObservedAt.IsZero() || summary.Since == nil {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 // Authorities projects permission fingerprints from current source owners.

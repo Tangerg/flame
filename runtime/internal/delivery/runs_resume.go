@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/Tangerg/frame"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+
+	framehost "github.com/Tangerg/frame/host"
 )
 
 // ResumeRun answers an open interrupt by opening a NEW segment of the SAME run
@@ -79,7 +79,7 @@ func wireRunResumeErr(err error) error {
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound
-	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, frame.ErrStaleBinding):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, framehost.ErrStaleBinding):
 		return pluginChanged(err)
 	default:
 		return err

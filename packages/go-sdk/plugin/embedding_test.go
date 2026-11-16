@@ -8,12 +8,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
+	framemcp "github.com/Tangerg/frame/process/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -28,7 +26,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	if err := callbacks.AdmitSession(session); err != nil {
 		t.Fatal(err)
 	}
-	owner := framemcp.Invocation{ID: "original-tool", Origin: extension.Model, Parent: "executing-run", Target: portable.Target{Scope: "installation", Reference: "owner"}}
+	owner := framemcp.Invocation{ID: "original-tool", Origin: extension.Model, Parent: "executing-run", Target: framemcp.Target{Scope: "installation", Reference: "owner"}}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +34,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	var calls atomic.Int32
 	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (TextEmbeddings, error) {
 		invocation, err := pluginmcp.InvocationFromContext(ctx)
-		if err != nil || invocation.ID != string(command.ID) || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (portable.Target{Scope: "call", Reference: string(command.ID)}) {
+		if err != nil || invocation.ID != string(command.ID) || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (framemcp.Target{Scope: "call", Reference: string(command.ID)}) {
 			t.Errorf("embedding changed original ownership: %+v, %v", invocation, err)
 		}
 		input, err := command.RequestInput()

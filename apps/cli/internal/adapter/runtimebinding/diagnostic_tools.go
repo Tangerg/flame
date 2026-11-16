@@ -5,10 +5,10 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 type diagnosticToolBinding interface {

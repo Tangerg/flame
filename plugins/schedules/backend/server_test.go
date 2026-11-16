@@ -11,22 +11,18 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	framevalue "github.com/Tangerg/frame/value"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -99,7 +95,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 		t.Fatalf("absence: %+v,%v", result, err)
 	}
 	var metadata sdk.Meta
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "original", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "original", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	normal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: input})
@@ -139,7 +135,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(pluginmcp.InvocationMetadataKey, framemcp.Invocation{ID: "refused", Origin: extension.Model, Target: framemcp.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: refusedInput})
@@ -227,7 +223,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = pluginmcp.SetUp(t.Context(), session, []pluginmcp.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []pluginmcp.SetupDependency{}, Background: &portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
+			err = pluginmcp.SetUp(t.Context(), session, []pluginmcp.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []pluginmcp.SetupDependency{}, Background: &framemcp.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
 			if (err != nil) != mismatched {
 				t.Fatalf("setup mismatched=%v: %v", mismatched, err)
 			}

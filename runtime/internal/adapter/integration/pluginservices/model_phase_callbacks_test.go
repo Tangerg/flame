@@ -8,12 +8,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/frame/portable"
-	framemcp "github.com/Tangerg/frame/process/mcp"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/content"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -25,6 +19,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	framemcp "github.com/Tangerg/frame/process/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/content"
 )
 
 func phaseHostRequest(ctx context.Context, ref pluginmcp.CallbackRef) (int, error) {
@@ -66,7 +65,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				var backendCalls atomic.Int32
 				selection := testsupport.DefaultModelSelection()
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-				original := framemcp.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: portable.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
+				original := framemcp.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: framemcp.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
 				callers := make(chan framemcp.Invocation, 1)
 				refs := make(chan pluginmcp.CallbackRef, 1)
 				host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
