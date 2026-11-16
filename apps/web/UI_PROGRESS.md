@@ -39961,6 +39961,87 @@ hooks, publication and fenced private-root retirement complete this batch;
 no functional check runs after output restoration. Whole-product visual
 acceptance remains open; continue task qualification through this same Lab.
 
+#### Mixed Tool evidence and current-file return after main (2026-11-17)
+
+Fresh `origin/main` and the owned worktree both resolve to `527843112`; there are
+no incoming commits to merge. This batch qualifies the existing Workspace
+`dock-files` + `tool-shells` task after the dependency and component changes.
+No actionable interface findings. Production source, generated components,
+Runtime ownership, the reading-column scale and theme tokens remain unchanged.
+
+The inspected owners are `ToolCard.tsx`, `ToolGroupMember.tsx`, the generic
+`ToolInspector`, Agent `toolPresentation.ts`, Workspace `toolRouting.ts` and the
+existing inspection-focus path. Only a captured read/path Tool offers current-file
+navigation. Arguments remain separate from results; failure, denied and nonzero
+exit facts retain their original meanings. No result is replayed.
+
+Read-only ZCode `ToolSummaryRow.tsx` informs primary identity, secondary scope
+and independent actions; the actual ChatGPT subagent panel informs the retained
+reading-column review. Refreshed original images from
+[Marketer](https://acedesign.io/work/marketer) support static grouping and
+proportion comparisons only. The inspected [Alpaca](https://acedesign.io/work/alpaca)
+images show pricing and onboarding, so they supply no workspace or keyboard
+behavior claim. Neither reference justifies a new Flame width or type scale.
+
+| Domain        | Evidence inspected                                                          | Result                                                     |
+| ------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Accessibility | Native local Find, Tab/Return, Escape, divider and Composer focus           | Clear in this task; speech and OS IME not verified         |
+| Layout        | Ordinary window resize, split/full-width reading, 320 px Dock and scrolling | Clear in the inspected sizes                               |
+| Writing       | Localized source, output, parameter, failure, denied and return labels      | Clear; captured English commands and causes remain literal |
+| Typography    | EN 14 px, ZH 18 px, source/path wrapping and retained draft                 | Clear; no global type or column change                     |
+| Colors        | Light Orange and dark custom-blue focus, status and reader states           | Clear visually; no fresh quantitative contrast measurement |
+| UI            | Disclosure, local search, current-file navigation and full-width return     | Clear; no new animation or frame-timing claim              |
+
+Passed in two unique actual Wails v3.1.0 applications at default zoom:
+
+- **EN/light/14 px/#FB6E30/full motion:** the six-step summary distinguishes
+  two issues and one denial. Full ten-line output precedes secondary Arguments.
+  Cmd+F within the output finds `rollback` at **1 of 3**; Return reaches **2 of 3**.
+  Escape closes only that search and focuses the output reader. Recorded source
+  opens the current file in Files; Escape restores its original tool action.
+  Cmd+L resumes the original middle caret, producing exactly
+  `Keep evidence draft. RESUMED Continue here.`
+- **ZH/dark/18 px/#3B82F6/motion off:** the system Window → Move & Resize → Left
+  operation narrows the ordinary window. Six Tabs from Composer reach the divider;
+  Home changes its **501 px** width to **320 px**. Source and the complete file
+  path wrap; Browse panels, full-width reading and both return scopes remain
+  reachable. Keyboard full-width entry followed by Escape restores the original
+  tool action and retained Dock width. Local `rollback` search shows **1 / 3**;
+  Escape returns to Tool output. Conversation wheel reading leaves the file Dock
+  in place. Cmd+L preserves the middle caret and produces exactly
+  `保留证据草稿。已返回，继续输入。`
+
+`make stage-web` passes in **8.040 s** and the canonical `lab:build` in **2.484 s**.
+Both private native builds, signing and strict signature verification pass.
+All **6,856 non-Markdown inputs**, **490 Lab assets** and both sets of **seven
+native inputs** retain their qualified hashes. No new browser visual suite,
+performance benchmark or unchanged full test suite runs for this documentation-only
+qualification. The complete frontend baseline above retains its original scope.
+
+The current-file transport deliberately supplies the existing eight-line generic
+TypeScript sample independently of the selected Go path. This qualifies identity,
+navigation and reading return, not filesystem freshness or real Go file content.
+Captured shell failures are scenario data, not newly failing repository tests.
+No Send, clipboard-copy action, provider command or live Runtime mutation runs.
+AX-targeted current-file clicks do not establish activation; the passing route
+uses native Tab/Return. An unsupported capitalized modifier name and ineffective
+corner-drag attempts are excluded from product findings. Native screenshots were
+inspected in the tool transcript; there is no retained screenshot archive.
+
+Both native processes exit **0** and their app inventory is empty. The owned
+preview exits **1** after Ctrl+C; ports **4174/4175** are closed. Both registrations
+and **16 reserved native roots** are absent. Cleanup removes **736 native nodes**,
+**4,238 checkout build/cache nodes** and **37 private QA nodes**, restoring all
+**13 output-presence baselines**. User state, shared dependencies, protected
+worktrees and original reference resources remain untouched. The compact
+round-trip-verified witness/build/hash/cleanup receipt is **4,346 gzip bytes**,
+SHA-256 `4dd4085135ebe26c709650635c70559b4aa215496e2e77864e20b4c9282807a6`.
+
+**Approve** for the six inspected domains within this captured evidence-reading
+task. Whole-product and award-tier acceptance remain open. Select a distinct
+observed content or Dock task next; reopen this route only after an owner changes
+or a new failure is observed.
+
 ### Reading focus through geometry changes
 
 A previously visible keyboard control now stays within its reading viewport when
