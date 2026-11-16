@@ -26,6 +26,46 @@ for (const browserName of ["chromium", "webkit"] as const) {
       const homeCaret = await input.evaluate((node: HTMLTextAreaElement) => node.selectionStart);
       await input.press("End");
       const endCaret = await input.evaluate((node: HTMLTextAreaElement) => node.selectionStart);
+
+      const draft = "Keep the first line\n@store\nTail";
+      const tail = "\nTail";
+      const caret = draft.length - tail.length;
+      const selection = () =>
+        input.evaluate((node: HTMLTextAreaElement) => ({
+          start: node.selectionStart,
+          end: node.selectionEnd,
+          direction: node.selectionDirection,
+        }));
+      const openMultilineMention = async () => {
+        await input.fill("");
+        await input.fill(draft);
+        for (let remaining = tail.length; remaining > 0; remaining -= 1) {
+          await input.press("ArrowLeft");
+        }
+        await expect(input).toHaveJSProperty("selectionStart", caret);
+        await expect(input).toHaveJSProperty("selectionEnd", caret);
+        await expect(list.getByRole("option")).toHaveCount(2);
+        await expect(first).toHaveAttribute("aria-selected", "true");
+      };
+      for (const key of ["Shift+ArrowUp", "Shift+ArrowDown"]) {
+        await openMultilineMention();
+        await input.press("Escape");
+        await expect(list).toBeHidden();
+        await input.press(key);
+        const native = await selection();
+        expect(native.end).toBeGreaterThan(native.start);
+        const continued = `${draft.slice(0, native.start)}continued${draft.slice(native.end)}`;
+        await page.keyboard.type("continued");
+        await expect(input).toHaveValue(continued);
+
+        await openMultilineMention();
+        await input.press(key);
+        expect(await selection()).toEqual(native);
+        await page.keyboard.type("continued");
+        await expect(input).toHaveValue(continued);
+        await expect(input).toBeFocused();
+      }
+
       await input.fill("");
       await input.fill("@store");
       await expect(first).toHaveAttribute("aria-selected", "true");

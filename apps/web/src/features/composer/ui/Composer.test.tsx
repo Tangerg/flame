@@ -371,6 +371,85 @@ describe("composer", () => {
       }
     });
 
+    it.each(["shiftKey", "altKey", "ctrlKey", "metaKey"] as const)(
+      "leaves %s arrows with native text editing",
+      async (modifier) => {
+        await withSlashCommands();
+        const onSend = vi.fn(() => true);
+        wrap(<Harness initial="" onSend={onSend} />);
+        const input = typeInto("/g");
+        await screen.findByRole("listbox");
+        await waitFor(() =>
+          expect(
+            document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.textContent,
+          ).toContain("/goal"),
+        );
+        const active = input.getAttribute("aria-activedescendant");
+
+        for (const key of ["ArrowUp", "ArrowDown"]) {
+          expect(fireEvent.keyDown(input, { key, [modifier]: true })).toBe(true);
+          expect(input.getAttribute("aria-activedescendant")).toBe(active);
+          expect(input.value).toBe("/g");
+        }
+        expect(onSend).not.toHaveBeenCalled();
+      },
+    );
+
+    it("passes a modified arrow to its registered command without navigating candidates", async () => {
+      await withSlashCommands();
+      const handler = vi.fn(() => true);
+      await loadPluginsForTest(
+        definePlugin({
+          name: "test.modified-composer-arrow",
+          setup: (ctx) => {
+            ctx.contributions.add(COMPOSER_KEY_BINDING, {
+              key: "Shift+ArrowUp",
+              description: "modified arrow",
+              handler,
+            });
+          },
+        }),
+      );
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const input = typeInto("/g");
+      await screen.findByRole("listbox");
+      await waitFor(() =>
+        expect(
+          document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.textContent,
+        ).toContain("/goal"),
+      );
+      const active = input.getAttribute("aria-activedescendant");
+
+      expect(fireEvent.keyDown(input, { key: "ArrowUp", shiftKey: true })).toBe(false);
+      expect(handler).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          value: "/g",
+          event: expect.objectContaining({ key: "ArrowUp", shiftKey: true }),
+        }),
+      );
+      expect(input.getAttribute("aria-activedescendant")).toBe(active);
+      expect(input.value).toBe("/g");
+      expect(onSend).not.toHaveBeenCalled();
+    });
+
+    it("leaves plain arrows with native editing when the file popup has no candidates", async () => {
+      await withSlashCommands();
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const value = "Keep the first line\n@draft";
+      const input = typeInto(value);
+      await screen.findByText(t("composer.mention.status.no-workspace"));
+      expect(screen.queryByRole("listbox")).toBeNull();
+
+      for (const key of ["ArrowUp", "ArrowDown"]) {
+        expect(fireEvent.keyDown(input, { key })).toBe(true);
+        expect(input.hasAttribute("aria-activedescendant")).toBe(false);
+        expect(input.value).toBe(value);
+      }
+      expect(onSend).not.toHaveBeenCalled();
+    });
+
     it("admits IME navigation and committed Enter before any library handler", async () => {
       await withSlashCommands();
       vi.spyOn(performance, "now").mockReturnValue(0);

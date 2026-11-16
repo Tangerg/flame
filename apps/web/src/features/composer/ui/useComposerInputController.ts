@@ -124,10 +124,11 @@ export function useComposerInputController({
     suggestions.dismiss();
   };
   const listing = suggestions.open && (!mentions.open || mentions.status === "ready");
+  const candidateCount = listing ? suggestions.items.length : 0;
   const navigation = useSuggestionNavigation({
     open: suggestions.open,
     candidateKey: suggestions.open ? suggestions.key : null,
-    count: listing ? suggestions.items.length : 0,
+    count: candidateCount,
     dismiss: dismissSuggestions,
     input,
   });
@@ -248,9 +249,12 @@ export function useComposerInputController({
           return;
         case "ArrowUp":
         case "ArrowDown":
-          event.preventDefault();
-          // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
-          navigation.navigate?.(event);
+          if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) break;
+          if (candidateCount > 0) {
+            event.preventDefault();
+            // Merged Floating handlers do not short-circuit; invoke navigation only after input admission.
+            navigation.navigate?.(event);
+          }
           return;
       }
     }
