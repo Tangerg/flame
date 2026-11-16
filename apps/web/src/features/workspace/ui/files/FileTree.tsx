@@ -222,7 +222,7 @@ function TreeNode({
     </Button>
   );
   return (
-    <div role="none">
+    <div role="presentation">
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
         <ContextMenu.Content aria-label={entry.path}>

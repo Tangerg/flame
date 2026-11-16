@@ -20656,6 +20656,89 @@ Native artifact receipt SHA-256: `8e2c1e307590739f7ba627d6b4da994854f68a2bba1400
 
 This closes the inspected Composer keyboard and file-return flow. The resumed goal remains active; subsequent polish needs another observed task failure rather than a speculative rewrite. The broader product, screen-reader qualification and unmeasured report risks retain their previous limits.
 
+### Native file-tree roles for ready directories (2026-11-17)
+
+Continued from clean main `1836a500d`. This batch closes the previous native
+observation: an expanded child had a visible focus perimeter and its correct
+file menu, but was absent from the system accessibility tree. The system instead
+reported its parent as a focused button. The inspected task is draft → expand
+directory → inspect child → read file → Back → continue the original caret.
+
+The current system WebKit is `22625.2.8.11.9`. The matching public engine-tail
+[source](https://github.com/WebKit/WebKit/blob/5e62f67e97ebccc9da92e1ab166cfe640767dea4/Source/WebCore/accessibility/AccessibilityNodeObject.cpp#L998-L1025)
+validates tree descendants by literal roles: it accepts `presentation`, but not
+its `none` synonym or an unroled wrapper. A rejected tree becomes a generic
+container; its treeitems fall back to native button semantics, suppressing the
+owned child group. This source is supporting evidence, not a claim that the
+installed binary equals that public commit. Native A/B establishes the actual
+failure and repair. Unroled-wrapper support was only added in the upstream
+[November 16 change](https://github.com/WebKit/WebKit/commit/c5d00a47c2e8c00b6cb758fd7d4af5b0edb7cdd0).
+
+`TreeNode` in `src/features/workspace/ui/files/FileTree.tsx` now uses the canonical
+`presentation` role on its existing neutral wrapper. Headless Tree remains the
+navigation owner; row props, group IDs, `aria-owns`, menu composition, selection,
+focus retirement and reads are unchanged. No state, event handler, dependency,
+layout or theme override is added. The better-accessibility guidance applies to
+the lost role, hierarchy and focused-object identity (WCAG 1.3.1 and 4.1.2).
+
+Verification on Node 24.22.2, npm 11.21.1, Go 1.27.4 and Wails 3.1.0:
+
+- Original and repaired FileWorkspace runs each pass **125 tests**. Typecheck and
+  the other **24** canonical Web checks pass. The full frontend and Runtime HTTP
+  projects were not rerun for this single markup attribute.
+- All **8** existing Chromium/WebKit file-tree interaction cases pass (44.7s),
+  retaining navigation versus activation, file return, workspace retirement,
+  line-navigation popup retirement, hidden-menu retirement and scoped axe checks.
+  DOM role queries and axe do not detect the native engine defect; the native
+  A/B is its regression witness. No assertion freezes the attribute spelling.
+- `make check-native` passes, including current production staging, native Go
+  tests/vet/build, the Wails build and the macOS 14 deployment policy.
+- In the same EN Wails binary and process, the original wrapper and the unroled
+  control both expose a generic Files container and buttons without the expanded
+  child. With `presentation`, Files becomes an outline and the child becomes a
+  correctly focused `DockResizer.tsx M` row. Shift+F10 identifies its exact path;
+  Escape, Enter, the eight-line source and Back retain that selected child.
+  Cmd+L resumes the captured middle caret as
+  `Keep this draft. Returned. Continue here.`
+- EN/light/default 14px/Orange/motion-off also reads the 93-line guide. PageDown
+  and a real wheel scroll move only its body, retaining header, inset focus and
+  draft. Back focuses the selected guide row in the native outline.
+- ZH/dark/18px/custom-blue/full-motion uses ordinary Window → Move & Resize →
+  Left at default zoom. The expanded child, its path and its focus remain exposed.
+  Child source → keyboard Back restores the selected child. The guide retains
+  its wrapping header during a real two-page wheel scroll. Back selects the guide;
+  Cmd+L continues the original caret as `保留草稿，返回后继续核对文件。`.
+
+The isolated native hosts use the normal production embed and services, with
+only the private Go URL-literal overlay selecting the canonical built HTTP Lab.
+All UI input comes through CUA. This does not qualify live Runtime/provider
+execution, production startup, physical IME, VoiceOver audio or minimum-supported
+browser/OS combinations. No extra visual suite or performance benchmark ran.
+The ready-tree finding is repaired; this is not a full accessibility approval.
+
+Next inspect directory loading, failure and retry in the native host. Legacy
+WebKit validation also rejects the current feedback elements inside expanded
+groups, so those states may still retire the outline semantics. Existing unit
+tests control these states, but Workspace currently has no native Lab directory
+failure entry; the Agent file-list parameter only controls Composer suggestions.
+Extend the existing canonical Workspace fixture before claiming those states
+qualified. This trigger and impact remain outside this ready-directory batch.
+
+Both private apps quit and join with exit 0; their exact registrations are
+removed. The private preview receives intentional SIGINT (exit 130), and both
+Lab ports are closed after browser teardown. All **16** reserved app/profile/
+Library roots and **13** named owned build/cache roots are absent after retiring
+**12,601 nodes**, including three symlinks unlinked without following targets.
+The exact QA root `flame-file-tree-ax-lxacwngu` is removed after receipt transfer:
+**7,200 nodes**, including the private browser cache and 40 symlinks. All belonged
+to UID 501. Dependencies, shared caches, user data, unrelated processes and the
+protected legacy checkout remain intact. The goal remains active.
+
+Qualified artifact receipt SHA-256:
+`b008461855309d6c0a8a568cdce370663d6dd326dcbb6a5f51a2695b0ac0bb57`.
+Cleanup receipt SHA-256:
+`d3da1458f76e8684b50229bf54f50b0da96086671ba22db5ac392af3243dde2c`.
+
 ### Full-width material switching
 
 At frozen main `7d359a2cc2c885488f8bda59484a513db87f500a`, actual Wails
