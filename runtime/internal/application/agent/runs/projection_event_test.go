@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -89,9 +88,6 @@ func TestProgressRejectsImpossiblePreviews(t *testing.T) {
 	}{
 		{name: "empty"},
 		{name: "negative step", progress: Progress{Step: &negativeStep}},
-		{name: "invalid usage", progress: Progress{Usage: &accounting.Usage{
-			Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: -1}},
-		}}},
 		{name: "negative context", progress: Progress{ContextTokens: &negativeContext}},
 		{name: "anonymous tool activity", progress: Progress{Activity: ToolCallActivity{}}},
 	} {

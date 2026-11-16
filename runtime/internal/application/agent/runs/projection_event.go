@@ -249,11 +249,6 @@ func (p Progress) validate() error {
 	if p.Step != nil && *p.Step < 0 {
 		return errors.New("runs: progress step must not be negative")
 	}
-	if p.Usage != nil {
-		if err := p.Usage.Validate(); err != nil {
-			return fmt.Errorf("runs: progress usage: %w", err)
-		}
-	}
 	if p.ContextTokens != nil && *p.ContextTokens < 0 {
 		return errors.New("runs: progress context tokens must not be negative")
 	}

@@ -121,12 +121,23 @@ func TestUsageRejectsInvalidModelIdentities(t *testing.T) {
 		"model\x00shadow",
 		strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1),
 	} {
-		if err := (Usage{ByModel: map[string]Totals{model: {}}}).Validate(); err == nil {
-			t.Fatalf("Usage.Validate accepted model identity %q", model)
+		if _, err := AttributedUsage(map[string]Totals{model: {}}); err == nil {
+			t.Fatalf("AttributedUsage accepted model identity %q", model)
 		}
 		if err := (Snapshot{Models: []ModelUsage{{Model: model, Calls: 1}}}).Validate(); err == nil {
 			t.Fatalf("Snapshot.Validate accepted model identity %q", model)
 		}
+	}
+}
+
+func TestUsageAdmissionRejectsConflictingProjection(t *testing.T) {
+	if _, err := NewUsage(
+		Totals{Tokens: Tokens{InputTokens: 9}},
+		map[string]Totals{
+			"model": {Tokens: Tokens{InputTokens: 2}},
+		},
+	); err == nil {
+		t.Fatal("admission accepted conflicting total and model subtotals")
 	}
 }
 
@@ -191,11 +202,11 @@ func TestCostRejectsAmountsThatAreNotFiniteAndNonNegative(t *testing.T) {
 }
 
 func TestUsageRefusesAnEmptyAttribution(t *testing.T) {
-	if err := (Usage{ByModel: map[string]Totals{}}).Validate(); err == nil {
-		t.Fatal("an empty per-model breakdown validated; it cannot be told from an unattributed usage")
+	if _, err := AttributedUsage(map[string]Totals{}); err == nil {
+		t.Fatal("accepted an empty per-model breakdown")
 	}
-	if err := (Usage{}).Validate(); err != nil {
-		t.Fatalf("unattributed usage: %v", err)
+	if usage := (Usage{}); !usage.Total().Equal(Totals{}) || usage.ByModel() != nil {
+		t.Fatalf("zero usage = %+v, want an unattributed empty report", usage)
 	}
 }
 
@@ -223,9 +234,45 @@ func TestCostSumsExactlyWithoutDrift(t *testing.T) {
 	}
 }
 
-func TestAttributedUsageRejectsCompetingTotal(t *testing.T) {
-	u := Usage{Total: Totals{Tokens: Tokens{InputTokens: 1}}, ByModel: map[string]Totals{"model": {Tokens: Tokens{InputTokens: 2}}}}
-	if err := u.Validate(); err == nil {
-		t.Fatal("accepted contradictory total")
+func TestUsageRejectsInvalidTotalsAtConstruction(t *testing.T) {
+	if _, err := NewUsage(Totals{InputTokens: -1}, nil); err == nil {
+		t.Fatal("accepted negative usage")
+	}
+}
+
+func TestUsageOwnsItsModelFactsAcrossCopiesAndProjections(t *testing.T) {
+	total := Totals{InputTokens: 5, Cost: mustCost(t, 0.25)}
+	parts := map[string]Totals{"model": total}
+	usage, err := NewUsage(total, parts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts["model"] = Totals{InputTokens: 99}
+	projection := usage.ByModel()
+	delete(projection, "model")
+	if !usage.Total().Equal(total) || !usage.ByModel()["model"].Equal(total) {
+		t.Fatalf("input or projection changed the canonical usage: %+v", usage)
+	}
+	copied := usage
+	next, err := copied.Accrue("model", Totals{InputTokens: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.Total().InputTokens != 8 || usage.Total().InputTokens != 5 || copied.Total().InputTokens != 5 {
+		t.Fatalf("accrual mutated a previous value: original=%+v copied=%+v next=%+v", usage, copied, next)
+	}
+}
+
+func TestUsageAccrualFailurePublishesNoPartialValue(t *testing.T) {
+	usage, err := AttributedUsage(map[string]Totals{"model": {InputTokens: math.MaxInt64}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, err := usage.Accrue("other", Totals{InputTokens: 1})
+	if err == nil || !next.Equal(Usage{}) {
+		t.Fatalf("overflow returned a partial usage: %+v, %v", next, err)
+	}
+	if usage.Total().InputTokens != math.MaxInt64 || len(usage.ByModel()) != 1 {
+		t.Fatalf("failed accrual changed its source: %+v", usage)
 	}
 }

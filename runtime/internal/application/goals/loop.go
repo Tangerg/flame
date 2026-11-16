@@ -451,7 +451,7 @@ func runCost(run *run.Run) (float64, bool) {
 	if !reported {
 		return 0, false
 	}
-	return usage.Total.Cost.USD()
+	return usage.Total().Cost.USD()
 }
 
 func runSteps(run *run.Run) int { return run.Metrics().Steps() }

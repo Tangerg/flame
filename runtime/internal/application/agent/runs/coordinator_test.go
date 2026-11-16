@@ -1651,7 +1651,7 @@ func requireIndependentChildLifecycle(
 	finished := lifecycle.finished
 	usage, reported := finished.Run.Metrics().Usage()
 	if finished.Run.Lineage() != lineage || !runHasOutcome(finished.Run, run.OutcomeCompleted) || !reported ||
-		usage.Total.InputTokens != 13 || usage.Total.OutputTokens != 5 {
+		usage.Total().InputTokens != 13 || usage.Total().OutputTokens != 5 {
 		t.Fatalf("child terminal Run = %+v, want child-owned terminal metrics", finished)
 	}
 }
@@ -1852,11 +1852,11 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 		if child.text != want.text ||
 			child.finished.Metrics().Steps() != 1 ||
 			!reported ||
-			usage.Total.InputTokens != want.prompt ||
-			len(usage.ByModel) != 1 {
+			usage.Total().InputTokens != want.prompt ||
+			len(usage.ByModel()) != 1 {
 			t.Fatalf("sibling %q projection = %+v", runID, child)
 		}
-		if _, ok := usage.ByModel[want.model]; !ok {
+		if _, ok := usage.ByModel()[want.model]; !ok {
 			t.Fatalf("sibling %q usage = %+v, want model %q", runID, usage, want.model)
 		}
 	}

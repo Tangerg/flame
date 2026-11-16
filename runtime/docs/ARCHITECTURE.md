@@ -150,6 +150,12 @@ Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner
 
 Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.
 
+`accounting.Usage` is an immutable reported value. Its constructor rejects a
+total that disagrees with attributed model facts; accrual derives a new total
+from new facts without changing the prior value. Storage and artifact decoders
+enter through that constructor, and projections cannot write either accounting
+representation. Metrics and progress consumers do not repeat its admission.
+
 Physical dispatch evidence admits a call into Run accounting regardless of its
 conversation or independent purpose. `Steps` counts these calls even when their
 outcome is unknown; a preparation failure without dispatch contributes nothing.

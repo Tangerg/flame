@@ -70,36 +70,33 @@ func (t Totals) Add(other Totals) (Totals, error) {
 	return Totals{Tokens: tokens, Cost: cost}, nil
 }
 
-// An unattributed report owns only its total. For attributed usage the total
-// is a checked projection of all model subtotals, including unknown costs.
+// Usage is immutable. Model subtotals own attributed spending; their cached
+// total is created with them and cannot originate a separate transition.
 type Usage struct {
-	Total   Totals
-	ByModel map[string]Totals
+	total   Totals
+	byModel map[string]Totals
 }
 
-// Clone returns an ownership-isolated usage value.
-func (u Usage) Clone() Usage {
-	u.ByModel = maps.Clone(u.ByModel)
-	return u
-}
-
-// Validate reports whether u is safe to persist and compare.
-func (u Usage) Validate() error {
-	if err := u.Total.Validate(); err != nil {
-		return fmt.Errorf("accounting: total usage: %w", err)
+func NewUsage(total Totals, byModel map[string]Totals) (Usage, error) {
+	if byModel == nil {
+		if err := total.Validate(); err != nil {
+			return Usage{}, fmt.Errorf("accounting: total usage: %w", err)
+		}
+		return Usage{total: total}, nil
 	}
-	if u.ByModel == nil {
-		return nil
-	}
-	total, err := modelTotal(u.ByModel)
+	usage, err := AttributedUsage(byModel)
 	if err != nil {
-		return err
+		return Usage{}, err
 	}
-	if total != u.Total {
-		return errors.New("accounting: attributed usage differs from model subtotals")
+	if !usage.total.Equal(total) {
+		return Usage{}, errors.New("accounting: attributed usage differs from model subtotals")
 	}
-	return nil
+	return usage, nil
 }
+
+func (u Usage) Total() Totals { return u.total }
+
+func (u Usage) ByModel() map[string]Totals { return maps.Clone(u.byModel) }
 
 func modelTotal(parts map[string]Totals) (Totals, error) {
 	if len(parts) == 0 {
@@ -120,20 +117,26 @@ func modelTotal(parts map[string]Totals) (Totals, error) {
 }
 
 func AttributedUsage(parts map[string]Totals) (Usage, error) {
-	owned := maps.Clone(parts)
+	return newAttributedUsage(maps.Clone(parts))
+}
+
+func newAttributedUsage(owned map[string]Totals) (Usage, error) {
 	total, err := modelTotal(owned)
 	if err != nil {
 		return Usage{}, err
 	}
-	return Usage{Total: total, ByModel: owned}, nil
+	return Usage{total: total, byModel: owned}, nil
 }
 
 func (u Usage) Accrue(model string, delta Totals) (Usage, error) {
-	if u.ByModel == nil {
-		total, err := u.Total.Add(delta)
-		return Usage{Total: total}, err
+	if u.byModel == nil {
+		total, err := u.total.Add(delta)
+		if err != nil {
+			return Usage{}, err
+		}
+		return Usage{total: total}, nil
 	}
-	parts := maps.Clone(u.ByModel)
+	parts := maps.Clone(u.byModel)
 	if previous, ok := parts[model]; ok {
 		var err error
 		delta, err = previous.Add(delta)
@@ -142,21 +145,17 @@ func (u Usage) Accrue(model string, delta Totals) (Usage, error) {
 		}
 	}
 	parts[model] = delta
-	total, err := modelTotal(parts)
-	return Usage{Total: total, ByModel: parts}, err
+	return newAttributedUsage(parts)
 }
 
 // ValidateAdvanceFrom proves that u is a cumulative continuation of
 // previous. Once a provider reports usage or a per-model key, it cannot vanish.
 func (u Usage) ValidateAdvanceFrom(previous Usage) error {
-	if err := u.Validate(); err != nil {
+	if err := u.total.ValidateAdvanceFrom(previous.total); err != nil {
 		return err
 	}
-	if err := u.Total.ValidateAdvanceFrom(previous.Total); err != nil {
-		return err
-	}
-	for model, before := range previous.ByModel {
-		after, found := u.ByModel[model]
+	for model, before := range previous.byModel {
+		after, found := u.byModel[model]
 		if !found {
 			return fmt.Errorf("accounting: cumulative usage dropped model %q", model)
 		}
@@ -169,11 +168,11 @@ func (u Usage) ValidateAdvanceFrom(previous Usage) error {
 
 // Equal reports whether two snapshots contain the same cumulative fact.
 func (u Usage) Equal(other Usage) bool {
-	if !u.Total.Equal(other.Total) || len(u.ByModel) != len(other.ByModel) {
+	if !u.total.Equal(other.total) || len(u.byModel) != len(other.byModel) {
 		return false
 	}
-	for model, totals := range u.ByModel {
-		if otherTotals, found := other.ByModel[model]; !found || !totals.Equal(otherTotals) {
+	for model, totals := range u.byModel {
+		if otherTotals, found := other.byModel[model]; !found || !totals.Equal(otherTotals) {
 			return false
 		}
 	}

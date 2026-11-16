@@ -168,7 +168,7 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	record := terminal[len(terminal)-1].Event.(SegmentFinished).Run
 	accounted, available := record.Metrics().Usage()
 	if record.Metrics().Steps() != 1 || !available ||
-		accounted.Total.InputTokens != reported.InputTokens || accounted.Total.OutputTokens != reported.OutputTokens {
+		accounted.Total().InputTokens != reported.InputTokens || accounted.Total().OutputTokens != reported.OutputTokens {
 		t.Fatalf("terminal lost model accounting: %+v", record.Metrics())
 	}
 }
@@ -501,9 +501,9 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 func TestReducerAccruesPerCallAccountingAcrossResume(t *testing.T) {
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
-		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
+		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: testsupport.Usage(accounting.Totals{
 			InputTokens: 10,
-		}},
+		}, nil),
 			Steps:          2,
 			ActiveDuration: time.Second})
 	})
@@ -520,7 +520,7 @@ func TestReducerAccruesPerCallAccountingAcrossResume(t *testing.T) {
 	metrics := record.Metrics()
 	usage, reported := metrics.Usage()
 	if metrics.Steps() != 3 || !reported ||
-		usage.Total.InputTokens != 15 ||
+		usage.Total().InputTokens != 15 ||
 		metrics.ActiveDuration() != 3*time.Second {
 		t.Fatalf("cumulative metrics = %+v", metrics)
 	}
@@ -531,10 +531,10 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
 		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-			Usage: &accounting.Usage{Total: accounting.Totals{
+			Usage: testsupport.Usage(accounting.Totals{
 				InputTokens: 10,
 				Cost:        testsupport.OptionalCost(&priced),
-			}},
+			}, nil),
 			Steps: 1,
 		})
 	})
@@ -544,8 +544,8 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	progress := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_2",
 		ReportedUsage: &corechat.Usage{InputTokens: 10}})
 	event := progress[len(progress)-1].Event.(SegmentProgressed)
-	if event.Progress.Usage == nil || event.Progress.Usage.Total.InputTokens != 20 ||
-		event.Progress.Usage.Total.Cost.OptionalUSD() != nil {
+	if event.Progress.Usage == nil || event.Progress.Usage.Total().InputTokens != 20 ||
+		event.Progress.Usage.Total().Cost.OptionalUSD() != nil {
 		t.Fatalf("progress usage = %+v, want tokens retained with unknown cost", event.Progress.Usage)
 	}
 
@@ -554,7 +554,7 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
-	if !reported || usage.Total.InputTokens != 20 || usage.Total.Cost.OptionalUSD() != nil {
+	if !reported || usage.Total().InputTokens != 20 || usage.Total().Cost.OptionalUSD() != nil {
 		t.Fatalf("terminal usage = %+v, reported %t; want tokens retained with unknown cost", usage, reported)
 	}
 }
@@ -944,7 +944,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 		Cost:          mustReducerCost(t, 0.0125),
 		ContextTokens: 4096})
 	progress, ok := usage[0].Event.(SegmentProgressed)
-	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total.InputTokens != 1200 || progress.Progress.Usage.Total.Cost.OptionalUSD() == nil {
+	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total().InputTokens != 1200 || progress.Progress.Usage.Total().Cost.OptionalUSD() == nil {
 		t.Fatalf("usage progress = %#v", usage[0].Event)
 	}
 	commit := usage[0].Commit
@@ -1965,7 +1965,7 @@ func TestReducerAccruesInterleavedModelCallsOnceWithoutChangingPrimaryContext(t 
 	finished := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
-	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 12 || usage.Total.OutputTokens != 3 || usage.Total.Cost.OptionalUSD() == nil || *usage.Total.Cost.OptionalUSD() != .75 || record.ContextTokens() != 5 || usage.ByModel["second-model"].InputTokens != 7 {
+	if !reported || record.Metrics().Steps() != 2 || usage.Total().InputTokens != 12 || usage.Total().OutputTokens != 3 || usage.Total().Cost.OptionalUSD() == nil || *usage.Total().Cost.OptionalUSD() != .75 || record.ContextTokens() != 5 || usage.ByModel()["second-model"].InputTokens != 7 {
 		t.Fatalf("terminal lost per-call consumption: %+v", record.Snapshot())
 	}
 }
@@ -1989,7 +1989,7 @@ func TestIndependentModelFactsPreservePrimaryStreamingAndUnknownConsumption(t *t
 	finished := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
-	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 5 || usage.Total.Cost.OptionalUSD() != nil || record.ContextTokens() != 5 {
+	if !reported || record.Metrics().Steps() != 2 || usage.Total().InputTokens != 5 || usage.Total().Cost.OptionalUSD() != nil || record.ContextTokens() != 5 {
 		t.Fatalf("independent consumption = %+v", record.Snapshot())
 	}
 }
@@ -2019,11 +2019,11 @@ func TestFailedModelConsumptionDependsOnDispatchEvidence(t *testing.T) {
 				if dispatched {
 					steps++
 				}
-				if !reported || record.Metrics().Steps() != steps || usage.Total.InputTokens != 10 || usage.Total.OutputTokens != 3 || record.ContextTokens() != 7 {
+				if !reported || record.Metrics().Steps() != steps || usage.Total().InputTokens != 10 || usage.Total().OutputTokens != 3 || record.ContextTokens() != 7 {
 					t.Fatalf("failed call changed reported consumption/context: %+v", record.Snapshot())
 				}
-				if (usage.Total.Cost.OptionalUSD() == nil) != dispatched || (!dispatched && *usage.Total.Cost.OptionalUSD() != .5) {
-					t.Fatalf("cost certainty differs from physical evidence: %+v", usage.Total)
+				if (usage.Total().Cost.OptionalUSD() == nil) != dispatched || (!dispatched && *usage.Total().Cost.OptionalUSD() != .5) {
+					t.Fatalf("cost certainty differs from physical evidence: %+v", usage.Total())
 				}
 			})
 		}

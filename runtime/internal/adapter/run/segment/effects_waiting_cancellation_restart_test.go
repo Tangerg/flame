@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
@@ -212,12 +211,6 @@ func normalizeRunSnapshot(record run.Run) run.Snapshot {
 	snapshot.FinishedAt = timeFromUnixNano(snapshot.FinishedAt)
 	snapshot.UpdatedAt = timeFromUnixNano(snapshot.UpdatedAt)
 	snapshot.Capabilities = normalizeCapabilities(snapshot.Capabilities)
-	if usage, reported := snapshot.Metrics.Usage(); reported && len(usage.ByModel) == 0 {
-		usage.ByModel = nil
-		snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-			Usage: &usage, Steps: snapshot.Metrics.Steps(), ActiveDuration: snapshot.Metrics.ActiveDuration(),
-		})
-	}
 	return snapshot
 }
 

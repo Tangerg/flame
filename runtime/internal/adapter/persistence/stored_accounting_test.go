@@ -22,6 +22,18 @@ func TestRunUsageDistinguishesMissingReportFromReportedZero(t *testing.T) {
 	}
 }
 
+func TestStoredUsageRejectsConflictingTotalBeforeProducingADomainValue(t *testing.T) {
+	row := runUsageRow{
+		InputTokens: 9,
+		ByModel: map[string]runModelRowUse{
+			"model": {InputTokens: 2},
+		},
+	}
+	if usage, err := row.usage(); err == nil || usage != nil {
+		t.Fatalf("contradictory stored usage produced a domain value: %+v, %v", usage, err)
+	}
+}
+
 func TestRunAccountingAndFailureRejectInvalidStoredValues(t *testing.T) {
 	for _, encoded := range []string{
 		`null`,
@@ -68,7 +80,7 @@ func TestUnreportedModelIdentitySurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	usage, _ := next.Usage()
-	if _, known := usage.ByModel["missing"].Cost.USD(); known || !usage.ByModel["other"].Cost.Equal(price) {
-		t.Fatalf("model prices: %+v", usage.ByModel)
+	if _, known := usage.ByModel()["missing"].Cost.USD(); known || !usage.ByModel()["other"].Cost.Equal(price) {
+		t.Fatalf("model prices: %+v", usage.ByModel())
 	}
 }
