@@ -320,23 +320,8 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
           return computer.node;
         }
         if (fixture === "atoms") {
-          const { VisualAtomsFixture, VisualInputContractFixture, VisualPopupRetirementFixture } =
-            await import("./VisualAtomsFixture");
-          if (
-            requestedState === "popup-retirement" ||
-            requestedState === "popup-retirement-suspense"
-          ) {
-            return (
-              <VisualPopupRetirementFixture
-                lifetime={requestedState === "popup-retirement" ? "Activity" : "Suspense"}
-              />
-            );
-          }
-          return requestedState === "input-contracts" ? (
-            <VisualInputContractFixture />
-          ) : (
-            <VisualAtomsFixture />
-          );
+          const { VisualAtomsFixture } = await import("./VisualAtomsFixture");
+          return <VisualAtomsFixture state={requestedState} />;
         }
         return <VisualFoundationFixture sidebarOpen={sidebarOpen} />;
       }

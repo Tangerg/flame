@@ -126,7 +126,20 @@ function ChoiceSpecimen({ multiple }: { multiple: boolean }) {
   );
 }
 
-export function VisualAtomsFixture() {
+export function VisualAtomsFixture({ state }: { state: string | null }) {
+  switch (state) {
+    case "input-contracts":
+      return <VisualInputContractFixture />;
+    case "popup-retirement":
+      return <VisualPopupRetirementFixture lifetime="Activity" />;
+    case "popup-retirement-suspense":
+      return <VisualPopupRetirementFixture lifetime="Suspense" />;
+    default:
+      return <AtomsGallery />;
+  }
+}
+
+function AtomsGallery() {
   const [status, setStatus] = useState("pending");
   const [search, setSearch] = useState("");
   return (
@@ -455,7 +468,7 @@ function PendingPopupOwner(): never {
   throw pendingPopupOwner;
 }
 
-export function VisualPopupRetirementFixture({ lifetime }: { lifetime: "Activity" | "Suspense" }) {
+function VisualPopupRetirementFixture({ lifetime }: { lifetime: "Activity" | "Suspense" }) {
   const [visible, setVisible] = useState(true);
   const [open, setOpen] = useState(false);
   const popups = (
@@ -493,7 +506,7 @@ export function VisualPopupRetirementFixture({ lifetime }: { lifetime: "Activity
   );
 }
 
-export function VisualInputContractFixture() {
+function VisualInputContractFixture() {
   const initial = "A short note";
   const [value, setValue] = useState(initial);
   const [search, setSearch] = useState("match");
