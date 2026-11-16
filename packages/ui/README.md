@@ -88,6 +88,9 @@ content declares its active subtree with `ContentVisibility`;
 hidden roots retire through their existing change callback, and hidden portals
 do not restore focus to an unavailable trigger. Effect disconnection also closes
 an open root, so Activity or Suspense reconnection requires a fresh interaction.
+Retained DOM cannot revive an opening from a retired visibility or effect connection.
+Close intents precede owner notification, including synchronous unmount. Canceling
+an earlier change preserves any newer intent committed during that callback.
 Positioning, initial/final focus
 and dismissal remain with Base UI. Consumers own their content measure and
 available-height scrolling, not another document-level outside-press listener.
