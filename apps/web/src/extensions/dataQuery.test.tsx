@@ -330,59 +330,69 @@ describe("createParameterizedDataQuery", () => {
     },
   );
 
-  it("retires a pending continuous placeholder when Activity reconnects after provider replacement", async () => {
-    const pending = Promise.withResolvers<string>();
-    const returned = Promise.withResolvers<string>();
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce("original value")
-      .mockImplementation(() => pending.promise);
-    const plugin = definePlugin({
-      name: "test.activity-returning-data-provider",
-      setup(ctx) {
-        ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
-      },
-    });
-    ownedHosts.push(await startKernel([plugin]));
-    const useResource = createParameterizedDataQuery<{ id: string; page: number }, string>(
-      "resource",
-      {
-        keepWhenContinuous: (previous, next) => previous.id === next.id,
-      },
-    );
-    function Resource() {
-      const [page, setPage] = useState(0);
-      const resource = useResource({ id: "same", page });
-      return (
-        <div>
-          <button onClick={() => setPage(1)}>Next page</button>
-          <output>{resource.data ?? "Waiting for source"}</output>
-        </div>
+  it.each([false, true])(
+    "retires a pending continuous placeholder after provider replacement (evictPrevious=%s)",
+    async (evictPrevious) => {
+      const pending = Promise.withResolvers<string>();
+      const returned = Promise.withResolvers<string>();
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce("original value")
+        .mockImplementation(() => pending.promise);
+      const plugin = definePlugin({
+        name: "test.activity-returning-data-provider",
+        setup(ctx) {
+          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
+        },
+      });
+      ownedHosts.push(await startKernel([plugin]));
+      const useResource = createParameterizedDataQuery<{ id: string; page: number }, string>(
+        "resource",
+        {
+          keepWhenContinuous: (previous, next) => previous.id === next.id,
+        },
       );
-    }
-    const child = <Resource />;
-    const scene = (visible: boolean) => (
-      <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
-    );
-    const view = testClient.render(scene(true), { wrapper: productQueryWrapper });
-    await screen.findByText("original value");
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
-    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-    expect(screen.getByText("original value")).toBeTruthy();
-    view.rerender(scene(false));
-    await act(async () => stopKernel(ownedHosts.pop()!));
-    fetcher.mockImplementation(() => returned.promise);
-    ownedHosts.push(await startKernel([plugin]));
+      function Resource() {
+        const [page, setPage] = useState(0);
+        const resource = useResource({ id: "same", page });
+        return (
+          <div>
+            <button onClick={() => setPage(1)}>Next page</button>
+            <output>{resource.data ?? "Waiting for source"}</output>
+          </div>
+        );
+      }
+      const child = <Resource />;
+      const scene = (visible: boolean) => (
+        <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
+      );
+      const view = testClient.render(scene(true), { wrapper: productQueryWrapper });
+      await screen.findByText("original value");
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+      await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+      expect(screen.getByText("original value")).toBeTruthy();
+      view.rerender(scene(false));
+      const previousKey = ["resource", { id: "same", page: 0 }];
+      if (evictPrevious) {
+        act(() => queryClient.removeQueries({ queryKey: previousKey, exact: true }));
+      }
+      expect(queryClient.getQueryData(previousKey)).toBe(
+        evictPrevious ? undefined : "original value",
+      );
+      await act(async () => stopKernel(ownedHosts.pop()!));
+      fetcher.mockImplementation(() => returned.promise);
+      ownedHosts.push(await startKernel([plugin]));
 
-    view.rerender(scene(true));
+      view.rerender(scene(true));
 
-    expect(screen.queryByText("original value")).toBeNull();
-    await act(async () => returned.resolve("returned value"));
-    await screen.findByText("returned value");
-    pending.resolve("retired value");
-    await act(async () => Promise.resolve());
-    expect(screen.queryByText("retired value")).toBeNull();
-  });
+      expect(screen.queryByText("original value")).toBeNull();
+      await act(async () => returned.resolve("returned value"));
+      await screen.findByText("returned value");
+      pending.resolve("retired value");
+      await act(async () => Promise.resolve());
+      expect(screen.queryByText("retired value")).toBeNull();
+    },
+  );
 
   it("preserves an in-flight read when another provider is contributed to the same Host", async () => {
     const stable = Promise.withResolvers<string>();

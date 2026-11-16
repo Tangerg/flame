@@ -182,10 +182,12 @@ export function createParameterizedDataQuery<P, T>(
     return useData(
       queryOptions({
         ...query,
-        placeholderData: (previous, previousQuery) => {
-          const prior = previousQuery?.queryKey[1] as P | undefined;
+        placeholderData: (_previous, previousQuery) => {
+          if (!previousQuery) return undefined;
+          const prior = previousQuery.queryKey[1] as P | undefined;
+          // Observers can retain evicted Queries; continuity belongs to the current cache entry.
           return prior !== undefined && params !== undefined && keep(prior, params)
-            ? previous
+            ? cache.get<typeof _previous>(previousQuery.queryHash)?.state.data
             : undefined;
         },
       }),

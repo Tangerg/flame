@@ -828,7 +828,8 @@ entries reset before removal, clearing objects retained for continuous placehold
 hidden consumers resume through Query's normal subscription.
 Continuous placeholders observe their native Query cache state, so Activity or
 Suspense reconnection recomputes continuity after reset or eviction, including
-Runtime replacement without a provider change.
+Runtime replacement without a provider change. Prior windows come from the
+current native cache; eviction retires an entry's eligibility to seed another read.
 
 Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;

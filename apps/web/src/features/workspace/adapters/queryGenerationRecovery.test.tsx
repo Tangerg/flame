@@ -63,9 +63,14 @@ afterEach(() => {
 });
 
 describe("workspace Runtime-generation query recovery", () => {
-  it.each(["Activity", "Suspense"])(
-    "retires continuous file placeholders across server round trips in %s",
-    async (lifetime) => {
+  it.each([
+    { lifetime: "Activity", evictPrevious: false },
+    { lifetime: "Suspense", evictPrevious: false },
+    { lifetime: "Activity", evictPrevious: true },
+    { lifetime: "Suspense", evictPrevious: true },
+  ])(
+    "retires continuous file placeholders across server round trips in $lifetime (evictPrevious=$evictPrevious)",
+    async ({ lifetime, evictPrevious }) => {
       const content = (value: string): WorkspaceFileContent => ({
         content: value,
         startLine: 1,
@@ -73,7 +78,7 @@ describe("workspace Runtime-generation query recovery", () => {
         totalLines: 100,
       });
       let read = Promise.resolve(content("original source"));
-      const fetcher = vi.fn(() => read);
+      const fetcher = vi.fn((_params?: unknown) => read);
       await loadPluginsForTest(
         definePlugin({
           name: "test.continuous-file-server-replacement",
@@ -124,10 +129,18 @@ describe("workspace Runtime-generation query recovery", () => {
         });
         read = retired.promise;
         const before = fetcher.mock.calls.length;
+        const previousRequest = fetcher.mock.calls.at(-1)![0];
         fireEvent.click(screen.getByRole("button", { name: "Next page" }));
         await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(before + 1));
         expect(screen.getByText(previous)).toBeTruthy();
         view.rerender(scene(false));
+        const queryKey = [WORKSPACE_READ_FILE_KEY, previousRequest];
+        if (evictPrevious) {
+          act(() => queryClient.removeQueries({ queryKey, exact: true }));
+        }
+        expect(queryClient.getQueryData<WorkspaceFileContent>(queryKey)?.content).toBe(
+          evictPrevious ? undefined : previous,
+        );
 
         read = successor.promise;
         act(() => replaceWorkspaceServerScope(testClient.agent.access));
