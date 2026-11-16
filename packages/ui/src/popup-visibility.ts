@@ -19,10 +19,13 @@ export function useHiddenRootRetirement<
   const visible = useContentVisible();
   const ownActions = useRef<Actions | null>(null);
   const actions = actionsRef ?? ownActions;
-  // Base UI owns uncontrolled state; this snapshot avoids redundant close callbacks.
-  const acceptedOpen = useRef(defaultOpen);
+  // Accepted closes precede controlled prop commits, including a commit that unmounts the root.
+  const acceptedOpen = useRef(open ?? defaultOpen);
+  useLayoutEffect(() => {
+    if (open !== undefined) acceptedOpen.current = open;
+  }, [open]);
   const retire = useEffectEvent(() => {
-    if (open ?? acceptedOpen.current) actions.current?.close();
+    if (acceptedOpen.current) actions.current?.close();
   });
   useLayoutEffect(() => {
     if (!visible) retire();

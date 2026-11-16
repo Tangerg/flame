@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import { Refresh } from "@flame/icons/react";
-import { useState, type ReactNode } from "react";
+import { Activity, Suspense, useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
@@ -41,6 +41,7 @@ import {
   TextField,
   Toolbar,
   DiffStat,
+  Popover,
 } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
 const styles = stylex.create({
@@ -447,6 +448,50 @@ export function VisualAtomsFixture() {
 }
 
 const noteStyle = { maxHeight: 160 };
+
+const pendingPopupOwner = new Promise<never>(() => {});
+
+function PendingPopupOwner(): never {
+  throw pendingPopupOwner;
+}
+
+export function VisualPopupRetirementFixture({ lifetime }: { lifetime: "Activity" | "Suspense" }) {
+  const [visible, setVisible] = useState(true);
+  const [open, setOpen] = useState(false);
+  const popups = (
+    <section aria-label="Popup owner" {...stylex.props(styles.column)}>
+      <Popover.Root open={open} onOpenChange={(next) => setOpen(next)}>
+        <Popover.Trigger>Controlled popup</Popover.Trigger>
+        <Popover.Content aria-label="Controlled panel">
+          <TextField aria-label="Controlled value" />
+          <Button onClick={() => setVisible(false)}>Hide popup owner</Button>
+        </Popover.Content>
+      </Popover.Root>
+      <Popover.Root>
+        <Popover.Trigger>Uncontrolled popup</Popover.Trigger>
+        <Popover.Content aria-label="Uncontrolled panel">
+          <TextField aria-label="Uncontrolled value" />
+          <Button onClick={() => setVisible(false)}>Hide popup owner</Button>
+        </Popover.Content>
+      </Popover.Root>
+    </section>
+  );
+  return (
+    <main {...stylex.props(styles.page)}>
+      <Specimen name="popup-retirement">
+        <Button onClick={() => setVisible(true)}>Show popup owner</Button>
+        {lifetime === "Activity" ? (
+          <Activity mode={visible ? "visible" : "hidden"}>{popups}</Activity>
+        ) : (
+          <Suspense fallback={<p>Waiting for popup owner</p>}>
+            {!visible && <PendingPopupOwner />}
+            {popups}
+          </Suspense>
+        )}
+      </Specimen>
+    </main>
+  );
+}
 
 export function VisualInputContractFixture() {
   const initial = "A short note";

@@ -414,6 +414,11 @@ After rebuilding the linked icon package, restart Lab with
 IDs fail. Use file arguments or `--grep` to select interaction coverage. The normal
 Web check runs colocated unit tests; it does not launch browser verification.
 
+The atoms fixture's `popup-retirement` and `popup-retirement-suspense` states
+exercise controlled and uncontrolled Popovers through effect disconnection.
+Their browser cases hide the owner from inside the open panel, then verify
+retirement, outside focus and a fresh draft after restoring the same owner.
+
 When a migrated check fails, trace the current component contract before changing
 its expectation. Scope retained Dock content to its named visible region, measure
 overflow at the actual reading viewport and verify literal captured results rather

@@ -99,6 +99,40 @@ async function openPopover() {
 const imperativeClose = expect.objectContaining({ reason: "imperative-action" });
 
 describe("Popover retirement", () => {
+  it.each(["controlled", "uncontrolled"] as const)(
+    "does not repeat the close that unmounted the %s root",
+    async (mode) => {
+      const onOpenChange = vi.fn<PopoverOpenChange>();
+      function ClosingOwner() {
+        const [mounted, setMounted] = useState(true);
+        return (
+          mounted && (
+            <Popover.Root
+              {...(mode === "controlled" ? { open: true } : { defaultOpen: true })}
+              onOpenChange={(next, details) => {
+                onOpenChange(next, details);
+                if (!next) setMounted(false);
+              }}
+            >
+              <Popover.Trigger>Go</Popover.Trigger>
+              <Popover.Content aria-label="Go panel">
+                <LineField />
+              </Popover.Content>
+            </Popover.Root>
+          )
+        );
+      }
+      testClient.render(<ClosingOwner />);
+      const dialog = await screen.findByRole("dialog", { name: "Go panel" });
+      fireEvent.keyDown(within(dialog).getByRole("textbox", { name: "Line" }), { key: "Escape" });
+      await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(
+        false,
+        expect.objectContaining({ reason: "escape-key" }),
+      );
+    },
+  );
+
   it.each([
     ["controlled", "Activity"],
     ["uncontrolled", "Activity"],
@@ -128,9 +162,9 @@ describe("Popover retirement", () => {
     await openPopover();
     onOpenChange.mockClear();
 
+    view.rerender(scene(false));
     const outside = screen.getByRole("button", { name: "Outside" });
     act(() => outside.focus());
-    view.rerender(scene(false));
     view.rerender(scene(true));
 
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
