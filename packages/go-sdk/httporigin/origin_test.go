@@ -17,6 +17,9 @@ func TestSame(t *testing.T) {
 	}{
 		{"same origin different path", "https://EXAMPLE.com/a", "https://example.com/b", true},
 		{"default HTTPS port", "https://example.com/a", "https://example.com:443/b", true},
+		{"international domain", "https://bücher.example/a", "https://xn--bcher-kva.example/b", true},
+		{"normalized international domain", "https://bu\u0308cher.example/a", "https://bücher.example/b", true},
+		{"mapped localhost", "http://ＬＯＣＡＬＨＯＳＴ:17171/a", "http://localhost:17171/b", true},
 		{"IPv6 default port", "http://[::1]/a", "http://[::1]:80/b", true},
 		{"IPv6 different port", "http://[::1]/a", "http://[::1]:8080/b", false},
 		{"different host", "https://a.example/mcp", "https://b.example/mcp", false},
@@ -83,6 +86,49 @@ func TestOriginCanonicalizesEquivalentIPAndPort(t *testing.T) {
 	}
 }
 
+func TestEndpointHostIdentityMatchesItsTransport(t *testing.T) {
+	for _, tc := range []struct {
+		input, hostname, base string
+		loopback              bool
+	}{
+		{"https://bücher.example/a%2Fb/", "xn--bcher-kva.example", "https://xn--bcher-kva.example:443/a%2Fb", false},
+		{"https://bu\u0308cher.example/", "xn--bcher-kva.example", "https://xn--bcher-kva.example:443", false},
+		{"https://XN--BCHER-KVA.EXAMPLE/", "xn--bcher-kva.example", "https://xn--bcher-kva.example:443", false},
+		{"http://ＬＯＣＡＬＨＯＳＴ:17171/", "localhost", "http://localhost:17171", true},
+		{"https://example_test/", "example_test", "https://example_test:443", false},
+		{"https://[0:0:0:0:0:0:0:1]/", "::1", "https://[::1]:443", true},
+		{"https://[fe80::1%25ethA]/", "fe80::1%ethA", "https://[fe80::1%25ethA]:443", false},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			endpoint, err := ParseEndpoint(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := endpoint.URL().Hostname(); got != tc.hostname {
+				t.Errorf("transport hostname = %q, want %q", got, tc.hostname)
+			}
+			if got := endpoint.CanonicalBase(); got != tc.base {
+				t.Errorf("canonical base = %q, want %q", got, tc.base)
+			}
+			if got := endpoint.Loopback(); got != tc.loopback {
+				t.Errorf("loopback = %v, want %v", got, tc.loopback)
+			}
+			parsed, err := url.Parse(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			original := *parsed
+			origin, err := FromURL(parsed)
+			if err != nil || origin != endpoint.Origin() {
+				t.Errorf("parsed origin = %v, %v; want %v", origin, err, endpoint.Origin())
+			}
+			if *parsed != original {
+				t.Fatal("origin admission changed the caller's URL")
+			}
+		})
+	}
+}
+
 func TestRuntimeEndpointAdmission(t *testing.T) {
 	data, err := os.ReadFile("testdata/runtime-endpoints.json")
 	if err != nil {
@@ -91,6 +137,7 @@ func TestRuntimeEndpointAdmission(t *testing.T) {
 	var cases []struct {
 		Input    string `json:"input"`
 		Accepted bool   `json:"accepted"`
+		Hostname string `json:"hostname,omitzero"`
 	}
 	if err := json.Unmarshal(data, &cases); err != nil {
 		t.Fatal(err)
@@ -100,6 +147,9 @@ func TestRuntimeEndpointAdmission(t *testing.T) {
 		accepted := err == nil && !endpoint.HasQuery() && !endpoint.HasFragment()
 		if accepted != tc.Accepted {
 			t.Errorf("endpoint %q accepted=%v, want %v", tc.Input, accepted, tc.Accepted)
+		}
+		if tc.Hostname != "" && err == nil && endpoint.URL().Hostname() != tc.Hostname {
+			t.Errorf("endpoint %q hostname=%q, want %q", tc.Input, endpoint.URL().Hostname(), tc.Hostname)
 		}
 	}
 }

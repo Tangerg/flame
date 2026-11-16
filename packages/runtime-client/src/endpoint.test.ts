@@ -14,7 +14,7 @@ describe("Runtime address ownership", () => {
     );
   });
 
-  const fixtures: { input: string; accepted: boolean }[] = JSON.parse(
+  const fixtures: { input: string; accepted: boolean; hostname?: string }[] = JSON.parse(
     readFileSync(
       new URL("../../go-sdk/httporigin/testdata/runtime-endpoints.json", import.meta.url),
       "utf8",
@@ -24,6 +24,13 @@ describe("Runtime address ownership", () => {
   it.each(fixtures.filter(({ accepted }) => accepted))("accepts $input", ({ input }) => {
     expect(normalizeRuntimeEndpoint(input)).not.toBeNull();
   });
+
+  it.each(fixtures.filter(({ hostname }) => hostname !== undefined))(
+    "normalizes the host of $input",
+    ({ input, hostname }) => {
+      expect(new URL(requireRuntimeEndpoint(input)).hostname).toBe(hostname);
+    },
+  );
 
   it.each(fixtures.filter(({ accepted }) => !accepted))("rejects $input", ({ input }) => {
     expect(normalizeRuntimeEndpoint(input)).toBeNull();

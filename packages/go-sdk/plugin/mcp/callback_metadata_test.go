@@ -2,7 +2,9 @@ package mcp
 
 import (
 	"context"
+	"encoding/json/v2"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -12,6 +14,26 @@ import (
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
+
+func TestCallbackEndpointAdmission(t *testing.T) {
+	data, err := os.ReadFile("testdata/callback-endpoints.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixtures []struct {
+		Input    string `json:"input"`
+		Accepted bool   `json:"accepted"`
+	}
+	if err := json.Unmarshal(data, &fixtures); err != nil {
+		t.Fatal(err)
+	}
+	for _, fixture := range fixtures {
+		ref := CallbackRef{Endpoint: fixture.Input, Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096}
+		if err := ref.Validate(); (err == nil) != fixture.Accepted {
+			t.Errorf("endpoint %q accepted=%v, want %v", fixture.Input, err == nil, fixture.Accepted)
+		}
+	}
+}
 
 func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.T) {
 	input, err := framevalue.EncodeJSON(map[string]string{"runId": "run_original"})

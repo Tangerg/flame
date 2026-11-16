@@ -6,12 +6,12 @@ import (
 	"net/url"
 )
 
-// Origin is a normalized, comparable HTTP(S) origin: a lowercased scheme and
+// Origin is a normalized, comparable HTTP(S) origin: an admitted scheme and
 // host with the effective default port filled in, so two origins are equal iff
 // they are the same security origin. The zero value is not a valid origin.
 type Origin struct {
 	scheme string // "http" or "https", lowercased
-	host   string // host:port, host lowercased, default port materialized
+	host   string // host:port, default port materialized
 }
 
 func (o Origin) String() string { return o.scheme + "://" + o.host }

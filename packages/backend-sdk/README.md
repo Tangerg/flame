@@ -72,6 +72,9 @@ target, Tool command prefix, Tool receipt, and the managed MCP frame budget.
 The MCP wire constants and cross-language identity fixtures are generated from
 `packages/go-sdk/plugin/mcp` into `src/mcp/protocol.generated.json`. The separate
 `src/protocol.generated.json` projects Flame runtime callbacks and Tool receipts.
+Callback authority syntax and token width come from that Go owner. Both bindings
+admit the captured endpoint and refuse URL repair, empty query/fragment delimiters
+and unusable ports before opening HTTP.
 Use `declareMethod(descriptor)` when declaring a standalone method: it returns
 the actual Frame method after portable admission. `Capability.portable` holds
 the generic Frame contract; `Capability.identity` also binds the Flame

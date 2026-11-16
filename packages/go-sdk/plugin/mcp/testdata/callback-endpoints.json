@@ -1,0 +1,16 @@
+[
+  { "input": "http://127.0.0.1:1/", "accepted": true },
+  { "input": "http://127.0.0.1:80/", "accepted": true },
+  { "input": "http://127.0.0.1:65535/", "accepted": true },
+  { "input": "http://127.0.0.1:0/", "accepted": false },
+  { "input": "http://127.0.0.1:65536/", "accepted": false },
+  { "input": "http://127.0.0.1:17171/?", "accepted": false },
+  { "input": "http://127.0.0.1:17171/#", "accepted": false },
+  { "input": "http://127.0.0.1:17171/\n", "accepted": false },
+  { "input": " http://127.0.0.1:17171/", "accepted": false },
+  { "input": "http://127.0.0.1/", "accepted": false },
+  { "input": "http://127.0.0.1:17171/path", "accepted": false },
+  { "input": "http://localhost:17171/", "accepted": false },
+  { "input": "https://127.0.0.1:17171/", "accepted": false },
+  { "input": "http://user:secret@127.0.0.1:17171/", "accepted": false }
+]

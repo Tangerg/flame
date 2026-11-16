@@ -304,6 +304,34 @@ func TestEndpointHTTPClientFollowsSameOriginRedirect(t *testing.T) {
 	assert.Equal(t, "Bearer secret-token", gotAuthorization)
 }
 
+func TestEndpointHTTPClientKeepsCredentialsAcrossInternationalDomainRedirect(t *testing.T) {
+	client, err := endpointHTTPClient("https://bücher.example/start", "Bearer secret-token", nil)
+	require.NoError(t, err)
+	var paths []string
+	client.Transport.(*headerRoundTripper).base = mcpRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		assert.Equal(t, "Bearer secret-token", request.Header.Get("Authorization"))
+		paths = append(paths, request.URL.Path)
+		response := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("")),
+			Request:    request,
+		}
+		if request.URL.Path == "/start" {
+			response.StatusCode = http.StatusFound
+			response.Header.Set("Location", "https://xn--bcher-kva.example/mcp")
+		}
+		return response, nil
+	})
+	response, err := client.Get("https://bücher.example/start")
+	require.NoError(t, err)
+	assert.NoError(t, response.Body.Close())
+	assert.Equal(t, []string{"/start", "/mcp"}, paths)
+	_, err = client.Get("https://other.example/mcp")
+	assert.ErrorIs(t, err, errCrossOrigin)
+	assert.Equal(t, []string{"/start", "/mcp"}, paths)
+}
+
 func TestEndpointHTTPClientRejectsCrossOriginRedirect(t *testing.T) {
 	var targetHit atomic.Bool
 	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {

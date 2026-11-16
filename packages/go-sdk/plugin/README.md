@@ -46,6 +46,11 @@ numeric lexemes, null and empty containers. Rebuild backends and Go consumers
 against the pinned Go SDK and Frame modules and regenerate their exact contracts.
 The Frame cutover requires rebuilt backends and fresh host storage.
 
+Callback endpoints retain the captured canonical IPv4 loopback authority and
+explicit nonzero port. Their syntax is owned by the Go binding and generated
+into the TypeScript protocol; both bindings refuse query and fragment delimiters,
+including empty ones, before opening HTTP.
+
 The fixed published model observer, input, context and Tool proposal contracts are immutable
 process-wide values. Their schemas are compiled once by this package; checkpoint
 validation and callers share the admitted contract. `Descriptor` still returns

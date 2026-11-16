@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
 // Authentication is the RPC gate policy. The zero value is invalid so every
@@ -71,7 +73,8 @@ func (s *Server) protectRPC(next http.Handler) http.Handler {
 }
 
 func (s *Server) trustedLoopbackRequest(r *http.Request) bool {
-	if !localRequestAuthority(r) {
+	requestOrigin, trusted := localRequestOrigin(r)
+	if !trusted {
 		return false
 	}
 	origins := r.Header.Values("Origin")
@@ -82,14 +85,11 @@ func (s *Server) trustedLoopbackRequest(r *http.Request) bool {
 		return false
 	}
 	u, err := url.Parse(origins[0])
-	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || strings.ContainsRune(origins[0], '#') {
 		return false
 	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	return (u.Scheme == scheme && strings.EqualFold(u.Host, r.Host)) || slices.Contains(s.corsOrigins, origins[0])
+	origin, err := httporigin.FromURL(u)
+	return (err == nil && origin == requestOrigin) || slices.Contains(s.corsOrigins, origins[0])
 }
 
 // The auth-scheme is case-insensitive (RFC 9110 §11.1); the token is compared
@@ -106,28 +106,20 @@ func validBearer(header, expected string) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(expected)) == 1
 }
 
-func localRequestAuthority(r *http.Request) bool {
-	host, port, err := net.SplitHostPort(r.Host)
-	if err != nil {
-		// HTTP omits its default port in Host and Origin.
-		u := &url.URL{Host: r.Host}
-		host = u.Hostname()
-		if r.Host != host && r.Host != "["+host+"]" {
-			return false
-		}
-		port = "80"
-		if r.TLS != nil {
-			port = "443"
-		}
+func localRequestOrigin(r *http.Request) (httporigin.Origin, bool) {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
 	}
-	if !(strings.EqualFold(host, "localhost") || net.ParseIP(host).IsLoopback()) {
-		return false
+	endpoint, err := httporigin.ParseEndpoint(scheme + "://" + r.Host)
+	if err != nil || endpoint.URL().Path != "" || endpoint.HasQuery() || endpoint.HasFragment() || !endpoint.Loopback() {
+		return httporigin.Origin{}, false
 	}
 	if local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
 		_, actualPort, err := net.SplitHostPort(local.String())
-		if err != nil || port != actualPort {
-			return false
+		if err != nil || endpoint.Port() != actualPort {
+			return httporigin.Origin{}, false
 		}
 	}
-	return true
+	return endpoint.Origin(), true
 }

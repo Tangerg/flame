@@ -14,8 +14,11 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 
 	framemcp "github.com/Tangerg/frame/process/mcp"
 	framevalue "github.com/Tangerg/frame/value"
@@ -27,6 +30,12 @@ var ErrStaleCall = errors.New("plugin: callback call is no longer active")
 var ErrCallbackCapacity = errors.New("plugin: callback capacity exceeded")
 
 const CallbackMetadataKey = "io.github.tangerg.flame/callback.v1"
+
+const callbackScheme = "http"
+const callbackHost = "127.0.0.1"
+const callbackTokenBytes = 32
+
+var callbackEndpointSyntax = regexp.MustCompile("^" + callbackScheme + "://" + regexp.QuoteMeta(callbackHost) + ":[0-9]+/$")
 
 type callbackRefKey struct{}
 
@@ -88,12 +97,14 @@ type CallbackRef struct {
 }
 
 func (r CallbackRef) Validate() error {
-	endpoint, err := url.Parse(r.Endpoint)
-	if err != nil || endpoint.Scheme != "http" || endpoint.Hostname() != "127.0.0.1" || endpoint.Port() == "" || endpoint.Path != "/" || endpoint.RawQuery != "" || endpoint.User != nil || endpoint.Fragment != "" || r.MaxResponseBytes <= 0 || r.MaxResponseBytes == math.MaxInt64 {
+	if !callbackEndpointSyntax.MatchString(r.Endpoint) || r.MaxResponseBytes <= 0 || r.MaxResponseBytes == math.MaxInt64 {
 		return errors.New("plugin: callback reference is invalid")
 	}
+	if _, err := httporigin.ParseEndpoint(r.Endpoint); err != nil {
+		return fmt.Errorf("plugin: callback reference is invalid: %w", err)
+	}
 	for _, token := range []string{r.Credential, r.Call} {
-		if len(token) != 64 {
+		if len(token) != hex.EncodedLen(callbackTokenBytes) {
 			return errors.New("plugin: callback reference is invalid")
 		}
 		if _, err := hex.DecodeString(token); err != nil {
@@ -219,10 +230,8 @@ func (c *Callbacks) AdmitSession(session *sdk.ClientSession) error {
 }
 
 func callbackToken() string {
-	var token [32]byte
-	if _, err := rand.Read(token[:]); err != nil {
-		panic(err)
-	}
+	var token [callbackTokenBytes]byte
+	rand.Read(token[:])
 	return hex.EncodeToString(token[:])
 }
 
@@ -406,13 +415,13 @@ func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits
 		return CallbackRef{}, nil, ErrCallbackCapacity
 	}
 	if c.server == nil {
-		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		listener, err := net.Listen("tcp", net.JoinHostPort(callbackHost, "0"))
 		if err != nil {
 			c.mu.Unlock()
 			return CallbackRef{}, nil, fmt.Errorf("plugin: open callback endpoint: %w", err)
 		}
 		c.server = &http.Server{Handler: http.HandlerFunc(c.serve)}
-		c.endpoint = "http://" + listener.Addr().String() + "/"
+		c.endpoint = callbackScheme + "://" + listener.Addr().String() + "/"
 		c.served = make(chan struct{})
 		server, served := c.server, c.served
 		go func() {

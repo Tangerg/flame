@@ -110,3 +110,9 @@ Runtime's generator owns the typed Runtime operations and wire constraints.
 uncommitted, visible and durable outcomes retain their original I/O diagnostic.
 Applications consume that value without importing filesystem operations. The
 filesystem adapter remains responsible for establishing the physical evidence.
+
+`httporigin.Endpoint` admits one host identity and effective port for routing,
+origins and loopback policy. International domain names use the HTTP transport's IDNA lookup profile;
+invalid names and names that normalize to an empty host are refused before I/O.
+IP literals retain their zone identity. Parsed redirect URLs enter the same
+admission boundary without modifying the caller's URL.

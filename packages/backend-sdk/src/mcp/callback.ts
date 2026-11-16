@@ -12,6 +12,10 @@ import {
 } from "./contract.ts";
 import wire from "./protocol.generated.json";
 
+const callbackEndpointSyntax = new RegExp(
+  wire.constants.callbackEndpointPattern,
+);
+
 export interface CallbackRef {
   readonly endpoint: string;
   readonly credential: string;
@@ -27,22 +31,16 @@ export interface Invocation {
 export function callbackRef(value: unknown): CallbackRef {
   const ref: unknown = freezeJSON(value);
   exactFields(ref, ["endpoint", "credential", "call", "maxResponseBytes"]);
-  if (typeof ref.endpoint !== "string")
+  if (
+    typeof ref.endpoint !== "string" ||
+    !callbackEndpointSyntax.test(ref.endpoint)
+  )
     throw new Error("plugin: invalid callback reference");
   const endpoint = new URL(ref.endpoint);
   if (
-    endpoint.protocol !== "http:" ||
-    endpoint.hostname !== "127.0.0.1" ||
-    !endpoint.port ||
-    endpoint.pathname !== "/" ||
-    endpoint.search ||
-    endpoint.hash ||
-    endpoint.username ||
-    endpoint.password ||
-    typeof ref.credential !== "string" ||
-    !/^[a-fA-F0-9]{64}$/.test(ref.credential) ||
-    typeof ref.call !== "string" ||
-    !/^[a-fA-F0-9]{64}$/.test(ref.call) ||
+    endpoint.port === "0" ||
+    !isCallbackToken(ref.credential) ||
+    !isCallbackToken(ref.call) ||
     (typeof ref.maxResponseBytes === "number" &&
       !Number.isSafeInteger(ref.maxResponseBytes)) ||
     (typeof ref.maxResponseBytes !== "number" &&
@@ -57,6 +55,14 @@ export function callbackRef(value: unknown): CallbackRef {
     call: ref.call,
     maxResponseBytes: ref.maxResponseBytes,
   });
+}
+
+function isCallbackToken(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length === wire.constants.callbackTokenCharacters &&
+    !/[^a-fA-F0-9]/.test(value)
+  );
 }
 
 export function callbackFetch(

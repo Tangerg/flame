@@ -8,6 +8,8 @@
     "setupMethod": "io.github.tangerg.flame/operations.setup",
     "activateMethod": "io.github.tangerg.flame/operations.activate",
     "callbackMetadataKey": "io.github.tangerg.flame/callback.v1",
+    "callbackEndpointPattern": "^http://127\\.0\\.0\\.1:[0-9]+/$",
+    "callbackTokenCharacters": 64,
     "streamMetadataKey": "io.github.tangerg.flame/stream.v1",
     "CallHeader": "Flame-Call",
     "InvocationHeader": "Flame-Invocation",

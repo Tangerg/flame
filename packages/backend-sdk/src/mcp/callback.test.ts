@@ -1,9 +1,11 @@
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import { afterEach, expect, it } from "vitest";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import {
   callHost,
+  callbackRef,
   callbackFetch,
   decodeReply,
   Refusal,
@@ -11,6 +13,52 @@ import {
 } from "./callback.ts";
 import { declareMethod } from "./contract.ts";
 import wire from "./protocol.generated.json";
+
+const endpoints: { input: string; accepted: boolean }[] = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../go-sdk/plugin/mcp/testdata/callback-endpoints.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+const callbackReference = {
+  credential: "1".repeat(64),
+  call: "2".repeat(64),
+  maxResponseBytes: 4096,
+};
+
+it.each(endpoints.filter(({ accepted }) => accepted))(
+  "admits callback $input",
+  ({ input }) => {
+    expect(
+      callbackRef({ ...callbackReference, endpoint: input }).endpoint,
+    ).toBe(input);
+  },
+);
+
+it.each(endpoints.filter(({ accepted }) => !accepted))(
+  "refuses callback $input",
+  ({ input }) => {
+    expect(() =>
+      callbackRef({ ...callbackReference, endpoint: input }),
+    ).toThrow();
+  },
+);
+
+it.each(["credential", "call"])(
+  "refuses trailing control bytes in callback %s",
+  (field) => {
+    expect(() =>
+      callbackRef({
+        ...callbackReference,
+        endpoint: "http://127.0.0.1:17171/",
+        [field]: "a".repeat(64) + "\n",
+      }),
+    ).toThrow();
+  },
+);
 
 const servers: Server[] = [];
 afterEach(async () => {

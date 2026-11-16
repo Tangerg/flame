@@ -7,6 +7,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"golang.org/x/net/idna"
 )
 
 // Endpoint is an absolute HTTP(S) URL with a host, an in-range port and no
@@ -57,8 +60,33 @@ func endpointFromURL(u *url.URL) (Endpoint, error) {
 			return Endpoint{}, errors.New("port must be between 1 and 65535")
 		}
 	}
+	host := u.Hostname()
+	if address, err := netip.ParseAddr(host); err == nil {
+		host = address.String()
+	} else {
+		// Match net/http's ASCII admission; IDNA would reject existing internal
+		// names with underscores even though the transport accepts them.
+		if strings.ContainsFunc(host, func(char rune) bool { return char > unicode.MaxASCII }) {
+			var err error
+			host, err = idna.Lookup.ToASCII(host)
+			if err != nil {
+				return Endpoint{}, fmt.Errorf("hostname: %w", err)
+			}
+		}
+		host = strings.ToLower(host)
+	}
+	if host == "" {
+		return Endpoint{}, errors.New("an absolute URL with a host is required")
+	}
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	if port := u.Port(); port != "" {
+		host += ":" + port
+	}
 	normalized := *u
 	normalized.Scheme = scheme
+	normalized.Host = host
 	return Endpoint{url: normalized, fragment: u.Fragment != ""}, nil
 }
 
@@ -84,7 +112,7 @@ func (e Endpoint) Secure() bool { return e.url.Scheme == "https" }
 // Loopback reports a host that cannot leave this machine: the localhost name
 // or a loopback IP literal.
 func (e Endpoint) Loopback() bool {
-	return strings.EqualFold(e.url.Hostname(), "localhost") || e.LoopbackIP()
+	return e.url.Hostname() == "localhost" || e.LoopbackIP()
 }
 
 // LoopbackIP reports a loopback IP literal; unlike [Endpoint.Loopback] it never
@@ -97,6 +125,17 @@ func (e Endpoint) LoopbackIP() bool {
 func (e Endpoint) HasQuery() bool    { return e.url.RawQuery != "" || e.url.ForceQuery }
 func (e Endpoint) HasFragment() bool { return e.fragment }
 
+// Port includes the HTTP(S) default when the URL omits an explicit port.
+func (e Endpoint) Port() string {
+	if port := strings.TrimLeft(e.url.Port(), "0"); port != "" {
+		return port
+	}
+	if e.Secure() {
+		return "443"
+	}
+	return "80"
+}
+
 // IsOrigin reports an endpoint that names only its origin: no path beyond
 // "/", no query and no fragment.
 func (e Endpoint) IsOrigin() bool {
@@ -106,21 +145,8 @@ func (e Endpoint) IsOrigin() bool {
 
 func (e Endpoint) Origin() Origin {
 	host := e.url.Hostname()
-	if address, err := netip.ParseAddr(host); err == nil {
-		host = address.String()
-	} else {
-		host = strings.ToLower(host)
-	}
-	port := strings.TrimLeft(e.url.Port(), "0")
-	if port == "" {
-		if e.Secure() {
-			port = "443"
-		} else {
-			port = "80"
-		}
-	}
 	if strings.Contains(host, ":") {
 		host = "[" + host + "]"
 	}
-	return Origin{scheme: e.url.Scheme, host: host + ":" + port}
+	return Origin{scheme: e.url.Scheme, host: host + ":" + e.Port()}
 }

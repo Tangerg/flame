@@ -2466,6 +2466,10 @@
               "signature": "func() Origin"
             },
             {
+              "name": "Port",
+              "signature": "func() string"
+            },
+            {
               "name": "Secure",
               "signature": "func() bool"
             },
@@ -5804,6 +5808,16 @@
               "name": "CallbackMetadataKey",
               "type": "string",
               "tag": "json:\"callbackMetadataKey\""
+            },
+            {
+              "name": "CallbackEndpointPattern",
+              "type": "string",
+              "tag": "json:\"callbackEndpointPattern\""
+            },
+            {
+              "name": "CallbackTokenCharacters",
+              "type": "int",
+              "tag": "json:\"callbackTokenCharacters\""
             },
             {
               "name": "StreamMetadataKey",

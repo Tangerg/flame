@@ -2,6 +2,7 @@
 package mcp
 
 import (
+	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 
@@ -12,38 +13,42 @@ import (
 
 //go:generate go run ./cmd/protocolgen --out ../../../backend-sdk/src/mcp/protocol.generated.json
 type ProtocolConstants struct {
-	Protocol               string `json:"protocol"`
-	PortableProtocol       string `json:"portableProtocol"`
-	InvokeMethod           string `json:"invokeMethod"`
-	DescribeMethod         string `json:"describeMethod"`
-	ValidateMethod         string `json:"validateMethod"`
-	SetupMethod            string `json:"setupMethod"`
-	ActivateMethod         string `json:"activateMethod"`
-	CallbackMetadataKey    string `json:"callbackMetadataKey"`
-	StreamMetadataKey      string `json:"streamMetadataKey"`
-	CallHeader             string `json:"CallHeader"`
-	InvocationHeader       string `json:"InvocationHeader"`
-	InvocationMetadataKey  string `json:"InvocationMetadataKey"`
-	ReceiptMethod          string `json:"ReceiptMethod"`
-	MaxCommandIDCharacters int    `json:"maxCommandIDCharacters"`
+	Protocol                string `json:"protocol"`
+	PortableProtocol        string `json:"portableProtocol"`
+	InvokeMethod            string `json:"invokeMethod"`
+	DescribeMethod          string `json:"describeMethod"`
+	ValidateMethod          string `json:"validateMethod"`
+	SetupMethod             string `json:"setupMethod"`
+	ActivateMethod          string `json:"activateMethod"`
+	CallbackMetadataKey     string `json:"callbackMetadataKey"`
+	CallbackEndpointPattern string `json:"callbackEndpointPattern"`
+	CallbackTokenCharacters int    `json:"callbackTokenCharacters"`
+	StreamMetadataKey       string `json:"streamMetadataKey"`
+	CallHeader              string `json:"CallHeader"`
+	InvocationHeader        string `json:"InvocationHeader"`
+	InvocationMetadataKey   string `json:"InvocationMetadataKey"`
+	ReceiptMethod           string `json:"ReceiptMethod"`
+	MaxCommandIDCharacters  int    `json:"maxCommandIDCharacters"`
 }
 
 func ProtocolJSON() ([]byte, error) {
 	constants := ProtocolConstants{
-		Protocol:               plugincontract.Protocol,
-		PortableProtocol:       portable.Protocol,
-		InvokeMethod:           InvokeMethod,
-		DescribeMethod:         DescribeMethod,
-		ValidateMethod:         ValidateMethod,
-		SetupMethod:            SetupMethod,
-		ActivateMethod:         ActivateMethod,
-		CallbackMetadataKey:    CallbackMetadataKey,
-		StreamMetadataKey:      StreamMetadataKey,
-		CallHeader:             CallHeader,
-		InvocationHeader:       InvocationHeader,
-		InvocationMetadataKey:  InvocationMetadataKey,
-		ReceiptMethod:          ReceiptMethod,
-		MaxCommandIDCharacters: MaxCommandIDCharacters,
+		Protocol:                plugincontract.Protocol,
+		PortableProtocol:        portable.Protocol,
+		InvokeMethod:            InvokeMethod,
+		DescribeMethod:          DescribeMethod,
+		ValidateMethod:          ValidateMethod,
+		SetupMethod:             SetupMethod,
+		ActivateMethod:          ActivateMethod,
+		CallbackMetadataKey:     CallbackMetadataKey,
+		CallbackEndpointPattern: callbackEndpointSyntax.String(),
+		CallbackTokenCharacters: hex.EncodedLen(callbackTokenBytes),
+		StreamMetadataKey:       StreamMetadataKey,
+		CallHeader:              CallHeader,
+		InvocationHeader:        InvocationHeader,
+		InvocationMetadataKey:   InvocationMetadataKey,
+		ReceiptMethod:           ReceiptMethod,
+		MaxCommandIDCharacters:  MaxCommandIDCharacters,
 	}
 	receipt, err := ReceiptQuery()
 	if err != nil {
