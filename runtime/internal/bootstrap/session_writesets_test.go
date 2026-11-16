@@ -464,7 +464,7 @@ func TestApplyTerminalChargesGoalOwnedParkBeforeWorkflowDecision(t *testing.T) {
 	}
 	progressed, err := parked.Replace().AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 		Steps: 4,
-		Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)}},
+		Usage: testsupport.Usage(accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)}, nil),
 	}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)

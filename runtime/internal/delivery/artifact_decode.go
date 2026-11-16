@@ -311,26 +311,31 @@ func portableUsageFromArtifact(artifact *protocol.Usage) (*accounting.Usage, err
 	if err != nil {
 		return nil, err
 	}
-	out := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{
+	total := accounting.Totals{Tokens: accounting.Tokens{
 		InputTokens: artifact.InputTokens, OutputTokens: artifact.OutputTokens,
 		CacheReadTokens: artifact.CacheReadTokens, CacheWriteTokens: artifact.CacheWriteTokens,
 		ReasoningTokens: artifact.ReasoningTokens,
-	}, Cost: cost}}
+	}, Cost: cost}
+	var byModel map[string]accounting.Totals
 	if len(artifact.ByModel) != 0 {
-		out.ByModel = make(map[string]accounting.Totals, len(artifact.ByModel))
+		byModel = make(map[string]accounting.Totals, len(artifact.ByModel))
 		for model, values := range artifact.ByModel {
 			cost, err := accounting.CostFromOptional(values.CostUSD)
 			if err != nil {
 				return nil, fmt.Errorf("model %q: %w", model, err)
 			}
-			out.ByModel[model] = accounting.Totals{Tokens: accounting.Tokens{
+			byModel[model] = accounting.Totals{Tokens: accounting.Tokens{
 				InputTokens: values.InputTokens, OutputTokens: values.OutputTokens,
 				CacheReadTokens: values.CacheReadTokens, CacheWriteTokens: values.CacheWriteTokens,
 				ReasoningTokens: values.ReasoningTokens,
 			}, Cost: cost}
 		}
 	}
-	return out, nil
+	usage, err := accounting.NewUsage(total, byModel)
+	if err != nil {
+		return nil, err
+	}
+	return &usage, nil
 }
 
 func portableItemFromArtifact(sessionID, path string, artifact protocol.ArtifactItem) (transcript.Item, error) {

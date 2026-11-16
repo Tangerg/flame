@@ -101,15 +101,28 @@ func (incompleteObservationModel) Call(context.Context, *chat.Request) (*chat.Re
 }
 func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return func(yield func(*chat.ResponseDelta, error) bool) {
-		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewReasoningDelta("before", nil)}}, nil) {
+		const (
+			reasoningPartIndex = iota
+			textPartIndex
+			toolCallPartIndex
+		)
+		before := chat.NewReasoningDelta("before", nil)
+		before.Index = reasoningPartIndex
+		text := chat.NewTextDelta("prefix ")
+		text.Index = textPartIndex
+		after := chat.NewReasoningDelta("after", nil)
+		after.Index = reasoningPartIndex
+		toolCall := chat.NewToolCallDelta(chat.ToolCallDelta{ID: "unfinished", Name: "shell", Arguments: `{"command":`})
+		toolCall.Index = toolCallPartIndex
+		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{before}}, nil) {
 			return
 		}
 		for range 2048 {
-			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("prefix ")}}, nil) {
+			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{text}}, nil) {
 				return
 			}
 		}
-		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewReasoningDelta("after", nil), chat.NewToolCallDelta(chat.ToolCallDelta{ID: "unfinished", Name: "shell", Arguments: `{"command":`})}}, nil) {
+		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{after, toolCall}}, nil) {
 			return
 		}
 		yield(nil, errors.New("provider stream interrupted"))

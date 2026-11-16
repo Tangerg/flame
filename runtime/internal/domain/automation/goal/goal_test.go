@@ -272,7 +272,7 @@ func goalTestRun(t *testing.T, runID, incarnationID string, outcome run.Outcome,
 		if err != nil {
 			t.Fatal(err)
 		}
-		usage = &accounting.Usage{Total: accounting.Totals{Cost: cost}}
+		usage = testsupport.Usage(accounting.Totals{Cost: cost}, nil)
 	}
 	metrics, err := run.NewMetrics(usage, steps, time.Second)
 	if err != nil {

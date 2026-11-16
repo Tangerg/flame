@@ -26,8 +26,8 @@ type Metrics struct {
 func NewMetrics(usage *accounting.Usage, steps int, activeDuration time.Duration) (Metrics, error) {
 	metrics := Metrics{steps: steps, activeDuration: activeDuration}
 	if usage != nil {
-		cloned := usage.Clone()
-		metrics.usage = &cloned
+		owned := *usage
+		metrics.usage = &owned
 	}
 	if err := metrics.Validate(); err != nil {
 		return Metrics{}, err
@@ -51,23 +51,24 @@ func RestoreUnreportedMetrics(models []string, steps int, duration time.Duration
 			return Metrics{}, errors.New("run: duplicate unreported model")
 		}
 	}
-	return m, m.Validate()
+	if err := m.Validate(); err != nil {
+		return Metrics{}, err
+	}
+	return m, nil
 }
 func (m Metrics) UnreportedModels() []string { return slices.Clone(m.unreportedModels) }
 func (m Metrics) WithActiveDuration(duration time.Duration) (Metrics, error) {
 	m.activeDuration = duration
-	return m, m.Validate()
+	if err := m.Validate(); err != nil {
+		return Metrics{}, err
+	}
+	return m, nil
 }
 
 // Validate reports whether the cumulative values are internally consistent.
 func (m Metrics) Validate() error {
 	if m.steps < 0 || m.activeDuration < 0 {
 		return errors.New("run: metrics must not be negative")
-	}
-	if m.usage != nil {
-		if err := m.usage.Validate(); err != nil {
-			return fmt.Errorf("run: metrics: %w", err)
-		}
 	}
 	return nil
 }
@@ -85,13 +86,17 @@ func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 		return errors.New("run: cumulative metrics regressed")
 	}
 	if len(previous.unreportedModels) > 0 {
+		var byModel map[string]accounting.Totals
+		if m.usage != nil {
+			byModel = m.usage.ByModel()
+		}
 		for _, model := range previous.unreportedModels {
 			if m.usage == nil {
 				if _, found := slices.BinarySearch(m.unreportedModels, model); !found {
 					return errors.New("run: unreported model attribution disappeared")
 				}
-			} else if m.usage.ByModel != nil {
-				part, found := m.usage.ByModel[model]
+			} else if byModel != nil {
+				part, found := byModel[model]
 				if !found || part.Cost != (accounting.Cost{}) {
 					return errors.New("run: unreported model became priced or disappeared")
 				}
@@ -119,12 +124,11 @@ func (m Metrics) Equal(other Metrics) bool {
 	return m.usage.Equal(*other.usage)
 }
 
-// Usage returns an ownership-isolated cumulative usage value.
 func (m Metrics) Usage() (accounting.Usage, bool) {
 	if m.usage == nil {
 		return accounting.Usage{}, false
 	}
-	return m.usage.Clone(), true
+	return *m.usage, true
 }
 
 // Cost is exact zero for a Run that dispatched no model call and unpriced for
@@ -136,7 +140,7 @@ func (m Metrics) Cost() (accounting.Cost, error) {
 		}
 		return accounting.Cost{}, nil
 	}
-	return m.usage.Total.Cost, nil
+	return m.usage.Total().Cost, nil
 }
 
 // Steps counts physically dispatched model calls, including unknown outcomes.
@@ -184,7 +188,7 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accoun
 		usage, err = m.usage.Accrue(model, delta)
 	case m.steps > 0 && len(m.unreportedModels) == 0:
 		delta.Cost = accounting.Cost{}
-		usage = accounting.Usage{Total: delta}
+		usage, err = accounting.NewUsage(delta, nil)
 	default:
 		parts := map[string]accounting.Totals{model: delta}
 		for _, prior := range m.unreportedModels {

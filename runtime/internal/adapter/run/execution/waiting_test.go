@@ -699,13 +699,17 @@ func rootRunMetricsForCheckpoint(checkpoint runs.ExecutorCheckpoint) run.Metrics
 	if len(calls) == 0 {
 		return run.Metrics{}
 	}
-	usage := &accounting.Usage{ByModel: make(map[string]accounting.Totals, len(calls))}
+	byModel := make(map[string]accounting.Totals, len(calls))
 	steps := 0
 	for model, count := range calls {
-		usage.ByModel[model] = accounting.Totals{}
+		byModel[model] = accounting.Totals{}
 		steps += count
 	}
-	metrics, err := run.NewMetrics(usage, steps, 0)
+	usage, err := accounting.AttributedUsage(byModel)
+	if err != nil {
+		panic(err)
+	}
+	metrics, err := run.NewMetrics(&usage, steps, 0)
 	if err != nil {
 		panic(err)
 	}

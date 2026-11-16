@@ -178,8 +178,9 @@ func retainedUsageBytes(usage *accounting.Usage) int {
 	if usage == nil {
 		return 0
 	}
-	bytes := len(usage.ByModel) * retainedMapEntryBytes
-	for model := range usage.ByModel {
+	byModel := usage.ByModel()
+	bytes := len(byModel) * retainedMapEntryBytes
+	for model := range byModel {
 		bytes += len(model)
 	}
 	return bytes

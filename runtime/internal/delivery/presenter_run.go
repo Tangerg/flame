@@ -170,10 +170,10 @@ func presentUsage(usage *accounting.Usage) *protocol.Usage {
 	if usage == nil {
 		return nil
 	}
-	out := &protocol.Usage{ModelUsage: presentModelUsage(usage.Total)}
-	if len(usage.ByModel) > 0 {
-		out.ByModel = make(map[string]protocol.ModelUsage, len(usage.ByModel))
-		for model, modelUsage := range usage.ByModel {
+	out := &protocol.Usage{ModelUsage: presentModelUsage(usage.Total())}
+	if byModel := usage.ByModel(); len(byModel) > 0 {
+		out.ByModel = make(map[string]protocol.ModelUsage, len(byModel))
+		for model, modelUsage := range byModel {
 			out.ByModel[model] = presentModelUsage(modelUsage)
 		}
 	}

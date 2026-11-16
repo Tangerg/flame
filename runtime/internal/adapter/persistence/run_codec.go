@@ -140,17 +140,18 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 	if usage == nil {
 		return nil
 	}
+	total, byModel := usage.Total(), usage.ByModel()
 	row := &runUsageRow{
-		InputTokens:      usage.Total.InputTokens,
-		OutputTokens:     usage.Total.OutputTokens,
-		CacheReadTokens:  usage.Total.CacheReadTokens,
-		CacheWriteTokens: usage.Total.CacheWriteTokens,
-		ReasoningTokens:  usage.Total.ReasoningTokens,
-		CostNanoUSD:      usage.Total.Cost.OptionalNanoUSD(),
+		InputTokens:      total.InputTokens,
+		OutputTokens:     total.OutputTokens,
+		CacheReadTokens:  total.CacheReadTokens,
+		CacheWriteTokens: total.CacheWriteTokens,
+		ReasoningTokens:  total.ReasoningTokens,
+		CostNanoUSD:      total.Cost.OptionalNanoUSD(),
 	}
-	if len(usage.ByModel) > 0 {
-		row.ByModel = make(map[string]runModelRowUse, len(usage.ByModel))
-		for model, perModel := range usage.ByModel {
+	if len(byModel) > 0 {
+		row.ByModel = make(map[string]runModelRowUse, len(byModel))
+		for model, perModel := range byModel {
 			row.ByModel[model] = runModelRowUse{
 				InputTokens:      perModel.InputTokens,
 				OutputTokens:     perModel.OutputTokens,
@@ -415,7 +416,7 @@ func (r runUsageRow) usage() (*accounting.Usage, error) {
 	if err != nil {
 		return nil, err
 	}
-	usage := &accounting.Usage{Total: accounting.Totals{
+	total := accounting.Totals{
 		Tokens: accounting.Tokens{
 			InputTokens:      r.InputTokens,
 			OutputTokens:     r.OutputTokens,
@@ -424,15 +425,16 @@ func (r runUsageRow) usage() (*accounting.Usage, error) {
 			ReasoningTokens:  r.ReasoningTokens,
 		},
 		Cost: cost,
-	}}
+	}
+	var byModel map[string]accounting.Totals
 	if len(r.ByModel) > 0 {
-		usage.ByModel = make(map[string]accounting.Totals, len(r.ByModel))
+		byModel = make(map[string]accounting.Totals, len(r.ByModel))
 		for model, perModel := range r.ByModel {
 			cost, err := accounting.CostFromOptionalNanoUSD(perModel.CostNanoUSD)
 			if err != nil {
 				return nil, fmt.Errorf("model %q: %w", model, err)
 			}
-			usage.ByModel[model] = accounting.Totals{
+			byModel[model] = accounting.Totals{
 				Tokens: accounting.Tokens{
 					InputTokens:      perModel.InputTokens,
 					OutputTokens:     perModel.OutputTokens,
@@ -444,7 +446,11 @@ func (r runUsageRow) usage() (*accounting.Usage, error) {
 			}
 		}
 	}
-	return usage, nil
+	usage, err := accounting.NewUsage(total, byModel)
+	if err != nil {
+		return nil, err
+	}
+	return &usage, nil
 }
 
 func (row runProblemRow) failure() (rundomain.Failure, error) {

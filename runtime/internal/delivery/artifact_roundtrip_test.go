@@ -42,6 +42,18 @@ func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
 	}
 }
 
+func TestArtifactUsageRejectsConflictingTotalAtAdmission(t *testing.T) {
+	artifact := &protocol.Usage{
+		ModelUsage: protocol.ModelUsage{InputTokens: 9},
+		ByModel: map[string]protocol.ModelUsage{
+			"model": {InputTokens: 2},
+		},
+	}
+	if usage, err := portableUsageFromArtifact(artifact); err == nil || usage != nil {
+		t.Fatalf("contradictory artifact produced domain usage: %+v, %v", usage, err)
+	}
+}
+
 // TestArtifactRoundTripsEveryFieldItCarries checks the complete current artifact.
 //
 // The failure mode a version bump actually has is a field the encoder writes and
@@ -403,18 +415,15 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Finished,
 		ModelSelection: selection, Ending: run.Canceled{Detail: "user stopped execution"},
 		UnresolvedEffects: []run.UnresolvedEffect{effect},
-		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
-			Total: accounting.Totals{
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: testsupport.Usage(accounting.Totals{
+			InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
+			CacheWriteTokens: 3, ReasoningTokens: 7, Cost: testsupport.OptionalCost(&cost),
+		}, map[string]accounting.Totals{
+			"claude-opus-5": {
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
 				CacheWriteTokens: 3, ReasoningTokens: 7, Cost: testsupport.OptionalCost(&cost),
 			},
-			ByModel: map[string]accounting.Totals{
-				"claude-opus-5": {
-					InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
-					CacheWriteTokens: 3, ReasoningTokens: 7, Cost: testsupport.OptionalCost(&cost),
-				},
-			},
-		},
+		}),
 			Steps:          2,
 			ActiveDuration: 1500 * time.Millisecond}),
 		ContextTokens: 198_000,

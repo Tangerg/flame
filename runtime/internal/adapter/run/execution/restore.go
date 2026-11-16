@@ -351,7 +351,7 @@ func accountingFromRunMetrics(
 	if metrics.Steps() == 0 {
 		return emptyRunMetricsAccounting(reported, callsByModel)
 	}
-	result, err := modelUsageFromRunMetrics(usage.ByModel, callsByModel)
+	result, err := modelUsageFromRunMetrics(usage.ByModel(), callsByModel)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func accountingFromRunMetrics(
 	if err != nil {
 		return nil, err
 	}
-	if total.Calls != metrics.Steps() || (reported && !sameTranscriptUsage(total, usage.Total)) {
+	if total.Calls != metrics.Steps() || (reported && !sameTranscriptUsage(total, usage.Total())) {
 		return nil, errors.New("product metrics differ from reconstructed executor accounting")
 	}
 	return result, nil

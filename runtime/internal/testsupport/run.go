@@ -193,6 +193,14 @@ func Cost(usd float64) accounting.Cost {
 	return cost
 }
 
+func Usage(total accounting.Totals, byModel map[string]accounting.Totals) *accounting.Usage {
+	usage, err := accounting.NewUsage(total, byModel)
+	if err != nil {
+		panic(err)
+	}
+	return &usage
+}
+
 // OptionalCost converts a test fixture's optional dollar amount; nil is unpriced.
 func OptionalCost(usd *float64) accounting.Cost {
 	cost, err := accounting.CostFromOptional(usd)

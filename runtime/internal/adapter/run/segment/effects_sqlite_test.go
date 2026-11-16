@@ -343,7 +343,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		CallID: "model_call_1", SegmentID: "seg_model", State: modelref.InvocationCompleted,
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
-	usage := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}}
+	usage := testsupport.Usage(accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}, nil)
 	wrongSegment := testsupport.MustProgressedRun(
 		run.Draft{RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_wrong", CreatedAt: startedAt},
 		testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), 0, finishedAt,
@@ -389,7 +389,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	persistedRun, found, err := runState.Run(ctx, "run_model")
 	persistedUsage, reported := persistedRun.Metrics().Usage()
 	if err != nil || !found || persistedRun.Metrics().Steps() != 1 || !reported ||
-		persistedUsage.Total.InputTokens != 2 || persistedUsage.Total.OutputTokens != 1 {
+		persistedUsage.Total().InputTokens != 2 || persistedUsage.Total().OutputTokens != 1 {
 		t.Fatalf("Run accounting after commit = %#v found=%v err=%v", persistedRun.Metrics(), found, err)
 	}
 }
@@ -953,7 +953,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	}
 	finishedAt := created.Add(time.Second)
 	updated, err = updated.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2,
-		Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)}}}), 0, finishedAt)
+		Usage: testsupport.Usage(accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)}, nil)}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance Run metrics: %v", err)
 	}
@@ -2295,7 +2295,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		return runInTxErr
 	}
 	ambiguousEffects := mustNewEffects(ambiguousConfig)
-	usage := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}}
+	usage := testsupport.Usage(accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}, nil)
 	commit := runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_complete"),

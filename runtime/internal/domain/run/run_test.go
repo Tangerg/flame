@@ -20,6 +20,15 @@ func mustRunSelection(t testing.TB) modelchoice.Selection {
 	return selection
 }
 
+func mustRunUsage(t testing.TB, total accounting.Totals, byModel map[string]accounting.Totals) accounting.Usage {
+	t.Helper()
+	usage, err := accounting.NewUsage(total, byModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return usage
+}
+
 func TestRunTransitionsRefuseUnrepresentableInstants(t *testing.T) {
 	current, err := Admit(Draft{
 		RunID: "run_time", SessionID: "ses_time", SegmentID: "seg_time",
@@ -138,9 +147,7 @@ func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	metrics, err := NewMetrics(&accounting.Usage{
-		Total: accounting.Totals{InputTokens: 3, OutputTokens: 2, Cost: cost},
-	}, 1, 2*time.Second)
+	metrics, err := NewMetrics(new(mustRunUsage(t, accounting.Totals{InputTokens: 3, OutputTokens: 2, Cost: cost}, nil)), 1, 2*time.Second)
 	if err != nil {
 		t.Fatalf("NewMetrics: %v", err)
 	}
@@ -441,22 +448,19 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	usage := accounting.Usage{
-		Total:   accounting.Totals{InputTokens: 1, Cost: cost},
-		ByModel: map[string]accounting.Totals{"model": {InputTokens: 1, Cost: cost}},
-	}
+	usage := mustRunUsage(t, accounting.Totals{InputTokens: 1, Cost: cost}, map[string]accounting.Totals{"model": {InputTokens: 1, Cost: cost}})
 	metrics, err := NewMetrics(&usage, 1, 0)
 	if err != nil {
 		t.Fatalf("NewMetrics: %v", err)
 	}
-	usage.ByModel["model"] = accounting.Totals{InputTokens: 99}
+	usage.ByModel()["model"] = accounting.Totals{InputTokens: 99}
 	reported, ok := metrics.Usage()
 	if !ok {
 		t.Fatal("metrics lost usage")
 	}
-	reported.ByModel["model"] = accounting.Totals{InputTokens: 100}
+	reported.ByModel()["model"] = accounting.Totals{InputTokens: 100}
 	reportedAgain, _ := metrics.Usage()
-	if got := reportedAgain.ByModel["model"].InputTokens; got != 1 {
+	if got := reportedAgain.ByModel()["model"].InputTokens; got != 1 {
 		t.Fatalf("metrics usage changed through an external map: %d", got)
 	}
 }

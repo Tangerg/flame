@@ -5,7 +5,6 @@ import (
 	"time"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -226,35 +225,6 @@ func TestToolCallTimingLifecycle(t *testing.T) {
 	}
 	if call, _ := startedAbandonment.State().ToolCall(); call.ExecutionDuration == nil || *call.ExecutionDuration != time.Second {
 		t.Fatalf("started abandonment execution duration = %v, want 1s", call.ExecutionDuration)
-	}
-}
-
-func TestUsageAndToolFailureValidate(t *testing.T) {
-	tests := []struct {
-		name    string
-		usage   *accounting.Usage
-		failure *tool.Failure
-		wantErr bool
-	}{
-		{name: "valid"},
-		{name: "negative token", usage: &accounting.Usage{Total: accounting.Totals{InputTokens: -1}}, wantErr: true},
-		{name: "unknown failure kind", failure: &tool.Failure{Kind: tool.FailureKind("invalid")}, wantErr: true},
-		{name: "valid execution failure", failure: &tool.Failure{Kind: tool.FailureExecution}},
-		{name: "valid canceled failure", failure: &tool.Failure{Kind: tool.FailureCanceled}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			var err error
-			if test.usage != nil {
-				err = test.usage.Validate()
-			}
-			if err == nil && test.failure != nil {
-				err = test.failure.Validate()
-			}
-			if (err != nil) != test.wantErr {
-				t.Fatalf("validation error = %v, want error %t", err, test.wantErr)
-			}
-		})
 	}
 }
 

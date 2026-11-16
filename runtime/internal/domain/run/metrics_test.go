@@ -27,6 +27,30 @@ func TestMetricsCostSeparatesNoDispatchFromUnreportedUsage(t *testing.T) {
 	}
 }
 
+func TestMetricsFailedConstructionReturnsNoPartialValue(t *testing.T) {
+	base, err := RestoreUnreportedMetrics([]string{"served-model"}, 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name      string
+		construct func() (Metrics, error)
+	}{
+		{name: "initial", construct: func() (Metrics, error) { return NewMetrics(nil, -1, 0) }},
+		{name: "restore", construct: func() (Metrics, error) {
+			return RestoreUnreportedMetrics([]string{"served-model"}, 1, -1)
+		}},
+		{name: "duration", construct: func() (Metrics, error) { return base.WithActiveDuration(-1) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			value, err := test.construct()
+			if err == nil || !value.Equal(Metrics{}) {
+				t.Fatalf("invalid construction published a partial value: %+v, %v", value, err)
+			}
+		})
+	}
+}
+
 func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	metrics, err := NewMetrics(nil, 0, 0)
 	if err != nil {
@@ -39,7 +63,7 @@ func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	if _, reported := next.Usage(); reported || next.Steps() != 1 {
 		t.Fatal("unreported source became zero usage")
 	}
-	usage := accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: math.MaxInt64}}}
+	usage := mustRunUsage(t, accounting.Totals{Tokens: accounting.Tokens{InputTokens: math.MaxInt64}}, nil)
 	metrics, err = NewMetrics(&usage, 1, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +71,7 @@ func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	if _, err := metrics.AccrueModelCall("served-model", &chat.Usage{InputTokens: 1}, accounting.Cost{}); err == nil {
 		t.Fatal("recovered usage overflowed silently")
 	}
-	if value, _ := metrics.Usage(); value.Total.InputTokens != math.MaxInt64 {
+	if value, _ := metrics.Usage(); value.Total().InputTokens != math.MaxInt64 {
 		t.Fatal("rejected recovery mutated prior metrics")
 	}
 }
@@ -80,14 +104,14 @@ func TestModelCallAccountingKeepsUnknownPriceAcrossCallOrder(t *testing.T) {
 			}
 			accrue("unknown-model", &chat.Usage{InputTokens: 3, OutputTokens: 1}, price)
 			usage, reported := current.Usage()
-			if !reported || current.Steps() != 3 || usage.Total.InputTokens != 10 || usage.Total.OutputTokens != 3 || usage.Total.Cost != (accounting.Cost{}) {
+			if !reported || current.Steps() != 3 || usage.Total().InputTokens != 10 || usage.Total().OutputTokens != 3 || usage.Total().Cost != (accounting.Cost{}) {
 				t.Fatalf("consumption = %+v, steps=%d", usage, current.Steps())
 			}
-			if unknown, present := usage.ByModel["unknown-model"]; present && unknown.Cost != (accounting.Cost{}) {
+			if unknown, present := usage.ByModel()["unknown-model"]; present && unknown.Cost != (accounting.Cost{}) {
 				t.Fatalf("later known response erased original unknown price: %+v", unknown)
 			}
-			if known := usage.ByModel["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 || !known.Cost.Equal(price) {
-				t.Fatalf("unreported calls erased a known model breakdown: %+v", usage.ByModel)
+			if known := usage.ByModel()["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 || !known.Cost.Equal(price) {
+				t.Fatalf("unreported calls erased a known model breakdown: %+v", usage.ByModel())
 			}
 		})
 	}
@@ -111,7 +135,7 @@ func TestAnotherModelsMissingPriceDoesNotChangeAKnownSubtotal(t *testing.T) {
 			}
 		}
 		usage, _ := metrics.Usage()
-		if !usage.ByModel["b"].Cost.Equal(price) || usage.Total.Cost != (accounting.Cost{}) {
+		if !usage.ByModel()["b"].Cost.Equal(price) || usage.Total().Cost != (accounting.Cost{}) {
 			t.Fatalf("costs for %v: %+v", models, usage)
 		}
 	}

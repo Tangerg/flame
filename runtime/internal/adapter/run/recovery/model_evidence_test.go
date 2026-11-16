@@ -94,7 +94,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				t.Fatal(err)
 			}
 			previous := accounting.Totals{Tokens: accounting.Tokens{InputTokens: 5, OutputTokens: 2}, Cost: testsupport.Cost(0.5)}
-			metrics, err := run.NewMetrics(&accounting.Usage{Total: previous, ByModel: map[string]accounting.Totals{"captured-model": previous}}, 1, time.Second)
+			metrics, err := run.NewMetrics(testsupport.Usage(previous, map[string]accounting.Totals{"captured-model": previous}), 1, time.Second)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -184,14 +184,14 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 					wantInput += test.input
 				}
 			}
-			if !ok || usage.Total.InputTokens != wantInput || usage.Total.OutputTokens != 2 || recovered.Metrics().Steps() != wantSteps || !testsupport.RunFailed(recovered) {
+			if !ok || usage.Total().InputTokens != wantInput || usage.Total().OutputTokens != 2 || recovered.Metrics().Steps() != wantSteps || !testsupport.RunFailed(recovered) {
 				t.Fatalf("recovery consumption=%+v steps=%d", usage, recovered.Metrics().Steps())
 			}
 			if test.independent && recovered.ContextTokens() != 5 {
 				t.Fatalf("independent recovery recalibrated primary context: %d", recovered.ContextTokens())
 			}
-			if (usage.Total.Cost.OptionalUSD() == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total.Cost.OptionalUSD() != *test.wantCost) {
-				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total.Cost.OptionalUSD())
+			if (usage.Total().Cost.OptionalUSD() == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total().Cost.OptionalUSD() != *test.wantCost) {
+				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total().Cost.OptionalUSD())
 			}
 			loadedGoal, err := goalStore.Get(t.Context(), draft.SessionID)
 			if err != nil {
@@ -352,7 +352,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal(err)
 	}
 	usage, ok := recovered.Metrics().Usage()
-	if !ok || usage.Total.InputTokens != 9007199254741005 || usage.Total.OutputTokens != 6 || usage.Total.Cost.OptionalUSD() != nil || recovered.Metrics().Steps() != 4 || recovered.ContextTokens() != 5 {
+	if !ok || usage.Total().InputTokens != 9007199254741005 || usage.Total().OutputTokens != 6 || usage.Total().Cost.OptionalUSD() != nil || recovered.Metrics().Steps() != 4 || recovered.ContextTokens() != 5 {
 		t.Fatalf("independent accrual: %+v steps=%d context=%d", usage, recovered.Metrics().Steps(), recovered.ContextTokens())
 	}
 
