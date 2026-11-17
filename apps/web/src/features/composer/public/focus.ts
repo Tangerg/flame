@@ -1,7 +1,7 @@
 import { type ComposerAccess } from "@/features/composer/public/composer";
 
-export function focusComposer(composerAccess: ComposerAccess, selectionEnd?: number): void {
-  composerAccess.focus(selectionEnd);
+export function focusComposer(composerAccess: ComposerAccess): void {
+  composerAccess.focus();
 }
 
 export function captureComposerFocus(composerAccess: ComposerAccess): () => void {
@@ -10,10 +10,9 @@ export function captureComposerFocus(composerAccess: ComposerAccess): () => void
 
 export function registerComposerFocusTarget(
   composerAccess: ComposerAccess,
-  element: HTMLTextAreaElement | null,
-  synchronizeSelection?: () => void,
+  element: HTMLElement | null,
 ): () => void {
-  return composerAccess.registerFocusTarget(element, synchronizeSelection);
+  return composerAccess.registerFocusTarget(element);
 }
 
 export function registerComposerFocusPresentation(

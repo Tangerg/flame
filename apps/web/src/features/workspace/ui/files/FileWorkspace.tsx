@@ -3,7 +3,6 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
-  Component,
   Fragment,
   useCallback,
   useId,
@@ -15,7 +14,6 @@ import {
   type FormEvent,
   type KeyboardEventHandler,
   type MouseEvent,
-  type ReactNode,
   type Ref,
   type RefObject,
 } from "react";
@@ -38,8 +36,7 @@ import {
   isImeKey,
   selectAllInReader,
   TextField,
-  useCopyFeedback,
-  useContentVisible,
+  useCopy,
   vocab,
 } from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -57,7 +54,6 @@ import {
 } from "@/features/agent/public/session";
 import {
   type WorkspaceFileContent,
-  useWorkspaceListFiles,
   useWorkspaceReadFile,
 } from "@/features/workspace/application/workspaceQueries";
 import {
@@ -69,7 +65,6 @@ import { type WorkspaceFileViewer } from "@/features/workspace/application/navig
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
 import { useRendererChoice } from "@/features/plugins/public/renderers";
 import { fileRendererCandidates } from "@/features/workspace/application/fileRenderer";
-import { type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
 import { SystemMessage } from "@/ui/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 const WINDOW_RADIUS = 200;
@@ -111,7 +106,42 @@ const fp = stylex.create({
 interface LocalFileActions {
   open: (cwd: string, path: string) => void;
   reveal: (cwd: string, path: string) => void;
-  feedback: (focusTarget: RefObject<HTMLElement | null>) => ReactNode;
+  failure?: string;
+  dismissFeedback(): void;
+}
+
+function LocalFileFeedback({
+  actions,
+  focusTarget,
+}: {
+  actions: LocalFileActions;
+  focusTarget: RefObject<HTMLElement | null>;
+}) {
+  const t = useT();
+  if (actions.failure === undefined) return null;
+  return (
+    <div {...stylex.props(fp.feedback)}>
+      <SystemMessage
+        variant="error"
+        data-slot="local-file-feedback"
+        action={{
+          label: t("common.close"),
+          onClick: () => {
+            const host = focusTarget.current;
+            const active = host?.ownerDocument.activeElement;
+            if (
+              active instanceof HTMLElement &&
+              active.closest('[data-slot="local-file-feedback"]')
+            )
+              host?.focus({ preventScroll: true });
+            actions.dismissFeedback();
+          },
+        }}
+      >
+        {actions.failure}
+      </SystemMessage>
+    </div>
+  );
 }
 
 interface LineWindow {
@@ -149,33 +179,8 @@ export function FileWorkspace() {
         t("file.revealFailed", { path }),
       );
     },
-    feedback(focusTarget) {
-      if (feedback.state !== "error") return undefined;
-      return (
-        <div {...stylex.props(fp.feedback)}>
-          <SystemMessage
-            variant="error"
-            data-slot="local-file-feedback"
-            action={{
-              label: t("common.close"),
-              onClick: () => {
-                const host = focusTarget.current;
-                const active = host?.ownerDocument.activeElement;
-                if (
-                  active instanceof HTMLElement &&
-                  active.closest('[data-slot="local-file-feedback"]')
-                ) {
-                  host?.focus({ preventScroll: true });
-                }
-                reset();
-              },
-            }}
-          >
-            {feedback.reason}
-          </SystemMessage>
-        </div>
-      );
-    },
+    failure: feedback.state === "error" ? feedback.reason : undefined,
+    dismissFeedback: reset,
   };
   const restoreFocus = useCallback((item: HTMLElement) => {
     if (!returnFocus.current) return;
@@ -194,7 +199,9 @@ export function FileWorkspace() {
       backRef.current?.focus({ preventScroll: true });
     } else if (previous) {
       returnFocus.current = true;
-      const item = panel.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+      const item =
+        panel.querySelector<HTMLElement>('[role="row"][tabindex="0"]') ??
+        panel.querySelector<HTMLElement>('[role="treegrid"]');
       if (item) restoreFocus(item);
     }
   }, [viewer, restoreFocus]);
@@ -225,60 +232,6 @@ export function FileWorkspace() {
   );
 }
 
-interface FileContentLayoutProps extends ViewHeaderProps {
-  viewport: RefObject<HTMLDivElement | null>;
-  scrollLabel?: string;
-  onScrollKeyDown?: KeyboardEventHandler<HTMLDivElement>;
-  onScrollCopy?: ClipboardEventHandler<HTMLDivElement>;
-  notice?: ReactNode;
-  children: ReactNode;
-}
-
-function visibleInViewport(viewport: HTMLElement, row: HTMLElement): boolean {
-  const bounds = viewport.getBoundingClientRect();
-  const inset = viewport.clientTop;
-  const rect = row.getBoundingClientRect();
-  return (
-    bounds.height > 0 && rect.top >= bounds.top + inset && rect.bottom <= bounds.bottom - inset
-  );
-}
-
-// A pre-mutation snapshot distinguishes layout displacement from a user who scrolled away.
-class FileContentLayout extends Component<FileContentLayoutProps, unknown, HTMLElement | null> {
-  override getSnapshotBeforeUpdate(): HTMLElement | null {
-    const viewport = this.props.viewport.current;
-    const active = viewport?.ownerDocument.activeElement;
-    return viewport &&
-      active instanceof HTMLElement &&
-      viewport.contains(active) &&
-      visibleInViewport(viewport, active)
-      ? active
-      : null;
-  }
-
-  override componentDidUpdate(
-    _previousProps: FileContentLayoutProps,
-    _previousState: unknown,
-    row: HTMLElement | null,
-  ) {
-    const viewport = this.props.viewport.current;
-    if (
-      row &&
-      viewport &&
-      row.ownerDocument.activeElement === row &&
-      viewport.contains(row) &&
-      !visibleInViewport(viewport, row)
-    ) {
-      row.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-  }
-
-  override render() {
-    const { viewport, ...layout } = this.props;
-    return <WorkspaceViewLayout {...layout} scrollInset="flush" scrollRef={viewport} />;
-  }
-}
-
 function FileBrowser({
   workspace,
   restoreFocus,
@@ -292,70 +245,31 @@ function FileBrowser({
 
   const t = useT();
   const cwd = resolvedWorkspaceCwd(workspace);
-  const visible = useContentVisible();
-  const query = useWorkspaceListFiles(
-    isWorkspaceResolving(workspace) ? undefined : { cwd },
-    visible,
-  );
   const scrollPort = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    const item = scrollPort.current?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
-    if (item) restoreFocus(item);
-  }, [query.data, restoreFocus]);
-  // A failed refresh of this query's accepted files keeps them, and the tree's cursor, in place.
-  const retained = query.data !== undefined;
-  const refreshFeedback =
-    retained && query.error != null ? (
-      query.isFetching ? (
-        <SkeletonList count={1} variant="compact" label={t("common.loading")} />
-      ) : (
-        <div role="status">
-          <DataError
-            failure={query.error}
-            focusTarget={treeRef}
-            unsupported={{ icon: "folder", sub: t("file.refreshError.sub"), size: "compact" }}
-            onRetry={query.refetch}
-            title={t("file.refreshError.title")}
-            sub={t("file.refreshError.sub")}
-            size="compact"
-          />
-        </div>
-      )
-    ) : undefined;
+    if (treeRef.current) restoreFocus(treeRef.current);
+  }, [restoreFocus]);
   return (
-    <FileContentLayout
-      viewport={scrollPort}
-      notice={
-        <>
-          {refreshFeedback}
-          {fileActions.feedback(treeRef)}
-        </>
-      }
+    <WorkspaceViewLayout
+      scrollRef={scrollPort}
+      scrollInset="flush"
+      notice={<LocalFileFeedback actions={fileActions} focusTarget={treeRef} />}
     >
-      <DataView
-        items={query.data}
-        isLoading={query.isPending || isWorkspaceResolving(workspace)}
-        failure={retained ? undefined : query.error}
-        onRetry={query.refetch}
-        unsupported={{ icon: "folder" }}
-        skeletonCount={8}
-        empty={{ icon: "folder", title: t("file.empty.title"), sub: t("file.empty.sub") }}
-      >
-        {(entries) => (
-          <FileTree
-            key={cwd}
-            ref={treeRef}
-            entries={entries}
-            cwd={cwd}
-            onSelectFile={openWorkspaceFile.bind(null, workspaceAccess)}
-            onReveal={(path) => {
-              if (cwd) fileActions.reveal(cwd, path);
-            }}
-          />
-        )}
-      </DataView>
-    </FileContentLayout>
+      {isWorkspaceResolving(workspace) ? (
+        <SkeletonList count={8} label={t("common.loading")} />
+      ) : (
+        <FileTree
+          key={cwd}
+          ref={treeRef}
+          cwd={cwd}
+          onSelectFile={openWorkspaceFile.bind(null, workspaceAccess)}
+          onReveal={(path) => {
+            if (cwd) fileActions.reveal(cwd, path);
+          }}
+        />
+      )}
+    </WorkspaceViewLayout>
   );
 }
 
@@ -410,7 +324,7 @@ function FilePreview({
   const workspaceAccess = useWorkspace();
 
   const t = useT();
-  const { copied, copy } = useCopyFeedback(viewer.path);
+  const copy = useCopy(viewer.path, t("file.copyPath"));
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
   const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
@@ -533,15 +447,16 @@ function FilePreview({
     ) : undefined;
 
   return (
-    <FileContentLayout
-      viewport={scrollPort}
+    <WorkspaceViewLayout
+      scrollRef={scrollPort}
+      scrollInset="flush"
       scrollLabel={viewer.path}
       onScrollKeyDown={selectFileContent}
       onScrollCopy={copySource}
       notice={
         <>
           {refreshFeedback}
-          {fileActions.feedback(scrollPort)}
+          {<LocalFileFeedback actions={fileActions} focusTarget={scrollPort} />}
         </>
       }
       navigation={
@@ -574,9 +489,9 @@ function FilePreview({
             />
           )}
           <IconButton
-            icon={iconGlyph(copied ? "check" : "copy")}
+            icon={iconGlyph("copy")}
             size="sm"
-            aria-label={t(copied ? "file.pathCopied" : "file.copyPath")}
+            aria-label={t("file.copyPath")}
             onClick={() => void copy()}
           />
           {cwd && workspaceAccess.local.available() && (
@@ -684,7 +599,7 @@ function FilePreview({
           )}
         </DataView>
       )}
-    </FileContentLayout>
+    </WorkspaceViewLayout>
   );
 }
 

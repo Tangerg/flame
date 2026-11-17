@@ -27,7 +27,6 @@ const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),
   onExpandedChange: vi.fn(),
-  textReveal: "smooth",
 };
 
 function row(
@@ -233,7 +232,7 @@ describe("MessageBlock action materialization", () => {
     expect(await screen.findByTestId("message.actions")).toBeTruthy();
   });
 
-  it("revokes terminal actions before a late accepted text generation enters layout", async () => {
+  it("keeps settled Runtime actions available when accepted text changes", async () => {
     document.documentElement.setAttribute("data-motion", "off");
     const { rerender } = testClient.render(
       <MessageBlock
@@ -245,7 +244,6 @@ describe("MessageBlock action materialization", () => {
       />,
     );
     expect(await screen.findByTestId("message.actions")).toBeTruthy();
-    const predecessorActionRenders = renderActionSlot.mock.calls.length;
 
     document.documentElement.removeAttribute("data-motion");
     rerender(
@@ -258,8 +256,7 @@ describe("MessageBlock action materialization", () => {
       />,
     );
 
-    expect(screen.queryByTestId("message.actions")).toBeNull();
-    expect(renderActionSlot).toHaveBeenCalledTimes(predecessorActionRenders);
+    expect(screen.getByTestId("message.actions")).toBeTruthy();
   });
 
   it("does not mount terminal controls when root attention drops before the exact Run settles", () => {
@@ -281,7 +278,7 @@ describe("MessageBlock action materialization", () => {
     expect(screen.queryByTestId("message.actions")).toBeNull();
   });
 
-  it("keeps terminal actions absent until the visible text generation has drained", () => {
+  it("publishes terminal actions when the owning Run settles", () => {
     const { rerender } = testClient.render(
       <MessageBlock
         row={row("running")}
@@ -304,7 +301,7 @@ describe("MessageBlock action materialization", () => {
       />,
     );
 
-    expect(screen.queryByTestId("message.actions")).toBeNull();
+    expect(screen.getByTestId("message.actions")).toBeTruthy();
   });
 
   it("publishes terminal actions once the visible generation catches up", async () => {

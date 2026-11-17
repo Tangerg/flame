@@ -1,12 +1,12 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { type KeyboardEvent } from "react";
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Button, EmptyState, SearchField, TextField, useContentVisible } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { comboFromEvent, comboGlyph, normalizeCombo, splitCombo } from "@/lib/combo";
+import { normalizeHotkey, areHotkeysEqual, formatForDisplay } from "@tanstack/hotkeys";
+import { useHotkeyRecorder } from "@tanstack/react-hotkeys";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import {
   useEffectiveCommands,
@@ -50,10 +50,20 @@ type Recording =
 function Keys({ combo }: { combo: string }) {
   return (
     <span {...stylex.props(sc.keys)}>
-      {splitCombo(combo).map((part, index) => (
+      {formatForDisplay(normalizeHotkey(combo), { parts: true }).map((part, index) => (
         <Kbd key={index}>{part}</Kbd>
       ))}
     </span>
+  );
+}
+
+function conflictingShortcut(rows: readonly Row[], commandId: string, combo: string) {
+  const candidate = normalizeHotkey(combo);
+  return rows.find(
+    (other) =>
+      other.id !== commandId &&
+      other.combo !== undefined &&
+      areHotkeysEqual(normalizeHotkey(other.combo), candidate),
   );
 }
 
@@ -76,6 +86,7 @@ function ShortcutRow({
   const { rebind, reset } = useShortcutOverrides.getState();
   const mine = recording?.commandId === row.id ? recording : null;
   const conflict = mine?.conflict;
+  const displayedCombo = conflict?.combo ?? row.combo;
   const locked = recording !== null && mine === null;
 
   function closeRecorder(apply?: () => void) {
@@ -84,26 +95,25 @@ function ShortcutRow({
     onRecordingChange(null);
   }
 
-  function capture(event: KeyboardEvent<HTMLInputElement>) {
-    if (!mine) return;
-    // Tab must leave the recorder so its cancellation control stays reachable.
-    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) return;
-    event.preventDefault();
-    event.stopPropagation();
-    // A fresh combo re-evaluates even after a conflict, so the recorder is not
-    // stuck on the first collision — press another free key to bind it.
-    const combo = comboFromEvent(event);
-    if (!combo) return;
-    const holder = rows.find(
-      (other) =>
-        other.id !== row.id && other.combo !== undefined && normalizeCombo(other.combo) === combo,
-    );
-    if (holder) {
+  const recorder = useHotkeyRecorder({
+    recordBy: "auto",
+    ignoreInputs: false,
+    validate: (combo) => {
+      const holder = conflictingShortcut(rows, row.id, combo);
+      if (!holder) return true;
       onRecordingChange({ commandId: row.id, conflict: { combo, with: holder } });
-      return;
-    }
-    closeRecorder(() => rebind(row.id, combo));
-  }
+      return false;
+    },
+    onRecord: (combo) => closeRecorder(() => rebind(row.id, combo)),
+    onCancel: () => closeRecorder(),
+    onClear: () => closeRecorder(() => rebind(row.id, null)),
+  });
+  const { startRecording, stopRecording } = recorder;
+  const active = mine !== null;
+  useEffect(() => {
+    if (active) startRecording();
+    return stopRecording;
+  }, [active, startRecording, stopRecording]);
 
   return (
     <SettingRow
@@ -143,8 +153,7 @@ function ShortcutRow({
               autoFocus
               aria-label={t("shortcuts.editAria", { action: row.label })}
               aria-describedby={statusId}
-              value={comboGlyph(conflict?.combo ?? row.combo ?? "")}
-              onKeyDown={capture}
+              value={displayedCombo ? formatForDisplay(normalizeHotkey(displayedCombo)) : ""}
               styles={sc.recorder}
             />
           )}
@@ -198,7 +207,7 @@ export function ShortcutsPane() {
   const commands = useEffectiveCommands();
   const fixed = useExtensionPoint(SHORTCUT);
   const overrides = useShortcutOverrides((state) => state.overrides);
-  const { resetAll, setRecording } = useShortcutOverrides.getState();
+  const { resetAll } = useShortcutOverrides.getState();
   const visible = useContentVisible();
   const filter = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -246,7 +255,8 @@ export function ShortcutsPane() {
       (row) =>
         row.label.toLowerCase().includes(q) ||
         (row.combo ?? "").toLowerCase().includes(q) ||
-        (row.combo !== undefined && comboGlyph(row.combo).toLowerCase().includes(keys)),
+        (row.combo !== undefined &&
+          formatForDisplay(normalizeHotkey(row.combo)).toLowerCase().includes(keys)),
     );
   }, [rows, query]);
 
@@ -255,13 +265,8 @@ export function ShortcutsPane() {
   if (recording && !(visible && shown.some((row) => row.id === recording.commandId))) {
     setRecordingFor(null);
   }
+
   const recordingActive = recording !== null;
-
-  useEffect(() => {
-    setRecording(recordingActive);
-    return () => setRecording(false);
-  }, [recordingActive, setRecording]);
-
   return (
     <div {...stylex.props(sc.pane)}>
       <div {...stylex.props(sc.toolbar)}>
@@ -270,7 +275,7 @@ export function ShortcutsPane() {
           size="lg"
           disabled={recordingActive}
           value={query}
-          onValueChange={setQuery}
+          onChange={(event) => setQuery(event.target.value)}
           onClear={() => setQuery("")}
           clearLabel={t("common.clearSearch")}
           placeholder={t("shortcuts.filter")}

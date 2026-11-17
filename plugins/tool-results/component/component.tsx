@@ -486,7 +486,7 @@ function RecordedRows({
   const [filter, setFilter] = useState("");
   const [visible, setVisible] = useState(RESULT_PAGE_ROWS);
   const viewport = useRef<HTMLDivElement>(null);
-  const search = useRef<HTMLElement>(null);
+  const search = useRef<HTMLInputElement>(null);
   const firstRevealed = useRef<HTMLDivElement>(null);
   const continuation = useRef<{
     origin: HTMLButtonElement;

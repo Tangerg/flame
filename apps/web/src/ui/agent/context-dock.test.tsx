@@ -1,6 +1,5 @@
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
-import { dragTransfer } from "@/test/dragTransfer";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
 prepareTestClient(() => {
@@ -9,8 +8,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { Activity, Suspense, useState } from "react";
-import { ContentVisibility } from "@flame/ui";
+import { useRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AgentContextDock,
@@ -31,7 +29,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fireEvent.dragEnd(window, { dataTransfer: dragTransfer() });
   if (nativeScrollIntoView) HTMLElement.prototype.scrollIntoView = nativeScrollIntoView;
   else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
   vi.restoreAllMocks();
@@ -63,10 +60,11 @@ function DockHarness({ initial }: { initial: string[] }) {
   const [ids, setIds] = useState(initial);
   const [activeId, setActiveId] = useState(initial[0]);
   const [draft, setDraft] = useState("");
+  const fallbackFocus = useRef<HTMLButtonElement>(null);
   const close = (id: string) => {
     const next = ids.filter((candidate) => candidate !== id);
     setIds(next);
-    if (id === activeId) setActiveId(next[Math.max(0, ids.indexOf(id) - 1)]);
+    if (id === activeId) setActiveId(next[Math.min(ids.indexOf(id), next.length - 1)]);
   };
   const dockTabs: AgentDockTab[] = ids.map((id) => ({
     id,
@@ -85,6 +83,7 @@ function DockHarness({ initial }: { initial: string[] }) {
       <div>
         <DockTabs
           tabs={dockTabs}
+          fallbackFocus={fallbackFocus}
           ariaLabel="Workspace tabs"
           reorder={{
             onMove: (id, toIndex) => {
@@ -97,7 +96,9 @@ function DockHarness({ initial }: { initial: string[] }) {
             moveRightLabel: "Move right",
           }}
         />
-        <button type="button">Browse panels</button>
+        <button ref={fallbackFocus} type="button">
+          Browse panels
+        </button>
       </div>
       <output aria-label="Selected view">{activeId ?? "none"}</output>
       <textarea
@@ -114,7 +115,9 @@ function rowOf(id: string): HTMLElement {
 }
 
 async function chooseFromTabMenu(id: string, item: string) {
-  fireEvent.contextMenu(screen.getByRole("tab", { name: id }));
+  const trigger = screen.getByRole("tab", { name: id });
+  act(() => trigger.focus());
+  fireEvent.contextMenu(trigger);
   const choice = await screen.findByRole<HTMLElement>("menuitem", { name: item });
   act(() => choice.focus());
   fireEvent.click(choice);
@@ -178,20 +181,6 @@ describe("AgentDockTabs", () => {
     await vi.waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
     expect(screen.getByRole("tab", { name: title })).toBe(tab);
     expect(document.activeElement).toBe(tab);
-  });
-
-  it("brings a newly active overflow tab into the visible strip", () => {
-    const scrollIntoView = vi.fn();
-    HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    const view = testClient.render(
-      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />,
-    );
-    scrollIntoView.mockClear();
-
-    view.rerender(<AgentDockTabs tabs={tabs("timeline")} ariaLabel="Workspace tabs" />);
-
-    expect(scrollIntoView).toHaveBeenCalledOnce();
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
   });
 
   it("reveals the same active tab after reordering without overriding later strip browsing", () => {
@@ -258,97 +247,6 @@ describe("AgentDockTabs", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("reports the drop position when a tab is dragged onto a sibling", () => {
-    const onReorder = vi.fn();
-    const view = testClient.render(
-      <AgentDockTabs
-        tabs={tabs("skills")}
-        ariaLabel="Workspace tabs"
-        reorder={{
-          onMove: onReorder,
-          moveLeftLabel: "Move left",
-          moveRightLabel: "Move right",
-        }}
-      />,
-    );
-    const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
-    const dataTransfer = dragTransfer();
-
-    fireEvent.dragStart(rows[0]!, { dataTransfer });
-    fireEvent.dragOver(rows[3]!, { dataTransfer });
-    fireEvent.drop(rows[3]!, { dataTransfer });
-    fireEvent.dragEnd(rows[0]!, { dataTransfer });
-
-    fireEvent.drop(rows[3]!, { dataTransfer });
-    expect(onReorder).toHaveBeenCalledExactlyOnceWith("skills", 3);
-  });
-
-  it("refuses plain-text payloads from outside the registered strip", () => {
-    const onMove = vi.fn();
-    const view = testClient.render(
-      <AgentDockTabs
-        tabs={tabs("skills")}
-        ariaLabel="Workspace tabs"
-        reorder={{
-          onMove,
-          moveLeftLabel: "Move left",
-          moveRightLabel: "Move right",
-        }}
-      />,
-    );
-    const target = view.container.querySelectorAll<HTMLElement>("[draggable=true]")[1]!;
-    const dataTransfer = dragTransfer();
-    dataTransfer.setData("text/plain", "skills");
-    fireEvent.dragOver(target, { dataTransfer });
-    fireEvent.drop(target, { dataTransfer });
-    expect(onMove).not.toHaveBeenCalled();
-  });
-
-  it("rejects a different strip even when it contains the same tab ids", () => {
-    const onMove = vi.fn();
-    const reorder = {
-      onMove,
-      moveLeftLabel: "Move left",
-      moveRightLabel: "Move right",
-    };
-    const view = testClient.render(
-      <>
-        <AgentDockTabs tabs={tabs("skills")} ariaLabel="First" reorder={reorder} />
-        <AgentDockTabs tabs={tabs("skills")} ariaLabel="Second" reorder={reorder} />
-      </>,
-    );
-    const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
-    const dataTransfer = dragTransfer();
-    fireEvent.dragStart(rows[0]!, { dataTransfer });
-    const second = view.container
-      .querySelectorAll(".agent-dock-tabs")[1]!
-      .querySelectorAll<HTMLElement>("[draggable=true]")[1]!;
-    fireEvent.dragOver(second, { dataTransfer });
-    fireEvent.drop(second, { dataTransfer });
-    expect(onMove).not.toHaveBeenCalled();
-  });
-
-  it("refuses a withdrawn source instead of reordering a remaining tab", () => {
-    const onMove = vi.fn();
-    const reorder = {
-      onMove,
-      moveLeftLabel: "Move left",
-      moveRightLabel: "Move right",
-    };
-    const view = testClient.render(
-      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" reorder={reorder} />,
-    );
-    const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
-    const dataTransfer = dragTransfer();
-    fireEvent.dragStart(rows[0]!, { dataTransfer });
-    view.rerender(
-      <AgentDockTabs tabs={tabs("diff").slice(1)} ariaLabel="Workspace tabs" reorder={reorder} />,
-    );
-    fireEvent.dragOver(rows[2]!, { dataTransfer });
-    fireEvent.drop(rows[2]!, { dataTransfer });
-    expect(onMove).not.toHaveBeenCalled();
-  });
-
   it("announces the canonical position after a keyboard menu move", () => {
     testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
     const tab = screen.getByRole("tab", { name: "files" });
@@ -363,70 +261,6 @@ describe("AgentDockTabs", () => {
       "plan",
     ]);
   });
-
-  it.each([false, true])("retires a hidden drag before dropping (reveal=%s)", (reveal) => {
-    const onMove = vi.fn();
-    const reorder = { onMove, moveLeftLabel: "Move left", moveRightLabel: "Move right" };
-    const scene = (visible: boolean) => (
-      <ContentVisibility visible={visible}>
-        <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" reorder={reorder} />
-      </ContentVisibility>
-    );
-    const view = testClient.render(scene(true));
-    const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
-    const dataTransfer = dragTransfer();
-    fireEvent.dragStart(rows[0]!, { dataTransfer });
-    view.rerender(scene(false));
-    if (reveal) view.rerender(scene(true));
-    fireEvent.dragOver(rows[2]!, { dataTransfer });
-    fireEvent.drop(rows[2]!, { dataTransfer });
-    expect(onMove).not.toHaveBeenCalled();
-    expect(view.container.querySelector("[data-dragging]")).toBeNull();
-  });
-
-  it.each(["Activity", "Suspense"])(
-    "retires the drag and its presentation after %s reconnects",
-    (lifetime) => {
-      const onMove = vi.fn();
-      const reorder = { onMove, moveLeftLabel: "Move left", moveRightLabel: "Move right" };
-      const pending = new Promise<never>(() => {});
-      function Pending(): never {
-        throw pending;
-      }
-      const scene = (visible: boolean) => {
-        const dock = (
-          <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" reorder={reorder} />
-        );
-        return lifetime === "Activity" ? (
-          <Activity mode={visible ? "visible" : "hidden"}>{dock}</Activity>
-        ) : (
-          <Suspense fallback={<p>Waiting for workspace</p>}>
-            {!visible && <Pending />}
-            {dock}
-          </Suspense>
-        );
-      };
-      const view = testClient.render(scene(true));
-      const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
-      const dataTransfer = dragTransfer();
-      fireEvent.dragStart(rows[0]!, { dataTransfer });
-      flushFrames();
-      expect(view.container.querySelector("[data-dragging]")).toBeTruthy();
-      view.rerender(scene(false));
-      view.rerender(scene(true));
-      const presented = view.container.querySelector("[data-dragging]") !== null;
-      fireEvent.dragOver(rows[2]!, { dataTransfer });
-      fireEvent.drop(rows[2]!, { dataTransfer });
-      expect(onMove).not.toHaveBeenCalled();
-      expect(presented).toBe(false);
-
-      const next = dragTransfer();
-      fireEvent.dragStart(rows[0]!, { dataTransfer: next });
-      fireEvent.dragOver(rows[2]!, { dataTransfer: next });
-      fireEvent.drop(rows[2]!, { dataTransfer: next });
-      expect(onMove).toHaveBeenCalledExactlyOnceWith("skills", 2);
-    },
-  );
 
   it("leaves a single-tab strip undraggable", () => {
     const view = testClient.render(
@@ -512,8 +346,8 @@ describe("AgentDockTabs focus continuity", () => {
     flushFrames();
 
     expect(screen.queryByRole("tab", { name: "diff" })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "files" }));
-    expect(screen.getByRole("tab", { name: "files" }).getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "plan" }));
+    expect(screen.getByRole("tab", { name: "plan" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("falls back to the header action when the last tab closes", () => {
@@ -612,7 +446,7 @@ describe("AgentDockTabs focus continuity", () => {
 
     expect(moved.isConnected).toBe(false);
     expect(screen.queryByRole("tab", { name: "files" })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "diff" }));
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "plan" }));
   });
 
   it("keeps a later focus choice after Escape closes the menu", async () => {

@@ -88,7 +88,7 @@ export function useSchedules(context: ComponentContext) {
   const [deleting, setDeleting] = useState<{
     item: Schedule;
   }>();
-  const searchElement = useRef<HTMLElement>(null);
+  const searchElement = useRef<HTMLInputElement>(null);
   const taskOpener = useRef<HTMLElement>(null);
   const titleElement = useRef<HTMLInputElement>(null);
   const deleteCancel = useRef<HTMLButtonElement>(null);

@@ -119,17 +119,14 @@ export function createWorkspaceNavigation(
       collapsed: useShellLayoutStore((state) => state.sidebarCollapsed),
       toggle: useShellLayoutStore((state) => state.toggleSidebar),
     }),
-    useSidebarWidth: () => ({
-      width: useShellLayoutStore((state) => state.sidebarWidth),
-      setWidth: useShellLayoutStore((state) => state.setSidebarWidth),
+    useSidebarLayout: () => ({
+      layout: useShellLayoutStore((state) => state.sidebarLayout),
+      save: useShellLayoutStore((state) => state.saveSidebarLayout),
     }),
-    useDockWidth: () => {
-      const setDockWidthRatio = useShellLayoutStore((state) => state.setDockWidthRatio);
-      return {
-        width: useShellLayoutStore((state) => state.dockWidthRatio),
-        setWidth: setDockWidthRatio,
-      };
-    },
+    useDockLayout: () => ({
+      layout: useShellLayoutStore((state) => state.dockLayout),
+      save: useShellLayoutStore((state) => state.saveDockLayout),
+    }),
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
     openView: (id, origin) => {

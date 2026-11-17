@@ -37,7 +37,6 @@ import { ClientRenderer } from "@/app/renderer";
 import { bindClientPageLifecycle, bindDraftExitWarning } from "@/app/pageLifecycle";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
 import { applyWindowChrome, watchWindowChrome } from "@/app/windowChrome";
-import { disposeHighlighter } from "@/lib/highlight/shiki";
 import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
@@ -124,7 +123,17 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
     (request) => host.saveFile(request),
     (children) => (
       <ApplicationContext>
-        <ApplicationSurface>{children}</ApplicationSurface>
+        <ApplicationSurface
+          onCopyReceipt={(receipt) =>
+            messages.show({
+              level: receipt.status === "copied" ? "success" : "error",
+              message: receipt.status === "copied" ? t("common.copied") : t("common.copyFailed"),
+              description: receipt.label,
+            })
+          }
+        >
+          {children}
+        </ApplicationSurface>
       </ApplicationContext>
     ),
   );
@@ -212,7 +221,6 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
         navigation.dispose,
         installedPlugins.dispose,
         theme.dispose,
-        disposeHighlighter,
       ]) {
         try {
           await dispose();

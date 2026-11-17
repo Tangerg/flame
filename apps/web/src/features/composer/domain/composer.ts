@@ -12,6 +12,7 @@ const HISTORY_CAP = 50;
 
 export interface ComposerDraftText {
   value: string;
+  document: string | null;
   pastes: readonly Pick<PastedText, "id" | "text">[];
 }
 
@@ -24,6 +25,7 @@ export class ComposerDraft {
     readonly value: string,
     readonly imageAttachments: readonly ComposerImageAttachment[],
     readonly pastes: readonly PastedText[],
+    readonly document: string | null = null,
   ) {
     this.images = imageAttachments.flatMap((attachment) =>
       attachment.status === "ready"
@@ -43,8 +45,8 @@ export class ComposerDraft {
     return ComposerDraft.EMPTY;
   }
 
-  static restoreText(value: string): ComposerDraft {
-    return new ComposerDraft(value, [], []);
+  static restoreText(value: string, document: string | null = null): ComposerDraft {
+    return new ComposerDraft(value, [], [], document);
   }
 
   get attachmentsReady(): boolean {
@@ -54,6 +56,7 @@ export class ComposerDraft {
   hasSameText(other: ComposerDraft): boolean {
     return (
       this.value === other.value &&
+      this.document === other.document &&
       this.pastes.length === other.pastes.length &&
       this.pastes.every(
         (paste, index) =>
@@ -70,9 +73,19 @@ export class ComposerDraft {
   }
 
   withValue(value: string): ComposerDraft {
-    return value === this.value
+    return value === this.value && this.document === null
       ? this
       : new ComposerDraft(value, this.imageAttachments, this.pastes);
+  }
+
+  withDocument(value: string, document: string): ComposerDraft {
+    return value === this.value && document === this.document
+      ? this
+      : new ComposerDraft(value, this.imageAttachments, this.pastes, document);
+  }
+
+  hydrateText(draft: ComposerDraft): ComposerDraft {
+    return new ComposerDraft(draft.value, this.imageAttachments, draft.pastes, draft.document);
   }
 
   withImages(images: readonly ComposerImage[]): ComposerDraft {
@@ -80,6 +93,7 @@ export class ComposerDraft {
       this.value,
       images.map((image) => ({ ...image, status: "ready" })),
       this.pastes,
+      this.document,
     );
   }
 
@@ -91,6 +105,7 @@ export class ComposerDraft {
         ...images.map((image) => ({ ...image, status: "ready" as const })),
       ],
       this.pastes,
+      this.document,
     );
   }
 
@@ -102,6 +117,7 @@ export class ComposerDraft {
         ...images.map((image) => ({ ...image, status: "pending" as const })),
       ],
       this.pastes,
+      this.document,
     );
   }
 
@@ -116,6 +132,7 @@ export class ComposerDraft {
       this.value,
       this.imageAttachments.map((attachment) => (attachment === pending ? settled : attachment)),
       this.pastes,
+      this.document,
     );
   }
 
@@ -125,11 +142,12 @@ export class ComposerDraft {
       this.value,
       this.imageAttachments.filter((attachment) => attachment.id !== id),
       this.pastes,
+      this.document,
     );
   }
 
   withPastes(pastes: readonly PastedText[]): ComposerDraft {
-    return new ComposerDraft(this.value, this.imageAttachments, pastes);
+    return new ComposerDraft(this.value, this.imageAttachments, pastes, this.document);
   }
 
   editPaste(id: string, text: string): ComposerDraft {
@@ -170,7 +188,7 @@ export class Composer {
     for (const [sessionId, text] of texts) {
       drafts.set(
         sessionId,
-        ComposerDraft.restoreText(text.value).withPastes(
+        ComposerDraft.restoreText(text.value, text.document).withPastes(
           text.pastes.map(({ id, text }) => ({ id, text, lines: countLines(text) })),
         ),
       );
@@ -193,6 +211,7 @@ export class Composer {
       // Flattening a paste into value could turn authored content into a slash command.
       texts.set(sessionId, {
         value: draft.value,
+        document: draft.document,
         pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
       });
     }
@@ -208,10 +227,7 @@ export class Composer {
     for (const [sessionId, draft] of restored.drafts) {
       if (!touched.has(sessionId)) {
         const current = drafts.get(sessionId);
-        drafts.set(
-          sessionId,
-          current ? current.withValue(draft.value).withPastes(draft.pastes) : draft,
-        );
+        drafts.set(sessionId, current ? current.hydrateText(draft) : draft);
       }
     }
     return new Composer(drafts, this.rings, this.activeSessionId, this.recall);

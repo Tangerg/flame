@@ -10,7 +10,7 @@ import (
 
 // ListWorkspaceFiles projects a paged application workspace-file listing onto
 // the wire contract.
-func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error) {
+func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.FileListPage, error) {
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wireWorkspaceError(wirePageError(err))
@@ -41,7 +41,7 @@ func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesR
 			ModifiedAt: entry.ModifiedAt,
 		})
 	}
-	return protocol.NewPageWithCursor(data, page.NextCursor), nil
+	return &protocol.FileListPage{Data: data, PageContinuation: protocol.PageContinuation{NextCursor: page.NextCursor}, Complete: page.Complete, Coverage: protocol.FileListCoverage{ScannedEntries: page.ScannedEntries, ExcludedEntries: page.ExcludedEntries, BudgetExhausted: page.BudgetExhausted}}, nil
 }
 
 func presentFileEntryType(kind workspaceapp.FileEntryKind) (protocol.FileEntryType, bool) {

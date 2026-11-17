@@ -1,6 +1,12 @@
+import type { PluggableList } from "unified";
 import remarkBreaks from "remark-breaks";
 import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkGfm from "remark-gfm";
-import { remarkMathSyntax } from "./remarkMathSyntax";
+import remarkMath from "remark-math";
 
-export const remarkSyntax = [remarkGfm, remarkBreaks, remarkCjkFriendly, remarkMathSyntax];
+export const remarkSyntax: PluggableList = [
+  remarkGfm,
+  remarkBreaks,
+  remarkCjkFriendly,
+  [remarkMath, { singleDollarTextMath: false }],
+];

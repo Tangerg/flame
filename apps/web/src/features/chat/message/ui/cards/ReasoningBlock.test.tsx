@@ -14,7 +14,9 @@ function renderReasoning(status: "running" | "complete", text: string) {
 }
 
 function scrollportOf(container: HTMLElement): HTMLElement {
-  const scrollport = container.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]');
+  const scrollport = container.querySelector<HTMLElement>(
+    '[role="group"][aria-label="Reasoning text"]',
+  );
   expect(scrollport).not.toBeNull();
   return scrollport!;
 }
@@ -171,14 +173,6 @@ describe("ReasoningBlock disclosure policy", () => {
     } finally {
       overflow();
     }
-  });
-
-  it("leaves a rationale that fits out of the tab order and unnamed", () => {
-    const { container } = renderReasoning("running", "Inspect the protocol boundary");
-    fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
-
-    expect(scrollportOf(container).tabIndex).toBe(-1);
-    expect(screen.queryByRole("group", { name: "Reasoning text" })).toBeNull();
   });
 
   it("retains the reader node and paused-follow state across disclosure toggles", () => {

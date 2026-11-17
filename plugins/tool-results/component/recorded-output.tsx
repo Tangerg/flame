@@ -1,8 +1,7 @@
 import {
-  useCallback,
   useLayoutEffect,
+  useCallback,
   useMemo,
-  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -12,56 +11,22 @@ import {
 } from "react";
 import { ArrowDownToLine, Search, X } from "@flame/icons/react";
 import {
+  ReadingList,
+  type ReadingListHandle,
   Button,
   CodeCaption,
   CodeFrame,
   IconButton,
   copyReaderSelection,
-  readerSelectionLines,
-  useContentVisible,
+  selectAllInReader,
   isImeKey,
   SearchField,
-  selectAllInReader,
   type CodeActionLabels,
 } from "@flame/ui";
-import {
-  defaultRangeExtractor,
-  observeElementOffset,
-  observeElementRect,
-  useVirtualizer,
-  type Virtualizer,
-} from "@tanstack/react-virtual";
 import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
 
 const PREVIEW_LINES = 9;
-const OVERSCAN = 6;
-
-function observeOutputOffset(
-  instance: Virtualizer<HTMLDivElement, HTMLDivElement>,
-  onChange: (offset: number, scrolling: boolean) => void,
-) {
-  const node = instance.scrollElement;
-  if (!node) return;
-  let connected = true;
-  const publish = (scrolling: boolean) => {
-    if (connected && instance.scrollElement === node && node.clientHeight > 0)
-      onChange(node.scrollTop, scrolling);
-  };
-  const stopOffset = observeElementOffset(instance, (_offset, scrolling) =>
-    publish(scrolling),
-  );
-  // A hidden scroller can restore its offset without a scroll event on reveal.
-  const stopRect = observeElementRect(instance, () =>
-    publish(instance.isScrolling),
-  );
-  return () => {
-    connected = false;
-    stopOffset?.();
-    stopRect?.();
-  };
-}
-
 export const frameInset = "calc(var(--spacing) * 3)";
 
 export const findBar: CSSProperties = {
@@ -77,7 +42,6 @@ export const findBar: CSSProperties = {
 export function resultActions(t: Translate, copy: string): CodeActionLabels {
   return {
     copy,
-    copied: t("action.copied"),
     wrap: t("action.wrap"),
     unwrap: t("action.unwrap"),
   };
@@ -119,7 +83,7 @@ export function FindField({
   label: string;
   fieldLabel: string;
   value: string;
-  fieldRef: RefObject<HTMLElement | null>;
+  fieldRef: RefObject<HTMLInputElement | null>;
   status?: ReactNode;
   onChange: (value: string) => void;
   onClose: () => void;
@@ -191,174 +155,99 @@ export function FindField({
 
 export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
-  const lineStyles = useMemo(() => ansiLineStyles(text), [text]);
-  const [expanded, setExpanded] = useState(false);
-  const visible = useContentVisible();
-  const [finding, setFinding] = useState(false);
-  // Each explicit Find action publishes a fresh value, even when it selects
-  // the same line, so it can reveal that line again after manual scrolling.
-  const [find, setFind] = useState({ query: "", match: 0 });
-  const { query, match } = find;
-  const [rowHeight, setRowHeight] = useState(20);
-  const [selectionVersion, invalidateSelection] = useReducer(
-    (version: number) => version + 1,
-    0,
+  const lineIndices = useMemo(
+    () => lines.map((_line, index) => index),
+    [lines],
   );
+  const lineStyles = useMemo(() => ansiLineStyles(text), [text]);
+  const source = useMemo(() => ansiText(text), [text]);
+  const [expanded, setExpanded] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [find, setFind] = useState({ query: "", match: 0 });
+  const [atEnd, setAtEnd] = useState(true);
+  const reader = useRef<ReadingListHandle>(null);
   const viewport = useRef<HTMLDivElement>(null);
-  const reflow = useRef<{ lines: typeof lines; index: number } | null>(null);
-  const ruler = useRef<HTMLSpanElement>(null);
-  const search = useRef<HTMLElement>(null);
-  const expansion = useRef<{
-    origin: HTMLButtonElement;
-    activeElement: Element | null;
-    source: string;
-  } | null>(null);
-  const matches = useMemo(() => {
-    if (!query) return [];
-    const needle = query.toLocaleLowerCase();
-    return lines.flatMap((line, index) =>
-      ansiText(line).toLocaleLowerCase().includes(needle) ? [index] : [],
-    );
-  }, [lines, query]);
-  const selected = matches.length ? matches[match % matches.length] : undefined;
-  const virtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    count: expanded ? lines.length : 0,
-    getScrollElement: () => viewport.current,
-    observeElementOffset: observeOutputOffset,
-    estimateSize: () => rowHeight,
-    overscan: OVERSCAN,
-    rangeExtractor: useCallback(
-      (range) => {
-        const endpoints = readerSelectionLines(viewport.current);
-        return [
-          ...new Set([
-            ...defaultRangeExtractor(range),
-            ...endpoints.filter((index) => index >= 0 && index < range.count),
-          ]),
-        ].sort((left, right) => left - right);
-      },
-      [selectionVersion],
-    ),
-  });
-  const atLatest =
-    virtualizer.getTotalSize() -
-      (virtualizer.scrollOffset ?? 0) -
-      (virtualizer.scrollRect?.height ?? 0) <
-    1;
-  const jumpToLatest = useCallback(() => {
-    virtualizer.scrollToIndex(lines.length - 1, { align: "end" });
-  }, [virtualizer, lines.length]);
-
+  const search = useRef<HTMLInputElement>(null);
+  const expansion = useRef<{ origin: HTMLElement; source: string } | null>(
+    null,
+  );
+  const matches = useMemo(
+    () =>
+      !find.query
+        ? []
+        : lines.flatMap((line, index) =>
+            ansiText(line)
+              .toLocaleLowerCase()
+              .includes(find.query.toLocaleLowerCase())
+              ? [index]
+              : [],
+          ),
+    [lines, find.query],
+  );
+  const selected = matches.length
+    ? matches[find.match % matches.length]
+    : undefined;
   useLayoutEffect(() => {
-    const node = viewport.current;
-    if (!expanded || !visible || !node) return;
-    const read = () => {
-      // CSS line units use layout precision; parsed values drift across long logs.
-      const height = ruler.current!.getBoundingClientRect().height;
-      if (height > 0 && height !== rowHeight) {
-        const anchor = virtualizer.getVirtualItemForOffset(
-          virtualizer.scrollOffset ?? 0,
-        );
-        reflow.current = anchor ? { lines, index: anchor.index } : null;
-        setRowHeight(height);
-      }
-    };
-    read();
-    const observer = new ResizeObserver(read);
-    observer.observe(ruler.current!);
-    node.ownerDocument.addEventListener("selectionchange", invalidateSelection);
-    return () => {
-      observer.disconnect();
-      node.ownerDocument.removeEventListener(
-        "selectionchange",
-        invalidateSelection,
-      );
-    };
-  }, [expanded, visible, rowHeight, virtualizer, lines]);
-
-  useLayoutEffect(() => {
-    const anchor = reflow.current;
-    reflow.current = null;
-    virtualizer.measure();
-    if (anchor?.lines === lines)
-      virtualizer.scrollToIndex(anchor.index, { align: "start" });
-  }, [virtualizer, rowHeight, lines]);
-
+    if (selected !== undefined)
+      void reader.current?.scrollToKey({
+        key: String(selected),
+        animated: false,
+        viewPosition: 0.5,
+      });
+  }, [find, selected]);
   useLayoutEffect(() => {
     const intent = expansion.current;
-    if (!expanded || !visible || intent?.source !== text) {
-      expansion.current = null;
-      virtualizer.cancelScroll();
+    if (
+      !expanded ||
+      !intent ||
+      intent.source !== text ||
+      intent.origin.ownerDocument.activeElement !== intent.origin
+    )
       return;
-    }
-    const frame = requestAnimationFrame(() => {
-      jumpToLatest();
-      expansion.current = null;
-      const node = viewport.current;
-      if (
-        intent &&
-        node &&
-        (node.ownerDocument.activeElement === intent.origin ||
-          node.ownerDocument.activeElement === intent.activeElement)
-      ) {
-        node.focus();
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [expanded, visible, text, jumpToLatest, virtualizer]);
-
+    expansion.current = null;
+    reader.current?.getScrollableNode()?.focus({ preventScroll: true });
+  }, [expanded, text]);
   useLayoutEffect(() => {
     if (finding) enterFind(search.current);
   }, [finding]);
-
-  useLayoutEffect(() => {
-    if (selected !== undefined)
-      virtualizer.scrollToIndex(selected, { align: "center" });
-  }, [find, selected, virtualizer]);
-
-  function closeFind() {
+  const closeFind = () => {
     setFinding(false);
     setFind({ query: "", match: 0 });
-    viewport.current?.focus();
-  }
-
+    viewport.current?.focus({ preventScroll: true });
+  };
   const previewStart = Math.max(0, lines.length - PREVIEW_LINES);
-  const presented = lines.slice(previewStart);
-  const row = (line: string, index: number, start?: number) => (
-    <div
-      key={index}
-      data-slot="search-line"
-      data-current-match={index === selected ? "" : undefined}
-      style={{
-        position: start === undefined ? undefined : "absolute",
-        top: start === undefined ? undefined : 0,
-        left: start === undefined ? undefined : 0,
-        transform: start === undefined ? undefined : `translateY(${start}px)`,
-        height: "1lh",
-        minWidth: "100%",
-        width: "max-content",
-        paddingInline: frameInset,
-        whiteSpace: "pre",
-      }}
-      data-reader-line={start === undefined ? undefined : index}
-    >
-      <span data-output-line={index}>
-        {renderAnsi(line, lineStyles[index]!)}
-      </span>
-    </div>
+  const row = useCallback(
+    (index: number) => (
+      <div
+        data-slot="search-line"
+        data-reader-line={expanded ? index : index - previewStart}
+        data-current-match={selected === index ? "" : undefined}
+        style={{
+          minHeight: "1lh",
+          whiteSpace: "pre",
+          minWidth: "100%",
+          width: "max-content",
+          paddingInline: frameInset,
+          backgroundColor:
+            selected === index ? "var(--color-highlight)" : undefined,
+        }}
+      >
+        <span data-output-line={index}>
+          {renderAnsi(lines[index]!, lineStyles[index]!)}
+        </span>
+      </div>
+    ),
+    [expanded, selected, previewStart, lines, lineStyles],
   );
-  const earlier = lines.length - PREVIEW_LINES;
-  const copied = useMemo(() => ansiText(text), [text]);
-
   return (
     <CodeFrame>
       <CodeCaption
         language={t("caption.output")}
-        code={copied}
+        code={source}
         labels={resultActions(t, t("output.copy"))}
         wrappable={false}
       >
-        {earlier > 0 && (
+        {previewStart > 0 && (
           <Button
             size="xs"
             aria-expanded={expanded}
@@ -372,8 +261,6 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
               } else {
                 expansion.current = {
                   origin: event.currentTarget,
-                  activeElement:
-                    event.currentTarget.ownerDocument.activeElement,
                   source: text,
                 };
                 setExpanded(true);
@@ -383,20 +270,21 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             {expanded
               ? t("output.collapse")
               : t("output.showEarlier", {
-                  count: earlier,
+                  count: previewStart,
                   total: lines.length,
                 })}
           </Button>
         )}
-        {expanded && !atLatest && (
+        {expanded && !atEnd && (
           <IconButton
             icon={ArrowDownToLine}
             size="xs"
-            quiet
             aria-label={t("output.jumpToLatest")}
             onClick={() => {
-              jumpToLatest();
-              viewport.current?.focus();
+              void reader.current?.scrollToEnd({ animated: false });
+              reader.current
+                ?.getScrollableNode()
+                ?.focus({ preventScroll: true });
             }}
           />
         )}
@@ -404,133 +292,104 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           <IconButton
             icon={Search}
             size="xs"
-            quiet
             aria-label={t("find.open")}
             onClick={() => setFinding(true)}
           />
         )}
       </CodeCaption>
-      {expanded && finding && (
+      {finding && (
         <div data-slot="output-controls" style={findBar}>
           <FindField
             t={t}
             label={t("output.search")}
             fieldLabel={t("output.field")}
-            value={query}
+            value={find.query}
             fieldRef={search}
             status={
-              query && (
-                <span
-                  role="status"
-                  style={{
-                    flexShrink: 0,
-                    color: "var(--color-text-faint)",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
+              find.query && (
+                <span role="status">
                   {matches.length
                     ? t("output.matchCount", {
-                        current: (match % matches.length) + 1,
+                        current: (find.match % matches.length) + 1,
                         total: matches.length,
                       })
                     : t("output.noMatches")}
                 </span>
               )
             }
-            onChange={(value) => setFind({ query: value, match: 0 })}
+            onChange={(query) => setFind({ query, match: 0 })}
             onClose={closeFind}
             onEnter={(backward) => {
-              if (!matches.length) return;
-              setFind((current) => ({
-                query: current.query,
-                match:
-                  (current.match + (backward ? matches.length - 1 : 1)) %
-                  matches.length,
-              }));
+              if (matches.length)
+                setFind(({ query, match }) => ({
+                  query,
+                  match:
+                    (match + (backward ? matches.length - 1 : 1)) %
+                    matches.length,
+                }));
             }}
           />
         </div>
       )}
       <div
-        dir="ltr"
+        ref={viewport}
+        role="region"
+        aria-label={t(expanded ? "output.region" : "output.preview")}
+        tabIndex={expanded ? -1 : 0}
+        data-reader-source={expanded ? undefined : ""}
+        data-quote-source="tool-output"
+        onKeyDown={(event) => {
+          if (viewport.current) selectAllInReader(event, viewport.current);
+          if (expanded && isFindShortcut(event)) {
+            event.preventDefault();
+            event.stopPropagation();
+            setFinding(true);
+            enterFind(search.current);
+          }
+        }}
+        onCopy={(event) =>
+          copyReaderSelection(
+            event,
+            expanded
+              ? source
+              : lines.slice(previewStart).map(ansiText).join("\n"),
+          )
+        }
         style={{
-          minWidth: 0,
-          position: "relative",
-          paddingBlockEnd: frameInset,
           fontFamily: "var(--font-mono)",
           fontSize: "var(--fs-code)",
           lineHeight: "var(--leading-relaxed)",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          height: expanded ? "min(24rem, 60vh)" : undefined,
         }}
       >
-        <span
-          ref={ruler}
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            visibility: "hidden",
-            height: "1lh",
-            width: 0,
-          }}
-        />
         {expanded ? (
-          <div
-            ref={viewport}
-            role="region"
-            aria-label={t("output.region")}
-            tabIndex={0}
-            data-focus-inset=""
-            style={{
-              height: `min(50vh,24rem,${lines.length}lh)`,
-              minWidth: 0,
-              overflow: "auto",
-              overflowAnchor: "none",
-              overscrollBehavior: "contain auto",
-            }}
-            onWheel={() => virtualizer.cancelScroll()}
-            onPointerDown={() => virtualizer.cancelScroll()}
-            onKeyDown={(event) => {
-              if (isFindShortcut(event)) {
-                event.preventDefault();
-                event.stopPropagation();
-                setFinding(true);
-                enterFind(search.current);
-                return;
+          <ReadingList
+            role="group"
+            ref={reader}
+            data={lineIndices}
+            keyExtractor={String}
+            label={t("output.region")}
+            onFollowChange={(list, value) => {
+              setAtEnd(value);
+              const node = list.getScrollableNode();
+              if (node) {
+                node.tabIndex = 0;
+                node.setAttribute("data-reader-source", "");
               }
-              if (!isImeKey(event.nativeEvent)) virtualizer.cancelScroll();
-              selectAllInReader(event);
             }}
-            onCopy={(event) => copyReaderSelection(event, copied)}
-          >
-            {/* Select All bounds its Range by this region's child offsets, which
-                window reconciliation would shift; one stable child keeps it whole. */}
-            <div
-              data-reader-source=""
-              style={{
-                height: virtualizer.getTotalSize(),
-                position: "relative",
-                minWidth: "100%",
-                width: "max-content",
-              }}
-            >
-              {virtualizer
-                .getVirtualItems()
-                .map((item) => row(lines[item.index]!, item.index, item.start))}
-            </div>
-          </div>
+            renderItem={row}
+          />
         ) : (
-          <div
-            role="region"
-            aria-label={t("output.preview")}
-            tabIndex={0}
-            data-focus-inset=""
-            style={{ overflowX: "auto" }}
-            onKeyDown={selectAllInReader}
-            onCopy={(event) =>
-              copyReaderSelection(event, presented.map(ansiText).join("\n"))
-            }
-          >
-            {presented.map((line, offset) => row(line, previewStart + offset))}
-          </div>
+          lines
+            .slice(previewStart)
+            .map((_line, offset) => (
+              <div key={previewStart + offset}>
+                {row(previewStart + offset)}
+              </div>
+            ))
         )}
       </div>
     </CodeFrame>

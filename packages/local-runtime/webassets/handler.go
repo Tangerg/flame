@@ -40,7 +40,7 @@ func New(open func(string) (fs.File, error)) (*Handler, error) {
 }
 
 func (h *Handler) verifyRequiredDocuments() error {
-	for _, name := range []string{entryDocument, h.policy.Sandbox.File} {
+	for _, name := range []string{entryDocument} {
 		data, _, err := h.read(name)
 		if err != nil {
 			return fmt.Errorf("webassets: read required document: %w", err)

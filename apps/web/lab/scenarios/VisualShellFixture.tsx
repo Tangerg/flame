@@ -1,7 +1,7 @@
 import { useT } from "@/lib/i18n/index";
 import { Slot } from "@/extensions/host/Slot";
 import { SidebarPanel } from "@/features/sidebar/public/SidebarPanel";
-import { useSidebarDrawer, useSidebarWidth } from "@/features/workspace/public/sidebarDrawer";
+import { useSidebarDrawer, useSidebarLayout } from "@/features/workspace/public/sidebarDrawer";
 import { Icon } from "@/ui/index";
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentContentCard } from "@/ui/agent/index";
@@ -33,7 +33,7 @@ const STATE_COPY: Record<VisualWorkIndexState, { title: string; body: string }> 
 export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
   const t = useT();
   const drawer = useSidebarDrawer();
-  const { width, setWidth } = useSidebarWidth();
+  const { layout, save } = useSidebarLayout();
   const copy = STATE_COPY[state];
 
   return (
@@ -41,8 +41,8 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
       sidebarLabel={t("shell.region.workIndex")}
       sidebarResizeLabel={t("sidebar.action.resize")}
       sidebarOpen={!drawer.collapsed}
-      sidebarWidth={width}
-      onResize={setWidth}
+      sidebarLayout={layout}
+      onLayoutChanged={save}
       onSidebarToggle={drawer.toggle}
       sidebarExpandLabel={t("sidebar.action.expand")}
       sidebarCollapseLabel={t("sidebar.action.collapse")}
@@ -72,7 +72,7 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
         <>
           <Slot name="app.overlay" />
           <output className="sr-only" data-testid="persisted-sidebar-width">
-            {width}
+            {layout?.sidebar ?? ""}
           </output>
           <output className="sr-only" data-testid="requested-work-index-state">
             {state}

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { useCopyFeedback } from "@flame/ui";
+import { useCopy } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { space } from "@flame/ui/tokens.stylex";
 import { TextButton } from "@/ui/atoms/text-button";
@@ -13,7 +13,7 @@ const styles = stylex.create({
 export function FailureDetails({ diagnostics }: { diagnostics: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const { copied, copy } = useCopyFeedback(diagnostics);
+  const copy = useCopy(diagnostics, t("startup.failed.copy"));
   return (
     <div {...stylex.props(styles.root)}>
       <div {...stylex.props(styles.actions)}>
@@ -21,7 +21,7 @@ export function FailureDetails({ diagnostics }: { diagnostics: string }) {
           {t("plugins.renderFailed.details")}
         </TextButton>
         <TextButton tone="muted" onClick={() => void copy()}>
-          {copied ? t("startup.failed.copied") : t("startup.failed.copy")}
+          {t("startup.failed.copy")}
         </TextButton>
       </div>
       {open && (

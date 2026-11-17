@@ -1,5 +1,5 @@
 import { type ContentBlock } from "@/features/agent/public/contentBlock";
-import { type Message, type MessageRole, type ToolCall } from "@/features/agent/public/sessionView";
+import { type Message, type ToolCall } from "@/features/agent/public/sessionView";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type MessageActionMaterialization } from "@/features/chat/message-actions/public/messageActions";
 import {
@@ -46,10 +46,6 @@ export function finalAnswerFollows(message: Message, next?: Message): boolean {
     next.phase === "finalAnswer" &&
     next.runId === message.runId
   );
-}
-
-export function messageBlocksRenderInstant(role: MessageRole): boolean {
-  return role === "user";
 }
 
 export function messageActionMaterialization(row: TranscriptRow): MessageActionMaterialization {

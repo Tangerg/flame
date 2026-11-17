@@ -293,3 +293,24 @@ for (const dependency of ["node:fs", "fs", "missing-author-dependency"]) {
     }
   });
 }
+
+test("escapes meaningful literal whitespace in distributed modules without trimming data", async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), "flame-component-whitespace-"),
+  );
+  try {
+    const source = "[ \t\n\r\n中文🙂]";
+    const input = join(directory, "entry.js");
+    await writeFile(input, `export const source = ${JSON.stringify(source)};`);
+    const output = join(directory, "output");
+    await buildComponent({ input, directory: output, compiler: rolldown });
+    const bytes = await readFile(join(output, "component.js"), "utf8");
+    assert.doesNotMatch(bytes, /[ \t]+\r?\n/);
+    const component = await import(
+      `data:text/javascript;base64,${Buffer.from(bytes).toString("base64")}`
+    );
+    assert.equal(component.source, source);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

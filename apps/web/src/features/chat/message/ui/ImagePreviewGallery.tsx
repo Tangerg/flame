@@ -188,7 +188,12 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
     );
   };
   const onKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    if (!gallery) return;
+    if (
+      !gallery ||
+      event.defaultPrevented ||
+      (event.target instanceof Element && event.target.closest('[data-slot="image-camera"]'))
+    )
+      return;
     if (event.key === "ArrowLeft" && gallery.index > 0) {
       event.preventDefault();
       setGalleryIndex(gallery.index - 1);
@@ -285,7 +290,11 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
         <ImageViewport
           image={active}
           label={activeLabel}
-          labels={{ zoomIn: t("message.image.zoomIn"), zoomOut: t("message.image.zoomOut") }}
+          labels={{
+            fit: t("message.image.fit"),
+            zoomIn: t("message.image.zoomIn"),
+            zoomOut: t("message.image.zoomOut"),
+          }}
         />
       </div>
     </LightboxDialog>

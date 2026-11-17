@@ -138,6 +138,7 @@ export const en = {
   "result.imageUnavailable": "This recorded image could not be displayed.",
   "image.view": "View image",
   "image.close": "Close image",
+  "image.fit": "Fit image",
   "image.zoomIn": "Zoom in",
   "image.zoomOut": "Zoom out",
   "image.description": "Image description",

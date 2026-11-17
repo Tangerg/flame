@@ -1,3 +1,4 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { useMemo, useSyncExternalStore } from "react";
 import { type Query, type UseQueryResult } from "@tanstack/react-query";
@@ -194,4 +195,25 @@ export function createParameterizedDataQuery<P, T>(
       subscribed,
     );
   };
+}
+
+export function createPagedDataQuery<
+  P extends { cursor?: string },
+  T extends { nextCursor?: string },
+>(key: string) {
+  return (params: P | undefined, subscribed = true) =>
+    useInfiniteQuery({
+      queryKey: [key, params, "pages"],
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam, signal }) =>
+        dataQueryOwner.load<T, P>(
+          key,
+          params === undefined ? undefined : { ...params, cursor: pageParam },
+          signal,
+        ),
+      getNextPageParam: (page) => page.nextCursor,
+      enabled: params !== undefined && subscribed,
+      subscribed,
+      ...STATIC_QUERY_OPTIONS,
+    });
 }

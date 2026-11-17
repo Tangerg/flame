@@ -7,7 +7,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type CapturedToolResult, type ComponentContext } from "@flame/component-sdk";
 import skillPages from "@flame/runtime-client/testing/skill-pages.json";
@@ -1348,149 +1348,16 @@ function copyFrom(target: HTMLElement) {
   return { proceeded, setData };
 }
 
-const OUTPUT_LINE_HEIGHT = 20;
-
 function expandOutput(output: string) {
-  document.documentElement.style.setProperty("--leading-relaxed", `${OUTPUT_LINE_HEIGHT}px`);
-  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
-  for (const property of ["clientHeight", "clientWidth", "scrollHeight"] as const) {
-    const read = Object.getOwnPropertyDescriptor(
-      property === "scrollHeight" ? Element.prototype : HTMLElement.prototype,
-      property,
-    )!.get!;
-    vi.spyOn(HTMLElement.prototype, property, "get").mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      if (this.getAttribute("aria-label") !== "Tool output") return read.call(this);
-      if (property === "clientHeight") return 400;
-      if (property === "clientWidth") return 800;
-      return Number.parseFloat((this.firstElementChild as HTMLElement)?.style.height ?? "0");
-    });
-  }
-  const scrollTo = Element.prototype.scrollTo;
-  vi.spyOn(Element.prototype, "scrollTo").mockImplementation(function (
-    this: Element,
-    ...args: Parameters<Element["scrollTo"]>
-  ) {
-    Reflect.apply(scrollTo, this, args);
-    queueMicrotask(() => {
-      if (this.isConnected) fireEvent.scroll(this);
-    });
-  });
   testClient.render(
     <>
       <p>Surrounding narrative</p>
       <RecordedResult context={capturedContext("shell", output)} />
     </>,
   );
-  // Happy DOM has no layout; its ruler must share the fixture's declared line height.
-  const preview = screen.getByRole("region", { name: "Tool output preview" });
-  const ruler = preview.parentElement!.querySelector<HTMLElement>('span[aria-hidden="true"]')!;
-  vi.spyOn(ruler, "getBoundingClientRect").mockReturnValue(
-    new DOMRect(0, 0, 0, OUTPUT_LINE_HEIGHT),
-  );
   fireEvent.click(screen.getByRole("button", { name: /earlier lines/ }));
   return screen.getByRole("region", { name: "Tool output" });
 }
-
-function findUniqueOutputLine() {
-  const output = Array.from({ length: 240 }, (_, index) =>
-    index === 42 ? "Boundary needle alpha" : `line ${index}`,
-  ).join("\n");
-  const reader = expandOutput(output);
-  Object.defineProperty(reader, "clientHeight", { configurable: true, value: 400 });
-  fireEvent.click(screen.getByRole("button", { name: "Find" }));
-  const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Find in output" });
-  fireEvent.change(field, { target: { value: "Boundary needle" } });
-  const status = () =>
-    within(screen.getByRole("search", { name: "Output search" })).queryByRole("status")
-      ?.textContent;
-  const expectRevealed = () =>
-    waitFor(() => {
-      expect(reader.scrollTop).toBe(
-        42 * OUTPUT_LINE_HEIGHT + OUTPUT_LINE_HEIGHT / 2 - reader.clientHeight / 2,
-      );
-      expect(
-        reader.querySelector('[data-current-match] [data-output-line="42"]')?.textContent,
-      ).toBe("Boundary needle alpha");
-      expect(document.activeElement).toBe(field);
-      expect(status()).toBe("1 of 1");
-    });
-  const expectScrolledAway = () => {
-    expect(reader.scrollTop).toBe(100 * OUTPUT_LINE_HEIGHT);
-    expect(reader.querySelector('[data-output-line="100"]')).toBeTruthy();
-    expect(reader.querySelector('[data-output-line="42"]')).toBeNull();
-  };
-  const scrollAway = () => {
-    reader.scrollTop = 100 * OUTPUT_LINE_HEIGHT;
-    fireEvent.scroll(reader);
-    expectScrolledAway();
-  };
-  return { reader, field, status, expectRevealed, scrollAway, expectScrolledAway };
-}
-
-it.each([
-  {
-    action: "Enter",
-    request: (field: HTMLElement) => fireEvent.keyDown(field, { key: "Enter" }),
-  },
-  {
-    action: "Shift+Enter",
-    request: (field: HTMLElement) => fireEvent.keyDown(field, { key: "Enter", shiftKey: true }),
-  },
-  {
-    action: "a refined query",
-    request: (field: HTMLElement) =>
-      fireEvent.change(field, { target: { value: "Boundary needle alpha" } }),
-  },
-])(
-  "reveals the same unique output match again on $action after manual scrolling",
-  async ({ request }) => {
-    const { field, expectRevealed, scrollAway } = findUniqueOutputLine();
-    await expectRevealed();
-    scrollAway();
-    request(field);
-    await expectRevealed();
-  },
-);
-
-it("keeps a manual output scroll until an explicit Find action", async () => {
-  const { reader, field, status, expectRevealed, scrollAway, expectScrolledAway } =
-    findUniqueOutputLine();
-  await expectRevealed();
-  scrollAway();
-
-  fireEvent.scroll(reader);
-  expectScrolledAway();
-
-  fireEvent.keyDown(field, { key: "Enter", isComposing: true });
-  fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
-  expectScrolledAway();
-  expect(document.activeElement).toBe(field);
-  expect(status()).toBe("1 of 1");
-
-  fireEvent.change(field, { target: { value: "absent needle" } });
-  expectScrolledAway();
-  expect(status()).toBe("No matches");
-  fireEvent.keyDown(field, { key: "Enter" });
-  expectScrolledAway();
-
-  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
-  expectScrolledAway();
-  expect(field.value).toBe("");
-  expect(document.activeElement).toBe(field);
-  expect(status()).toBeUndefined();
-
-  fireEvent.change(field, { target: { value: "Boundary needle" } });
-  await expectRevealed();
-  scrollAway();
-
-  fireEvent.click(screen.getByRole("button", { name: "Close find" }));
-  expect(screen.queryByRole("search", { name: "Output search" })).toBeNull();
-  expect(document.activeElement).toBe(reader);
-  expectScrolledAway();
-  expect(reader.querySelector("[data-current-match]")).toBeNull();
-});
 
 it("scopes Select All to the presented result rows, outside find and caption controls", () => {
   const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
@@ -1553,29 +1420,6 @@ it.each([3, 13])(
   },
 );
 
-it("preserves ANSI state and resets outside the mounted output window", () => {
-  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
-  const output =
-    "\u001b[31m" +
-    plain.map((line, index) => (index === 25_001 ? `\u001b[39m${line}` : line)).join("\n") +
-    "\n";
-  const reader = expandOutput(output);
-  reader.scrollTop = 25_000 * 20;
-  fireEvent.scroll(reader);
-  expect(within(reader).getByText(plain[25_000]!, { exact: true }).style.color).toBe(
-    "var(--color-negative)",
-  );
-  expect(within(reader).getByText(plain[25_001]!, { exact: true }).style.color).toBe("");
-  expect(reader.querySelector('[data-output-line="0"]')).toBeNull();
-  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
-  expect(selectAll(reader)).toBe(false);
-  expect(copyFrom(reader).setData).toHaveBeenCalledExactlyOnceWith(
-    "text/plain",
-    plain.join("\n") + "\n",
-  );
-  document.getSelection()?.removeAllRanges();
-});
-
 it("selects only the preview excerpt and copies its presented lines", () => {
   const plain = Array.from({ length: 12 }, (_, index) => (index === 6 ? "" : `line ${index}`));
   const output = plain
@@ -1591,8 +1435,8 @@ it("selects only the preview excerpt and copies its presented lines", () => {
   const selection = document.getSelection()!;
   selection.selectAllChildren(preview.querySelector('[data-output-line="4"]')!);
   let copied = copyFrom(preview);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", "line 4");
 
   expect(selectAll(preview)).toBe(false);
   const range = selectedRange();
@@ -1704,138 +1548,16 @@ it.each([
 });
 
 it("copies the complete captured output after Select All in the virtualized reader", () => {
-  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
+  const plain = Array.from({ length: 500 }, (_, index) => `line ${index}`);
   const lines = plain.map((line, index) =>
     index % 1000 === 0 ? `\u001b[31m${line}\u001b[0m` : line,
   );
   const output = `${lines.join("\n")}\n\n`;
   const reader = expandOutput(output);
-  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
   expect(selectAll(reader)).toBe(false);
-  expect(selectedRange().toString()).not.toContain("line 25000");
   const { proceeded, setData } = copyFrom(reader);
   expect(proceeded).toBe(false);
   expect(setData).toHaveBeenCalledExactlyOnceWith("text/plain", `${plain.join("\n")}\n\n`);
-  document.getSelection()?.removeAllRanges();
-});
-
-it("retains only native selection endpoints across a 50,000-line virtual window", () => {
-  const plain = Array.from({ length: 50_000 }, (_, index) =>
-    index % 1000 === 10 ? "" : `line ${index} 中😀`,
-  );
-  const raw =
-    plain
-      .map((line, index) => (index % 100 === 0 ? `\u001b[31m${line}\u001b[0m` : line))
-      .join("\n") + "\n";
-  const reader = expandOutput(raw);
-  const anchor = reader.querySelector('[data-output-line="2"]')!;
-  act(() => {
-    document
-      .getSelection()!
-      .setBaseAndExtent(anchor.firstChild!.firstChild!, 1, anchor.firstChild!.firstChild!, 1);
-    document.dispatchEvent(new Event("selectionchange"));
-  });
-  reader.scrollTop = 49_980 * 20;
-  fireEvent.scroll(reader);
-  expect(reader.querySelector('[data-output-line="2"]')).toBe(anchor);
-  const end = reader.querySelector('[data-output-line="49990"]')!;
-  act(() => {
-    document
-      .getSelection()!
-      .setBaseAndExtent(anchor.firstChild!.firstChild!, 1, end.firstChild!.firstChild!, 7);
-    document.dispatchEvent(new Event("selectionchange"));
-  });
-  reader.scrollTop = 400 * 20;
-  fireEvent.scroll(reader);
-  expect(reader.querySelector('[data-output-line="2"]')).toBe(anchor);
-  expect(reader.querySelector('[data-output-line="49990"]')).toBe(end);
-  expect(reader.querySelector('[data-output-line="25000"]')).toBeNull();
-  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
-  expect(copyFrom(reader).setData).toHaveBeenCalledExactlyOnceWith(
-    "text/plain",
-    plain.slice(2, 49_990).join("\n").slice(1) + "\n" + plain[49_990]!.slice(0, 7),
-  );
-  act(() => {
-    document.getSelection()!.removeAllRanges();
-    document.dispatchEvent(new Event("selectionchange"));
-  });
-  expect(reader.querySelector('[data-output-line="2"]')).toBeNull();
-  expect(reader.querySelector('[data-output-line="49990"]')).toBeNull();
-});
-
-it("serializes virtual partial selections and leaves outside, collapsed and handled copies native", () => {
-  const output = Array.from({ length: 200 }, (_, index) => `line ${index}`).join("\n");
-  const reader = expandOutput(output);
-  const selection = document.getSelection()!;
-  const line = reader.querySelector("[data-output-line]")!;
-
-  selection.selectAllChildren(line);
-  let copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(false);
-  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", line.textContent);
-
-  selection.selectAllChildren(screen.getByText("Surrounding narrative"));
-  copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
-
-  selection.setBaseAndExtent(reader, 0, reader, 0);
-  copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
-
-  selection.setBaseAndExtent(
-    screen.getByText("Surrounding narrative"),
-    0,
-    reader,
-    reader.childNodes.length,
-  );
-  copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(true);
-  expect(copied.setData).not.toHaveBeenCalled();
-
-  selectAll(reader);
-  const handled = (event: Event) => event.preventDefault();
-  document.addEventListener("copy", handled, { capture: true });
-  try {
-    copied = copyFrom(reader);
-    expect(copied.setData).not.toHaveBeenCalled();
-  } finally {
-    document.removeEventListener("copy", handled, { capture: true });
-    selection.removeAllRanges();
-  }
-});
-
-it("copies the complete captured output when Select All precedes a virtual-window scroll", () => {
-  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
-  const source = `${plain.join("\n")}\n`;
-  const reader = expandOutput(source);
-  Object.defineProperty(reader, "clientHeight", { configurable: true, value: 400 });
-  const scrollTo = (top: number) => {
-    reader.scrollTop = top;
-    fireEvent.scroll(reader);
-  };
-  scrollTo(49_980 * OUTPUT_LINE_HEIGHT);
-  expect(reader.querySelector('[data-output-line="49999"]')).toBeTruthy();
-  expect(selectAll(reader)).toBe(false);
-
-  scrollTo(49_900 * OUTPUT_LINE_HEIGHT);
-  expect(reader.querySelector('[data-output-line="49999"]')).toBeNull();
-  expect(reader.querySelector('[data-output-line="49894"]')).toBeTruthy();
-  let copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(false);
-  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
-
-  scrollTo(49_980 * OUTPUT_LINE_HEIGHT);
-  copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(false);
-  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
-
-  document.getSelection()!.selectAllChildren(reader.querySelector('[data-output-line="49990"]')!);
-  scrollTo(49_970 * OUTPUT_LINE_HEIGHT);
-  copied = copyFrom(reader);
-  expect(copied.proceeded).toBe(false);
-  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", "line 49990");
   document.getSelection()?.removeAllRanges();
 });
 

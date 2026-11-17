@@ -119,6 +119,7 @@ export const en: Record<string, string> = {
   "export.trajectory": "Export complete Session trajectory",
   "image.view": "View image",
   "image.close": "Close image preview",
+  "image.fit": "Fit image",
   "image.zoomIn": "Zoom in image",
   "image.zoomOut": "Zoom out image",
   "image.description": "Image description",

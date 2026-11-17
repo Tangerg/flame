@@ -37,15 +37,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
     case "text":
       return (
         <div key={key} data-slot="message-text">
-          {ctx.textReveal === "instant" ? (
-            <MarkdownMessage text={block.text} reveal="instant" />
-          ) : (
-            <MarkdownMessage
-              text={block.text}
-              streaming={block.status === "running"}
-              reveal={ctx.textReveal}
-            />
-          )}
+          <MarkdownMessage text={block.text} streaming={block.status === "running"} />
         </div>
       );
 

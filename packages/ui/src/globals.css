@@ -661,13 +661,6 @@
   }
 }
 
-[data-slot="panel-body"] :where(*) {
-  scroll-margin-block-start: calc(
-    var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
-      var(--layout-control-gap)
-  );
-}
-
 [data-slot="form-row"] > [data-slot="form-field"] {
   grid-row: span 2;
   grid-template-rows: subgrid;

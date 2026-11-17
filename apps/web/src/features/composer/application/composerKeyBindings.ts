@@ -3,7 +3,6 @@ type ComposerKeyHandler = ComposerKeyBindingSpec["handler"];
 
 export interface ComposerKeyHandlers {
   send: ComposerKeyHandler;
-  approveOrSend: ComposerKeyHandler;
   declineApproval: ComposerKeyHandler;
   stopRun: ComposerKeyHandler;
   historyPrevious: ComposerKeyHandler;
@@ -12,11 +11,10 @@ export interface ComposerKeyHandlers {
 
 export function composerKeyBindings(handlers: ComposerKeyHandlers): ComposerKeyBindingSpec[] {
   return [
-    { key: "Enter", description: "composer.key.sendDesc", handler: handlers.send },
     {
       key: "Mod+Enter",
-      description: "composer.key.approveDesc",
-      handler: handlers.approveOrSend,
+      description: "composer.key.sendDesc",
+      handler: handlers.send,
     },
     {
       key: "Mod+Shift+Backspace",
@@ -25,12 +23,12 @@ export function composerKeyBindings(handlers: ComposerKeyHandlers): ComposerKeyB
     },
     { key: "Escape", description: "composer.key.stopDesc", handler: handlers.stopRun },
     {
-      key: "ArrowUp",
+      key: "Mod+ArrowUp",
       description: "composer.key.historyPrevDesc",
       handler: handlers.historyPrevious,
     },
     {
-      key: "ArrowDown",
+      key: "Mod+ArrowDown",
       description: "composer.key.historyNextDesc",
       handler: handlers.historyNext,
     },

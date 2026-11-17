@@ -66,7 +66,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   const reading = useRef<AbortController>(undefined);
   const arrival = useRef<HTMLElement>(undefined);
   const summary = useRef<HTMLParagraphElement>(null);
-  const searchElement = useRef<HTMLElement>(null);
+  const searchElement = useRef<HTMLInputElement>(null);
   const load = useCallback(
     async (
       cursors: (string | undefined)[] = [undefined],

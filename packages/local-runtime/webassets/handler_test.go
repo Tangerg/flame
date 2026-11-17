@@ -115,7 +115,6 @@ func distribution(t *testing.T) fstest.MapFS {
 	t.Helper()
 	files := fstest.MapFS{
 		"index.html":       {Data: []byte(`<!doctype html><script nonce="RESPONSE_NONCE" src="/assets/app.js"></script><meta property="csp-nonce" nonce="RESPONSE_NONCE">`)},
-		"sandbox.html":     {Data: []byte(`<!doctype html><p>opaque program wrapper</p>`)},
 		"preview.html":     {Data: []byte(`<!doctype html><script nonce="RESPONSE_NONCE" src="/assets/app.js"></script>`)},
 		"assets/app.js":    {Data: []byte(`export const captured = true`)},
 		"appearance.js":    {Data: []byte(`document.documentElement.dataset.theme = 'light'`)},
@@ -129,8 +128,6 @@ func distribution(t *testing.T) fstest.MapFS {
 		EmbeddedPolicy:   "script-src 'nonce-RESPONSE_NONCE' 'strict-dynamic'; frame-ancestors 'self'",
 		Files:            make(map[string]artifact),
 	}
-	p.Sandbox.File = "sandbox.html"
-	p.Sandbox.Policy = "default-src 'none'; script-src 'unsafe-inline'; frame-src 'none'"
 	for name, file := range files {
 		if !publicPath(name) {
 			continue
@@ -140,8 +137,6 @@ func distribution(t *testing.T) fstest.MapFS {
 		switch name {
 		case "index.html":
 			identity.Document = "main"
-		case "sandbox.html":
-			identity.Document = "sandbox"
 		case "preview.html":
 			identity.Document = "same-origin"
 		}
@@ -200,16 +195,10 @@ func TestDocumentPairsFreshNonceWithUnconditionalBody(t *testing.T) {
 	}
 }
 
-func TestWrapperHasIndependentPolicyAndCanBeEmbedded(t *testing.T) {
+func TestTrustedPreviewKeepsSameOriginEmbedding(t *testing.T) {
 	h, err := New(distribution(t).Open)
 	if err != nil {
 		t.Fatal(err)
-	}
-	response := request(h, http.MethodGet, "/sandbox.html", nil)
-	if response.Code != http.StatusOK || response.Header().Get("X-Frame-Options") != "" ||
-		strings.Contains(response.Header().Get("Content-Security-Policy"), "frame-ancestors") ||
-		!strings.Contains(response.Header().Get("Content-Security-Policy"), "frame-src 'none'") {
-		t.Fatal("program wrapper acquired the main document's embedding or script policy")
 	}
 	preview := request(h, http.MethodGet, "/preview.html", nil)
 	if preview.Code != http.StatusOK || preview.Header().Get("X-Frame-Options") != "SAMEORIGIN" ||
@@ -263,7 +252,6 @@ func TestDistributionRequiresCurrentCompletePolicyAndOriginalDocumentBytes(t *te
 		func(files fstest.MapFS) { delete(files, policyFile) },
 		func(files fstest.MapFS) { files[policyFile].Data = []byte(`{"version":0}`) },
 		func(files fstest.MapFS) { files["index.html"].Data = []byte("replacement document") },
-		func(files fstest.MapFS) { delete(files, "sandbox.html") },
 	} {
 		files := distribution(t)
 		change(files)

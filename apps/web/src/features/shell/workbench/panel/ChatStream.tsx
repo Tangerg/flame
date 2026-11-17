@@ -1,10 +1,9 @@
-import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
 import { companion } from "@flame/brand-assets";
 import { tupleKey } from "@/lib/tupleKey";
 import { useT } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/public/input";
-import { type FocusEvent, memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { Slot } from "@/extensions/host/Slot";
@@ -12,13 +11,10 @@ import {
   useExpandedWorkspaceToolIds,
   useSetWorkspaceToolExpanded,
 } from "@/features/workspace/public/navigation";
-import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
-import { focusComposer } from "@/features/composer/public/focus";
 import { ChatErrorBoundary } from "@/features/shell/workbench/panel/ChatErrorBoundary";
 import { ComposerSurface } from "@/features/shell/workbench/panel/ComposerSurface";
 import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
-import { COMPOSER_OVERLAY_PROPERTY } from "@/features/shell/workbench/panel/composerOverlay";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
 import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";
@@ -27,9 +23,9 @@ import { pendingQuestionRequest } from "@/features/chat/public/message/rendering
 import { QuestionCard } from "@/features/chat/public/message/rendering";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { ScrollRegion, vocab } from "@flame/ui";
+import { ScrollRegion, vocab, handoffFocus } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
-import { useAgentShellElement, useViewportFocus } from "@/ui/agent/index";
+import { useAgentShellElement } from "@/ui/agent/index";
 import {
   NOTIFICATION_BOTTOM_PROPERTY,
   NOTIFICATION_TOP_PROPERTY,
@@ -47,7 +43,7 @@ const cst = stylex.create({
   rail: {
     position: "absolute",
     top: 0,
-    bottom: "var(--composer-overlay, 0px)",
+    bottom: 0,
     right: "calc(50% + var(--reading-column-max) / 2)",
     zIndex: 1,
     width: "var(--reading-rail-width)",
@@ -127,15 +123,11 @@ const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string
 });
 
 export function ChatStream({ onSend }: Props) {
-  const composerAccess = useComposer();
-
   const sessionId = useActiveSessionId();
   const rows = useActiveConversationRows();
 
   const expandedToolIds = useExpandedWorkspaceToolIds();
   const setToolExpanded = useSetWorkspaceToolExpanded();
-
-  const textReveal = useStreamRevealStore((state) => state.streamReveal);
 
   const pendingQuestion = useMemo(() => pendingQuestionRequest(rows), [rows]);
 
@@ -144,10 +136,9 @@ export function ChatStream({ onSend }: Props) {
       sessionId,
       expandedIds: expandedToolIds,
       onExpandedChange: setToolExpanded,
-      textReveal,
       questionInComposer: pendingQuestion?.block,
     }),
-    [sessionId, expandedToolIds, setToolExpanded, textReveal, pendingQuestion],
+    [sessionId, expandedToolIds, setToolExpanded, pendingQuestion],
   );
 
   const composer = pendingQuestion ? (
@@ -163,6 +154,10 @@ export function ChatStream({ onSend }: Props) {
       questions={pendingQuestion.block.questions}
       answered={pendingQuestion.block.answered}
       answers={pendingQuestion.block.answers}
+      beforeSubmit={() => {
+        const source = composerOverlayRef.current;
+        if (source) handoffFocus(source, paneRef.current?.closest<HTMLElement>('[role="region"]'));
+      }}
     />
   ) : (
     <ComposerSurface onSend={onSend} />
@@ -193,8 +188,6 @@ export function ChatStream({ onSend }: Props) {
       // Native hidden reflow can clamp scrolling before cleanup; retain this published frame.
       pane.style.setProperty("--composer-frame-height", `${layoutRect.height}px`);
       const overlayRect = overlay.getBoundingClientRect();
-      if (started) pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${overlayRect.height}px`);
-      else pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
       if (!shell) return;
       const jumpRect = jump?.getBoundingClientRect();
       const footprint = jumpRect
@@ -213,7 +206,14 @@ export function ChatStream({ onSend }: Props) {
     };
 
     publish();
-    const observer = new ResizeObserver(publish);
+    let frame: number | undefined;
+    const observer = new ResizeObserver(() => {
+      if (frame !== undefined) return;
+      frame = requestAnimationFrame(() => {
+        frame = undefined;
+        publish();
+      });
+    });
     for (const node of [layout, overlay, jump, emptyHeadingRef.current, emptyFooterRef.current]) {
       if (node) observer.observe(node);
     }
@@ -221,53 +221,15 @@ export function ChatStream({ onSend }: Props) {
     if (!started) layout.addEventListener("scroll", publish, { passive: true, capture: true });
     return () => {
       observer.disconnect();
+      if (frame !== undefined) cancelAnimationFrame(frame);
       layout.removeEventListener("scroll", publish, true);
       shell?.style.removeProperty(NOTIFICATION_TOP_PROPERTY);
       shell?.style.removeProperty(NOTIFICATION_BOTTOM_PROPERTY);
     };
   }, [started, visible, shell]);
 
-  useViewportFocus(emptyViewportRef, !started && visible);
-
-  // Only this host survives the question-to-Composer replacement.
-  const questionFocusRef = useRef<{ element: Element; sessionId: string } | null>(null);
-  const questionPending = pendingQuestion !== null;
-
-  const rememberQuestionFocus = (event: FocusEvent) => {
-    questionFocusRef.current =
-      visible && questionPending && composerOverlayRef.current?.contains(event.target)
-        ? { element: event.target, sessionId }
-        : null;
-  };
-
-  const forgetQuestionFocus = (event: FocusEvent) => {
-    const next = event.relatedTarget;
-    if (next && !composerOverlayRef.current?.contains(next)) questionFocusRef.current = null;
-  };
-
-  // Passive so it runs after the new Composer input registers its focus target.
-  useEffect(() => {
-    const handoff = questionFocusRef.current;
-    if (!handoff) return;
-    if (!visible || handoff.sessionId !== sessionId) {
-      questionFocusRef.current = null;
-      return;
-    }
-    if (questionPending) return;
-    questionFocusRef.current = null;
-    if (handoff.element.isConnected || document.activeElement !== document.body) {
-      return;
-    }
-    focusComposer(composerAccess);
-  }, [questionPending, sessionId, visible, composerAccess]);
-
   return (
-    <div
-      ref={paneRef}
-      onFocusCapture={rememberQuestionFocus}
-      onBlurCapture={forgetQuestionFocus}
-      {...stylex.props(sh.paneAnchored, cst.queryable)}
-    >
+    <div ref={paneRef} {...stylex.props(sh.paneAnchored, cst.queryable)}>
       <ChatBanners sessionId={sessionId} />
       <div
         ref={layoutRef}

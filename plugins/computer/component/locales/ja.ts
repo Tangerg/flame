@@ -135,6 +135,7 @@ export const ja = {
   "result.imageUnavailable": "この記録された画像を表示できませんでした。",
   "image.view": "画像を表示",
   "image.close": "画像を閉じる",
+  "image.fit": "全体を表示",
   "image.zoomIn": "拡大",
   "image.zoomOut": "縮小",
   "image.description": "画像の説明",

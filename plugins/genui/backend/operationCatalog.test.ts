@@ -69,7 +69,6 @@ const operation: OperationRequest = {
   installationId: "installed-usage",
   contribution: "reports",
   method: "test.reports/capture.v1",
-  input: { object: { period: { literal: "daily" } } },
 };
 
 it("captures the selected installed contract and derives its installation target", () => {

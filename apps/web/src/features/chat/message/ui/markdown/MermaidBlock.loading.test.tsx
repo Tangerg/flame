@@ -13,7 +13,7 @@ it("preserves the source when the diagram renderer cannot load", async () => {
   const code = "graph TD; A-->B";
   const { container, queryByRole } = client.render(<MermaidBlock code={code} />);
 
-  await waitFor(() => expect(container.querySelector(".shiki-block")).toBeTruthy());
+  await waitFor(() => expect(container.querySelector(".code-artifact")).toBeTruthy());
   expect(queryByRole("status", { name: "Loading Mermaid diagram" })).toBeNull();
   expect(container.textContent).toContain(code);
 });

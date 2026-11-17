@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Component, createRef, type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { ShikiCodeBlock, useContentVisible } from "@/ui/index";
+import { CodeArtifact, useContentVisible } from "@/ui/index";
 import { Disclosure, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
@@ -97,7 +97,7 @@ export function ToolInspector({
   const result = (
     <>
       {hasResult && (
-        <ShikiCodeBlock
+        <CodeArtifact
           lang={sourceLang(model.result)}
           code={model.result.text}
           scrollLabel={t("toolInspector.result")}
@@ -121,7 +121,7 @@ export function ToolInspector({
           title={t("toolInspector.arguments")}
           defaultOpen={!hasResult && children === undefined}
         >
-          <ShikiCodeBlock
+          <CodeArtifact
             lang={sourceLang(model.args)}
             code={model.args.text}
             scrollLabel={t("toolInspector.arguments")}

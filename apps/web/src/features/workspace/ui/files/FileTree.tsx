@@ -1,519 +1,316 @@
-import { RemovalFocus, useContentVisible } from "@flame/ui";
-import { useWorkspace } from "@/features/workspace/public/workspace";
+import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
+import { useId, useMemo, useRef, useState, type RefObject, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { type Ref, useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
-import { useTree } from "@headless-tree/react";
 import {
-  type FeatureImplementation,
-  type ItemInstance,
-  type TreeInstance,
-  selectionFeature,
-  syncDataLoaderFeature,
-} from "@headless-tree/core";
-import { Button, copyText, isImeKey, vocab } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
-import {
-  ContextMenu,
-  DataError,
-  DataView,
-  SkeletonList,
-  Icon,
-  chevron,
-  fileIconName,
-} from "@/ui/index";
+  Tree,
+  TreeItem,
+  TreeItemContent,
+  TreeLoadMoreItem,
+  Collection,
+  Virtualizer,
+  ListLayout,
+  I18nProvider,
+  Button as TreeButton,
+  type Key,
+} from "react-aria-components";
+import { Button, handoffFocus, useContentVisible, useCopy } from "@flame/ui";
+import { ContextMenu, DataError, Icon, fileIconName, SkeletonList } from "@/ui/index";
+import { useT, useLocale, localeToBcp47 } from "@/lib/i18n/index";
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import {
   rememberWorkspaceView,
   useWorkspaceViewMemory,
 } from "@/features/workspace/application/navigation";
-import {
-  type WorkspaceFileChange,
-  type WorkspaceFileEntry,
-} from "@/features/workspace/application/workspaceQueries";
-import { useFileTreeData } from "@/features/workspace/application/fileTree";
-import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
-import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
-
-// Visible rows already exist during a keyboard action. Commit focus now, so no deferred
-// library poll can move it after another control or a retiring tree takes ownership.
-const domFocusFeature: FeatureImplementation<WorkspaceFileEntry> = {
-  key: "workspace-dom-focus",
-  overwrites: ["tree"],
-  treeInstance: {
-    updateDomFocus: ({ tree }) => {
-      const root = tree.getElement();
-      const target = tree.getFocusedItem()?.getElement();
-      if (root?.contains(root.ownerDocument.activeElement) && target?.isConnected) {
-        target.focus({ preventScroll: true });
-        target.scrollIntoView({ block: "nearest", inline: "nearest" });
-      }
-    },
-  },
-};
-
-const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
-  add: "A",
-  mod: "M",
-  del: "D",
-  renamed: "R",
-};
-
-const ft = stylex.create({
+import { useDirectory } from "@/features/workspace/application/fileTree";
+import type { WorkspaceFileEntry } from "@/features/workspace/application/workspaceQueries";
+import { space, color, radius, type as typeStep } from "@flame/ui/tokens.stylex";
+const styles = stylex.create({
+  tree: { minHeight: 0, height: "100%", overflow: "auto", padding: space.s2 },
   row: {
-    whiteSpace: { default: "nowrap", ":is(:focus-within, [data-popup-open])": "normal" },
+    display: "flex",
+    alignItems: "center",
+    gap: space.s1_5,
+    minHeight: "2rem",
+    paddingInline: space.s2,
+    paddingBlock: space.s1,
+    borderRadius: radius.sm,
+    color: color.fg,
+    outlineOffset: "-2px",
+    backgroundColor: { default: "transparent", "[aria-current]": "var(--control-active-surface)" },
   },
-  directory: {
-    flexDirection: "column",
-    alignItems: "stretch",
-    justifyContent: "center",
-    gap: 0,
-  },
-  header: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
-  feedback: { minWidth: 0, whiteSpace: "normal", userSelect: "text" },
-  indent: { width: space.s3, flexShrink: 0 },
-  pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },
-  name: { flex: 1, whiteSpace: "inherit", overflowWrap: "anywhere" },
-  mark: {
-    flexShrink: 0,
-    fontFamily: "var(--font-mono)",
-    fontVariantNumeric: "tabular-nums",
-  },
-  add: { color: color.success },
-  mod: { color: color.warning },
-  del: { color: color.negative },
-  renamed: { color: color.warning },
-  dirMark: {
-    height: space.s1_5,
-    width: space.s1_5,
-    flexShrink: 0,
-    backgroundColor: color.warning,
-  },
+  name: { flex: 1, overflowWrap: "anywhere" },
 });
-
-type Model = ItemInstance<WorkspaceFileEntry>;
-type Snapshot = ReturnType<typeof useFileTreeData>;
-const entryId = (path: string) => `entry:${path}`;
-const entryPath = (id: string) => id.slice("entry:".length);
-
-function ownsTreeFocus(tree: TreeInstance<WorkspaceFileEntry>) {
-  return tree.getFocusedItem()?.getElement() === tree.getElement()?.ownerDocument.activeElement;
-}
-
-function activate(item: Model) {
-  if (!item.isFolder()) item.primaryAction();
-  else if (item.isExpanded()) item.collapse();
-  else item.expand();
-}
-
-function TreeNode({
-  item,
-  snapshot,
-  changes,
-  onReveal,
-  revealable,
-  onRemoved,
-}: {
-  item: Model;
-  snapshot: Snapshot;
-  changes: ReadonlyMap<string, WorkspaceFileChange>;
-  onReveal(path: string): void;
-  revealable: boolean;
-  onRemoved(row: HTMLElement): void;
-}) {
+type Directory = ReturnType<typeof useDirectory>;
+function More({ query }: { query: Directory }) {
   const t = useT();
-  const entry = item.getItemData();
-  const isDir = item.isFolder();
-  const expanded = item.isExpanded();
-  const selected = !isDir && item.isSelected();
-  const change = isDir ? undefined : changes.get(entry.path);
-  const dirChanged = isDir && [...changes.keys()].some((path) => path.startsWith(`${entry.path}/`));
-  const statusId = useId();
-  const headerId = `${statusId}header`;
-  const feedbackId = `${statusId}feedback`;
-  const groupId = `${statusId}group`;
-  const status = change
-    ? change.change === "renamed"
-      ? t("file.change.renamed", { path: change.previousPath ?? "" })
-      : t(`file.change.${change.change}`)
-    : dirChanged
-      ? t("file.change.below")
-      : undefined;
-  const query = snapshot.directories.get(entry.path);
-  const children = query?.data;
-  const retained = children !== undefined;
-  const feedbackTarget = {
-    get current() {
-      return item.getTree().getElement() ?? null;
-    },
-  };
-  const bindRow = useCallback(
-    (row: HTMLElement | null) => {
-      item.registerElement(row);
-      if (!row) return;
-      return () => {
-        onRemoved(row);
-        item.registerElement(null);
-      };
-    },
-    [item, onRemoved],
-  );
-  const label = (
-    <>
-      {isDir ? (
-        <Icon
-          name="chevron-down"
-          size="xs"
-          className={stylex.props(chevron.base, !expanded && chevron.shut).className}
-        />
-      ) : (
-        <span {...stylex.props(ft.indent)} />
-      )}
-      <Icon
-        name={isDir ? (expanded ? "folder-open" : "folder") : fileIconName(entry.path)}
-        size="sm"
-        className={stylex.props(vocab.hold, vocab.muted).className}
-      />
-      <span {...stylex.props(vocab.truncate, ft.name)}>
-        {entry.name}
-        {change?.previousPath && (
-          <span {...stylex.props(vocab.muted)}> ← {change.previousPath}</span>
-        )}
-      </span>
-      {change && (
-        <span
-          aria-hidden
-          title={status}
-          {...stylex.props(ft.mark, ft[change.change], typeStep.uiXs)}
-        >
-          {" "}
-          {CHANGE_MARK[change.change]}
-        </span>
-      )}
-      {dirChanged && <span aria-hidden title={status} {...stylex.props(ft.dirMark, corner.pill)} />}
-      {status && (
-        <span id={statusId} hidden>
-          {status}
-        </span>
-      )}
-    </>
-  );
-  const row = (
-    <Button
-      {...item.getProps()}
-      ref={bindRow}
-      nativeButton={!isDir}
-      render={isDir ? <div /> : undefined}
-      shape="row"
-      size="xs"
-      active={selected}
-      data-focus-proxy={isDir ? undefined : true}
-      aria-label={
-        isDir
-          ? undefined
-          : `${entry.name}${change?.previousPath ? ` ← ${change.previousPath}` : ""}${change ? ` ${CHANGE_MARK[change.change]}` : ""}`
-      }
-      aria-labelledby={isDir ? `${headerId}${expanded ? ` ${feedbackId}` : ""}` : undefined}
-      aria-selected={isDir ? undefined : selected}
-      aria-owns={expanded ? groupId : undefined}
-      aria-describedby={status ? statusId : undefined}
-      aria-current={selected ? "true" : undefined}
-      aria-busy={isDir && expanded && query?.isFetching ? true : undefined}
-      title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
-      onFocus={(event) => {
-        if (event.target === event.currentTarget) item.setFocused();
-      }}
-      onKeyDownCapture={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (isImeKey(event.nativeEvent)) {
-          event.stopPropagation();
-          return;
-        }
-        if (
-          (event.key !== "Enter" && event.key !== " ") ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey
-        )
-          return;
-        event.preventDefault();
-        event.stopPropagation();
-        activate(item);
-      }}
-      onKeyUpCapture={(event) => {
-        if (!isDir || event.target !== event.currentTarget || event.key !== " ") return;
-        // The row owns keydown activation; Base UI independently clicks non-native rows on Space keyup.
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-      onClick={(event) => {
-        if (
-          isDir &&
-          event.target !== event.currentTarget &&
-          !event.currentTarget
-            .querySelector('[data-slot="file-tree-header"]')
-            ?.contains(event.target as Node)
-        )
-          return;
-        item.setFocused();
-        activate(item);
-      }}
-      styles={isDir ? ft.directory : undefined}
-      className={stylex.props(ft.row).className}
-      style={{ paddingInlineStart: `calc(${space.s1_5} + ${item.getItemMeta().level * 12}px)` }}
-    >
-      {isDir ? (
-        <div id={headerId} data-slot="file-tree-header" {...stylex.props(ft.header)}>
-          {label}
-        </div>
-      ) : (
-        label
-      )}
-      {isDir && expanded && (
-        <div id={feedbackId} {...stylex.props(ft.feedback)}>
-          {" "}
-          <DataView
-            items={children}
-            isLoading={!retained && (query === undefined || query.isPending)}
-            failure={retained ? undefined : query?.error}
-            focusTarget={feedbackTarget}
-            onRetry={query?.refetch}
-            skeletonCount={1}
-            error={{ title: t("dataView.error.title"), size: "compact" }}
-            empty={{ icon: "folder", title: t("file.empty.title"), size: "compact" }}
-          >
-            {() => null}
-          </DataView>
-          {retained &&
-            query?.error != null &&
-            (query.isFetching ? (
-              <SkeletonList count={1} variant="compact" label={t("common.loading")} />
-            ) : (
-              <div role="status">
-                <DataError
-                  failure={query.error}
-                  focusTarget={feedbackTarget}
-                  unsupported={{
-                    icon: "folder",
-                    sub: t("file.directoryRefreshError.sub", { path: entry.path }),
-                    size: "compact",
-                  }}
-                  onRetry={query.refetch}
-                  title={t("file.refreshError.title")}
-                  sub={t("file.directoryRefreshError.sub", { path: entry.path })}
-                  size="compact"
-                />
-              </div>
-            ))}
-        </div>
-      )}
-    </Button>
-  );
+  if (query.last?.complete && !query.isError) return null;
+  const automatic = query.hasNextPage && !query.isError && !query.last?.coverage.budgetExhausted;
   return (
-    <div role="presentation">
-      <ContextMenu.Root>
-        <ContextMenu.Trigger render={row} />
-        <ContextMenu.Content aria-label={entry.path}>
-          <ContextMenu.IconItem icon="copy" onSelect={() => void copyText(entry.path)}>
-            {t("file.copyPath")}
-          </ContextMenu.IconItem>
-          {revealable && (
-            <ContextMenu.IconItem icon="folder-open" onSelect={() => onReveal(entry.path)}>
-              {t("file.reveal")}
-            </ContextMenu.IconItem>
-          )}
-        </ContextMenu.Content>
-      </ContextMenu.Root>
-      {isDir && expanded && (
-        <div role="group" id={groupId}>
-          {children?.map((entry) => (
-            <TreeNode
-              key={entry.path}
-              item={item.getTree().getItemInstance(entryId(entry.path))}
-              snapshot={snapshot}
-              changes={changes}
-              onReveal={onReveal}
-              revealable={revealable}
-              onRemoved={onRemoved}
-            />
-          ))}
-        </div>
-      )}
+    <TreeLoadMoreItem
+      isLoading={query.isPending || query.isFetchingNextPage}
+      onLoadMore={
+        automatic
+          ? () => {
+              void query.fetchNextPage();
+            }
+          : undefined
+      }
+    >
+      <span role="status">{t("common.loading")}</span>
+    </TreeLoadMoreItem>
+  );
+}
+
+function DirectoryStatus({
+  cwd,
+  path,
+  focusTarget,
+}: {
+  cwd?: string;
+  path: string;
+  focusTarget: RefObject<HTMLDivElement | null>;
+}) {
+  const visible = useContentVisible();
+  const query = useDirectory(cwd, path, visible);
+  const t = useT();
+  let content: ReactNode;
+  if (query.isError && (path !== "" || query.entries.length > 0)) {
+    content = (
+      <DataError
+        failure={query.error}
+        focusTarget={focusTarget}
+        title={query.data ? t("file.refreshError.title") : undefined}
+        sub={query.data ? t("file.refreshError.sub", { path: path || "." }) : undefined}
+        onRetry={() => {
+          void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch());
+        }}
+        size="compact"
+      />
+    );
+  } else if (query.last?.coverage.budgetExhausted && query.hasNextPage) {
+    content = (
+      <Button
+        onClick={(event) => {
+          handoffFocus(event.currentTarget, focusTarget.current);
+          void query.fetchNextPage();
+        }}
+      >
+        {t("file.loadMore")}
+      </Button>
+    );
+  } else if (path !== "" && query.last?.complete && query.entries.length === 0) {
+    content = <span>{t("file.empty.title")}</span>;
+  } else return null;
+  return (
+    <div role="status" aria-label={path || "."}>
+      <strong>{path || "."}</strong>
+      {content}
     </div>
   );
 }
 
+function Item({
+  entry,
+  cwd,
+  expanded,
+  ancestorsExpanded,
+  currentPath,
+  onSelectFile,
+}: {
+  id: string;
+  ancestorsExpanded: boolean;
+  currentPath: string | null;
+  entry: WorkspaceFileEntry;
+  cwd?: string;
+  expanded: ReadonlySet<Key>;
+  onSelectFile(path: string): void;
+}) {
+  const visible = useContentVisible();
+  const t = useT();
+  const changeId = useId();
+  const directory = entry.type === "dir";
+  const query = useDirectory(
+    cwd,
+    entry.path,
+    directory && ancestorsExpanded && expanded.has(entry.path) && visible,
+  );
+  const changes = useWorkingTreeFiles();
+  const change = changes.get(entry.path);
+  return (
+    <TreeItem
+      id={entry.path}
+      textValue={entry.name}
+      aria-label={entry.name}
+      aria-describedby={change ? changeId : undefined}
+      data-file-path={entry.path}
+      hasChildItems={directory}
+      onAction={directory ? undefined : () => onSelectFile(entry.path)}
+    >
+      <TreeItemContent>
+        {({ isExpanded, level }) => (
+          <div
+            aria-current={!directory && currentPath === entry.path ? "true" : undefined}
+            aria-busy={directory && query.isFetching ? true : undefined}
+            {...stylex.props(styles.row, typeStep.uiSm)}
+            title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
+            style={{ paddingInlineStart: `calc(${level - 1} * 1rem)` }}
+          >
+            {directory && (
+              <TreeButton slot="chevron">
+                <Icon name={isExpanded ? "chevron-down" : "chevron-right"} size="xs" />
+              </TreeButton>
+            )}
+            <Icon name={directory ? "folder" : fileIconName(entry.path)} size="sm" />
+            <span {...stylex.props(styles.name)}>
+              {entry.name}
+              {change?.previousPath && <> ← {change.previousPath}</>}
+            </span>
+            {change && (
+              <span id={changeId} hidden>
+                {t(`file.change.${change.change}`, { path: change.previousPath ?? entry.path })}
+              </span>
+            )}
+            {change && (
+              <span aria-hidden="true">
+                {change.change === "add"
+                  ? "A"
+                  : change.change === "del"
+                    ? "D"
+                    : change.change === "renamed"
+                      ? "R"
+                      : "M"}
+              </span>
+            )}
+          </div>
+        )}
+      </TreeItemContent>
+      {directory && (
+        <Collection
+          items={query.entries}
+          dependencies={[expanded, ancestorsExpanded, currentPath, cwd, onSelectFile]}
+        >
+          {(child) => (
+            <Item
+              id={child.path}
+              entry={child}
+              cwd={cwd}
+              expanded={expanded}
+              ancestorsExpanded={ancestorsExpanded && expanded.has(entry.path)}
+              currentPath={currentPath}
+              onSelectFile={onSelectFile}
+            />
+          )}
+        </Collection>
+      )}
+      {directory && <More query={query} />}
+    </TreeItem>
+  );
+}
 export function FileTree({
-  entries,
   cwd,
   ref,
   onSelectFile,
   onReveal,
 }: {
-  entries: WorkspaceFileEntry[];
   cwd?: string;
-  ref?: Ref<HTMLDivElement>;
+  ref?: RefObject<HTMLDivElement | null>;
   onSelectFile(path: string): void;
   onReveal(path: string): void;
 }) {
   const workspace = useWorkspace();
+  const internalRef = useRef<HTMLDivElement>(null);
+  const treeRef = ref ?? internalRef;
   const t = useT();
-  const changes = useWorkingTreeFiles();
+  const visible = useContentVisible();
+  const locale = localeToBcp47(useLocale());
+  const [menuPath, setMenuPath] = useState("");
+  const copy = useCopy(menuPath, t("file.copyPath"));
   const memory = useWorkspaceViewMemory();
-  const expanded = useMemo(() => memory.expandedDirs.map(entryId), [memory.expandedDirs]);
-  const contentVisible = useContentVisible();
-  const snapshot = useFileTreeData(entries, cwd, memory.expandedDirs, contentVisible);
-  const rootId = `root:${useId()}`;
-  const tree = useTree<WorkspaceFileEntry>({
-    rootItemId: rootId,
-    state: {
-      expandedItems: expanded,
-      selectedItems: memory.lastFilePath ? [entryId(memory.lastFilePath)] : [],
-    },
-    setExpandedItems: (next) =>
-      rememberWorkspaceView(workspace, {
-        expandedDirs: (typeof next === "function" ? next(expanded) : next).map(entryPath),
-      }),
-    getItemName: (item) => item.getItemData().name,
-    isItemFolder: (item) => item.getItemData().type === "dir",
-    onPrimaryAction: (item) => {
-      if (!item.isFolder()) onSelectFile(item.getItemData().path);
-    },
-    dataLoader: {
-      getItem: (id) => {
-        const path = entryPath(id);
-        const entry = snapshot.entries.get(path);
-        if (!entry) throw new Error(`file tree item is not in the accepted snapshot: ${path}`);
-        return entry;
-      },
-      getChildren: (id) =>
-        (id === rootId ? entries : (snapshot.directories.get(entryPath(id))?.data ?? [])).map(
-          (entry) => entryId(entry.path),
-        ),
-    },
-    features: [syncDataLoaderFeature, selectionFeature, domFocusFeature],
+  const expanded = useMemo(() => new Set<Key>(memory.expandedDirs), [memory.expandedDirs]);
+  const statusPaths = [...expanded].map(String).filter((path) => {
+    const parts = path.split("/");
+    return parts
+      .slice(0, -1)
+      .every((_, index) => expanded.has(parts.slice(0, index + 1).join("/")));
   });
-  tree.scheduleRebuildTree();
-  const visible = tree.getItems();
-  const focused = tree.getState().focusedItem;
-  const fallback =
-    focused !== null && !visible.some((item) => item.getId() === focused)
-      ? (visible.findLast((item) => focused.startsWith(`${item.getId()}/`)) ?? visible[0])
-      : undefined;
-  const removal = useRef<RemovalFocus | null>(null);
-  const currentCwd = useRef(cwd);
-  useLayoutEffect(() => {
-    currentCwd.current = cwd;
-  });
-  const onRemoved = useCallback(
-    (node: HTMLElement) => {
-      const witness = RemovalFocus.capture(node, () => currentCwd.current === cwd);
-      if (!witness) return;
-      removal.current?.retire();
-      removal.current = witness;
-    },
-    [cwd],
-  );
-  useLayoutEffect(() => {
-    if (fallback) fallback.setFocused();
-    const witness = removal.current;
-    removal.current = null;
-    witness?.restore(() => tree.getFocusedItem()?.getElement());
-  });
-  useLayoutEffect(
-    () => () => {
-      removal.current?.retire();
-      removal.current = null;
-    },
-    [],
-  );
-  const bindRoot = useCallback(
-    (node: HTMLDivElement | null) => {
-      tree.registerElement(node);
-      const release = typeof ref === "function" ? ref(node) : undefined;
-      if (ref && typeof ref !== "function") ref.current = node;
-      if (!node) return;
-      return () => {
-        tree.registerElement(null);
-        if (typeof release === "function") release();
-        else if (typeof ref === "function") ref(null);
-        else if (ref) ref.current = null;
-      };
-    },
-    [tree, ref],
+  const query = useDirectory(cwd, "", visible);
+  const empty: ReactNode = query.isPending ? (
+    <SkeletonList count={8} label={t("common.loading")} />
+  ) : query.isError ? (
+    <DataError failure={query.error} focusTarget={treeRef} onRetry={() => query.refetch()} />
+  ) : query.last?.complete ? (
+    <span>{t("file.empty.title")}</span>
+  ) : (
+    <span>{t("common.loading")}</span>
   );
   return (
-    <div
-      {...tree.getContainerProps(t("workspace.view.title.file"))}
-      role="tree"
-      ref={bindRoot}
-      tabIndex={-1}
-      onFocus={(event) => {
-        if (event.target === event.currentTarget)
-          tree.getFocusedItem()?.getElement()?.focus({ preventScroll: true });
-      }}
-      onKeyDown={(event) => {
-        const item = tree.getFocusedItem();
-        if (
-          event.defaultPrevented ||
-          isImeKey(event.nativeEvent) ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey ||
-          !ownsTreeFocus(tree) ||
-          event.target !== item?.getElement()
-        )
-          return;
-        switch (event.key) {
-          case "ArrowDown":
-            tree.focusNextItem();
-            break;
-          case "ArrowUp":
-            tree.focusPreviousItem();
-            break;
-          case "ArrowRight":
-            event.preventDefault();
-            if (!item.isFolder()) return;
-            if (!item.isExpanded()) {
-              item.expand();
-              return;
-            }
-            item.getChildren()[0]?.setFocused();
-            break;
-          case "ArrowLeft":
-            event.preventDefault();
-            if ((!item.isExpanded() || !item.isFolder()) && item.getItemMeta().level !== 0)
-              item.getParent()?.setFocused();
-            else {
-              item.collapse();
-              return;
-            }
-            break;
-          case "Home":
-            tree.getItems()[0]?.setFocused();
-            break;
-          case "End":
-            tree.getItems().at(-1)?.setFocused();
-            break;
-          default:
-            return;
-        }
-        event.preventDefault();
-        tree.updateDomFocus();
-      }}
-      {...stylex.props(ft.pad)}
-    >
-      {entries.map((entry) => (
-        <TreeNode
-          key={entry.path}
-          item={tree.getItemInstance(entryId(entry.path))}
-          snapshot={snapshot}
-          changes={changes}
-          onReveal={onReveal}
-          revealable={cwd !== undefined && workspace.local.available()}
-          onRemoved={onRemoved}
-        />
-      ))}
-    </div>
+    <I18nProvider locale={locale}>
+      <ContextMenu.Root>
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+          <Virtualizer layout={ListLayout} shouldObserveItemSize>
+            <ContextMenu.Trigger
+              onContextMenu={(event) => {
+                const row =
+                  event.target instanceof Element
+                    ? event.target.closest<HTMLElement>("[data-file-path]")
+                    : null;
+                if (!row || !event.currentTarget.contains(row)) {
+                  event.preventBaseUIHandler();
+                  return;
+                }
+                setMenuPath(row.dataset.filePath!);
+              }}
+              render={
+                <Tree
+                  ref={treeRef}
+                  aria-label={t("workspace.view.title.file")}
+                  expandedKeys={expanded}
+                  onExpandedChange={(keys) =>
+                    rememberWorkspaceView(workspace, { expandedDirs: [...keys].map(String) })
+                  }
+                  selectionMode="none"
+                  renderEmptyState={() => empty}
+                  {...stylex.props(styles.tree)}
+                >
+                  <Collection
+                    items={query.entries}
+                    dependencies={[expanded, memory.lastFilePath, cwd, onSelectFile]}
+                  >
+                    {(entry) => (
+                      <Item
+                        id={entry.path}
+                        entry={entry}
+                        cwd={cwd}
+                        expanded={expanded}
+                        ancestorsExpanded={true}
+                        currentPath={memory.lastFilePath}
+                        onSelectFile={onSelectFile}
+                      />
+                    )}
+                  </Collection>
+                  {query.hasNextPage && <More query={query} />}
+                </Tree>
+              }
+            />
+          </Virtualizer>
+          <div style={{ flexShrink: 0, maxHeight: "40vh", overflow: "auto" }}>
+            <DirectoryStatus cwd={cwd} path="" focusTarget={treeRef} />
+            {statusPaths.map((path) => (
+              <DirectoryStatus key={path} cwd={cwd} path={path} focusTarget={treeRef} />
+            ))}
+          </div>
+        </div>
+        <ContextMenu.Content aria-label={menuPath}>
+          <ContextMenu.IconItem icon="copy" onSelect={() => void copy()}>
+            {t("file.copyPath")}
+          </ContextMenu.IconItem>
+          {cwd !== undefined && workspace.local.available() && (
+            <ContextMenu.IconItem icon="folder-open" onSelect={() => onReveal(menuPath)}>
+              {t("file.reveal")}
+            </ContextMenu.IconItem>
+          )}
+        </ContextMenu.Content>
+      </ContextMenu.Root>
+    </I18nProvider>
   );
 }

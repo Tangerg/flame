@@ -2,7 +2,7 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
-import { splitCombo } from "@/lib/combo";
+import { normalizeHotkey, formatForDisplay } from "@tanstack/hotkeys";
 import { Icon } from "@/ui/index";
 import { Kbd } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
@@ -107,9 +107,11 @@ export function CommandMenu() {
               <span {...stylex.props(cmd.label)}>{choice.label}</span>
               {choice.combo && (
                 <span {...stylex.props(cmd.keys)}>
-                  {splitCombo(choice.combo).map((part, index) => (
-                    <Kbd key={index}>{part}</Kbd>
-                  ))}
+                  {formatForDisplay(normalizeHotkey(choice.combo), { parts: true }).map(
+                    (part, index) => (
+                      <Kbd key={index}>{part}</Kbd>
+                    ),
+                  )}
                 </span>
               )}
             </>

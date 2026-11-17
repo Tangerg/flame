@@ -6,14 +6,11 @@ import {
   DOCUMENT_POLICY,
   EMBEDDED_DOCUMENT_POLICY,
   NONCE_PLACEHOLDER,
-  SANDBOX_FILE,
-  SANDBOX_POLICY,
   WEB_POLICY_FILE,
   documentResponse,
 } from "./webPolicy.mjs";
 
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const sandbox = new URL("./genui-sandbox.html", import.meta.url);
 const within = (root, name) => {
   const target = resolve(root, name);
   const path = relative(root, target);
@@ -30,22 +27,7 @@ export function webArtifacts() {
     noncePlaceholder: NONCE_PLACEHOLDER,
     documentPolicy: DOCUMENT_POLICY,
     embeddedPolicy: EMBEDDED_DOCUMENT_POLICY,
-    sandbox: { file: SANDBOX_FILE, policy: SANDBOX_POLICY },
   };
-  async function sendSandbox(request, response) {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      response.writeHead(405, { Allow: "GET, HEAD" });
-      response.end();
-      return;
-    }
-    response.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": SANDBOX_POLICY,
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff",
-    });
-    response.end(request.method === "HEAD" ? undefined : await readFile(sandbox));
-  }
   return {
     name: "flame-web-artifact-policy",
     enforce: "post",
@@ -79,16 +61,8 @@ export function webArtifacts() {
     configResolved(value) {
       config = value;
     },
-    async buildStart() {
+    buildStart() {
       addressed.clear();
-      if (config.command !== "build") return;
-      this.emitFile({ type: "asset", fileName: SANDBOX_FILE, source: await readFile(sandbox) });
-    },
-    configureServer(server) {
-      server.middlewares.use((request, response, next) => {
-        if (request.url?.split("?")[0] !== `/${SANDBOX_FILE}`) return next();
-        void sendSandbox(request, response).catch(next);
-      });
     },
     configurePreviewServer(server) {
       const root = resolve(config.root, config.build.outDir);
@@ -114,16 +88,6 @@ export function webArtifacts() {
           const bytes = await readFile(within(root, name));
           if (digest(bytes) !== file.sha256)
             throw new Error("web document differs from its artifact policy");
-          if (name === manifest.sandbox.file) {
-            response.writeHead(200, {
-              "Content-Type": "text/html; charset=utf-8",
-              "Content-Security-Policy": manifest.sandbox.policy,
-              "Cache-Control": "no-store",
-              "X-Content-Type-Options": "nosniff",
-            });
-            response.end(request.method === "HEAD" ? undefined : bytes);
-            return;
-          }
           const rendered = documentResponse(
             manifest,
             bytes.toString("utf8"),
@@ -166,12 +130,7 @@ export function webArtifacts() {
             const role = html?.attrs.find(
               (attribute) => attribute.name === "data-lab-document",
             )?.value;
-            document =
-              file.fileName === SANDBOX_FILE
-                ? "sandbox"
-                : role === "component" || role === "fixture"
-                  ? "same-origin"
-                  : "main";
+            document = role === "component" || role === "fixture" ? "same-origin" : "main";
           }
           files[file.fileName] = {
             sha256,

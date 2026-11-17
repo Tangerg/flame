@@ -1,13 +1,10 @@
+import { placeComposerCaret, composerCaret } from "@/test/composerSelection";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { loadPluginsForTest } from "@/test/kernel";
 import { EMPTY_AGENT_SESSION_VIEW, type AgentRunView } from "@/features/agent/public/sessionView";
-import {
-  captureComposerSubmission,
-  useComposerText,
-  useSetComposerText,
-} from "@/features/composer/public/draft";
+import { captureComposerSubmission } from "@/features/composer/public/draft";
 import { composerSend } from "@/features/composer/send";
 import { Composer } from "@/features/composer/ui/Composer";
 
@@ -69,14 +66,9 @@ function publish(running: boolean) {
 }
 
 function Authoring() {
-  const value = useComposerText();
-  const onChange = useSetComposerText();
   return (
     <>
       <Composer
-        value={value}
-        onChange={onChange}
-        captureSubmission={() => captureComposerSubmission(testClient.composer.access)}
         onSend={() => false}
         images={[]}
         onRemoveImage={() => {}}
@@ -112,6 +104,7 @@ async function authoring({
   store.setSend("session", send);
   testClient.composer.access.replaceDraft({ text });
   testClient.render(<Authoring />);
+  await screen.findByRole("textbox", { name: "Message composer" });
   return { stop, send };
 }
 
@@ -123,18 +116,18 @@ it.each(["", "Keep this draft."])(
       return true;
     });
     await authoring({ text, stop });
-    const input = screen.getByRole("textbox", { name: "Message composer" }) as HTMLTextAreaElement;
-    input.setSelectionRange(Math.min(5, text.length), Math.min(5, text.length));
+    const input = screen.getByRole("textbox", { name: "Message composer" }) as HTMLElement;
+    await placeComposerCaret(input, Math.min(5, text.length));
     const action = screen.getByRole("button", { name: "Stop" });
     act(() => action.focus());
     fireEvent.click(action);
     expect(stop).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
     expect(document.activeElement).toBe(input);
-    expect(input.value).toBe(text);
-    expect(input.selectionStart).toBe(Math.min(5, text.length));
+    expect(input.textContent).toBe(text);
+    expect(composerCaret(input)?.[0]).toBe(Math.min(5, text.length));
     expect(captureComposerSubmission(testClient.composer.access).value).toBe(text);
-    fireEvent.change(input, { target: { value: `${text} Continue.` } });
+    act(() => testClient.composer.access.replaceDraft({ text: `${text} Continue.` }));
     expect(captureComposerSubmission(testClient.composer.access).value).toBe(`${text} Continue.`);
   },
 );

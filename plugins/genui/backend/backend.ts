@@ -9,7 +9,8 @@ import {
 } from "../contracts/document";
 import manifest from "../package/plugin.json";
 import { OperationCatalog } from "./operationCatalog";
-import { functionCatalog } from "../contracts/expression";
+import { catalog as trustedCatalog } from "../contracts/catalog";
+import { Schemas } from "@a2ui/web_core/v1_0";
 
 export const PRESENT_TOOL = "ui_present";
 export const CATALOG_TOOL = "ui_catalog";
@@ -25,15 +26,11 @@ export function createBackend(): Backend {
       name: PRESENT_TOOL,
       title: "Present an interactive interface",
       description:
-        "Present a complete interactive interface using the declared components, local state, " +
-        "pure expressions and named actions. Inputs and calculations update local state; " +
-        "operation steps use installed plugin contracts discovered with ui_catalog. " +
-        "Business commands require an explicit user review. Followup actions continue the " +
-        "original conversation with only their explicit payload expression (message and JSON " +
-        "payload together must fit 16 KiB). HtmlView runs isolated local HTML/JavaScript without Flame " +
-        "or tool access. Keep exact identifiers and quantities as strings. " +
-        "The accepted document is retained in the existing Tool result; local drafts reset " +
-        "on remount. Use ordinary text when an interface does not help.",
+        "Present a bounded official A2UI 1.0 interface. Discover the Flame trusted catalog and protocol with ui_catalog. " +
+        "The initial createSurface must use the Flame catalog and sendDataModel:false. Editable controls bind below /draft; " +
+        "subsequent data updates write only below /data. Events call declared captured operations with explicit context. " +
+        "Business commands require user review; followup sends only {message,payload} to the original conversation. " +
+        "Recorded rendering never replays operations. No older interface format is accepted.",
       inputSchema: requestJSONSchema,
       outputSchema: documentJSONSchema,
       annotations: {
@@ -74,8 +71,7 @@ export function createBackend(): Backend {
       name: CATALOG_TOOL,
       title: "Discover interface functions and operations",
       description:
-        "Discover interface capabilities on demand. kind=functions lists brief function entries; " +
-        "set name to read one function's complete parameters. kind=operations lists available " +
+        "kind=catalog returns the official A2UI 1.0 protocol and complete Flame trusted catalog. kind=operations lists available " +
         "method identities and routing metadata; optionally filter by installationId and contribution. " +
         "Set installationId, contribution and method to read that exact methodJSON with its " +
         "input/output schemas. Index pages contain at most 20 entries; continue using nextOffset. " +
@@ -85,8 +81,7 @@ export function createBackend(): Backend {
       inputSchema: {
         type: "object",
         properties: {
-          kind: { type: "string", enum: ["functions", "operations"] },
-          name: { type: "string", minLength: 1 },
+          kind: { type: "string", enum: ["catalog", "operations"] },
           installationId: { type: "string", minLength: 1 },
           contribution: { type: "string", minLength: 1 },
           method: { type: "string", minLength: 1 },
@@ -103,15 +98,13 @@ export function createBackend(): Backend {
       },
     },
     async (context, input) => {
-      const { kind, name, installationId, contribution, method, offset } =
-        input as {
-          kind: "functions" | "operations";
-          name?: string;
-          installationId?: string;
-          contribution?: string;
-          method?: string;
-          offset?: number;
-        };
+      const { kind, installationId, contribution, method, offset } = input as {
+        kind: "catalog" | "operations";
+        installationId?: string;
+        contribution?: string;
+        method?: string;
+        offset?: number;
+      };
       const page = <T>(entries: T[]) => {
         const start = offset ?? 0;
         return {
@@ -120,36 +113,23 @@ export function createBackend(): Backend {
         };
       };
       let catalog: Record<string, unknown>;
-      if (kind === "functions") {
+      if (kind === "catalog") {
         if (
           installationId !== undefined ||
           contribution !== undefined ||
           method !== undefined ||
-          (name !== undefined && offset !== undefined)
+          offset !== undefined
         )
           throw new Refusal(
             "invalid_catalog_request",
-            "Function discovery accepts only name or offset.",
+            "Trusted catalog discovery accepts only kind.",
           );
-        const functions = functionCatalog();
-        if (name === undefined) {
-          catalog = {
-            functions: page(
-              functions.map(({ name, description }) => ({ name, description })),
-            ),
-          };
-        } else {
-          const selected = functions.find((value) => value.name === name);
-          if (!selected)
-            throw new Refusal(
-              "unknown_function",
-              "No such interface function: " + name,
-            );
-          catalog = { function: selected };
-        }
+        catalog = {
+          protocol: Schemas.A2uiMessageSchemaRaw,
+          catalog: trustedCatalog.toJson(),
+        };
       } else {
         if (
-          name !== undefined ||
           (contribution !== undefined && installationId === undefined) ||
           (method !== undefined &&
             (installationId === undefined ||

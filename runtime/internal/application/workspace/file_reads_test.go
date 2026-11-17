@@ -48,6 +48,10 @@ func (f *fileReadPort) List(context.Context, string, FileListOptions) ([]FileEnt
 	return nil, nil
 }
 
+func (f *fileReadPort) ListDirectory(context.Context, string, DirectoryListPlan) (DirectoryPage, error) {
+	return DirectoryPage{Complete: true}, nil
+}
+
 func (f *fileReadPort) Read(_ context.Context, _ string, input FileReadPlan) (FileReadResult, error) {
 	f.input = input
 	return f.result, nil

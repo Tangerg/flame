@@ -231,7 +231,7 @@ describe("QuestionCard choice semantics", () => {
     expect(submitQuestion).not.toHaveBeenCalled();
 
     fireEvent.change(custom, { target: { value: "Only the relevant checks." } });
-    fireEvent.keyDown(custom, { key: "Enter", keyCode: 13 });
+    fireEvent.click(button("Submit answers"));
     expect(submitQuestion).toHaveBeenCalledExactlyOnceWith([["Only the relevant checks."]]);
   });
 
@@ -780,7 +780,7 @@ describe("QuestionCard choice semantics", () => {
 
     expect(submitQuestion).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(answer, { key: "Enter", keyCode: 13, isComposing: false });
+    fireEvent.click(button("Submit answers"));
     expect(submitQuestion).toHaveBeenCalledWith([["中文 english"]]);
   });
 });

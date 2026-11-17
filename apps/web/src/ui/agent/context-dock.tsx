@@ -1,35 +1,40 @@
-import {
-  draggable,
-  dropTargetForElements,
-} from "@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter";
+import { DragDropProvider } from "@dnd-kit/react";
+import { Separator } from "react-resizable-panels";
+import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
-  useCallback,
   useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ComponentProps,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from "react";
 import { cn } from "@/lib/classNames";
 import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
-import { isImeKey, vocab, RemovalFocus, useContentVisible, FocusWitness } from "@flame/ui";
+import { handoffFocus, isImeKey, vocab, useContentVisible } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
-import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { Tooltip } from "@flame/ui/tooltip";
-type DockTabDrag = {
-  kind: "flame-dock-tab";
-  strip: HTMLElement;
-  registration: object;
-  id: string;
-};
+function SortableTabRow({
+  id,
+  index,
+  disabled,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { id: string; index: number; disabled: boolean }) {
+  const { ref, isDragging } = useSortable({ id, index, disabled });
+  return (
+    <div {...props} ref={ref} data-dragging={isDragging ? "" : undefined}>
+      {children}
+    </div>
+  );
+}
 
 export interface AgentDockTab {
   id: string;
@@ -48,11 +53,16 @@ export interface AgentDockTab {
 export interface AgentDockTabsProps {
   tabs: AgentDockTab[];
   ariaLabel: string;
+  fallbackFocus?: RefObject<HTMLElement | null>;
   reorder?: {
     onMove: (id: string, toIndex: number) => string | null;
     moveLeftLabel: string;
     moveRightLabel: string;
   };
+}
+
+export function AgentDockSeparator({ label }: { label: string }) {
+  return <Separator aria-label={label} className="agent-pane-resizer" />;
 }
 
 const styles = stylex.create({
@@ -149,7 +159,7 @@ function DockTab({
   dragging,
 }: {
   tab: AgentDockTab;
-  onClose: () => void;
+  onClose(source: HTMLElement): void;
   dragging: boolean;
 }) {
   const label = useRef<HTMLSpanElement>(null);
@@ -179,7 +189,7 @@ function DockTab({
               if (event.key !== "Delete" && event.key !== "Backspace") return;
               if (event.defaultPrevented || isImeKey(event.nativeEvent)) return;
               event.preventDefault();
-              onClose();
+              onClose(event.currentTarget);
             }}
             {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
           >
@@ -197,19 +207,15 @@ function DockTab({
   );
 }
 
-const DOCK_MEASURE_PROPERTY = "--dock-measure";
-
 export function AgentDockRow({
   open,
   available,
-  width,
   presentation,
   ref,
   children,
 }: {
   open: boolean;
   available: boolean;
-  width: number;
   presentation: "dock" | "main";
   ref?: Ref<HTMLDivElement>;
   children: ReactNode;
@@ -221,23 +227,9 @@ export function AgentDockRow({
       data-dock={open ? "open" : "collapsed"}
       data-dock-available={available ? "" : undefined}
       data-presentation={presentation}
-      style={{ [DOCK_MEASURE_PROPERTY]: `${width}px` } as CSSProperties}
     >
       {children}
     </div>
-  );
-}
-
-export function AgentDockResizer(
-  props: Omit<ResizeHandleProps, "edge" | "className" | "previewProperty">,
-) {
-  return (
-    <ResizeHandle
-      {...props}
-      edge="start"
-      previewProperty="--dock-preview-width"
-      className="agent-pane-resizer"
-    />
   );
 }
 
@@ -249,7 +241,7 @@ function reflectDockTabOverflow(element: HTMLElement): void {
 
 function keepActiveDockTabInsideFade(element: HTMLElement): void {
   if (element.clientWidth === 0) return;
-  const activeRow = element.querySelector<HTMLElement>('[role="tab"][data-active]')?.parentElement;
+  const activeRow = element.querySelector<HTMLElement>("[data-dock-tab-row][data-active]");
   if (!activeRow) return;
   const stripBox = element.getBoundingClientRect();
   const activeBox = activeRow.getBoundingClientRect();
@@ -261,303 +253,148 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
-export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) {
+export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const visible = useContentVisible();
-  const binding = useRef({ tabs, reorder, visible });
-  const removal = useRef<{
-    witness: RemovalFocus;
-    target: () => HTMLElement | null | undefined;
-  } | null>(null);
-  const menuReturn = useRef<{
-    id: string;
-    target: () => HTMLElement | null | undefined;
-  } | null>(null);
-  const menuFocus = useRef<{ id: string; witness: FocusWitness } | null>(null);
-  const openingFocus = useRef<{ id: string; target: HTMLElement | null } | null>(null);
-  const lifetime = useRef({ active: true });
   const [announcement, setAnnouncement] = useState("");
+  const visible = useContentVisible();
+  const active = useRef(false);
+  const tabStructure = JSON.stringify(
+    tabs.map(({ id, title, active: selected }) => [id, title, selected]),
+  );
   useLayoutEffect(() => {
-    binding.current = { tabs, reorder, visible };
-  });
-  const requestMove = useCallback((id: string, toIndex: number) => {
-    const current = binding.current;
-    const from = current.tabs.findIndex((tab) => tab.id === id);
-    if (!current.reorder || from < 0 || from === toIndex) return;
-    const message = current.reorder.onMove(id, toIndex);
-    if (message) setAnnouncement(message);
-  }, []);
-  const tabIds = JSON.stringify(tabs.map((tab) => tab.id));
-  const canReorder = visible && reorder !== undefined && tabs.length > 1;
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (!root || !canReorder) return;
-    // Reconnected effects must not accept payloads from their retired registration.
-    const registration = {};
-    let active = true;
-    const draggedId = (data: Record<string | symbol, unknown>) => {
-      if (
-        !active ||
-        !binding.current.visible ||
-        data.kind !== "flame-dock-tab" ||
-        data.strip !== root ||
-        data.registration !== registration ||
-        typeof data.id !== "string" ||
-        !binding.current.tabs.some((tab) => tab.id === data.id)
-      )
-        return null;
-      return data.id;
-    };
-    const releases = Array.from(root.querySelectorAll<HTMLElement>("[data-dock-tab-row]")).flatMap(
-      (element) => {
-        const id = element.dataset.dockTabRow!;
-        return [
-          draggable({
-            element,
-            canDrag: () =>
-              active && binding.current.visible && binding.current.reorder !== undefined,
-            getInitialData: () =>
-              ({ kind: "flame-dock-tab", strip: root, registration, id }) satisfies DockTabDrag,
-            onDragStart: () => {
-              if (active) setDraggingId(id);
-            },
-            onDrop: () => {
-              if (active) setDraggingId(null);
-            },
-          }),
-          dropTargetForElements({
-            element,
-            canDrop: ({ source }) => {
-              const moved = draggedId(source.data);
-              return moved !== null && moved !== id && binding.current.reorder !== undefined;
-            },
-            onDrop: ({ source, location }) => {
-              if (location.current.dropTargets[0]?.element !== element) return;
-              const moved = draggedId(source.data);
-              const index = binding.current.tabs.findIndex((tab) => tab.id === id);
-              if (moved !== null && moved !== id && index >= 0) requestMove(moved, index);
-            },
-          }),
-        ];
-      },
-    );
+    active.current = visible;
     return () => {
-      active = false;
-      setDraggingId(null);
-      releases.forEach((release) => release());
-    };
-  }, [tabIds, canReorder, requestMove]);
-  const activeIndex = tabs.findIndex((tab) => tab.active);
-  const activeId = tabs[activeIndex]?.id;
-  const closeTarget = () => {
-    const header = rootRef.current?.parentElement;
-    const reopen = Array.from(
-      header?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).find((node) => !node.closest('[role="tablist"]'));
-    return () =>
-      rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
-      rootRef.current?.querySelector<HTMLElement>('[role="tab"]') ??
-      reopen;
-  };
-  const closeAndFocus = (id: string, action: () => void) => {
-    const root = rootRef.current;
-    const row = Array.from(root?.querySelectorAll<HTMLElement>("[data-dock-tab-row]") ?? []).find(
-      (node) => node.dataset.dockTabRow === id,
-    );
-    const witness =
-      row &&
-      RemovalFocus.capture(
-        row,
-        () => binding.current.visible && (rootRef.current === root || rootRef.current === null),
-      );
-    if (witness) {
-      removal.current?.witness.retire();
-      removal.current = { witness, target: closeTarget() };
-    }
-    action();
-  };
-  const fromMenu = (id: string, action: () => void, target = closeTarget()) => {
-    if (!lifetime.current.active || !binding.current.visible) return;
-    menuReturn.current = { id, target };
-    action();
-  };
-  useLayoutEffect(() => {
-    const captured = removal.current;
-    removal.current = null;
-    captured?.witness.restore(captured.target);
-  });
-  useLayoutEffect(() => {
-    const current = lifetime.current;
-    current.active = true;
-    return () => {
-      current.active = false;
-      removal.current?.witness.retire();
-      removal.current = null;
-      menuFocus.current?.witness.retire();
-      menuFocus.current = null;
-      menuReturn.current = null;
-      openingFocus.current = null;
+      active.current = false;
     };
   }, [visible]);
   useLayoutEffect(() => {
     const root = rootRef.current;
-    root
-      ?.querySelector<HTMLElement>('[role="tab"][data-active]')
-      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-    if (root) {
+    if (!root) return;
+    const reflect = () => {
       keepActiveDockTabInsideFade(root);
       reflectDockTabOverflow(root);
-    }
-  }, [activeId, activeIndex]);
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const reflect = () => reflectDockTabOverflow(root);
-    const reconcileGeometry = () => {
-      keepActiveDockTabInsideFade(root);
-      reflect();
     };
-    root.addEventListener("scroll", reflect, { passive: true });
-    const resizeObserver = new ResizeObserver(reconcileGeometry);
-    resizeObserver.observe(root);
-    root.querySelectorAll<HTMLElement>('[role="tablist"] > *').forEach((tab) => {
-      resizeObserver.observe(tab);
-    });
-    reconcileGeometry();
+    const observer = new ResizeObserver(reflect);
+    observer.observe(root);
+    const scrolled = () => reflectDockTabOverflow(root);
+    root.addEventListener("scroll", scrolled, { passive: true });
+    reflect();
     return () => {
-      root.removeEventListener("scroll", reflect);
-      resizeObserver.disconnect();
+      observer.disconnect();
+      root.removeEventListener("scroll", scrolled);
     };
-  }, [tabs.length]);
-  if (tabs.length === 0) return null;
+  }, [tabStructure]);
+  const move = (id: string, index: number) => {
+    if (!active.current || !reorder || !tabs.some((tab) => tab.id === id)) return;
+    const message = reorder.onMove(id, index);
+    if (message) setAnnouncement(message);
+  };
+  const close = (
+    tab: AgentDockTab,
+    source: HTMLElement,
+    action = tab.onClose,
+    keepId?: string | null,
+  ) => {
+    const index = tabs.findIndex((item) => item.id === tab.id);
+    const nextId = keepId === undefined ? (tabs[index + 1] ?? tabs[index - 1])?.id : keepId;
+    const target =
+      [...(rootRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])].find(
+        (element) => element.dataset.dockTabId === nextId,
+      ) ??
+      fallbackFocus?.current ??
+      rootRef.current;
+    handoffFocus(source, target);
+    action();
+  };
   return (
-    <div ref={rootRef} className="agent-dock-tabs">
+    <div ref={rootRef} tabIndex={-1} className="agent-dock-tabs">
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <TabsPrimitive.List
-        aria-label={ariaLabel}
-        {...stylex.props(styles.contents)}
-        activateOnFocus
-        onMouseDown={(event) => {
-          if (event.button === 1) event.preventDefault();
+      <DragDropProvider
+        key={visible ? "active" : "hidden"}
+        onDragStart={({ operation }) =>
+          setDraggingId(operation.source ? String(operation.source.id) : null)
+        }
+        onDragEnd={(event) => {
+          setDraggingId(null);
+          if (event.canceled || !active.current || !isSortableOperation(event.operation)) return;
+          const source = event.operation.source;
+          if (source && event.operation.target && tabs.some((tab) => tab.id === source.id))
+            move(String(source.id), source.index);
         }}
       >
-        {tabs.map((tab, index) => {
-          const close = () => {
-            closeAndFocus(tab.id, tab.onClose);
-          };
-          const move = (toIndex: number) => {
-            const fallback = closeTarget();
-            const trigger = Array.from(
-              rootRef.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [],
-            ).find((node) => node.dataset.dockTabId === tab.id);
-            fromMenu(
-              tab.id,
-              () => requestMove(tab.id, toIndex),
-              () => (trigger?.isConnected ? trigger : fallback()),
-            );
-          };
-          const row = (
-            <div
-              data-active={tab.active ? "" : undefined}
-              data-dragging={draggingId === tab.id ? "" : undefined}
-              data-dock-tab-row={tab.id}
-              onAuxClick={(event) => {
-                if (event.button !== 1) return;
-                event.preventDefault();
-                close();
-              }}
-              {...stylex.props(reveal.host, styles.tab)}
-            >
-              <DockTab tab={tab} onClose={close} dragging={draggingId !== null} />
-              <IconButton
-                data-reveal="hover"
-                icon={iconGlyph("x")}
-                size="xs"
-                quiet
-                aria-label={tab.closeLabel}
-                onClick={close}
-                className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
-              />
-            </div>
-          );
-          return (
-            <ContextMenu.Root
-              key={tab.id}
-              onOpenChange={(open) => {
-                if (!open) return;
-                menuReturn.current = null;
-                menuFocus.current?.witness.retire();
-                menuFocus.current = null;
-                const document = rootRef.current?.ownerDocument;
-                openingFocus.current = {
-                  id: tab.id,
-                  target:
-                    document?.activeElement !== document?.body
-                      ? (document?.activeElement as HTMLElement | null)
-                      : null,
-                };
-              }}
-            >
-              {row}
-              <ContextMenu.Content
-                data-dock-tab-menu={tab.id}
-                aria-label={tab.title}
-                onFocus={(event) => {
-                  menuFocus.current?.witness.retire();
-                  const witness = FocusWitness.capture(
-                    event.currentTarget,
-                    () => lifetime.current.active && binding.current.visible,
-                  );
-                  menuFocus.current = witness ? { id: tab.id, witness } : null;
+        <TabsPrimitive.List
+          aria-label={ariaLabel}
+          {...stylex.props(styles.contents)}
+          activateOnFocus
+        >
+          {tabs.map((tab, index) => (
+            <ContextMenu.Root key={tab.id}>
+              <SortableTabRow
+                id={tab.id}
+                index={index}
+                disabled={!visible || !reorder || tabs.length < 2}
+                data-active={tab.active ? "" : undefined}
+                data-dock-tab-row={tab.id}
+                onMouseDownCapture={(event) => {
+                  if (event.button === 1) event.preventDefault();
                 }}
-                finalFocus={() => {
-                  const focus = menuFocus.current;
-                  if (focus?.id !== tab.id) return false;
-                  menuFocus.current = null;
-                  const intent = menuReturn.current;
-                  if (intent?.id === tab.id) menuReturn.current = null;
-                  // Settle in the public closing callback so later focus cannot lose to a queued return.
-                  focus.witness.restore(
-                    intent?.id === tab.id
-                      ? intent.target
-                      : () =>
-                          openingFocus.current?.id === tab.id ? openingFocus.current.target : null,
-                  );
-                  return false;
+                onAuxClick={(event) => {
+                  if (event.button === 1) {
+                    event.preventDefault();
+                    close(tab, event.currentTarget);
+                  }
                 }}
+                {...stylex.props(reveal.host, styles.tab)}
               >
+                <DockTab
+                  tab={tab}
+                  dragging={draggingId !== null}
+                  onClose={(source) => close(tab, source)}
+                />
+                <IconButton
+                  data-reveal="hover"
+                  icon={iconGlyph("x")}
+                  size="xs"
+                  quiet
+                  aria-label={tab.closeLabel}
+                  onClick={(event) => close(tab, event.currentTarget)}
+                  className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
+                />
+              </SortableTabRow>
+              <ContextMenu.Content aria-label={tab.title} data-dock-tab-menu={tab.id}>
                 {reorder && (
                   <>
                     <ContextMenu.IconItem
                       icon="arrow-left"
                       disabled={index === 0}
-                      onSelect={() => move(index - 1)}
+                      onSelect={() => move(tab.id, index - 1)}
                     >
                       {reorder.moveLeftLabel}
                     </ContextMenu.IconItem>
                     <ContextMenu.IconItem
                       icon="arrow-right"
                       disabled={index === tabs.length - 1}
-                      onSelect={() => move(index + 1)}
+                      onSelect={() => move(tab.id, index + 1)}
                     >
                       {reorder.moveRightLabel}
                     </ContextMenu.IconItem>
                     <ContextMenu.Separator />
                   </>
                 )}
-                <ContextMenu.IconItem icon="x" onSelect={() => fromMenu(tab.id, tab.onClose)}>
+                <ContextMenu.IconItem
+                  icon="x"
+                  onSelect={(event) => close(tab, event.currentTarget)}
+                >
                   {tab.closeLabel}
                 </ContextMenu.IconItem>
                 {tab.onCloseOthers && (
                   <ContextMenu.IconItem
                     icon="close-others"
                     disabled={tabs.length < 2}
-                    onSelect={() => fromMenu(tab.id, tab.onCloseOthers!)}
+                    onSelect={(event) => close(tab, event.currentTarget, tab.onCloseOthers, tab.id)}
                   >
                     {tab.closeOthersLabel}
                   </ContextMenu.IconItem>
@@ -565,16 +402,16 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
                 {tab.onCloseAll && (
                   <ContextMenu.IconItem
                     icon="close-all"
-                    onSelect={() => fromMenu(tab.id, tab.onCloseAll!)}
+                    onSelect={(event) => close(tab, event.currentTarget, tab.onCloseAll, null)}
                   >
                     {tab.closeAllLabel}
                   </ContextMenu.IconItem>
                 )}
               </ContextMenu.Content>
             </ContextMenu.Root>
-          );
-        })}
-      </TabsPrimitive.List>
+          ))}
+        </TabsPrimitive.List>
+      </DragDropProvider>
     </div>
   );
 }

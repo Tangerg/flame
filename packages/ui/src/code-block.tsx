@@ -1,22 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
-import { Check, Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
+import { Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
 import {
   createContext,
   useContext,
-  useLayoutEffect,
-  useRef,
   useSyncExternalStore,
   type ComponentPropsWithoutRef,
   type ComponentType,
   type ReactNode,
 } from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
-import { useContentVisible } from "./content-visibility";
-import { useCopyFeedback } from "./clipboard";
+import { useCopy } from "./clipboard";
 import { IconButton } from "./icon-button";
 import { selectAllInReader } from "./reader-selection";
-import { color, layout, leading, space, type, weight } from "./tokens.stylex";
+import { color, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
 const wrapListeners = new Set<() => void>();
@@ -41,12 +38,17 @@ function setCodeWrap(next: boolean): void {
 export interface CodeSourceProps {
   source: string;
   language: string;
+  wrapped?: boolean;
 }
 
 export type CodeSourceComponent = ComponentType<CodeSourceProps>;
 
 function PlainCodeSource({ source }: CodeSourceProps) {
-  return <code>{source}</code>;
+  return (
+    <pre>
+      <code>{source}</code>
+    </pre>
+  );
 }
 
 const CodeSource = createContext<CodeSourceComponent>(PlainCodeSource);
@@ -63,14 +65,12 @@ export function CodeHighlightProvider({
 
 export interface CodeActionLabels {
   copy: string;
-  copied: string;
   wrap: string;
   unwrap: string;
 }
 
 const ENGLISH_CODE_ACTIONS: CodeActionLabels = {
   copy: "Copy code",
-  copied: "Copied",
   wrap: "Enable word wrap",
   unwrap: "Disable word wrap",
 };
@@ -87,8 +87,8 @@ const styles = stylex.create({
     overflow: "hidden",
   },
   literalFrame: {
-    minHeight: `calc(var(--code-caption-height, 0px) + 1lh + ${space.s0_5} + ${space.s3} + ${SOURCE_EDGE} * 2 + var(--control-edge-width) * 2)`,
-    maxHeight: `calc(var(--reading-frame-height, 100dvh) - var(--panel-controls-height, 0px) - var(--disclosure-header-height, 0px) - ${layout.controlGap})`,
+    minHeight: 0,
+    maxHeight: "min(36rem, 80dvh)",
     fontFamily: "var(--font-mono)",
     lineHeight: leading.relaxed,
   },
@@ -125,6 +125,7 @@ const styles = stylex.create({
   },
   code: {
     margin: 0,
+    flex: "1 1 auto",
     minHeight: 0,
     minWidth: 0,
     maxWidth: "100%",
@@ -156,26 +157,6 @@ export function CodeFrame({
   bounded?: boolean;
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }) {
-  const frame = useRef<HTMLDivElement>(null);
-  const visible = useContentVisible();
-  useLayoutEffect(() => {
-    const root = frame.current;
-    const caption = root?.querySelector(':scope > [data-slot="code-caption"]');
-    if (!bounded || !visible || !root || !caption) return;
-    // WebKit can clamp an intrinsic minimum to max-height and clip the source entirely.
-    const measure = () =>
-      root.style.setProperty(
-        "--code-caption-height",
-        `${caption.getBoundingClientRect().height}px`,
-      );
-    measure();
-    const resize = new ResizeObserver(measure);
-    resize.observe(caption);
-    return () => {
-      resize.disconnect();
-      root.style.removeProperty("--code-caption-height");
-    };
-  }, [bounded, visible]);
   const styled = stylex.props(
     ARTIFACT_SURFACE.face,
     styles.frame,
@@ -184,7 +165,6 @@ export function CodeFrame({
   );
   return (
     <div
-      ref={frame}
       data-slot="code-frame"
       {...props}
       {...styled}
@@ -213,7 +193,7 @@ export function CodeCaption({
   copyReveal?: { "data-reveal": string; className: string };
 }) {
   const wrapped = useCodeWrap();
-  const { copied, copy } = useCopyFeedback(code);
+  const copy = useCopy(code, labels.copy);
   return (
     <div
       {...props}
@@ -234,12 +214,12 @@ export function CodeCaption({
         )}
         {copyable && (
           <IconButton
-            icon={copied ? Check : Copy}
+            icon={Copy}
             size="xs"
-            tone={copied ? "success" : undefined}
+            tone={undefined}
             onClick={() => void copy()}
             {...copyReveal}
-            aria-label={copied ? labels.copied : labels.copy}
+            aria-label={labels.copy}
           />
         )}
       </span>
@@ -261,7 +241,7 @@ export function CodeBody({
   const wrapped = useCodeWrap();
   const Source = useContext(CodeSource);
   return (
-    <pre
+    <div
       dir="ltr"
       role="region"
       aria-label={label}
@@ -277,8 +257,8 @@ export function CodeBody({
         extra,
       )}
     >
-      <Source source={children} language={language} />
-    </pre>
+      <Source source={children} language={language} wrapped={wrapped} />
+    </div>
   );
 }
 

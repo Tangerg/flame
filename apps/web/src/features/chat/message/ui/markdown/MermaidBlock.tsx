@@ -3,12 +3,12 @@ import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { LightboxDialog } from "@flame/ui";
-import { ShikiCodeBlock } from "@/ui/index";
+import { CodeArtifact } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n/index";
-import { useCopyFeedback } from "@flame/ui";
+import { useCopy } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
@@ -74,7 +74,7 @@ interface SettledMermaidRender {
 export function MermaidBlock({ code }: Props) {
   const t = useT();
   const fencedCode = useMemo(() => `\`\`\`mermaid\n${code}\n\`\`\``, [code]);
-  const { copied, copy } = useCopyFeedback(fencedCode);
+  const copy = useCopy(fencedCode, t("message.code.copy"));
   const idPrefix = `mermaid-${useId().replace(/[^A-Za-z0-9_-]/g, "_")}`;
   const [debouncedCode] = useDebouncedValue(code, { wait: 300 });
   const isSettling = code !== debouncedCode;
@@ -154,12 +154,12 @@ export function MermaidBlock({ code }: Props) {
             <MermaidViewer svg={svg} onClose={() => setZoomed(false)} />
           </LightboxDialog>
           <IconButton
-            icon={iconGlyph(copied ? "check" : "copy")}
+            icon={iconGlyph("copy")}
             size="xs"
             quiet
             onClick={() => void copy()}
-            aria-label={t(copied ? "message.mermaid.copied" : "message.mermaid.copy")}
-            tone={copied ? "success" : undefined}
+            aria-label={t("message.mermaid.copy")}
+            tone={undefined}
           />
         </div>
         <span className="sr-only">{t("message.mermaid.source")}</span>
@@ -180,5 +180,5 @@ export function MermaidBlock({ code }: Props) {
     );
   }
 
-  return <ShikiCodeBlock lang="mermaid" code={code} />;
+  return <CodeArtifact lang="mermaid" code={code} />;
 }

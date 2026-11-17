@@ -44,7 +44,6 @@ export function ToolGroup({ tools, expandedIds, onExpandedChange, superseded }: 
       }
       open={model.expanded}
       onOpenChange={setPinned}
-      stickyHeader
     >
       {/* Focus inside the rows is explicit engagement: pinning keeps settling
           calls from collapsing the body out from under the user's focus. */}

@@ -122,9 +122,11 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@flame/icons": "*",
+    "@legendapp/list": "3.7.2",
     "@stylexjs/stylex": "^0.19.1",
     "@types/mdast": "^4.0.4",
     "clsx": "^2.1.1",
+    "react-zoom-pan-pinch": "4.2.0",
     "unist-util-visit": "^5.2.0"
   },
   "devDependencies": {

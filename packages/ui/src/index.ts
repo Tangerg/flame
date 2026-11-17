@@ -93,6 +93,7 @@ export {
 } from "./records";
 export { Disclosure } from "./disclosure";
 export { ScrollRegion, scrollWithHorizontalArrow } from "./scroll-region";
+export { useFieldVisibility } from "./field-visibility";
 export {
   type DiffFileSummary,
   DiffFilePath,
@@ -109,21 +110,18 @@ export {
   type CodeSourceComponent,
   type CodeSourceProps,
 } from "./code-block";
-export { copyText, useCopyFeedback, useCopyAttempt } from "./clipboard";
+export {
+  copyText,
+  useCopy,
+  ClipboardReceiptProvider,
+  type CopyReceipt,
+} from "./clipboard";
 export { isImeKey } from "./keyboard";
 export {
   copyReaderSelection,
   readerSelectionLines,
   selectAllInReader,
 } from "./reader-selection";
-export {
-  readingUnitFor,
-  isPressedReadingTarget,
-  readingViewportBounds,
-  withinReadingFrame,
-} from "./reading-unit";
-export { PointerSession, type PointerOutcome } from "./pointer-session";
-export { scrollPan, useScrollPan } from "./scroll-pan";
 export { TaskListItem } from "./task-list-item";
 export {
   Callout,
@@ -164,9 +162,8 @@ export {
   type PixelSize,
 } from "./image-dimensions";
 
-export {
-  FocusWitness,
-  RemovalFocus,
-  useRemovalFocus,
-  handoffFocus,
-} from "./focus";
+export { handoffFocus } from "./focus";
+
+export { ReadingList, type ReadingListHandle } from "./reading-list";
+
+export { codeSyntaxColors } from "./code-syntax";

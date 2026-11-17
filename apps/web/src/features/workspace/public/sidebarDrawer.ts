@@ -1,6 +1,6 @@
 import {
-  useDockWidth,
+  useDockLayout,
   useSidebarDrawer,
-  useSidebarWidth,
+  useSidebarLayout,
 } from "@/features/workspace/application/navigation";
-export { useDockWidth, useSidebarDrawer, useSidebarWidth };
+export { useDockLayout, useSidebarDrawer, useSidebarLayout };

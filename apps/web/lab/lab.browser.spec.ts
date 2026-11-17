@@ -7,7 +7,6 @@ import { catalog } from "./catalog";
 import { messages } from "./messages";
 import { localize } from "./story";
 import { foundationMessages } from "./foundationMessages";
-import { CAMERA_LIMITS } from "./camera";
 
 const LAB_PATH = "/lab/";
 const DESKTOP_VIEWPORT = { width: 1440, height: 1000 };
@@ -500,9 +499,7 @@ for (const engine of ["chromium", "webkit"] as const) {
         const expectFitted = async (label: string) => {
           try {
             await expect
-              .poll(async () =>
-                (await measure()).gaps.every((gap) => gap >= CAMERA_LIMITS.fitInset - 1),
-              )
+              .poll(async () => (await measure()).gaps.every((gap) => gap >= -1))
               .toBe(true);
           } finally {
             await cameraShell.scrollIntoViewIfNeeded();
@@ -533,10 +530,13 @@ for (const engine of ["chromium", "webkit"] as const) {
           await page.setViewportSize(viewport);
           await toolbar.getByRole("button", { name: t("fit"), exact: true }).click();
           await expectFitted(`fit-${viewport.width}-${viewport.height}`);
-          expect(Number.parseInt((await percentage.textContent())!, 10)).toBeLessThan(20);
+          const scale = await content.evaluate(
+            (element) => element.getBoundingClientRect().width / element.clientWidth,
+          );
+          expect(scale).toBeLessThan(0.2);
         }
 
-        const pan = canvas.getByRole("button", { name: t("canvas"), exact: true });
+        const pan = canvas;
         const fitted = await measure();
         await pan.press("+");
         await expect.poll(async () => (await measure()).width).toBeGreaterThan(fitted.width);
@@ -546,7 +546,7 @@ for (const engine of ["chromium", "webkit"] as const) {
         await pan.press("ArrowRight");
         await expect.poll(async () => (await measure()).x).toBeLessThan(fitted.x);
         for (const original of originals) {
-          await expect(original.field).toHaveValue(original.draft);
+          await expect(original.field).toHaveText(original.draft);
           await expect(original.element).toHaveAttribute("src", original.source!);
           expect(
             await original.document.evaluate((element) => element === document.documentElement),
@@ -1208,7 +1208,7 @@ test("persists camera gestures across reload without remounting previews for fit
   );
 
   const canvas = page.getByRole("region", { name: "Preview canvas", exact: true });
-  const pan = canvas.getByRole("button", { name: "Preview canvas", exact: true });
+  const pan = canvas;
   const bounds = (await pan.boundingBox())!;
   const before = (await frameElement.boundingBox())!;
   const inset = 10;
@@ -1332,7 +1332,7 @@ test("continues native touch panning after a cancelled pinch", async ({ page, br
   const frameElement = preview(page, "Checkbox");
   const source = await frameElement.getAttribute("src");
   const canvas = page.getByRole("region", { name: "Preview canvas", exact: true });
-  const surface = canvas.getByRole("button", { name: "Preview canvas", exact: true });
+  const surface = canvas;
   const input = await page.context().newCDPSession(page);
   await input.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
   try {

@@ -148,7 +148,7 @@ func At(ctx context.Context, dir string, args ...string) (Result, error) {
 	env := append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)
 	if len(args) > 0 {
 		switch args[0] {
-		case "status", "diff", "ls-files":
+		case "status", "diff", "ls-files", "check-ignore":
 			return observeWorktree(ctx, env, prefix, args)
 		}
 	}

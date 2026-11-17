@@ -6,36 +6,14 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { type PropsWithChildren } from "react";
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type BlockCtx } from "@/features/chat/public/message/rendering";
-import { ContentVisibility } from "@/ui/index";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
-const { root, follow } = vi.hoisted(() => {
-  const followRef = () => {
-    const ref = (element: HTMLDivElement | null) => {
-      ref.current = element;
-    };
-    ref.current = null as HTMLDivElement | null;
-    return ref;
-  };
-  return {
-    root: {
-      current: {
-        running: true,
-        terminalTurnIndex: (): number => -1,
-      },
-    },
-    follow: {
-      scrollRef: followRef(),
-      contentRef: followRef(),
-      stopScroll: vi.fn(),
-      state: { isAtBottom: true, targetScrollTop: 0 },
-    },
-  };
-});
+const { root } = vi.hoisted(() => ({
+  root: { current: { running: true, terminalTurnIndex: (): number => -1 } },
+}));
 
 vi.mock("@/features/agent/public/run", () => ({
   useCurrentRootMaterial: () => root.current,
@@ -53,26 +31,10 @@ vi.mock("@/extensions/host/Slot", () => ({
   Slot: ({ name }: { name: string }) => <div data-testid={name} />,
 }));
 
-vi.mock("use-stick-to-bottom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("use-stick-to-bottom")>();
-  const context = {
-    isAtBottom: true,
-    scrollToBottom: vi.fn(),
-    ...follow,
-  };
-  const StickToBottom = ({ children }: PropsWithChildren) => <div>{children}</div>;
-  return {
-    ...actual,
-    StickToBottom,
-    useStickToBottomContext: () => context,
-  };
-});
-
 const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),
   onExpandedChange: vi.fn(),
-  textReveal: "smooth",
 };
 
 function transcriptRow(status: "running" | "complete"): TranscriptRow {
@@ -134,10 +96,9 @@ describe("MessageStream terminal footer materialization", () => {
     const style = getComputedStyle(turn!);
     expect(Number(style.opacity || "1")).toBe(1);
     expect(style.transform || "none").toBe("none");
-    expect(turn!.style.top).toBe("6px");
   });
 
-  it("keeps the Run outcome out of layout until the terminal visible generation settles", async () => {
+  it("publishes the Run outcome with its committed terminal material", async () => {
     root.current = { running: true, terminalTurnIndex: () => -1 };
     const { rerender } = testClient.render(
       <MessageStream rows={[transcriptRow("running")]} ctx={CTX} sessionId="session-footer" />,
@@ -149,13 +110,6 @@ describe("MessageStream terminal footer materialization", () => {
     expect(screen.queryByTestId("root-run-outcome")).toBeNull();
 
     root.current = { running: false, terminalTurnIndex: () => 0 };
-    rerender(
-      <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-footer" />,
-    );
-
-    expect(screen.queryByTestId("root-run-outcome")).toBeNull();
-
-    document.documentElement.setAttribute("data-motion", "off");
     rerender(
       <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-footer" />,
     );
@@ -180,141 +134,4 @@ describe("MessageStream terminal footer materialization", () => {
       screen.getByTestId("root-run-outcome").closest<HTMLElement>("[data-turn-id]")?.dataset.turnId,
     ).toBe("assistant-terminal-footer");
   });
-});
-
-describe("MessageStream reading measurement", () => {
-  it("retires follow when an already-focused record opens before resize begins", async () => {
-    follow.stopScroll.mockClear();
-    const row = transcriptRow("complete");
-    row.message.blocks = [
-      {
-        kind: "reasoning",
-        reasoningId: "reasoning-retained-operation",
-        text: "Inspect the retained operation evidence.",
-        status: "complete",
-      },
-    ];
-    testClient.render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-disclosure" />);
-    await act(async () => vi.dynamicImportSettled());
-    const trigger = screen.getByRole("button", { name: "Thought" });
-    act(() => trigger.focus());
-    expect(follow.stopScroll).not.toHaveBeenCalled();
-
-    fireEvent.click(trigger);
-    expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    expect(follow.stopScroll).toHaveBeenCalledTimes(1);
-    expect(document.activeElement).toBe(trigger);
-
-    fireEvent.click(trigger);
-    expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(follow.stopScroll).toHaveBeenCalledTimes(1);
-  });
-
-  it("detaches follow measurement while an ancestor host hides the retained transcript", async () => {
-    root.current = { running: false, terminalTurnIndex: () => -1 };
-    const stream = (visible: boolean) => (
-      <ContentVisibility visible={visible}>
-        <ContentVisibility visible>
-          <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-hidden" />
-        </ContentVisibility>
-      </ContentVisibility>
-    );
-    const { container, rerender } = testClient.render(stream(true));
-    await act(async () => vi.dynamicImportSettled());
-    const viewport = container.querySelector<HTMLElement>(".msg-scroll-viewport")!;
-    const content = viewport.firstElementChild as HTMLElement;
-    const turn = container.querySelector("[data-turn-id]");
-    expect(follow.scrollRef.current).toBe(viewport);
-    expect(follow.contentRef.current).toBe(content);
-
-    rerender(stream(false));
-    expect(follow.scrollRef.current).toBeNull();
-    expect(follow.contentRef.current).toBeNull();
-    expect(content.isConnected).toBe(true);
-    expect(container.querySelector("[data-turn-id]")).toBe(turn);
-
-    rerender(stream(true));
-    expect(follow.scrollRef.current).toBe(viewport);
-    expect(follow.contentRef.current).toBe(content);
-    expect(container.querySelector("[data-turn-id]")).toBe(turn);
-  });
-});
-
-it("preserves reading focus after geometry changes in the main transcript", async () => {
-  const observations: Array<{ nodes: Set<Element>; callback: ResizeObserverCallback }> = [];
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      nodes = new Set<Element>();
-      constructor(callback: ResizeObserverCallback) {
-        observations.push({ nodes: this.nodes, callback });
-      }
-      observe(node: Element) {
-        this.nodes.add(node);
-      }
-      unobserve(node: Element) {
-        this.nodes.delete(node);
-      }
-      disconnect() {
-        this.nodes.clear();
-      }
-    },
-  );
-  const row = transcriptRow("complete");
-  row.message.blocks = [
-    {
-      kind: "reasoning",
-      reasoningId: "reading-geometry",
-      text: "Retained source evidence",
-      status: "complete",
-    },
-  ];
-  testClient.render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-reading-geometry" />);
-  await act(async () => vi.dynamicImportSettled());
-  const viewport = follow.scrollRef.current!;
-  const target = screen.getByRole("button", { name: "Thought" });
-  const shape = { height: 400 };
-  viewport.style.scrollPaddingTop = "20px";
-  viewport.style.scrollPaddingBottom = "80px";
-  vi.spyOn(viewport, "getBoundingClientRect").mockImplementation(
-    () => new DOMRect(0, 0, 600, shape.height),
-  );
-  const bounds = () => new DOMRect(0, 210 - viewport.scrollTop, 100, 24);
-  vi.spyOn(target, "getBoundingClientRect").mockImplementation(bounds);
-  vi.spyOn(target, "getClientRects").mockImplementation(() => [bounds()] as unknown as DOMRectList);
-  Object.defineProperty(viewport, "scrollBy", {
-    configurable: true,
-    value: (options: ScrollToOptions) => {
-      viewport.scrollTop += options.top ?? 0;
-    },
-  });
-  act(() => target.focus());
-  shape.height = 240;
-  fireEvent.scroll(viewport);
-  await act(async () => {
-    for (const observer of observations)
-      if (observer.nodes.has(viewport)) {
-        observer.callback(
-          [
-            {
-              target: viewport,
-              contentRect: viewport.getBoundingClientRect(),
-              borderBoxSize: [],
-              contentBoxSize: [],
-              devicePixelContentBoxSize: [],
-            },
-          ],
-          {} as ResizeObserver,
-        );
-      }
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  });
-  expect(bounds().bottom).toBeLessThanOrEqual(160);
-  expect(document.activeElement).toBe(target);
-  expect(target.getAttribute("aria-expanded")).toBe("false");
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
 });

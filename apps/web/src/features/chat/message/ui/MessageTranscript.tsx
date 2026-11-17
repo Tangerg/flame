@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { AnimatePresence } from "motion/react";
-import { memo, type ComponentProps, type ReactNode } from "react";
+import { ReadingList, type ReadingListHandle } from "@flame/ui";
+import { memo, type ComponentProps, type ReactNode, type Ref } from "react";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type Message } from "@/features/agent/public/sessionView";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
@@ -15,10 +15,15 @@ import { TurnErrorBoundary } from "@/features/chat/message/ui/TurnErrorBoundary"
 const styles = stylex.create({ dayPad: { paddingBlock: space.s1 } });
 
 interface Props {
+  className?: string;
   rows: readonly TranscriptRow[];
   ctx: BlockCtx;
   sessionId: string;
   isRunning: boolean;
+  listRef?: Ref<ReadingListHandle>;
+  header?: ReactNode;
+  footer?: ReactNode;
+  onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
   terminalFooter?: { messageId: string; content: ReactNode };
 }
 
@@ -65,11 +70,32 @@ const TranscriptTurn = memo(function TranscriptTurn({
   );
 });
 
-export function MessageTranscript({ rows, ctx, sessionId, isRunning, terminalFooter }: Props) {
+export function MessageTranscript({
+  className,
+  rows,
+  ctx,
+  sessionId,
+  isRunning,
+  terminalFooter,
+  listRef,
+  header,
+  footer,
+  onFollowChange,
+}: Props) {
+  const t = useT();
   const dayBreaks = transcriptDayBreaks(rows);
   return (
-    <AnimatePresence initial={false}>
-      {rows.map((row, index) => (
+    <ReadingList
+      role="group"
+      ref={listRef}
+      className={className}
+      data={rows}
+      keyExtractor={(row) => row.message.id}
+      label={t("chat.conversation")}
+      header={header}
+      footer={footer}
+      onFollowChange={onFollowChange}
+      renderItem={(row, index) => (
         <TurnErrorBoundary key={row.message.id} resetKey={row.message.id}>
           <TranscriptTurn
             row={row}
@@ -85,7 +111,7 @@ export function MessageTranscript({ rows, ctx, sessionId, isRunning, terminalFoo
             }
           />
         </TurnErrorBoundary>
-      ))}
-    </AnimatePresence>
+      )}
+    />
   );
 }

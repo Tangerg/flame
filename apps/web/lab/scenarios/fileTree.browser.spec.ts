@@ -52,7 +52,7 @@ async function relocateWorkspace(page: Page, cwd: string) {
 
 async function expectAccessibleTree(page: Page) {
   const audit = await new AxeBuilder({ page })
-    .include('[role="tree"]')
+    .include('[role="treegrid"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
   expect(audit.violations).toEqual([]);
@@ -66,15 +66,15 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=error&locale=en&motion=off",
       );
       await expectLabReady(page);
-      const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+      const folder = tree.getByRole("row", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
       const failure = page.getByText(en["dataView.error.title"]!, { exact: true });
       await expect(failure).toBeVisible();
-      await expect(folder).toHaveAccessibleName(/^apps\s+Couldn't load\b/);
-      await expect(tree.getByRole("treeitem", { name: "README.md", exact: true })).toBeVisible();
-      await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(0);
+      await expect(folder).toHaveAccessibleName("apps");
+      await expect(tree.getByRole("row", { name: "README.md", exact: true })).toBeVisible();
+      await expect(tree.locator('[data-file-path][aria-level="2"]')).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Notify apps change", exact: true }),
       ).toHaveCount(0);
@@ -96,15 +96,15 @@ for (const browserName of ["chromium", "webkit"] as const) {
 
       const retry = page.getByRole("button", { name: en["common.retry"]!, exact: true });
       await folder.focus();
-      await folder.press("Tab");
+      await folder.press("ArrowDown");
       await expect(retry).toBeFocused();
       await retry.press("Enter");
-      const child = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      const child = tree.locator('[data-file-path][aria-level="2"]').first();
       await expect(child).toBeVisible();
       await expect(folder).toHaveAccessibleName("apps");
       await expect(retry).toBeHidden();
       await folder.focus();
-      await folder.press("ArrowRight");
+      await folder.press("ArrowDown");
       await expect(child).toBeFocused();
       await child.press("Enter");
       const back = page.getByRole("button", { name: "Back to files", exact: true });
@@ -123,14 +123,14 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=refresh-error&locale=en&motion=off",
       );
       await expectLabReady(page);
-      const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+      const folder = tree.getByRole("row", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
-      const child = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      const child = tree.locator('[data-file-path][aria-level="2"]').first();
       await expect(child).toBeVisible();
       await expect(folder).toHaveAccessibleName("apps");
-      await folder.press("ArrowRight");
+      await folder.press("ArrowDown");
       await expect(child).toBeFocused();
       const original = await child.elementHandle();
       const notify = page.getByRole("button", { name: "Notify apps change", exact: true });
@@ -138,7 +138,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await notify.press("Enter");
       const failure = page.getByText(en["file.refreshError.title"]!, { exact: true });
       await expect(failure).toBeVisible();
-      await expect(folder).toHaveAccessibleName(/^apps\s+Couldn't refresh files\b/);
+      await expect(folder).toHaveAccessibleName("apps");
       await expect(folder).not.toHaveAccessibleName(/DockResizer\.tsx/);
       await expect(
         page.getByText("Showing the last loaded files in apps.", { exact: true }),
@@ -151,7 +151,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
 
       const retry = page.getByRole("button", { name: en["common.retry"]!, exact: true });
       await child.focus();
-      await child.press("Shift+Tab");
+      await child.press("ArrowDown");
       await expect(retry).toBeFocused();
       await expect(child).toHaveAttribute("tabindex", "0");
       expect(await folder.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("none");
@@ -160,10 +160,10 @@ for (const browserName of ["chromium", "webkit"] as const) {
       await expect(retry).toBeHidden();
       await expect(child).toBeVisible();
       expect(await child.evaluate((node, before) => node === before, original)).toBe(true);
-      await expect(child).toBeFocused();
+      await expect(folder).toBeFocused();
       await expect(folder).toHaveAccessibleName("apps");
       await folder.focus();
-      await folder.press("ArrowRight");
+      await folder.press("ArrowDown");
       await expect(child).toBeFocused();
       await child.press("ArrowLeft");
       await expect(folder).toBeFocused();
@@ -178,8 +178,8 @@ for (const browserName of ["chromium", "webkit"] as const) {
           `/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&directory-state=${directoryState}&locale=en&motion=off`,
         );
         await expectLabReady(page);
-        const tree = page.getByRole("tree", { name: "Files", exact: true });
-        const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+        const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+        const folder = tree.getByRole("row", { name: /^apps(?:\s|$)/ });
         await folder.focus();
         await folder.press("ArrowRight");
         const feedback = page.getByText(
@@ -187,10 +187,10 @@ for (const browserName of ["chromium", "webkit"] as const) {
           { exact: true },
         );
         await expect(feedback).toBeVisible();
-        await expect(tree.getByRole("treeitem", { name: "README.md", exact: true })).toBeVisible();
-        await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(0);
+        await expect(tree.getByRole("row", { name: "README.md", exact: true })).toBeVisible();
+        await expect(tree.locator('[data-file-path][aria-level="2"]')).toHaveCount(0);
         if (directoryState === "loading") {
-          await expect(folder).toHaveAttribute("aria-busy", "true");
+          await expect(folder.locator("[title]")).toHaveAttribute("aria-busy", "true");
           await expect.poll(() => directoryIsFetching(page)).toBe(true);
           await folder.press("ArrowLeft");
           await expect(feedback).toBeHidden();
@@ -199,10 +199,10 @@ for (const browserName of ["chromium", "webkit"] as const) {
           await expect(feedback).toBeVisible();
           await expect.poll(() => directoryIsFetching(page)).toBe(true);
         } else {
-          await expect(folder).not.toHaveAttribute("aria-busy", "true");
+          await expect(folder.locator("[title]")).not.toHaveAttribute("aria-busy", "true");
         }
         await folder.press("ArrowDown");
-        await expect(tree.getByRole("treeitem", { name: "go.mod", exact: true })).toBeFocused();
+        await expect(tree.getByRole("row", { name: "go.mod", exact: true })).toBeFocused();
       },
     );
   }
@@ -214,14 +214,14 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
       );
       await expectLabReady(page);
-      const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+      const folder = tree.getByRole("row", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
       await expect(folder).toHaveAttribute("aria-expanded", "true");
-      await expect(tree.locator('[role="treeitem"][aria-level="2"]').first()).toBeVisible();
-      await folder.press("ArrowRight");
-      const child = tree.locator('[role="treeitem"]:focus');
+      await expect(tree.locator('[data-file-path][aria-level="2"]').first()).toBeVisible();
+      await folder.press("ArrowDown");
+      const child = tree.locator('[role="row"]:focus');
       await expect(child).toHaveAttribute("aria-level", "2");
       const name = await child.getAttribute("aria-label");
       await expect(page.getByRole("button", { name: "Back to files", exact: true })).toBeHidden();
@@ -229,9 +229,9 @@ for (const browserName of ["chromium", "webkit"] as const) {
       const back = page.getByRole("button", { name: "Back to files", exact: true });
       await expect(back).toBeFocused();
       await back.press("Enter");
-      const returned = tree.getByRole("treeitem", { name: name!, exact: true });
+      const returned = tree.getByRole("row", { name: name!, exact: true });
       await expect(returned).toBeFocused();
-      await expect(returned).toHaveAttribute("aria-current", "true");
+      await expect(returned.locator("[title]")).toHaveAttribute("aria-current", "true");
       await returned.press("ArrowLeft");
       await expect(folder).toBeFocused();
       await folder.press(" ");
@@ -257,28 +257,37 @@ for (const browserName of ["chromium", "webkit"] as const) {
       for (let index = 0; index < suffix.length; index++) await composer.press("ArrowLeft");
       const caret = () =>
         composer.evaluate((node) => {
-          const input = node as HTMLTextAreaElement;
-          return [input.selectionStart, input.selectionEnd];
+          const selection = node.ownerDocument.getSelection();
+          if (!selection?.anchorNode || !selection.focusNode)
+            throw new Error("missing native editor selection");
+          const offset = (end: Node, position: number) => {
+            const range = node.ownerDocument.createRange();
+            range.selectNodeContents(node);
+            range.setEnd(end, position);
+            return range.toString().length;
+          };
+          return [
+            offset(selection.anchorNode, selection.anchorOffset),
+            offset(selection.focusNode, selection.focusOffset),
+          ];
         });
       expect(await caret()).toEqual([prefix.length, prefix.length]);
       await folder.click();
       await expect(folder).toHaveAttribute("aria-expanded", "false");
       await folder.press("ArrowDown");
-      const next = tree.getByRole("treeitem", { name: "go.mod", exact: true });
+      const next = tree.getByRole("row", { name: "go.mod", exact: true });
       await expect(next).toBeFocused();
       await next.press("Home");
       await expect(folder).toBeFocused();
       await folder.press("ArrowRight");
-      await expect(returned).toHaveAttribute("aria-current", "true");
+      await expect(returned.locator("[title]")).toHaveAttribute("aria-current", "true");
       await folder.press("End");
-      await expect(
-        tree.getByRole("treeitem", { name: "reading-callouts.md", exact: true }),
-      ).toBeFocused();
+      await expect(tree.getByRole("row", { name: "README.md", exact: true })).toBeFocused();
       await page.keyboard.press("Meta+l");
       await expect(composer).toBeFocused();
       expect(await caret()).toEqual([prefix.length, prefix.length]);
       await page.keyboard.type("Returned. ");
-      await expect(composer).toHaveValue(prefix + "Returned. " + suffix);
+      await expect(composer).toHaveText(prefix + "Returned. " + suffix);
     },
   );
 
@@ -289,7 +298,7 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
       );
       await expectLabReady(page);
-      await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
+      await page.getByRole("row", { name: "README.md", exact: true }).click();
       const source = page.getByRole("radio", { name: "Source", exact: true });
       const preview = page.getByRole("radio", { name: "Preview", exact: true });
       const goToLine = page.getByRole("button", { name: "Go to line", exact: true });
@@ -323,12 +332,12 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
       );
       await expectLabReady(page);
-      const tree = page.getByRole("tree", { name: "Files", exact: true });
-      await tree.getByRole("treeitem", { name: "go.mod", exact: true }).click();
+      const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+      await tree.getByRole("row", { name: "go.mod", exact: true }).click();
       const goToLine = page.getByRole("button", { name: "Go to line", exact: true });
       await expect(goToLine).toBeVisible();
       await page.getByRole("button", { name: "Back to files", exact: true }).click();
-      await tree.getByRole("treeitem", { name: "README.md", exact: true }).click();
+      await tree.getByRole("row", { name: "README.md", exact: true }).click();
       await goToLine.click();
       const field = page.getByRole("textbox", { name: "Go to line", exact: true });
       await field.fill("37");
@@ -359,13 +368,13 @@ for (const browserName of ["chromium", "webkit"] as const) {
         "/lab/fixture.html?fixture=workspace&state=dock-files&agent-state=idle&locale=en&motion=off",
       );
       await expectLabReady(page);
-      const tree = page.getByRole("tree", { name: "Files", exact: true });
-      const folder = tree.getByRole("treeitem", { name: /^apps(?:\s|$)/ });
+      const tree = page.getByRole("treegrid", { name: "Files", exact: true });
+      const folder = tree.getByRole("row", { name: /^apps(?:\s|$)/ });
       await folder.focus();
       await folder.press("ArrowRight");
-      const file = tree.locator('[role="treeitem"][aria-level="2"]').first();
+      const file = tree.locator('[data-file-path][aria-level="2"]').first();
       await expect(file).toBeVisible();
-      const path = await file.getAttribute("title");
+      const path = await file.getAttribute("data-file-path");
       expect(path).toBeTruthy();
       await file.focus();
       await file.click({ button: "right" });

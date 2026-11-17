@@ -1,16 +1,16 @@
+import { Group, Panel, Separator } from "react-resizable-panels";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { createContext, useContext, useLayoutEffect, useState } from "react";
-import { clampSidebarWidth } from "@/lib/shellGeometry";
-import { AgentSeamRail, AgentSidebar, SIDEBAR_WIDTH_PROPERTY } from "@/ui/agent/sidebar";
+import { createContext, useContext, useSyncExternalStore, useState } from "react";
+import { AgentSidebar } from "@/ui/agent/sidebar";
 import { AgentDrawerToggle } from "@/ui/agent/surface-header";
 interface AgentAppShellProps {
   sidebar?: ReactNode;
   sidebarLabel: string;
   sidebarResizeLabel: string;
   sidebarOpen: boolean;
-  sidebarWidth: number;
-  onResize: (width: number) => void;
+  sidebarLayout: Readonly<Record<string, number>> | null;
+  onLayoutChanged(layout: Record<string, number>): void;
   onSidebarToggle: () => void;
   sidebarExpandLabel: string;
   sidebarCollapseLabel: string;
@@ -22,7 +22,7 @@ const styles = stylex.create({
   content: {
     position: "relative",
     display: "flex",
-    height: "100dvh",
+    height: "100%",
     minHeight: 0,
     minWidth: 0,
     flex: 1,
@@ -41,8 +41,8 @@ export function AgentAppShell({
   sidebarLabel,
   sidebarResizeLabel,
   sidebarOpen,
-  sidebarWidth,
-  onResize,
+  sidebarLayout,
+  onLayoutChanged,
   onSidebarToggle,
   sidebarExpandLabel,
   sidebarCollapseLabel,
@@ -52,19 +52,15 @@ export function AgentAppShell({
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
   const hasSidebar = sidebar !== undefined;
 
-  useLayoutEffect(() => {
-    if (!shell) return;
-    const syncWidth = () => {
-      shell.style.setProperty(
-        SIDEBAR_WIDTH_PROPERTY,
-        `${clampSidebarWidth(sidebarWidth, shell.clientWidth)}px`,
-      );
-    };
-    syncWidth();
-    const observer = new ResizeObserver(syncWidth);
-    observer.observe(shell);
-    return () => observer.disconnect();
-  }, [shell, sidebarWidth]);
+  const [initial] = useState(() => sidebarLayout ?? undefined);
+  const narrow = useSyncExternalStore(
+    (listener) => {
+      const query = matchMedia("(max-width: 760px)");
+      query.addEventListener("change", listener);
+      return () => query.removeEventListener("change", listener);
+    },
+    () => matchMedia("(max-width: 760px)").matches,
+  );
 
   return (
     <div
@@ -83,13 +79,37 @@ export function AgentAppShell({
             />
           </div>
         )}
-        {hasSidebar && <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>}
-        <div {...stylex.props(styles.content)}>
-          {hasSidebar && sidebarOpen && (
-            <AgentSeamRail label={sidebarResizeLabel} width={sidebarWidth} onCommit={onResize} />
+        <Group
+          orientation={narrow ? "vertical" : "horizontal"}
+          defaultLayout={initial}
+          onLayoutChanged={(layout, meta) => {
+            if (meta.isUserInteraction) onLayoutChanged(meta.requestedLayout ?? layout);
+          }}
+          style={{ flex: 1, minWidth: 0, minHeight: 0 }}
+        >
+          {hasSidebar && (
+            <Panel
+              id="sidebar"
+              defaultSize={narrow ? "30%" : 275}
+              minSize={sidebarOpen ? (narrow ? 100 : 240) : 0}
+              maxSize={sidebarOpen ? (narrow ? "40%" : 520) : 0}
+            >
+              <div
+                inert={!sidebarOpen}
+                aria-hidden={!sidebarOpen || undefined}
+                style={{ height: "100%" }}
+              >
+                <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>
+              </div>
+            </Panel>
           )}
-          {main}
-        </div>
+          {hasSidebar && sidebarOpen && (
+            <Separator aria-label={sidebarResizeLabel} className="agent-seam-rail" />
+          )}
+          <Panel id="main" minSize={narrow ? 120 : 440}>
+            <div {...stylex.props(styles.content)}>{main}</div>
+          </Panel>
+        </Group>
         {overlay}
       </AgentShellContext.Provider>
     </div>

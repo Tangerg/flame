@@ -24,8 +24,8 @@ type workspaceBindingStub struct {
 	search         *protocol.GrepResult
 	searchRequests []protocol.GrepRequest
 	readRequests   []protocol.ReadFileRequest
-	files          *protocol.Page[protocol.FileEntry]
-	filePages      map[string]*protocol.Page[protocol.FileEntry]
+	files          *protocol.FileListPage
+	filePages      map[string]*protocol.FileListPage
 	fileCalls      []protocol.ListFilesRequest
 	content        *protocol.FileContent
 }
@@ -115,7 +115,7 @@ func (w *workspaceBindingStub) SearchWorkspaceFiles(_ context.Context, request p
 	return &value, nil
 }
 
-func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request protocol.ListFilesRequest, _ protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error) {
+func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request protocol.ListFilesRequest, _ protocol.CallOptions) (*protocol.FileListPage, error) {
 	w.fileCalls = append(w.fileCalls, request)
 	if w.filePages != nil {
 		return ownedWorkspaceFilePage(w.filePages[request.Cursor]), nil
@@ -123,7 +123,7 @@ func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request pro
 	return ownedWorkspaceFilePage(w.files), nil
 }
 
-func ownedWorkspaceFilePage(source *protocol.Page[protocol.FileEntry]) *protocol.Page[protocol.FileEntry] {
+func ownedWorkspaceFilePage(source *protocol.FileListPage) *protocol.FileListPage {
 	if source == nil {
 		return nil
 	}
@@ -207,12 +207,12 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		}}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1,
 			Coverage: protocol.GrepCoverage{ScannedFiles: 1, SkippedFiles: 2, RemainingFiles: 3, SourceBytes: 120}},
-		filePages: map[string]*protocol.Page[protocol.FileEntry]{
-			"": protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
-			"next": protocol.NewPage([]protocol.FileEntry{{
+		filePages: map[string]*protocol.FileListPage{
+			"": fileListPage([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
+			"next": fileListPage([]protocol.FileEntry{{
 				Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &size,
 				ModifiedAt: time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC),
-			}}),
+			}}, ""),
 		},
 		content: &protocol.FileContent{Content: "package main\n", TotalLines: 2, StartLine: 1, EndLine: 2},
 	}
@@ -334,10 +334,10 @@ func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 
 func TestWorkspaceFilesRejectsCyclicRuntimePagination(t *testing.T) {
 	t.Parallel()
-	stub := &workspaceBindingStub{filePages: map[string]*protocol.Page[protocol.FileEntry]{
-		"":      protocol.NewPageWithCursor([]protocol.FileEntry{}, "next"),
-		"next":  protocol.NewPageWithCursor([]protocol.FileEntry{}, "later"),
-		"later": protocol.NewPageWithCursor([]protocol.FileEntry{}, "next"),
+	stub := &workspaceBindingStub{filePages: map[string]*protocol.FileListPage{
+		"":      fileListPage([]protocol.FileEntry{}, "next"),
+		"next":  fileListPage([]protocol.FileEntry{}, "later"),
+		"later": fileListPage([]protocol.FileEntry{}, "next"),
 	}}
 	runtime := &Connection{workspaces: stub, meta: requestMeta("test")}
 
@@ -347,7 +347,7 @@ func TestWorkspaceFilesRejectsCyclicRuntimePagination(t *testing.T) {
 	}
 }
 
-func TestWorkspaceFilesRejectsPagesOutsideRuntimeOrder(t *testing.T) {
+func TestWorkspaceFilesAcceptsNativeDirectoryOrder(t *testing.T) {
 	t.Parallel()
 	size := int64(1)
 	file := func(path string) protocol.FileEntry {
@@ -358,19 +358,19 @@ func TestWorkspaceFilesRejectsPagesOutsideRuntimeOrder(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name  string
-		pages map[string]*protocol.Page[protocol.FileEntry]
+		pages map[string]*protocol.FileListPage
 	}{
 		{
 			name: "path descends within a page",
-			pages: map[string]*protocol.Page[protocol.FileEntry]{
-				"": protocol.NewPage([]protocol.FileEntry{file("b.go"), file("a.go")}),
+			pages: map[string]*protocol.FileListPage{
+				"": fileListPage([]protocol.FileEntry{file("b.go"), file("a.go")}, ""),
 			},
 		},
 		{
 			name: "directory follows a file across pages",
-			pages: map[string]*protocol.Page[protocol.FileEntry]{
-				"":     protocol.NewPageWithCursor([]protocol.FileEntry{file("a.go")}, "next"),
-				"next": protocol.NewPage([]protocol.FileEntry{directory("docs")}),
+			pages: map[string]*protocol.FileListPage{
+				"":     fileListPage([]protocol.FileEntry{file("a.go")}, "next"),
+				"next": fileListPage([]protocol.FileEntry{directory("docs")}, ""),
 			},
 		},
 	} {
@@ -380,8 +380,13 @@ func TestWorkspaceFilesRejectsPagesOutsideRuntimeOrder(t *testing.T) {
 				workspaces: &workspaceBindingStub{filePages: test.pages},
 				meta:       requestMeta("test"),
 			}
-			_, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
-			requireRuntimeContractViolation(t, err)
+			listing, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(listing.Entries) != 2 {
+				t.Fatalf("native listing = %+v", listing)
+			}
 		})
 	}
 }
@@ -499,4 +504,8 @@ func TestWorkspaceExplicitReadPoliciesReachRuntimeUnchanged(t *testing.T) {
 	if read.StartLine == nil || *read.StartLine != 7 || read.EndLine == nil || *read.EndLine != 11 || read.MaxBytes == nil || *read.MaxBytes != 32<<20 {
 		t.Fatalf("explicit read = %+v, want original request", read)
 	}
+}
+
+func fileListPage(entries []protocol.FileEntry, cursor string) *protocol.FileListPage {
+	return &protocol.FileListPage{Data: entries, PageContinuation: protocol.PageContinuation{NextCursor: cursor}, Complete: cursor == "", Coverage: protocol.FileListCoverage{ScannedEntries: len(entries)}}
 }

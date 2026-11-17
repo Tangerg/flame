@@ -8,14 +8,14 @@ import {
   type PropsWithChildren,
   type SetStateAction,
 } from "react";
-import { type StickToBottomContext, type StickToBottomState } from "use-stick-to-bottom";
-
-export type StreamFollow = Pick<
-  StickToBottomContext,
-  "isAtBottom" | "scrollToBottom" | "stopScroll" | "contentRef" | "scrollRef"
-> & {
-  state: Pick<StickToBottomState, "isAtBottom" | "targetScrollTop">;
-};
+import type { RefObject } from "react";
+export interface StreamFollow {
+  isAtBottom: boolean;
+  scrollToBottom(): void | Promise<void>;
+  stopScroll(): void;
+  contentRef: RefObject<HTMLElement | null>;
+  scrollRef: RefObject<HTMLElement | null>;
+}
 
 const StreamFollowContext = createContext<{
   follow: StreamFollow | null;
@@ -32,7 +32,7 @@ export function useStreamFollow() {
   return useContext(StreamFollowContext)?.follow ?? null;
 }
 
-export function usePublishStreamFollow(follow: StreamFollow) {
+export function usePublishStreamFollow(follow: StreamFollow | null) {
   const publish = useContext(StreamFollowContext)?.publish;
   useLayoutEffect(() => {
     if (!publish) return;

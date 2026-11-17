@@ -42,12 +42,11 @@ commits. The Skills component consumes those same Runtime operations. See
 [`skills/README.md`](skills/README.md).
 
 Generated interfaces (`genui`) accepts a bounded interactive document through
-`genui_ui_present`. Its immutable presentation owner supplies the component,
-state, expression and action contract. Runtime Tool history retains the accepted
-document; OpenUI owns local draft values. Queries and confirmed commands use real
+`genui_ui_present`. Its immutable presentation captures official A2UI 1.0 messages, a trusted Flame
+catalog and explicit action bindings. Runtime Tool history retains the accepted
+document; the official A2UI processor owns local draft values. Queries and confirmed commands use real
 captured plugin bindings and the existing Runtime command journal. Followups enter
-the original Session through the shared Agent input owner. Isolated HTML previews
-have no Runtime bridge. See [`genui/README.md`](genui/README.md).
+the original Session through the shared Agent input owner. Generated output cannot install code, choose a catalog or broaden the Runtime bridge. See [`genui/README.md`](genui/README.md).
 
 Computer use (`computer`) directly loads a selected installed CUA engine on
 the Runtime host. Its public workspace component owns no permission or execution

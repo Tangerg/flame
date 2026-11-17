@@ -9,10 +9,7 @@ import {
   messageActionsVisibility,
   type MessageActionsVisibility,
 } from "@/features/chat/message-actions/public/messageActions";
-import {
-  messageActionMaterialization,
-  messageBlocksRenderInstant,
-} from "@/features/chat/message/application/messageBlockModel";
+import { messageActionMaterialization } from "@/features/chat/message/application/messageBlockModel";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n/index";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
@@ -97,11 +94,7 @@ function MessageBlockInner({
     );
   }
 
-  const blockCtx: BlockCtx = messageBlocksRenderInstant(msg.role)
-    ? { ...ctx, textReveal: "instant" }
-    : ctx;
-
-  const content = renderMessageBlocks(row, blockCtx, answerFollows);
+  const content = renderMessageBlocks(row, ctx, answerFollows);
 
   const roleLabel = t(isUser ? "role.user" : "role.assistant");
 

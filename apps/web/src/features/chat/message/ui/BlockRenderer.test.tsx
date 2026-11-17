@@ -27,7 +27,6 @@ const CTX: BlockCtx = {
   sessionId: "ses-1",
   expandedIds: new Set(),
   onExpandedChange: vi.fn(),
-  textReveal: "smooth",
 };
 
 describe("activity header semantics", () => {
@@ -110,7 +109,7 @@ describe("activity header semantics", () => {
       },
     };
     const onExpandedChange = vi.fn();
-    const ctx: BlockCtx = { ...CTX, onExpandedChange, textReveal: "instant" };
+    const ctx: BlockCtx = { ...CTX, onExpandedChange };
     const renderRow = () => (
       <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
         {renderMessageBlocks(row, ctx)}

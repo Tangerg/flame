@@ -66,6 +66,7 @@ const labels = {
   close: "Close image preview",
   description: "Image description",
   zoomIn: "Zoom in image",
+  fit: "Fit image",
   zoomOut: "Zoom out image",
 };
 
@@ -97,11 +98,17 @@ it("opens the original source, zooms and returns to its thumbnail without changi
     within(dialog).getByRole("region", { name: "Image description" })
       .textContent,
   ).toBe("Boundary map");
-  expect(viewport.getAttribute("data-image-zoom")).toBe("100");
+  const initial = within(dialog).getByRole("button", {
+    name: /[0-9]+%/,
+  }).textContent;
   fireEvent.click(
     within(dialog).getByRole("button", { name: "Zoom in image" }),
   );
-  expect(viewport.getAttribute("data-image-zoom")).toBe("125");
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole("button", { name: /[0-9]+%/ }).textContent,
+    ).not.toBe(initial),
+  );
   expect(viewport.tabIndex).toBe(0);
   fireEvent.keyDown(dialog, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

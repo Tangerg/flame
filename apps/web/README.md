@@ -325,26 +325,15 @@ input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
 
-Composer focus delivery synchronizes the registered input's caret projection
-after applying its actual native selection. Programmatic file and command
-entries therefore open suggestions even when focus does not produce a new
-selection event. Suggestion acceptance settles selection with the committed
-draft before following input, preserving the captured focus owner's eligibility.
-The file-list query owns retry availability and phase. Its command stays
-focusable during refetch, and retry or dismissal hands focus over before changing
-the view. Pointer movement changes a highlighted suggestion; moving the popup
-beneath a stationary pointer does not.
-File and command suggestions dismiss on Shift+Tab without accepting a value,
-letting the browser return to the preceding control with the draft intact.
-One suggestion navigation owner holds the candidate identity and highlighted item.
-Floating UI's public root context, virtual list navigation and role bindings read
-the actual textarea and list; Base UI remains the sole popup owner. The input route
-admits composition first, then Retry and acceptance, then explicit library arrow
-navigation, and finally ordinary commands. Home and End retain native editing.
-Highlight, hover, accessibility and acceptance use the same item. Matching reopened
-candidates retain that item; changed candidates select from their current set.
-One popup lifecycle reveals the item within its own scrollport after navigation or
-size changes, without scrolling an ancestor or retaining global option identities.
+Lexical owns the Composer document, selection, composition, undo and typeahead.
+The application checkpoints its serialized document in one direction. Accepted
+file candidates create typed FileReferenceNode tokens; manually authored `@text`
+remains ordinary text. The persistence checkpoint does not overwrite a mounted
+editor. Source changes remount with the captured checkpoint. Submission captures
+a content revision, so a late acceptance cannot clear newer edits. Enter inserts
+a newline, Mod+Enter submits, and Mod+ArrowUp/Down explicitly recalls history.
+TanStack Hotkeys owns shortcut parsing, recording, matching and display. Commands
+run in the bubble phase and respect defaultPrevented and editable ownership.
 
 File suggestions show the filename above its complete wrapping parent directory
 before insertion. Literal path text keeps directory then filename in DOM order,
@@ -796,20 +785,14 @@ File roots, expanded directories and selected file bodies retain first-result
 loading while their query is pending, including a paused request. Accepted empty
 lists and readable content keep their meaning during later pauses. Query data,
 network admission, retry and navigation retain their existing owners.
-File trees use Headless Tree's synchronous model for navigation and a controlled
-projection of workspace expansion and the activated file. Query remains the only
-filesystem reader and cache; the loader reads its accepted snapshot without I/O.
-Only reachable expanded directories subscribe to reads. Unread, pending, failed,
-ready, refreshing and stale directories retain their distinct meaning, including
-accepted empty lists. Status and Retry are presentation beside real entries.
-File activation handles Enter, Space and click before navigation. Right expands a
-closed directory or enters its first accepted child. Leaves and expanded directories
-without accepted children keep focus, including pending, failed and empty first
-reads. Arriving children do not advance focus without another command.
-A collapsed or removed focus moves to its surviving ancestor in
-the same model, without reclaiming focus from another control. Reopening keeps
-that current ancestor rather than reviving an invisible cursor. Tree focus commits
-to existing rows synchronously, so a retired navigation cannot later steal focus.
+File trees use React Aria Tree, Virtualizer and TreeLoadMoreItem for keyboard
+navigation, ARIA, expansion and branch continuation. Query owns directory pages
+and their cache. Runtime enumerates only the requested level and publishes its
+cursor, complete flag and scanned/excluded/budget coverage. The frontend merges
+accepted pages, sorts their presentation and distinguishes unknown, loading,
+failed and confirmed-empty branches. Budget exhaustion requires explicit Load
+more; a changed directory refuses its old cursor and can be retried. Hidden
+branches unsubscribe from Query without creating another filesystem catalog.
 
 File previews retain the browser's DOM and project its logical visibility through
 `ContentVisibility`, so row menus retire before returning to the tree. Root and
@@ -865,11 +848,10 @@ Plan checklists name each captured step state in the current locale beside its
 task text. Accepted revisions update these marks in the retained reader; the
 existing Session Plan remains the source of progress.
 
-The shared pre-module focus bootstrap recognizes navigation, activation and
-Ctrl/Command shortcuts. Its explicit input modality owns the shared focus
-perimeter, including programmatic command destinations. Ordinary typing, IME
-composition and AltGraph text retain the current modality; pointer input restores
-pointer mode. Modifier keys alone do not imply a command.
+The browser owns input modality through `:focus-visible`. Base UI owns popup
+focus and dismissal. Controls do not track keyboard/pointer modality or install
+an application-wide focus bootstrap. Explicit removal actions hand focus to a
+connected surviving target only while their source still owns it.
 
 Recorded Tool failures retain their original line breaks, blank lines and indentation
 in both standalone and grouped rows, with long values wrapping inside the reading
@@ -1023,14 +1005,13 @@ reveal retains word segmentation before hard line breaks and a moving word curso
 the current line is resegmented through Intl, including contextual scripts and
 punctuation. A single growing paragraph can still require paragraph-sized work.
 
-Markdown math syntax is owned by `remarkMathSyntax` inside the Markdown parser.
-It accepts dollar math, LaTeX bracket delimiters (one or two backslashes), and
-the paired `[/inline]` and `[/math]` markers. A single dollar immediately followed
-by a digit is currency; digit-opening formulas use bracket, custom or double-dollar
-delimiters. Display formulas can contain blank lines. The streaming splitter uses
-that same parser grammar and slices original source at its block boundaries.
-Code, link destinations and raw artifacts never pass through math rewriting;
-code display and copying use the parser's literal code value.
+Markdown is parsed as one current document by react-markdown/unified. Standard
+CommonMark/GFM structure owns lists, references, tables and fence completion;
+there is no block splitter, remend repair, reveal clock or raw HTML renderer.
+`remark-math` uses `singleDollarTextMath: false`: double-dollar math remains
+available and single-dollar currency stays literal. Proprietary bracket/marker
+math syntax is removed. Code copying retains the parser's original literal value.
+The complete source is available through a stable context for table operations.
 
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
@@ -1077,10 +1058,11 @@ resizes, including Composer clearance changes, re-evaluate the decision.
 The activity disclosure's `preview` is redundant supporting text beside its toggle,
 so arriving reasoning never renames that control. Ordinary `detail` remains part
 of the summary name. Reasoning previews and prose use the existing faint text role.
-Each reasoning reader delegates bottom follow and user escape to its own existing
-use-stick-to-bottom instance. Its refs observe only visible, expanded streaming
-content; closing and reopening retain the same reader and paused follow. Fade and
-overflow remain read-only geometry and never write a competing scroll position.
+Transcript, reasoning and recorded-output readers delegate virtual rendering,
+end follow and anchoring to Legend. Focus, composition, native selection ranges
+and React portal owners pin their rows through the public alwaysRender API.
+Hidden Activity cancels scrolling; public library intents own later navigation.
+No second follow controller writes scroll offsets.
 
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
@@ -1102,12 +1084,12 @@ consumers; the shared component owns the themed track and value geometry. Report
 captions can wrap above a visible localized percentage without moving the track
 into a text line. Runtime and task projections retain completion ownership.
 
-Code syntax foregrounds come from the installed Shiki theme definitions and paint
-through palette-owned CSS properties in both replies and file previews. Already
-legible colors retain their authored values; other colors mix toward the selected
-foreground until they meet 4.5:1 over the reading planes and paper bounds. Cached
-HTML retains these references when the palette changes within the same scheme.
-Explicit token background pairs retain their authored colors.
+Pierre File and FileDiff own code/diff rendering and highlighting through their
+public worker APIs with `preferredHighlighter: "shiki-js"`. A shared semantic
+CSS-variable theme responds to the selected palette. The former application
+Shiki worker, language registry, queue and HTML cache have been removed. Search,
+line targets and captured copying remain host policies, using public renderer
+roots and original source bytes.
 
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and
@@ -1217,3 +1199,14 @@ Use `npm run lab` for inspection and `npm run lab:verify` for verification; new
 visual coverage extends this catalog and configuration. The full check includes
 compiler-resolved dependency/contract guards, lifecycle tests, resource drift,
 styles, localization and the production bundle.
+
+The shell and Dock use react-resizable-panels. Group owns continuous geometry;
+persistence stores only requestedLayout completion snapshots. Image, Mermaid and
+Lab cameras use react-zoom-pan-pinch with fit and actual-size intents. Internal
+Dock reordering uses dnd-kit; pragmatic-drag-and-drop handles only external files
+and retains their original intake source. Copying publishes immutable operation
+receipts to Toast, including completions after the source unmounts. Selection
+quoting captures an immutable snapshot only from a context menu or explicit
+shortcut. GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
+processor lifetime is outside virtual rows. Highlights remains deferred under the
+production CSP, which grants neither unsafe-eval nor wasm-unsafe-eval.

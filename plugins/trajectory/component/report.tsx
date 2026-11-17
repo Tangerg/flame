@@ -237,6 +237,7 @@ function RecordedImage({
         labels={{
           view: t("image.view"),
           close: t("image.close"),
+          fit: t("image.fit"),
           zoomIn: t("image.zoomIn"),
           zoomOut: t("image.zoomOut"),
           description: t("image.description"),
@@ -365,7 +366,6 @@ function Observation({
       language="json"
       labels={{
         copy: t("code.copy"),
-        copied: t("code.copied"),
         wrap: t("code.wrap"),
         unwrap: t("code.unwrap"),
       }}

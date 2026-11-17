@@ -21,7 +21,7 @@ export default defineConfig({
     // The linked icon barrel is served as source, fanning out to hundreds of module requests per preview.
     // Worker-only imports must be discovered before the first highlight, which
     // otherwise replaces the editing document during dependency optimization.
-    include: ["@flame/icons/react", "shiki/core", "shiki/engine/javascript"],
+    include: ["@flame/icons/react"],
   },
   server: {
     host: LAB_DEVELOPMENT_SERVER.host,
@@ -35,9 +35,13 @@ export default defineConfig({
     // Each preview document consumes the same complete stylesheet graph.
     cssCodeSplit: false,
     rolldownOptions: {
-      input: ["lab/index.html", "lab/preview.html", "lab/fixture.html"].map((entry) =>
-        path.resolve(import.meta.dirname, entry),
-      ),
+      input: [
+        "lab/index.html",
+        "lab/preview.html",
+        "lab/fixture.html",
+        "lab/a2ui.html",
+        "lab/native-reading.html",
+      ].map((entry) => path.resolve(import.meta.dirname, entry)),
     },
   },
   preview: {

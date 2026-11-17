@@ -1,18 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import {
-  useContext,
-  useEffect,
   useId,
-  useRef,
   type AriaAttributes,
   type ComponentPropsWithRef,
   type ReactNode,
 } from "react";
 import { clsx } from "clsx";
 import { CARD_SURFACE } from "./control-surface";
-import { PanelLayoutContext } from "./panel-layout";
 import { Metadata } from "./panel";
-import { useRemovalFocus } from "./focus";
 import { color, layout, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -122,19 +117,8 @@ export function FormActions({
   feedback?: ReactNode;
   children: ReactNode;
 }) {
-  const groupRef = useRef<HTMLDivElement>(null);
-  const panelLayout = useContext(PanelLayoutContext);
-  useEffect(() => {
-    const group = groupRef.current;
-    if (!feedback || !panelLayout || !group) return;
-    // Asynchronous results arrive without a focus event, so the retained
-    // action focus is the only signal that the reader is still here.
-    const focused = group.ownerDocument.activeElement;
-    if (group.contains(focused)) panelLayout.keepBodyFocusVisible(focused);
-  }, [feedback, panelLayout]);
   return (
     <div
-      ref={groupRef}
       role="group"
       aria-label={label}
       data-focus-unit=""
@@ -176,21 +160,10 @@ export function Form({
 
 export function RecordForm({
   children,
-  opener,
-  canRestoreFocus = () => true,
   ref,
   className,
   ...props
-}: ComponentPropsWithRef<"section"> & {
-  opener?: HTMLElement | (() => HTMLElement | null);
-  canRestoreFocus?: () => boolean;
-}) {
-  const element = useRef<HTMLElement>(null);
-  useRemovalFocus(
-    element,
-    () => (typeof opener === "function" ? opener() : opener),
-    canRestoreFocus,
-  );
+}: ComponentPropsWithRef<"section">) {
   const styled = stylex.props(
     CARD_SURFACE.face,
     styles.form,
@@ -199,11 +172,7 @@ export function RecordForm({
   return (
     <section
       {...props}
-      ref={(node) => {
-        element.current = node;
-        if (typeof ref === "function") return ref(node);
-        if (ref) ref.current = node;
-      }}
+      ref={ref}
       {...styled}
       className={clsx(styled.className, className)}
     >

@@ -6,6 +6,7 @@ import {
   type FileDiff as DiffInstance,
 } from "@pierre/diffs";
 import {
+  codeSyntaxColors,
   CodeCaption,
   CodeFrame,
   ScrollRegion,
@@ -17,21 +18,7 @@ import type { Translate } from "@flame/component-sdk";
 import { copyDiffSelection } from "./diffSelection";
 import { DIFF_RENDERING_OPTIONS, PreparedDiff } from "./PreparedDiff";
 
-registerCustomCSSVariableTheme(DIFF_RENDERING_OPTIONS.theme, {
-  foreground: "var(--color-text)",
-  background: "var(--color-sunken)",
-  "token-comment": "var(--color-text-muted)",
-  "token-keyword": "var(--color-accent-text)",
-  "token-string-expression": "var(--color-success)",
-  "token-string": "var(--color-success)",
-  "token-constant": "var(--color-accent-text)",
-  "token-parameter": "var(--color-text-soft)",
-  "token-function": "var(--color-info)",
-  "token-punctuation": "var(--color-text)",
-  "token-link": "var(--color-accent-text)",
-  "token-inserted": "var(--color-success)",
-  "token-deleted": "var(--color-negative)",
-});
+registerCustomCSSVariableTheme(DIFF_RENDERING_OPTIONS.theme, codeSyntaxColors);
 
 const appearance = `:host {
   color-scheme: inherit;
@@ -90,7 +77,6 @@ export function DiffReader({
     () => ({
       diffStyle: layout,
       disableFileHeader: true,
-      stickyHeader: false,
       hunkSeparators: "metadata" as const,
       parseDiffOptions: { disableLineMatching: true },
       unsafeCSS: appearance,
@@ -106,7 +92,6 @@ export function DiffReader({
         wrappable={false}
         labels={{
           copy: t("patch.copy"),
-          copied: t("patch.copied"),
           wrap: t("patch.wrap"),
           unwrap: t("patch.unwrap"),
         }}

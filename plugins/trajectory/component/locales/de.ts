@@ -123,6 +123,7 @@ export const de: Record<string, string> = {
   "export.trajectory": "Vollständigen Sitzungsverlauf exportieren",
   "image.view": "Bild anzeigen",
   "image.close": "Bildvorschau schließen",
+  "image.fit": "Bild einpassen",
   "image.zoomIn": "Bild vergrößern",
   "image.zoomOut": "Bild verkleinern",
   "image.description": "Bildbeschreibung",

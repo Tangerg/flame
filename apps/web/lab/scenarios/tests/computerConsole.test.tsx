@@ -837,7 +837,7 @@ it.each([
   },
 );
 
-it("returns an independently retired permission to status controls while review stays open", async () => {
+it("does not invent a return destination for an independently retired permission", async () => {
   const setup = rig();
   setup.mount();
   const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
@@ -865,7 +865,7 @@ it("returns an independently retired permission to status controls while review 
 
   await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
 
-  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh status" }));
+  expect(document.activeElement).toBe(document.body);
   expect(screen.getByRole("region", { name: "Review operation" })).toBe(review);
   expect(within(review).getByRole("region", { name: "Tool arguments (JSON)" }).textContent).toBe(
     reviewedSelectionDraft,
@@ -1210,7 +1210,7 @@ it("keeps a cancelled original approval distinct from a replacement with the sam
 });
 
 it.each(["editor", "outside action"])(
-  "preserves permission reply focus until retirement and returns to %s",
+  "hands permission reply to the editor before dispatch and preserves %s",
   async (destination) => {
     const server = fixture({
       ...initial,
@@ -1228,14 +1228,14 @@ it.each(["editor", "outside action"])(
     fireEvent.click(decline);
     await waitFor(() => expect(decline.getAttribute("aria-disabled")).toBe("true"));
     expect(decline.disabled).toBe(false);
-    expect(document.activeElement).toBe(decline);
+    expect(document.activeElement).toBe(editor);
     fireEvent.click(decline);
     const outside = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh outcomes" });
     await waitFor(() => expect(outside.disabled).toBe(false));
     if (destination === "outside action") {
       act(() => outside.focus());
     }
-    expect(document.activeElement).toBe(destination === "editor" ? decline : outside);
+    expect(document.activeElement).toBe(destination === "editor" ? editor : outside);
     await act(async () => release());
     await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
     expect(document.activeElement).toBe(destination === "editor" ? editor : outside);
@@ -1626,7 +1626,7 @@ it("copies exact captured source and keeps its reader stable while changing wrap
   fireEvent.click(screen.getByRole("button", { name: "Disable word wrap" }));
   expect(reader.getAttribute("data-wrap")).toBe("false");
   fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
-  await screen.findByRole("button", { name: "Source copied" });
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(source));
   expect(writeText).toHaveBeenCalledExactlyOnceWith(source);
   expect(setup.server.originals.size).toBe(0);
 });

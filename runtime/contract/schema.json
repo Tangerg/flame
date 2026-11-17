@@ -2580,6 +2580,51 @@
         "symlink"
       ]
     },
+    "FileListCoverage": {
+      "type": "object",
+      "properties": {
+        "budgetExhausted": {
+          "type": "boolean"
+        },
+        "excludedEntries": {
+          "type": "integer"
+        },
+        "scannedEntries": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "budgetExhausted",
+        "excludedEntries",
+        "scannedEntries"
+      ]
+    },
+    "FileListPage": {
+      "type": "object",
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "coverage": {
+          "$ref": "#/$defs/FileListCoverage"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileEntry"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "complete",
+        "coverage",
+        "data"
+      ]
+    },
     "FileStatus": {
       "type": "string",
       "enum": [
@@ -6224,24 +6269,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/AgentDoc"
-          }
-        },
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      },
-      "required": [
-        "data"
-      ]
-    },
-    "PageOfFileEntry": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/FileEntry"
           }
         },
         "nextCursor": {

@@ -177,11 +177,11 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
       {editing && (
         <div id={panelId}>
           <ServerForm
+            returnFocus={editing}
             context={context}
             settings={settings}
             t={t}
             server={server}
-            opener={editing}
             onDone={() => setEditing(null)}
             onCancel={() => setEditing(null)}
           />

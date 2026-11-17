@@ -1,11 +1,11 @@
 import { type CommandSpec, type ShortcutSpec } from "@/features/command/public/commands";
 import { defineExtensionPoint } from "@/extensions/contracts";
-import { normalizeCombo } from "@/lib/combo";
+import { normalizeHotkey } from "@tanstack/hotkeys";
 export const SHORTCUT = defineExtensionPoint<ShortcutSpec>({
   id: "flame.shortcut",
   keying: "single",
   keyOf: (s) => s.key,
-  normalizeKey: normalizeCombo,
+  normalizeKey: normalizeHotkey,
 });
 
 export const COMMAND = defineExtensionPoint<CommandSpec>({

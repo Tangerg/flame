@@ -1,15 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
+import { useLayoutEffect, useRef } from "react";
 import {
-  useCallback,
-  useState,
-  useRef,
-  useEffect,
-  useLayoutEffect,
-} from "react";
-import { ZoomIn, ZoomOut } from "@flame/icons/react";
+  TransformComponent,
+  TransformWrapper,
+  useControls,
+  useTransformComponent,
+  type ReactZoomPanPinchContentRef,
+} from "react-zoom-pan-pinch";
+import { ZoomIn, ZoomOut, Maximize } from "@flame/icons/react";
 import { IconButton } from "./icon-button";
-import { ScrollRegion } from "./scroll-region";
-import { scrollPan, useScrollPan } from "./scroll-pan";
+import { Button } from "./button";
 import {
   color,
   radius,
@@ -17,7 +17,6 @@ import {
   surface,
   type as typeStep,
 } from "./tokens.stylex";
-
 export interface ImageSource {
   readonly src: string;
   readonly alt: string;
@@ -28,14 +27,8 @@ export interface ImageSource {
 export interface ImageViewportLabels {
   zoomIn: string;
   zoomOut: string;
+  fit: string;
 }
-interface FittedImageSize {
-  item: ImageSource;
-  width: number;
-  height: number;
-}
-const ZOOM_STEPS = [100, 125, 150, 200, 300, 400] as const;
-
 const styles = stylex.create({
   frame: {
     position: "relative",
@@ -45,30 +38,18 @@ const styles = stylex.create({
     minWidth: 0,
     minHeight: 0,
   },
-  pan: {
+  port: {
     minHeight: 0,
     flex: 1,
-    overflow: "auto",
-    paddingInline: space.s4,
-    paddingTop: space.s4,
-    paddingBottom: space.s16,
-    overscrollBehavior: "contain",
-  },
-  centre: {
-    display: "grid",
-    width: "max-content",
-    minHeight: "100%",
-    minWidth: "100%",
-    placeItems: "center",
+    overflow: "hidden",
+    width: "100%",
+    height: "100%",
   },
   image: {
-    outline: "1px solid rgb(255 255 255 / 0.1)",
-    outlineOffset: "-1px",
     display: "block",
-    maxHeight: "calc(100dvh - 8rem)",
-    maxWidth: "calc(100vw - 2rem)",
+    maxWidth: "none",
+    maxHeight: "none",
     borderRadius: radius.lg,
-    objectFit: "contain",
   },
   tray: {
     borderRadius: radius.floatingPanel,
@@ -85,17 +66,41 @@ const styles = stylex.create({
     padding: space.s1,
     color: color.onMedia,
   },
-  zoom: {
-    minWidth: "calc(var(--spacing) * 14)",
-    paddingInline: space.s1,
-    textAlign: "center",
-    fontFamily: "var(--font-mono)",
-  },
 });
-
-// Native overflow owns keyboard panning and bounds; Base UI has no image viewport.
+function Controls({ labels }: { labels: ImageViewportLabels }) {
+  const controls = useControls();
+  const percentage = useTransformComponent(({ state }) =>
+    Math.round(state.scale * 100),
+  );
+  return (
+    <div {...stylex.props(styles.tray, typeStep.uiSm)}>
+      <IconButton
+        icon={ZoomOut}
+        aria-label={labels.zoomOut}
+        onClick={() => void controls.zoomOut()}
+        variant="mediaTray"
+        size="xl"
+      />
+      <Button onClick={() => void controls.centerView(1)}>{percentage}%</Button>
+      <IconButton
+        icon={ZoomIn}
+        aria-label={labels.zoomIn}
+        onClick={() => void controls.zoomIn()}
+        variant="mediaTray"
+        size="xl"
+      />
+      <IconButton
+        icon={Maximize}
+        aria-label={labels.fit}
+        onClick={() => void controls.fitToView({ maxScale: 1 })}
+        variant="mediaTray"
+        size="xl"
+      />
+    </div>
+  );
+}
 export function ImageViewport({
-  image: item,
+  image,
   label,
   labels,
 }: {
@@ -103,233 +108,60 @@ export function ImageViewport({
   label: string;
   labels: ImageViewportLabels;
 }) {
-  const panRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [zoomIndex, setZoomIndex] = useState(0);
-  const [fittedSize, setFittedSize] = useState<FittedImageSize | null>(null);
-  const currentFit = fittedSize?.item === item ? fittedSize : null;
-  // WKWebView can derive SVG natural dimensions from rendered size and page zoom.
-  // A decoder without a renderer keeps fitting independent of its own output.
-  const sourceRef = useRef<HTMLImageElement | null>(null);
-  const anchorRef = useRef<{
-    x: number;
-    y: number;
-    clientX: number;
-    clientY: number;
-  } | null>(null);
-  const zoomPercent = ZOOM_STEPS[zoomIndex]!;
-  const {
-    ref: panBinding,
-    onPointerDown,
-    retire,
-  } = useScrollPan(item, zoomPercent > 100);
-  const bindPan = useCallback(
-    (node: HTMLDivElement | null) => {
-      panRef.current = node;
-      panBinding(node);
-    },
-    [panBinding],
-  );
-
-  const measure = useCallback(() => {
-    const pan = panRef.current;
-    const source = sourceRef.current;
-    if (!pan || !source) return;
-    const { naturalWidth, naturalHeight } = source;
-    if (!naturalWidth || !naturalHeight) return;
-    const style = getComputedStyle(pan);
-    const width =
-      pan.clientWidth -
-      parseFloat(style.paddingLeft) -
-      parseFloat(style.paddingRight);
-    const height =
-      pan.clientHeight -
-      parseFloat(style.paddingTop) -
-      parseFloat(style.paddingBottom);
-    if (width <= 0 || height <= 0) return;
-    const fit = Math.min(1, width / naturalWidth, height / naturalHeight);
-    setFittedSize({
-      item,
-      width: naturalWidth * fit,
-      height: naturalHeight * fit,
-    });
-  }, [item]);
-
-  // Captured items own viewing state even when two entries share the same source.
+  const camera = useRef<ReactZoomPanPinchContentRef>(null);
+  const imageElement = useRef<HTMLImageElement>(null);
+  const viewportProps = {
+    role: "region",
+    "aria-label": label,
+    "data-slot": "image-camera",
+  } as const;
   useLayoutEffect(() => {
-    const pan = panRef.current;
-    if (!pan) return;
-    anchorRef.current = null;
-    setZoomIndex(0);
-    setFittedSize(null);
-    pan.scrollLeft = 0;
-    pan.scrollTop = 0;
-    const source = new Image();
-    sourceRef.current = source;
-    source.addEventListener("load", measure);
-    source.src = item.src;
-    let width = pan.offsetWidth;
-    let height = pan.offsetHeight;
-    const observer = new ResizeObserver(() => {
-      if (width === pan.offsetWidth && height === pan.offsetHeight) return;
-      width = pan.offsetWidth;
-      height = pan.offsetHeight;
-      retire();
-      anchorRef.current = null;
-      setZoomIndex(0);
-      pan.scrollLeft = 0;
-      pan.scrollTop = 0;
-      measure();
-    });
-    observer.observe(pan, { box: "border-box" });
-    measure();
-    return () => {
-      source.removeEventListener("load", measure);
-      sourceRef.current = null;
-      observer.disconnect();
-      retire();
-    };
-  }, [item, measure, retire]);
-
-  const zoomAt = (next: number, clientX?: number, clientY?: number) => {
-    retire();
-    if (next === zoomIndex) return;
-    const pan = panRef.current;
-    const image = imageRef.current;
-    if (pan && image) {
-      const frame = pan.getBoundingClientRect();
-      const box = image.getBoundingClientRect();
-      const x = clientX ?? frame.left + pan.clientWidth / 2;
-      const y = clientY ?? frame.top + pan.clientHeight / 2;
-      anchorRef.current =
-        box.width > 0 && box.height > 0
-          ? {
-              x: (x - box.left) / box.width,
-              y: (y - box.top) / box.height,
-              clientX: x,
-              clientY: y,
-            }
-          : null;
-    }
-    setZoomIndex(next);
-  };
-
-  useLayoutEffect(() => {
-    const anchor = anchorRef.current;
-    anchorRef.current = null;
-    const pan = panRef.current;
-    const image = imageRef.current;
-    if (!anchor || !pan || !image) return;
-    const box = image.getBoundingClientRect();
-    pan.scrollLeft += box.left + anchor.x * box.width - anchor.clientX;
-    pan.scrollTop += box.top + anchor.y * box.height - anchor.clientY;
-  }, [zoomIndex]);
-
-  useEffect(() => {
-    const pan = panRef.current;
-    if (!pan) return;
-    const wheel = (event: WheelEvent) => {
-      if (event.deltaY === 0) return;
-      event.preventDefault();
-      zoomAt(
-        Math.max(
-          0,
-          Math.min(
-            ZOOM_STEPS.length - 1,
-            zoomIndex + (event.deltaY < 0 ? 1 : -1),
-          ),
-        ),
-        event.clientX,
-        event.clientY,
-      );
-    };
-    pan.addEventListener("wheel", wheel, { passive: false });
-    return () => pan.removeEventListener("wheel", wheel);
-  });
-
+    if (imageElement.current?.complete)
+      void camera.current?.fitToView({ maxScale: 1, animationTime: 0 });
+  }, [image]);
   return (
     <div {...stylex.props(styles.frame)}>
-      <ScrollRegion
-        ref={bindPan}
-        styles={[styles.pan, scrollPan.viewport]}
-        data-image-zoom={zoomPercent}
-        data-pannable={zoomPercent > 100 ? "" : undefined}
-        label={label}
-        tabIndex={zoomPercent > 100 ? 0 : -1}
-        onKeyDownCapture={retire}
-        onKeyDown={(event) => {
-          if (zoomPercent <= 100) return;
-          const pan = event.currentTarget;
-          const step = event.shiftKey ? 0.5 : 0.1;
-          switch (event.key) {
-            case "ArrowLeft":
-              pan.scrollLeft -= pan.clientWidth * step;
-              break;
-            case "ArrowRight":
-              pan.scrollLeft += pan.clientWidth * step;
-              break;
-            case "ArrowUp":
-              pan.scrollTop -= pan.clientHeight * step;
-              break;
-            case "ArrowDown":
-              pan.scrollTop += pan.clientHeight * step;
-              break;
-            default:
-              return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
+      <TransformWrapper
+        ref={camera}
+        minScale={0.01}
+        maxScale={16}
+        doubleClick={{ disabled: true }}
+        keyboard={{ disabled: false, animationTime: 0 }}
+        onInit={(controls) => {
+          void controls.fitToView({ maxScale: 1, animationTime: 0 });
         }}
-        onPointerDown={onPointerDown}
       >
-        <div {...stylex.props(styles.centre)}>
-          {/* A new source gets a new element so the previous frame never shows at the new fit. */}
+        <TransformComponent
+          wrapperProps={viewportProps}
+          wrapperStyle={{
+            width: "100%",
+            height: "100%",
+            flex: 1,
+            minHeight: 0,
+          }}
+          contentStyle={{ width: "max-content", height: "max-content" }}
+        >
           <img
-            key={item.src}
-            ref={imageRef}
-            src={item.src}
-            alt={item.alt}
-            title={item.title}
-            width={item.width}
-            height={item.height}
+            key={image.src}
+            ref={imageElement}
+            src={image.src}
+            alt={image.alt}
+            title={image.title}
+            width={image.width}
+            height={image.height}
             draggable={false}
-            style={
-              currentFit
-                ? {
-                    width: `${(currentFit.width * zoomPercent) / 100}px`,
-                    height: `${(currentFit.height * zoomPercent) / 100}px`,
-                    maxWidth: "none",
-                    maxHeight: "none",
-                  }
-                : undefined
-            }
+            onLoad={(event) => {
+              if (event.currentTarget === imageElement.current)
+                void camera.current?.fitToView({
+                  maxScale: 1,
+                  animationTime: 0,
+                });
+            }}
             {...stylex.props(styles.image)}
           />
-        </div>
-      </ScrollRegion>
-      <div {...stylex.props(styles.tray)}>
-        <IconButton
-          icon={ZoomOut}
-          aria-label={labels.zoomOut}
-          disabled={zoomIndex === 0}
-          focusableWhenDisabled
-          onClick={() => zoomAt(Math.max(0, zoomIndex - 1))}
-          variant="mediaTray"
-          size="xl"
-        />
-        <span {...stylex.props(styles.zoom, typeStep.uiSm)}>
-          {zoomPercent}%
-        </span>
-        <IconButton
-          icon={ZoomIn}
-          aria-label={labels.zoomIn}
-          disabled={zoomIndex === ZOOM_STEPS.length - 1}
-          focusableWhenDisabled
-          onClick={() => zoomAt(Math.min(ZOOM_STEPS.length - 1, zoomIndex + 1))}
-          variant="mediaTray"
-          size="xl"
-        />
-      </div>
+        </TransformComponent>
+        <Controls labels={labels} />
+      </TransformWrapper>
     </div>
   );
 }

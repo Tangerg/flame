@@ -10,7 +10,7 @@ import { useId, useLayoutEffect, useRef, type RefObject } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Badge, IconButton, vocab, useRemovalFocus } from "@flame/ui";
+import { Badge, IconButton, vocab, handoffFocus } from "@flame/ui";
 import { type Tone } from "@flame/ui/badge";
 import {
   forgetApprovalRule,
@@ -163,7 +163,6 @@ export function RulesRow() {
                     </div>
                     <RuleForget
                       context={context}
-                      index={index}
                       current={() =>
                         source.current.agentAccess === agentAccess &&
                         source.current.sessionId === sessionId
@@ -186,7 +185,6 @@ export function RulesRow() {
 
 function RuleForget({
   context,
-  index,
   current,
   name,
   descriptionId,
@@ -194,7 +192,6 @@ function RuleForget({
   onClick,
 }: {
   context: RefObject<HTMLDivElement | null>;
-  index: number;
   current(): boolean;
   name: string;
   descriptionId: string;
@@ -202,16 +199,6 @@ function RuleForget({
   onClick(): void;
 }) {
   const action = useRef<HTMLButtonElement>(null);
-  useRemovalFocus(
-    action,
-    () => {
-      const region = context.current;
-      if (!region) return null;
-      const actions = region.querySelectorAll<HTMLElement>("[data-rule-forget]");
-      return actions[Math.min(index, actions.length - 1)] ?? region;
-    },
-    current,
-  );
   return (
     <IconButton
       ref={action}
@@ -224,7 +211,10 @@ function RuleForget({
       aria-describedby={descriptionId}
       aria-busy={busy}
       pending={busy}
-      onClick={onClick}
+      onClick={(event) => {
+        if (current()) handoffFocus(event.currentTarget, context.current);
+        onClick();
+      }}
     />
   );
 }
@@ -243,9 +233,15 @@ function ClearRules({
   label: string;
 }) {
   const action = useRef<HTMLButtonElement>(null);
-  useRemovalFocus(action, () => context.current, current);
   return (
-    <TextButton ref={action} pending={busy} onClick={onClick}>
+    <TextButton
+      ref={action}
+      pending={busy}
+      onClick={(event) => {
+        if (current()) handoffFocus(event.currentTarget, context.current);
+        onClick();
+      }}
+    >
       {label}
     </TextButton>
   );

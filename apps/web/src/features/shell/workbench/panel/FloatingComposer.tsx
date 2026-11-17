@@ -1,11 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode, type Ref, type RefObject, useRef } from "react";
+import { type ReactNode, type Ref, type RefObject } from "react";
 import { Slot } from "@/extensions/host/Slot";
 import { JumpToBottomButton } from "@/features/shell/workbench/panel/JumpToBottomButton";
 import { RuntimeConnectionNotice } from "@/features/shell/workbench/panel/RuntimeConnectionNotice";
-import { useViewportFocus } from "@/ui/agent/index";
 import { space } from "@flame/ui/tokens.stylex";
-import { useContentVisible } from "@/ui/index";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 const fc = stylex.create({
   tray: {
@@ -20,9 +18,8 @@ const fc = stylex.create({
     "--composer-available-height":
       "calc(var(--composer-frame-height, 100cqh) - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
     pointerEvents: "none",
-    position: "absolute",
-    insetInline: 0,
-    bottom: 0,
+    position: "relative",
+    flexShrink: 0,
     zIndex: 2,
     display: "flex",
     // Reading focus reserves history space; editing retains the existing jump clearance.
@@ -95,10 +92,6 @@ export function FloatingComposer({
   floating: boolean;
   children: ReactNode;
 }) {
-  const holderRef = useRef<HTMLDivElement>(null);
-  const visible = useContentVisible();
-  useViewportFocus(holderRef, floating && visible);
-
   return (
     <div
       ref={overlayRef}
@@ -108,11 +101,7 @@ export function FloatingComposer({
     >
       <div {...stylex.props(rc.gutter, fc.floor, floating && fc.floatingFloor)}>
         {floating && <JumpToBottomButton dockRef={jumpRef} />}
-        <div
-          ref={holderRef}
-          data-slot="composer-scrollport"
-          {...stylex.props(fc.holder, floating && fc.scroll)}
-        >
+        <div data-slot="composer-scrollport" {...stylex.props(fc.holder, floating && fc.scroll)}>
           <ComposerStack>{children}</ComposerStack>
         </div>
       </div>

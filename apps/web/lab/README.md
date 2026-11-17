@@ -567,8 +567,7 @@ Composer projection includes its scrollport's offset, viewport and content heigh
 The transcript projection exposes its safe reading edges, measured capacity,
 scroll position and focused reader bounds and offsets in a separate bounded output.
 It also reports the focused reader's computed line height, fractional content
-height and nearest declared reading-unit bounds, so native qualification can
-check a complete line and a fitting unit without rounding away clipped content.
+height, so native qualification can check complete lines without rounding away clipped content.
 Computed line-height is not a rendered line-box measurement; inspect the paint
 when the engine's layout precision differs from that computed decimal.
 Editable values never enter these outputs. Disabling the option clears them and

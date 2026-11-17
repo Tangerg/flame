@@ -1,3 +1,4 @@
+import type { ReadingListHandle } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
@@ -5,13 +6,13 @@ import {
   Activity,
   Component,
   useId,
+  useState,
   useLayoutEffect,
   useMemo,
   useRef,
   type ReactNode,
   type RefObject,
 } from "react";
-import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n/index";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { useActiveSessionId } from "@/features/agent/public/session";
@@ -31,11 +32,6 @@ import { useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import {
-  prepareDisclosureReading,
-  stopFollowOnReadingFocus,
-  useReadingFocusVisibility,
-} from "@/ui/agent/readingFollow";
 import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
@@ -44,7 +40,6 @@ import {
 } from "@/features/chat/message/application/delegatedRunSummary";
 import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
-import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
 import { MessageTranscript } from "@/features/chat/message/ui/MessageTranscript";
 import { readingColumn as rc } from "./readingColumn";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
@@ -395,71 +390,58 @@ function SubagentTranscript({
   hidden: boolean;
 }) {
   const t = useT();
-  const { scrollRef, contentRef, isAtBottom, scrollToBottom, state, stopScroll } = useStickToBottom(
-    {
-      initial: "instant",
-      resize: "instant",
-    },
-  );
+  const reader = useRef<ReadingListHandle>(null);
+  const [atEnd, setAtEnd] = useState(true);
   const expandedIds = useExpandedWorkspaceToolIds();
   const onExpandedChange = useSetWorkspaceToolExpanded();
-  const textReveal = useStreamRevealStore((state) => state.streamReveal);
   const ctx = useMemo<BlockCtx>(
-    () => ({ sessionId: entry.narrative.run.sessionId, expandedIds, onExpandedChange, textReveal }),
-    [entry.narrative.run.sessionId, expandedIds, onExpandedChange, textReveal],
+    () => ({ sessionId: entry.narrative.run.sessionId, expandedIds, onExpandedChange }),
+    [entry.narrative.run.sessionId, expandedIds, onExpandedChange],
   );
-  const measured = useContentVisible() && !hidden;
-  useReadingFocusVisibility({ scrollRef, contentRef, state, stopScroll }, measured);
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   const hasRunDetails = Boolean(summary.detail || narrative.run.outcome?.unresolvedEffects?.length);
   return (
-    <div data-slot="subagent-transcript" hidden={hidden} {...stylex.props(styles.reader)}>
-      <ScrollArea
-        ref={measured ? scrollRef : undefined}
-        className={stylex.props(styles.scroller).className}
-      >
-        {/* Native button clicks already include keyboard activation; this reader only observes them. */}
-        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
-        <div
-          ref={measured ? contentRef : undefined}
-          role="region"
-          aria-label={summary.label}
-          tabIndex={-1}
-          onFocusCapture={(event) =>
-            stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
-          }
-          onClick={(event) => prepareDisclosureReading(event, { scrollRef, state, stopScroll })}
-          {...stylex.props(rc.box, styles.transcript)}
-        >
-          {hasRunDetails && (
-            <div {...stylex.props(rc.gutter, styles.evidence)}>
-              {summary.detail && (
-                <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
-                  <RecordBody>{summary.detail}</RecordBody>
-                </div>
-              )}
-              <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
-            </div>
-          )}
-          {rows.length === 0 && !hasRunDetails && (
-            <p {...stylex.props(rc.gutter, vocab.muted, typeStep.uiSm)}>
-              {t("agent.runTree.material.empty")}
-            </p>
-          )}
-          <MessageTranscript
-            rows={rows}
-            ctx={ctx}
-            sessionId={narrative.run.sessionId}
-            isRunning={agentRunIsRunning(narrative.run)}
-          />
-        </div>
-      </ScrollArea>
+    <div
+      role="region"
+      aria-label={summary.label}
+      tabIndex={-1}
+      data-slot="subagent-transcript"
+      hidden={hidden}
+      {...stylex.props(styles.reader)}
+    >
+      <MessageTranscript
+        listRef={reader}
+        onFollowChange={(_list, value) => setAtEnd(value)}
+        header={
+          <>
+            {hasRunDetails && (
+              <div {...stylex.props(rc.gutter, styles.evidence)}>
+                {summary.detail && (
+                  <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
+                    <RecordBody>{summary.detail}</RecordBody>
+                  </div>
+                )}
+                <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
+              </div>
+            )}
+            {rows.length === 0 && !hasRunDetails && (
+              <p {...stylex.props(rc.gutter, vocab.muted, typeStep.uiSm)}>
+                {t("agent.runTree.material.empty")}
+              </p>
+            )}
+          </>
+        }
+        rows={rows}
+        ctx={ctx}
+        sessionId={narrative.run.sessionId}
+        isRunning={agentRunIsRunning(narrative.run)}
+      />
       <AgentJumpToBottom
-        visible={!isAtBottom}
+        visible={!atEnd}
         onClick={() => {
-          contentRef.current?.focus({ preventScroll: true });
-          void scrollToBottom();
+          reader.current?.getScrollableNode()?.focus({ preventScroll: true });
+          void reader.current?.scrollToEnd({ animated: false });
         }}
         placement="inside-reader"
       />

@@ -1,19 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { reveal } from "@/ui/atoms/reveal";
 import { type ComponentPropsWithoutRef, type ReactNode } from "react";
-import { Children, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Children, useId, useState } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { vocab, ButtonPrimitive, ContentVisibility } from "@flame/ui";
 import { Collapsible } from "@base-ui/react/collapsible";
-import { useScrollLock } from "@/ui/atoms/use-scroll-lock";
 
 import { ProgressBar } from "@flame/ui";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { toneInk } from "@flame/ui/tone-ink";
 import { chevron } from "@/ui/atoms/chevron";
-
-const SCROLL_OVERFLOW = ["auto", "scroll", "hidden"];
 
 type ActivityTone = "neutral" | "warning" | "negative";
 
@@ -26,9 +23,9 @@ const styles = stylex.create({
     overflow: "clip",
     height: {
       default: "var(--collapsible-panel-height)",
-      ":is([data-starting-style], [data-ending-style])": 0,
+      ":is([data-closed], [data-starting-style], [data-ending-style])": 0,
     },
-    opacity: { default: 1, ":is([data-starting-style], [data-ending-style])": 0 },
+    opacity: { default: 1, ":is([data-closed], [data-starting-style], [data-ending-style])": 0 },
     transitionProperty: "height, opacity",
     transitionDuration: motion.med,
     transitionTimingFunction: motion.easeOut,
@@ -43,13 +40,6 @@ const styles = stylex.create({
     borderColor: surface.field,
   },
   header: { display: "flex", minWidth: 0, alignItems: "center" },
-  stuck: {
-    position: { default: null, ":is([data-sticky])": "sticky" },
-    top: { default: null, ":is([data-sticky])": 0 },
-    zIndex: { default: null, ":is([data-sticky])": 1 },
-  },
-  stuckLine: { backgroundColor: { default: null, ":is([data-sticky])": surface.canvas } },
-  stuckCard: { backgroundColor: { default: null, ":is([data-sticky])": surface.card } },
   trigger: {
     display: "flex",
     minWidth: 0,
@@ -153,7 +143,6 @@ const TRAY_TONE = {
 const SHELL_SKINS = {
   line: {
     frame: styles.frameLine,
-    sticky: styles.stuckLine,
     trigger: styles.triggerLine,
     mark: styles.markLine,
     text: type.uiSm,
@@ -163,7 +152,6 @@ const SHELL_SKINS = {
   },
   card: {
     frame: styles.frameCard,
-    sticky: styles.stuckCard,
     trigger: styles.triggerCard,
     mark: styles.markCard,
     text: type.uiMd,
@@ -184,7 +172,6 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     feedback?: ReactNode;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    stickyHeader?: boolean;
     progress?: { value: number; label: string };
     tone?: ActivityTone;
     ink?: "dim";
@@ -206,7 +193,6 @@ export function AgentActivityDisclosure({
   feedback,
   open,
   onOpenChange,
-  stickyHeader,
   progress,
   tone = "neutral",
   ink,
@@ -222,75 +208,7 @@ export function AgentActivityDisclosure({
   const ownSummaryId = useId();
   const triggerId = summaryId ?? ownSummaryId;
   const framed = shell !== "line" && icon !== undefined;
-  const headerRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const wasOpen = useRef(open);
-  const lockScroll = useScrollLock(panelRef);
   const disclosable = children != null;
-
-  useEffect(() => {
-    const closing = wasOpen.current && !open;
-    wasOpen.current = open;
-    if (closing && disclosable) return lockScroll();
-  }, [open, disclosable, lockScroll]);
-
-  useLayoutEffect(() => {
-    const header = headerRef.current;
-    const body = bodyRef.current;
-    if (!stickyHeader || !header || !body) return;
-    let viewport = header.parentElement?.parentElement ?? null;
-    while (viewport && !SCROLL_OVERFLOW.includes(getComputedStyle(viewport).overflowY)) {
-      viewport = viewport.parentElement;
-    }
-    if (!viewport) return;
-    const scrollViewport = viewport;
-    // Composer clearance resizes the scrolled content even when the viewport keeps its size.
-    let content: Element = header;
-    while (content.parentElement && content.parentElement !== scrollViewport) {
-      content = content.parentElement;
-    }
-    const measure = () => {
-      const height = header.getBoundingClientRect().height;
-      const style = getComputedStyle(scrollViewport);
-      const safeHeight =
-        scrollViewport.getBoundingClientRect().height -
-        (parseFloat(style.scrollPaddingTop) || 0) -
-        (parseFloat(style.scrollPaddingBottom) || 0);
-      const contentStyle = getComputedStyle(body.firstElementChild ?? body);
-      const lineHeight = parseFloat(contentStyle.lineHeight);
-      const inset =
-        (parseFloat(contentStyle.marginTop) || 0) + (parseFloat(contentStyle.paddingTop) || 0);
-      // Keep two body lines and their inset before reserving a summary above them.
-      const fits = height > 0 && lineHeight > 0 && height + inset + 2 * lineHeight <= safeHeight;
-      header.toggleAttribute("data-sticky", fits);
-      body.toggleAttribute("data-activity-clearance", fits);
-      if (fits) body.style.setProperty("--disclosure-header-height", `${height}px`);
-      else body.style.removeProperty("--disclosure-header-height");
-    };
-    const view = header.ownerDocument.defaultView!;
-    let frame = 0;
-    // Publishing clearance resizes the observed content; deliver it outside that resize cycle.
-    const observer = new ResizeObserver(() => {
-      if (!frame)
-        frame = view.requestAnimationFrame(() => {
-          frame = 0;
-          measure();
-        });
-    });
-    observer.observe(header, { box: "border-box" });
-    observer.observe(scrollViewport, { box: "border-box" });
-    observer.observe(content, { box: "border-box" });
-    measure();
-    return () => {
-      observer.disconnect();
-      if (frame) view.cancelAnimationFrame(frame);
-      header.removeAttribute("data-sticky");
-      body.removeAttribute("data-activity-clearance");
-      body.style.removeProperty("--disclosure-header-height");
-    };
-  }, [stickyHeader, disclosable]);
-
   return (
     <Collapsible.Root
       {...props}
@@ -303,7 +221,6 @@ export function AgentActivityDisclosure({
       className={cn(stylex.props(styles.frame, skin.frame).className, className)}
     >
       <div
-        ref={headerRef}
         data-slot="agent-activity-header"
         data-focus-unit=""
         className={cn(
@@ -311,7 +228,6 @@ export function AgentActivityDisclosure({
             reveal.host,
             styles.header,
             ink === "dim" ? styles.headerPublishesDim : styles.headerPublishes,
-            stickyHeader && [styles.stuck, skin.sticky],
           ).className,
         )}
       >
@@ -381,13 +297,15 @@ export function AgentActivityDisclosure({
       {feedback}
       {disclosable && (
         <Collapsible.Panel
-          ref={panelRef}
           keepMounted
+          hidden={false}
+          inert={!open}
+          aria-hidden={!open || undefined}
           role="region"
           aria-labelledby={triggerId}
           {...stylex.props(styles.panel)}
         >
-          <div ref={bodyRef} {...stylex.props(skin.body)}>
+          <div {...stylex.props(skin.body)}>
             <div
               className={cn(
                 stylex.props(contentInset === "rows" && styles.bodyRows).className,

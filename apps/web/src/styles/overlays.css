@@ -11,35 +11,3 @@
   padding: 0;
   border: none;
 }
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.fade-in {
-  animation: fadeIn calc(700ms * var(--motion-scale)) ease-in-out both;
-}
-
-.type-caret {
-  display: inline-block;
-  width: 0.5em;
-  height: 0.5em;
-  margin-left: 0.12em;
-  vertical-align: baseline;
-  border-radius: var(--shape-pill);
-  background: var(--color-accent);
-  animation: flame-caret-blink calc(1050ms * var(--motion-scale)) step-end infinite;
-}
-@keyframes flame-caret-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}

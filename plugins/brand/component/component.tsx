@@ -5,7 +5,7 @@ import {
   type ComponentContext,
   useTranslator,
 } from "@flame/component-sdk";
-import { Check, Copy, Download } from "@flame/icons/react";
+import { Copy, Download } from "@flame/icons/react";
 import {
   Button,
   DocumentBody,
@@ -16,7 +16,7 @@ import {
   RecordGroup,
   Tile,
   TileGrid,
-  useCopyFeedback,
+  useCopy,
 } from "@flame/ui";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
@@ -51,7 +51,7 @@ type Failure = { kind: "copy" } | { kind: "download"; detail: string };
 
 export function Brand({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
-  const { copied, copy } = useCopyFeedback(hex);
+  const copy = useCopy(hex, t("copyHex"));
   const saving = useRef(false);
   const [savingID, setSavingID] = useState<string>();
   const [failure, setFailure] = useState<Failure>();
@@ -181,8 +181,8 @@ export function Brand({ context }: { context: ComponentContext }) {
                 });
               }}
             >
-              <Icon glyph={copied ? Check : Copy} />
-              <span aria-live="polite">{t(copied ? "copied" : "copyHex")}</span>
+              <Icon glyph={Copy} />
+              <span aria-live="polite">{t("copyHex")}</span>
             </Button>
           </div>
         </RecordGroup>

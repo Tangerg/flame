@@ -18,7 +18,6 @@ const LONG_IMAGE_NAME =
   "workspace-review-panel-screenshot-with-annotated-attachment-tray-2026-11-07.png";
 const LONG_REFERENCE =
   "apps/web/src/features/composer/ui/composer-attachment-tray-layout-with-a-long-referenced-file-name.tsx";
-const KNOWN_PATHS: ReadonlySet<string> = new Set([LONG_REFERENCE]);
 const NO_PASTES: readonly PastedText[] = [];
 
 function ignorePaste() {}
@@ -46,9 +45,6 @@ export function AttachmentsExample({ variant, locale, observe }: LabExampleProps
         <ComposerAttachments
           images={images}
           pastes={NO_PASTES}
-          value={value}
-          knownPaths={KNOWN_PATHS}
-          onChange={changeValue}
           onRemoveImage={(id) => {
             setImages((current) => current.filter((image) => image.id !== id));
             observe("composer.attachment.remove", "image");

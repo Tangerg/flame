@@ -382,13 +382,7 @@ function rangeEdges(range: Range): Edges | null {
 
 function stopFollowHidingMatch(range: Range | undefined, follow: StreamFollow | null): void {
   const viewport = follow?.scrollRef.current;
-  if (!range || !follow?.state.isAtBottom || !viewport?.contains(range.startContainer)) return;
-  const movement = follow.state.targetScrollTop - viewport.scrollTop;
-  if (movement <= 0) return;
-  const word = rangeEdges(range);
-  if (!word) return;
-  const clip = clipEdges(viewport);
-  if (word.top - movement < clip.top || word.bottom - movement > clip.bottom) follow.stopScroll();
+  if (range && viewport?.contains(range.startContainer)) follow?.stopScroll();
 }
 
 function isReadable(range: Range, region: HTMLElement): boolean {

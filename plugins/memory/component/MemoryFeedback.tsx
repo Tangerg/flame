@@ -22,7 +22,7 @@ export function MemoryFeedback({
 }) {
   const own = useRef<HTMLElement>(null);
   const result = destination ?? own;
-  if (!feedback && !original) return null;
+  if (!feedback && !original && !destination) return null;
   const detail =
     feedback?.failure &&
     failureText(
@@ -42,9 +42,9 @@ export function MemoryFeedback({
         tabIndex={-1}
         role={feedback?.state === "refused" ? "alert" : "status"}
       >
-        <RecordBody>
-          {feedback &&
-            t(`feedback.${feedback.state}`, {
+        {feedback && (
+          <RecordBody>
+            {t(`feedback.${feedback.state}`, {
               label:
                 feedback.intent.action === "add"
                   ? t(`command.add.${feedback.intent.scope}`)
@@ -52,7 +52,8 @@ export function MemoryFeedback({
                       id: feedback.intent.id,
                     }),
             })}
-        </RecordBody>
+          </RecordBody>
+        )}
         {detail && <RecordBody>{detail}</RecordBody>}
       </RecordGroup>
       {original?.source === "record" ? (

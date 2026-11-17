@@ -138,6 +138,7 @@ export const es = {
   "result.imageUnavailable": "No se pudo mostrar esta imagen registrada.",
   "image.view": "Ver imagen",
   "image.close": "Cerrar imagen",
+  "image.fit": "Ajustar imagen",
   "image.zoomIn": "Acercar",
   "image.zoomOut": "Alejar",
   "image.description": "Descripción de la imagen",

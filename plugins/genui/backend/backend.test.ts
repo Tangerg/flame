@@ -1,3 +1,4 @@
+import { interfaceRequest } from "../contracts/fixture";
 import { afterEach, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -28,221 +29,47 @@ async function connect() {
   return client;
 }
 
-const report = {
-  title: "Deployment review",
-  state: [],
-  actions: [],
-  operations: [],
-  nodes: [
-    {
-      id: "summary",
-      type: "Text",
-      props: { text: "Checked the recorded deployment." },
-    },
-    {
-      id: "identifier",
-      type: "Metric",
-      props: { label: "Exact identifier", value: "9007199254740993" },
-    },
-  ],
-};
-const accepted = { ...report, contributions: [] };
-
-it("publishes the document owner's schema for input and enriched retained result", async () => {
+const report = interfaceRequest();
+it("advertises the protocol entry and trusted catalog", async () => {
   const client = await connect();
-  const { tools } = await client.listTools();
+  const tools = (await client.listTools()).tools;
   expect(tools.map((tool) => tool.name)).toEqual([PRESENT_TOOL, CATALOG_TOOL]);
   expect(tools[0]).toMatchObject({
-    name: PRESENT_TOOL,
     inputSchema: requestJSONSchema,
     outputSchema: documentJSONSchema,
-    annotations: {
-      readOnlyHint: true,
-      destructiveHint: false,
-      openWorldHint: false,
-    },
   });
+  const result = await client.callTool({
+    name: CATALOG_TOOL,
+    arguments: { kind: "catalog" },
+  });
+  expect(result.isError).not.toBe(true);
+  expect(result.structuredContent).toHaveProperty("catalog");
+  expect(JSON.stringify(result.structuredContent)).toContain("TextField");
 });
-
-it("retains the complete accepted document alongside derived text without any host callback", async () => {
+it("retains the accepted protocol messages and exact quantities", async () => {
   const client = await connect();
   const result = await client.callTool({
     name: PRESENT_TOOL,
     arguments: report,
   });
   expect(result.isError).not.toBe(true);
-  expect(result.structuredContent).toEqual(accepted);
-  expect(result.content).toEqual([
-    { type: "text", text: Presentation.accept(report).text() },
-  ]);
+  expect(result.structuredContent).toEqual(
+    Presentation.accept(report).snapshot(),
+  );
   expect(JSON.stringify(result)).toContain("9007199254740993");
 });
-
-it.each([
-  { ...report, program: 'root = Text("injected")' },
-  {
-    ...report,
-    nodes: [{ id: "invalid", type: "Query", props: { tool: "write" } }],
-  },
-  { ...report, action: "save" },
-  {
-    ...report,
-    nodes: [
-      { id: "invalid", type: "Text", props: { text: "hello", onClick: "run" } },
-    ],
-  },
-  {
-    ...report,
-    nodes: [
-      {
-        id: "invalid",
-        type: "Metric",
-        props: { label: "ID", value: 9007199254740992 },
-      },
-    ],
-  },
-])("refuses input outside the complete display contract: %j", async (input) => {
+it("refuses an old document without accepting a replacement result", async () => {
   const client = await connect();
   await expect(
-    client.callTool({ name: PRESENT_TOOL, arguments: input }),
-  ).rejects.toThrow();
-  const valid = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: report,
-  });
-  expect(valid.structuredContent).toEqual(accepted);
-});
-
-it("keeps repeated presentation calls deterministic without creating a private history", async () => {
-  const client = await connect();
-  const first = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: report,
-  });
-  const second = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: report,
-  });
-  expect(second).toEqual(first);
-  const changed = { ...report, title: "Second review" };
-  const third = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: changed,
-  });
-  expect(third.structuredContent).toEqual({ ...changed, contributions: [] });
-  expect(first.structuredContent).toEqual(accepted);
-});
-
-it.each([
-  [{ id: "1invalid", type: "Text", props: { text: "Invalid identifier" } }],
-  [
-    {
-      id: "invalid",
-      type: "Svg",
-      props: { label: "Invalid SVG", viewBox: "0 0 100 100" },
-      children: [{ id: "path", type: "Path", props: { d: "M0 0<script>" } }],
-    },
-  ],
-  [
-    {
-      id: "invalid",
-      type: "Svg",
-      props: { label: "Invalid SVG", viewBox: "0 0 100 100" },
-      children: [
-        {
-          id: "circle",
-          type: "Circle",
-          props: {
-            cx: 10,
-            cy: 10,
-            r: 5,
-            fill: "url(https://example.com/paint)",
-          },
-        },
-      ],
-    },
-  ],
-])(
-  "retains consumer string constraints behind portable structural admission: %j",
-  async (...nodes) => {
-    const client = await connect();
-    const result = await client.callTool({
+    client.callTool({
       name: PRESENT_TOOL,
-      arguments: { ...report, nodes },
-    });
-    expect(result.isError).toBe(true);
-    expect(result.structuredContent).toBeUndefined();
-  },
-);
-
-it("returns a known refusal for cross-field document violations without publishing a report", async () => {
-  const client = await connect();
-  const result = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: {
-      ...report,
-      title: "Invalid table",
-      nodes: [
-        {
-          id: "invalid",
-          type: "Table",
-          props: {
-            caption: "Deployment counts",
-            columns: [{ key: "environment", label: "Environment" }],
-            rowKey: "id",
-            rows: [
-              { id: "duplicate", environment: "Production" },
-              { id: "duplicate", environment: "Staging" },
-            ],
-          },
-        },
-      ],
-    },
-  });
-  expect(result.isError).toBe(true);
-  expect(result.structuredContent).toBeUndefined();
-  const valid = await client.callTool({
-    name: PRESENT_TOOL,
-    arguments: report,
-  });
-  expect(valid.structuredContent).toEqual(accepted);
-});
-
-it("pages a brief function index and reads exact parameters only on demand without a host callback", async () => {
-  const client = await connect();
-  const result = await client.callTool({
-    name: CATALOG_TOOL,
-    arguments: { kind: "functions" },
-  });
-  expect(result.isError).not.toBe(true);
-  expect(result.structuredContent).not.toHaveProperty("operations");
-  const page = (
-    result.structuredContent as {
-      functions: { entries: unknown[]; nextOffset: number };
-    }
-  ).functions;
-  expect(page.entries).toHaveLength(20);
-  expect(page.nextOffset).toBe(20);
-  expect(JSON.stringify(page.entries)).not.toContain('"parameters"');
-  const detail = await client.callTool({
-    name: CATALOG_TOOL,
-    arguments: { kind: "functions", name: "multiply" },
-  });
-  expect(detail.structuredContent).toMatchObject({
-    function: {
-      name: "multiply",
-      parameters: expect.any(Object),
-      description: expect.any(String),
-    },
-  });
-  const next = await client.callTool({
-    name: CATALOG_TOOL,
-    arguments: { kind: "functions", offset: page.nextOffset },
-  });
-  expect(next.structuredContent).not.toEqual(result.structuredContent);
-  const invalid = await client.callTool({
-    name: CATALOG_TOOL,
-    arguments: { kind: "functions", name: "missing" },
-  });
-  expect(invalid.isError).toBe(true);
+      arguments: {
+        title: "Old",
+        nodes: [],
+        state: [],
+        actions: [],
+        operations: [],
+      },
+    }),
+  ).rejects.toThrow("schema");
 });

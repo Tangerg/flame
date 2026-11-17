@@ -27,6 +27,7 @@ import type {
   ExportTrajectoryResponse,
   FeedbackRequest,
   FileContent,
+  FileListPage,
   ForgetApprovalRuleRequest,
   ForkSessionRequest,
   GetDiffRequest,
@@ -68,7 +69,6 @@ import type {
   OpenPluginBrowserRealmRequest,
   OpenPluginResourcesRequest,
   PageOfAgentDoc,
-  PageOfFileEntry,
   PageOfMCPServer,
   PageOfMCPTool,
   PageOfManagedSkill,
@@ -1443,7 +1443,7 @@ export interface WireShapes {
   "workspace.changes.list": { params: WorkspaceQuery; result: PageOfWorkspaceFileChange };
   "workspace.diff.get": { params: GetDiffRequest; result: Diff };
   "workspace.files.search": { params: GrepRequest; result: GrepResult };
-  "workspace.files.list": { params: ListFilesRequest; result: PageOfFileEntry };
+  "workspace.files.list": { params: ListFilesRequest; result: FileListPage };
   "workspace.files.read": { params: ReadFileRequest; result: FileContent };
   "runtime.subscribe": { params: RuntimeSubscribeRequest; result: RuntimeSubscribeResponse };
   "skills.discovered.list": { params: WorkspaceQuery; result: SkillDiscovery };

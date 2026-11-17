@@ -25,7 +25,7 @@ type PageContinuation struct {
 	NextCursor string `json:"nextCursor,omitempty"`
 }
 
-// Page is the wire response for all list methods: the
+// Page is the standard list response. Directory pages also report coverage; the
 // client reads `resp.data` everywhere, and the presence of `nextCursor`
 // is the "has more" signal. A bounded local list leaves NextCursor empty
 // but keeps the shape — one read path, no breaking growth to pagination.

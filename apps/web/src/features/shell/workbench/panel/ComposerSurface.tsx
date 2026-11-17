@@ -13,20 +13,12 @@ import {
   useRemoveComposerPaste,
   useRestoreComposerPaste,
 } from "@/features/composer/public/attachments";
-import {
-  captureComposerSubmission,
-  useComposerText,
-  useSetComposerText,
-} from "@/features/composer/public/draft";
 export const ComposerSurface = memo(function ComposerSurface({
   onSend,
 }: {
   onSend: (input: AgentInput) => boolean;
 }) {
-  const composerAccess = useComposer();
-
-  const value = useComposerText();
-  const setValue = useSetComposerText();
+  const key = useComposer().useDraftKey();
   const images = useComposerImageAttachments();
   const removeImage = useRemoveComposerImage();
   const addImageFiles = useAddComposerImageFiles();
@@ -39,9 +31,7 @@ export const ComposerSurface = memo(function ComposerSurface({
 
   return (
     <Composer
-      value={value}
-      onChange={setValue}
-      captureSubmission={captureComposerSubmission.bind(null, composerAccess)}
+      key={key}
       onSend={onSend}
       images={images}
       onRemoveImage={removeImage}

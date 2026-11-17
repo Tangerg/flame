@@ -628,8 +628,8 @@ cannot mutate the retained map or subscribers. Window title behavior owns its
 private title, badge and activity state.
 
 UI atoms own both control semantics and presentation. They import Base UI at
-the actual control owner, or implement native semantics when needed. Tree's
-keyboard, ARIA and styling live together in `ui/atoms/tree.tsx`. The design-system
+the actual control owner, or implement native semantics when needed. The file tree's
+keyboard and ARIA are owned by React Aria Tree and Virtualizer at the file browser. The design-system
 gate keeps native interaction and Base UI inside the design system.
 
 ## Client persistence encoding

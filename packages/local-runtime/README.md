@@ -12,8 +12,8 @@ per-response nonce and main-document embedding rules in both hosts. Its opener
 does not grant filesystem authority: Runtime retains `os.OpenInRoot` confinement;
 Desktop supplies its embedded subtree. Private manifest paths are never served.
 HTML is `no-store` with a fresh 200 response, so revalidation cannot pair a new
-nonce header with an old body. The independent opaque program page remains
-embeddable under its own policy; it does not acquire the main document's deny rule.
+nonce header with an old body. Trusted preview documents retain same-origin embedding. Arbitrary program
+documents and their separate inline-script policy have been removed.
 Policy admission rejects unknown or duplicate JSON members, contradictory document
 roles and noncanonical digests. Artifact identities own validation and byte matching;
 document delivery owns each nonce and its paired headers and body. Unavailable

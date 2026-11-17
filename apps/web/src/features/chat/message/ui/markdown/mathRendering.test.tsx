@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScrollRegion } from "@flame/ui";
 import { MarkdownMath } from "@/features/chat/message/ui/markdown/MarkdownMath";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
-// The app pins one KaTeX (0.19.0) for both the stylesheet and every renderer
+// The app pins one KaTeX (0.19.1) for both the stylesheet and every renderer
 // through `rehype-katex`/`micromark-extension-math`. These cases keep that pinned
 // renderer honest: the version jump past the integrations' declared `^0.16.0`
 // range must still produce correct markup, and GHSA-238p-pmpm-9mq7 (a prototype
@@ -34,7 +34,7 @@ describe("markdown math rendering", () => {
       if (previous) Object.defineProperty(navigator, "clipboard", previous);
       else Reflect.deleteProperty(navigator, "clipboard");
     });
-    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={text} />);
     expect(container.querySelector("pre")?.textContent).toBe(literal);
     expect(
       container.querySelector("[data-markdown-copy-text]")?.getAttribute("data-markdown-copy-text"),
@@ -46,7 +46,7 @@ describe("markdown math rendering", () => {
   it("preserves inline code and link destinations while parsing prose math", () => {
     const destination = "https://example.test/$1/\\(item\\)";
     const { container } = testClient.render(
-      <MarkdownRenderer text={`\`${literal}\` [source](<${destination}>)`} reveal="instant" />,
+      <MarkdownRenderer text={`\`${literal}\` [source](<${destination}>)`} />,
     );
     expect(container.querySelector("code")?.textContent).toBe(literal);
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
@@ -57,11 +57,11 @@ describe("markdown math rendering", () => {
 
   it("retains exact code material across streamed fence updates", async () => {
     const { container, rerender } = testClient.render(
-      <MarkdownRenderer text={`\`\`\`sh\n${literal}`} streaming reveal="smooth" />,
+      <MarkdownRenderer text={`\`\`\`sh\n${literal}`} streaming />,
     );
     await waitFor(() => expect(container.querySelector("pre")?.textContent).toBe(literal));
     const next = `${literal}\nprintf '%s' "$3"`;
-    rerender(<MarkdownRenderer text={`\`\`\`sh\n${next}\n\`\`\``} streaming reveal="smooth" />);
+    rerender(<MarkdownRenderer text={`\`\`\`sh\n${next}\n\`\`\``} streaming />);
     await waitFor(() => {
       expect(container.querySelector("pre")?.textContent).toBe(next);
       expect(
@@ -75,7 +75,7 @@ describe("markdown math rendering", () => {
   it("preserves generated SVG material containing mathematical punctuation", () => {
     const source = String.raw`<svg xmlns="http://www.w3.org/2000/svg"><text>$1 \(x\) \[x\]</text></svg>`;
     const { container } = testClient.render(
-      <MarkdownRenderer text={`\`\`\`svg\n${source}\n\`\`\``} reveal="instant" />,
+      <MarkdownRenderer text={`\`\`\`svg\n${source}\n\`\`\``} />,
     );
     expect(
       container.querySelector("[data-markdown-copy-text]")?.getAttribute("data-markdown-copy-text"),
@@ -83,22 +83,17 @@ describe("markdown math rendering", () => {
     expect(container.querySelector(".katex")).toBeNull();
   });
 
-  it.each([
-    [String.raw`\(x^2\)`, false],
-    [String.raw`\\(x^2\\)`, false],
-    ["[/inline]x^2[/inline]", false],
-    ["\\[\nx^2\n\n+ y^2\n\\]", true],
-    ["[/math]\nx^2\n\n+ y^2\n[/math]", true],
-  ] as const)("renders parser-owned prose formula %s", (text, display) => {
-    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
-    expect(container.querySelector(".katex")).toBeTruthy();
-    expect(container.querySelector(".katex-error")).toBeNull();
-    expect(Boolean(container.querySelector(".katex-display"))).toBe(display);
-  });
+  it.each([String.raw`\(x^2\)`, "[/inline]x^2[/inline]", "[/math]x^2[/math]"])(
+    "leaves the removed proprietary delimiter %s literal",
+    (text) => {
+      const { container } = testClient.render(<MarkdownRenderer text={text} />);
+      expect(container.querySelector(".katex")).toBeNull();
+    },
+  );
 
   it("renders currency as authored beside a formula", () => {
     const { container } = testClient.render(
-      <MarkdownRenderer text="Pay $5 for $x$, then $19.99 or $1,299." reveal="instant" />,
+      <MarkdownRenderer text="Pay $5 for $$x$$, then $19.99 or $1,299." />,
     );
     expect(container.textContent).toContain("Pay $5 for");
     expect(container.textContent).toContain("then $19.99 or $1,299.");
@@ -106,9 +101,7 @@ describe("markdown math rendering", () => {
   });
 
   it("renders inline math through the pinned KaTeX", () => {
-    const { container } = testClient.render(
-      <MarkdownRenderer text="Energy is $E = mc^2$." reveal="instant" />,
-    );
+    const { container } = testClient.render(<MarkdownRenderer text="Energy is $$E = mc^2$$." />);
     const katex = container.querySelector(".katex");
     expect(katex).toBeTruthy();
     expect(container.querySelector(".katex-error")).toBeNull();
@@ -118,9 +111,7 @@ describe("markdown math rendering", () => {
   });
 
   it("renders display math as a centered KaTeX block", () => {
-    const { container } = testClient.render(
-      <MarkdownRenderer text={"$$\n\\frac{a}{b}\n$$"} reveal="instant" />,
-    );
+    const { container } = testClient.render(<MarkdownRenderer text={"$$\n\\frac{a}{b}\n$$"} />);
     expect(container.querySelector(".katex-display")).toBeTruthy();
     expect(container.querySelector(".katex-display")?.tagName).toBe("SPAN");
     expect(container.querySelector(".katex-display")?.getAttribute("dir")).toBe("ltr");
@@ -133,9 +124,7 @@ describe("markdown math rendering", () => {
   });
 
   it("surfaces malformed math as a KaTeX error rather than throwing", () => {
-    const { container } = testClient.render(
-      <MarkdownRenderer text={"$\\frac{a}{$"} reveal="instant" />,
-    );
+    const { container } = testClient.render(<MarkdownRenderer text={"$$\\frac{a}{$$"} />);
     expect(container.querySelector(".katex-error")).toBeTruthy();
   });
 });
@@ -218,7 +207,7 @@ describe("markdown math trust boundary (GHSA-238p-pmpm-9mq7)", () => {
       writable: true,
     });
     const { container } = testClient.render(
-      <MarkdownRenderer text={"$\\href{javascript:alert(1)}{click}$"} reveal="instant" />,
+      <MarkdownRenderer text={"$$\\href{javascript:alert(1)}{click}$$"} />,
     );
     // No element may carry an executable javascript: URL. The raw TeX survives
     // only as inert annotation text, which is not an href, so assert the attribute.

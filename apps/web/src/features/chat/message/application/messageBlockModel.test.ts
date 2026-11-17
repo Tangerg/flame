@@ -6,7 +6,6 @@ import {
   finalAnswerFollows,
   messageActionMaterialization,
   messageBlockRenderUnits,
-  messageBlocksRenderInstant,
   narratedBlocks,
 } from "@/features/chat/message/application/messageBlockModel";
 const NO_AWAITING: ReadonlyMap<string, string> = new Map();
@@ -112,14 +111,6 @@ describe("finalAnswerFollows", () => {
     expect(finalAnswerFollows(message("commentary"), message("finalAnswer", "run_2"))).toBe(false);
     expect(finalAnswerFollows(message("finalAnswer"), message("finalAnswer"))).toBe(false);
     expect(finalAnswerFollows(message("commentary"), undefined)).toBe(false);
-  });
-});
-
-describe("messageBlocksRenderInstant", () => {
-  it("skips reveal animation only for user-authored messages", () => {
-    expect(messageBlocksRenderInstant("user")).toBe(true);
-    expect(messageBlocksRenderInstant("assistant")).toBe(false);
-    expect(messageBlocksRenderInstant("system")).toBe(false);
   });
 });
 

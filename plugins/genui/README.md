@@ -1,424 +1,76 @@
-# Generated interfaces
+# GenUI
 
-GenUI is an optional managed Node backend and an installed Tool-result component.
-It generates interactive documents, forms, calculators, data explorers, diagrams
-and isolated HTML demonstrations inside the existing conversation. It does not
-start a separate model conversation or create a UI database.
+GenUI presents official Google A2UI 1.0 messages through a trusted Flame catalog.
+The component uses `@a2ui/react` and `@a2ui/web_core` 0.15.0. The protocol parser,
+message processor, graph validation, dynamic bindings, functions and surface
+model belong to A2UI. The host renders catalog components with `@flame/ui`.
+Zod 3 is isolated as the `zod3` dependency; other plugins keep Zod 4.
 
-`genui_ui_catalog` publishes paged capability indexes and selected exact function
-or operation definitions. `genui_ui_present` admits one complete JSON document
-and captures each actual installed contribution once. Runtime's
-existing Tool/Item history retains the accepted document as structured content;
-plain text is a derived projection. The installed component reads that successful
-captured result, never the original unaccepted tool arguments.
+## Discovery and presentation
 
-The MCP schemas use Frame's portable structural profile. Authored string rules
-appear in their descriptions and remain enforced by the original GenUI parser,
-alongside cross-field rules, before any document or operation binding is accepted.
-Invalid identifiers, SVG values and other authored strings remain business refusals.
+`ui_catalog` with `kind: "catalog"` returns the official protocol schema and the
+complete trusted catalog. Its identity is `https://flame.app/a2ui/catalog/v1`.
+The catalog currently supports Text, Row, Column, List, Card, Divider, Button,
+TextField, CheckBox, Tabs, and a trusted Dialog component. Dynamic functions are
+restricted to the registered basic functions; external navigation is excluded.
 
-## Ownership
+`ui_present` accepts `{title, messages, operations}`. Messages must use version
+`1.0`. Each initial `createSurface` names the trusted catalog and sets
+`sendDataModel: false`. Component graphs and bindings are validated strictly by
+the official processor before the result is accepted. Admission bounds message
+count, operation count, JSON depth and bytes. No generated JavaScript, HTML,
+arbitrary component imports or renderer RPC is accepted.
 
-| Fact                                                                | Owner                                                             | Other representations                                              |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Accepted document, bounds, references and expression meaning        | Immutable `Presentation` and its component/expression definitions | MCP schemas, text, OpenUI source and renderer props                |
-| Local input, selection, draft and calculator values                 | The OpenUI Renderer store                                         | Controls, expressions and form validation read the same values     |
-| Business data and a business command's outcome                      | The plugin providing the captured callable contract               | GenUI displays query results and command receipts                  |
-| Original command identity, captured route and unresolved acceptance | The existing Runtime client mutation journal and Runtime receipt  | GenUI keeps a recovery handle, never another receipt store         |
-| Session, Run, input acceptance and conversation history             | Runtime and the shared Agent input path                           | `CapturedToolInteraction` supplies the original source and receipt |
-| Map viewport and tile delivery                                      | The map renderer and its tile resource view                       | Marker selection remains in the OpenUI store                       |
-| HTML demonstration state                                            | The isolated frame                                                | No privileged state or executable bridge is shared with Flame      |
-| Permission to load a displayed external resource                    | Its mounted `ExternalResource`                                    | Images, Markdown images, YouTube and maps share this boundary      |
+Editable controls bind under `/draft`. Subsequent recorded `updateDataModel`
+messages may write only under `/data/`. Operation results are published under
+`/data/operations/<operation id>`. Business identifiers and exact quantities use
+strings. A field's current native value and validation state are projected from
+the A2UI model. Remote presentation messages cannot overwrite an edited draft.
 
-Operation output has a separate, read-only expression namespace. Model documents
-cannot bind an editable field to a query result or use a `set` step to change a
-business result. A local draft is not saved business data. Remounting restores
-accepted initial values; ordinary backend reads obtain current business data.
-There is no competing localStorage history, React form-state mirror, document
-revision protocol, or synchronization winner rule.
+## Captured actions
 
-Display-language changes keep the same captured document lifetime: local fields,
-running actions, original recovery handles and accepted feedback remain with
-their existing owners. Unchanged resource permissions and reading state survive
-while labels and percentage formatting use the current locale. A new captured
-component signal or Tool result resets the Renderer store and interaction owner
-to that document's accepted initial values. Retirement ends local observation;
-it does not resubmit a followup, replay a command or change its captured route.
-Local reports do not read Runtime services to establish this lifetime.
+An event names a declared operation, `followup`, or `resetDraft`, and carries
+explicit A2UI context. `followup` requires `{message, payload}` and submits to
+the original tool interaction. `resetDraft` explicitly restores the accepted
+initial draft. Rendering history performs no business query or command.
 
-## Interface vocabulary
+Operation discovery uses `kind: "operations"`. Index pages describe real
+installation, contribution and method identities. Exact method discovery returns
+its declared input and output schemas. Presentation captures that contract,
+installation digest and target; discovery does not grant command permission.
 
-The single component definition catalog supplies both authored and evaluated
-props. Layouts nest recursively. Ordinary values can use a closed expression
-instead of a literal; authority-bearing field and action identifiers remain
-literal references checked at admission.
+Queries and calls enter the existing Runtime plugin method boundary. Commands
+require the existing user review, permission and mutation journal. Their original
+handles, idempotency keys and recovery outcomes remain attached to the captured
+Run, Item, Session and installation. An uncertain command is recovered through
+its original handle. A new action cannot retarget it to the current conversation.
 
-- Layout: stack, responsive grid, card, section, tabs, accordion, disclosure,
-  carousel, popover, conditional content and bounded repeated content.
-- Reading: text, Markdown, code with copying, badges, callouts, links, images,
-  exact string metrics, lists, progress and dividers.
-- Forms: text, number and email drafts; multiline input; single and multiple
-  selection; radio groups; checkbox; switch; slider; date input; validation,
-  submission and reset. Number drafts remain strings until explicitly converted.
-- Data: searchable, sortable, pageable and selectable tables; bar, line, area,
-  pie, donut and scatter charts with accessible underlying data.
-- Explanations: mathematical notation, local countdowns, flashcards, SVG groups
-  and drawing primitives, and sandboxed HTML/JavaScript for canvas, simulations
-  and games.
-- Geography and media: a pannable, zoomable map with explicit marker data,
-  selection and supplied route geometry; HTTPS images; privacy-enhanced YouTube
-  embeds. Data acquisition remains an ordinary agent tool or installed query.
+## Lifetime and scrolling
 
-External images and YouTube frames do not load at render time. The user sees the
-exact source address and explicitly authorizes that mounted resource. Changing
-the address retires permission, including a later return to a previously allowed
-address. Draft state and operation output cannot grant permission. An unrelated
-local edit or locale change preserves an unchanged resource's reading state.
-Maps separately explain that interactive tiles send the viewed locations to the
-fixed OpenStreetMap provider; location tables and selection remain local without
-loading tiles. Changed coordinates or route geometry retire that permission.
-The browser still owns HTTP redirects and remote-service behavior after an
-authorized load; this is not a redirect-filtering proxy or a permanent domain grant.
-The application CSP allows only the privacy-enhanced YouTube origin in addition
-to same-origin frames. The HTML sandbox retains its stricter independent policy.
+A component source retains each accepted result's MessageProcessor outside the
+virtual row, keyed by its original Run and Item. Row remounts reuse that processor
+and its draft. View withdrawal detaches action dispatch; source withdrawal disposes
+the retained processors. Neither replay nor remount submits an operation.
 
-Controls use public `@flame/ui` components and the active host locale and tokens.
-A digit-only metric value gains ordinary character wrap opportunities in its own
-balanced block. Its exact text and optional detail are retained; other values
-keep ordinary text flow.
-Horizontal report tabs use shared Base UI Tabs and select with Left/Right, Home
-and End. They leave Up/Down to the browser. Radio fields use shared Segmented
-controls with both arrow axes and field-error associations. The OpenUI store
-remains the only field-value owner; hidden tab panels retain local drafts.
-Action execution returns field issues from its single admission decision. Forms
-use those issues to focus a visible control within the submitting form, while
-preserving later focus. DOM error markers never decide whether an action runs.
-Popover uses the shared non-modal portal and collision positioning, so a clipped
-report does not clip its detail controls. Nested Select and Popover dismissal
-use Base UI's existing layer boundary. The declared open field and all drafts
-remain in the OpenUI store. Closing removes popup content through the primitive's
-ordinary lifetime; hidden views retire open descendants without reopening over
-later authoring. Available-height scrolling keeps larger popup content reachable.
-Authored popup content re-enters the shared DocumentBody reading grammar after
-the portal, retaining ordinary table columns, spacing and document typography.
-Table filters use the shared SearchField: clearing restores the first page and
-keeps input focus, while a nonempty query consumes Escape before the enclosing
-popup. Sorting, selected rows and captured values retain their existing owners.
-Row selection uses the stable identifier as the checkbox's localized accessible
-name. The visible selection column contains the control; authored columns remain
-the reading content, without duplicated technical identifiers.
-Its short selection heading stays on one line when filtering removes every row;
-authored column headings retain their ordinary word wrapping.
-Pagination keeps its boundary buttons in the local keyboard order through the
-shared Button's focusable disabled contract. Unavailable activation stays blocked;
-Tab, Escape and native commands retain their existing owners.
-Carousel page bounds use the same contract, retaining the current page and its
-field values while unavailable controls remain in the local keyboard order.
-Progress uses the same themed ProgressBar as application activity. Its complete
-label and localized percentage remain visible above the track, including zero,
-completion and a supplied maximum other than 100. The admitted values and local
-expressions retain their existing meaning; no simulated execution or new state
-owner is introduced.
-Flashcard face controls name the next reading action. They retain ordinary
-button semantics as their labels change between showing the answer and question;
-the current face remains expressed by the existing face label and body.
-Local flip state stays in the same OpenUI field.
-Native chart geometry uses labels, patterns and a data table rather than color
-alone. All twelve admitted Cartesian series have distinct point marks or bar
-patterns, reused by their data-column legends. Plot labels keep at least the host's
-small-text size in a separate named scroll region instead of shrinking with
-the container; exact values remain in the independently readable data table.
-Pie and donut legends use the same table: every category has its complete name,
-matching slice pattern, exact value and percentage. The chart geometry and table
-share one normalized fraction projection, including zero totals and large finite
-values. A centered circular figure no longer reserves SVG space for a truncated,
-ten-category legend; its HTML legend follows ordinary text sizing and reading.
-Markdown uses the established renderer with raw HTML disabled. KaTeX
-produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with
-attribution; tile errors remain visible and can be explicitly retried. A supplied
-route is displayed as supplied geometry, not represented as newly computed road
-routing. Image search, geocoding, routing and remote business facts belong to
-existing tools or provider plugins, rather than hidden GenUI service calls.
-Map zoom bounds also keep focus through the shared disabled contract. Zoom and
-unselected selectable markers use the shared opaque raised surface so their
-symbols do not inherit a tile's background.
-The shared focus proxy draws on a neutral backing outside each control's disabled
-opacity, retaining its perimeter against the map image. The renderer's projected
-anchor and viewport determine which overlay markers are mounted; the complete
-location table retains every captured point and its existing selection control.
-Read-only markers retain native link semantics and their original external
-destinations. The public shared button dress supplies their raised circular
-target; an underline distinguishes navigation from local selection. The anchor
-also consumes the host's coarse-pointer minimum rather than borrowing button
-semantics for sizing. Local open-URL actions briefly attach their hidden native
-anchor so the host's document navigation boundary can handle activation, then
-remove it. Neither path owns another platform opener or advances captured facts.
-Sort headers and location-name buttons use the shared bare Button's whole-word
-contributions to intrinsic column width. Long names keep ordinary wrapping and
-the existing local scroll region.
+The shared Legend reading list owns scrolling and end following. Its public
+pinning API retains focus, composition, native selection ranges and React portal
+owners. It uses public cancel, anchor and scroll intents rather than changing
+`scrollTop` from a second controller.
 
-Image and Markdown-image thumbnails open their original source in the shared
-image reader. The authored alternative text and caption retain their meaning;
-local zoom and panning do not advance OpenUI fields or operation state. Resource
-loading, failure and explicit retry keep their existing owner. Hiding the report
-or replacing an image source ends its open reading capture.
-Explicit retry hands its own focus to the surviving, named image container
-before replacing the action. Loading, decoding and failure do not reclaim later
-editing focus. Independent images and Markdown images share that same resource
-boundary, without adding another natural Tab stop.
-Markdown's tag renderers retain their component identities through independent
-local updates. A private translation context supplies current labels through
-the Markdown renderer's fixed DOM/AST prop contract, so images, source readers,
-links and tables are not replaced to obtain translated copy. Decoding failures,
-open previews and native reading positions keep their existing owners. Changing
-an image's actual source still ends its old preview.
+## Breaking migration
 
-Markdown notes share the host's supporting-label transform and task-list projection.
-Each mounted Markdown view scopes its generated footnote IDs, local destinations,
-return links and descriptions; all eight display locales name notes and returns.
-Fragments stay in that document while admitted external links retain their separate
-protocol rule. Recorded GFM tasks expose named, immutable checkbox markers without
-form controls or another Tab stop. Locale changes retain the same renderer identities.
+Plugin version 3 removes the OpenUI language, private expression evaluator,
+private draft store, maps, sandbox, automatic operation steps and compatibility
+adapters. Older results are refused with an explicit raw-export message. Their
+recorded bytes are retained by Runtime; this renderer never rewrites history.
 
-## Local computation
+The production CSP remains unchanged. No `unsafe-eval` or `wasm-unsafe-eval` is
+added. Highlights remains deferred because it requires a conflicting Wasm policy;
+recorded output keeps its ANSI parser. Code and diffs use Pierre with `shiki-js`.
 
-The document declares `state`, `nodes`, `actions` and `operations`. Expressions
-reference local state, operation projections and bounded loop variables. They
-can construct objects and arrays, map/filter/group records, and call the pure
-functions described by the catalog. Arithmetic, comparisons, formatting,
-collection transformations and statistics run locally without a model request.
-
-Call the catalog with `{"kind":"functions"}` for a short index and pass the
-returned `nextOffset` as `offset` for its next page. Add `"name":"multiply"`
-to read that one function's complete parameter schema. For business operations,
-`{"kind":"operations"}` lists at most 20 method identities and routing facts;
-`installationId` and `contribution` narrow the index. Supplying all three of
-`installationId`, `contribution` and `method` returns only that exact method's
-`methodJSON`, projected with the owner's exact-number codec. Discovery does not
-dump every installed contract or authorize a command. Presentation admission
-still captures the full, unchanged installed contract and release digest once
-per contribution; multiple methods derive their routes from that same fact.
-
-The compiler lowers expressions to registered OpenUI functions through the
-public serializer. It never concatenates authored operators into executable
-source and never uses `eval` or `Function`. Registered functions, their schemas
-and the catalog descriptions derive from the same definitions. Numeric
-projections have finite bounds; identifiers and authoritative exact quantities
-should remain strings. Invalid, non-finite or out-of-budget results are explicit
-errors, not silently truncated output.
-
-Model-authored OpenUI source is not an accepted input. OpenUI deliberately
-recovers partial syntax; it cannot establish final-document admission. The plugin
-validates the complete JSON value, cross-references, depth and aggregate budgets
-before producing OpenUI source. There is one accepted format and no permissive
-historical decoder. The component displays a completed document; it does not
-execute an incomplete model response.
-
-For example, this document creates a local circle-area calculator and a button
-that asks the original conversation to explain the selected radius:
-
-```json
-{
-  "title": "Circle lab",
-  "state": [{ "id": "radius", "value": 2 }],
-  "nodes": [
-    {
-      "id": "radiusControl",
-      "type": "Slider",
-      "props": {
-        "field": "radius",
-        "label": "Radius",
-        "min": 1,
-        "max": 10,
-        "step": 1
-      }
-    },
-    {
-      "id": "area",
-      "type": "Metric",
-      "props": {
-        "label": "Approximate area",
-        "value": {
-          "call": "multiply",
-          "args": [
-            { "literal": 3.141592653589793 },
-            {
-              "call": "power",
-              "args": [{ "state": "radius" }, { "literal": 2 }]
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "explain",
-      "type": "Button",
-      "props": { "label": "Explain this result", "action": "explain" }
-    }
-  ],
-  "actions": [
-    {
-      "id": "explain",
-      "steps": [
-        {
-          "type": "followup",
-          "message": {
-            "call": "concat",
-            "args": [
-              {
-                "array": [
-                  { "literal": "Explain the area of a circle with radius " },
-                  { "call": "string", "args": [{ "state": "radius" }] }
-                ]
-              }
-            ]
-          },
-          "payload": { "object": { "radius": { "state": "radius" } } }
-        }
-      ]
-    }
-  ],
-  "operations": []
-}
-```
-
-## Query, command and conversation actions
-
-A named action has ordered steps: change local state, reset declared fields,
-execute an operation, submit a followup, copy text or open a permitted link. The
-application controller awaits each effect. Invalid forms do not dispatch their
-action. A pending action blocks duplicate submission. Cancellation or a known
-failure stops the remaining steps and is shown explicitly.
-
-Local input feedback is independent of the action lifecycle. A rejected field
-update retains the original running action, review or unknown acknowledgement,
-including its original recovery handle and command key. It cannot unlock another
-submission. Feedback clears only after that same field accepts a value, including
-an explicit reset. Table search, paging and other controls use this same owner;
-a successful update to another field cannot retire the failed input feedback.
-
-An invalid form submission focuses its first available invalid control in the
-current form and visible view. Field-specific errors describe their input,
-selection trigger or choice group rather than broadcasting a live update on
-every edit. The field views project the document owner's validation; they do not
-admit or reject execution. Drafts, hidden-view validation and action dispatch
-retain their existing owners.
-
-An operation request supplies its local ID, installation, contribution, method,
-optional resource target and an input expression. The model cannot supply the
-admitted contract, release digest or operation kind. The backend resolves these
-from the real enabled and available selected installation. It derives
-installation targets; other scopes require explicit matching targets. The
-accepted result contains `contributions`, with one exact contract and digest per
-installation/contribution. Operation methods and targets derive from their
-original requests and that captured fact. A later release selection does
-not silently change this old document's business route.
-
-Queries use public `plugins.call` or `plugins.queryStream`. Only a real query can
-be marked automatic. Commands require a user review of the actual installed
-method, target and exact JSON input, then use public `plugins.command` or
-`plugins.stream`. The original provider still validates inputs, owns its
-business transaction and returns the original receipt. There is no generic Core
-method dispatcher, raw MCP call bypass or model-authored authorization flag.
-
-An operation expression can read `status`, `data`, the latest streaming `chunk`,
-or `error`. Streaming chunks are a transient progress projection; GenUI does not
-archive a second unbounded event history. The final result replaces progress.
-Query output and command output are not added to a parallel conversation store.
-A later ordinary followup can explicitly carry relevant local input to the model.
-
-Unconfirmed commands retain their original intent and input in the existing
-journal. Recovery uses the original key and frozen route. Intent recognition is
-a read-only journal operation, so another document's command with the same
-method is not mistaken for this document's action. The stable intent uses the
-captured source Run/Item and action/operation IDs; upgrading the renderer does
-not create a new intent. A remounted view can recover its original command.
-Observation failure is not completion, and does not unlock a replacement write.
-
-Followups use the host-provided `CapturedToolInteraction`. It captures the source
-Run and Item, resolves their Session only on submission, and enters the same
-send/steer, acceptance and recovery path used by ordinary Agent input. Navigation
-elsewhere cannot retarget the action. `accepted` means input acceptance, not that
-the ensuing agent task has finished. `unknown` keeps the original recovery
-closure; `retired` is an explicit terminal outcome. Exact JSON text and source
-identifiers travel in the ordinary user input; Runtime's history model is not
-extended just to index a UI action.
-Each followup requires an explicit `payload` expression. Only its evaluated value
-is sent; other drafts, table state and query results remain local. An empty object
-expression sends no fields. The UTF-8 message and encoded JSON payload together
-must fit 16 KiB; excess is refused before submission without truncating data or
-changing its source. Ordinary input acceptance and original recovery remain the
-only conversation-effect owners.
-
-## HTML sandbox
-
-`HtmlView` is for self-contained HTML, inline JavaScript, SVG and canvas programs.
-It runs in an opaque, scripts-only inner frame. A trusted opaque outer frame
-applies a restrictive CSP to the inner frame's navigation as well as resources.
-Both frames omit same-origin access, forms, popups, top navigation, downloads and
-privileged browser features. No Flame context, cookies, token, tool dispatcher or
-postMessage command bridge is supplied. Inline styles and local data/blob media
-are supported; external scripts, frames and network requests are blocked.
-
-The outer document is the Host's independent `/genui-sandbox.html` response,
-not a `srcdoc` inheriting the application's trusted-script policy. One channel
-is bound to the mounted frame and initialized only by its actual parent; captured
-HTML travels once through that port, never through a URL or a host command bridge.
-Replacing the program retires the original frame and channel. Both opaque
-sandbox layers and the original network and navigation restrictions remain.
-
-The extra outer frame is deliberate: a CSP inside an authored page alone does
-not constrain that page's own navigation. Real browser tests exercise local
-execution, parent access, requests, navigation and wrapper escaping. Browser
-isolation is not a hard CPU or memory quota for arbitrary JavaScript. Large
-programs remain subject to browser resource behavior and the authored document's
-size limit. Structured components should be preferred when they express the UI.
-
-## Dependencies and reference projects
-
-The plugin uses the public OpenUI 1.1.0 serializer, evaluator and React renderer;
-it does not import private contexts or add its own parser. The interactive
-component ideas are informed by
-[Open Intelligent UI](https://github.com/thesysdev/open-intelligent-ui) and
-[OpenUI](https://github.com/thesysdev/openui). Their model gateway, localStorage
-thread history, private design system and application routing are not additional
-Flame owners. Public OpenAI Visualizations, ChatKit actions and plugin UI guidance
-inform the separation of local exploration, explicit effects and server-owned
-business data. This is a Flame plugin contract, not an implementation of the
-OpenAI `window.openai` compatibility API.
-
-Private dependencies are bundled. React, ReactDOM, the component SDK, Flame UI
-and the public Runtime client modules remain supplied by the host. Sharing the
-Runtime client preserves exact-number and error identities across that boundary.
-Markdown, MathML and maps use established public
-libraries; their notices ship in the portable package. New dependencies belong
-to the root workspace manifest and lock, not a plugin-local install graph.
-
-## Build, verification and breaking change
-
-Use the toolchain in `DEVELOPMENT.md` and install at the repository root:
-
-```sh
-npm run build --workspace @flame/plugins
-npm run check --workspace @flame/plugins
-npm test --workspace @flame/web -- lab/scenarios/genui
-node plugins/scripts/build-packages.mjs --plugin genui --output /absolute/new/packages --archives /absolute/new/releases
-```
-
-The ordinary builder packages the complete managed backend graph, declared
-component resources and notices. Installation does not compile code or download
-runtime dependencies. The author exporter derives its independent dependency
-graph from actual imports, the frozen workspace manifest/lock and SDK peers.
-
-Version 2 replaces the earlier read-only `blocks` contract with this interactive
-contract. There is no old-format adapter. An earlier v1 captured report is not
-rewritten or treated as a valid v2 document; retain its original release when
-that renderer is needed, or generate a new interface. The final patch contains
-the complete implementation against the stated upstream base.
-
-Verification covers strict owner admission, references and budgets; the actual
-MCP backend; real OpenUI/store updates; form and data interactions; exact input
-and command recovery through the Runtime client; captured Session submission;
-portable packaging and independent author export; and browser rendering and
-sandbox isolation. Native Wails qualification still requires macOS and the
-repository's `make check-native` gate.
+Contract tests cover catalog discovery, strict admission, exact string values,
+local draft preservation and old-format refusal. Browser acceptance must also
+exercise the built plugin under production CSP and the Legend/A2UI combination:
+upper-row reflow, a lower-row field, native selection, portals, prepend and hidden
+Activity. Synthetic composition events do not establish native IME support, and
+Playwright WebKit does not establish native WKWebView support.

@@ -1,7 +1,14 @@
+import { parameterizedQuery } from "@/extensions/dataQuery";
+import { placeComposerCaret, composerCaret } from "@/test/composerSelection";
 import { WindowNotifications } from "@/features/notifications/toaster/window";
 import type { ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { isCancelledError, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
+import {
+  isCancelledError,
+  QueryClientProvider,
+  InfiniteQueryObserver,
+  infiniteQueryOptions,
+} from "@tanstack/react-query";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
@@ -26,7 +33,8 @@ import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.fl
 import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json";
 import {
   WORKSPACE_LIST_FILES_KEY,
-  workspaceFileListQuery,
+  type WorkspaceFilePage,
+  type WorkspaceListFilesQuery,
 } from "@/features/workspace/application/workspaceQueries";
 import { lookupDataProvider } from "@/extensions/dataProvider";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
@@ -81,6 +89,7 @@ async function installFixture(directoryState?: VisualDirectoryState, renderView 
       </visual.Wrapper>,
     ),
   );
+  await screen.findByRole("textbox", { name: "Message composer" });
 }
 
 beforeEach(() => installFixture());
@@ -112,12 +121,10 @@ function pressEscape(target: Element) {
 it.each(["material", "settings"])(
   "returns from %s through the installed Escape binding",
   async (source) => {
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
-    fireEvent.change(draft, { target: { value: "Keep this draft — 保留" } });
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(5, 5);
-    });
+    const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
+    act(() => visual!.composer.access.replaceDraft({ text: "Keep this draft — 保留" }));
+    act(() => draft.focus());
+    await placeComposerCaret(draft, 5);
     let target: HTMLElement;
     if (source === "settings") {
       await act(() => executeCommand("settings.open"));
@@ -134,9 +141,9 @@ it.each(["material", "settings"])(
 
     await act(() => executeCommand("composer.focus"));
     expect(document.activeElement).toBe(draft);
-    expect(draft.value).toBe("Keep this draft — 保留");
-    expect(draft.selectionStart).toBe(5);
-    expect(draft.selectionEnd).toBe(5);
+    expect(draft.textContent).toBe("Keep this draft — 保留");
+    expect(composerCaret(draft)?.[0]).toBe(5);
+    expect(composerCaret(draft)?.[1]).toBe(5);
   },
 );
 
@@ -153,12 +160,10 @@ it("leaves Escape in the focused Settings search to that field", async () => {
 
 it("reveals a command-menu material in the narrow workspace and returns to its source", async () => {
   await act(() => loadPluginsForTest(commandMenu));
-  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
-  fireEvent.change(draft, { target: { value: "Keep this command source — 保留" } });
-  act(() => {
-    draft.focus();
-    draft.setSelectionRange(5, 5);
-  });
+  const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
+  act(() => visual!.composer.access.replaceDraft({ text: "Keep this command source — 保留" }));
+  act(() => draft.focus());
+  await placeComposerCaret(draft, 5);
   await act(() => executeCommand("command.menu"));
   const query = await screen.findByRole("combobox", { name: "Run a command…" });
   fireEvent.change(query, { target: { value: "Workspace diff" } });
@@ -169,25 +174,23 @@ it("reveals a command-menu material in the narrow workspace and returns to its s
   await waitFor(() =>
     expect(material.some((region) => region.contains(document.activeElement))).toBe(true),
   );
-  expect(draft.value).toBe("Keep this command source — 保留");
+  expect(draft.textContent).toBe("Keep this command source — 保留");
   const back = screen.getByRole("button", { name: "Back to conversation" });
   fireEvent.click(back);
 
   await waitFor(() => expect(document.activeElement).toBe(draft));
-  expect(draft.selectionStart).toBe(5);
-  expect(draft.selectionEnd).toBe(5);
-  expect(draft.value).toBe("Keep this command source — 保留");
+  expect(composerCaret(draft)?.[0]).toBe(5);
+  expect(composerCaret(draft)?.[1]).toBe(5);
+  expect(draft.textContent).toBe("Keep this command source — 保留");
 });
 
 it.each(["sidebar", "settings"])(
   "returns from %s through the installed Composer command",
   async (source) => {
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
-    fireEvent.change(draft, { target: { value: "Keep this draft — 保留" } });
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(5, 5);
-    });
+    const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
+    act(() => visual!.composer.access.replaceDraft({ text: "Keep this draft — 保留" }));
+    act(() => draft.focus());
+    await placeComposerCaret(draft, 5);
     if (source === "settings") {
       await act(() => executeCommand("settings.open"));
       act(() => screen.getByRole("searchbox").focus());
@@ -200,9 +203,9 @@ it.each(["sidebar", "settings"])(
     await act(() => executeCommand("composer.focus"));
 
     expect(document.activeElement).toBe(draft);
-    expect(draft.value).toBe("Keep this draft — 保留");
-    expect(draft.selectionStart).toBe(5);
-    expect(draft.selectionEnd).toBe(5);
+    expect(draft.textContent).toBe("Keep this draft — 保留");
+    expect(composerCaret(draft)?.[0]).toBe(5);
+    expect(composerCaret(draft)?.[1]).toBe(5);
     expect(visual.navigation.get().view).toBeNull();
   },
 );
@@ -212,13 +215,11 @@ it.each(["zh", "de"])(
   async (locale) => {
     const originalLocale = activeLocale();
     onTestFinished(() => setLocale(originalLocale));
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
     const value = "  Keep the authored titles and this draft. 保留原文。  ";
-    fireEvent.change(draft, { target: { value } });
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(7, 7);
-    });
+    act(() => visual!.composer.access.replaceDraft({ text: value }));
+    act(() => draft.focus());
+    await placeComposerCaret(draft, 7);
     try {
       await act(() => setLocale(locale));
       await act(() => loadPluginsForTest(commandMenu));
@@ -253,8 +254,8 @@ it.each(["zh", "de"])(
       }
       await act(() => executeCommand("composer.focus"));
       expect(document.activeElement).toBe(draft);
-      expect(draft.value).toBe(value);
-      expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+      expect(draft.textContent).toBe(value);
+      expect(composerCaret(draft)).toEqual([7, 7]);
     } finally {
       if (screen.queryByRole("combobox", { name: t("commandMenu.placeholder") }))
         await act(() => executeCommand("command.menu"));
@@ -267,47 +268,81 @@ async function installDirectoryState(directoryState: VisualDirectoryState) {
   await installFixture(directoryState, false);
 }
 
-function directoryQueryOptions() {
-  return {
-    ...workspaceFileListQuery({ cwd: VISUAL_WORKSPACE_PATH, path: VISUAL_DIRECTORY_PATH }),
+function directoryQueryOptions(
+  request: WorkspaceListFilesQuery = {
+    cwd: VISUAL_WORKSPACE_PATH,
+    path: VISUAL_DIRECTORY_PATH,
+    limit: 100,
+  },
+) {
+  return infiniteQueryOptions({
+    queryKey: [WORKSPACE_LIST_FILES_KEY, request, "pages"],
+    initialPageParam: undefined as string | undefined,
+    queryFn: (context) => {
+      const page = parameterizedQuery<WorkspaceListFilesQuery, WorkspaceFilePage>(
+        WORKSPACE_LIST_FILES_KEY,
+        { ...request, cursor: context.pageParam },
+      );
+      if (typeof page.queryFn !== "function")
+        throw new Error("directory fixture requires its data query owner");
+      return page.queryFn({ ...context, queryKey: page.queryKey });
+    },
+    getNextPageParam: (page) => page.nextCursor,
     staleTime: 0,
     retryDelay: 0,
-  };
+  });
 }
 
 it("keeps directory failure through automatic retries and resets it on fixture reinstallation", async () => {
   await installDirectoryState("error");
   const query = directoryQueryOptions();
-  queryClient.setQueryData(query.queryKey, [
-    { path: "apps/previous.ts", name: "previous.ts", type: "file" },
-  ]);
+  queryClient.setQueryData(query.queryKey, {
+    pages: [
+      {
+        data: [{ path: "apps/previous.ts", name: "previous.ts", type: "file" }],
+        complete: true,
+        coverage: { scannedEntries: 1, excludedEntries: 0, budgetExhausted: false },
+      },
+    ],
+    pageParams: [undefined],
+  });
 
-  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+  await expect(queryClient.fetchInfiniteQuery(query)).rejects.toThrow("could not list apps");
   expect(queryClient.getQueryState(query.queryKey)).toMatchObject({
     status: "error",
     fetchStatus: "idle",
     fetchFailureCount: 2,
   });
-  const accepted = await queryClient.fetchQuery(query);
-  expect(accepted).toHaveLength(1);
-  expect(accepted[0]?.path).not.toBe("apps/previous.ts");
+  const accepted = await queryClient.fetchInfiniteQuery(query);
+  expect(accepted.pages[0]!.data).toHaveLength(1);
+  expect(accepted.pages[0]!.data[0]?.path).not.toBe("apps/previous.ts");
 
   await installDirectoryState("error");
-  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
-  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
+  await expect(queryClient.fetchInfiniteQuery(query)).rejects.toThrow("could not list apps");
+  await expect(queryClient.fetchInfiniteQuery(query)).resolves.toEqual(accepted);
 });
 
 it("retains accepted directory children through refresh failure and ignores manual cache success", async () => {
   await installDirectoryState("refresh-error");
   const query = directoryQueryOptions();
-  const accepted = await queryClient.fetchQuery(query);
-  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
-  window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT));
-  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
-  expect(queryClient.getQueryData(query.queryKey)).toBe(accepted);
-
-  queryClient.setQueryData(query.queryKey, accepted);
-  await expect(queryClient.fetchQuery(query)).resolves.toEqual(accepted);
+  const observer = new InfiniteQueryObserver(queryClient, query);
+  const stop = observer.subscribe(() => {});
+  try {
+    await waitFor(() =>
+      expect(observer.getCurrentResult()).toMatchObject({ status: "success", fetchStatus: "idle" }),
+    );
+    const accepted = observer.getCurrentResult().data;
+    window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT));
+    await observer.refetch();
+    await waitFor(() => expect(observer.getCurrentResult().status).toBe("error"));
+    expect(observer.getCurrentResult().data).toBe(accepted);
+    queryClient.setQueryData(query.queryKey, accepted);
+    await observer.refetch();
+    expect(observer.getCurrentResult().data).toEqual(accepted);
+  } finally {
+    stop();
+    observer.destroy();
+  }
 });
 
 it("routes a notified directory change through the installed Workspace event consumer", async () => {
@@ -341,7 +376,7 @@ it("routes a notified directory change through the installed Workspace event con
     window.removeEventListener(VISUAL_DIRECTORY_CHANGED_EVENT, notify);
     stopWitness();
   });
-  const observer = new QueryObserver(queryClient, directoryQueryOptions());
+  const observer = new InfiniteQueryObserver(queryClient, directoryQueryOptions());
   const stop = observer.subscribe(() => {});
   try {
     await waitFor(() => {
@@ -361,7 +396,7 @@ it("routes a notified directory change through the installed Workspace event con
       ).toBe(true);
     });
     const accepted = observer.getCurrentResult().data;
-    expect(accepted).toHaveLength(1);
+    expect(accepted?.pages[0]?.data).toHaveLength(1);
 
     window.dispatchEvent(new Event(VISUAL_DIRECTORY_CHANGED_EVENT));
     await waitFor(() => expect(observer.getCurrentResult().status).toBe("error"));
@@ -388,7 +423,7 @@ it("aborts a pending directory read when its fixture retires", async () => {
   controller.abort(cause);
   expect(await providerOutcome).toBe(cause);
 
-  const outcome = queryClient.fetchQuery(query).catch((error: unknown) => error);
+  const outcome = queryClient.fetchInfiniteQuery(query).catch((error: unknown) => error);
   await waitFor(() =>
     expect(queryClient.getQueryState(query.queryKey)?.fetchStatus).toBe("fetching"),
   );
@@ -398,23 +433,27 @@ it("aborts a pending directory read when its fixture retires", async () => {
   expect(queryClient.getQueryState(query.queryKey)?.fetchStatus).not.toBe("fetching");
 
   await installDirectoryState("error");
-  await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
+  await expect(queryClient.fetchInfiniteQuery(query)).rejects.toThrow("could not list apps");
 });
 
 it("limits an empty directory scene to its captured nonrecursive workspace request", async () => {
   await installDirectoryState("empty");
-  await expect(queryClient.fetchQuery(directoryQueryOptions())).resolves.toEqual([]);
-  const root = await queryClient.fetchQuery(workspaceFileListQuery({ cwd: VISUAL_WORKSPACE_PATH }));
-  expect(root.map(({ path }) => path)).toEqual(
+  expect((await queryClient.fetchInfiniteQuery(directoryQueryOptions())).pages[0]!.data).toEqual(
+    [],
+  );
+  const root = await queryClient.fetchInfiniteQuery(
+    directoryQueryOptions({ cwd: VISUAL_WORKSPACE_PATH }),
+  );
+  expect(root.pages[0]!.data.map(({ path }) => path)).toEqual(
     expect.arrayContaining([VISUAL_DIRECTORY_PATH, "README.md"]),
   );
   for (const request of [
     { cwd: "/visual/another-workspace", path: VISUAL_DIRECTORY_PATH },
     { cwd: VISUAL_WORKSPACE_PATH, path: VISUAL_DIRECTORY_PATH, recursive: true },
   ]) {
-    const children = await queryClient.fetchQuery(workspaceFileListQuery(request));
-    expect(children).toHaveLength(1);
-    expect(children[0]?.type).toBe("file");
+    const children = await queryClient.fetchInfiniteQuery(directoryQueryOptions(request));
+    expect(children.pages[0]!.data).toHaveLength(1);
+    expect(children.pages[0]!.data[0]?.type).toBe("file");
   }
 });
 
@@ -425,7 +464,7 @@ it.each([true, false])(
     const query = directoryQueryOptions();
     const previous = new Error("Previous directory read failed");
     await expect(
-      queryClient.fetchQuery({
+      queryClient.fetchInfiniteQuery({
         ...query,
         retry: false,
         queryFn: async () => {
@@ -434,11 +473,11 @@ it.each([true, false])(
       }),
     ).rejects.toBe(previous);
 
-    const outcome = queryClient.fetchQuery(query).catch((error: unknown) => error);
+    const outcome = queryClient.fetchInfiniteQuery(query).catch((error: unknown) => error);
     await queryClient.cancelQueries({ queryKey: query.queryKey, exact: true }, { revert });
     expect(isCancelledError(await outcome)).toBe(true);
 
-    await expect(queryClient.fetchQuery(query)).rejects.toThrow("could not list apps");
-    await expect(queryClient.fetchQuery(query)).resolves.toHaveLength(1);
+    await expect(queryClient.fetchInfiniteQuery(query)).rejects.toThrow("could not list apps");
+    expect((await queryClient.fetchInfiniteQuery(query)).pages[0]!.data).toHaveLength(1);
   },
 );

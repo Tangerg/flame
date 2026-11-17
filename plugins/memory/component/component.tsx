@@ -37,6 +37,8 @@ export function Memory({ context }: { context: ComponentContext }) {
     edit,
     locked,
     setEdit,
+    closeEditor,
+    editorElement,
     scope,
     cwd,
     read,
@@ -62,7 +64,6 @@ export function Memory({ context }: { context: ComponentContext }) {
     setOrigin,
     pinned,
     setPinned,
-    resolveOpener,
     editorFeedback,
     unknown,
     reconcile,
@@ -71,7 +72,6 @@ export function Memory({ context }: { context: ComponentContext }) {
     summary,
     recordFeedback,
     recordResult,
-    initiator,
     canRestoreFocus,
   } = useMemory(context);
   const recordCommand = unknown?.source === "record" ? unknown : undefined;
@@ -104,7 +104,7 @@ export function Memory({ context }: { context: ComponentContext }) {
         // This non-modal task keeps independent catalog actions available.
         event.preventDefault();
         event.stopPropagation();
-        if (!locked) setEdit(undefined);
+        if (!locked) closeEditor();
       }}
       header={
         <PanelHeader
@@ -142,6 +142,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                   variant={edit ? "outline" : "primary"}
                   size="md"
                   disabled={locked || cwd === undefined || Boolean(edit)}
+                  focusableWhenDisabled
                   onClick={(event) => {
                     beginEdit({
                       type: "add",
@@ -244,15 +245,15 @@ export function Memory({ context }: { context: ComponentContext }) {
       {read.error && <p role="alert">{read.error}</p>}
       {edit?.type === "delete" ? (
         <MemoryDeleteConfirmation
-          canRestoreFocus={canRestoreFocus}
+          ref={editorElement}
           item={edit.item}
-          opener={resolveOpener}
+
           feedback={editFeedback}
           pending={pending}
           locked={locked}
           recovering={recovering}
           aborted={context.signal.aborted}
-          cancel={() => setEdit(undefined)}
+          cancel={() => closeEditor()}
           confirm={
             recovering
               ? reconcile
@@ -268,9 +269,8 @@ export function Memory({ context }: { context: ComponentContext }) {
         />
       ) : edit ? (
         <RecordForm
+          ref={editorElement}
           aria-label={edit.type === "add" ? t("add") : t("edit")}
-          opener={resolveOpener}
-          canRestoreFocus={canRestoreFocus}
           data-focus-unit=""
         >
           <RecordGroup>
@@ -304,7 +304,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               disabled={locked}
               focusableWhenDisabled
               variant="ghost"
-              onClick={() => setEdit(undefined)}
+              onClick={() => closeEditor()}
             >
               {t("cancel")}
             </Button>
@@ -379,7 +379,6 @@ export function Memory({ context }: { context: ComponentContext }) {
               />
             }
             resultFocus={recordResult}
-            initiator={initiator}
             authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
             edit={(item, opener) => {
@@ -397,8 +396,8 @@ export function Memory({ context }: { context: ComponentContext }) {
                 opener,
               });
             }}
-            command={(method, input, intent, control) =>
-              change(method, input, intent, "record", control)
+            command={(method, input, intent) =>
+              change(method, input, intent, "record")
             }
             t={t}
           />

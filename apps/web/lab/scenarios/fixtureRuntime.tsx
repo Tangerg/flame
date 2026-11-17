@@ -32,7 +32,6 @@ import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { selectLocale } from "@/features/i18n/application/localeSelection";
 import { uiTypeLadderCssVariables } from "@/features/theme/kit/typeLadder";
 import { UI_DENSITY_MODES } from "@/features/theme/kit/appearance";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
 import {
   VISUAL_AGENT_STATES,
@@ -430,7 +429,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       );
       visualClient.workspace.layout.setState({
         sidebarCollapsed: !sidebarOpen,
-        sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
+        sidebarLayout: null,
       });
       return <VisualAgentStateFixture state={state} view={view} />;
     }
@@ -521,7 +520,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
             VISUAL_FILE_MENTION_DRAFT.length,
           );
           await renderedFrame();
-          visualClient.composer.access.focus(VISUAL_FILE_MENTION_DRAFT.length);
+          visualClient.composer.access.focus();
         }
         rootElement.dataset.visualReady = "";
       });

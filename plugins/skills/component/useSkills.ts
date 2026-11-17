@@ -1,3 +1,4 @@
+import { handoffFocus } from "@flame/ui";
 import {
   useCallback,
   useEffect,
@@ -88,7 +89,7 @@ export function useSkills(context: ComponentContext) {
   };
   const [search, setSearch] = useState("");
   const panel = useRef<HTMLElement>(null);
-  const searchField = useRef<HTMLElement>(null);
+  const searchField = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
@@ -102,6 +103,16 @@ export function useSkills(context: ComponentContext) {
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
   const [review, setReview] = useState<Review>();
+  const reviewElement = useRef<HTMLElement>(null);
+  function closeReview() {
+    const form = reviewElement.current;
+    if (form && canRestoreFocus())
+      handoffFocus(
+        form,
+        review?.opener?.isConnected ? review.opener : searchField.current,
+      );
+    setReview(undefined);
+  }
   const [notice, setNotice] = useState<Notice>();
   const [observationError, setObservationError] = useState<string>();
   const refresh = useCallback(async () => {
@@ -334,14 +345,25 @@ export function useSkills(context: ComponentContext) {
         uncertain: false,
       };
       pending.current = captured;
+      closeReview();
       setCommand(captured);
-      setReview(undefined);
       setNotice(undefined);
       void observe(captured);
     } catch (error) {
       if (!componentSignal.aborted)
         setNotice({ kind: "failure", intent, detail: failure(error) });
     }
+  }
+  function confirmReview() {
+    if (!review || !workspace) return;
+    const { scope, name, revision } = review.proposal;
+    submit(
+      () =>
+        review.decision === "approve"
+          ? workspace.skills.approveProposal({ scope, name, revision })
+          : workspace.skills.rejectProposal({ scope, name, revision }),
+      { action: review.decision, name },
+    );
   }
   function reconcile() {
     const original = pending.current;
@@ -383,6 +405,9 @@ export function useSkills(context: ComponentContext) {
     opened,
     review,
     setReview,
+    closeReview,
+    confirmReview,
+    reviewElement,
     closeDocument,
     target,
     readDocument,

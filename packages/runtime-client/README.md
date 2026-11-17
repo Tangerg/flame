@@ -130,3 +130,9 @@ by the contract generator from the released Scope tool, separately from the
 canonical wire sample catalog. Empty, complete and continued
 pages exercise the producer's encoding and cursor without a parallel fixture
 format or a legacy decoder.
+
+Workspace `listFiles` returns `FileListPage`, including `complete`, `coverage` and
+`nextCursor`. A non-recursive unfiltered request enumerates only that directory.
+Native enumeration cursors are bound to the root, path, ignore policy and directory
+revision. Consumers continue until `complete`, and offer explicit continuation when
+the inspection budget is exhausted. A page is not a complete workspace catalog.

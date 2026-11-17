@@ -71,7 +71,7 @@ vi.mock("@/features/workspace/public/contextDockCatalog", () => ({
 }));
 
 vi.mock("@/features/workspace/public/sidebarDrawer", () => ({
-  useDockWidth: () => ({ width: null, setWidth: vi.fn() }),
+  useDockLayout: () => ({ layout: null, save: vi.fn() }),
 }));
 
 vi.mock("@/features/workspace/public/views", async (importOriginal) => {

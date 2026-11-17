@@ -11,21 +11,13 @@ import {
 } from "@flame/runtime-client";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { Presentation, limits, type Action } from "../contracts/document";
+import type { ActionPayload } from "@a2ui/web_core";
+import { Presentation, limits } from "../contracts/document";
 
 export interface InteractionState {
-  readState(id: string): unknown;
-  writeState(id: string, value: unknown): void;
-  readOperation(id: string): unknown;
   writeOperation(id: string, value: unknown): void;
+  resetDraft(surfaceId: string): void;
 }
-
-export interface InteractionEffects {
-  copy(text: string): Promise<void>;
-  open(url: string): void;
-}
-
-export type ActionIssues = ReturnType<Presentation["validateAction"]>;
 
 type Binding = Omit<CallPluginRequest, "input">;
 type Review = {
@@ -48,7 +40,6 @@ export type InteractionView = Readonly<
 
 export interface InteractionSnapshot {
   readonly action: InteractionView;
-  readonly inputIssue: Readonly<{ field: string; error: unknown }> | null;
 }
 
 class Unconfirmed extends Error {
@@ -58,27 +49,6 @@ class Unconfirmed extends Error {
   ) {
     super("genui: recover the original action before continuing", { cause });
   }
-
-  followedBy(continuation: () => Promise<void>): Unconfirmed {
-    const original = this.recovery;
-    if (!("recover" in original)) return this;
-    return new Unconfirmed(
-      {
-        ...this.recovery,
-        recover: async () => {
-          try {
-            await original.recover();
-          } catch (cause) {
-            if (cause instanceof Unconfirmed)
-              throw cause.followedBy(continuation);
-            throw cause;
-          }
-          await continuation();
-        },
-      },
-      this,
-    );
-  }
 }
 
 class CancelledReview extends Error {}
@@ -87,11 +57,9 @@ export class InteractionController {
   readonly #context: ComponentContext;
   readonly #presentation: Presentation;
   readonly #state: InteractionState;
-  readonly #effects: InteractionEffects;
   readonly #listeners = new Set<() => void>();
   #snapshot: InteractionSnapshot = {
     action: { status: "idle" },
-    inputIssue: null,
   };
   #initialized = false;
 
@@ -99,12 +67,10 @@ export class InteractionController {
     context: ComponentContext,
     presentation: Presentation,
     state: InteractionState,
-    effects: InteractionEffects,
   ) {
     this.#context = context;
     this.#presentation = presentation;
     this.#state = state;
-    this.#effects = effects;
   }
 
   readonly snapshot = (): InteractionSnapshot => this.#snapshot;
@@ -140,65 +106,55 @@ export class InteractionController {
       "initialize",
       async () => {
         if (await this.#pending()) return;
-        for (const { request } of this.#presentation.operations()) {
-          if (request.auto)
-            await this.#operation(request.id, "automatic-query");
-        }
       },
       false,
     );
   }
 
-  async execute(actionId: string): Promise<ActionIssues> {
-    if (this.blocked) return [];
-    let issues: ActionIssues = [];
-    await this.#guard(actionId, async () => {
-      const action = this.#presentation
-        .snapshot()
-        .actions.find((value) => value.id === actionId);
-      if (!action) throw new Error("genui: action is not declared");
-      issues = this.#presentation.validateAction(
-        actionId,
-        this.#state.readState,
-        this.#state.readOperation,
-      );
-      if (issues.length)
-        throw new Error("genui: correct invalid form values before submitting");
-      await this.#steps(action, 0);
+  async execute(action: ActionPayload): Promise<void> {
+    if (this.blocked) return;
+    const captured = structuredClone(action);
+    await this.#guard(captured.name, async () => {
+      this.#presentation.action(captured);
+      if (captured.name === "resetDraft") {
+        this.#state.resetDraft(captured.surfaceId);
+      } else if (captured.name === "followup") {
+        if (
+          !this.#context.interaction ||
+          this.#context.interaction.source.runId !==
+            this.#context.toolResult?.runId ||
+          this.#context.interaction.source.itemId !==
+            this.#context.toolResult?.id
+        )
+          throw new Error(
+            "genui: original conversation interaction is unavailable",
+          );
+        const { message, payload } = captured.context;
+        if (
+          typeof message !== "string" ||
+          !message.trim() ||
+          payload === undefined
+        )
+          throw new Error(
+            "genui: followup requires explicit message and payload",
+          );
+        const payloadJSON = stringifyJSON(payload);
+        if (
+          new TextEncoder().encode(message + payloadJSON).byteLength >
+          limits.followupBytes
+        )
+          throw new Error("genui: followup exceeds model context capacity");
+        await this.#followup(
+          await this.#context.interaction.submit({
+            action: message,
+            payloadJSON,
+          }),
+          captured.name,
+        );
+      } else {
+        await this.#operation(captured.name, captured.context);
+      }
     });
-    return this.#context.signal.aborted ? [] : issues;
-  }
-
-  reset(fields?: string[]): void {
-    if (this.blocked || this.#context.signal.aborted) return;
-    this.#reset(fields);
-    this.#publish({ status: "idle" });
-  }
-
-  update(id: string, value: unknown): void {
-    if (this.#context.signal.aborted) return;
-    try {
-      this.#writeState(id, value);
-    } catch (error) {
-      this.#commit({ ...this.#snapshot, inputIssue: { field: id, error } });
-    }
-  }
-
-  #writeState(id: string, value: unknown): void {
-    this.#state.writeState(id, this.#presentation.validateState(id, value));
-    if (this.#snapshot.inputIssue?.field === id)
-      this.#commit({ ...this.#snapshot, inputIssue: null });
-  }
-
-  #reset(fields?: string[]): void {
-    const initial = this.#presentation.snapshot().state;
-    if (fields?.some((id) => !initial.some((field) => field.id === id))) {
-      throw new Error("genui: reset refers to undeclared local state");
-    }
-    for (const field of initial) {
-      if (fields === undefined || fields.includes(field.id))
-        this.#writeState(field.id, field.value);
-    }
   }
 
   async #guard(
@@ -233,75 +189,6 @@ export class InteractionController {
       await recovery.recover();
       await this.#pending();
     });
-  }
-
-  async #steps(action: Action, index: number): Promise<void> {
-    for (let current = index; current < action.steps.length; current += 1) {
-      this.#context.signal.throwIfAborted();
-      const step = action.steps[current]!;
-      try {
-        switch (step.type) {
-          case "set":
-            this.#writeState(step.state, this.#evaluate(step.value));
-            break;
-          case "reset":
-            this.#reset(step.states);
-            break;
-          case "operation":
-            await this.#operation(step.operation, action.id);
-            break;
-          case "followup": {
-            if (!this.#context.interaction)
-              throw new Error("genui: conversation interaction is unavailable");
-            const message = this.#evaluate(step.message);
-            if (typeof message !== "string" || !message.trim())
-              throw new Error("genui: followup message must be nonempty text");
-            const payloadJSON = stringifyJSON(this.#evaluate(step.payload));
-            if (
-              new TextEncoder().encode(message + payloadJSON).byteLength >
-              limits.followupBytes
-            )
-              throw new Error(
-                "genui: followup message and payload exceed model context capacity",
-              );
-            await this.#followup(
-              await this.#context.interaction.submit({
-                action: message,
-                payloadJSON,
-              }),
-              action.id,
-            );
-            break;
-          }
-          case "copy": {
-            const value = this.#evaluate(step.text);
-            if (typeof value !== "string")
-              throw new Error("genui: copy action requires text");
-            await this.#effects.copy(value);
-            break;
-          }
-          case "openUrl": {
-            const value = this.#evaluate(step.url);
-            if (typeof value !== "string")
-              throw new Error("genui: navigation action requires a URL");
-            this.#effects.open(value);
-            break;
-          }
-        }
-      } catch (cause) {
-        if (cause instanceof Unconfirmed)
-          throw cause.followedBy(() => this.#steps(action, current + 1));
-        throw cause;
-      }
-    }
-  }
-
-  #evaluate(expression: Parameters<Presentation["evaluate"]>[0]): unknown {
-    return this.#presentation.evaluate(
-      expression,
-      this.#state.readState,
-      this.#state.readOperation,
-    );
   }
 
   async #followup(result: InteractionSubmission, label: string): Promise<void> {
@@ -356,20 +243,11 @@ export class InteractionController {
       .filter(({ binding }) => pluginMethod(binding).kind === "command");
     if (!operations.length) return false;
     const intents = await Promise.all(
-      this.#presentation.snapshot().actions.flatMap((action) =>
-        action.steps.flatMap((step) => {
-          if (
-            step.type !== "operation" ||
-            !operations.some(({ request }) => request.id === step.operation)
-          )
-            return [];
-          return [
-            this.#intent(action.id, step.operation).then((intent) => ({
-              intent,
-              operationId: step.operation,
-            })),
-          ];
-        }),
+      operations.map(({ request }) =>
+        this.#intent(request.id, request.id).then((intent) => ({
+          intent,
+          operationId: request.id,
+        })),
       ),
     );
     this.#context.signal.throwIfAborted();
@@ -470,19 +348,21 @@ export class InteractionController {
     this.#publish({ status: "running", label: binding.method });
   }
 
-  async #operation(id: string, actionId: string): Promise<void> {
+  async #operation(
+    id: string,
+    inputValue: Record<string, unknown>,
+  ): Promise<void> {
     this.#context.signal.throwIfAborted();
-    const { request, binding } = this.#presentation.operation(id);
+    const { binding } = this.#presentation.operation(id);
     const method = pluginMethod(binding);
-    const input = stringifyJSON(this.#evaluate(request.input));
+    const input = stringifyJSON(inputValue);
     if (method.kind === "command") await this.#review(binding, input);
     const consume = (chunk: unknown) => {
       this.#context.signal.throwIfAborted();
       this.#state.writeOperation(id, { status: "loading", chunk });
     };
     const { contract, method: name, ...route } = binding;
-    const intent =
-      method.kind === "command" ? await this.#intent(actionId, id) : "";
+    const intent = method.kind === "command" ? await this.#intent(id, id) : "";
     this.#context.signal.throwIfAborted();
     this.#state.writeOperation(id, { status: "loading" });
     try {

@@ -116,6 +116,7 @@ export const ko: Record<string, string> = {
   "export.trajectory": "전체 세션 기록 내보내기",
   "image.view": "이미지 보기",
   "image.close": "이미지 미리보기 닫기",
+  "image.fit": "창에 맞추기",
   "image.zoomIn": "이미지 확대",
   "image.zoomOut": "이미지 축소",
   "image.description": "이미지 설명",

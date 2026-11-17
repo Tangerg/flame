@@ -114,3 +114,20 @@ type GrepMatch struct {
 	LineNumber int    `json:"lineNumber"`
 	Text       string `json:"text"`
 }
+
+// FileListPage is one covered portion of a workspace listing. An incomplete page
+// always supplies a cursor, including pages whose scan budget excluded every entry.
+// Directory traversal uses native enumeration order and refuses a changed revision.
+type FileListPage struct {
+	Data []FileEntry `json:"data"`
+	PageContinuation
+	Complete bool             `json:"complete"`
+	Coverage FileListCoverage `json:"coverage"`
+}
+
+// FileListCoverage records observations made while producing this page.
+type FileListCoverage struct {
+	ScannedEntries  int  `json:"scannedEntries"`
+	ExcludedEntries int  `json:"excludedEntries"`
+	BudgetExhausted bool `json:"budgetExhausted"`
+}

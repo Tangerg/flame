@@ -37,6 +37,11 @@ import {
 } from "./types";
 import { SkillRow } from "./SkillRow";
 import { useSkills, SECTION_VALUES } from "./useSkills";
+const reviewPresentation = {
+  approve: { variant: "primary" },
+  reject: { variant: "tonal", tone: "negative" },
+} as const;
+
 function catalogSummary(
   snapshot: SkillSnapshot | undefined,
   matching: number,
@@ -170,6 +175,9 @@ export function Skills({ context }: { context: ComponentContext }) {
     opened,
     review,
     setReview,
+    closeReview,
+    confirmReview,
+    reviewElement,
     closeDocument,
     target,
     readDocument,
@@ -193,7 +201,6 @@ export function Skills({ context }: { context: ComponentContext }) {
     rows,
     matching,
     openDocument,
-    canRestoreFocus,
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const instructions = useRef<HTMLElement>(null);
@@ -232,7 +239,7 @@ export function Skills({ context }: { context: ComponentContext }) {
           return;
         event.preventDefault();
         event.stopPropagation();
-        if (review) setReview(undefined);
+        if (review) closeReview();
         else closeDocument();
       }}
       header={<PanelHeader title={t("panel.title")} />}
@@ -324,9 +331,8 @@ export function Skills({ context }: { context: ComponentContext }) {
       {feedbackRow === undefined && feedback}
       {review && (
         <RecordForm
+          ref={reviewElement}
           aria-label={t("review.label")}
-          opener={review.opener}
-          canRestoreFocus={canRestoreFocus}
           data-focus-unit=""
         >
           <RecordTitle>
@@ -353,32 +359,14 @@ export function Skills({ context }: { context: ComponentContext }) {
               disabled={Boolean(command)}
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
-              onClick={() => setReview(undefined)}
+              onClick={closeReview}
             >
               {t("cancel")}
             </Button>
             <Button
-              variant={review.decision === "approve" ? "primary" : "tonal"}
-              tone={review.decision === "reject" ? "negative" : undefined}
+              {...reviewPresentation[review.decision]}
               disabled={disabled}
-              onClick={() => {
-                const { scope, name, revision } = review.proposal;
-                submit(
-                  () =>
-                    review.decision === "approve"
-                      ? workspace!.skills.approveProposal({
-                          scope,
-                          name,
-                          revision,
-                        })
-                      : workspace!.skills.rejectProposal({
-                          scope,
-                          name,
-                          revision,
-                        }),
-                  { action: review.decision, name },
-                );
-              }}
+              onClick={confirmReview}
             >
               {t(`confirm.${review.decision}`)}
             </Button>
@@ -451,8 +439,6 @@ export function Skills({ context }: { context: ComponentContext }) {
                 }
                 item={item}
                 review={snapshot!.type === "review"}
-                focusAfterRemoval={searchField}
-                canRestoreFocus={canRestoreFocus}
                 t={t}
                 read={
                   snapshot!.type === "available"

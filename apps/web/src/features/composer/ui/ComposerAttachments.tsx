@@ -9,7 +9,6 @@ import {
 } from "@/features/composer/public/attachments";
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
-import { basename } from "@/lib/path";
 import { Chip } from "@/ui/index";
 import { LightboxDialog, ButtonPrimitive } from "@flame/ui";
 
@@ -17,33 +16,21 @@ import { TextEditorDialog } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
-import { fileIconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
-import {
-  type DraftMention,
-  draftMentions,
-  removeMention,
-} from "@/features/composer/application/draftContext";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 interface Props {
   images: readonly ComposerImageAttachment[];
   pastes: readonly PastedText[];
-  value: string;
-  knownPaths: ReadonlySet<string>;
-  onChange: (value: string) => void;
   onRemoveImage: (id: string) => void;
   onRemovePaste: (id: string) => void;
   onEditPaste: (id: string, text: string) => boolean;
   onRestorePaste: (id: string, text: string) => void;
-  composerInput: RefObject<HTMLTextAreaElement | null>;
+  composerInput: RefObject<HTMLElement | null>;
 }
 
 export function ComposerAttachments({
   images,
   pastes,
-  value,
-  knownPaths,
-  onChange,
   onRemoveImage,
   onRemovePaste,
   onEditPaste,
@@ -51,13 +38,8 @@ export function ComposerAttachments({
   composerInput,
 }: Props) {
   const t = useT();
-  const mentions = draftMentions(value, knownPaths);
   const removeImage = (id: string) => {
     onRemoveImage(id);
-    composerInput.current?.focus();
-  };
-  const removeReference = (mention: DraftMention) => {
-    onChange(removeMention(value, mention));
     composerInput.current?.focus();
   };
   const removePaste = (id: string) => {
@@ -78,7 +60,7 @@ export function ComposerAttachments({
       <span role="status" className="sr-only">
         {images.map(imageStatus).join(". ")}
       </span>
-      {(mentions.length > 0 || images.length > 0 || pastes.length > 0) && (
+      {(images.length > 0 || pastes.length > 0) && (
         <div data-slot="composer-attachments" {...stylex.props(composerStyles.tray)}>
           <AnimatePresence initial={false}>
             {images.map((image) => (
@@ -100,21 +82,6 @@ export function ComposerAttachments({
                     {imageStatus(image)}
                   </Chip>
                 )}
-              </motion.div>
-            ))}
-            {mentions.map((mention) => (
-              <motion.div
-                key={`${mention.start}:${mention.path}`}
-                {...chipPresence}
-                {...stylex.props(composerStyles.attachment)}
-              >
-                <Chip
-                  icon={fileIconName(mention.path)}
-                  title={mention.path}
-                  onClose={() => removeReference(mention)}
-                >
-                  {basename(mention.path)}
-                </Chip>
               </motion.div>
             ))}
             {pastes.map((paste) => (
@@ -177,7 +144,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
 
 interface ReviewExit {
   origin: Element | null;
-  returnTo: "chip" | HTMLTextAreaElement | null;
+  returnTo: "chip" | HTMLElement | null;
 }
 
 function PasteChip({
@@ -188,7 +155,7 @@ function PasteChip({
   onRestore,
 }: {
   paste: PastedText;
-  composerInput: RefObject<HTMLTextAreaElement | null>;
+  composerInput: RefObject<HTMLElement | null>;
   onRemove: () => void;
   onEdit: (text: string) => boolean;
   onRestore: (text: string) => void;
@@ -203,7 +170,6 @@ function PasteChip({
     if (active !== origin && active !== origin.ownerDocument.body) return false;
     if (returnTo === "chip") return true;
     if (!returnTo?.isConnected) return false;
-    returnTo.setSelectionRange(returnTo.value.length, returnTo.value.length);
     return returnTo;
   };
   const label =

@@ -48,7 +48,7 @@ interface Props {
   settings: MCPSettings;
   t: Translate;
   server?: MCPServerSettings;
-  opener: HTMLElement;
+  returnFocus: HTMLElement;
   onDone(): void;
   onCancel(): void;
 }
@@ -57,7 +57,7 @@ export function ServerForm({
   settings,
   t,
   server,
-  opener,
+  returnFocus,
   onDone,
   onCancel,
 }: Props) {
@@ -67,6 +67,13 @@ export function ServerForm({
   const draft = edit.fields;
   const isEdit = server !== undefined;
   const firstField = useRef<HTMLInputElement>(null);
+  const form = useRef<HTMLDivElement>(null);
+  const close = (complete: () => void) => {
+    const root = form.current;
+    if (root?.contains(root.ownerDocument.activeElement))
+      returnFocus.focus({ preventScroll: true });
+    complete();
+  };
   const presented = useRef(false);
   useLayoutEffect(() => {
     presented.current = true;
@@ -100,7 +107,7 @@ export function ServerForm({
   const valid = edit.isValid;
   const onSave = async () => {
     if ((await settings.save(context, edit, server?.id)) && presented.current)
-      onDone();
+      close(onDone);
   };
   const onTest = () => settings.test(context, key, edit);
   const onDelete = async () => {
@@ -109,10 +116,10 @@ export function ServerForm({
       (await settings.remove(context, server.id)) &&
       presented.current
     )
-      onDone();
+      close(onDone);
   };
   return (
-    <RecordForm opener={opener}>
+    <RecordForm ref={form}>
       <FormRow>
         <FormField label={t("mcp.form.name.aria")}>
           <TextField
@@ -439,7 +446,7 @@ export function ServerForm({
             resource={key}
             t={t}
             onSettled={() => {
-              if (presented.current) onDone();
+              if (presented.current) close(onDone);
             }}
           />
         }
@@ -453,7 +460,7 @@ export function ServerForm({
         >
           {probing ? t("mcp.testing") : t("mcp.test")}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+        <Button variant="ghost" size="sm" onClick={() => close(onCancel)}>
           {t("common.cancel")}
         </Button>
         <Button

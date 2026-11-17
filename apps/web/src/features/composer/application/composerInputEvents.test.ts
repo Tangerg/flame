@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LARGE_PASTE_CHARS } from "@/features/composer/domain/largePaste";
 import {
-  composerCompositionKeyIntent,
   composerKeyBindingKey,
   composerPasteIntent,
 } from "@/features/composer/application/composerInputEvents";
@@ -34,56 +33,8 @@ describe("composerPasteIntent", () => {
 });
 
 describe("composerKeyBindingKey", () => {
-  it("projects keyboard events to canonical composer binding keys", () => {
-    expect(
-      composerKeyBindingKey(new KeyboardEvent("keydown", { key: "Enter", metaKey: true })),
-    ).toBe("mod+enter");
-    expect(
-      composerKeyBindingKey(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          ctrlKey: true,
-          altKey: true,
-          shiftKey: true,
-        }),
-      ),
-    ).toBe("mod+alt+shift+enter");
-    expect(composerKeyBindingKey(new KeyboardEvent("keydown", { key: "ArrowUp" }))).toBe("arrowup");
-  });
-});
-
-describe("composerCompositionKeyIntent", () => {
-  it("recognizes controller, native, and WebKit IME process signals", () => {
-    const plain = new KeyboardEvent("keydown", { key: "Enter" });
-
-    expect(composerCompositionKeyIntent(plain, true, false)).toBe("active");
-    expect(
-      composerCompositionKeyIntent(
-        new KeyboardEvent("keydown", { isComposing: true, key: "Enter" }),
-        false,
-        false,
-      ),
-    ).toBe("active");
-    expect(
-      composerCompositionKeyIntent({ ...plain, isComposing: false, keyCode: 229 }, false, false),
-    ).toBe("active");
-    expect(composerCompositionKeyIntent(plain, false, false)).toBeNull();
-  });
-
-  it("owns only the plain Enter immediately following a composition commit", () => {
-    const plain = new KeyboardEvent("keydown", { key: "Enter" });
-
-    expect(composerCompositionKeyIntent(plain, false, true)).toBe("committed-enter");
-    expect(
-      composerCompositionKeyIntent(
-        new KeyboardEvent("keydown", { key: "Enter", metaKey: true }),
-        false,
-        true,
-      ),
-    ).toBeNull();
-    expect(
-      composerCompositionKeyIntent(new KeyboardEvent("keydown", { key: "a" }), false, true),
-    ).toBeNull();
-    expect(composerCompositionKeyIntent(plain, false, false)).toBeNull();
+  it("uses the library grammar for physical keyboard events", () => {
+    expect(composerKeyBindingKey(new KeyboardEvent("keydown", { key: "Enter" }))).toBe("Enter");
+    expect(composerKeyBindingKey(new KeyboardEvent("keydown", { key: "ArrowUp" }))).toBe("ArrowUp");
   });
 });

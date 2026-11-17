@@ -66,7 +66,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Button, Callout, CalloutLabelsProvider, Checkbox, ContentVisibility, DiffStat, EvidenceImage, FontScaleProvider, IconButton, ImageViewport, Popover, ProgressBar, Segmented, Slider, Switch, TooltipProvider, useContentVisible } from '@flame/ui';
 import { Brain } from '@flame/icons/react';
 function Visibility() { return createElement('output', null, useContentVisible() ? 'content-visible' : 'content-hidden'); }
-const imageLabels = {view: 'View image', close: 'Close image preview', description: 'Image description', zoomIn: 'Zoom in image', zoomOut: 'Zoom out image'};
+const imageLabels = {fit: 'Fit image', view: 'View image', close: 'Close image preview', description: 'Image description', zoomIn: 'Zoom in image', zoomOut: 'Zoom out image'};
 console.log(renderToStaticMarkup(createElement(EvidenceImage, {src: 'captured-page.png', alt: 'Captured page', labels: imageLabels})));
 console.log(renderToStaticMarkup(createElement(ImageViewport, {image: {src: 'captured-page.png', alt: 'Captured page'}, label: 'Expanded captured page', labels: imageLabels})));
 console.log(renderToStaticMarkup(createElement(CalloutLabelsProvider, {labels: {note: '宿主说明', tip: 'Host tip', important: 'Host important', warning: 'Host warning', caution: 'Host caution'}}, createElement(Callout, {kind: 'note'}, 'Independent Callout body'))));

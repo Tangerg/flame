@@ -78,12 +78,14 @@ describe("Composer", () => {
 
   it("persists only non-empty draft text", () => {
     const composer = typed(Composer.empty().activate("s1"), "kept").activate("s2");
-    expect([...composer.durableDraftTexts()]).toEqual([["s1", { value: "kept", pastes: [] }]]);
+    expect([...composer.durableDraftTexts()]).toEqual([
+      ["s1", { value: "kept", document: null, pastes: [] }],
+    ]);
   });
 
   it("restores durable text into empty drafts", () => {
     const restored = Composer.restoreDrafts(
-      new Map([["s1", { value: "kept", pastes: [] }]]),
+      new Map([["s1", { value: "kept", document: null, pastes: [] }]]),
     ).activate("s1");
     expect(restored.draft.value).toBe("kept");
     expect(restored.draft.images).toEqual([]);
@@ -178,4 +180,17 @@ describe("captured composer consumption", () => {
     const discarded = original.discardSession("s1");
     expect(discarded.consumeDraft("s1", original.draft, "original")).toBe(discarded);
   });
+});
+
+it("retains in-flight attachment identity while restoring a document checkpoint", () => {
+  const current = Composer.empty()
+    .activate("restored")
+    .edit((draft) => draft.beginImageRead([{ id: "inflight", name: "capture.png" }]));
+  const restored = current.hydrateDrafts(
+    new Map([["restored", { value: "saved", document: null, pastes: [] }]]),
+    new Set(),
+  );
+  expect(restored.draft.imageAttachments).toBe(current.draft.imageAttachments);
+  expect(restored.draft.imageAttachments[0]).toMatchObject({ id: "inflight", status: "pending" });
+  expect(restored.draft.value).toBe("saved");
 });

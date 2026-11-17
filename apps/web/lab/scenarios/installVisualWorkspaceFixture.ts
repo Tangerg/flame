@@ -1,3 +1,4 @@
+import { visualFilePage } from "./filePage";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { type VisualClient } from "./client";
 import { isCancelledError, type Query } from "@tanstack/react-query";
@@ -32,14 +33,12 @@ import { Memory } from "../../../../plugins/memory/component/component";
 import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { splitFilePath } from "@/lib/path";
 import chatSearch from "@/features/chat/search/index";
 import appearanceSettings from "@/features/settings/appearance";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
 import connectionSettings from "@/features/connection/settings/index";
-import personalizationSettings from "@/features/settings/personalization/index";
 import { createInstalledPluginLoader, pluginManagementPane } from "@/features/plugins/index";
 import {
   WORKSPACE_FILES_CHANGED_KEY,
@@ -576,27 +575,47 @@ function workspaceDataPlugin(
               request.recursive !== true
             ) {
               directoryQuery = queryClient.getQueryCache().find({
-                queryKey: [WORKSPACE_LIST_FILES_KEY, request],
+                queryKey: [WORKSPACE_LIST_FILES_KEY, { ...request, cursor: undefined }, "pages"],
                 exact: true,
               });
-              if (directoryState === "loading") return pending<WorkspaceFileEntry[]>(signal);
-              if (directoryState === "empty") return [];
+              if (directoryState === "loading") return pending<never>(signal);
+              if (directoryState === "empty") return visualFilePage([]);
+              if (directoryState === "budget" && !request.cursor)
+                return {
+                  data: [],
+                  nextCursor: "apps-budget",
+                  complete: false,
+                  coverage: { scannedEntries: 400, excludedEntries: 400, budgetExhausted: true },
+                };
+              if (directoryState === "paged") {
+                const start = request.cursor ? 101 : 1;
+                const count = request.cursor ? 20 : 100;
+                return {
+                  data: Array.from({ length: count }, (_, index): WorkspaceFileEntry => {
+                    const name = `page-${String(start + index).padStart(3, "0")}.txt`;
+                    return { name, path: `${VISUAL_DIRECTORY_PATH}/${name}`, type: "file" };
+                  }),
+                  ...(request.cursor ? {} : { nextCursor: "apps-next" }),
+                  complete: Boolean(request.cursor),
+                  coverage: { scannedEntries: count, excludedEntries: 0, budgetExhausted: false },
+                };
+              }
               if (
                 (directoryState === "error" && directoryPhase === "initial") ||
                 (directoryState === "refresh-error" && directoryPhase === "notified")
               )
                 throw new Error("Visual fixture could not list apps");
             }
-            return [
+            return visualFilePage([
               {
                 path: ACTIVE_DIFF_FILE,
                 name: splitFilePath(ACTIVE_DIFF_FILE).name,
                 type: "file",
                 sizeBytes: 2048,
               },
-            ] satisfies WorkspaceFileEntry[];
+            ] satisfies WorkspaceFileEntry[]);
           }
-          return [
+          return visualFilePage([
             { path: VISUAL_DIRECTORY_PATH, name: VISUAL_DIRECTORY_PATH, type: "dir" },
             { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
             { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
@@ -619,7 +638,7 @@ function workspaceDataPlugin(
               sizeBytes: new TextEncoder().encode(CALLOUT_MARKDOWN).byteLength,
             },
             ...(state === "dock-file-unsupported" ? [UNSUPPORTED_IMAGE] : []),
-          ] satisfies WorkspaceFileEntry[];
+          ] satisfies WorkspaceFileEntry[]);
         },
       });
 
@@ -819,13 +838,21 @@ export async function installVisualWorkspaceFixture(
   visual.theme.store.setState({ theme, visualStyle: "flame" });
   visual.workspace.layout.setState({
     sidebarCollapsed: !sidebarOpen,
-    sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
-    dockWidthRatio:
+    sidebarLayout: null,
+    dockLayout:
       state === "dock-catalog"
         ? null
-        : state === "dock-review"
-          ? VISUAL_REVIEW_DOCK_WIDTH_RATIO
-          : VISUAL_DOCK_WIDTH_RATIO,
+        : {
+            dock:
+              (state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO) *
+              100,
+            conversation:
+              (1 -
+                (state === "dock-review"
+                  ? VISUAL_REVIEW_DOCK_WIDTH_RATIO
+                  : VISUAL_DOCK_WIDTH_RATIO)) *
+              100,
+          },
   });
 
   await loadVisualPlugins([
@@ -835,7 +862,6 @@ export async function installVisualWorkspaceFixture(
     chatSearch,
     approvalsSettings,
     connectionSettings,
-    personalizationSettings,
     createInstalledPluginLoader(visual.installedPlugins),
     pluginManagementPane,
     createVisualNotifier(visual.messages),
@@ -851,7 +877,7 @@ export async function installVisualWorkspaceFixture(
   root.dataset.visualDockWidthCommits = "0";
 
   visual.workspace.layout.subscribe((next, previous) => {
-    if (next.dockWidthRatio === previous.dockWidthRatio) return;
+    if (next.dockLayout === previous.dockLayout) return;
     root.dataset.visualDockWidthCommits = String(
       Number(root.dataset.visualDockWidthCommits ?? "0") + 1,
     );

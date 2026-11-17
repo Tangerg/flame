@@ -1,1008 +1,355 @@
-import { canonicalJSON } from "@frame/sdk/json";
 import {
-  createParser,
-  evaluateRoot,
-  jsonToOpenUI,
-  type ASTNode,
-  type ElementNode,
-  type Library,
-  type OpenUIError,
-} from "@openuidev/lang-core";
+  STRICT_VALIDATION,
+  MessageProcessor,
+  type ActionPayload,
+} from "@a2ui/web_core";
+import {
+  AgentToRendererMessageSchema,
+  type AgentToRendererMessage,
+} from "@a2ui/web_core/v1_0";
 import { pluginMethod } from "@flame/runtime-client";
 import {
+  canonicalJSON,
   isJSONNumber,
   parseJSON,
   projectNumber,
-  stringifyJSON,
 } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { z } from "zod/v4";
-import {
-  authoredPropsSchema,
-  createDisplayLibrary,
-  displayDefinitions,
-  validateResolvedProps,
-  type DisplayComponentName,
-} from "./catalog";
-import {
-  assertValueBudget,
-  compileExpression,
-  each,
-  evaluateExpression,
-  expressionCost,
-  expressionReferences,
-  expressionSchema,
-  identifier,
-  InvalidPresentation,
-  isExpression,
-  jsonValueSchema,
-  limits,
-  operationKey,
-  runtimeFunctions,
-  stateKey,
-  type Expression,
-  type JSONValue,
-} from "./expression";
-import {
-  validateField,
-  type FieldKind,
-  type FieldRules,
-  type ValidationIssue,
-} from "./validation";
+import { z } from "zod3";
+import { CATALOG_ID, catalog, functions } from "./catalog";
 
-export {
-  InvalidPresentation,
-  limits,
-  operationKey,
-  stateKey,
-  type Expression,
-  type JSONValue,
-} from "./expression";
-export {
-  isSafeURL,
-  safeURL,
-  validateField,
-  type FieldRules,
-  type ValidationIssue,
-} from "./validation";
-
-export interface UiNode {
-  id: string;
-  type: Exclude<DisplayComponentName, "Document"> | "Each";
-  props: Record<string, unknown>;
-  children?: UiNode[];
+export class InvalidPresentation extends Error {
+  constructor(message: string, cause?: unknown) {
+    super(message, { cause });
+  }
 }
-
-const nodeSchema: z.ZodType<UiNode> = z.lazy(() => {
-  const components = Object.keys(displayDefinitions)
-    .filter((name) => name !== "Document")
-    .map((name) => {
-      const component = name as DisplayComponentName;
-      const definition = displayDefinitions[component];
-      return z
-        .strictObject({
-          id: identifier,
-          type: z.literal(component),
-          props: authoredPropsSchema(component),
-          ...(definition.children
-            ? { children: z.array(nodeSchema).max(limits.nodes) }
-            : {}),
-        })
-        .describe(definition.description);
-    });
-  return z.union([
-    ...components,
-    z.strictObject({
-      id: identifier,
-      type: z.literal("Each"),
-      props: z.strictObject({
-        items: expressionSchema,
-        as: identifier,
-        limit: z.number().int().min(1).max(limits.renderedNodes),
-      }),
-      children: z.array(nodeSchema).length(1),
-    }),
-  ]) as z.ZodType<UiNode>;
-});
-
-const actionSchema = z.strictObject({
-  id: identifier,
-  steps: z
-    .array(
-      z.discriminatedUnion("type", [
-        z.strictObject({
-          type: z.literal("set"),
-          state: identifier,
-          value: expressionSchema,
-        }),
-        z.strictObject({
-          type: z.literal("reset"),
-          states: z.array(identifier).min(1).max(limits.states),
-        }),
-        z.strictObject({ type: z.literal("operation"), operation: identifier }),
-        z.strictObject({
-          type: z.literal("followup"),
-          message: expressionSchema.describe(
-            "The request submitted to the original conversation.",
-          ),
-          payload: expressionSchema.describe(
-            "Only this explicitly selected JSON value is sent with the followup. Use {object:{}} for no fields. Message and encoded payload together must fit 16 KiB.",
-          ),
-        }),
-        z.strictObject({ type: z.literal("copy"), text: expressionSchema }),
-        z.strictObject({ type: z.literal("openUrl"), url: expressionSchema }),
-      ]),
-    )
-    .min(1)
-    .max(32),
-});
-export type Action = z.infer<typeof actionSchema>;
-
+export const limits = {
+  bytes: 512 * 1024,
+  nodes: 512,
+  operations: 32,
+  followupBytes: 16 * 1024,
+};
 const routeText = z.string().min(1).max(1024);
-const targetSchema = z.strictObject({ scope: routeText, reference: routeText });
-const operationSchema = z.strictObject({
-  id: identifier,
-  installationId: routeText,
-  contribution: routeText,
-  method: routeText,
-  target: targetSchema.optional(),
-  input: expressionSchema,
-  auto: z.boolean().optional(),
-});
+const operationSchema = z
+  .object({
+    id: routeText,
+    installationId: routeText,
+    contribution: routeText,
+    method: routeText,
+    target: z
+      .object({ scope: routeText, reference: routeText })
+      .strict()
+      .optional(),
+  })
+  .strict();
 export type OperationRequest = z.infer<typeof operationSchema>;
 export type CapturedContribution = Pick<
   CallPluginRequest,
   "contract" | "contribution" | "digest" | "installationId"
 >;
-const capturedContributionSchema: z.ZodType<CapturedContribution> =
-  z.strictObject({
-    contract: z.string().min(1).max(limits.html),
+const capturedContributionSchema = z
+  .object({
+    contract: z.string().min(1).max(limits.bytes),
     contribution: routeText,
     digest: routeText,
     installationId: routeText,
-  });
-
+  })
+  .strict();
 export const requestSchema = z
-  .strictObject({
-    title: z.string().min(1).max(256).regex(/\S/u),
-    state: z
-      .array(z.strictObject({ id: identifier, value: jsonValueSchema }))
-      .max(limits.states),
-    nodes: z.array(nodeSchema).min(1).max(limits.nodes),
-    actions: z.array(actionSchema).max(limits.actions),
+  .object({
+    title: z.string().min(1).max(256),
+    messages: z.array(AgentToRendererMessageSchema).min(1).max(limits.nodes),
     operations: z.array(operationSchema).max(limits.operations),
   })
-  .describe(
-    "A complete interactive JSON document. State is local input; operation projections are read-only. Values can be pure expressions. Use strings for exact quantities beyond JavaScript numeric capacity. Discover function parameters and available remote operations with ui_catalog. Each/map/filter/groupBy require explicit iteration limits. Data-dependent views must provide valid loading/default values.",
-  );
+  .strict();
 export type UiDocument = z.infer<typeof requestSchema>;
 export const documentSchema = requestSchema.extend({
   contributions: z.array(capturedContributionSchema).max(limits.operations),
 });
 export type AcceptedDocument = z.infer<typeof documentSchema>;
-
-function schemaProjection(schema: z.ZodType): {
-  type: "object";
-  [keyword: string]: unknown;
-} {
-  const projected = z.toJSONSchema(schema, {
-    reused: "ref",
-    override({ jsonSchema }) {
-      if (jsonSchema.pattern === undefined) return;
-      // Portable admission owns structure; the original Zod parser owns authored
-      // string rules alongside its cross-field checks. Publish those rules as
-      // descriptions without asking the host to execute consumer regexes.
-      jsonSchema.description = [
-        jsonSchema.description,
-        `Must match ${JSON.stringify(jsonSchema.pattern)}.`,
-      ]
-        .filter(Boolean)
-        .join(" ");
-      delete jsonSchema.pattern;
+export const requestJSONSchema = {
+  type: "object" as const,
+  properties: {
+    title: { type: "string", minLength: 1, maxLength: 256 },
+    messages: {
+      type: "array",
+      minItems: 1,
+      maxItems: limits.nodes,
+      items: {
+        type: "object",
+        properties: { version: { const: "1.0" } },
+        required: ["version"],
+      },
+      description:
+        "Official A2UI 1.0 messages. Get the complete protocol and trusted catalog with ui_catalog.",
     },
-  });
-  if (projected.type !== "object")
-    throw new Error("genui: document schema requires an object root");
-  return { ...projected, type: projected.type };
-}
-export const requestJSONSchema = schemaProjection(requestSchema);
-export const documentJSONSchema = schemaProjection(documentSchema);
+    operations: {
+      type: "array",
+      maxItems: limits.operations,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          installationId: { type: "string" },
+          contribution: { type: "string" },
+          method: { type: "string" },
+          target: {
+            type: "object",
+            properties: {
+              scope: { type: "string" },
+              reference: { type: "string" },
+            },
+            required: ["scope", "reference"],
+            additionalProperties: false,
+          },
+        },
+        required: ["id", "installationId", "contribution", "method"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "messages", "operations"],
+  additionalProperties: false,
+};
+export const documentJSONSchema = {
+  ...requestJSONSchema,
+  properties: {
+    ...requestJSONSchema.properties,
+    contributions: { type: "array", items: { type: "object" } },
+  },
+  required: [...requestJSONSchema.required, "contributions"],
+};
 
-function normalized(value: unknown): unknown {
+function normalize(value: unknown): unknown {
   if (isJSONNumber(value)) {
     try {
       return projectNumber(value);
     } catch (cause) {
-      if (cause instanceof RangeError || cause instanceof TypeError)
-        throw new InvalidPresentation(
-          "numeric literals must be exactly representable; use strings for exact quantities",
-          cause,
-        );
-      throw cause;
+      throw new InvalidPresentation("use strings for exact quantities", cause);
     }
   }
-  if (Array.isArray(value)) return value.map(normalized);
-  if (value !== null && typeof value === "object") {
-    if (
-      Object.getPrototypeOf(value) !== Object.prototype &&
-      Object.getPrototypeOf(value) !== null
-    )
-      throw new InvalidPresentation(
-        "document values must be plain JSON records",
-      );
+  if (Array.isArray(value)) return value.map(normalize);
+  if (value !== null && typeof value === "object")
     return Object.fromEntries(
-      Object.entries(value).map(([key, value]) => [key, normalized(value)]),
+      Object.entries(value).map(([key, item]) => [key, normalize(item)]),
     );
-  }
   return value;
 }
-
-function checkContent(value: unknown): void {
-  assertValueBudget(value);
-  let encoded: string;
-  try {
-    encoded = stringifyJSON(value);
-  } catch (cause) {
-    if (cause instanceof SyntaxError)
-      throw new InvalidPresentation("invalid document JSON", cause);
-    throw cause;
+function bounded(value: unknown): unknown {
+  if (new TextEncoder().encode(canonicalJSON(value)).byteLength > limits.bytes)
+    throw new InvalidPresentation("interface exceeds content capacity");
+  let nodes = 0;
+  function visit(item: unknown, depth: number) {
+    if (++nodes > 20000 || depth > 48)
+      throw new InvalidPresentation("interface exceeds structural capacity");
+    if (Array.isArray(item)) item.forEach((child) => visit(child, depth + 1));
+    else if (item && typeof item === "object")
+      Object.values(item).forEach((child) => visit(child, depth + 1));
   }
-  if (new TextEncoder().encode(encoded).length > limits.bytes)
-    throw new InvalidPresentation("document exceeds encoded content capacity");
+  visit(value, 0);
+  return normalize(value);
 }
-
-function unique(items: readonly string[], kind: string): Set<string> {
-  const values = new Set(items);
-  if (values.size !== items.length)
-    throw new InvalidPresentation("duplicate " + kind + " identifier");
-  return values;
+function unique(values: readonly string[]) {
+  if (new Set(values).size !== values.length)
+    throw new InvalidPresentation("duplicate interface identity");
 }
-
-interface FieldConstraint {
-  id: string;
-  kind: "string" | "strings" | "boolean" | "number" | "index";
-  node: UiNode;
-}
-function constraints(node: UiNode): FieldConstraint[] {
-  const props = node.props;
-  const field = (
-    key: string,
-    kind: FieldConstraint["kind"],
-  ): FieldConstraint[] =>
-    typeof props[key] === "string" ? [{ id: props[key], kind, node }] : [];
-  switch (node.type) {
-    case "Input":
-    case "TextArea":
-    case "Select":
-    case "RadioGroup":
-    case "DatePicker":
-    case "Tabs":
-      return field("field", "string");
-    case "Checkbox":
-    case "Switch":
-    case "Disclosure":
-    case "Popover":
-    case "Flashcard":
-      return field("field", "boolean");
-    case "MultiSelect":
-    case "Accordion":
-      return field("field", "strings");
-    case "Slider":
-      return field("field", "number");
-    case "Timer":
-      return [...field("field", "number"), ...field("runningState", "boolean")];
-    case "Carousel":
-      return field("field", "index");
-    case "Table":
-      return [
-        ...field("searchState", "string"),
-        ...field("sortState", "string"),
-        ...field("pageState", "index"),
-        ...field("selectState", "strings"),
-      ];
-    case "Map":
-      return field("selectedState", "string");
-    default:
-      return [];
-  }
-}
-
-function checkState(constraint: FieldConstraint, value: unknown): void {
-  const valid =
-    constraint.kind === "strings"
-      ? Array.isArray(value) && value.every((item) => typeof item === "string")
-      : constraint.kind === "index"
-        ? typeof value === "number" && Number.isSafeInteger(value) && value >= 0
-        : typeof value === constraint.kind;
-  if (!valid)
-    throw new InvalidPresentation(
-      "state shape differs from its control: " + constraint.id,
-    );
-  const { node } = constraint;
-  if (
-    node.type === "Slider" &&
-    ((value as number) < (node.props.min as number) ||
-      (value as number) > (node.props.max as number))
-  )
-    throw new InvalidPresentation("slider state is outside its declared range");
-  if (
-    node.type === "Timer" &&
-    constraint.kind === "number" &&
-    (value as number) < 0
-  )
-    throw new InvalidPresentation("timer seconds cannot be negative");
-  if (
-    node.type === "Carousel" &&
-    (value as number) >= (node.children?.length ?? 0)
-  )
-    throw new InvalidPresentation("carousel index is outside its children");
-  if (
-    ["Select", "RadioGroup", "MultiSelect", "Tabs", "Accordion"].includes(
-      node.type,
-    )
-  ) {
-    const options = (node.props.options ?? node.props.items) as Array<{
-      value: string;
-    }>;
-    const selected = Array.isArray(value) ? value : value === "" ? [] : [value];
-    if (
-      selected.some((item) => !options.some((option) => option.value === item))
-    )
-      throw new InvalidPresentation("selected state is not a declared option");
-    if (node.type === "Tabs" && value === "")
-      throw new InvalidPresentation("tabs require a selected declared panel");
-  }
-  if (
-    node.type === "Table" &&
-    constraint.id === node.props.sortState &&
-    value !== ""
-  ) {
-    const columns = node.props.columns as Array<{ key: string }>;
-    if (
-      !columns.some(
-        (column) =>
-          value === column.key + ":asc" || value === column.key + ":desc",
-      )
-    )
-      throw new InvalidPresentation(
-        "table sort state is not a declared column and direction",
-      );
-  }
-}
-
-function allNodes(nodes: readonly UiNode[]): UiNode[] {
-  return nodes.flatMap((node) => [node, ...allNodes(node.children ?? [])]);
-}
-
-function checkDocument(document: UiDocument): void {
-  const states = unique(
-    document.state.map((value) => value.id),
-    "state",
-  );
-  const actions = unique(
-    document.actions.map((value) => value.id),
-    "action",
-  );
-  const operations = unique(
-    document.operations.map((value) => value.id),
-    "operation",
-  );
-  const nodes = allNodes(document.nodes);
-  unique(
-    nodes.map((value) => value.id),
-    "node",
-  );
-  const timers = nodes.filter((node) => node.type === "Timer");
-  unique(
-    timers.map((node) => node.props.field as string),
-    "timer clock state",
-  );
-  unique(
-    timers.map((node) => node.props.runningState as string),
-    "timer running state",
-  );
-  if (nodes.length > limits.nodes)
-    throw new InvalidPresentation("document exceeds authored node capacity");
-  const expression = (
-    value: Expression,
-    locals = new Set<string>(),
-  ): number => {
-    expressionReferences(
-      value,
-      (kind, id) => {
-        if (
-          (kind === "state" && !states.has(id)) ||
-          (kind === "operation" && !operations.has(id)) ||
-          (kind === "item" && !locals.has(id))
-        )
-          throw new InvalidPresentation(
-            "undeclared " + kind + " reference: " + id,
-          );
-      },
-      locals,
-    );
-    return expressionCost(value);
-  };
-  const walk = (
-    node: UiNode,
-    depth: number,
-    locals: Set<string>,
-    svg: boolean,
-    form: boolean,
-    copies: number,
-  ): { rendered: number; evaluations: number } => {
-    if (depth > limits.depth)
-      throw new InvalidPresentation("document exceeds nesting capacity");
-    const props = node.props;
-    if (node.type === "Timer" && copies > 1)
-      throw new InvalidPresentation(
-        "a timer clock cannot be repeated by an iteration",
-      );
-    let evaluations = 1;
-    let multiplier = 1;
-    let childrenScope = locals;
-    if (node.type === "Each") {
-      evaluations += expression(props.items as Expression, locals);
-      multiplier = props.limit as number;
-      childrenScope = new Set([...locals, props.as as string]);
-    } else {
-      for (const value of Object.values(props))
-        if (isExpression(value)) evaluations += expression(value, locals);
-      if (typeof props.action === "string" && !actions.has(props.action))
-        throw new InvalidPresentation("undeclared action reference");
-      for (const constraint of constraints(node)) {
-        if (!states.has(constraint.id))
-          throw new InvalidPresentation(
-            "control refers to undeclared local state",
-          );
-        checkState(
-          constraint,
-          document.state.find((value) => value.id === constraint.id)!.value,
-        );
-      }
-      if (!Object.values(props).some(isExpression))
-        validateResolvedProps(node.type, {
-          ...props,
-          ...(displayDefinitions[node.type].children
-            ? { children: node.children ?? [] }
-            : {}),
-        });
-    }
-    const primitive = [
-      "G",
-      "Circle",
-      "Ellipse",
-      "Rect",
-      "Line",
-      "Path",
-      "Polyline",
-      "Polygon",
-      "SvgText",
-    ].includes(node.type);
-    if (primitive && !svg)
-      throw new InvalidPresentation("SVG primitives require an SVG parent");
-    if (svg && !primitive && !["Each", "If"].includes(node.type))
-      throw new InvalidPresentation("SVG accepts only its primitive children");
-    if (form && node.type === "Form")
-      throw new InvalidPresentation("forms cannot nest");
-    let rendered = node.type === "Each" ? 0 : 1;
-    for (const child of node.children ?? []) {
-      const cost = walk(
-        child,
-        depth + 1,
-        childrenScope,
-        svg || node.type === "Svg",
-        form || node.type === "Form",
-        copies * multiplier,
-      );
-      rendered += multiplier * cost.rendered;
-      evaluations += multiplier * cost.evaluations;
-    }
-    return { rendered, evaluations };
-  };
-  let rendered = 1,
-    evaluations = 0;
-  for (const node of document.nodes) {
-    const cost = walk(node, 1, new Set(), false, false, 1);
-    rendered += cost.rendered;
-    evaluations += cost.evaluations;
-  }
-  for (const operation of document.operations)
-    evaluations += expression(operation.input);
-  for (const action of document.actions)
-    for (const step of action.steps) {
-      if (step.type === "set") {
-        if (!states.has(step.state))
-          throw new InvalidPresentation(
-            "set may only write declared local state",
-          );
-        evaluations += expression(step.value);
-      } else if (step.type === "reset") {
-        if (step.states.some((id) => !states.has(id)))
-          throw new InvalidPresentation(
-            "reset may only write declared local state",
-          );
-      } else if (step.type === "operation") {
-        if (!operations.has(step.operation))
-          throw new InvalidPresentation(
-            "action refers to undeclared operation",
-          );
-      } else {
-        evaluations += expression(
-          step.type === "followup"
-            ? step.message
-            : step.type === "copy"
-              ? step.text
-              : step.url,
-        );
-        if (step.type === "followup") evaluations += expression(step.payload);
-      }
-    }
-  if (rendered > limits.renderedNodes || evaluations > limits.evaluationSteps)
-    throw new InvalidPresentation(
-      "document exceeds expansion or evaluation capacity",
-    );
-}
-
-export function parseDocument(value: unknown): UiDocument {
-  assertValueBudget(value);
-  const result = requestSchema.safeParse(normalized(value));
-  if (!result.success)
-    throw new InvalidPresentation("invalid interactive document", result.error);
-  checkContent(result.data);
-  checkDocument(result.data);
-  return result.data;
-}
-
-function freeze<T>(value: T): T {
-  if (value !== null && typeof value === "object") {
-    for (const child of Object.values(value)) freeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
-
-function contributionKey(
+const bindingKey = (
   value: Pick<CapturedContribution, "installationId" | "contribution">,
-): string {
-  return JSON.stringify([value.installationId, value.contribution]);
-}
-
-function operationBinding(
+) => JSON.stringify([value.installationId, value.contribution]);
+function binding(
   request: OperationRequest,
-  contribution: CapturedContribution,
+  captured: CapturedContribution,
 ): Omit<CallPluginRequest, "input"> {
-  const binding = { ...contribution, method: request.method };
-  let method;
-  try {
-    method = pluginMethod(binding);
-  } catch (cause) {
-    if (cause instanceof TypeError || cause instanceof SyntaxError)
-      throw new InvalidPresentation("captured method is invalid", cause);
-    throw cause;
-  }
+  const method = pluginMethod({ ...captured, method: request.method });
   const target =
     method.target === "installation"
-      ? { scope: "installation", reference: contribution.installationId }
+      ? { scope: "installation", reference: captured.installationId }
       : request.target;
   if (
     !target ||
     target.scope !== method.target ||
-    (request.target !== undefined &&
-      (request.target.scope !== target.scope ||
-        request.target.reference !== target.reference))
+    (request.target &&
+      (target.scope !== request.target.scope ||
+        target.reference !== request.target.reference))
   )
     throw new InvalidPresentation("captured target differs from its method");
-  if (request.auto && method.kind !== "query")
-    throw new InvalidPresentation("automatic operations must be queries");
-  return { ...binding, target };
+  return { ...captured, method: request.method, target };
 }
-
-function capture(
-  document: UiDocument,
-  values: unknown,
-): CapturedContribution[] {
-  const result = z
-    .array(capturedContributionSchema)
-    .max(limits.operations)
-    .safeParse(values);
-  if (!result.success)
-    throw new InvalidPresentation(
-      "invalid captured contributions",
-      result.error,
-    );
-  unique(result.data.map(contributionKey), "contribution");
-  const requested = new Set(document.operations.map(contributionKey));
+function admit(document: UiDocument): void {
+  unique(document.operations.map(({ id }) => id));
+  const names = new Set([
+    "followup",
+    "resetDraft",
+    ...document.operations.map(({ id }) => id),
+  ]);
   if (
-    result.data.length !== requested.size ||
-    result.data.some((value) => !requested.has(contributionKey(value)))
+    document.operations.some(
+      ({ id }) => id === "followup" || id === "resetDraft",
+    )
   )
-    throw new InvalidPresentation(
-      "captured contributions must correspond exactly to declared operations",
-    );
-  for (const request of document.operations) {
-    const captured = result.data.find(
-      (value) => contributionKey(value) === contributionKey(request),
-    );
-    if (!captured)
-      throw new InvalidPresentation("missing captured contribution");
-    operationBinding(request, captured);
+    throw new InvalidPresentation("reserved action name");
+  const knownFunctions = new Set(functions.map(({ name }) => name));
+  function walk(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    const record = value as Record<string, unknown>;
+    const call = record["@call"] ?? record.call;
+    if (typeof call === "string" && !knownFunctions.has(call))
+      throw new InvalidPresentation(
+        "renderer function is not admitted: " + call,
+      );
+    if (record.catalogId !== undefined && record.catalogId !== CATALOG_ID)
+      throw new InvalidPresentation("catalog is not admitted");
+    if (
+      record.event &&
+      typeof record.event === "object" &&
+      "name" in record.event &&
+      !names.has(String(record.event.name))
+    )
+      throw new InvalidPresentation("action is not declared");
+    if (record.component === "TextField" || record.component === "CheckBox") {
+      const value = record.value;
+      const path =
+        value && typeof value === "object" && "@path" in value
+          ? value["@path"]
+          : undefined;
+      if (typeof path !== "string" || !path.startsWith("/draft/"))
+        throw new InvalidPresentation("editable values must bind below /draft");
+    }
+    Object.values(record).forEach(walk);
   }
-  return result.data;
+  const surfaces = new Set<string>();
+  for (const message of document.messages) {
+    if ("callRendererFunction" in message || "agentFunctionResponse" in message)
+      throw new InvalidPresentation(
+        "recorded interfaces cannot execute RPC messages",
+      );
+    if ("createSurface" in message) {
+      const surface = message.createSurface;
+      if (
+        surface.catalogId !== CATALOG_ID ||
+        surface.sendDataModel === true ||
+        surfaces.has(surface.surfaceId)
+      )
+        throw new InvalidPresentation("invalid surface admission");
+      surfaces.add(surface.surfaceId);
+    }
+    if ("updateDataModel" in message) {
+      const path = message.updateDataModel.path;
+      if (!path?.startsWith("/data/"))
+        throw new InvalidPresentation(
+          "remote updates may write only below /data",
+        );
+    }
+    if ("createSurface" in message) walk(message.createSurface.components);
+    if ("updateComponents" in message)
+      walk(message.updateComponents.components);
+  }
+  const processor = new MessageProcessor([catalog], undefined, {
+    version: "1.0",
+    validationConfig: STRICT_VALIDATION,
+  });
+  try {
+    processor.processMessages(document.messages);
+  } catch (cause) {
+    throw new InvalidPresentation("invalid A2UI interface", cause);
+  } finally {
+    processor.dispose();
+  }
 }
-
+export function parseDocument(value: unknown): UiDocument {
+  const parsed = requestSchema.safeParse(bounded(value));
+  if (!parsed.success)
+    throw new InvalidPresentation(
+      "expected an A2UI 1.0 interface; older interface formats must be exported as raw history",
+      parsed.error,
+    );
+  admit(parsed.data);
+  return parsed.data;
+}
 export class Presentation {
   readonly #document: AcceptedDocument;
   private constructor(document: AcceptedDocument) {
-    this.#document = freeze(document);
+    this.#document = structuredClone(document);
   }
-
-  static accept(
-    value: unknown,
-    contributions: CapturedContribution[] = [],
-  ): Presentation {
+  static accept(value: unknown, contributions: CapturedContribution[] = []) {
     const document = parseDocument(value);
-    const accepted = {
-      ...document,
-      contributions: capture(document, contributions),
-    };
-    checkContent(accepted);
-    const presentation = new Presentation(accepted);
-    presentation.#validateProjection();
-    return presentation;
-  }
-
-  static read(source: string): Presentation {
-    let value: unknown;
-    try {
-      value = parseJSON(source);
-    } catch (cause) {
-      if (cause instanceof SyntaxError)
-        throw new InvalidPresentation("invalid document JSON", cause);
-      throw cause;
-    }
-    assertValueBudget(value);
-    const accepted = documentSchema.safeParse(normalized(value));
-    if (!accepted.success)
+    const captured = z.array(capturedContributionSchema).parse(contributions);
+    unique(captured.map(bindingKey));
+    const requested = new Set(document.operations.map(bindingKey));
+    if (
+      captured.length !== requested.size ||
+      captured.some((entry) => !requested.has(bindingKey(entry)))
+    )
       throw new InvalidPresentation(
-        "invalid accepted document",
-        accepted.error,
+        "captured contributions must match declared operations",
       );
-    const { contributions, ...document } = accepted.data;
-    // Transport indentation is not authored content and does not consume this budget.
+    for (const request of document.operations) {
+      const entry = captured.find(
+        (entry) => bindingKey(entry) === bindingKey(request),
+      );
+      if (!entry)
+        throw new InvalidPresentation("missing captured contribution");
+      binding(request, entry);
+    }
+    return new Presentation({ ...document, contributions: captured });
+  }
+  static read(source: string) {
+    const parsed = documentSchema.safeParse(bounded(parseJSON(source)));
+    if (!parsed.success)
+      throw new InvalidPresentation(
+        "unsupported interface history; export its raw tool result",
+        parsed.error,
+      );
+    const { contributions, ...document } = parsed.data;
     return Presentation.accept(document, contributions);
   }
-
   snapshot(): AcceptedDocument {
     return structuredClone(this.#document);
   }
   json(): string {
     return canonicalJSON(this.#document);
   }
-  initialValue(id: string): JSONValue {
-    const value = this.#document.state.find((value) => value.id === id);
-    if (!value) throw new InvalidPresentation("undeclared local state");
-    return structuredClone(value.value);
+  messages(): readonly AgentToRendererMessage[] {
+    return structuredClone(this.#document.messages);
   }
-  initialState(): Record<string, unknown> {
-    return Object.fromEntries([
-      ...this.#document.state.map(({ id, value }) => [
-        stateKey(id),
-        { value: structuredClone(value), componentType: "GenUI" },
-      ]),
-      ...this.#document.operations.map(({ id }) => [
-        operationKey(id),
-        { value: { status: "idle" }, componentType: "GenUI" },
-      ]),
-    ]);
-  }
-  operation(id: string): {
-    request: OperationRequest;
-    binding: Omit<CallPluginRequest, "input">;
-  } {
-    const request = this.#document.operations.find((value) => value.id === id);
-    const contribution =
+  operation(id: string) {
+    const request = this.#document.operations.find((entry) => entry.id === id);
+    const entry =
       request &&
       this.#document.contributions.find(
-        (value) => contributionKey(value) === contributionKey(request),
+        (entry) => bindingKey(entry) === bindingKey(request),
       );
-    if (!request || !contribution)
-      throw new InvalidPresentation("undeclared operation");
-    return structuredClone({
-      request,
-      binding: operationBinding(request, contribution),
-    });
+    if (!request || !entry)
+      throw new InvalidPresentation("operation is not declared");
+    return {
+      request: structuredClone(request),
+      binding: binding(request, entry),
+    };
   }
-  operations(): Array<{
-    request: OperationRequest;
-    binding: Omit<CallPluginRequest, "input">;
-  }> {
+  operations() {
     return this.#document.operations.map(({ id }) => this.operation(id));
   }
-  evaluate(
-    expression: Expression,
-    readLocal: (id: string) => unknown,
-    readOperation: (id: string) => unknown,
-    scope: Record<string, unknown> = {},
-  ): unknown {
-    return evaluateExpression(
-      expression,
-      (id) => {
-        const value = readLocal(id);
-        return value === undefined ? this.initialValue(id) : value;
-      },
-      (id) => readOperation(id) ?? { status: "idle" },
-      scope,
-    );
-  }
-  validateState(id: string, value: unknown): JSONValue {
-    this.initialValue(id);
-    assertValueBudget(value);
-    const parsed = jsonValueSchema.safeParse(normalized(value));
-    if (!parsed.success)
-      throw new InvalidPresentation("invalid local state value", parsed.error);
-    for (const node of allNodes(this.#document.nodes))
-      for (const constraint of constraints(node))
-        if (constraint.id === id) checkState(constraint, parsed.data);
-    return parsed.data;
-  }
-  formStateIds(id: string): string[] {
-    const fields = allNodes(this.#document.nodes)
-      .filter((node) => node.type === "Form" && node.props.action === id)
-      .flatMap((form) =>
-        allNodes(form.children ?? []).flatMap((node) =>
-          constraints(node).map((constraint) => constraint.id),
-        ),
-      );
-    return [...new Set(fields)];
-  }
-  validateAction(
-    id: string,
-    readLocal: (id: string) => unknown,
-    readOperation: (id: string) => unknown = () => undefined,
-  ): Array<{ field: string; issue: ValidationIssue }> {
-    const failures: Array<{ field: string; issue: ValidationIssue }> = [];
-    const local = (field: string) => {
-      const value = readLocal(field);
-      return value === undefined ? this.initialValue(field) : value;
-    };
-    const visit = (
-      node: UiNode,
-      associated: boolean,
-      scope: Record<string, unknown>,
-    ) => {
-      if (node.type === "Each") {
-        const items = this.evaluate(
-          node.props.items as Expression,
-          readLocal,
-          readOperation,
-          scope,
-        );
-        if (
-          !Array.isArray(items) ||
-          items.length > (node.props.limit as number)
-        )
-          throw new InvalidPresentation(
-            "form iteration exceeds its declared limit",
-          );
-        for (const item of items)
-          visit(node.children![0]!, associated, {
-            ...scope,
-            [node.props.as as string]: item,
-          });
-        return;
-      }
-      if (node.type === "If") {
-        const when = node.props.when;
-        const visible = isExpression(when)
-          ? this.evaluate(when, readLocal, readOperation, scope)
-          : when;
-        if (typeof visible !== "boolean")
-          throw new InvalidPresentation("form visibility requires a boolean");
-        if (!visible) return;
-      }
-      if (
-        ["Disclosure", "Popover"].includes(node.type) &&
-        !local(node.props.field as string)
-      )
-        return;
-      const inForm =
-        associated || (node.type === "Form" && node.props.action === id);
-      const field = node.props.field;
-      if (
-        inForm &&
-        typeof field === "string" &&
-        [
-          "Input",
-          "TextArea",
-          "Select",
-          "MultiSelect",
-          "RadioGroup",
-          "DatePicker",
-        ].includes(node.type)
-      ) {
-        const kind: FieldKind =
-          node.type === "Input"
-            ? ((node.props.type as FieldKind | undefined) ?? "text")
-            : node.type === "DatePicker"
-              ? "date"
-              : "text";
-        const issue = validateField(
-          local(field),
-          node.props.rules as FieldRules | undefined,
-          kind,
-          node.type === "DatePicker"
-            ? (node.props as { min?: string; max?: string })
-            : {},
-        );
-        if (issue && !failures.some((failure) => failure.field === field))
-          failures.push({ field, issue });
-      }
-      const children = node.children ?? [];
-      for (const [index, child] of children.entries()) {
-        if (node.type === "Tabs" || node.type === "Accordion") {
-          const selected = local(node.props.field as string);
-          const item = (node.props.items as Array<{ value: string }>)[index]!;
-          if (
-            node.type === "Tabs"
-              ? selected !== item.value
-              : !(selected as string[]).includes(item.value)
-          )
-            continue;
-        }
-        if (
-          node.type === "Carousel" &&
-          local(node.props.field as string) !== index
-        )
-          continue;
-        visit(child, inForm, scope);
-      }
-    };
-    for (const node of this.#document.nodes) visit(node, false, {});
-    return failures;
-  }
-  tree(): ElementNode {
-    const initial = Object.fromEntries(
-      Object.entries(this.initialState()).map(([key, value]) => [
-        key,
-        (value as { value: unknown }).value,
-      ]),
-    );
-    const nodeAST = (node: UiNode): ASTNode => {
-      if (node.type === "Each")
-        return each(
-          node.props.items as Expression,
-          node.props.as as string,
-          nodeAST(node.children![0]!),
-          node.props.limit as number,
-          initial,
-        );
-      const definition = displayDefinitions[node.type];
-      const args = Object.keys(definition.shape).map((key): ASTNode => {
-        const value = node.props[key];
-        if (value === undefined) return { k: "Null" };
-        return compileExpression(
-          isExpression(value) ? value : { literal: value as JSONValue },
-          initial,
-        );
-      });
-      if (definition.children)
-        args.push({ k: "Arr", els: (node.children ?? []).map(nodeAST) });
-      return { k: "Comp", name: node.type, args };
-    };
-    return {
-      type: "element",
-      typeName: "Document",
-      props: {
-        title: this.#document.title,
-        children: this.#document.nodes.map(nodeAST),
-      },
-      partial: false,
-      hasDynamicProps: true,
-    };
-  }
-  openUI(library: Library): string {
-    return jsonToOpenUI(this.tree(), library);
-  }
-  #validateProjection(): void {
-    const renderers = Object.fromEntries(
-      Object.keys(displayDefinitions).map((name) => [name, () => null]),
-    ) as unknown as Parameters<typeof createDisplayLibrary>[0];
-    const library = createDisplayLibrary(renderers);
-    const parsed = createParser(library.toJSONSchema()).parse(
-      this.openUI(library),
-    );
+  action(action: ActionPayload): void {
     if (
-      !parsed.root ||
-      parsed.meta.incomplete ||
-      parsed.meta.errors.length ||
-      parsed.meta.unresolved.length ||
-      parsed.queryStatements.length ||
-      parsed.mutationStatements.length
-    )
-      throw new InvalidPresentation(
-        "document does not have a complete display projection",
-      );
-    const errors: OpenUIError[] = [];
-    const root = evaluateRoot(parsed, {
-      library,
-      store: null,
-      errors,
-      ctx: {
-        getState: (key) =>
-          key.startsWith("$input_")
-            ? this.initialValue(key.slice(7))
-            : { status: "idle" },
-        resolveRef: () => null,
-        functions: runtimeFunctions(),
-      },
-    });
-    if (errors.length)
-      throw new InvalidPresentation(
-        "initial expression failed: " +
-          errors.map((error) => error.message).join("; "),
-      );
-    const check = (value: unknown): void => {
-      if (Array.isArray(value)) {
-        value.forEach(check);
-        return;
-      }
-      if (
-        value === null ||
-        typeof value !== "object" ||
-        !("type" in value) ||
-        value.type !== "element" ||
-        !("typeName" in value) ||
-        !("props" in value)
+      !this.#document.messages.some(
+        (message) =>
+          "createSurface" in message &&
+          message.createSurface.surfaceId === action.surfaceId,
       )
-        throw new InvalidPresentation("display projection omitted an element");
-      const name = value.typeName as DisplayComponentName;
-      if (!Object.hasOwn(displayDefinitions, name))
-        throw new InvalidPresentation(
-          "display projection contains an undeclared component",
-        );
-      const props = validateResolvedProps(name, value.props);
-      if ("children" in props) check(props.children);
-    };
-    check(root);
+    )
+      throw new InvalidPresentation("action belongs to another surface");
+    if (action.name !== "followup" && action.name !== "resetDraft")
+      this.operation(action.name);
+    bounded(action.context);
   }
   text(): string {
-    const lines = [this.#document.title];
-    let remaining = 4096;
-    for (const node of allNodes(this.#document.nodes)) {
-      const values = [
-        node.props.title,
-        node.props.caption,
-        node.props.label,
-        node.props.text,
-        node.props.value,
-      ];
-      const line = values
-        .filter(
-          (value) => typeof value === "string" || typeof value === "number",
-        )
-        .map(String)
-        .join(": ");
-      if (!line || remaining <= 0) continue;
-      const excerpt = Array.from(line)
-        .slice(0, Math.min(remaining, 512))
-        .join("");
-      lines.push(excerpt + (excerpt.length < line.length ? "…" : ""));
-      remaining -= excerpt.length;
-    }
-    if (this.#document.actions.length)
-      lines.push(
-        "Available actions: " +
-          this.#document.actions.map(({ id }) => id).join(", "),
-      );
-    if (this.#document.operations.length)
-      lines.push(
-        "Declared operations: " +
-          this.#document.operations.map(({ id }) => id).join(", "),
-      );
-    lines.push(
-      "The complete accepted interface is available in the structured result. Interactive controls require a graphical client.",
+    return (
+      this.#document.title +
+      "\nInteractive A2UI 1.0 interface. The accepted protocol messages and captured operation bindings are retained in the structured tool result."
     );
-    return lines.join("\n");
   }
 }

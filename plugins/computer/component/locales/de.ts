@@ -142,6 +142,7 @@ export const de = {
     "Dieses aufgezeichnete Bild konnte nicht angezeigt werden.",
   "image.view": "Bild anzeigen",
   "image.close": "Bild schließen",
+  "image.fit": "Bild einpassen",
   "image.zoomIn": "Vergrößern",
   "image.zoomOut": "Verkleinern",
   "image.description": "Bildbeschreibung",

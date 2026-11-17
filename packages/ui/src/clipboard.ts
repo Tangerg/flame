@@ -1,6 +1,25 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useContentVisible } from "./content-visibility";
-
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  type ReactNode,
+} from "react";
+export interface CopyReceipt {
+  readonly id: string;
+  readonly label: string;
+  readonly status: "copied" | "failed";
+}
+const Receipt = createContext<((receipt: CopyReceipt) => void) | null>(null);
+export function ClipboardReceiptProvider({
+  onReceipt,
+  children,
+}: {
+  onReceipt(receipt: CopyReceipt): void;
+  children: ReactNode;
+}) {
+  return createElement(Receipt, { value: onReceipt }, children);
+}
 export async function copyText(text: string): Promise<boolean> {
   if (!text || typeof navigator === "undefined" || !navigator.clipboard)
     return false;
@@ -11,65 +30,18 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
-
-type CopyMaterial = (material: string) => Promise<boolean>;
-interface CopyScope {
-  active: boolean;
-  attempt: object | null;
-}
-
-export function useCopyAttempt(source: unknown): () => (() => boolean) | null {
-  const visible = useContentVisible();
-  const [binding, setBinding] = useState<CopyScope | null>(null);
-  useLayoutEffect(() => {
-    // Effect reconnection retains memoized values; a new setup must own a fresh scope.
-    const owned: CopyScope = { active: visible, attempt: null };
-    setBinding(owned);
-    return () => {
-      owned.active = false;
-      owned.attempt = null;
-    };
-  }, [source, visible]);
-  return useCallback(() => {
-    if (!binding?.active) return null;
-    const attempt = {};
-    binding.attempt = attempt;
-    return () => binding.active && binding.attempt === attempt;
-  }, [binding]);
-}
-
-export function useCopyFeedback(
+export function useCopy(
   material: string,
-  resetAfterMs = 1500,
-  copyMaterial: CopyMaterial = copyText,
-): { copied: boolean; copy: () => Promise<boolean | undefined> } {
-  const begin = useCopyAttempt(material);
-  const visible = useContentVisible();
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [accepted, setAccepted] = useState<string | null>(null);
-  const clear = useCallback(() => {
-    clearTimeout(timer.current);
-    timer.current = undefined;
-  }, []);
-  useLayoutEffect(() => {
-    setAccepted(null);
-    return clear;
-  }, [material, visible, clear]);
-
-  const copy = useCallback(async (): Promise<boolean | undefined> => {
-    const current = begin();
-    if (!current) return undefined;
-    clear();
-    setAccepted(null);
-    const copied = await copyMaterial(material);
-    if (!current()) return undefined;
-    if (!copied) return false;
-    setAccepted(material);
-    timer.current = setTimeout(() => {
-      timer.current = undefined;
-      if (current()) setAccepted(null);
-    }, resetAfterMs);
-    return true;
-  }, [begin, clear, copyMaterial, material, resetAfterMs]);
-  return { copied: accepted === material, copy };
+  label: string,
+  write: (material: string) => Promise<boolean> = copyText,
+): () => Promise<boolean> {
+  const publish = useContext(Receipt);
+  return useCallback(async () => {
+    const id = crypto.randomUUID();
+    const accepted = await write(material);
+    publish?.(
+      Object.freeze({ id, label, status: accepted ? "copied" : "failed" }),
+    );
+    return accepted;
+  }, [material, label, write, publish]);
 }

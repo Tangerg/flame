@@ -58,7 +58,7 @@ vi.mock("@/features/workspace/public/contextDockCatalog", () => ({
 }));
 
 vi.mock("@/features/workspace/public/sidebarDrawer", () => ({
-  useDockWidth: () => ({ width: model.width, setWidth: model.setWidth }),
+  useDockLayout: () => ({ layout: null, save: vi.fn() }),
 }));
 
 vi.mock("@/features/workspace/public/views", async (importOriginal) => {
@@ -267,46 +267,6 @@ it("keeps measuring dock availability while a promoted main view is presented", 
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Open right workspace" }).disabled,
     ).toBe(false);
-    expect(model.setWidth).not.toHaveBeenCalled();
-  } finally {
-    cleanup();
-    width.mockRestore();
-  }
-});
-
-it("projects the saved ratio onto the observed row width without saving a new ratio", async () => {
-  let rowWidth = 1440;
-  const width = vi
-    .spyOn(HTMLElement.prototype, "clientWidth", "get")
-    .mockImplementation(() => rowWidth);
-  try {
-    nextInstance = 0;
-    model.width = 0.5;
-    model.sessionId = "ses_first";
-    model.activeMainView = null;
-    model.dock = { open: true, viewIds: ["stateful"], activeViewId: "stateful" };
-    model.views = [
-      { id: "stateful", title: "stateful", icon: "tool", component: StatefulWorkspaceView },
-    ];
-    const view = testClient.render(<ChatPanel onSend={() => true} />);
-    const row = view.container.querySelector<HTMLElement>("[data-dock]")!;
-    const measure = () => row.style.getPropertyValue("--dock-measure");
-    expect(row.dataset.dock).toBe("open");
-    expect(measure()).toBe("660px");
-
-    rowWidth = 1000;
-    expect(measure()).toBe("660px");
-    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    expect(measure()).toBe("440px");
-
-    model.width = null;
-    view.rerender(<ChatPanel onSend={() => true} />);
-    expect(measure()).toBe("480px");
-
-    rowWidth = 700;
-    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    expect(row.dataset.dock).toBe("collapsed");
-    expect(screen.getByText("workspace-instance:1")).toBeTruthy();
     expect(model.setWidth).not.toHaveBeenCalled();
   } finally {
     cleanup();

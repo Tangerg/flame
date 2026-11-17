@@ -33,14 +33,9 @@ export interface WorkspaceFileFocusSnapshot {
   readonly revision: bigint;
 }
 
-export interface WorkspaceColumnWidth {
-  width: number;
-  setWidth: (width: number) => void;
-}
-
-export interface WorkspaceOptionalColumnWidth {
-  width: number | null;
-  setWidth: (width: number) => void;
+export interface WorkspacePanelLayout {
+  layout: Readonly<Record<string, number>> | null;
+  save(layout: Record<string, number>): void;
 }
 
 export interface WorkspaceDrawer {
@@ -72,8 +67,8 @@ export interface WorkspaceNavigationPort {
   useExpandedToolIds(): Set<string>;
   useSetToolExpanded(): (id: string, expanded: boolean) => void;
   useSidebarDrawer(): WorkspaceDrawer;
-  useSidebarWidth(): WorkspaceColumnWidth;
-  useDockWidth(): WorkspaceOptionalColumnWidth;
+  useSidebarLayout(): WorkspacePanelLayout;
+  useDockLayout(): WorkspacePanelLayout;
   toggleSidebar(): void;
   selectChat(presentation?: WorkspaceChatPresentation): void;
   openView(id: string, origin?: HTMLElement): void;

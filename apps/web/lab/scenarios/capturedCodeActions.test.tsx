@@ -1,3 +1,4 @@
+import { ClipboardReceiptProvider, type CopyReceipt } from "@flame/ui";
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi, onTestFinished } from "vitest";
 import { createTranslator, type ComponentContext } from "@flame/component-sdk";
@@ -99,7 +100,11 @@ function context(locale: string): ComponentContext {
   };
 }
 
-function renderReader(kind: "file" | "trajectory" | "diagnostics", locale: string) {
+function renderReader(
+  kind: "file" | "trajectory" | "diagnostics",
+  locale: string,
+  onReceipt: (receipt: CopyReceipt) => void,
+) {
   const input = context(locale);
   const row = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle).find(
     (entry) => entry.type === "model",
@@ -122,10 +127,10 @@ function renderReader(kind: "file" | "trajectory" | "diagnostics", locale: strin
       />
     );
   const view = client.render(
-    <>
+    <ClipboardReceiptProvider onReceipt={onReceipt}>
       <input aria-label="Later draft" defaultValue="Keep this draft" />
       {reader}
-    </>,
+    </ClipboardReceiptProvider>,
   );
   if (kind === "trajectory") {
     const record = view.container.querySelector<HTMLElement>("[data-trajectory-record]")!;
@@ -147,8 +152,9 @@ for (const kind of ["file", "trajectory", "diagnostics"] as const) {
       const pending = Promise.withResolvers<void>();
       const writeText = vi.fn(() => pending.promise);
       vi.stubGlobal("navigator", { clipboard: { writeText } });
-      const view = renderReader(kind, locale);
-      const region = view.container.querySelector<HTMLPreElement>('pre[role="region"]')!;
+      const receipts: CopyReceipt[] = [];
+      const view = renderReader(kind, locale, (receipt) => receipts.push(receipt));
+      const region = view.container.querySelector<HTMLElement>('[data-slot="code-body"]')!;
       expect(region).not.toBeNull();
       const source = region.textContent!;
       expect(source.length).toBeGreaterThan(0);
@@ -163,8 +169,9 @@ for (const kind of ["file", "trajectory", "diagnostics"] as const) {
 
       await act(async () => pending.resolve());
 
-      expect(screen.getByRole("button", { name: copied })).toBeTruthy();
-      expect(view.container.querySelector('pre[role="region"]')).toBe(region);
+      expect(screen.queryByRole("button", { name: copied })).toBeNull();
+      expect(receipts).toEqual([expect.objectContaining({ label: copy, status: "copied" })]);
+      expect(view.container.querySelector('[data-slot="code-body"]')).toBe(region);
       expect(region.textContent).toBe(source);
       expect(document.activeElement).toBe(draft);
       expect((draft as HTMLInputElement).value).toBe("Keep this draft");

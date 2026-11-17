@@ -30,7 +30,6 @@ export function Source({
       caption={label}
       labels={{
         copy: t("source.copy"),
-        copied: t("source.copied"),
         wrap: t("source.wrap"),
         unwrap: t("source.unwrap"),
       }}
@@ -111,6 +110,7 @@ function CapturedImage({
         labels={{
           view: t("image.view"),
           close: t("image.close"),
+          fit: t("image.fit"),
           zoomIn: t("image.zoomIn"),
           zoomOut: t("image.zoomOut"),
           description: t("image.description"),

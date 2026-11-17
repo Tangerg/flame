@@ -42,7 +42,6 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
       trailing={summary ? steps : undefined}
       open={open}
       onOpenChange={setOpen}
-      stickyHeader
     >
       {units.map((unit, index) => (
         <div

@@ -1,3 +1,4 @@
+import { handoffFocus } from "@flame/ui";
 import {
   useCallback,
   useEffect,
@@ -94,16 +95,21 @@ export function useMemory(context: ComponentContext) {
       ? read.accepted
       : undefined;
   const [edit, setEdit] = useState<Edit>();
-  const searchElement = useRef<HTMLElement>(null);
+  const searchElement = useRef<HTMLInputElement>(null);
+  const editorElement = useRef<HTMLElement>(null);
   const editOpener = edit?.opener;
   const resolveOpener = useCallback(
     () =>
-      editOpener?.isConnected &&
-      !editOpener.matches(":disabled, [aria-disabled='true']")
+      editOpener?.isConnected && !editOpener.matches(":disabled")
         ? editOpener
         : searchElement.current,
     [editOpener],
   );
+  function closeEditor() {
+    const form = editorElement.current;
+    if (form && canRestoreFocus()) handoffFocus(form, resolveOpener());
+    setEdit(undefined);
+  }
   const [pending, setPending] = useState(false);
   const [unknown, setUnknown] = useState<Command>();
   const [editorFeedback, setEditorFeedback] = useState<Feedback>();
@@ -112,14 +118,13 @@ export function useMemory(context: ComponentContext) {
   const lifetime = useRef<AbortController>(undefined);
   const command = useRef<Command>(undefined);
   const observing = useRef(false);
-  const arrival = useRef<HTMLElement>(undefined);
-  const initiator = useRef<HTMLElement>(undefined);
   const recordResult = useRef<HTMLElement>(null);
   const summary = useRef<HTMLSpanElement>(null);
   const load = useCallback(
     async (owner: AbortSignal, cursors = [""], pageControl?: HTMLElement) => {
       reading.current?.abort();
-      arrival.current = undefined;
+      if (pageControl && summary.current)
+        handoffFocus(pageControl, summary.current);
       if (cwd === undefined) {
         setRead((previous) => ({
           ...previous,
@@ -144,7 +149,6 @@ export function useMemory(context: ComponentContext) {
           signal,
         );
         if (!signal.aborted) {
-          arrival.current = pageControl;
           setRead({ loading: false, accepted: { page, cursors, scope, cwd } });
         }
       } catch (error) {
@@ -205,16 +209,6 @@ export function useMemory(context: ComponentContext) {
     void context.track(() => watch());
     return () => controller.abort();
   }, [context, load]);
-  useLayoutEffect(() => {
-    const control = arrival.current;
-    arrival.current = undefined;
-    const active = control?.ownerDocument.activeElement;
-    if (
-      control &&
-      (active === control || active === control.ownerDocument.body)
-    )
-      summary.current?.focus();
-  }, [current]);
   const locked = pending || Boolean(unknown) || context.signal.aborted;
   const activeFilters =
     Number(status !== "all") + Number(origin !== "all") + Number(pinned);
@@ -242,13 +236,6 @@ export function useMemory(context: ComponentContext) {
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
     return AbortSignal.any([context.signal, owner.signal]);
   }
-  function handOff() {
-    const control = initiator.current;
-    initiator.current = undefined;
-    // Runs before the accepted read can replace the row; a later focus choice keeps the document.
-    if (control && control === control.ownerDocument.activeElement)
-      recordResult.current?.focus();
-  }
   async function observe(original: Command, owner: AbortSignal) {
     if (observing.current) return;
     observing.current = true;
@@ -257,18 +244,16 @@ export function useMemory(context: ComponentContext) {
     try {
       await original.promise;
       if (owner.aborted) return;
-      handOff();
       command.current = undefined;
       setUnknown(undefined);
       if (original.source === "editor") {
-        setEdit(undefined);
+        closeEditor();
         setEditorFeedback(undefined);
       }
       setRecordFeedback({ intent: original.intent, state: "confirmed" });
       void load(owner);
     } catch (error) {
       if (owner.aborted) return;
-      handOff();
       if (mutationSettlementIsUnknown(error)) {
         setUnknown(() => original);
         report(original, "unknown");
@@ -287,7 +272,6 @@ export function useMemory(context: ComponentContext) {
     input: MethodInputs[K],
     intent: CommandIntent,
     source: Command["source"] = "record",
-    control?: HTMLElement,
   ) {
     const owner = observerSignal();
     if (!owner || command.current || observing.current || cwd === undefined)
@@ -299,7 +283,6 @@ export function useMemory(context: ComponentContext) {
         intent,
       };
       command.current = original;
-      initiator.current = control;
       void observe(original, owner);
     } catch (error) {
       const update =
@@ -331,6 +314,8 @@ export function useMemory(context: ComponentContext) {
     edit,
     locked,
     setEdit,
+    closeEditor,
+    editorElement,
     scope,
     cwd,
     read,
@@ -365,6 +350,5 @@ export function useMemory(context: ComponentContext) {
     summary,
     recordFeedback,
     recordResult,
-    initiator,
   };
 }

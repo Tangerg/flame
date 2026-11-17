@@ -2,24 +2,30 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { normalizeCombo } from "@/lib/combo";
+import { normalizeHotkey, validateHotkey } from "@tanstack/hotkeys";
 import { rehydrateOrDefault } from "@/lib/persistedStore";
 import { type Paired } from "@/lib/persistedStore";
 import { type CommandSpec } from "@/features/command/public/commands";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
-const STORAGE_KEY = "flame.shortcut-overrides";
+const STORAGE_KEY = "flame.hotkey-overrides";
 
 interface ShortcutOverridesState {
   overrides: Readonly<Record<string, string | null>>;
-  recording: boolean;
   rebind: (commandId: string, combo: string | null) => void;
   reset: (commandId: string) => void;
   resetAll: () => void;
-  setRecording: (recording: boolean) => void;
 }
 
-const persistSchema = z.object({ overrides: z.record(z.string(), z.string().nullable()) });
+const persistSchema = z.object({
+  overrides: z.record(
+    z.string(),
+    z
+      .string()
+      .refine((value) => validateHotkey(value).valid && normalizeHotkey(value) === value)
+      .nullable(),
+  ),
+});
 
 const _paired: Paired<
   Pick<ShortcutOverridesState, "overrides">,
@@ -32,12 +38,11 @@ export const useShortcutOverrides = create<ShortcutOverridesState>()(
   persist(
     (set) => ({
       overrides: {},
-      recording: false,
       rebind: (commandId, combo) =>
         set((state) => ({
           overrides: {
             ...state.overrides,
-            [commandId]: combo === null ? null : normalizeCombo(combo),
+            [commandId]: combo === null ? null : normalizeHotkey(combo),
           },
         })),
       reset: (commandId) =>
@@ -47,7 +52,6 @@ export const useShortcutOverrides = create<ShortcutOverridesState>()(
           return { overrides };
         }),
       resetAll: () => set({ overrides: {} }),
-      setRecording: (recording) => set({ recording }),
     }),
     {
       name: STORAGE_KEY,

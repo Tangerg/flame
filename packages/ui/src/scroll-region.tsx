@@ -10,7 +10,6 @@ import {
   type KeyboardEventHandler,
   type Ref,
 } from "react";
-import { isPressedReadingTarget } from "./reading-unit";
 import { useContentVisible } from "./content-visibility";
 import { space } from "./tokens.stylex";
 
@@ -23,6 +22,17 @@ const styles = stylex.create({
     paddingBlock: space.s1,
   },
 });
+
+function isPressedReadingTarget(
+  target: Element,
+  pressed: Element | null,
+): boolean {
+  return Boolean(
+    pressed &&
+    (target.contains(pressed) ||
+      pressed.closest("label, [data-focus-proxy]")?.contains(target)),
+  );
+}
 
 // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
 const SUBPIXEL = 0.5;

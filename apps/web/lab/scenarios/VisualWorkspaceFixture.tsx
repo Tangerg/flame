@@ -5,9 +5,9 @@ import { Slot } from "@/extensions/host/Slot";
 import { AppToaster } from "@/features/notifications/toaster/index";
 import { useActiveWorkspaceViewId, useWorkspaceDock } from "@/features/workspace/public/navigation";
 import {
-  useDockWidth,
+  useDockLayout,
   useSidebarDrawer,
-  useSidebarWidth,
+  useSidebarLayout,
 } from "@/features/workspace/public/sidebarDrawer";
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentRow } from "@/ui/agent/index";
@@ -457,7 +457,7 @@ function WorkspaceLayoutReadout({ enabled }: { enabled: boolean }) {
 function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
   const dock = useWorkspaceDock();
   const activeMainViewId = useActiveWorkspaceViewId();
-  const dockWidthRatio = useDockWidth().width;
+  const dockWidthRatio = (useDockLayout().layout?.dock ?? 0) / 100;
 
   return (
     <>
@@ -493,15 +493,15 @@ export function VisualWorkspaceFixture({
   const [observeLayout, setObserveLayout] = useState(false);
   const settingsOpen = useActiveWorkspaceViewId() === "settings";
   const sidebar = useSidebarDrawer();
-  const sidebarWidth = useSidebarWidth();
+  const sidebarLayout = useSidebarLayout();
 
   return (
     <AgentAppShell
       sidebarLabel="Workspace fixture states"
       sidebarResizeLabel="Resize the workspace fixture sidebar"
       sidebarOpen={!settingsOpen && !sidebar.collapsed}
-      sidebarWidth={sidebarWidth.width}
-      onResize={sidebarWidth.setWidth}
+      sidebarLayout={sidebarLayout.layout}
+      onLayoutChanged={sidebarLayout.save}
       onSidebarToggle={sidebar.toggle}
       sidebarExpandLabel="Expand the workspace fixture sidebar"
       sidebarCollapseLabel="Collapse the workspace fixture sidebar"

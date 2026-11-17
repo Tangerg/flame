@@ -33,7 +33,7 @@ function walk(dir) {
 }
 
 const defined = new Set();
-const sheets = walk(STYLES).filter((path) => path.endsWith(".css"));
+const sheets = [STYLES, join(ROOT, "lab")].flatMap(walk).filter((path) => path.endsWith(".css"));
 for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "lab"))].filter((path) =>
   /\.tsx?$/.test(path),
 )) {
@@ -70,7 +70,7 @@ const ANY_STRING = /(["'`])([^"'`\n]{2,200})\1/g;
  * token, and the ones that are not don't survive `every`.
  */
 const UTILITY =
-  /^-?[a-z][a-z0-9]*(?:-[a-z0-9./]+)+$|^[\w@&>.-]*\[[^\]\s]*\][\w./-]*$|^[\w@&>.-]+:\S+$/;
+  /^-?[a-z][a-z0-9]*(?:-[a-z0-9./]+)+$|^[\w@&>.-]+\[[^\]\s]*\][\w./-]*$|^\[[\w-]+:[^\]\s]+\]$|^[\w@&>.-]+:\S+$/;
 const BARE = new Set(
   "absolute relative fixed sticky static flex grid hidden block inline contents truncate italic underline uppercase lowercase capitalize invisible visible isolate container".split(
     " ",

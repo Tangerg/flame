@@ -3,6 +3,7 @@ export function failureDiagnostics(scope: string, error: unknown): string {
     `scope: ${scope}`,
     `time: ${new Date().toISOString()}`,
     `agent: ${navigator.userAgent}`,
+    `native fields: ${CSS.supports("field-sizing", "content") ? "content sizing" : "rows and internal scrolling"}`,
     errorDetails(error, new Set()),
   ].join("\n");
 }

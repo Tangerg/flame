@@ -177,6 +177,7 @@ it("replaces a pasted text record transactionally without changing its attachmen
   await storage.write("endpoint", new Map([["session", first.editPaste("paste", "edited\ntext")]]));
   expect((await storage.read("endpoint")).get("session")).toEqual({
     value: "",
+    document: null,
     pastes: [{ id: "paste", text: "edited\ntext" }],
   });
 });
@@ -191,6 +192,27 @@ it("does not reuse a paste record retired by another owner of the same Session",
   await first.write("endpoint", new Map([["session", draft.withValue("later edit")]]));
   expect((await database().read("endpoint")).get("session")).toEqual({
     value: "later edit",
+    document: null,
     pastes: [{ id: "paste", text: "original" }],
   });
+});
+
+it("refuses an older checkpoint while preserving its exact stored bytes for recovery", async () => {
+  const storage = database();
+  await storage.read("endpoint");
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("flame.composer", 1);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const original = { endpoint: "endpoint", session: "old", value: "  original 保留  ", pastes: [] };
+  const transaction = db.transaction("drafts", "readwrite");
+  transaction.objectStore("drafts").put(original);
+  await new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+  });
+  db.close();
+  await expect(storage.read("endpoint")).rejects.toThrow("document");
+  expect(storage.recoveryRecords("endpoint")).toEqual({ drafts: [original], pastes: [] });
 });

@@ -235,17 +235,6 @@ for (const cssCodeSplit of [true, false])
     );
   });
 
-test("the independent program document keeps its own restrictive policy", async (t) => {
-  const { files, policy } = await fixture(t);
-  assert(
-    Buffer.from(files[policy.sandbox.file].source).toString("utf8").includes("flame-genui-connect"),
-  );
-  assert(policy.sandbox.policy.includes("connect-src 'none'"));
-  assert(policy.sandbox.policy.includes("frame-src 'none'"));
-  assert(!policy.sandbox.policy.includes("frame-ancestors"));
-  assert(!policy.sandbox.policy.includes("strict-dynamic"));
-});
-
 test("shared multi-entry CSS is addressed from the final emitted bytes", async (t) => {
   const { files, policy } = await fixture(t, "#fb6e30", [], false);
   const shared = Object.values(files).find(

@@ -3,19 +3,18 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault } from "@/lib/persistedStore";
 import { type Paired } from "@/lib/persistedStore";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
-const STORAGE_KEY = "flame.shell-layout";
+const STORAGE_KEY = "flame.panel-layout";
 
 interface ShellLayoutState {
   sidebarCollapsed: boolean;
-  sidebarWidth: number;
-  dockWidthRatio: number | null;
+  sidebarLayout: Record<string, number> | null;
+  dockLayout: Record<string, number> | null;
 }
 
 const shellLayoutPersistSchema = z.object({
   sidebarCollapsed: z.boolean(),
-  sidebarWidth: z.number(),
-  dockWidthRatio: z.number().min(0).max(1).nullable(),
+  sidebarLayout: z.record(z.string(), z.number().min(0).max(100)).nullable(),
+  dockLayout: z.record(z.string(), z.number().min(0).max(100)).nullable(),
 });
 
 const _paired: Paired<ShellLayoutState, z.infer<typeof shellLayoutPersistSchema>> = true;
@@ -24,8 +23,8 @@ void _paired;
 
 interface ShellLayoutActions {
   toggleSidebar: () => void;
-  setSidebarWidth: (width: number) => void;
-  setDockWidthRatio: (ratio: number | null) => void;
+  saveSidebarLayout: (layout: Record<string, number>) => void;
+  saveDockLayout: (layout: Record<string, number>) => void;
 }
 
 export function createShellLayoutStore() {
@@ -33,12 +32,12 @@ export function createShellLayoutStore() {
     persist(
       (set) => ({
         sidebarCollapsed: false,
-        sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
-        dockWidthRatio: null,
+        sidebarLayout: null,
+        dockLayout: null,
 
         toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-        setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
-        setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
+        saveSidebarLayout: (sidebarLayout) => set({ sidebarLayout }),
+        saveDockLayout: (dockLayout) => set({ dockLayout }),
       }),
       {
         name: STORAGE_KEY,

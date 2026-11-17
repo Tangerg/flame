@@ -134,26 +134,28 @@ it("distinguishes a literal wildcard from a pattern and a whole-tool grant", () 
   expect(screen.getByText("Glob: echo *")).toBeTruthy();
 });
 
-it("continues at the next rule when the focused record is removed", () => {
+it("hands an explicit forget command to its stable result context before removal", () => {
   model.rules = [...rules];
   const { rerender } = testClient.render(<RulesRow />);
   act(() => forgetButton("rule/project:2").focus());
+  fireEvent.click(forgetButton("rule/project:2"));
 
   model.rules = rules.filter((rule) => rule.id !== "rule/project:2");
   rerender(<RulesRow />);
 
-  expect(document.activeElement).toBe(forgetButton("rule/session:3"));
+  expect(document.activeElement).toBe(screen.getByRole("group", { name: "Remembered rules" }));
 });
 
-it("continues at the preceding rule when the focused last record is removed", () => {
+it("hands a last-record forget command to its stable result context", () => {
   model.rules = [...rules];
   const { rerender } = testClient.render(<RulesRow />);
   act(() => forgetButton("rule/project:4").focus());
+  fireEvent.click(forgetButton("rule/project:4"));
 
   model.rules = rules.slice(0, -1);
   rerender(<RulesRow />);
 
-  expect(document.activeElement).toBe(forgetButton("rule/session:3"));
+  expect(document.activeElement).toBe(screen.getByRole("group", { name: "Remembered rules" }));
 });
 
 it("uses the current order without moving focus when records reorder", () => {
@@ -165,16 +167,18 @@ it("uses the current order without moving focus when records reorder", () => {
   rerender(<RulesRow />);
   expect(document.activeElement).toBe(held);
 
+  fireEvent.click(held);
   model.rules = model.rules.filter((rule) => rule.id !== "rule/project:2");
   rerender(<RulesRow />);
 
-  expect(document.activeElement).toBe(forgetButton("rule/global:1"));
+  expect(document.activeElement).toBe(screen.getByRole("group", { name: "Remembered rules" }));
 });
 
 it("keeps the empty rules context reachable after its last action disappears", () => {
   model.rules = [rules[0]!];
   const { rerender } = testClient.render(<RulesRow />);
   act(() => forgetButton("rule/global:1").focus());
+  fireEvent.click(forgetButton("rule/global:1"));
 
   model.rules = [];
   rerender(<RulesRow />);
@@ -189,9 +193,10 @@ it("keeps Clear all through partial removal and lands in its empty context", () 
   const { rerender } = testClient.render(<RulesRow />);
   const clear = screen.getByRole("button", { name: "Clear all" });
   act(() => clear.focus());
+  fireEvent.click(clear);
   model.rules = rules.slice(2);
   rerender(<RulesRow />);
-  expect(document.activeElement).toBe(clear);
+  expect(document.activeElement).toBe(screen.getByRole("group", { name: "Remembered rules" }));
 
   model.rules = [];
   rerender(<RulesRow />);
@@ -237,7 +242,7 @@ it("does not focus a retained hidden rules list after removal", () => {
   );
 });
 
-it("keeps the original action focused when its command fails", async () => {
+it("keeps the explicit command destination through failure", async () => {
   model.rules = [...rules];
   vi.mocked(forgetApprovalRule).mockRejectedValueOnce(new Error("Rule update rejected"));
   testClient.render(<RulesRow />);
@@ -246,5 +251,5 @@ it("keeps the original action focused when its command fails", async () => {
   fireEvent.click(held);
 
   await waitFor(() => expect(held.getAttribute("aria-busy")).toBe("false"));
-  expect(document.activeElement).toBe(held);
+  expect(document.activeElement).toBe(screen.getByRole("group", { name: "Remembered rules" }));
 });

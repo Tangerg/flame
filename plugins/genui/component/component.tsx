@@ -1,64 +1,58 @@
-import { createContext, Fragment, useContext, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
+  Fragment,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import {
+  A2uiSurface,
+  createComponentImplementation,
+  type ReactCatalogComponent,
+} from "@a2ui/react";
+import {
+  STRICT_VALIDATION,
+  MessageProcessor,
+  type ActionPayload,
+  type SurfaceModel,
+  type ResolvedChildRef,
+} from "@a2ui/web_core";
+import {
+  TextApi,
+  RowApi,
+  ColumnApi,
+  ListApi,
+  CardApi,
+  DividerApi,
+  ButtonApi,
+  TextFieldApi,
+  CheckBoxApi,
+  TabsApi,
+} from "@a2ui/web_core/catalogs/basic/v1";
+import {
+  defineComponent,
+  useTranslator,
   type ComponentContext,
   type Translate,
-  useTranslator,
 } from "@flame/component-sdk";
 import {
-  Badge,
-  Callout,
+  Button,
+  Checkbox,
   DocumentBody,
-  HeadingLevel,
-  Metadata,
-  ProgressBar,
-  RecordBody,
+  ModalDialog,
   RecordGroup,
   RecordTitle,
-  Stats,
+  Tabs,
+  TextArea,
+  TextField,
 } from "@flame/ui";
-import { type OpenUIError } from "@openuidev/lang-core";
-import { Renderer, type ComponentRenderProps } from "@openuidev/react-lang";
-import { createDisplayLibrary, type DisplayProps } from "../contracts/catalog";
-import { Presentation, isSafeURL } from "../contracts/document";
-import { GenUIInteractionProvider, useGenUIInteraction } from "./interaction";
-import { SandboxView } from "./sandbox";
-import { ChartView } from "./chart";
-import { TableView } from "./table";
-import { MapView } from "./map";
-import {
-  AccordionView,
-  CardView,
-  CarouselView,
-  DisclosureView,
-  GridView,
-  PopoverView,
-  SectionView,
-  StackView,
-  TabsView,
-} from "./layout";
-import {
-  ButtonView,
-  CheckboxView,
-  DatePickerView,
-  FormView,
-  InputView,
-  MultiSelectView,
-  RadioGroupView,
-  SelectView,
-  SliderView,
-  SwitchView,
-  TextAreaView,
-} from "./fields";
-import {
-  CodeView,
-  FlashcardView,
-  ImageView,
-  MarkdownView,
-  MathView,
-  SvgView,
-  TimerView,
-  YouTubeView,
-} from "./media";
+import { createCatalog, DialogApi } from "../contracts/catalog";
+import { Presentation } from "../contracts/document";
+import { InteractionController } from "./interactionController";
+import { InteractionFeedback } from "./interaction";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
 import { zhTW } from "./locales/zh-TW";
@@ -69,248 +63,379 @@ import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
-const CALLOUT_KIND = {
-  neutral: "note",
-  info: "note",
-  accent: "important",
-  success: "tip",
-  warning: "warning",
-  negative: "caution",
-} as const;
-
-const DisplayContext = createContext<{
-  context: ComponentContext;
-  presentation: Presentation;
+const Display = createContext<{
+  controller: InteractionController;
   t: Translate;
-  locale: string;
 } | null>(null);
-
 function useDisplay() {
-  const display = useContext(DisplayContext);
-  if (!display)
-    throw new Error("genui: display requires its captured document");
-  return display;
-}
-
-function DocumentView({
-  props,
-  renderNode,
-}: ComponentRenderProps<DisplayProps["Document"]>) {
-  const { feedback } = useGenUIInteraction();
-  return (
-    <DocumentBody>
-      <RecordGroup aria-label={props.title} dir="auto">
-        <RecordTitle>{props.title}</RecordTitle>
-        {feedback}
-        <HeadingLevel>{renderNode(props.children)}</HeadingLevel>
-      </RecordGroup>
-    </DocumentBody>
+  const value = useContext(Display);
+  if (!value) throw new Error("genui: missing captured interface");
+  useSyncExternalStore(
+    value.controller.subscribe,
+    value.controller.snapshot,
+    value.controller.snapshot,
   );
+  return value;
 }
-
-// OpenUI renders these functions as component types, so display updates must not replace them.
-const displayLibrary = createDisplayLibrary({
-  Document: (view) => {
-    const { context, presentation, t } = useDisplay();
-    return (
-      <GenUIInteractionProvider
-        context={context}
-        presentation={presentation}
-        t={t}
+function text(value: unknown): string {
+  if (typeof value !== "string")
+    throw new Error("genui: expected a resolved string");
+  return value;
+}
+function children(
+  refs: readonly (string | ResolvedChildRef)[],
+  build: (id: string, basePath?: string) => React.ReactNode,
+) {
+  return refs.map((ref) => (
+    <Fragment
+      key={
+        typeof ref === "string" ? ref : JSON.stringify([ref.id, ref.basePath])
+      }
+    >
+      {typeof ref === "string" ? build(ref) : build(ref.id, ref.basePath)}
+    </Fragment>
+  ));
+}
+const inlineElements = ["p", "strong", "em", "code", "del", "br"];
+function InlineParagraph({ children }: { children?: React.ReactNode }) {
+  return <>{children}</>;
+}
+const inlineComponents = { p: InlineParagraph };
+const justification = {
+  start: "flex-start",
+  end: "flex-end",
+  center: "center",
+  spaceAround: "space-around",
+  spaceBetween: "space-between",
+  spaceEvenly: "space-evenly",
+  stretch: "stretch",
+} as const;
+const implementations: ReactCatalogComponent[] = [
+  createComponentImplementation(TextApi, ({ props }) => (
+    <span
+      dir="auto"
+      style={{
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+        flexGrow: props.weight,
+        fontSize: props.variant === "caption" ? "var(--fs-ui-xs)" : undefined,
+      }}
+    >
+      <ReactMarkdown
+        skipHtml
+        unwrapDisallowed
+        allowedElements={inlineElements}
+        components={inlineComponents}
       >
-        <DocumentView {...view} />
-      </GenUIInteractionProvider>
-    );
-  },
-  Stack: StackView,
-  Grid: GridView,
-  Card: CardView,
-  Section: SectionView,
-  Tabs: (view) => <TabsView {...view} t={useDisplay().t} />,
-  Accordion: AccordionView,
-  Disclosure: DisclosureView,
-  Carousel: (view) => <CarouselView {...view} t={useDisplay().t} />,
-  Popover: PopoverView,
-  If: ({ props, renderNode }) =>
-    props.when ? renderNode(props.children) : null,
-  Text: ({ props }) => <RecordBody>{props.text}</RecordBody>,
-  Markdown: (view) => <MarkdownView {...view} t={useDisplay().t} />,
-  Code: (view) => <CodeView {...view} t={useDisplay().t} />,
-  Badge: ({ props }) => <Badge tone={props.tone}>{props.text}</Badge>,
-  Callout: ({ props }) => (
-    <Callout kind={CALLOUT_KIND[props.tone ?? "info"]}>
-      {props.title && <strong>{props.title}</strong>}
-      <RecordBody>{props.text}</RecordBody>
-    </Callout>
-  ),
-  Link: ({ props }) => {
-    if (!isSafeURL(props.href, "link"))
-      throw new Error("genui: invalid link destination");
+        {text(props.text)}
+      </ReactMarkdown>
+    </span>
+  )),
+  createComponentImplementation(RowApi, ({ props, buildChild }) => (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        flexGrow: props.weight,
+        justifyContent: justification[props.justify ?? "start"],
+        alignItems: props.align,
+        gap: "calc(var(--spacing) * 3)",
+        minWidth: 0,
+      }}
+    >
+      {children(props.children, buildChild)}
+    </div>
+  )),
+  createComponentImplementation(ColumnApi, ({ props, buildChild }) => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flexGrow: props.weight,
+        justifyContent: justification[props.justify ?? "start"],
+        alignItems: props.align,
+        gap: "calc(var(--spacing) * 3)",
+        minWidth: 0,
+      }}
+    >
+      {children(props.children, buildChild)}
+    </div>
+  )),
+  createComponentImplementation(ListApi, ({ props, buildChild }) => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: props.direction === "horizontal" ? "row" : "column",
+        flexGrow: props.weight,
+        alignItems: props.align,
+        gap: "calc(var(--spacing) * 2)",
+        minWidth: 0,
+      }}
+    >
+      {children(props.children, buildChild)}
+    </div>
+  )),
+  createComponentImplementation(CardApi, ({ props, buildChild }) => (
+    <RecordGroup style={{ flexGrow: props.weight }}>
+      {buildChild(props.child)}
+    </RecordGroup>
+  )),
+  createComponentImplementation(DividerApi, ({ props }) => (
+    <hr
+      aria-orientation={props.axis ?? "horizontal"}
+      style={
+        props.axis === "vertical"
+          ? {
+              alignSelf: "stretch",
+              height: "auto",
+              border: 0,
+              borderInlineStart: "1px solid var(--color-divider)",
+              flexGrow: props.weight,
+            }
+          : {
+              width: "100%",
+              border: 0,
+              borderBlockStart: "1px solid var(--color-divider)",
+              flexGrow: props.weight,
+            }
+      }
+    />
+  )),
+  createComponentImplementation(ButtonApi, ({ props, buildChild }) => {
+    const { controller } = useDisplay();
     return (
-      <a href={props.href} target="_blank" rel="noreferrer noopener">
-        {props.label}
-      </a>
+      <Button
+        variant={
+          props.variant === "primary"
+            ? "primary"
+            : props.variant === "borderless"
+              ? "ghost"
+              : "soft"
+        }
+        disabled={controller.blocked || props.isValid === false}
+        style={{ flexGrow: props.weight }}
+        onClick={() => {
+          void props.action();
+        }}
+      >
+        {buildChild(props.child)}
+      </Button>
     );
-  },
-  Image: (view) => <ImageView {...view} t={useDisplay().t} />,
-  Metric: ({ props }) => {
-    const value = String(props.value);
-    const digits = /^[0-9]+$/.test(value);
+  }),
+  createComponentImplementation(TextFieldApi, ({ props }) => {
+    const id = ReactUseId();
+    const field = {
+      value: text(props.value ?? ""),
+      placeholder:
+        props.placeholder === undefined ? undefined : text(props.placeholder),
+      "aria-label": text(props.label),
+      "aria-invalid": props.isValid === false,
+      "aria-describedby": props.validationErrors?.length ? id : undefined,
+    };
     return (
-      <Stats
-        values={[
-          [
-            props.label,
-            <>
-              <bdi
-                style={
-                  digits ? { display: "block", textWrap: "balance" } : undefined
-                }
-              >
-                {digits
-                  ? [...value].map((digit, index) => (
-                      <Fragment key={index}>
-                        {index > 0 && <wbr />}
-                        {digit}
-                      </Fragment>
-                    ))
-                  : value}
-              </bdi>
-              {props.detail !== undefined && (
-                <Metadata>{props.detail}</Metadata>
-              )}
-            </>,
-          ],
-        ]}
-      />
+      <label>
+        <span>{text(props.label)}</span>
+        {props.variant === "longText" ? (
+          <TextArea
+            {...field}
+            onChange={(event) => props.setValue(event.target.value)}
+          />
+        ) : (
+          <TextField
+            {...field}
+            type={
+              props.variant === "obscured"
+                ? "password"
+                : props.variant === "number"
+                  ? "number"
+                  : "text"
+            }
+            onChange={(event) => props.setValue(event.target.value)}
+          />
+        )}
+        <span
+          id={id}
+          role={props.validationErrors?.length ? "alert" : undefined}
+        >
+          {props.validationErrors?.join(" ")}
+        </span>
+      </label>
     );
-  },
-  List: ({ props }) => {
-    const Tag = props.ordered ? "ol" : "ul";
+  }),
+  createComponentImplementation(CheckBoxApi, ({ props }) => {
+    const id = ReactUseId();
+    const errors = props.validationErrors ?? [];
     return (
-      <Tag>
-        {props.items.map((item, index) => (
-          <li key={index} dir="auto">
-            {item}
-          </li>
-        ))}
-      </Tag>
+      <div style={{ flexGrow: props.weight }}>
+        <Checkbox
+          label={text(props.label)}
+          checked={props.value === true}
+          onCheckedChange={props.setValue}
+          aria-invalid={props.isValid === false}
+          aria-describedby={errors.length ? id : undefined}
+        />
+        <span id={id} role={errors.length ? "alert" : undefined}>
+          {errors.join(" ")}
+        </span>
+      </div>
     );
-  },
-  Table: (view) => <TableView {...view} t={useDisplay().t} />,
-  Chart: ({ props }) => {
+  }),
+  createComponentImplementation(TabsApi, ({ props, buildChild }) => {
+    const [value, setValue] = useState<string | number>(0);
     const { t } = useDisplay();
     return (
-      <ChartView
-        {...props}
-        dataLabel={t("chart.data", { chart: props.caption })}
-        emptyLabel={t("chart.empty")}
+      <Tabs
+        ariaLabel={t("tabs.label")}
+        value={value}
+        onValueChange={setValue}
+        items={props.tabs.map((tab, index) => ({
+          value: index,
+          label: text(tab.title),
+          content: buildChild(tab.child),
+        }))}
       />
     );
-  },
-  Progress: ({ props }) => (
-    <ProgressBar
-      label={props.label}
-      value={props.value}
-      max={props.max}
-      locale={useDisplay().locale}
-      labelVisibility="visible"
-    />
-  ),
-  Divider: () => <hr />,
-  Input: (view) => <InputView {...view} t={useDisplay().t} />,
-  TextArea: (view) => <TextAreaView {...view} t={useDisplay().t} />,
-  Select: (view) => <SelectView {...view} t={useDisplay().t} />,
-  MultiSelect: (view) => <MultiSelectView {...view} t={useDisplay().t} />,
-  RadioGroup: (view) => <RadioGroupView {...view} t={useDisplay().t} />,
-  Checkbox: CheckboxView,
-  Switch: SwitchView,
-  Slider: SliderView,
-  DatePicker: (view) => <DatePickerView {...view} t={useDisplay().t} />,
-  Form: (view) => <FormView {...view} t={useDisplay().t} />,
-  Button: ButtonView,
-  Math: (view) => <MathView {...view} t={useDisplay().t} />,
-  Timer: (view) => <TimerView {...view} t={useDisplay().t} />,
-  Flashcard: (view) => <FlashcardView {...view} t={useDisplay().t} />,
-  YouTube: (view) => <YouTubeView {...view} t={useDisplay().t} />,
-  Map: (view) => <MapView {...view} t={useDisplay().t} />,
-  HtmlView: ({ props }) => <SandboxView {...props} />,
-  Svg: SvgView,
-  G: ({ props, renderNode }) => (
-    <g transform={props.transform}>{renderNode(props.children)}</g>
-  ),
-  Circle: ({ props }) => <circle {...props} />,
-  Ellipse: ({ props }) => <ellipse {...props} />,
-  Rect: ({ props }) => <rect {...props} />,
-  Line: ({ props }) => <line {...props} />,
-  Path: ({ props }) => <path {...props} />,
-  Polyline: ({ props }) => <polyline {...props} />,
-  Polygon: ({ props }) => <polygon {...props} />,
-  SvgText: ({ props }) => (
-    <text x={props.x} y={props.y} fill={props.fill} fontSize={props.fontSize}>
-      {props.text}
-    </text>
-  ),
-});
+  }),
+  createComponentImplementation(DialogApi, ({ props, buildChild }) => {
+    const [open, setOpen] = useState(false);
+    const { t } = useDisplay();
+    return (
+      <>
+        <Button onClick={() => setOpen(true)}>{text(props.label)}</Button>
+        <ModalDialog
+          open={open}
+          onOpenChange={setOpen}
+          title={text(props.label)}
+          closeLabel={t("interaction.cancel")}
+        >
+          {buildChild(props.child)}
+        </ModalDialog>
+      </>
+    );
+  }),
+];
+const displayCatalog = createCatalog(implementations);
 
-function failOnRenderErrors(errors: OpenUIError[]) {
-  if (errors.length === 0) return;
-  throw new Error(
-    `genui: accepted document could not be rendered: ${errors.map((error) => `${error.code}: ${error.message}`).join("; ")}`,
-  );
+class CapturedSurface {
+  readonly presentation: Presentation;
+  readonly processor: MessageProcessor<ReactCatalogComponent>;
+  readonly surfaces: readonly SurfaceModel<ReactCatalogComponent>[];
+  readonly result: string;
+  #action: ((action: ActionPayload) => Promise<void>) | undefined;
+  constructor(result: string) {
+    this.result = result;
+    this.presentation = Presentation.read(result);
+    this.processor = new MessageProcessor(
+      [displayCatalog],
+      (action) => {
+        if (!this.#action) throw new Error("genui: interface is not mounted");
+        return this.#action(action);
+      },
+      { version: "1.0", validationConfig: STRICT_VALIDATION },
+    );
+    this.processor.processMessages(this.presentation.messages());
+    this.surfaces = [...this.processor.model.surfacesMap.values()];
+  }
+  mount(controller: InteractionController) {
+    const action = (event: ActionPayload) => controller.execute(event);
+    this.#action = action;
+    return () => {
+      if (this.#action === action) this.#action = undefined;
+    };
+  }
+  writeOperation(id: string, value: unknown) {
+    const path =
+      "/data/operations/" + id.replaceAll("~", "~0").replaceAll("/", "~1");
+    for (const surface of this.surfaces) surface.dataModel.set(path, value);
+  }
+  resetDraft(surfaceId: string) {
+    const initial = this.presentation
+      .messages()
+      .find(
+        (message) =>
+          "createSurface" in message &&
+          message.createSurface.surfaceId === surfaceId,
+      );
+    if (!initial || !("createSurface" in initial))
+      throw new Error("genui: unknown surface");
+    this.processor
+      .getSurface(surfaceId)
+      ?.dataModel.set(
+        "/draft",
+        structuredClone(initial.createSurface.dataModel?.draft ?? {}),
+      );
+  }
+  dispose() {
+    this.#action = undefined;
+    this.processor.dispose();
+  }
 }
 
+import { useId as ReactUseId } from "react";
+export const GenUIResult = defineComponent((source) => {
+  const captured = new Map<string, CapturedSurface>();
+  source.signal.addEventListener(
+    "abort",
+    () => {
+      captured.forEach((entry) => entry.dispose());
+      captured.clear();
+    },
+    { once: true },
+  );
+  return function GenUIResult({ context }: { context: ComponentContext }) {
+    const t = useTranslator(CATALOGS, context.locale);
+    const tool = context.toolResult;
+    if (
+      source.signal.aborted ||
+      !tool ||
+      tool.status !== "ok" ||
+      typeof tool.result !== "string"
+    )
+      throw new Error("genui: an accepted tool result is required");
+    const key = JSON.stringify([tool.runId, tool.id]);
+    let entry = captured.get(key);
+    if (!entry) {
+      entry = new CapturedSurface(tool.result);
+      captured.set(key, entry);
+    }
+    if (entry.result !== tool.result)
+      throw new Error("genui: captured result changed identity");
+    return <CapturedDocument context={context} entry={entry} t={t} />;
+  };
+});
 function CapturedDocument({
-  context: initialContext,
-  locale,
+  context,
+  entry,
+  t,
 }: {
   context: ComponentContext;
-  locale: string;
+  entry: CapturedSurface;
+  t: Translate;
 }) {
-  const [captured] = useState(() => {
-    const tool = initialContext.toolResult;
-    if (tool?.status !== "ok" || typeof tool.result !== "string") {
-      throw new Error("genui: requires a successful captured tool result");
-    }
-    const presentation = Presentation.read(tool.result);
-    return {
-      context: initialContext,
-      presentation,
-      response: presentation.openUI(displayLibrary),
-    };
-  });
-  const t = useTranslator(CATALOGS, locale);
-  const display = useMemo(
-    () => ({
-      context: captured.context,
-      presentation: captured.presentation,
-      t,
-      locale,
-    }),
-    [captured, t, locale],
+  const controller = useMemo(
+    () =>
+      new InteractionController(context, entry.presentation, {
+        writeOperation: (id, value) => entry.writeOperation(id, value),
+        resetDraft: (id) => entry.resetDraft(id),
+      }),
+    [context, entry],
   );
+  useEffect(() => {
+    const unmount = entry.mount(controller);
+    void controller.initialize();
+    return unmount;
+  }, [entry, controller]);
   return (
-    <DisplayContext value={display}>
-      <Renderer
-        response={captured.response}
-        library={displayLibrary}
-        initialState={captured.presentation.initialState()}
-        isStreaming={false}
-        onError={failOnRenderErrors}
-        publishObservability={false}
-      />
-    </DisplayContext>
-  );
-}
-
-export function GenUIResult({ context }: { context: ComponentContext }) {
-  const { signal, toolResult } = context;
-  const instance = useMemo(() => crypto.randomUUID(), [signal, toolResult]);
-  return (
-    <CapturedDocument
-      key={instance}
-      context={context}
-      locale={context.locale}
-    />
+    <Display value={{ controller, t }}>
+      <DocumentBody>
+        <RecordGroup aria-label={entry.presentation.snapshot().title}>
+          <RecordTitle>{entry.presentation.snapshot().title}</RecordTitle>
+          <InteractionFeedback controller={controller} t={t} />
+          {entry.surfaces.map((surface) => (
+            <A2uiSurface key={surface.id} surface={surface} />
+          ))}
+        </RecordGroup>
+      </DocumentBody>
+    </Display>
   );
 }

@@ -13,7 +13,6 @@ import { type createRuntimeConnection } from "@/features/connection/adapters/run
 import { type AnyPlugin } from "dougong";
 import appearance from "@/features/settings/appearance";
 import approvalsPane from "@/features/approvals/index";
-import personalization from "@/features/settings/personalization/index";
 import chatSearch from "@/features/chat/search/index";
 import quoteSelection from "@/features/composer/quote-selection/index";
 import { createComposerBootstrap } from "@/features/composer/index";
@@ -134,7 +133,6 @@ export function createBuiltinPlugins(
   const panes: AnyPlugin[] = [
     appearance,
     approvalsPane,
-    personalization,
     connectionSettings,
     pluginManagementPane,
     createProviderCatalogPlugin(runtimeClient),
@@ -153,7 +151,7 @@ export function createBuiltinPlugins(
   const overlays: AnyPlugin[] = [
     toaster,
     chatSearch,
-    quoteSelection,
+    quoteSelection(composerAccess),
     defaultCommands(
       agentAccess,
       composerAccess,

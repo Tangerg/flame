@@ -80,7 +80,7 @@ function ContextMenuButton() {
             const inserted = insertionFocus.current;
             insertionFocus.current = null;
             if (inserted === null) return true;
-            if (value === inserted) focusComposer(composerAccess, inserted.length);
+            if (value === inserted) focusComposer(composerAccess);
             return false;
           }}
         >

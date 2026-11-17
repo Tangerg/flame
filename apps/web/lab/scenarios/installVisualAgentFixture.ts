@@ -1,3 +1,4 @@
+import { visualFilePage } from "./filePage";
 import { GOAL_WORKFLOW } from "@/features/plugins/public/workflows";
 import { mutationResult } from "@/test/runtimeClient";
 import { type VisualClient } from "./client";
@@ -185,7 +186,7 @@ const fileListProvider = (state: VisualFileListState | undefined) => {
             );
           }
           // Hold the captured read; production query state owns the loading presentation.
-          if (state === "loading") return new Promise<WorkspaceFileEntry[]>(() => {});
+          if (state === "loading") return new Promise<never>(() => {});
           if (failure) throw failure;
           const { nameQuery, limit } = (params ?? {}) as WorkspaceListFilesQuery;
           const fragment = nameQuery?.toLowerCase();
@@ -193,7 +194,7 @@ const fileListProvider = (state: VisualFileListState | undefined) => {
             fragment === undefined
               ? VISUAL_WORKSPACE_FILES
               : VISUAL_WORKSPACE_FILES.filter((file) => file.path.toLowerCase().includes(fragment));
-          return selected.slice(0, limit);
+          return visualFilePage(selected.slice(0, limit));
         },
       });
     },

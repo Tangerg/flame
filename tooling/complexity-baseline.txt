@@ -2,7 +2,7 @@
 # This list may only shrink: reduce a function, then lower or remove its line.
 21 apps/web/lab/scenarios/computerConsoleFixture.tsx:fetch
 24 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:resultFor
-23 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:send
+22 apps/web/lab/scenarios/createVisualRuntimeTransport.ts:send
 32 apps/web/scripts/check-agent-wire.mjs:wireIn
 24 apps/web/scripts/check-port-surface.mjs:<anonymous>
 21 apps/web/scripts/check-published-boundaries.mjs:reportDuplicateVocabulary
@@ -12,8 +12,7 @@
 23 apps/web/src/features/agent/application/fold/itemHandlers.ts:assertItemProjectionIdentity
 27 apps/web/src/features/agent/application/fold/projections.ts:categoryFields
 22 apps/web/src/features/agent/application/fold/projections.ts:rawLabelSource
-23 apps/web/src/features/chat/message/ui/MessageBlock.tsx:MessageBlockInner
-34 apps/web/src/features/composer/quote-selection/SelectionQuote.tsx:<anonymous>
+22 apps/web/src/features/chat/message/ui/MessageBlock.tsx:MessageBlockInner
 26 apps/web/src/features/plugins/contributions.tsx:<anonymous>
 23 apps/web/src/features/plugins/ui/PackageManager.tsx:PackageManager
 24 apps/web/src/features/plugins/ui/PendingCommands.tsx:PendingCommands
@@ -21,18 +20,15 @@
 21 apps/web/src/features/shell/workbench/panel/RunErrorBanner.tsx:RunErrorBanner
 22 apps/web/src/features/sidebar/ui/SessionRow.tsx:SessionRow
 23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
-43 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
-41 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
-22 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
+39 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
+21 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
 27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
-24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
 21 apps/web/vite.config.ts:name
 21 examples/plugins/reviews/component/board.tsx:ReviewsBoard
 22 packages/runtime-client/src/client.ts:request
 23 packages/runtime-client/src/transports/http.ts:drainStream
 29 packages/runtime-client/src/transports/http.ts:sendRequest
 30 packages/ui/src/button.tsx:dress
-21 packages/ui/src/disclosure.tsx:<anonymous>
 26 plugins/computer/backend/browser.ts:validateBrowser
 23 plugins/computer/backend/engineOwnership.ts:readRecord
 21 plugins/computer/backend/engineProcess.ts:environment
@@ -62,12 +58,6 @@
 23 plugins/deliverables/component/useDeliverables.ts:<anonymous>#2
 23 plugins/deliverables/component/useDeliverables.ts:useDeliverables
 65 plugins/diff/component/component.tsx:WorkspaceDiff
-38 plugins/genui/contracts/catalog.ts:validateResolvedProps
-26 plugins/genui/contracts/document.ts:<anonymous>
-30 plugins/genui/contracts/document.ts:Presentation.<anonymous>
-28 plugins/genui/contracts/document.ts:checkState
-23 plugins/genui/contracts/expression.ts:expressionReferences
-42 plugins/genui/contracts/validation.ts:validateField
 34 plugins/mcp/component/serverForm.tsx:ServerForm
 43 plugins/memory/component/component.tsx:Memory
 27 plugins/providers/component/providerRow.tsx:ProviderRow

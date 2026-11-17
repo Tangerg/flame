@@ -29,7 +29,7 @@ import {
   useWorkspaceSubagentRunId,
 } from "@/features/workspace/public/navigation";
 import { t } from "@/lib/i18n/index";
-import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
+import { useDockLayout } from "@/features/workspace/public/sidebarDrawer";
 import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
 import { registerComposerFocusTarget } from "@/features/composer/public/focus";
 import {
@@ -89,7 +89,6 @@ function PromptTurn({ message }: { message: Message }) {
         sessionId: "ses_first",
         expandedIds: new Set(),
         onExpandedChange: () => {},
-        textReveal: "instant",
       }}
       sessionId="ses_first"
       isRunning={false}
@@ -116,7 +115,6 @@ function AnswerTurn({ text }: { text: string }) {
         sessionId: "ses_first",
         expandedIds: new Set(),
         onExpandedChange: () => {},
-        textReveal: "instant",
       }}
       sessionId="ses_first"
       isRunning={false}
@@ -225,7 +223,7 @@ function FilteredMaterial() {
   return (
     <SearchField
       value={query}
-      onValueChange={setQuery}
+      onChange={(event) => setQuery(event.target.value)}
       onClear={() => setQuery("")}
       clearLabel="Clear filter"
       aria-label="Filter material"
@@ -1874,7 +1872,7 @@ describe("material inspection without room for the Dock", () => {
   it("presents an inspected file full width at its line and keeps it across resizes", async () => {
     const resize = observeRowWidth(700);
     const viewer = testClient.renderHook(useWorkspaceFileViewer);
-    const ratio = testClient.renderHook(useDockWidth);
+    const ratio = testClient.renderHook(useDockLayout);
     openWorkspaceViewInDock(testClient.workspace.access, "file");
     testClient.render(<ChatPanel onSend={() => true} />);
     expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
@@ -1892,7 +1890,7 @@ describe("material inspection without room for the Dock", () => {
     expect(header.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
 
     const location = testClient.navigation.get();
-    const savedRatio = ratio.result.current.width;
+    const savedRatio = ratio.result.current.layout;
     const controls = screen.getByRole("button", { name: "File controls" });
     await resize(1200);
     expect(windowHeader()).toBeNull();
@@ -1907,7 +1905,7 @@ describe("material inspection without room for the Dock", () => {
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
     expect(testClient.navigation.get()).toEqual(location);
-    expect(ratio.result.current.width).toBe(savedRatio);
+    expect(ratio.result.current.layout).toBe(savedRatio);
 
     fireEvent.keyDown(controls, { key: "Escape" });
     expect(document.activeElement).toBe(source);
@@ -2253,9 +2251,19 @@ describe("shared material popup visibility", () => {
       const trigger = screen.getByRole(kind === "select" ? "combobox" : "button", {
         name: kind === "select" ? "Material comparison" : "Material record actions",
       });
+      if (kind === "select") {
+        vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(720);
+        vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+          this: HTMLElement,
+        ) {
+          return this.getAttribute("role") === "combobox"
+            ? new DOMRect(20, 20, 160, 32)
+            : new DOMRect(0, 0, this.clientWidth, 720);
+        });
+      }
       fireEvent.click(trigger);
       const popup = await screen.findByRole(kind === "select" ? "listbox" : "menu");
-      const item = within(popup).getByRole(kind === "select" ? "option" : "menuitem", {
+      const item = await within(popup).findByRole(kind === "select" ? "option" : "menuitem", {
         name: kind === "select" ? "Working changes" : "Inspect record",
       });
       act(() => item.focus());
@@ -2360,7 +2368,7 @@ describe("bounded material tasks", () => {
       fireEvent.click(trigger);
       const popupRole = kind === "select" ? "listbox" : "menu";
       const popup = await screen.findByRole(popupRole);
-      const item = within(popup).getByRole(kind === "select" ? "option" : "menuitem", {
+      const item = await within(popup).findByRole(kind === "select" ? "option" : "menuitem", {
         name: kind === "select" ? "Runtime default" : "Inspect task",
       });
       act(() => item.focus());

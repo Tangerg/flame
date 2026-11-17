@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { selectCurrentRootAttention } from "@/features/agent/application/view/runTree";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
-import { useSidebarDrawer, useSidebarWidth } from "@/features/workspace/public/sidebarDrawer";
+import { useSidebarDrawer, useSidebarLayout } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentRow } from "@/ui/agent/index";
@@ -95,15 +95,15 @@ export function VisualAgentStateFixture({
 }) {
   const attention = selectCurrentRootAttention(view);
   const drawer = useSidebarDrawer();
-  const { width, setWidth } = useSidebarWidth();
+  const { layout, save } = useSidebarLayout();
 
   return (
     <AgentAppShell
       sidebarLabel="Agent fixture states"
       sidebarResizeLabel="Resize the agent fixture sidebar"
       sidebarOpen={!drawer.collapsed}
-      sidebarWidth={width}
-      onResize={setWidth}
+      sidebarLayout={layout}
+      onLayoutChanged={save}
       onSidebarToggle={drawer.toggle}
       sidebarExpandLabel="Expand the agent fixture sidebar"
       sidebarCollapseLabel="Collapse the agent fixture sidebar"

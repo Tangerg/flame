@@ -1,3 +1,4 @@
+import { Group, Panel } from "react-resizable-panels";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
@@ -11,6 +12,7 @@ import {
   useState,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from "react";
 import { flushSync } from "react-dom";
 import { PanelHost } from "@flame/ui/panel";
@@ -22,7 +24,13 @@ import { CatalogPicker, type CatalogPickerGroup } from "@/ui/index";
 import { ContentVisibility } from "@/ui/index";
 import { knownIconName } from "@/ui/index";
 import { AgentContentCard } from "@/ui/agent/index";
-import { AgentContextDock, AgentDockRow, type AgentDockTab, AgentDockTabs } from "@/ui/agent/index";
+import {
+  AgentContextDock,
+  AgentDockRow,
+  AgentDockSeparator,
+  type AgentDockTab,
+  AgentDockTabs,
+} from "@/ui/agent/index";
 import { AgentDockCatalog } from "@/ui/agent/index";
 import { AgentDockToggle, AgentSurfaceHeader } from "@/ui/agent/index";
 import { useActiveSession, useActiveSessionId } from "@/features/agent/public/session";
@@ -41,7 +49,7 @@ import {
 import { useContextDockCatalog } from "@/features/workspace/public/contextDockCatalog";
 import { type ContextDockDestinationGroup } from "@/features/workspace/public/contextDockCatalog";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
-import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
+import { useDockLayout } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { ChatStream } from "@/features/shell/workbench/panel/ChatStream";
@@ -52,11 +60,10 @@ import { space } from "@flame/ui/tokens.stylex";
 import { RunAnnouncer } from "@/features/shell/workbench/panel/RunAnnouncer";
 import { RunStatusPill } from "@/features/shell/workbench/panel/RunStatusPill";
 import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentity";
-import { DockResizer } from "@/features/shell/workbench/panel/DockResizer";
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n/index";
-import { canPresentDock, defaultDockWidth, dockWidthFromRatio } from "@/lib/shellGeometry";
+import { canPresentDock } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
 export interface ChatPanelHandle {
@@ -97,11 +104,13 @@ function useDockCatalogGroups(
 }
 
 function WorkspaceViewPicker({
+  triggerRef,
   groups,
   openViewIds,
   activeViewId,
   onSelect,
 }: {
+  triggerRef: RefObject<HTMLButtonElement | null>;
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
   activeViewId: string;
@@ -109,7 +118,6 @@ function WorkspaceViewPicker({
 }) {
   const t = useT();
   const pickerGroups = useDockCatalogGroups(groups, openViewIds);
-  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <CatalogPicker
@@ -188,12 +196,14 @@ function DockHeader({
   const workspaceAccess = useWorkspace();
 
   const t = useT();
+  const pickerRef = useRef<HTMLButtonElement>(null);
   return (
     <AgentSurfaceHeader divider={false}>
       {returnAction && <ReturnButton label={returnAction.label} onReturn={returnAction.onReturn} />}
       <AgentDockTabs
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
+        fallbackFocus={pickerRef}
         reorder={{
           onMove: (id, toIndex) => {
             const result = workspaceAccess.navigation.reorderDockView(id, toIndex);
@@ -205,6 +215,7 @@ function DockHeader({
         }}
       />
       <WorkspaceViewPicker
+        triggerRef={pickerRef}
         groups={groups}
         openViewIds={openViewIds}
         activeViewId={tabs.find((tab) => tab.active)?.id ?? WORKSPACE_DOCK_CATALOG}
@@ -257,7 +268,14 @@ function ConversationContent({
   );
 }
 
+const PANEL_SIZES = {
+  main: { conversation: { minSize: 0, maxSize: 0 }, dock: { minSize: "100%" } },
+  dock: { conversation: { minSize: 440 }, dock: { minSize: 320 } },
+  closed: { conversation: { minSize: 440 }, dock: { minSize: 0, maxSize: 0 } },
+} as const;
+
 export function ChatPanel({ onSend, ref }: Props) {
+  const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
   const workspaceAccess = useWorkspace();
 
@@ -265,7 +283,8 @@ export function ChatPanel({ onSend, ref }: Props) {
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
-  const { width: dockWidthRatio } = useDockWidth();
+  const { layout: dockLayout, save: saveDockLayout } = useDockLayout();
+  const [initialDockLayout] = useState(() => dockLayout ?? undefined);
   const { data: sessions } = useAgentSessions();
   const activeSessionId = useActiveSessionId();
   const t = useT();
@@ -273,10 +292,6 @@ export function ChatPanel({ onSend, ref }: Props) {
   const [rowWidth, setRowWidth] = useState<number | null>(null);
   const measuredWidth = rowWidth ?? 0;
   const dockAvailable = canPresentDock(measuredWidth);
-  const dockWidth =
-    dockWidthRatio === null
-      ? defaultDockWidth(measuredWidth)
-      : dockWidthFromRatio(dockWidthRatio, measuredWidth);
 
   const hasDockOwner = activeSessionId !== "";
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
@@ -386,6 +401,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   const openViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) openViewIds.add(activeMainView);
   const presentedMain = fullPaneViewId !== null;
+  const panelSizes = PANEL_SIZES[presentedMain ? "main" : dockVisible ? "dock" : "closed"];
   const mountedViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) mountedViewIds.add(activeMainView);
   for (let source = inspection; source; source = source.previous) {
@@ -436,6 +452,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             fullPaneViewId !== WORKSPACE_DOCK_CATALOG &&
             viewsById.get(fullPaneViewId)?.dock !== undefined && (
               <WorkspaceViewPicker
+                triggerRef={pickerRef}
                 key={activeSessionId}
                 groups={catalog}
                 openViewIds={openViewIds}
@@ -449,104 +466,119 @@ export function ChatPanel({ onSend, ref }: Props) {
         ref={dockRowRef}
         open={dockVisible}
         available={dockAvailable}
-        width={dockAvailable ? dockWidth : measuredWidth}
         presentation={presentedMain ? "main" : "dock"}
       >
-        <div
-          ref={conversationRef}
-          inert={presentedMain}
-          aria-hidden={presentedMain || undefined}
-          tabIndex={-1}
-          role="region"
-          aria-label={t("shell.region.conversation")}
-          data-focus-inset=""
-          {...stylex.props(
-            sh.paneNarrow,
-            paneStyles.conversation,
-            presentedMain && paneStyles.inactiveView,
-          )}
+        <Group
+          orientation="horizontal"
+          defaultLayout={initialDockLayout}
+          onLayoutChanged={(layout, meta) => {
+            if (meta.isUserInteraction) saveDockLayout(meta.requestedLayout ?? layout);
+          }}
+          style={{ flex: 1, width: "100%", minHeight: 0 }}
         >
-          <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
-            <ConversationContent
-              ready={conversationReady}
-              sessionId={activeSessionId}
-              onSend={onSend}
-            />
-          </ContentVisibility>
-        </div>
-        {!presentedMain && dockVisible && <DockResizer width={dockWidth} />}
-        {viewsReady && (
-          <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-            <AgentContextDock
-              value={presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId}
-              onValueChange={(id) => {
-                if (id !== null) workspaceAccess.navigation.selectDockView(id);
-              }}
-              ref={dockRef}
-              role={presentedMain ? "presentation" : undefined}
-              tabIndex={presentedMain ? undefined : -1}
-              aria-label={
-                presentedMain
-                  ? undefined
-                  : t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")
-              }
+          <Panel id="conversation" {...panelSizes.conversation}>
+            <div
+              ref={conversationRef}
+              inert={presentedMain}
+              aria-hidden={presentedMain || undefined}
+              tabIndex={-1}
+              role="region"
+              aria-label={t("shell.region.conversation")}
               data-focus-inset=""
-              onKeyDown={
-                activeMainView === null || inspectedFullPane ? onMaterialKeyDown : undefined
-              }
-            >
-              {!presentedMain && dockVisible && (
-                <DockHeader
-                  tabs={dockTabs}
-                  groups={catalog}
-                  openViewIds={openViewIds}
-                  returnAction={returnAction}
-                />
+              {...stylex.props(
+                sh.paneNarrow,
+                paneStyles.conversation,
+                presentedMain && paneStyles.inactiveView,
               )}
-              <div {...stylex.props(sh.anchor)}>
-                <Activity mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}>
-                  <div
-                    ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
-                    role={presentedMain ? "region" : undefined}
-                    aria-label={presentedMain ? t(catalogView.title) : undefined}
-                    tabIndex={presentedMain ? -1 : undefined}
-                    data-focus-inset=""
-                    data-dock-view-id={WORKSPACE_DOCK_CATALOG}
-                    {...stylex.props(sh.overlay)}
-                  >
-                    <DockCatalogPage
+            >
+              <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
+                <ConversationContent
+                  ready={conversationReady}
+                  sessionId={activeSessionId}
+                  onSend={onSend}
+                />
+              </ContentVisibility>
+            </div>
+          </Panel>
+          {!presentedMain && dockVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
+          <Panel id="dock" defaultSize={480} {...panelSizes.dock}>
+            {viewsReady && (
+              <SessionOwnedWorkspaceState sessionId={activeSessionId}>
+                <AgentContextDock
+                  value={presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId}
+                  onValueChange={(id) => {
+                    if (id !== null) workspaceAccess.navigation.selectDockView(id);
+                  }}
+                  ref={dockRef}
+                  role={presentedMain ? "presentation" : undefined}
+                  tabIndex={presentedMain ? undefined : -1}
+                  aria-label={
+                    presentedMain
+                      ? undefined
+                      : t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")
+                  }
+                  data-focus-inset=""
+                  onKeyDown={
+                    activeMainView === null || inspectedFullPane ? onMaterialKeyDown : undefined
+                  }
+                >
+                  {!presentedMain && dockVisible && (
+                    <DockHeader
+                      key={activeSessionId}
+                      tabs={dockTabs}
                       groups={catalog}
                       openViewIds={openViewIds}
-                      titleHidden={presentedMain}
+                      returnAction={returnAction}
                     />
-                  </div>
-                </Activity>
-                {[...mountedViewIds].map((viewId) => {
-                  const visible = viewId === presentedViewId && (presentedMain || dockVisible);
-                  return (
-                    <div
-                      key={viewId}
-                      inert={!visible}
-                      aria-hidden={!visible || undefined}
-                      data-dock-view-id={activeMainView === null ? viewId : undefined}
-                      {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
+                  )}
+                  <div {...stylex.props(sh.anchor)}>
+                    <Activity
+                      mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}
                     >
-                      <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
-                        <PanelHost density={presentedMain ? "page" : "compact"}>
-                          <WorkspaceViewBody
-                            ref={viewId === fullPaneViewId ? mainViewRef : undefined}
-                            viewId={viewId}
-                            presentation={presentedMain ? "main" : "dock"}
-                          />
-                        </PanelHost>
-                      </ContentVisibility>
-                    </div>
-                  );
-                })}
-              </div>
-            </AgentContextDock>
-          </SessionOwnedWorkspaceState>
-        )}
+                      <div
+                        ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
+                        role={presentedMain ? "region" : undefined}
+                        aria-label={presentedMain ? t(catalogView.title) : undefined}
+                        tabIndex={presentedMain ? -1 : undefined}
+                        data-focus-inset=""
+                        data-dock-view-id={WORKSPACE_DOCK_CATALOG}
+                        {...stylex.props(sh.overlay)}
+                      >
+                        <DockCatalogPage
+                          groups={catalog}
+                          openViewIds={openViewIds}
+                          titleHidden={presentedMain}
+                        />
+                      </div>
+                    </Activity>
+                    {[...mountedViewIds].map((viewId) => {
+                      const visible = viewId === presentedViewId && (presentedMain || dockVisible);
+                      return (
+                        <div
+                          key={viewId}
+                          inert={!visible}
+                          aria-hidden={!visible || undefined}
+                          data-dock-view-id={activeMainView === null ? viewId : undefined}
+                          {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
+                        >
+                          <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
+                            <PanelHost density={presentedMain ? "page" : "compact"}>
+                              <WorkspaceViewBody
+                                ref={viewId === fullPaneViewId ? mainViewRef : undefined}
+                                viewId={viewId}
+                                presentation={presentedMain ? "main" : "dock"}
+                              />
+                            </PanelHost>
+                          </ContentVisibility>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </AgentContextDock>
+              </SessionOwnedWorkspaceState>
+            )}
+          </Panel>
+        </Group>
         {viewsReady && !presentedMain && hasDockOwner && (
           <AgentDockToggle
             open={dockVisible}
@@ -568,6 +600,7 @@ export function ChatPanel({ onSend, ref }: Props) {
 
 const paneStyles = stylex.create({
   conversation: {
+    height: "100%",
     containerType: "inline-size",
     containerName: "conversation",
   },

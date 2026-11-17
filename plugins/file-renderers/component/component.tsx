@@ -82,7 +82,6 @@ function markdownComponents(t: Translate): Components {
           caption={caption || undefined}
           labels={{
             copy: t("code.copy"),
-            copied: t("code.copied"),
             wrap: t("code.wrap"),
             unwrap: t("code.unwrap"),
           }}

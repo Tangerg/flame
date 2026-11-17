@@ -54,15 +54,18 @@ export function registerWorkspaceDataProviders(
         params,
       );
       const resources = await workspace(cwd, signal);
-      const listing = resources.files.list(query, signal);
-      const files =
-        query.nameQuery === undefined ? await listing.autoPagingToArray() : (await listing).data;
-      return files.map((e) => ({
-        path: e.path,
-        name: e.name,
-        type: e.type,
-        sizeBytes: e.sizeBytes,
-      }));
+      const page = await resources.files.list(query, signal);
+      if (page.complete === Boolean(page.nextCursor))
+        throw new Error("workspace file page has inconsistent coverage");
+      return {
+        ...page,
+        data: page.data.map((entry) => ({
+          path: entry.path,
+          name: entry.name,
+          type: entry.type,
+          sizeBytes: entry.sizeBytes,
+        })),
+      };
     },
   });
   ctx.add(DATA_PROVIDER, {

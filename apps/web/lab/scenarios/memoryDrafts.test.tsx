@@ -983,7 +983,7 @@ it("keeps a draft and its actions after an independent record refusal", async ()
   );
 });
 
-it("returns to retained search when the captured opener is disabled by a read", async () => {
+it("keeps the captured opener focusable while a read disables activation", async () => {
   const { call } = await openMemory();
   const edit = screen.getByRole<HTMLButtonElement>("button", { name: "Edit" });
   fireEvent.click(edit);
@@ -994,12 +994,8 @@ it("returns to retained search when the captured opener is disabled by a read", 
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   await screen.findByText("Reading recorded memory…");
   fireEvent.click(cancel);
-  expect(edit.disabled).toBe(true);
-  await waitFor(() =>
-    expect(document.activeElement).toBe(
-      screen.getByRole("searchbox", { name: "Search this page" }),
-    ),
-  );
+  expect(edit.getAttribute("aria-disabled")).toBe("true");
+  await waitFor(() => expect(document.activeElement).toBe(edit));
 });
 
 it("settles authoring before the catalog read and preserves a later focus choice", async () => {
@@ -1060,7 +1056,7 @@ it("keeps known results visible without a catalog and retires notices with their
 it("keeps one memory form and its target until explicit cancellation", async () => {
   await openMemory();
   const { add, editor, content } = startDraft();
-  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Edit" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Edit" }).getAttribute("aria-disabled")).toBe("true");
   expect(screen.getByRole("radio", { name: "User" }).hasAttribute("disabled")).toBe(true);
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Approve" }).disabled).toBe(false);
   const actions = await openActions();
@@ -1245,7 +1241,7 @@ it.each(["confirmed", "refused"] as const)(
     fireEvent.click(recover);
     await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
     expect(within(catalog()).getByRole("button", { name: "Check original result" })).toBe(recover);
-    expect(document.activeElement).toBe(recover);
+    expect(document.activeElement).toBe(result);
     clickBlocked(recover);
 
     await act(async () =>
@@ -1253,13 +1249,13 @@ it.each(["confirmed", "refused"] as const)(
     );
     await waitFor(() => expect(recover.getAttribute("aria-disabled")).not.toBe("true"));
     expect(within(catalog()).getByRole("button", { name: "Check original result" })).toBe(recover);
-    expect(document.activeElement).toBe(recover);
+    expect(document.activeElement).toBe(result);
     expect(
       within(catalog()).getByText(`Approve ${pending.ID} · result unknown.`).closest("section"),
     ).toBe(result);
     fireEvent.click(recover);
     await waitFor(() => expect(settle).toHaveBeenCalledTimes(3));
-    expect(document.activeElement).toBe(recover);
+    expect(document.activeElement).toBe(result);
 
     await act(async () =>
       outcome === "confirmed"
@@ -1353,24 +1349,24 @@ it.each([
   ["Reject", "refused"],
   ["Reject", "unknown"],
 ] as const)(
-  "keeps a focused %s waiting and hands its %s outcome to the catalog result",
+  "hands %s to the stable catalog result before its %s outcome",
   async (name, outcome) => {
     const { settle, call, list, reply, decided, control, editor, content, accepted } =
       await reviewPendingOnly(name);
+    const result = within(catalog())
+      .getByText(`${name} ${pending.ID} · submitting…`)
+      .closest("section")!;
     const reject = within(catalog()).getByRole("button", {
       name: name === "Approve" ? "Reject" : "Approve",
     });
-    expect(document.activeElement).toBe(control);
+    expect(document.activeElement).toBe(result);
     clickBlocked(control);
     fireEvent.keyDown(control, { key: "Enter" });
     fireEvent.keyDown(control, { key: " " });
     fireEvent.keyUp(control, { key: " " });
     clickBlocked(reject);
     expect(commands(call)).toHaveLength(1);
-    expect(document.activeElement).toBe(control);
-    const result = within(catalog())
-      .getByText(`${name} ${pending.ID} · submitting…`)
-      .closest("section")!;
+    expect(document.activeElement).toBe(result);
     const read = Promise.withResolvers<CallPluginResponse>();
     if (outcome === "confirmed") list.mockImplementationOnce(() => read.promise);
 
@@ -1532,16 +1528,16 @@ it.each(["action", "search", "draft"] as const)(
   "keeps the %s reading choice when a subscription removes a pending command's row",
   async (later) => {
     const { transport, call, decided, control, editor, content } = await reviewPendingOnly();
+    const result = within(catalog())
+      .getByText(`Approve ${pending.ID} · submitting…`)
+      .closest("section")!;
     const chosen =
       later === "search"
         ? screen.getByRole("searchbox", { name: "Search this page" })
         : later === "draft"
           ? content
-          : control;
+          : result;
     chosen.focus();
-    const result = within(catalog())
-      .getByText(`Approve ${pending.ID} · submitting…`)
-      .closest("section")!;
     transport.removeSchedule("sch_nightly");
     await waitFor(() => expect(control.isConnected).toBe(false));
     expect(document.activeElement).toBe(later === "action" ? result : chosen);
@@ -1709,8 +1705,10 @@ it("requires confirmation for the captured memory and excludes another form", as
   ).toHaveLength(0);
   const confirmation = screen.getByRole("region", { name: "Confirm memory deletion" });
   expect(confirmation.textContent).toContain(VISUAL_MEMORY_PAGE.Rows[1]!.Content);
-  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Add memory" }).disabled).toBe(true);
-  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Edit" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Add memory" }).getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+  expect(screen.getByRole("button", { name: "Edit" }).getAttribute("aria-disabled")).toBe("true");
   const cancel = within(confirmation).getByRole("button", { name: "Cancel" });
   cancel.focus();
   fireEvent.click(cancel);
@@ -1926,7 +1924,7 @@ it("retains traversal while the same target's refreshed context reestablishes it
   expect(document.activeElement).toBe(search);
 });
 
-it("retains the accepted page and navigation focus when a page read fails", async () => {
+it("retains the accepted page and its result destination when a page read fails", async () => {
   const { list } = await openPagedMemory();
   const next = screen.getByRole("button", { name: "Next page" });
   list.mockRejectedValueOnce(new Error("Older memory is unavailable."));
@@ -1935,7 +1933,7 @@ it("retains the accepted page and navigation focus when a page read fails", asyn
   await screen.findByText("Older memory is unavailable.");
   expect(pageSummary(1)).toBeTruthy();
   expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
-  expect(document.activeElement).toBe(next);
+  expect(document.activeElement).toBe(pageSummary(1));
   fireEvent.click(next);
   await waitFor(() => expect(document.activeElement).toBe(pageSummary(2)));
   expect(listedInputs(list).slice(-2)).toEqual([

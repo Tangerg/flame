@@ -1,12 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { type BlockStatus } from "@/features/agent/public/contentBlock";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "@/features/chat/message/ui/markdown/MarkdownMessage";
 import { Icon } from "@/ui/index";
 import { Loader } from "@/ui/index";
-import { scrollEdges, useScrollEdges } from "@/ui/index";
-import { useStickToBottom } from "use-stick-to-bottom";
-import { useContentVisible } from "@flame/ui";
+import { ReadingList } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n/index";
@@ -100,35 +98,6 @@ export function ReasoningBlock({ text, status }: Props) {
     return () => ro.disconnect();
   }, [glimpse]);
 
-  const visible = useContentVisible();
-  const port = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
-  const {
-    onScroll,
-    style: edgeStyle,
-    overflowing,
-  } = useScrollEdges(port, content, isOpen && visible);
-  const { scrollRef, contentRef } = useStickToBottom({
-    initial: streaming ? "instant" : false,
-    resize: "instant",
-  });
-  const following = streaming && isOpen && visible;
-  const bindPort = useCallback(
-    (node: HTMLDivElement | null) => {
-      port.current = node;
-      scrollRef(following ? node : null);
-      if (node && isOpen && visible) onScroll();
-    },
-    [port, scrollRef, following, isOpen, visible, onScroll],
-  );
-  const bindContent = useCallback(
-    (node: HTMLDivElement | null) => {
-      content.current = node;
-      contentRef(following ? node : null);
-    },
-    [content, contentRef, following],
-  );
-
   return (
     <AgentActivityDisclosure
       icon="brain"
@@ -154,26 +123,23 @@ export function ReasoningBlock({ text, status }: Props) {
       onOpenChange={setOpen}
       contentClassName={stylex.props(rb.aside).className}
     >
-      <div
-        ref={bindPort}
-        data-slot="reasoning-scroller"
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={overflowing ? 0 : undefined}
-        role={overflowing ? "group" : undefined}
-        aria-label={overflowing ? t("reasoning.text") : undefined}
-        onScroll={onScroll}
-        style={edgeStyle}
-        {...stylex.props(rb.scroller, scrollEdges.fade)}
-      >
-        <div ref={bindContent} className={stylex.props(ms.quote, typeStep.uiMd).className}>
-          <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
-          {status === "incomplete" && (
-            <div {...stylex.props(rb.note, typeStep.uiSm, face.mono)}>
-              <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
-            </div>
-          )}
-        </div>
-      </div>
+      <ReadingList
+        role="group"
+        data={[text]}
+        keyExtractor={() => "reasoning"}
+        label={t("reasoning.text")}
+        style={{ height: "min(15rem, 40vh)", flex: "0 1 auto" }}
+        renderItem={() => (
+          <div className={stylex.props(ms.quote, typeStep.uiMd).className}>
+            <MarkdownMessage text={text} streaming={streaming} />
+            {status === "incomplete" && (
+              <div {...stylex.props(rb.note, typeStep.uiSm, face.mono)}>
+                <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
+              </div>
+            )}
+          </div>
+        )}
+      />
     </AgentActivityDisclosure>
   );
 }

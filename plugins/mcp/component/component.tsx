@@ -68,6 +68,7 @@ function McpServersPane({
           variant="primary"
           size="sm"
           disabled={adding !== null}
+          focusableWhenDisabled
           aria-expanded={adding !== null}
           aria-controls={panelId}
           onClick={(event) => setAdding(event.currentTarget)}
@@ -88,7 +89,7 @@ function McpServersPane({
             context={context}
             settings={settings}
             t={t}
-            opener={adding}
+            returnFocus={adding}
             onDone={() => setAdding(null)}
             onCancel={() => setAdding(null)}
           />

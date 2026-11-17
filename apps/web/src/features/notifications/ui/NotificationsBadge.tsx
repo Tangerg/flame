@@ -1,10 +1,10 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useId, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useId, useSyncExternalStore } from "react";
 import { Popover } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
-import { EmptyState, IconButton, vocab, useRemovalFocus } from "@flame/ui";
+import { EmptyState, IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -49,7 +49,6 @@ export function NotificationsBadge() {
   const { dismiss, clearAll } = messages;
   const unread = unreadNotificationCount(log);
   const messageIdPrefix = useId();
-  const historyRef = useRef<HTMLDivElement>(null);
 
   return (
     <Popover.Root>
@@ -90,7 +89,7 @@ export function NotificationsBadge() {
         >
           {t("notifications.title")}
         </SectionLabel>
-        <div ref={historyRef} {...stylex.props(styles.list)}>
+        <div {...stylex.props(styles.list)}>
           {log.length === 0 && (
             <EmptyState icon={iconGlyph("bell")} title={t("notifications.empty.title")} />
           )}
@@ -98,7 +97,6 @@ export function NotificationsBadge() {
             <NotificationRow
               key={entry.id}
               entry={entry}
-              history={historyRef}
               messageIdPrefix={messageIdPrefix}
               dismiss={dismiss}
             />
@@ -111,21 +109,14 @@ export function NotificationsBadge() {
 
 function NotificationRow({
   entry,
-  history,
   messageIdPrefix,
   dismiss,
 }: {
   entry: NotificationEntry;
-  history: RefObject<HTMLDivElement | null>;
   messageIdPrefix: string;
   dismiss(id: string): void;
 }) {
   const t = useT();
-  const action = useRef<HTMLButtonElement>(null);
-  useRemovalFocus(action, () => {
-    const controls = history.current?.querySelectorAll<HTMLButtonElement>("button");
-    return controls?.[controls.length - 1];
-  });
   return (
     <div {...stylex.props(styles.row)}>
       <StatusDot tone={dotTone[entry.level]} className={stylex.props(styles.dot).className} />
@@ -139,7 +130,6 @@ function NotificationRow({
         <div {...stylex.props(vocab.faint, typeStep.uiSm)}>{formatRelative(entry.timestamp)}</div>
       </div>
       <IconButton
-        ref={action}
         icon={iconGlyph("x")}
         size="xs"
         aria-label={t("notifications.dismiss")}

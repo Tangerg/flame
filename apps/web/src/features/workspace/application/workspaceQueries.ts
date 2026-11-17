@@ -1,8 +1,7 @@
 import { type FileEntryType } from "@/foundation/protocolValues.generated";
-import { useQueries } from "@tanstack/react-query";
 import {
-  parameterizedQuery,
   createDataQuery,
+  createPagedDataQuery,
   createParameterizedDataQuery,
 } from "@/extensions/dataQuery";
 export interface WorkspaceProjectSummary {
@@ -31,6 +30,7 @@ export interface WorkspaceListFilesQuery {
   recursive?: boolean;
   nameQuery?: string;
   limit?: number;
+  cursor?: string;
 }
 
 export interface WorkspaceFileEntry {
@@ -38,6 +38,13 @@ export interface WorkspaceFileEntry {
   name: string;
   type: FileEntryType;
   sizeBytes?: number;
+}
+
+export interface WorkspaceFilePage {
+  data: WorkspaceFileEntry[];
+  nextCursor?: string;
+  complete: boolean;
+  coverage: { scannedEntries: number; excludedEntries: number; budgetExhausted: boolean };
 }
 
 export interface WorkspaceReadFileQuery {
@@ -74,25 +81,8 @@ export const useWorkspaceFileChanges = createParameterizedDataQuery<
 
 export const useWorkspaceListFiles = createParameterizedDataQuery<
   WorkspaceListFilesQuery,
-  WorkspaceFileEntry[]
+  WorkspaceFilePage
 >(WORKSPACE_LIST_FILES_KEY);
-
-export function workspaceFileListQuery(request: WorkspaceListFilesQuery) {
-  return parameterizedQuery<WorkspaceListFilesQuery, WorkspaceFileEntry[]>(
-    WORKSPACE_LIST_FILES_KEY,
-    request,
-  );
-}
-
-export function useWorkspaceFileLists(
-  requests: readonly WorkspaceListFilesQuery[],
-  subscribed = true,
-) {
-  return useQueries({
-    queries: requests.map(workspaceFileListQuery),
-    subscribed,
-  });
-}
 
 export const useWorkspaceReadFile = createParameterizedDataQuery<
   WorkspaceReadFileQuery,
@@ -100,3 +90,8 @@ export const useWorkspaceReadFile = createParameterizedDataQuery<
 >(WORKSPACE_READ_FILE_KEY, {
   keepWhenContinuous: (previous, next) => previous.cwd === next.cwd && previous.path === next.path,
 });
+
+export const useWorkspaceDirectory = createPagedDataQuery<
+  WorkspaceListFilesQuery,
+  WorkspaceFilePage
+>(WORKSPACE_LIST_FILES_KEY);

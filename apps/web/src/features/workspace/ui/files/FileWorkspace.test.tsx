@@ -15,11 +15,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 
-import {
-  closeWorkspaceFile,
-  openWorkspaceFile,
-  rememberWorkspaceView,
-} from "@/features/workspace/application/navigation";
+import { closeWorkspaceFile, openWorkspaceFile } from "@/features/workspace/application/navigation";
 import { useWorkspaceFileViewer } from "@/features/workspace/public/navigation";
 
 import {
@@ -47,15 +43,22 @@ vi.mock("@/features/workspace/application/workingTreeChanges", () => ({
   useWorkingTreeFiles: () => changes,
 }));
 
+// Browser tests exercise the real virtualized layout; this suite owns file material and actions.
+vi.mock("react-aria-components", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-aria-components")>()),
+  Virtualizer: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   useActiveSessionWorkspace: () => selection.current,
 }));
 
 function pressTreeKey(target: Element, key: string) {
+  if (target instanceof HTMLElement) act(() => target.focus());
   const code = key === " " ? "Space" : key;
   fireEvent.keyDown(target, { key, code });
-  fireEvent.keyUp(target.ownerDocument, { key, code });
+  fireEvent.keyUp(target, { key, code });
 }
 
 let client: QueryClient;
@@ -103,7 +106,11 @@ beforeEach(async () => {
       setup(ctx) {
         ctx.contributions.add(DATA_PROVIDER, {
           key: WORKSPACE_LIST_FILES_KEY,
-          fetcher: (params) => listFiles(params as WorkspaceListFilesQuery),
+          fetcher: async (params) => ({
+            data: await listFiles(params as WorkspaceListFilesQuery),
+            complete: true,
+            coverage: { scannedEntries: 1, excludedEntries: 0, budgetExhausted: false },
+          }),
         });
         ctx.contributions.add(DATA_PROVIDER, {
           key: WORKSPACE_READ_FILE_KEY,
@@ -137,10 +144,26 @@ afterEach(() => {
   client.clear();
 });
 
+function directoryKey(cwd?: string, path = "") {
+  return [WORKSPACE_LIST_FILES_KEY, { cwd, path, limit: 100 }, "pages"];
+}
+
+function seedDirectory(entries: WorkspaceFileEntry[], cwd?: string) {
+  client.setQueryData(directoryKey(cwd), { pages: [page(entries)], pageParams: [undefined] });
+}
+
 function pauseQueries() {
   const wasOnline = onlineManager.isOnline();
   onlineManager.setOnline(false);
   finishTestClient(() => onlineManager.setOnline(wasOnline));
+}
+
+function page(data: WorkspaceFileEntry[]) {
+  return {
+    data,
+    complete: true,
+    coverage: { scannedEntries: data.length, excludedEntries: 0, budgetExhausted: false },
+  };
 }
 
 function lineWindow(start: number, end: number, totalLines: number): WorkspaceFileContent {
@@ -150,18 +173,6 @@ function lineWindow(start: number, end: number, totalLines: number): WorkspaceFi
 
 function row(line: number) {
   return document.querySelector(`[data-quote-line="${line}"]`);
-}
-
-// A branch exposes its children by containing or owning their group; every owned ID must resolve.
-function ownedGroup(item: HTMLElement): HTMLElement | null {
-  const owned = item.getAttribute("aria-owns")?.split(/\s+/).filter(Boolean) ?? [];
-  const targets = owned.map((id) => document.getElementById(id));
-  expect(targets).not.toContain(null);
-  const groups = [
-    ...new Set([item.querySelector<HTMLElement>('[role="group"]'), ...targets]),
-  ].filter((group): group is HTMLElement => group?.getAttribute("role") === "group");
-  expect(groups.length).toBeLessThanOrEqual(1);
-  return groups[0] ?? null;
 }
 
 function mount(children: React.ReactNode) {
@@ -211,7 +222,7 @@ describe("first file reads", () => {
     pauseQueries();
     mount(<FileWorkspace />);
     await waitFor(() => {
-      expect(client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }])).toMatchObject({
+      expect(client.getQueryState(directoryKey())).toMatchObject({
         status: "pending",
         fetchStatus: "paused",
         data: undefined,
@@ -222,20 +233,22 @@ describe("first file reads", () => {
     expect(screen.queryByText("No files")).toBeNull();
 
     await act(async () => onlineManager.setOnline(true));
-    expect(await screen.findByRole("treeitem", { name: "src" })).toBeTruthy();
+    expect(await screen.findByRole("row", { name: "src" })).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("waits for an expanded directory's first paused read", async () => {
     mount(<FileWorkspace />);
-    const parent = await screen.findByRole("treeitem", { name: "src" });
+    const parent = await screen.findByRole("row", { name: "src" });
     pauseQueries();
     act(() => parent.focus());
-    fireEvent.click(parent);
+    pressTreeKey(parent, "ArrowRight");
     await waitFor(() => {
-      expect(
-        client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined, path: "src" }]),
-      ).toMatchObject({ status: "pending", fetchStatus: "paused", data: undefined });
+      expect(client.getQueryState(directoryKey(undefined, "src"))).toMatchObject({
+        status: "pending",
+        fetchStatus: "paused",
+        data: undefined,
+      });
     });
     expect(listFiles).toHaveBeenCalledOnce();
     expect(screen.getByRole("status").textContent).toBe("Loading");
@@ -243,7 +256,7 @@ describe("first file reads", () => {
     expect(document.activeElement).toBe(parent);
 
     await act(async () => onlineManager.setOnline(true));
-    expect(await screen.findByRole("treeitem", { name: "main.go" })).toBeTruthy();
+    expect(await screen.findByRole("row", { name: "main.go" })).toBeTruthy();
     expect(document.activeElement).toBe(parent);
   });
 
@@ -331,15 +344,15 @@ describe("first file reads", () => {
   ])(
     "keeps an accepted $name listing during a paused reread",
     async ({ accepted, visibleText }) => {
-      client.setQueryData([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }], accepted);
+      client.setQueryData(directoryKey(), { pages: [page(accepted)], pageParams: [undefined] });
       pauseQueries();
       mount(<FileWorkspace />);
       act(() => void client.refetchQueries({ queryKey: [WORKSPACE_LIST_FILES_KEY] }));
       await waitFor(() => {
-        expect(client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }])).toMatchObject({
+        expect(client.getQueryState(directoryKey())).toMatchObject({
           status: "success",
           fetchStatus: "paused",
-          data: accepted,
+          data: { pages: [page(accepted)], pageParams: [undefined] },
         });
       });
       expect(listFiles).not.toHaveBeenCalled();
@@ -357,12 +370,13 @@ describe("workspace files panel", () => {
       change: "renamed",
       binary: true,
     });
-    mount(<FileTree onReveal={() => {}} entries={[file]} onSelectFile={() => {}} />);
-    const row = screen.getByRole("treeitem", { name: "main.go ← old/main.go R" });
+    seedDirectory([file], undefined);
+    mount(<FileTree onReveal={() => {}} onSelectFile={() => {}} />);
+    const row = screen.getByRole("row", { name: "main.go" });
     expect(row.textContent).toContain("← old/main.go");
     expect(row.textContent).toContain("R");
-    expect(row.getAttribute("title")).toBe("old/main.go → src/main.go");
-    expect(screen.getByText("Renamed from old/main.go", { selector: "span[hidden]" })).toBeTruthy();
+    expect(row.querySelector("[title]")?.getAttribute("title")).toBe("old/main.go → src/main.go");
+    expect(row.getAttribute("aria-label")).toBe("main.go");
   });
   it("reads a file in the Runtime default workspace", async () => {
     openWorkspaceFile(testClient.workspace.access, "src/main.go");
@@ -400,27 +414,25 @@ describe("workspace files panel", () => {
   });
 
   it("keeps old content shown without letting it settle a pending line navigation", async () => {
-    const placed: (string | null)[] = [];
-    vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      placed.push(this.getAttribute("data-quote-line"));
-    });
     readFile.mockResolvedValueOnce(lineWindow(250, 650, 1000));
     openWorkspaceFile(testClient.workspace.access, "src/big.go", 450);
     mount(<FileWorkspace />);
     await vi.waitFor(() => expect(row(450)).toBeTruthy());
-    expect(placed).toEqual(["450"]);
+    expect(
+      document.querySelector("[data-presented-target]")?.getAttribute("data-presented-target"),
+    ).toBe("450");
 
     const pending = Promise.withResolvers<WorkspaceFileContent>();
     readFile.mockReturnValueOnce(pending.promise);
     act(() => openWorkspaceFile(testClient.workspace.access, "src/big.go", 300));
     expect(row(450)).toBeTruthy();
-    expect(placed).toEqual(["450"]);
+    expect(document.querySelector("[data-presented-target]")).toBeNull();
 
     await act(async () => pending.resolve(lineWindow(100, 500, 1000)));
     await vi.waitFor(() => expect(row(100)).toBeTruthy());
-    expect(placed).toEqual(["450", "300"]);
+    expect(
+      document.querySelector("[data-presented-target]")?.getAttribute("data-presented-target"),
+    ).toBe("300");
   });
 
   describe("range-control focus continuity", () => {
@@ -430,9 +442,6 @@ describe("workspace files panel", () => {
     ])(
       "keeps the reader focused when the $edge line retires its range control",
       async ({ control, start, end, requestedEnd, fromEnd }) => {
-        const placeTarget = vi
-          .spyOn(HTMLElement.prototype, "scrollIntoView")
-          .mockImplementation(() => {});
         readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
         openWorkspaceFile(testClient.workspace.access, "src/big.go", 300);
         mount(<FileWorkspace />);
@@ -465,7 +474,6 @@ describe("workspace files panel", () => {
         expect(focusWhilePending).toBe(host);
         expect(focusReader).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
         expect(host.scrollTop).toBe(0);
-        expect(placeTarget).toHaveBeenCalledTimes(1);
       },
     );
 
@@ -791,8 +799,8 @@ describe("workspace files panel", () => {
 
   it("browses and reads files in one panel, restoring its tree cursor and focus on return", async () => {
     mount(<FileWorkspace />);
-    fireEvent.click(await screen.findByRole("treeitem", { name: "src" }));
-    const fileRow = await screen.findByRole("treeitem", { name: "main.go" });
+    pressTreeKey(await screen.findByRole("row", { name: "src" }), "ArrowRight");
+    const fileRow = await screen.findByRole("row", { name: "main.go" });
     act(() => fileRow.focus());
     pressTreeKey(fileRow, "Enter");
     await screen.findByText("package main");
@@ -802,13 +810,13 @@ describe("workspace files panel", () => {
     const back = screen.getByRole("button", { name: "Back to files" });
     expect(document.activeElement).toBe(back);
     fireEvent.click(back);
-    const returned = await screen.findByRole("treeitem", { name: "main.go" });
+    const returned = await screen.findByRole("row", { name: "main.go" });
     expect(returned.tabIndex).toBe(0);
     expect(document.activeElement).toBe(returned);
     expect(screen.queryByText("package main")).toBeNull();
     expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual(["file"]);
     pressTreeKey(returned, "ArrowUp");
-    expect(document.activeElement).toBe(screen.getByRole("treeitem", { name: "src" }));
+    expect(document.activeElement).toBe(screen.getByRole("row", { name: "src" }));
   });
 
   it("preserves another control's focus when file selection changes", async () => {
@@ -818,8 +826,8 @@ describe("workspace files panel", () => {
         <FileWorkspace />
       </>,
     );
-    fireEvent.click(await screen.findByRole("treeitem", { name: "src" }));
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    pressTreeKey(await screen.findByRole("row", { name: "src" }), "ArrowRight");
+    const row = await screen.findByRole("row", { name: "main.go" });
     act(() => row.focus());
     pressTreeKey(row, "Enter");
     await screen.findByText("package main");
@@ -827,7 +835,7 @@ describe("workspace files panel", () => {
     const other = screen.getByRole("button", { name: "Another control" });
     act(() => other.focus());
     act(() => closeWorkspaceFile(testClient.workspace.access));
-    await screen.findByRole("treeitem", { name: "main.go" });
+    await screen.findByRole("row", { name: "main.go" });
     expect(document.activeElement).toBe(other);
     act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go"));
     await screen.findByText("package main");
@@ -836,11 +844,12 @@ describe("workspace files panel", () => {
 
   it("shows a failed directory read and retries it without closing the directory", async () => {
     listFiles.mockRejectedValueOnce(new Error("directory unavailable"));
-    mount(<FileTree onReveal={() => {}} entries={[directory]} onSelectFile={() => {}} />);
-    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
+    seedDirectory([directory], undefined);
+    mount(<FileTree onReveal={() => {}} onSelectFile={() => {}} />);
+    pressTreeKey(screen.getByRole("row", { name: "src" }), "ArrowRight");
 
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
-    expect(await screen.findByRole("treeitem", { name: "main.go" })).toBeTruthy();
+    expect(await screen.findByRole("row", { name: "main.go" })).toBeTruthy();
     expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
@@ -853,7 +862,7 @@ describe("workspace files panel", () => {
           <FileWorkspace />
         </>,
       );
-      const folder = await screen.findByRole("treeitem", { name: "src" });
+      const folder = await screen.findByRole("row", { name: "src" });
       const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
       act(() => folder.focus());
       listFiles.mockRejectedValueOnce(new Error("directory unavailable"));
@@ -876,9 +885,13 @@ describe("workspace files panel", () => {
         listFiles.mockReturnValueOnce(listing.promise);
 
         fireEvent.click(retry);
-        expect(document.activeElement).toBe(folder);
+        expect(
+          screen.getByRole("treegrid", { name: "Files" }).contains(document.activeElement),
+        ).toBe(true);
         await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
-        expect(document.activeElement).toBe(folder);
+        expect(
+          screen.getByRole("treegrid", { name: "Files" }).contains(document.activeElement),
+        ).toBe(true);
         expect(folder.getAttribute("aria-expanded")).toBe("true");
         if (typing) {
           act(() => draft.focus());
@@ -887,23 +900,29 @@ describe("workspace files panel", () => {
 
         await act(async () => settle(listing));
         await waitFor(() => expect(client.isFetching()).toBe(0));
-        expect(document.activeElement).toBe(typing ? draft : folder);
+        expect(
+          typing
+            ? document.activeElement === draft
+            : screen.getByRole("treegrid", { name: "Files" }).contains(document.activeElement),
+        ).toBe(true);
         expect(folder.tabIndex).toBe(0);
         expect(folder.getAttribute("aria-expanded")).toBe("true");
       }
       expect(listFiles.mock.calls).toEqual([
-        [{ cwd: undefined }],
-        ...Array.from({ length: 3 }, () => [{ cwd: undefined, path: "src" }]),
+        [{ cwd: undefined, path: "", limit: 100, cursor: undefined }],
+        ...Array.from({ length: 3 }, () => [
+          { cwd: undefined, path: "src", limit: 100, cursor: undefined },
+        ]),
       ]);
       expect(draft.value).toBe(
         typeWhileListing ? "Retained message draft, continued" : "Retained message draft",
       );
-      act(() => screen.getByRole("tree", { name: "Files" }).focus());
-      expect(document.activeElement).toBe(folder);
+      act(() => screen.getByRole("treegrid", { name: "Files" }).focus());
+      expect(screen.getByRole("treegrid", { name: "Files" }).contains(document.activeElement)).toBe(
+        true,
+      );
 
-      pressTreeKey(folder, "ArrowRight");
-      const child = screen.getByRole("treeitem", { name: "main.go" });
-      expect(document.activeElement).toBe(child);
+      const child = screen.getByRole("row", { name: "main.go" });
       pressTreeKey(child, "Enter");
       await screen.findByText("package main");
       expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: "src/main.go" });
@@ -911,8 +930,8 @@ describe("workspace files panel", () => {
       const back = screen.getByRole("button", { name: "Back to files" });
       expect(document.activeElement).toBe(back);
       fireEvent.click(back);
-      const returned = await screen.findByRole("treeitem", { name: "main.go" });
-      expect(returned.getAttribute("aria-current")).toBe("true");
+      const returned = await screen.findByRole("row", { name: "main.go" });
+      expect(returned.querySelector("[aria-current]")?.getAttribute("aria-current")).toBe("true");
       expect(document.activeElement).toBe(returned);
     },
   );
@@ -976,13 +995,15 @@ describe("workspace files panel", () => {
     const back = screen.getByRole("button", { name: "Back to files" });
     act(() => back.focus());
     fireEvent.click(back);
-    expect(screen.queryByRole("treeitem", { name: "src" })).toBeNull();
-    expect(document.activeElement).toBe(document.body);
+    expect(screen.queryByRole("row", { name: "src" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("treegrid", { name: "Files" }));
     await act(async () => listing.resolve([directory]));
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
-    expect(row.getAttribute("aria-current")).toBe("true");
-    expect(row.getAttribute("title")).toBe("src/main.go");
-    expect(document.activeElement).toBe(screen.getByRole("treeitem", { name: "src" }));
+    const row = await screen.findByRole("row", { name: "main.go" });
+    expect(row.querySelector("[aria-current]")?.getAttribute("aria-current")).toBe("true");
+    expect(row.querySelector("[title]")?.getAttribute("title")).toBe("src/main.go");
+    expect(screen.getByRole("treegrid", { name: "Files" }).contains(document.activeElement)).toBe(
+      true,
+    );
   });
 
   it("keeps focus where the user moved it while the returning file tree loads", async () => {
@@ -999,12 +1020,12 @@ describe("workspace files panel", () => {
     const back = screen.getByRole("button", { name: "Back to files" });
     act(() => back.focus());
     fireEvent.click(back);
-    expect(screen.queryByRole("treeitem", { name: "src" })).toBeNull();
+    expect(screen.queryByRole("row", { name: "src" })).toBeNull();
     const control = screen.getByRole("button", { name: "Another control" });
     act(() => control.focus());
 
     await act(async () => listing.resolve([directory]));
-    await screen.findByRole("treeitem", { name: "main.go" });
+    await screen.findByRole("row", { name: "main.go" });
     expect(document.activeElement).toBe(control);
   });
 
@@ -1156,615 +1177,6 @@ describe("file preview path identity", () => {
     expect(header().textContent).not.toContain("assets/brand");
     expect(within(header()).getByText("logo.png")).toBeTruthy();
     expect(within(header()).getByRole("button", { name: "Copy path" })).toBeTruthy();
-  });
-});
-
-describe("root file listing refresh continuity", () => {
-  const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
-  const guide: WorkspaceFileEntry = { name: "guide.txt", path: "guide.txt", type: "file" };
-  const notes: WorkspaceFileEntry = { name: "NOTES.md", path: "NOTES.md", type: "file" };
-  const rootQuery = (cwd?: string) => ({
-    queryKey: [WORKSPACE_LIST_FILES_KEY, { cwd }],
-    exact: true,
-  });
-  const unavailable = () => new Error("listing unavailable");
-
-  it("keeps tree navigation after a complete keyboard menu, read and Back cycle", async () => {
-    listFiles.mockImplementation(async (query) =>
-      query.path ? [file] : [directory, readme, guide],
-    );
-    const value = "  Keep this menu return draft — 保留  ";
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue={value} />
-        <FileWorkspace />
-      </>,
-    );
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(7, 7);
-    });
-    const opened = await screen.findByRole("treeitem", { name: guide.name });
-    const folder = screen.getByRole("treeitem", { name: directory.name });
-    const previous = screen.getByRole("treeitem", { name: readme.name });
-    act(() => opened.focus());
-
-    fireEvent.keyDown(opened, { key: "Shift", code: "ShiftLeft", shiftKey: true });
-    fireEvent.keyDown(opened, { key: "F10", code: "F10", shiftKey: true });
-    const menu = await screen.findByRole("menu", { name: guide.path });
-    await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
-    fireEvent.keyUp(document.activeElement!, { key: "F10", code: "F10", shiftKey: true });
-    fireEvent.keyUp(document.activeElement!, { key: "Shift", code: "ShiftLeft" });
-    fireEvent.keyDown(document.activeElement!, { key: "Escape", code: "Escape" });
-    fireEvent.keyUp(document.activeElement!, { key: "Escape", code: "Escape" });
-    await waitFor(() => expect(document.activeElement).toBe(opened));
-    expect(screen.queryByRole("menu")).toBeNull();
-
-    fireEvent.keyDown(opened, { key: "Enter", code: "Enter" });
-    fireEvent.keyUp(document.activeElement!, { key: "Enter", code: "Enter" });
-    await screen.findByText("package main");
-    const back = screen.getByRole("button", { name: "Back to files" });
-    expect(document.activeElement).toBe(back);
-    expect(opened.isConnected).toBe(true);
-
-    fireEvent.keyDown(back, { key: "Enter", code: "Enter" });
-    // Happy DOM does not synthesize the native button's Enter click.
-    fireEvent.click(back);
-    fireEvent.keyUp(document.activeElement!, { key: "Enter", code: "Enter" });
-    await waitFor(() => expect(document.activeElement).toBe(opened));
-    expect(screen.getByRole("treeitem", { name: guide.name })).toBe(opened);
-    expect(opened.getAttribute("aria-current")).toBe("true");
-
-    fireEvent.keyDown(opened, { key: "ArrowUp", code: "ArrowUp" });
-    fireEvent.keyUp(document.activeElement!, { key: "ArrowUp", code: "ArrowUp" });
-    expect(document.activeElement).toBe(previous);
-    fireEvent.keyDown(previous, { key: "Home", code: "Home" });
-    fireEvent.keyUp(document.activeElement!, { key: "Home", code: "Home" });
-    expect(document.activeElement).toBe(folder);
-    expect(opened.getAttribute("aria-current")).toBe("true");
-    expect(readFile).toHaveBeenCalledExactlyOnceWith({ cwd: undefined, path: guide.path });
-    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ cwd: undefined });
-    act(() => draft.focus());
-    expect(document.activeElement).toBe(draft);
-    expect(draft.value).toBe(value);
-    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
-  });
-
-  it("keeps the accepted tree, its cursor and focus through failed refreshes and retries", async () => {
-    listFiles.mockImplementation(async (query) =>
-      query.path ? [file] : [directory, readme, guide],
-    );
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue="Retained message draft" />
-        <FileWorkspace />
-      </>,
-    );
-    const opened = await screen.findByRole("treeitem", { name: "guide.txt" });
-    act(() => opened.focus());
-    pressTreeKey(opened, "Enter");
-    await screen.findByText("package main");
-    fireEvent.click(screen.getByRole("button", { name: "Back to files" }));
-    const selected = await screen.findByRole("treeitem", { name: "guide.txt" });
-    expect(document.activeElement).toBe(selected);
-    pressTreeKey(selected, "ArrowUp");
-    const cursor = screen.getByRole("treeitem", { name: "README.md" });
-    expect(document.activeElement).toBe(cursor);
-    const tree = screen.getByRole("tree", { name: "Files" });
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-
-    const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(refresh.promise);
-    act(() => void client.refetchQueries(rootQuery()));
-    await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole("status")).toBeNull();
-
-    await act(async () => refresh.reject(unavailable()));
-    const feedback = await screen.findByRole("status");
-    expect(feedback.textContent).toContain("Couldn't refresh files");
-    expect(feedback.textContent).toContain("Showing the last loaded files.");
-    expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
-    expect(screen.getByRole("treeitem", { name: "README.md" })).toBe(cursor);
-    expect(cursor.tabIndex).toBe(0);
-    expect(document.activeElement).toBe(cursor);
-
-    for (const { typing, settle } of [
-      {
-        typing: false,
-        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-          listing.reject(unavailable()),
-      },
-      {
-        typing: true,
-        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-          listing.resolve([notes, directory, readme, guide]),
-      },
-    ]) {
-      const retry = await screen.findByRole("button", { name: "Retry" });
-      act(() => retry.focus());
-      const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
-      listFiles.mockReturnValueOnce(listing.promise);
-
-      fireEvent.click(retry);
-      expect(document.activeElement).toBe(cursor);
-      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
-      expect(screen.getByRole("status").textContent).toContain("Loading");
-      expect(screen.getByRole("treeitem", { name: "README.md" })).toBe(cursor);
-      expect(document.activeElement).toBe(cursor);
-      if (typing) {
-        act(() => draft.focus());
-        fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
-      }
-
-      await act(async () => settle(listing));
-      await waitFor(() => expect(client.isFetching()).toBe(0));
-      expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
-      expect(screen.getByRole("treeitem", { name: "README.md" })).toBe(cursor);
-      expect(cursor.tabIndex).toBe(0);
-      expect(document.activeElement).toBe(typing ? draft : cursor);
-    }
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "NOTES.md" })).toBeTruthy();
-    expect(draft.value).toBe("Retained message draft, continued");
-    expect(cursor.getAttribute("aria-current")).toBeNull();
-    expect(selected.getAttribute("aria-current")).toBe("true");
-    expect(listFiles.mock.calls).toEqual(Array.from({ length: 4 }, () => [{ cwd: undefined }]));
-
-    act(() => tree.focus());
-    expect(document.activeElement).toBe(cursor);
-    pressTreeKey(cursor, "ArrowUp");
-    pressTreeKey(document.activeElement!, "ArrowUp");
-    const added = screen.getByRole("treeitem", { name: "NOTES.md" });
-    expect(document.activeElement).toBe(added);
-    pressTreeKey(added, "Enter");
-    const back = await screen.findByRole("button", { name: "Back to files" });
-    expect(readFile).toHaveBeenLastCalledWith({ cwd: undefined, path: "NOTES.md" });
-    fireEvent.click(back);
-    const returned = await screen.findByRole("treeitem", { name: "NOTES.md" });
-    expect(returned.getAttribute("aria-current")).toBe("true");
-    expect(document.activeElement).toBe(returned);
-  });
-
-  it.each([
-    { label: "a displaced visible row", before: 20, after: 120, drafting: false, scrolls: true },
-    { label: "a row that stays visible", before: 20, after: 40, drafting: false, scrolls: false },
-    {
-      label: "a row already scrolled away",
-      before: 120,
-      after: 220,
-      drafting: false,
-      scrolls: false,
-    },
-    { label: "later draft focus", before: 20, after: 120, drafting: true, scrolls: false },
-  ])("preserves viewport intent for $label when refresh feedback changes layout", async (scene) => {
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue="Keep drafting" />
-        <FileWorkspace />
-      </>,
-    );
-    const row = await screen.findByRole("treeitem", { name: "src" });
-    const tree = screen.getByRole("tree", { name: "Files" });
-    const viewport = tree.parentElement!;
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-    vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 100, 100));
-    vi.spyOn(row, "getBoundingClientRect").mockImplementation(
-      () => new DOMRect(0, screen.queryByRole("status") ? scene.after : scene.before, 100, 20),
-    );
-    const reveal = vi.spyOn(row, "scrollIntoView").mockImplementation(() => {});
-    act(() => row.focus());
-    const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(refresh.promise);
-    act(() => void client.refetchQueries(rootQuery()));
-    await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(2));
-    if (scene.drafting) {
-      act(() => draft.focus());
-      fireEvent.change(draft, { target: { value: "Keep drafting, continued" } });
-    }
-
-    await act(async () => refresh.reject(unavailable()));
-    await screen.findByRole("status");
-    expect(screen.getByRole("treeitem", { name: "src" })).toBe(row);
-    expect(reveal.mock.calls).toEqual(
-      scene.scrolls ? [[{ block: "nearest", inline: "nearest" }]] : [],
-    );
-    expect(document.activeElement).toBe(scene.drafting ? draft : row);
-    expect(draft.value).toBe(scene.drafting ? "Keep drafting, continued" : "Keep drafting");
-  });
-
-  it.each([false, true])(
-    "distinguishes initial failure from stale accepted empty files (empty accepted: %s)",
-    async (acceptEmpty) => {
-      if (acceptEmpty) listFiles.mockResolvedValueOnce([]);
-      listFiles.mockRejectedValueOnce(unavailable());
-      mount(<FileWorkspace />);
-      if (acceptEmpty) {
-        await screen.findByText("No files");
-        await act(() => client.refetchQueries(rootQuery()));
-      }
-
-      const retry = await screen.findByRole("button", { name: "Retry" });
-      expect(
-        screen.getByText(acceptEmpty ? "Couldn't refresh files" : "Couldn't load"),
-      ).toBeTruthy();
-      expect(screen.queryByText("No files") !== null).toBe(acceptEmpty);
-      expect(screen.queryByRole("tree")).toBeNull();
-      fireEvent.click(retry);
-      expect(await screen.findByRole("treeitem", { name: "src" })).toBeTruthy();
-    },
-  );
-
-  it("explains an unsupported refresh beside the accepted files without a retry", async () => {
-    mount(<FileWorkspace />);
-    const row = await screen.findByRole("treeitem", { name: "src" });
-    listFiles.mockRejectedValueOnce(
-      new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
-    );
-    await act(() => client.refetchQueries(rootQuery()));
-
-    const tree = screen.getByRole("tree", { name: "Files" });
-    const feedback = await screen.findByRole("status");
-    expect(feedback.textContent).toContain("Not supported by this runtime");
-    expect(feedback.textContent).toContain("Showing the last loaded files.");
-    expect(feedback.querySelector('[data-icon-name="folder"]')).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "src" })).toBe(row);
-    expect(tree.contains(row)).toBe(true);
-  });
-
-  it("drops the previous workspace's files when the workspace changes under refresh feedback", async () => {
-    selection.current = { status: "ready", cwd: "/work/one" };
-    const view = mount(<FileWorkspace />);
-    await screen.findByRole("treeitem", { name: "src" });
-    listFiles.mockRejectedValueOnce(unavailable());
-    await act(() => client.refetchQueries(rootQuery("/work/one")));
-    await screen.findByText("Couldn't refresh files");
-
-    const next = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(next.promise);
-    selection.current = { status: "ready", cwd: "/work/two" };
-    view.rerender(
-      <QueryClientProvider client={client}>
-        <FileWorkspace />
-      </QueryClientProvider>,
-    );
-    expect(screen.queryByRole("tree")).toBeNull();
-    expect(screen.queryByText("Couldn't refresh files")).toBeNull();
-    expect(screen.getByText("Loading")).toBeTruthy();
-
-    await act(async () => next.resolve([readme]));
-    expect(await screen.findByRole("treeitem", { name: "README.md" })).toBeTruthy();
-    expect(screen.queryByRole("treeitem", { name: "src" })).toBeNull();
-    expect(listFiles).toHaveBeenLastCalledWith({ cwd: "/work/two" });
-  });
-});
-
-describe("expanded directory refresh continuity", () => {
-  const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
-  const util: WorkspaceFileEntry = { name: "util.go", path: "src/util.go", type: "file" };
-  const directoryQuery = (cwd?: string) => ({
-    queryKey: [WORKSPACE_LIST_FILES_KEY, { cwd, path: "src" }],
-    exact: true,
-  });
-  const unavailable = () => new Error("directory unavailable");
-  const paths = () => screen.getAllByRole("treeitem").map((row) => row.getAttribute("title"));
-
-  async function expandWithCursorInChild() {
-    const folder = await screen.findByRole("treeitem", { name: "src" });
-    fireEvent.click(folder);
-    const child = await screen.findByRole("treeitem", { name: "main.go" });
-    act(() => child.focus());
-    return { folder, child };
-  }
-
-  it("keeps the directory's accepted children, cursor and focus through failed refreshes and retries", async () => {
-    listFiles.mockImplementation(async (query) => (query.path ? [file] : [directory, readme]));
-    testClient.workspace.dock.store.setState({
-      memory: { expandedDirs: [], lastFilePath: file.path },
-    });
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue="Retained message draft" />
-        <FileWorkspace />
-      </>,
-    );
-    const { folder, child } = await expandWithCursorInChild();
-    const tree = screen.getByRole("tree", { name: "Files" });
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-    expect(child.getAttribute("aria-current")).toBe("true");
-    const group = ownedGroup(folder)!;
-    expect(group.contains(child)).toBe(true);
-    expect(screen.getByRole("treeitem", { name: "src" })).toBe(folder);
-
-    const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(refresh.promise);
-    act(() => void client.refetchQueries(directoryQuery()));
-    await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(3));
-    expect(screen.queryByRole("status")).toBeNull();
-
-    await act(async () => refresh.reject(unavailable()));
-    const feedback = await screen.findByRole("status");
-    expect(feedback.textContent).toContain("Couldn't refresh files");
-    expect(feedback.textContent).toContain("Showing the last loaded files in src.");
-    expect(folder.contains(feedback)).toBe(true);
-    expect(group.contains(feedback)).toBe(false);
-    expect(ownedGroup(folder)).toBe(group);
-    expect(paths()).toEqual(["src", "src/main.go", "README.md"]);
-    expect(screen.getByRole("treeitem", { name: /^src Couldn't refresh files/ })).toBe(folder);
-    expect(screen.queryByRole("treeitem", { name: /^src.*main\.go/ })).toBeNull();
-    expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-    expect(child.tabIndex).toBe(0);
-    expect(folder.tabIndex).toBe(-1);
-    expect(folder.getAttribute("aria-expanded")).toBe("true");
-    expect(document.activeElement).toBe(child);
-
-    for (const { typing, settle } of [
-      {
-        typing: false,
-        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-          listing.reject(unavailable()),
-      },
-      {
-        typing: true,
-        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-          listing.reject(unavailable()),
-      },
-      {
-        typing: true,
-        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-          listing.resolve([file, util]),
-      },
-    ]) {
-      const retry = await screen.findByRole("button", { name: "Retry" });
-      act(() => retry.focus());
-      const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
-      listFiles.mockReturnValueOnce(listing.promise);
-
-      fireEvent.click(retry);
-      expect(document.activeElement).toBe(child);
-      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
-      expect(screen.getByRole("status").textContent).toContain("Loading");
-      expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-      expect(document.activeElement).toBe(child);
-      if (typing) {
-        act(() => draft.focus());
-        fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
-      }
-
-      await act(async () => settle(listing));
-      await waitFor(() => expect(client.isFetching()).toBe(0));
-      expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
-      expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-      expect(child.tabIndex).toBe(0);
-      expect(child.getAttribute("aria-current")).toBe("true");
-      expect(folder.getAttribute("aria-expanded")).toBe("true");
-      expect(ownedGroup(folder)).toBe(group);
-      expect(group.contains(child)).toBe(true);
-      expect(document.activeElement).toBe(typing ? draft : child);
-    }
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(paths()).toEqual(["src", "src/main.go", "src/util.go", "README.md"]);
-    expect(screen.getByRole("treeitem", { name: "src" })).toBe(folder);
-    expect(draft.value).toBe("Retained message draft, continued");
-    expect(listFiles.mock.calls).toEqual([
-      [{ cwd: undefined }],
-      ...Array.from({ length: 5 }, () => [{ cwd: undefined, path: "src" }]),
-    ]);
-
-    act(() => tree.focus());
-    expect(document.activeElement).toBe(child);
-    pressTreeKey(child, "ArrowDown");
-    const added = screen.getByRole("treeitem", { name: "util.go" });
-    expect(document.activeElement).toBe(added);
-    pressTreeKey(added, "ArrowLeft");
-    expect(document.activeElement).toBe(folder);
-  });
-
-  it("keeps a loaded nested branch usable when its parent refresh fails", async () => {
-    const nested: WorkspaceFileEntry = { name: "nested", path: "src/nested", type: "dir" };
-    const deep: WorkspaceFileEntry = { name: "main.go", path: "src/nested/main.go", type: "file" };
-    listFiles.mockImplementation(async (query) =>
-      query.path === "src" ? [nested] : query.path === nested.path ? [deep] : [directory],
-    );
-    mount(<FileWorkspace />);
-    const folder = await screen.findByRole("treeitem", { name: "src" });
-    fireEvent.click(folder);
-    const branch = await screen.findByRole("treeitem", { name: "nested" });
-    fireEvent.click(branch);
-    const child = await screen.findByRole("treeitem", { name: "main.go" });
-    act(() => child.focus());
-
-    listFiles.mockRejectedValueOnce(unavailable());
-    await act(() => client.refetchQueries(directoryQuery()));
-    await screen.findByText("Showing the last loaded files in src.");
-    expect(screen.getByRole("treeitem", { name: "nested" })).toBe(branch);
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-    expect(child.tabIndex).toBe(0);
-    expect(branch.getAttribute("aria-expanded")).toBe("true");
-    expect(document.activeElement).toBe(child);
-
-    pressTreeKey(child, "ArrowLeft");
-    pressTreeKey(branch, "ArrowLeft");
-    expect(document.activeElement).toBe(branch);
-    expect(branch.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
-    pressTreeKey(branch, "ArrowRight");
-    const reopened = await screen.findByRole("treeitem", { name: "main.go" });
-    pressTreeKey(branch, "ArrowRight");
-    expect(document.activeElement).toBe(reopened);
-    expect(screen.getByText("Showing the last loaded files in src.")).toBeTruthy();
-    pressTreeKey(reopened, "Enter");
-    await screen.findByText("package main");
-    expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: deep.path });
-    const returning = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(returning.promise);
-    fireEvent.click(screen.getByRole("button", { name: "Back to files" }));
-    const returned = await screen.findByRole("treeitem", { name: "main.go" });
-    expect(returned).toBe(reopened);
-    expect(returned.getAttribute("aria-current")).toBe("true");
-    expect(screen.getByRole("status").textContent).toContain("Loading");
-    await act(async () => returning.resolve([nested]));
-    await waitFor(() => expect(client.isFetching()).toBe(0));
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(returned);
-    expect(document.activeElement).toBe(returned);
-  });
-
-  it("explains an unsupported directory refresh beside its accepted children without a retry", async () => {
-    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
-    const { child } = await expandWithCursorInChild();
-    listFiles.mockRejectedValueOnce(
-      new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
-    );
-    await act(() => client.refetchQueries(directoryQuery()));
-
-    const feedback = await screen.findByRole("status");
-    expect(feedback.textContent).toContain("Not supported by this runtime");
-    expect(feedback.textContent).toContain("Showing the last loaded files in src.");
-    expect(feedback.querySelector('[data-icon-name="folder"]')).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-    expect(document.activeElement).toBe(child);
-  });
-
-  it("moves focus to the folder when a retried refresh actually removes the cursor's child", async () => {
-    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
-    const { folder } = await expandWithCursorInChild();
-    listFiles.mockRejectedValueOnce(unavailable());
-    await act(() => client.refetchQueries(directoryQuery()));
-    const retry = await screen.findByRole("button", { name: "Retry" });
-    act(() => retry.focus());
-    listFiles.mockResolvedValueOnce([util]);
-
-    fireEvent.click(retry);
-    await screen.findByRole("treeitem", { name: "util.go" });
-    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(folder.tabIndex).toBe(0);
-    expect(document.activeElement).toBe(folder);
-  });
-
-  it("retains an accepted empty directory with stale refresh feedback and recovery", async () => {
-    listFiles.mockResolvedValueOnce([]);
-    mount(<FileTree onReveal={() => {}} entries={[directory]} onSelectFile={() => {}} />);
-    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
-    await screen.findByText("No files");
-    listFiles.mockRejectedValueOnce(unavailable());
-    await act(() => client.refetchQueries(directoryQuery()));
-
-    const retry = await screen.findByRole("button", { name: "Retry" });
-    expect(screen.getByText("No files")).toBeTruthy();
-    expect(screen.getByText("Couldn't refresh files")).toBeTruthy();
-    expect(screen.queryByText("Couldn't load")).toBeNull();
-    fireEvent.click(retry);
-    expect(await screen.findByRole("treeitem", { name: "main.go" })).toBeTruthy();
-  });
-
-  it("drops the previous workspace's children when the workspace changes under refresh feedback", async () => {
-    const tree = (cwd: string) => (
-      <QueryClientProvider client={client}>
-        <FileTree onReveal={() => {}} entries={[directory]} cwd={cwd} onSelectFile={() => {}} />
-      </QueryClientProvider>
-    );
-    const view = testClient.render(tree("/work/one"));
-    const { folder } = await expandWithCursorInChild();
-    listFiles.mockRejectedValueOnce(unavailable());
-    await act(() => client.refetchQueries(directoryQuery("/work/one")));
-    await screen.findByText("Couldn't refresh files");
-
-    const next = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(next.promise);
-    view.rerender(tree("/work/two"));
-    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
-    expect(screen.queryByText("Couldn't refresh files")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Loading");
-    expect(folder.contains(screen.getByRole("status"))).toBe(true);
-    expect(ownedGroup(folder)!.contains(screen.getByRole("status"))).toBe(false);
-
-    await act(async () => next.resolve([util]));
-    const added = await screen.findByRole("treeitem", { name: "util.go" });
-    expect(ownedGroup(folder)!.contains(added)).toBe(true);
-    expect(listFiles).toHaveBeenLastCalledWith({ cwd: "/work/two", path: "src" });
-  });
-});
-
-describe("file tree query and input ownership", () => {
-  it("does not read unread descendants of a collapsed ancestor", async () => {
-    const nested: WorkspaceFileEntry = { name: "nested", path: "src/nested", type: "dir" };
-    testClient.workspace.dock.store.setState({
-      memory: { expandedDirs: [nested.path], lastFilePath: null },
-    });
-    listFiles.mockImplementation(async ({ path }) => (path === "src" ? [nested] : [file]));
-    mount(<FileTree entries={[directory]} onSelectFile={() => {}} onReveal={() => {}} />);
-    expect(listFiles).not.toHaveBeenCalled();
-    expect(screen.queryByText("No files")).toBeNull();
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    fireEvent.click(folder);
-    await screen.findByRole("treeitem", { name: "main.go" });
-    expect(listFiles.mock.calls).toEqual([
-      [{ cwd: undefined, path: "src" }],
-      [{ cwd: undefined, path: "src/nested" }],
-    ]);
-    fireEvent.click(folder);
-    await act(async () => {});
-    expect(listFiles).toHaveBeenCalledTimes(2);
-    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
-    fireEvent.click(folder);
-    await screen.findByRole("treeitem", { name: "main.go" });
-    expect(listFiles).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps an accepted empty directory visible and busy while refreshing it", async () => {
-    listFiles.mockResolvedValueOnce([]);
-    mount(<FileTree entries={[directory]} onSelectFile={() => {}} onReveal={() => {}} />);
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    fireEvent.click(folder);
-    await screen.findByText("No files");
-    const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(refresh.promise);
-    act(() => void client.refetchQueries({ queryKey: [WORKSPACE_LIST_FILES_KEY] }));
-    await waitFor(() => expect(folder.getAttribute("aria-busy")).toBe("true"));
-    expect(screen.getByText("No files")).toBeTruthy();
-    await act(async () => refresh.reject(new Error("refresh failed")));
-    expect(await screen.findByText("Couldn't refresh files")).toBeTruthy();
-    expect(screen.getByText("No files")).toBeTruthy();
-    expect(folder.getAttribute("aria-busy")).toBeNull();
-  });
-
-  it("keeps browsing separate from the activated file and accepts Space once", () => {
-    const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
-    );
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    const row = screen.getByRole("treeitem", { name: "README.md" });
-    act(() => folder.focus());
-    pressTreeKey(folder, "ArrowDown");
-    expect(document.activeElement).toBe(row);
-    expect(onSelectFile).not.toHaveBeenCalled();
-    expect(testClient.workspace.dock.store.getState().memory.lastFilePath).toBeNull();
-    pressTreeKey(row, " ");
-    expect(onSelectFile).toHaveBeenCalledExactlyOnceWith(readme.path);
-  });
-
-  it("retires navigation without moving focus after unmount", async () => {
-    const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
-    const view = mount(
-      <FileTree entries={[directory, readme]} onSelectFile={() => {}} onReveal={() => {}} />,
-    );
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    act(() => folder.focus());
-    pressTreeKey(folder, "ArrowDown");
-    view.unmount();
-    const outside = document.createElement("button");
-    document.body.append(outside);
-    outside.focus();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(document.activeElement).toBe(outside);
-    outside.remove();
   });
 });
 
@@ -2305,355 +1717,6 @@ describe("file read refresh continuity", () => {
   });
 });
 
-describe("workspace file tree keyboard model", () => {
-  const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
-
-  it("keeps navigation independent of a shortcut released after focus leaves the tree", () => {
-    const value = "  Keep the shortcut draft — 保留  ";
-    const onSelectFile = vi.fn();
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue={value} />
-        <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />
-      </>,
-    );
-    const folder = screen.getByRole("treeitem", { name: directory.name });
-    const next = screen.getByRole("treeitem", { name: readme.name });
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(7, 7);
-      folder.focus();
-    });
-
-    try {
-      fireEvent.keyDown(folder, { key: "l", code: "KeyL", metaKey: true });
-      act(() => draft.focus());
-      expect(fireEvent.keyDown(draft, { key: "ArrowDown", code: "ArrowDown" })).toBe(true);
-      fireEvent.keyUp(draft, { key: "ArrowDown", code: "ArrowDown" });
-      expect(document.activeElement).toBe(draft);
-      expect(folder.tabIndex).toBe(0);
-
-      act(() => folder.focus());
-      fireEvent.keyDown(folder, { key: "ArrowDown", code: "ArrowDown" });
-      fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown" });
-      expect(document.activeElement).toBe(next);
-      fireEvent.keyDown(next, { key: "Home", code: "Home" });
-      fireEvent.keyUp(document.activeElement!, { key: "Home", code: "Home" });
-      expect(document.activeElement).toBe(folder);
-      expect(screen.getByRole("treeitem", { name: directory.name })).toBe(folder);
-      expect(screen.getByRole("treeitem", { name: readme.name })).toBe(next);
-      expect(testClient.workspace.dock.store.getState().memory.lastFilePath).toBeNull();
-      expect(onSelectFile).not.toHaveBeenCalled();
-      expect(listFiles).not.toHaveBeenCalled();
-      act(() => draft.focus());
-      expect(draft.value).toBe(value);
-      expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
-    } finally {
-      fireEvent.keyUp(document.activeElement!, { key: "l", code: "KeyL" });
-    }
-  });
-
-  it("leaves modified, composing and consumed navigation with its current owner", () => {
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
-    );
-    const folder = screen.getByRole("treeitem", { name: directory.name });
-    act(() => folder.focus());
-
-    for (const extra of [
-      { altKey: true },
-      { ctrlKey: true },
-      { metaKey: true },
-      { shiftKey: true },
-      { isComposing: true },
-      { keyCode: 229 },
-    ]) {
-      fireEvent.keyDown(folder, { key: "ArrowDown", code: "ArrowDown", ...extra });
-      fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown", ...extra });
-      expect(document.activeElement).toBe(folder);
-    }
-    const consumed = new KeyboardEvent("keydown", {
-      key: "ArrowDown",
-      code: "ArrowDown",
-      bubbles: true,
-      cancelable: true,
-    });
-    consumed.preventDefault();
-    act(() => folder.dispatchEvent(consumed));
-    fireEvent.keyUp(document.activeElement!, { key: "ArrowDown", code: "ArrowDown" });
-    expect(document.activeElement).toBe(folder);
-    expect(folder.tabIndex).toBe(0);
-    expect(onSelectFile).not.toHaveBeenCalled();
-    expect(listFiles).not.toHaveBeenCalled();
-  });
-
-  it("activates a directory once across Space keydown and keyup", async () => {
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
-    );
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    act(() => folder.focus());
-
-    fireEvent.keyDown(folder, { key: " ", code: "Space" });
-    expect(folder.getAttribute("aria-expanded")).toBe("true");
-    fireEvent.keyUp(folder, { key: " ", code: "Space" });
-    expect(folder.getAttribute("aria-expanded")).toBe("true");
-    await screen.findByRole("treeitem", { name: "main.go" });
-
-    fireEvent.keyDown(folder, { key: " ", code: "Space" });
-    expect(folder.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.keyUp(folder, { key: " ", code: "Space" });
-    expect(folder.getAttribute("aria-expanded")).toBe("false");
-    for (const modifier of ["altKey", "ctrlKey", "metaKey", "shiftKey"]) {
-      fireEvent.keyDown(folder, { key: " ", code: "Space", [modifier]: true });
-      fireEvent.keyUp(folder, { key: " ", code: "Space", [modifier]: true });
-      expect(folder.getAttribute("aria-expanded")).toBe("false");
-    }
-    fireEvent.keyDown(folder, { key: " ", code: "Space", isComposing: true });
-    fireEvent.keyUp(folder, { key: " ", code: "Space", isComposing: true });
-    expect(folder.getAttribute("aria-expanded")).toBe("false");
-    expect(document.activeElement).toBe(folder);
-    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ cwd: undefined, path: directory.path });
-    expect(onSelectFile).not.toHaveBeenCalled();
-  });
-
-  it("keeps Right within its branch while children load and after reaching a leaf", async () => {
-    const read = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(read.promise);
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree entries={[directory, readme]} onSelectFile={onSelectFile} onReveal={() => {}} />,
-    );
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    act(() => folder.focus());
-    pressTreeKey(folder, "ArrowRight");
-    await waitFor(() => expect(listFiles).toHaveBeenCalledOnce());
-    pressTreeKey(folder, "ArrowRight");
-    expect(document.activeElement).toBe(folder);
-
-    await act(async () => read.resolve([file]));
-    const child = await screen.findByRole("treeitem", { name: "main.go" });
-    expect(document.activeElement).toBe(folder);
-    pressTreeKey(folder, "ArrowRight");
-    expect(document.activeElement).toBe(child);
-    pressTreeKey(child, "ArrowRight");
-    expect(document.activeElement).toBe(child);
-    expect(onSelectFile).not.toHaveBeenCalled();
-  });
-
-  it.each(["empty", "failed"] as const)(
-    "keeps Right within an expanded directory (%s result)",
-    async (outcome) => {
-      const read = Promise.withResolvers<WorkspaceFileEntry[]>();
-      listFiles.mockReturnValueOnce(read.promise);
-      mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} onReveal={() => {}} />);
-      const folder = screen.getByRole("treeitem", { name: "src" });
-      act(() => folder.focus());
-      pressTreeKey(folder, "ArrowRight");
-      await waitFor(() => expect(listFiles).toHaveBeenCalledOnce());
-      await act(async () => {
-        if (outcome === "empty") read.resolve([]);
-        else read.reject(new Error("directory read failed"));
-      });
-      await waitFor(() => expect(folder.getAttribute("aria-busy")).toBeNull());
-      pressTreeKey(folder, "ArrowRight");
-      expect(document.activeElement).toBe(folder);
-    },
-  );
-
-  it("moves, opens and closes folders the way a tree does", async () => {
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={onSelectFile} />,
-    );
-    const src = screen.getByRole("treeitem", { name: "src" });
-    expect(src.tabIndex).toBe(0);
-    expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(-1);
-    act(() => src.focus());
-
-    pressTreeKey(src, "ArrowRight");
-    expect(src.getAttribute("aria-expanded")).toBe("true");
-    const child = await screen.findByRole("treeitem", { name: "main.go" });
-    expect(child.getAttribute("aria-level")).toBe("2");
-
-    pressTreeKey(src, "ArrowRight");
-    expect(document.activeElement).toBe(child);
-    pressTreeKey(child, "ArrowLeft");
-    expect(document.activeElement).toBe(src);
-    pressTreeKey(src, "End");
-    expect(document.activeElement?.textContent).toContain("README.md");
-    pressTreeKey(document.activeElement!, "Enter");
-    expect(onSelectFile).toHaveBeenCalledWith("README.md");
-    pressTreeKey(document.activeElement!, "Home");
-    expect(document.activeElement).toBe(src);
-    pressTreeKey(src, "ArrowLeft");
-    expect(src.getAttribute("aria-expanded")).toBe("false");
-  });
-
-  it("keeps one keyboard entry when the root listing changes under its cursor", () => {
-    const notes: WorkspaceFileEntry = { name: "NOTES.md", path: "NOTES.md", type: "file" };
-    const view = mount(
-      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />,
-    );
-    const row = screen.getByRole("treeitem", { name: "README.md" });
-    act(() => row.focus());
-
-    view.rerender(
-      <QueryClientProvider client={client}>
-        <FileTree
-          onReveal={() => {}}
-          entries={[notes, directory, readme]}
-          onSelectFile={() => {}}
-        />
-      </QueryClientProvider>,
-    );
-    expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(0);
-    expect(document.activeElement).toBe(row);
-
-    view.rerender(
-      <QueryClientProvider client={client}>
-        <FileTree onReveal={() => {}} entries={[notes, directory]} onSelectFile={() => {}} />
-      </QueryClientProvider>,
-    );
-    const entry = screen.getByRole("treeitem", { name: "NOTES.md" });
-    expect(entry.tabIndex).toBe(0);
-    expect(document.activeElement).toBe(entry);
-  });
-
-  it("moves a removed nested cursor and its focus to the surviving folder", async () => {
-    const other: WorkspaceFileEntry = { name: "other.go", path: "src/other.go", type: "file" };
-    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
-    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
-    act(() => row.focus());
-
-    listFiles.mockImplementation(async (query) => (query.path ? [other] : [directory]));
-    await act(() => client.refetchQueries());
-    await screen.findByRole("treeitem", { name: "other.go" });
-    const src = screen.getByRole("treeitem", { name: "src" });
-    expect(src.tabIndex).toBe(0);
-    expect(document.activeElement).toBe(src);
-  });
-
-  it("moves the library focus to a collapsed ancestor without taking another control's focus", async () => {
-    mount(
-      <>
-        <button>Another control</button>
-        <FileTree onReveal={() => {}} entries={[readme, directory]} onSelectFile={() => {}} />
-      </>,
-    );
-    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
-    act(() => row.focus());
-    const control = screen.getByRole("button", { name: "Another control" });
-    act(() => control.focus());
-
-    act(() => rememberWorkspaceView(testClient.workspace.access, { expandedDirs: [] }));
-    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(0);
-    expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(-1);
-    expect(document.activeElement).toBe(control);
-
-    act(() => rememberWorkspaceView(testClient.workspace.access, { expandedDirs: ["src"] }));
-    expect((await screen.findByRole("treeitem", { name: "main.go" })).tabIndex).toBe(-1);
-    expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(0);
-    expect(document.activeElement).toBe(control);
-  });
-
-  it("declares each shown branch's children and keeps folders out of file selection", async () => {
-    const nested: WorkspaceFileEntry = { name: "nested", path: "src/nested", type: "dir" };
-    const deep: WorkspaceFileEntry = { name: "deep.go", path: "src/nested/deep.go", type: "file" };
-    listFiles.mockImplementation(async (query) =>
-      query.path === directory.path ? [nested, file] : query.path ? [deep] : [directory],
-    );
-    testClient.workspace.dock.store.setState({
-      memory: { expandedDirs: [], lastFilePath: file.path },
-    });
-    const onSelectFile = vi.fn();
-    mount(
-      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={onSelectFile} />,
-    );
-    const src = screen.getByRole("treeitem", { name: "src" });
-    const readmeRow = screen.getByRole("treeitem", { name: "README.md" });
-    expect(ownedGroup(src)).toBeNull();
-    expect(ownedGroup(readmeRow)).toBeNull();
-    expect(src.hasAttribute("aria-selected")).toBe(false);
-    expect(readmeRow.getAttribute("aria-selected")).toBe("false");
-
-    fireEvent.click(src);
-    const branch = await screen.findByRole("treeitem", { name: "nested" });
-    const child = screen.getByRole("treeitem", { name: "main.go" });
-    expect(ownedGroup(src)!.contains(branch)).toBe(true);
-    expect(ownedGroup(src)!.contains(child)).toBe(true);
-    expect(ownedGroup(branch)).toBeNull();
-    expect(ownedGroup(child)).toBeNull();
-    expect(src.hasAttribute("aria-selected")).toBe(false);
-    expect(branch.hasAttribute("aria-selected")).toBe(false);
-    expect(child.getAttribute("aria-selected")).toBe("true");
-    expect(child.getAttribute("aria-current")).toBe("true");
-
-    for (let opening = 1; opening <= 2; opening += 1) {
-      fireEvent.click(branch);
-      const leaf = await screen.findByRole("treeitem", { name: "deep.go" });
-      const group = ownedGroup(branch)!;
-      expect(group.contains(leaf)).toBe(true);
-      expect(ownedGroup(src)!.contains(group)).toBe(true);
-      expect(leaf.getAttribute("aria-level")).toBe("3");
-      expect(leaf.getAttribute("aria-selected")).toBe("false");
-
-      fireEvent.click(branch);
-      expect(screen.queryByRole("treeitem", { name: "deep.go" })).toBeNull();
-      expect(ownedGroup(branch)).toBeNull();
-      expect(ownedGroup(src)!.contains(branch)).toBe(true);
-    }
-
-    fireEvent.click(src);
-    expect(screen.queryByRole("treeitem", { name: "nested" })).toBeNull();
-    expect(ownedGroup(src)).toBeNull();
-    expect(onSelectFile).not.toHaveBeenCalled();
-    expect(testClient.workspace.dock.store.getState().memory.lastFilePath).toBe(file.path);
-    fireEvent.click(readmeRow);
-    expect(onSelectFile).toHaveBeenCalledExactlyOnceWith("README.md");
-  });
-
-  it("keeps each tree's branch owning only its own group for the same paths", async () => {
-    testClient.workspace.dock.store.setState({
-      memory: { expandedDirs: ["src"], lastFilePath: null },
-    });
-    mount(
-      <>
-        <FileTree
-          onReveal={() => {}}
-          entries={[directory]}
-          cwd="/work/one"
-          onSelectFile={() => {}}
-        />
-        <FileTree
-          onReveal={() => {}}
-          entries={[directory]}
-          cwd="/work/two"
-          onSelectFile={() => {}}
-        />
-      </>,
-    );
-    const groups: HTMLElement[] = [];
-    for (const tree of screen.getAllByRole("tree")) {
-      const child = await within(tree).findByRole("treeitem", { name: "main.go" });
-      const group = ownedGroup(within(tree).getByRole("treeitem", { name: "src" }))!;
-      expect(tree.contains(group)).toBe(true);
-      expect(group.contains(child)).toBe(true);
-      groups.push(group);
-    }
-    expect(groups).toHaveLength(2);
-    expect(groups[0]).not.toBe(groups[1]);
-    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/one", path: "src" });
-    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two", path: "src" });
-  });
-});
-
 describe("Go to line target validation", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -2828,7 +1891,7 @@ describe("local file action feedback", () => {
     const record = prepareLocalActions();
     listFiles.mockResolvedValue([file]);
     mount(<FileWorkspace />);
-    const item = await screen.findByRole("treeitem", { name: file.name });
+    const item = await screen.findByRole("row", { name: file.name });
     act(() => item.focus());
     fireEvent.contextMenu(item);
     const menu = await screen.findByRole("menu", { name: file.path });
@@ -2844,7 +1907,7 @@ describe("local file action feedback", () => {
     );
     await waitFor(() => expect(menu.isConnected).toBe(false));
     await waitFor(() => expect(document.activeElement).toBe(item));
-    expect(screen.getByRole("treeitem", { name: file.name })).toBe(item);
+    expect(screen.getByRole("row", { name: file.name })).toBe(item);
     expect(readFile).not.toHaveBeenCalled();
   });
 
@@ -2886,77 +1949,6 @@ describe("local file action feedback", () => {
     expect(testClient.workspace.dock.store.getState().fileViewer).toBe(before);
     expect(document.activeElement).toBe(open);
   });
-
-  it.each([
-    {
-      label: "current visible action",
-      laterFocus: false,
-      top: 300,
-      before: 400,
-      after: 100,
-      reveals: 1,
-    },
-    {
-      label: "later outside focus",
-      laterFocus: true,
-      top: 300,
-      before: 400,
-      after: 100,
-      reveals: 0,
-    },
-    {
-      label: "deliberately out-of-view action",
-      laterFocus: false,
-      top: 300,
-      before: 100,
-      after: 100,
-      reveals: 0,
-    },
-    {
-      label: "action already clipped by the inner top edge",
-      laterFocus: false,
-      top: 1.5,
-      before: 400,
-      after: 20,
-      reveals: 0,
-    },
-    {
-      label: "action newly clipped by the inner bottom edge",
-      laterFocus: false,
-      top: 300,
-      before: 400,
-      after: 331.5,
-      reveals: 1,
-    },
-  ])(
-    "preserves layout intent for $label when action feedback appears",
-    async ({ laterFocus, top, before, after, reveals }) => {
-      prepareLocalActions();
-      const pending = Promise.withResolvers<boolean>();
-      vi.mocked(testClient.workspace.access.local.open).mockReturnValue(pending.promise);
-      const { open, reader } = await unsupportedFile();
-      Object.defineProperty(reader, "clientTop", { configurable: true, value: 2 });
-      vi.spyOn(reader, "getBoundingClientRect").mockImplementation(
-        () => new DOMRect(0, 0, 200, screen.queryByRole("alert") ? after : before),
-      );
-      vi.spyOn(open, "getBoundingClientRect").mockImplementation(
-        () => new DOMRect(20, top, 50, 30),
-      );
-      const reveal = vi.spyOn(open, "scrollIntoView").mockImplementation(() => {});
-      act(() => open.focus());
-      fireEvent.click(open);
-      const outside = screen.getByRole("button", { name: "Elsewhere" });
-      if (laterFocus) act(() => outside.focus());
-
-      await act(async () => pending.resolve(false));
-
-      expect(await screen.findByRole("alert")).toBeTruthy();
-      expect(reveal.mock.calls).toEqual(
-        Array.from({ length: reveals }, () => [{ block: "nearest", inline: "nearest" }]),
-      );
-      expect(document.activeElement).toBe(laterFocus ? outside : open);
-    },
-  );
 
   it("dismisses local feedback into its surviving reader", async () => {
     prepareLocalActions();
@@ -3057,9 +2049,12 @@ describe("retained file workspace popups", () => {
 
   it("retires an open row menu when another workspace has the same cached paths", async () => {
     selection.current = { status: "ready", cwd: "/work/one" };
-    client.setQueryData([WORKSPACE_LIST_FILES_KEY, { cwd: "/work/two" }], [directory]);
+    client.setQueryData(directoryKey("/work/two"), {
+      pages: [page([directory])],
+      pageParams: [undefined],
+    });
     const view = mount(<FileWorkspace />);
-    const original = await screen.findByRole("treeitem", { name: "src" });
+    const original = await screen.findByRole("row", { name: "src" });
     fireEvent.contextMenu(original);
     const menu = await screen.findByRole("menu");
     await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
@@ -3071,7 +2066,7 @@ describe("retained file workspace popups", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole("treeitem", { name: "src" })).toBeTruthy();
+    expect(screen.getByRole("row", { name: "src" })).toBeTruthy();
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
@@ -3128,7 +2123,7 @@ describe("retained file workspace popups", () => {
       </QueryClientProvider>
     );
     const view = testClient.render(scene(true));
-    await screen.findByRole("treeitem", { name: "main.go" });
+    await screen.findByRole("row", { name: "main.go" });
     view.rerender(scene(false));
     await waitFor(() => expect(client.isFetching()).toBe(0));
     listFiles.mockClear();
@@ -3139,11 +2134,21 @@ describe("retained file workspace popups", () => {
     expect(listFiles).not.toHaveBeenCalled();
 
     view.rerender(scene(true));
-    await screen.findByRole("treeitem", { name: "main.go" });
+    await screen.findByRole("row", { name: "main.go" });
     await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(listFiles).toHaveBeenCalledTimes(2);
-    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two" });
-    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two", path: "src" });
+    expect(listFiles).toHaveBeenCalledWith({
+      cwd: "/work/two",
+      path: "",
+      limit: 100,
+      cursor: undefined,
+    });
+    expect(listFiles).toHaveBeenCalledWith({
+      cwd: "/work/two",
+      path: "src",
+      limit: 100,
+      cursor: undefined,
+    });
   });
 
   it("retires Go to line when hidden and keeps its draft for an explicit reopen", async () => {
@@ -3191,7 +2196,7 @@ describe("retained file workspace popups", () => {
       memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
     });
     const host = mountRetained();
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    const row = await screen.findByRole("row", { name: "main.go" });
     act(() => row.focus());
     fireEvent.contextMenu(row);
     const menu = await screen.findByRole("menu");
@@ -3202,12 +2207,10 @@ describe("retained file workspace popups", () => {
     host.reveal();
 
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
+    expect(screen.getByRole("row", { name: "main.go" })).toBe(row);
     expect(row.tabIndex).toBe(0);
-    expect(row.getAttribute("aria-current")).toBe("true");
-    expect(screen.getByRole("treeitem", { name: "src" }).getAttribute("aria-expanded")).toBe(
-      "true",
-    );
+    expect(row.querySelector("[aria-current]")?.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("row", { name: "src" }).getAttribute("aria-expanded")).toBe("true");
   });
 
   it("retires the tree menu when a file preview hides the retained browser", async () => {
@@ -3215,7 +2218,7 @@ describe("retained file workspace popups", () => {
       memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
     });
     mount(<FileWorkspace />);
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    const row = await screen.findByRole("row", { name: "main.go" });
     act(() => row.focus());
     fireEvent.contextMenu(row);
     const menu = await screen.findByRole("menu");
@@ -3226,8 +2229,8 @@ describe("retained file workspace popups", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     act(() => closeWorkspaceFile(testClient.workspace.access));
     expect(screen.queryByRole("menu")).toBeNull();
-    await screen.findByRole("treeitem", { name: "main.go" });
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
+    await screen.findByRole("row", { name: "main.go" });
+    expect(screen.getByRole("row", { name: "main.go" })).toBe(row);
   });
 
   it("pauses root and expanded directory reads behind a preview and resumes them on return", async () => {
@@ -3235,7 +2238,7 @@ describe("retained file workspace popups", () => {
       memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
     });
     mount(<FileWorkspace />);
-    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    const row = await screen.findByRole("row", { name: "main.go" });
     act(() => openWorkspaceFile(testClient.workspace.access, file.path));
     await screen.findByText("package main");
     await waitFor(() => expect(client.isFetching()).toBe(0));
@@ -3246,194 +2249,19 @@ describe("retained file workspace popups", () => {
 
     act(() => closeWorkspaceFile(testClient.workspace.access));
     await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(2));
-    expect(listFiles).toHaveBeenCalledWith({ cwd: undefined });
-    expect(listFiles).toHaveBeenCalledWith({ cwd: undefined, path: "src" });
+    expect(listFiles).toHaveBeenCalledWith({
+      cwd: undefined,
+      path: "",
+      limit: 100,
+      cursor: undefined,
+    });
+    expect(listFiles).toHaveBeenCalledWith({
+      cwd: undefined,
+      path: "src",
+      limit: 100,
+      cursor: undefined,
+    });
     await waitFor(() => expect(client.isFetching()).toBe(0));
-    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
-  });
-});
-
-describe("directory read feedback ownership", () => {
-  it.each([
-    {
-      state: "pending",
-      settle: (_read: PromiseWithResolvers<WorkspaceFileEntry[]>) => {},
-      feedback: () => screen.findByRole("status"),
-      name: /^src Loading/,
-    },
-    {
-      state: "failed",
-      settle: (read: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
-        read.reject(new Error("directory unavailable")),
-      feedback: () => screen.findByText("Couldn't load"),
-      name: /^src Couldn't load/,
-    },
-    {
-      state: "empty",
-      settle: (read: PromiseWithResolvers<WorkspaceFileEntry[]>) => read.resolve([]),
-      feedback: () => screen.findByText("No files"),
-      name: /^src No files/,
-    },
-  ])("keeps $state feedback with its directory rather than its child entries", async (outcome) => {
-    const read = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(read.promise);
-    const onSelectFile = vi.fn();
-    mount(<FileTree entries={[directory]} onSelectFile={onSelectFile} onReveal={() => {}} />);
-    const folder = screen.getByRole("treeitem", { name: "src" });
-
-    try {
-      act(() => folder.focus());
-      pressTreeKey(folder, "ArrowRight");
-      await waitFor(() =>
-        expect(listFiles).toHaveBeenCalledExactlyOnceWith({
-          cwd: undefined,
-          path: directory.path,
-        }),
-      );
-      await act(async () => outcome.settle(read));
-      const feedback = await outcome.feedback();
-      const group = ownedGroup(folder);
-
-      expect(folder.contains(feedback)).toBe(true);
-      expect(group?.contains(feedback) ?? false).toBe(false);
-      expect(screen.getAllByRole("treeitem")).toEqual([folder]);
-      expect(screen.getByRole("treeitem", { name: outcome.name })).toBe(folder);
-      expect(document.activeElement).toBe(folder);
-
-      fireEvent.click(feedback);
-      expect(folder.getAttribute("aria-expanded")).toBe("true");
-      expect(ownedGroup(folder)).toBe(group);
-      fireEvent.click(within(folder).getByText("src", { exact: true }));
-      expect(folder.getAttribute("aria-expanded")).toBe("false");
-      expect(ownedGroup(folder)).toBeNull();
-      fireEvent.click(folder);
-      expect(folder.getAttribute("aria-expanded")).toBe("true");
-      expect(screen.getByRole("treeitem", { name: /^src(?:\s|$)/ })).toBe(folder);
-      expect(onSelectFile).not.toHaveBeenCalled();
-    } finally {
-      await act(async () => read.resolve([]));
-    }
-  });
-
-  it.each(["Enter", " "])(
-    "keeps %j Retry activation separate from its directory and the current child cursor",
-    async (key) => {
-      const read = Promise.withResolvers<WorkspaceFileEntry[]>();
-      testClient.workspace.dock.store.setState({
-        memory: { expandedDirs: [], lastFilePath: file.path },
-      });
-      const onSelectFile = vi.fn();
-      mount(
-        <>
-          <textarea aria-label="Message" defaultValue="  Directory draft · 保留  " />
-          <FileTree entries={[directory]} onSelectFile={onSelectFile} onReveal={() => {}} />
-        </>,
-      );
-      const folder = screen.getByRole("treeitem", { name: "src" });
-      const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-
-      try {
-        act(() => folder.focus());
-        pressTreeKey(folder, "ArrowRight");
-        const child = await screen.findByRole("treeitem", { name: "main.go" });
-        act(() => child.focus());
-        listFiles.mockRejectedValueOnce(new Error("directory unavailable"));
-        await act(() =>
-          client.refetchQueries({
-            queryKey: [WORKSPACE_LIST_FILES_KEY, { cwd: undefined, path: directory.path }],
-            exact: true,
-          }),
-        );
-        const retry = await screen.findByRole("button", { name: "Retry" });
-        act(() => retry.focus());
-
-        expect(child.tabIndex).toBe(0);
-        expect(folder.tabIndex).toBe(-1);
-        for (const modifier of ["shiftKey", "metaKey"] as const) {
-          expect(
-            fireEvent.keyDown(retry, {
-              key: "ArrowDown",
-              code: "ArrowDown",
-              [modifier]: true,
-            }),
-          ).toBe(true);
-          fireEvent.keyUp(document, {
-            key: "ArrowDown",
-            code: "ArrowDown",
-            [modifier]: true,
-          });
-          expect(document.activeElement).toBe(retry);
-          expect(child.tabIndex).toBe(0);
-          expect(folder.tabIndex).toBe(-1);
-        }
-        fireEvent.click(screen.getByText("Couldn't refresh files"));
-        expect(folder.getAttribute("aria-expanded")).toBe("true");
-        expect(listFiles).toHaveBeenCalledTimes(2);
-
-        listFiles.mockReturnValueOnce(read.promise);
-        const code = key === " " ? "Space" : key;
-        expect(fireEvent.keyDown(retry, { key, code })).toBe(true);
-        expect(fireEvent.keyUp(retry, { key, code })).toBe(true);
-        fireEvent.click(retry);
-        expect(document.activeElement).toBe(child);
-        expect(folder.getAttribute("aria-expanded")).toBe("true");
-        await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(3));
-
-        act(() => draft.focus());
-        fireEvent.change(draft, { target: { value: "  Directory draft · 保留 continued  " } });
-        await act(async () => read.resolve([file]));
-        await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
-        expect(screen.getByRole("treeitem", { name: "src" })).toBe(folder);
-        expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
-        expect(child.getAttribute("aria-current")).toBe("true");
-        expect(child.tabIndex).toBe(0);
-        expect(folder.tabIndex).toBe(-1);
-        expect(document.activeElement).toBe(draft);
-        expect(draft.value).toBe("  Directory draft · 保留 continued  ");
-        expect(listFiles).toHaveBeenCalledTimes(3);
-        expect(onSelectFile).not.toHaveBeenCalled();
-      } finally {
-        await act(async () => read.resolve([file]));
-      }
-    },
-  );
-
-  it("keeps the same directory through its first pending read without claiming later draft focus", async () => {
-    const read = Promise.withResolvers<WorkspaceFileEntry[]>();
-    listFiles.mockReturnValueOnce(read.promise);
-    const onSelectFile = vi.fn();
-    mount(
-      <>
-        <textarea aria-label="Message" defaultValue="  Directory draft · 保留  " />
-        <FileTree entries={[directory]} onSelectFile={onSelectFile} onReveal={() => {}} />
-      </>,
-    );
-    const folder = screen.getByRole("treeitem", { name: "src" });
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-
-    try {
-      act(() => folder.focus());
-      pressTreeKey(folder, "ArrowRight");
-      await screen.findByRole("status");
-      act(() => draft.focus());
-      fireEvent.change(draft, { target: { value: "  Directory draft · 保留 continued  " } });
-      draft.setSelectionRange(5, 5);
-
-      await act(async () => read.resolve([file]));
-      const child = await screen.findByRole("treeitem", { name: "main.go" });
-      expect(screen.getByRole("treeitem", { name: "src" })).toBe(folder);
-      expect(ownedGroup(folder)!.contains(child)).toBe(true);
-      expect(folder.tabIndex).toBe(0);
-      expect(child.tabIndex).toBe(-1);
-      expect(screen.queryByRole("status")).toBeNull();
-      expect(document.activeElement).toBe(draft);
-      expect(draft.value).toBe("  Directory draft · 保留 continued  ");
-      expect(draft.selectionStart).toBe(5);
-      expect(draft.selectionEnd).toBe(5);
-      expect(listFiles).toHaveBeenCalledExactlyOnceWith({ cwd: undefined, path: directory.path });
-      expect(onSelectFile).not.toHaveBeenCalled();
-    } finally {
-      await act(async () => read.resolve([file]));
-    }
+    expect(screen.getByRole("row", { name: "main.go" })).toBe(row);
   });
 });

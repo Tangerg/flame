@@ -785,7 +785,7 @@
             },
             {
               "name": "ListWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
+              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.FileListPage, error)"
             },
             {
               "name": "ListWorkspaces",
@@ -12161,6 +12161,52 @@
           "underlying": "string"
         },
         {
+          "name": "FileListCoverage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ScannedEntries",
+              "type": "int",
+              "tag": "json:\"scannedEntries\""
+            },
+            {
+              "name": "ExcludedEntries",
+              "type": "int",
+              "tag": "json:\"excludedEntries\""
+            },
+            {
+              "name": "BudgetExhausted",
+              "type": "bool",
+              "tag": "json:\"budgetExhausted\""
+            }
+          ]
+        },
+        {
+          "name": "FileListPage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Data",
+              "type": "[]FileEntry",
+              "tag": "json:\"data\""
+            },
+            {
+              "name": "PageContinuation",
+              "type": "PageContinuation"
+            },
+            {
+              "name": "Complete",
+              "type": "bool",
+              "tag": "json:\"complete\""
+            },
+            {
+              "name": "Coverage",
+              "type": "FileListCoverage",
+              "tag": "json:\"coverage\""
+            }
+          ]
+        },
+        {
           "name": "FileStatus",
           "kind": "defined",
           "underlying": "string"
@@ -19739,7 +19785,7 @@
             },
             {
               "name": "ListWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
+              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.FileListPage, error)"
             },
             {
               "name": "ListWorkspaces",

@@ -1,0 +1,15 @@
+export const codeSyntaxColors = {
+  foreground: "var(--color-text)",
+  background: "var(--color-sunken)",
+  "token-comment": "var(--color-text-muted)",
+  "token-keyword": "var(--color-accent-text)",
+  "token-string-expression": "var(--color-success)",
+  "token-string": "var(--color-success)",
+  "token-constant": "var(--color-accent-text)",
+  "token-parameter": "var(--color-text-soft)",
+  "token-function": "var(--color-info)",
+  "token-punctuation": "var(--color-text)",
+  "token-link": "var(--color-accent-text)",
+  "token-inserted": "var(--color-success)",
+  "token-deleted": "var(--color-negative)",
+};

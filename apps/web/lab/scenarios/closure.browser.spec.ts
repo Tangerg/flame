@@ -132,9 +132,9 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   await expectLabReady(page);
 
   if (route.fixture === "agent" && route.state === "long-content") {
-    await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(
-      3,
-    );
+    await expect(
+      page.locator(".code-artifact [data-slot=code-body] > code:has(.line)"),
+    ).toHaveCount(3);
     await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
     const transcript = page.locator(".msg-scroll-viewport");
     await expect
@@ -1066,7 +1066,7 @@ test("maximum UI text keeps long code readable through its own horizontal scroll
   });
 
   const code = page
-    .locator(".shiki-block [data-slot=code-body]")
+    .locator(".code-artifact [data-slot=code-body]")
     .filter({ hasText: "parent.postMessage" });
   await expect(code).toHaveCSS("overflow-x", "auto");
   expect(
@@ -1448,7 +1448,7 @@ test("a chosen typeface reaches the controls, not only the text that inherits", 
           ? getComputedStyle(element).fontFamily.split(",")[0]!.replace(/"/g, "")
           : null;
       };
-      return { body: family("body"), control: family("button"), code: family(".shiki-block") };
+      return { body: family("body"), control: family("button"), code: family(".code-artifact") };
     });
 
   expect(await faces()).toEqual({
@@ -1687,7 +1687,7 @@ for (const state of ["waves", "tool-shells", "tool-search", "tool-tail"] as cons
       page.locator('[data-slot=composer-root] [aria-haspopup][aria-expanded="true"]'),
     ).toHaveCount(0);
 
-    for (const block of await transcript.locator('.shiki-block[data-variant="code"]').all()) {
+    for (const block of await transcript.locator('.code-artifact[data-variant="code"]').all()) {
       const source = await block.getAttribute("data-markdown-copy-text");
       expect(source).not.toBeNull();
       await expect(block.locator('[data-slot="code-body"]')).toHaveText(source!);

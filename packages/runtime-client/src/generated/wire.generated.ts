@@ -624,6 +624,19 @@ export interface FileEntry {
 
 export type FileEntryType = "file" | "dir" | "symlink";
 
+export interface FileListCoverage {
+  budgetExhausted: boolean;
+  excludedEntries: number;
+  scannedEntries: number;
+}
+
+export interface FileListPage {
+  complete: boolean;
+  coverage: FileListCoverage;
+  data: FileEntry[];
+  nextCursor?: string;
+}
+
 export type FileStatus = "added" | "modified" | "deleted" | "renamed" | "untracked";
 
 export interface ForgetApprovalRuleRequest {
@@ -1175,8 +1188,6 @@ export interface PageContinuation {
 }
 
 export type PageOfAgentDoc = Page<AgentDoc>;
-
-export type PageOfFileEntry = Page<FileEntry>;
 
 export type PageOfItem = Page<Item>;
 

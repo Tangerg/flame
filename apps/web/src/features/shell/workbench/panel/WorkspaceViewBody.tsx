@@ -3,7 +3,7 @@ import { Suspense, useCallback, useImperativeHandle, useRef, type Ref } from "re
 import * as stylex from "@stylexjs/stylex";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 import { SkeletonList } from "@/ui/index";
-import { EmptyState } from "@flame/ui";
+import { EmptyState, useFieldVisibility } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
@@ -35,6 +35,7 @@ export function WorkspaceViewBody({ viewId, presentation, ref }: Props) {
   const t = useT();
   const scroll = useScrollReach();
   const element = useRef<HTMLDivElement>(null);
+  useFieldVisibility(element);
   const scrollRef = scroll.ref;
   const attach = useCallback(
     (node: HTMLDivElement | null) => {

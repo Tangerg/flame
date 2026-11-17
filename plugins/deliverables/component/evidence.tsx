@@ -195,6 +195,7 @@ function PageImage({
             labels={{
               view: t("image.view"),
               close: t("image.close"),
+              fit: t("image.fit"),
               zoomIn: t("image.zoomIn"),
               zoomOut: t("image.zoomOut"),
               description: t("image.description"),

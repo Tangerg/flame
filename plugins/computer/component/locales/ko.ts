@@ -136,6 +136,7 @@ export const ko = {
   "result.imageUnavailable": "이 기록된 이미지를 표시할 수 없습니다.",
   "image.view": "이미지 보기",
   "image.close": "이미지 닫기",
+  "image.fit": "창에 맞추기",
   "image.zoomIn": "확대",
   "image.zoomOut": "축소",
   "image.description": "이미지 설명",

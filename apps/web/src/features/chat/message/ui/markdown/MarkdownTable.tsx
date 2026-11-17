@@ -3,7 +3,7 @@ import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "
 import { FileReferencePresentationContext } from "@/features/workspace/public/FileRefLink";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
-import { useContentVisible, useCopyFeedback } from "@flame/ui";
+import { useContentVisible, useCopy } from "@flame/ui";
 import { LightboxDialog } from "@flame/ui";
 import { IconButton } from "@flame/ui";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
@@ -63,7 +63,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
       }),
     [],
   );
-  const { copied, copy } = useCopyFeedback(markdownSource, 1500, writeTable);
+  const copy = useCopy(markdownSource, t("message.code.copy"), writeTable);
 
   return (
     <div
@@ -110,11 +110,11 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           </FileReferencePresentationContext>
         </LightboxDialog>
         <IconButton
-          icon={iconGlyph(copied ? "check" : "copy")}
+          icon={iconGlyph("copy")}
           size="xs"
           quiet
           onClick={() => void copy()}
-          aria-label={t(copied ? "message.table.copied" : "message.table.copy")}
+          aria-label={t("message.table.copy")}
         />
       </div>
       <div

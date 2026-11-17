@@ -773,12 +773,11 @@ describe("current Find match reading", () => {
     );
     const follow: StreamFollow = {
       isAtBottom: false,
-      state: { isAtBottom: false, targetScrollTop: 0 },
       scrollRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
       contentRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
-      scrollToBottom: vi.fn(() => true),
+      scrollToBottom: vi.fn(),
       stopScroll: vi.fn(() => {
-        follow.state.isAtBottom = false;
+        follow.isAtBottom = false;
       }),
     };
     const view = testClient.render(<SearchFixture content={body()} follow={follow} />);
@@ -841,6 +840,7 @@ describe("current Find match reading", () => {
     );
     const input = searchFor("alpha");
     input.setSelectionRange(1, 3);
+    vi.mocked(follow.stopScroll).mockClear();
     return {
       ...view,
       region,
@@ -859,31 +859,31 @@ describe("current Find match reading", () => {
 
   it("ends rearmed bottom follow before it carries the current word out of an unchanged frame", () => {
     const reading = layout();
-    reading.follow.state.isAtBottom = true;
-    reading.follow.state.targetScrollTop = 200;
+    reading.follow.isAtBottom = true;
+
     resize(reading.content);
-    expect(reading.follow.state.isAtBottom).toBe(false);
+    expect(reading.follow.isAtBottom).toBe(false);
     expect(reading.follow.stopScroll).toHaveBeenCalledOnce();
     expect(reading.scrolls[0]).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(reading.input);
     expect([reading.input.selectionStart, reading.input.selectionEnd]).toEqual([1, 3]);
   });
 
-  it("allows follow whose destination keeps the complete current word readable", () => {
+  it("pauses follow while Find retains its explicit match", () => {
     const reading = layout();
-    reading.follow.state.isAtBottom = true;
-    reading.follow.state.targetScrollTop = 10;
+    reading.follow.isAtBottom = true;
+
     resize(reading.content);
-    expect(reading.follow.stopScroll).not.toHaveBeenCalled();
-    expect(reading.follow.state.isAtBottom).toBe(true);
+    expect(reading.follow.stopScroll).toHaveBeenCalled();
+    expect(reading.follow.isAtBottom).toBe(false);
   });
 
   it("ends conflicting follow when explicitly moving to another match", () => {
     const reading = layout();
-    reading.follow.state.isAtBottom = true;
-    reading.follow.state.targetScrollTop = 200;
+    reading.follow.isAtBottom = true;
+
     fireEvent.keyDown(reading.input, { key: "Enter" });
-    expect(reading.follow.state.isAtBottom).toBe(false);
+    expect(reading.follow.isAtBottom).toBe(false);
     expect(screen.getByRole("status").textContent).toBe("2 / 2");
   });
 
@@ -895,11 +895,11 @@ describe("current Find match reading", () => {
         reading.pre.scrollTop = 100;
         fireEvent.scroll(reading.pre);
       } else screen.getByRole("button", { name: "Outside" }).focus();
-      reading.follow.state.isAtBottom = true;
-      reading.follow.state.targetScrollTop = 200;
+      reading.follow.isAtBottom = true;
+
       resize(reading.content);
       expect(reading.follow.stopScroll).not.toHaveBeenCalled();
-      expect(reading.follow.state.isAtBottom).toBe(true);
+      expect(reading.follow.isAtBottom).toBe(true);
     },
   );
 

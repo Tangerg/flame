@@ -11,7 +11,6 @@ export const VISUAL_REVIEW_VIEWPORT = { width: 1800, height: 1000 } as const;
 export const VISUAL_SETTINGS_PANES = [
   "appearance",
   "brand",
-  "personalization",
   "providers",
   "approvals",
   "mcp-servers",
@@ -29,7 +28,14 @@ export function isVisualSettingsPane(value: string | null): value is VisualSetti
 
 export const VISUAL_DIRECTORY_PATH = "apps";
 export const VISUAL_DIRECTORY_CHANGED_EVENT = "flame:visual-directory-changed";
-const VISUAL_DIRECTORY_STATES = ["loading", "error", "empty", "refresh-error"] as const;
+const VISUAL_DIRECTORY_STATES = [
+  "loading",
+  "error",
+  "empty",
+  "refresh-error",
+  "paged",
+  "budget",
+] as const;
 export type VisualDirectoryState = (typeof VISUAL_DIRECTORY_STATES)[number];
 
 export function isVisualDirectoryState(value: string | null): value is VisualDirectoryState {

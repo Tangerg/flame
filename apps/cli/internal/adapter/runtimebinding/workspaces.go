@@ -14,7 +14,7 @@ type workspaceBinding interface {
 	ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)
 	GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, protocol.CallOptions) (*protocol.Diff, error)
 	SearchWorkspaceFiles(context.Context, protocol.GrepRequest, protocol.CallOptions) (*protocol.GrepResult, error)
-	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)
+	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, protocol.CallOptions) (*protocol.FileListPage, error)
 	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, protocol.CallOptions) (*protocol.FileContent, error)
 }
 
@@ -174,6 +174,9 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 		if page == nil {
 			return workspace.FileListing{}, runtimeContractViolation("list workspace files after cursor %q returned a nil page", cursor)
 		}
+		if page.Complete != (page.NextCursor == "") || page.Coverage.ScannedEntries < len(page.Data) || page.Coverage.ExcludedEntries < 0 || page.Coverage.ExcludedEntries > page.Coverage.ScannedEntries || (page.Complete && page.Coverage.BudgetExhausted) {
+			return workspace.FileListing{}, runtimeContractViolation("list workspace files returned inconsistent completion or coverage")
+		}
 		if len(page.Data) > workspaceFilePageLimit {
 			return workspace.FileListing{}, runtimeContractViolation(
 				"list workspace files returned %d rows for limit %d",
@@ -186,19 +189,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 				Path: entry.Path, Type: entry.Type, SizeBytes: entry.SizeBytes,
 				ModifiedAt: entry.ModifiedAt,
 			}
-			if len(result.Entries) != 0 {
-				previous := result.Entries[len(result.Entries)-1]
-				previousDirectory := previous.Type == protocol.FileEntryDir
-				currentDirectory := projected.Type == protocol.FileEntryDir
-				if currentDirectory && !previousDirectory ||
-					currentDirectory == previousDirectory && projected.Path < previous.Path {
-					return workspace.FileListing{}, runtimeContractViolation(
-						"list workspace files returned path %q out of catalog order after %q",
-						projected.Path,
-						previous.Path,
-					)
-				}
-			}
+
 			result.Entries = append(result.Entries, projected)
 		}
 		more, err := cursors.advance(page.NextCursor)

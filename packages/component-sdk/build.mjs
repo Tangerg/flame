@@ -42,6 +42,46 @@ export async function buildComponent({ input, directory, compiler }) {
         },
       },
       {
+        name: "flame-component-literal-whitespace",
+        generateBundle(_options, outputs) {
+          for (const output of Object.values(outputs)) {
+            if (output.type !== "chunk") continue;
+            const edits = [];
+            const visit = (node, parent) => {
+              if (!node || typeof node !== "object") return;
+              if (
+                node.type === "TemplateLiteral" &&
+                node.expressions.length === 0 &&
+                parent?.type !== "TaggedTemplateExpression" &&
+                /[ \t]+\r?\n/.test(node.quasis[0].value.raw)
+              ) {
+                // Literal whitespace is data; escape it without trimming the captured value.
+                edits.push({
+                  start: node.start,
+                  end: node.end,
+                  text: JSON.stringify(node.quasis[0].value.cooked),
+                });
+                return;
+              }
+              for (const [key, child] of Object.entries(node)) {
+                if (["loc", "start", "end"].includes(key)) continue;
+                if (Array.isArray(child))
+                  child.forEach((value) => visit(value, node));
+                else visit(child, node);
+              }
+            };
+            visit(this.parse(output.code));
+            for (const edit of edits.toSorted(
+              (left, right) => right.start - left.start,
+            ))
+              output.code =
+                output.code.slice(0, edit.start) +
+                edit.text +
+                output.code.slice(edit.end);
+          }
+        },
+      },
+      {
         name: "flame-component-import-graph",
         moduleParsed(info) {
           if (

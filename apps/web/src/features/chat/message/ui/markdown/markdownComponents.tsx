@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { TextLink } from "@/ui/index";
-import { ShikiCodeBlock } from "@/ui/index";
+import { CodeArtifact } from "@/ui/index";
 import { cn } from "@/lib/classNames";
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
 import { MarkdownImage } from "@/features/chat/message/ui/markdown/MarkdownImage";
@@ -200,7 +200,7 @@ export const markdownComponents: Components = {
       !child.props.className
     ) {
       const code = String(child.props.children ?? "").replace(/\n$/, "");
-      return <ShikiCodeBlock lang="text" code={code} />;
+      return <CodeArtifact lang="text" code={code} />;
     }
     return <>{children}</>;
   },
@@ -223,7 +223,7 @@ export const markdownComponents: Components = {
         /^\s*(?:<\?xml[^>]*>\s*)?<svg[\s>]/i.test(codeStr))
     )
       return <SvgArtifact code={codeStr} lang={lang} />;
-    return <ShikiCodeBlock lang={lang} code={codeStr} />;
+    return <CodeArtifact lang={lang} code={codeStr} />;
   },
   td({ children, className, align, colSpan, rowSpan, style }) {
     return (

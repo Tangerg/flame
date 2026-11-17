@@ -139,6 +139,7 @@ export const fr = {
     "Cette image enregistrée n’a pas pu être affichée.",
   "image.view": "Afficher l’image",
   "image.close": "Fermer l’image",
+  "image.fit": "Ajuster l’image",
   "image.zoomIn": "Zoom avant",
   "image.zoomOut": "Zoom arrière",
   "image.description": "Description de l’image",

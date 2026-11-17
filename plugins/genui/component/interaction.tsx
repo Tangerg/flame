@@ -1,16 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
-import {
-  failureText,
-  type ComponentContext,
-  type Translate,
-} from "@flame/component-sdk";
+import { useSyncExternalStore } from "react";
+import { failureText, type Translate } from "@flame/component-sdk";
 import {
   Button,
   CodeBlock,
@@ -18,125 +7,22 @@ import {
   ModalDialog,
   RecordGroup,
 } from "@flame/ui";
-import { useGetFieldValue, useSetFieldValue } from "@openuidev/react-lang";
-import {
-  operationKey,
-  Presentation,
-  safeURL,
-  stateKey,
-} from "../contracts/document";
-import {
-  InteractionController,
-  type ActionIssues,
-} from "./interactionController";
+import type { InteractionController } from "./interactionController";
 
-interface Interaction {
-  blocked: boolean;
-  execute(actionId: string): Promise<ActionIssues>;
-  reset(fields?: string[]): void;
-  resetForm(actionId: string): void;
-  update(id: string, value: unknown): void;
-  readInitial(id: string): unknown;
-  feedback: ReactNode;
-}
-
-const InteractionContext = createContext<Interaction | null>(null);
-
-export function useGenUIInteraction(): Interaction {
-  const interaction = useContext(InteractionContext);
-  if (!interaction)
-    throw new Error("genui: interaction requires its document owner");
-  return interaction;
-}
-
-export function GenUIInteractionProvider({
-  context,
-  presentation,
+export function InteractionFeedback({
+  controller,
   t,
-  children,
 }: {
-  context: ComponentContext;
-  presentation: Presentation;
+  controller: InteractionController;
   t: Translate;
-  children: ReactNode;
 }) {
-  const get = useGetFieldValue();
-  const set = useSetFieldValue();
-  const initial = useMemo(
-    () =>
-      new Map(
-        presentation.snapshot().state.map(({ id, value }) => [id, value]),
-      ),
-    [presentation],
-  );
-  const controller = useMemo(
-    () =>
-      new InteractionController(
-        context,
-        presentation,
-        {
-          readState: (id) => {
-            const value = get(undefined, stateKey(id));
-            return value === undefined ? initial.get(id) : value;
-          },
-          writeState: (id, value) =>
-            set(undefined, "GenUI", stateKey(id), value),
-          readOperation: (id) => get(undefined, operationKey(id)),
-          writeOperation: (id, value) =>
-            set(undefined, "GenUIResult", operationKey(id), value),
-        },
-        {
-          copy: async (text) => {
-            if (!navigator.clipboard)
-              throw new Error("genui: clipboard access is unavailable");
-            await navigator.clipboard.writeText(text);
-          },
-          open: (url) => {
-            const link = document.createElement("a");
-            link.href = safeURL(url);
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.hidden = true;
-            // The host owns external navigation through document link activation.
-            document.body.append(link);
-            try {
-              link.click();
-            } finally {
-              link.remove();
-            }
-          },
-        },
-      ),
-    [context, presentation, initial, get, set],
-  );
-  const { action: view, inputIssue } = useSyncExternalStore(
+  const { action: view } = useSyncExternalStore(
     controller.subscribe,
     controller.snapshot,
     controller.snapshot,
   );
-  const controls = useMemo(
-    () => ({
-      execute: (id: string) => controller.execute(id),
-      reset: (fields?: string[]) => controller.reset(fields),
-      resetForm: (id: string) =>
-        controller.reset(presentation.formStateIds(id)),
-      update: (id: string, value: unknown) => controller.update(id, value),
-      readInitial: (id: string) => initial.get(id),
-    }),
-    [controller, initial, presentation],
-  );
-  useEffect(() => {
-    void controller.initialize();
-  }, [controller]);
-  const inputFailure = inputIssue ? failureText(inputIssue.error, "") : "";
   const feedback = (
     <>
-      {inputIssue && (
-        <div role="alert">
-          <p>{t("interaction.inputFailed")}</p>
-          {inputFailure && <p>{inputFailure}</p>}
-        </div>
-      )}
       {view.status === "running" && (
         <p role="status" aria-live="polite">
           {t("interaction.running")}
@@ -215,7 +101,6 @@ export function GenUIInteractionProvider({
             label={t("interaction.input")}
             labels={{
               copy: t("code.copy"),
-              copied: t("code.copied"),
               wrap: t("code.wrap"),
               unwrap: t("code.unwrap"),
             }}
@@ -226,15 +111,5 @@ export function GenUIInteractionProvider({
       )}
     </>
   );
-  return (
-    <InteractionContext
-      value={{
-        blocked: controller.blocked,
-        ...controls,
-        feedback,
-      }}
-    >
-      {children}
-    </InteractionContext>
-  );
+  return feedback;
 }

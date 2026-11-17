@@ -25,7 +25,7 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 	}
 	for name, content := range map[string]string{
 		"index.html":    `<!doctype html><title>flame browser</title><script nonce="TEST_NONCE" src="/assets/app.js"></script>`,
-		"sandbox.html":  "<!doctype html><p>opaque wrapper</p>",
+		"preview.html":  "<!doctype html><p>same-origin preview</p>",
 		"assets/app.js": "export const application = 'flame'",
 		".private":      "must not be published",
 	} {
@@ -34,7 +34,7 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		}
 	}
 	identities := map[string]any{}
-	for _, name := range []string{"index.html", "sandbox.html", "assets/app.js"} {
+	for _, name := range []string{"index.html", "preview.html", "assets/app.js"} {
 		data, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
 			t.Fatal(err)
@@ -44,8 +44,8 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		if name == "index.html" {
 			identity["document"] = "main"
 		}
-		if name == "sandbox.html" {
-			identity["document"] = "sandbox"
+		if name == "preview.html" {
+			identity["document"] = "same-origin"
 		}
 		identities[name] = identity
 	}
@@ -53,7 +53,6 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		"version": 1, "noncePlaceholder": "TEST_NONCE",
 		"documentPolicy": "script-src 'nonce-TEST_NONCE' 'strict-dynamic'; frame-ancestors 'none'",
 		"embeddedPolicy": "script-src 'nonce-TEST_NONCE' 'strict-dynamic'; frame-ancestors 'self'",
-		"sandbox":        map[string]string{"file": "sandbox.html", "policy": "default-src 'none'"},
 		"files":          identities,
 	})
 	if err != nil {

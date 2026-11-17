@@ -126,6 +126,7 @@ export const es: Record<string, string> = {
   "export.trajectory": "Exportar la trayectoria completa de la sesión",
   "image.view": "Ver imagen",
   "image.close": "Cerrar vista previa de imagen",
+  "image.fit": "Ajustar imagen",
   "image.zoomIn": "Ampliar imagen",
   "image.zoomOut": "Reducir imagen",
   "image.description": "Descripción de la imagen",

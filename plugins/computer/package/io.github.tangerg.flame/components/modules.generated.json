@@ -9,6 +9,7 @@
         "@flame/ui",
         "@frame/sdk/json",
         "react",
+        "react-dom",
         "react/jsx-runtime"
       ],
       "dynamicImports": [],
@@ -22,6 +23,7 @@
     "@flame/ui",
     "@frame/sdk/json",
     "react",
+    "react-dom",
     "react/jsx-runtime"
   ]
 }

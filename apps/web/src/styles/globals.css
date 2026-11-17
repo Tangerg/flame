@@ -173,7 +173,6 @@
 
   --polish-fast: var(--dur-fast) var(--ease-out);
 
-  --layer-drawer: 10;
   --layer-card: 15;
   --layer-resizer: 25;
   --layer-chrome-control: 30;
@@ -326,7 +325,6 @@ html.theme-dark {
 }
 
 .agent-shell {
-  --sidebar-layout-width: var(--sidebar-preview-width, var(--sidebar-width));
   position: relative;
   display: flex;
   width: 100%;
@@ -388,42 +386,12 @@ body:has([data-slot="notification-toast"])
   --wails-draggable: no-drag;
 }
 
-.agent-drawer-gap {
-  width: var(--sidebar-layout-width);
-  flex-shrink: 0;
-  transition: width var(--dur-drawer) var(--ease-drawer);
-}
-.agent-shell[data-sidebar="collapsed"] .agent-drawer-gap {
-  width: 0;
-  transition: width var(--dur-drawer) var(--ease-drawer);
-}
-
 .agent-drawer {
-  position: fixed;
-  inset-block: 0;
-  left: 0;
-  z-index: var(--layer-drawer);
+  position: relative;
   display: flex;
-  width: var(--sidebar-layout-width);
-  height: 100dvh;
-  visibility: visible;
-  transition:
-    left var(--dur-drawer) var(--ease-drawer),
-    width var(--dur-drawer) var(--ease-drawer),
-    visibility 0s linear 0s;
-}
-.agent-shell[data-sidebar="collapsed"] .agent-drawer {
-  left: calc(var(--sidebar-layout-width) * -1);
-  visibility: hidden;
-  transition:
-    left var(--dur-drawer) var(--ease-drawer),
-    width var(--dur-drawer) var(--ease-drawer),
-    visibility 0s linear var(--dur-drawer);
-}
-
-.agent-shell[data-resizing] .agent-drawer,
-.agent-shell[data-resizing] .agent-drawer-gap {
-  transition: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .agent-drawer-surface {
@@ -444,40 +412,12 @@ body:has([data-slot="notification-toast"])
   box-shadow: var(--app-pane-wash-end) var(--seam-wash);
 }
 
-.agent-seam-rail {
-  position: absolute;
-  inset-block: 0;
-  left: 0;
-  z-index: var(--layer-resizer);
-  width: 10px;
-  transform: translateX(-5px);
+.agent-seam-rail,
+.agent-pane-resizer {
+  position: relative;
+  flex: 0 0 6px;
   cursor: col-resize;
-}
-.agent-shell[data-sidebar="collapsed"] .agent-seam-rail {
-  display: none;
-}
-
-@media (max-width: 760px) {
-  .agent-shell {
-    flex-direction: column;
-  }
-  .agent-drawer-gap {
-    display: none;
-  }
-  .agent-drawer {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    height: min(36dvh, 18rem);
-    flex-shrink: 0;
-    transition: none;
-  }
-  .agent-shell[data-sidebar="collapsed"] .agent-drawer {
-    display: none;
-  }
-  .agent-seam-rail {
-    display: none;
-  }
+  z-index: var(--layer-resizer);
 }
 
 @property --shell-boundary {
@@ -623,7 +563,6 @@ body:has([data-slot="notification-toast"])
 }
 
 .agent-dock-row {
-  --dock-layout-width: var(--dock-preview-width, var(--dock-measure));
   position: relative;
 }
 
@@ -632,39 +571,17 @@ body:has([data-slot="notification-toast"])
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 0 0 var(--dock-layout-width);
+  width: 100%;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
   contain: layout paint;
   background: var(--app-dock-surface);
-  transition:
-    flex-basis var(--dur-drawer) var(--ease-drawer),
-    visibility 0s linear 0s;
 }
 .agent-dock-row[data-dock="collapsed"] .agent-context-dock {
   visibility: hidden;
-  flex-basis: 0px;
-  transition:
-    flex-basis var(--dur-drawer) var(--ease-drawer),
-    visibility 0s linear var(--dur-drawer);
 }
-/* Clipping folds the Dock; retained readers keep their measured width throughout the motion. */
-.agent-dock-row:not([data-presentation="main"]) .agent-context-dock > * {
-  min-inline-size: var(--dock-layout-width);
-}
-.agent-dock-row[data-resizing] .agent-context-dock,
-.agent-dock-row[data-dock="collapsed"]:not([data-dock-available]) .agent-context-dock {
-  transition: none;
-}
-.agent-dock-row[data-presentation="main"] .agent-context-dock {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  contain: none;
-  visibility: visible;
-  background: none;
-  transition: none;
-}
+
 .agent-dock-row[data-presentation="main"]::before {
   content: none;
 }
@@ -778,13 +695,6 @@ body:has([data-slot="notification-toast"])
   will-change: transform;
 }
 
-[data-activity-clearance] :where(*) {
-  scroll-margin-block-start: calc(
-    var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
-      var(--layout-control-gap)
-  );
-}
-
 .agent-index-scroll {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
@@ -855,43 +765,26 @@ body:has([data-slot="notification-toast"])
 }
 
 .msg-scroll-viewport {
-  /* Match the content card beneath the masked edges so the fade changes
-     content visibility without changing the canvas colour. */
   background: var(--app-content-surface);
   --transcript-fade: 24px;
-  --transcript-bottom-edge: calc(
-    100% - var(--transcript-bottom-clearance) + var(--layout-control-gap)
-  );
+  --reading-frame-height: max(0px, calc(100cqh - 2 * var(--transcript-fade)));
   -webkit-mask-image: linear-gradient(
     to bottom,
-    transparent 0,
+    transparent,
     #000 var(--transcript-fade),
-    #000 calc(var(--transcript-bottom-edge) - var(--layout-control-gap)),
-    transparent var(--transcript-bottom-edge)
+    #000 calc(100% - var(--transcript-fade)),
+    transparent
   );
   mask-image: linear-gradient(
     to bottom,
-    transparent 0,
+    transparent,
     #000 var(--transcript-fade),
-    #000 calc(var(--transcript-bottom-edge) - var(--layout-control-gap)),
-    transparent var(--transcript-bottom-edge)
+    #000 calc(100% - var(--transcript-fade)),
+    transparent
   );
-  /* Masking does not exclude hit testing; paint and hit testing must share
-     the reserved control boundary so hidden history cannot take Jump-band input. */
-  clip-path: inset(0 0 calc(100% - var(--transcript-bottom-edge)) 0);
-  --transcript-bottom-clearance: calc(
-    var(--composer-overlay, 0px) +
-      max(
-        var(--transcript-fade),
-        var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap)
-      )
-  );
-  --reading-frame-height: max(
-    0px,
-    calc(100cqh - var(--transcript-fade) - var(--transcript-bottom-clearance))
-  );
-  scroll-padding-top: var(--transcript-fade);
-  scroll-padding-bottom: var(--transcript-bottom-clearance);
+  scroll-padding-block: var(--transcript-fade);
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
 }
 
 .agent-composer-glass {
@@ -946,9 +839,6 @@ body:has([data-slot="notification-toast"])
 
   :where(*, *::before, *::after) {
     corner-shape: superellipse(1.5);
-  }
-  .type-caret {
-    corner-shape: round;
   }
 }
 @media (hover: none) {

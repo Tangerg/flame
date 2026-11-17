@@ -1,18 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import {
-  useContext,
-  useLayoutEffect,
-  useRef,
-  type ComponentPropsWithRef,
-  type ReactNode,
-} from "react";
+import { type ComponentPropsWithRef, type ReactNode } from "react";
 import { ChevronRight } from "@flame/icons/react";
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
-import { layout, space, surface, type } from "./tokens.stylex";
-import { PanelLayoutContext } from "./panel-layout";
-import { fitsStickyReadingFrame } from "./reading-unit";
+import { layout, space, type } from "./tokens.stylex";
 
 const styles = stylex.create({
   root: {
@@ -27,27 +19,6 @@ const styles = stylex.create({
     columnGap: layout.contentGap,
     rowGap: layout.controlGap,
     minWidth: 0,
-  },
-  stickyHeader: {
-    position: { default: null, ":is([data-sticky])": "sticky" },
-    insetBlockStart: {
-      default: null,
-      ":is([data-sticky])": "var(--panel-controls-height, 0px)",
-    },
-    zIndex: {
-      default: null,
-      ":is([data-sticky])": "calc(var(--layer-card) - 1)",
-    },
-    backgroundColor: {
-      default: null,
-      ":is([data-sticky])": surface.canvas,
-    },
-  },
-  stickyRowHeader: {
-    backgroundColor: {
-      default: null,
-      ":is([data-sticky])": surface.card,
-    },
   },
   row: {
     paddingInline: layout.cardPadding,
@@ -113,7 +84,6 @@ export function Disclosure({
   keepMounted,
   variant = "plain",
   actions,
-  stickyHeader = false,
   "data-focused": focused,
   ...props
 }: Omit<ComponentPropsWithRef<"section">, "title" | "onChange"> & {
@@ -124,85 +94,8 @@ export function Disclosure({
   keepMounted?: boolean;
   variant?: "plain" | "row";
   actions?: ReactNode;
-  stickyHeader?: boolean;
   "data-focused"?: boolean;
 }) {
-  const headerRef = useRef<HTMLDivElement>(null);
-  const panelLayout = useContext(PanelLayoutContext);
-  useLayoutEffect(() => {
-    const header = headerRef.current;
-    const root = header?.parentElement;
-    if (!stickyHeader || !header || !root || !panelLayout) return;
-    let viewport = root.parentElement;
-    while (
-      viewport &&
-      !["auto", "scroll", "hidden"].includes(
-        getComputedStyle(viewport).overflowY,
-      )
-    ) {
-      viewport = viewport.parentElement;
-    }
-    if (!viewport) return;
-    const scrollViewport = viewport;
-    const controls = panelLayout?.controlsRef?.current;
-    let content: HTMLElement | null = null;
-    const measure = () => {
-      const nextContent = header.nextElementSibling as HTMLElement | null;
-      if (content !== nextContent) {
-        content?.style.removeProperty("--disclosure-header-height");
-        content = nextContent;
-      }
-      const height = header.getBoundingClientRect().height;
-      const contentStyle = content ? getComputedStyle(content) : null;
-      const lineHeight = contentStyle
-        ? Number.parseFloat(contentStyle.lineHeight)
-        : 0;
-      const bodyInset = contentStyle
-        ? Number.parseFloat(contentStyle.marginBlockStart) +
-          Number.parseFloat(contentStyle.paddingBlockStart)
-        : 0;
-      const available =
-        scrollViewport.clientHeight -
-        (panelLayout.stickyControlsBounds()?.height ?? 0);
-      const fits =
-        content !== null &&
-        lineHeight > 0 &&
-        fitsStickyReadingFrame({
-          headerHeight: height,
-          frameHeight: available,
-          bodyLineHeight: lineHeight,
-          bodyInset,
-        });
-      const nextHeight = fits ? `${height}px` : "";
-      const changed =
-        (content?.style.getPropertyValue("--disclosure-header-height") ??
-          "") !== nextHeight;
-      header.toggleAttribute("data-sticky", fits);
-      if (fits && content) {
-        content.style.setProperty("--disclosure-header-height", nextHeight);
-      } else {
-        content?.style.removeProperty("--disclosure-header-height");
-      }
-      if (changed) {
-        const focused = header.ownerDocument.activeElement;
-        if (focused && content?.contains(focused)) {
-          panelLayout?.keepBodyFocusVisible(focused);
-        }
-      }
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(header, { box: "border-box" });
-    observer.observe(scrollViewport, { box: "border-box" });
-    if (controls) observer.observe(controls, { box: "border-box" });
-    // Uncontrolled expansion can mount the body without rerendering Disclosure.
-    observer.observe(root, { box: "border-box" });
-    measure();
-    return () => {
-      observer.disconnect();
-      header.removeAttribute("data-sticky");
-      content?.style.removeProperty("--disclosure-header-height");
-    };
-  }, [stickyHeader, panelLayout]);
   return (
     <CollapsiblePrimitive.Root
       open={open}
@@ -216,15 +109,7 @@ export function Disclosure({
         />
       }
     >
-      <div
-        ref={headerRef}
-        data-focus-unit=""
-        {...stylex.props(
-          styles.header,
-          stickyHeader && styles.stickyHeader,
-          stickyHeader && variant === "row" && styles.stickyRowHeader,
-        )}
-      >
+      <div data-focus-unit="" {...stylex.props(styles.header)}>
         <CollapsiblePrimitive.Trigger
           render={
             <Button

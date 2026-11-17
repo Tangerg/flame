@@ -126,3 +126,8 @@ origins and loopback policy. International domain names use the HTTP transport's
 invalid names and names that normalize to an empty host are refused before I/O.
 IP literals retain their zone identity. Parsed redirect URLs enter the same
 admission boundary without modifying the caller's URL.
+
+Workspace directory listing returns `protocol.FileListPage` with explicit completion,
+coverage and cursor fields. This replaces the generic file-entry page. Directories
+are enumerated one level at a time; recursive search remains a separate request.
+A changed directory invalidates continuation instead of merging incompatible pages.

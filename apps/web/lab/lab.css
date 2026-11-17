@@ -15,3 +15,7 @@ html[data-lab-document="gallery"] #root {
 :where([data-lab-shell]) :where(h1, h2, h3, p) {
   margin: 0;
 }
+.lab-preview-island {
+  user-select: text;
+  pointer-events: auto;
+}

@@ -93,6 +93,8 @@ export type WireTypeName =
   | "FileDiff"
   | "FileEntry"
   | "FileEntryType"
+  | "FileListCoverage"
+  | "FileListPage"
   | "FileStatus"
   | "ForgetApprovalRuleRequest"
   | "ForkSessionRequest"
@@ -200,7 +202,6 @@ export type WireTypeName =
   | "OpenPluginResourcesRequest"
   | "PageContinuation"
   | "PageOfAgentDoc"
-  | "PageOfFileEntry"
   | "PageOfItem"
   | "PageOfMCPServer"
   | "PageOfMCPTool"
@@ -1269,6 +1270,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     type: ref(() => CHECKS.FileEntryType),
   }, ["modifiedAt", "name", "path", "type"]),
   FileEntryType: enumOf(["file", "dir", "symlink"]),
+  FileListCoverage: object({
+    budgetExhausted: flag(),
+    excludedEntries: integer(),
+    scannedEntries: integer(),
+  }, ["budgetExhausted", "excludedEntries", "scannedEntries"]),
+  FileListPage: object({
+    complete: flag(),
+    coverage: ref(() => CHECKS.FileListCoverage),
+    data: array(ref(() => CHECKS.FileEntry)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["complete", "coverage", "data"]),
   FileStatus: enumOf(["added", "modified", "deleted", "renamed", "untracked"]),
   ForgetApprovalRuleRequest: object({
     id: allOf([text(), minLength(1)]),
@@ -2443,10 +2455,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   PageOfAgentDoc: object({
     data: array(ref(() => CHECKS.AgentDoc)),
-    nextCursor: allOf([text(), maxLength(65536)]),
-  }, ["data"]),
-  PageOfFileEntry: object({
-    data: array(ref(() => CHECKS.FileEntry)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfItem: object({
@@ -4966,7 +4974,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "workspace.changes.list": ref(() => CHECKS.PageOfWorkspaceFileChange),
   "workspace.diff.get": ref(() => CHECKS.Diff),
   "workspace.files.search": ref(() => CHECKS.GrepResult),
-  "workspace.files.list": ref(() => CHECKS.PageOfFileEntry),
+  "workspace.files.list": ref(() => CHECKS.FileListPage),
   "workspace.files.read": ref(() => CHECKS.FileContent),
   "runtime.subscribe": ref(() => CHECKS.RuntimeSubscribeResponse),
   "skills.discovered.list": ref(() => CHECKS.SkillDiscovery),

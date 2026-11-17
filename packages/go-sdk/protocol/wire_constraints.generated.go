@@ -3067,6 +3067,12 @@ func (e ExportSessionResponse) validateWire() error {
 	)
 }
 
+func (f FileListPage) validateWire() error {
+	return collectWireViolations("FileListPage",
+		maxLength("nextCursor", f.NextCursor, 65536),
+	)
+}
+
 func (i InterruptPayload) validateWire() error {
 	return collectWireViolations("InterruptPayload",
 		closedEnum("risk", string(i.Risk), []string{"low", "medium", "high"}, true),

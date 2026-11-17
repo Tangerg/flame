@@ -1,6 +1,5 @@
 import { ACTIVE_DIFF_FILE, REVIEW_DIFF } from "./diffSnapshot";
 import { expect, test, type Page } from "./test";
-import { DOCK_MIN_WIDTH_PX } from "@/lib/shellGeometry";
 import { en } from "@/lib/i18n/locales/en";
 import { expectLabReady } from "../readiness";
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
@@ -172,7 +171,9 @@ test("WebKit renders long CJK and highlighted content at maximum UI text size", 
   });
 
   await expect(page.locator("body")).toHaveCSS("font-size", "18px");
-  await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(3);
+  await expect(page.locator(".code-artifact [data-slot=code-body] > code:has(.line)")).toHaveCount(
+    3,
+  );
   await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
   await expect(page.getByText(/中文混排/)).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Message composer" })).toBeVisible();
@@ -190,10 +191,10 @@ test("WebKit workspace keeps review geometry and separator semantics", async ({ 
   await page.getByRole("button", { name: "Show changed files", exact: true }).click();
   await expect(page.locator("[data-diff-file]")).toHaveCount(REVIEW_DIFF.visual.manifest.length);
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
-  await expect(separator).toHaveAttribute("aria-valuemin", String(DOCK_MIN_WIDTH_PX));
+  await expect(separator).toHaveAttribute("aria-valuemin", String(320));
   await expect
     .poll(async () => Number(await separator.getAttribute("aria-valuenow")))
-    .toBeGreaterThan(DOCK_MIN_WIDTH_PX);
+    .toBeGreaterThan(320);
   await expectNoPageOverflow(page);
 });
 

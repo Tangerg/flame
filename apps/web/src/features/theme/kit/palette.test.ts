@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rgbColor } from "@/lib/color";
-import { syntaxColors, syntaxColorToken } from "@/lib/highlight/shikiTheme";
+import { codeSyntaxColors } from "@flame/ui";
 function channels(color: string) {
   const { r, g, b } = rgbColor(color)!;
   return { r: r * 255, g: g * 255, b: b * 255 };
@@ -133,25 +133,17 @@ describe("syntax reading contrast", () => {
           t["color-surface"]!,
         ]),
       ];
-      for (const original of syntaxColors()) {
-        const ink = t[syntaxColorToken(original)]!;
+      for (const role of Object.values(codeSyntaxColors)) {
+        const property = /^var\(--(.+)\)$/.exec(role)?.[1];
+        if (!property || property === "color-sunken") continue;
+        const ink = restingInk(t[property]!);
         for (const plane of planes) {
           expect(
             contrastRatio(ink, plane),
-            `${original} on ${String(plane)}`,
+            `${property} on ${String(plane)}`,
           ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
-          for (const state of ["wash-selected", "wash-selected-hover"])
-            expect(
-              contrastRatio(ink, paintedPlane(t, t[state], plane)),
-              `${original}, ${state}`,
-            ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
         }
       }
-      const legible = syntaxColors().filter((original) =>
-        planes.every((plane) => contrastRatio(original, plane) >= WCAG_AA_TEXT),
-      );
-      expect(legible.length).toBeGreaterThan(0);
-      expect(legible.map((original) => t[syntaxColorToken(original)])).toEqual(legible);
     },
   );
 });

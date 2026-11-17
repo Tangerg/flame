@@ -223,6 +223,7 @@ export const zhTW = {
   "capabilities.limits": "目前安裝的限制",
   "image.view": "檢視圖片",
   "image.close": "關閉圖片預覽",
+  "image.fit": "符合視窗",
   "image.zoomIn": "放大圖片",
   "image.zoomOut": "縮小圖片",
   "image.description": "圖片說明",

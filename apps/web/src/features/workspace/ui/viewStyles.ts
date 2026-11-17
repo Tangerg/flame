@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, layout, space, surface, weight } from "@flame/ui/tokens.stylex";
+import { color, layout, space, weight } from "@flame/ui/tokens.stylex";
 export const viewStyles = stylex.create({
   contentHeader: {
     display: "flex",
@@ -45,17 +45,4 @@ export const viewStyles = stylex.create({
     minWidth: 0,
     marginInlineStart: "auto",
   },
-});
-
-export const codeStyles = stylex.create({
-  sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
-  gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
-  wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  lineRow: {
-    display: "grid",
-    alignItems: "flex-start",
-    gap: space.s2,
-    paddingInline: space.s3,
-  },
-  targetLine: { backgroundColor: surface.selected },
 });

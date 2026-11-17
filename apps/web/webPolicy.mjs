@@ -1,23 +1,5 @@
 export const WEB_POLICY_FILE = ".vite/flame-web-policy.json";
 export const NONCE_PLACEHOLDER = "__FLAME_RESPONSE_NONCE__";
-export const SANDBOX_FILE = "genui-sandbox.html";
-
-// The opaque program response deliberately permits authored inline programs.
-// Its policy must not be inherited from the application's trusted script realm.
-export const SANDBOX_POLICY = [
-  "default-src 'none'",
-  "script-src 'unsafe-inline'",
-  "style-src 'unsafe-inline'",
-  "img-src data: blob:",
-  "media-src data: blob:",
-  "font-src data:",
-  "connect-src 'none'",
-  "frame-src 'none'",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'none'",
-].join("; ");
-
 const DOCUMENT_DIRECTIVES = [
   "default-src 'self'",
   `script-src 'nonce-${NONCE_PLACEHOLDER}' 'strict-dynamic'`,

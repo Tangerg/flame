@@ -31,14 +31,23 @@ export interface ComposerImageIntake {
   addFiles(files: File[]): void;
 }
 
+export interface ComposerEditor {
+  readonly element: HTMLElement;
+  replace(text: string): void;
+  append(text: string): void;
+  focus(): void;
+  revision(): object;
+}
+
 export interface ComposerStatePort {
-  focus(selectionEnd?: number): void;
+  focus(): void;
   captureFocus(): () => void;
-  registerFocusTarget(
-    element: HTMLTextAreaElement | null,
-    synchronizeSelection?: () => void,
-  ): () => void;
+  registerFocusTarget(element: HTMLElement | null): () => void;
   registerFocusPresentation(present: (focus: () => void) => void): () => void;
+  useDraftKey(): string;
+  initialDocument(): { text: string; document: string | null };
+  registerEditor(editor: ComposerEditor): () => void;
+  checkpointDocument(text: string, document: string): void;
   useText(): string;
   useSetText(): (value: string) => void;
   usePersistenceState(): ComposerPersistenceState;
@@ -48,6 +57,7 @@ export interface ComposerStatePort {
   replaceDraft(input: ComposerDraftInput): void;
   beginDraftReplacement(): ComposerDraftReplacement;
   appendText(text: string): void;
+  captureAppendText(): (text: string) => boolean;
   useImageAttachments(): readonly ComposerImageAttachment[];
   useAttachmentsReady(): boolean;
   usePastes(): readonly PastedText[];

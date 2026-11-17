@@ -17,7 +17,7 @@ const resetKernelForTest = async () => {
   if (running) await stopKernel(running);
   running = undefined;
 };
-import { dispatchBinding } from "@/lib/combo";
+import { normalizeHotkey } from "@tanstack/hotkeys";
 let connection: ReturnType<typeof createRuntimeConnection>;
 
 const host = createBrowserHost();
@@ -75,11 +75,11 @@ describe("built-in shortcuts", () => {
     const bindings = new Map<string, string[]>();
     for (const command of lookupExtensionPoint(COMMAND)) {
       if (command.combo === undefined) continue;
-      const key = dispatchBinding(command.combo);
+      const key = normalizeHotkey(command.combo);
       bindings.set(key, [...(bindings.get(key) ?? []), `command ${command.id}`]);
     }
     for (const shortcut of lookupExtensionPoint(SHORTCUT)) {
-      const key = dispatchBinding(shortcut.key);
+      const key = normalizeHotkey(shortcut.key);
       bindings.set(key, [...(bindings.get(key) ?? []), `shortcut ${shortcut.key}`]);
     }
 

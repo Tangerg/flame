@@ -21,7 +21,6 @@ type documentKind string
 const (
 	mainDocument       documentKind = "main"
 	sameOriginDocument documentKind = "same-origin"
-	sandboxDocument    documentKind = "sandbox"
 )
 
 type fingerprintKind string
@@ -38,7 +37,7 @@ type artifact struct {
 	Document    documentKind    `json:"document,omitempty"`
 }
 
-func (a artifact) validate(name, sandbox string) error {
+func (a artifact) validate(name string) error {
 	hash, err := hex.DecodeString(a.SHA256)
 	if !publicPath(name) || err != nil || len(hash) != sha256.Size || hex.EncodeToString(hash) != a.SHA256 {
 		return errors.New("webassets: invalid artifact identity")
@@ -58,12 +57,9 @@ func (a artifact) validate(name, sandbox string) error {
 		return nil
 	}
 	switch a.Document {
-	case mainDocument, sameOriginDocument, sandboxDocument:
+	case mainDocument, sameOriginDocument:
 	default:
 		return errors.New("webassets: invalid document kind")
-	}
-	if (a.Document == sandboxDocument) != (name == sandbox) {
-		return errors.New("webassets: invalid sandbox identity")
 	}
 	return nil
 }
@@ -74,15 +70,11 @@ func (a artifact) matches(data []byte) bool {
 }
 
 type policy struct {
-	Version          int    `json:"version"`
-	NoncePlaceholder string `json:"noncePlaceholder"`
-	DocumentPolicy   string `json:"documentPolicy"`
-	EmbeddedPolicy   string `json:"embeddedPolicy"`
-	Sandbox          struct {
-		File   string `json:"file"`
-		Policy string `json:"policy"`
-	} `json:"sandbox"`
-	Files map[string]artifact `json:"files"`
+	Version          int                 `json:"version"`
+	NoncePlaceholder string              `json:"noncePlaceholder"`
+	DocumentPolicy   string              `json:"documentPolicy"`
+	EmbeddedPolicy   string              `json:"embeddedPolicy"`
+	Files            map[string]artifact `json:"files"`
 }
 
 func parsePolicy(data []byte) (policy, error) {
@@ -100,20 +92,17 @@ func (p policy) validate() error {
 	if p.Version != policyVersion || p.NoncePlaceholder == "" || strings.ContainsAny(p.NoncePlaceholder, "\r\n'\"<>&") {
 		return errors.New("webassets: invalid artifact policy")
 	}
-	if !publicPath(p.Sandbox.File) || path.Ext(p.Sandbox.File) != ".html" || p.Sandbox.Policy == "" || strings.ContainsAny(p.Sandbox.Policy, "\r\n") {
-		return errors.New("webassets: invalid sandbox policy")
-	}
 	for _, csp := range []string{p.DocumentPolicy, p.EmbeddedPolicy} {
 		if !strings.Contains(csp, "'nonce-"+p.NoncePlaceholder+"'") || strings.ContainsAny(csp, "\r\n") {
 			return errors.New("webassets: invalid document policy")
 		}
 	}
 	for name, file := range p.Files {
-		if err := file.validate(name, p.Sandbox.File); err != nil {
+		if err := file.validate(name); err != nil {
 			return err
 		}
 	}
-	if p.Files[entryDocument].Document != mainDocument || p.Files[p.Sandbox.File].Document != sandboxDocument {
+	if p.Files[entryDocument].Document != mainDocument {
 		return errors.New("webassets: missing required document identity")
 	}
 	return nil

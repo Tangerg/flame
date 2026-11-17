@@ -295,9 +295,10 @@ describe("draft focus presentation", () => {
     const other = screen.getByRole("button", { name: "Other task" });
     const present = vi.fn();
     const unregister = registerComposerFocusPresentation(testClient.composer.access, present);
+    field.setSelectionRange(1, 1);
     act(() => other.focus());
 
-    act(() => focusComposer(testClient.composer.access, 1));
+    act(() => focusComposer(testClient.composer.access));
 
     expect(document.activeElement).toBe(field);
     expect(field.selectionEnd).toBe(1);
@@ -323,24 +324,18 @@ describe("draft focus presentation", () => {
     expect(document.activeElement).toBe(other);
   });
 
-  it("synchronizes the registered input after delivering its native selection", () => {
+  it("retains native selection and withdraws the original focus target", () => {
     testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-    const observed: Array<{ focused: boolean; start: number; end: number }> = [];
-    const unregister = registerComposerFocusTarget(testClient.composer.access, field, () => {
-      observed.push({
-        focused: document.activeElement === field,
-        start: field.selectionStart,
-        end: field.selectionEnd,
-      });
-    });
-
-    act(() => focusComposer(testClient.composer.access, 1));
-
-    expect(observed).toEqual([{ focused: true, start: 1, end: 1 }]);
-    unregister();
-    act(() => focusComposer(testClient.composer.access, 2));
-    expect(observed).toHaveLength(1);
+    field.setSelectionRange(1, 1);
+    const unregister = registerComposerFocusTarget(testClient.composer.access, field);
+    act(() => focusComposer(testClient.composer.access));
+    expect(document.activeElement).toBe(field);
     expect(field.selectionEnd).toBe(1);
+    unregister();
+    const outside = screen.getByRole("button", { name: "Other task" });
+    outside.focus();
+    act(() => focusComposer(testClient.composer.access));
+    expect(document.activeElement).toBe(outside);
   });
 });

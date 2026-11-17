@@ -46,6 +46,7 @@ interface FloatingContentProps {
   align?: DropdownPositionerProps["align"];
   sideOffset?: DropdownPositionerProps["sideOffset"];
   alignOffset?: DropdownPositionerProps["alignOffset"];
+  anchor?: DropdownPositionerProps["anchor"];
 }
 
 type DropdownContentProps = FloatingContentProps &
@@ -64,7 +65,7 @@ type ContextSubmenuTriggerProps = ComponentProps<typeof ContextMenuPrimitive.Sub
 
 interface ContextIconItemProps extends Omit<ContextItemProps, "children" | "onClick" | "onSelect"> {
   icon: IconName;
-  onSelect: () => void;
+  onSelect: NonNullable<ContextItemProps["onClick"]>;
   destructive?: boolean;
   children: ReactNode;
 }
@@ -77,6 +78,7 @@ function DropdownContent({
   sideOffset,
   alignOffset,
   finalFocus,
+  anchor,
   ...popupProps
 }: DropdownContentProps) {
   const { visible, portalRef } = useHiddenPopupRelease();
@@ -84,6 +86,7 @@ function DropdownContent({
   return (
     <MenuPrimitive.Portal ref={portalRef}>
       <MenuPrimitive.Positioner
+        anchor={anchor}
         side={side}
         align={align}
         sideOffset={sideOffset}
@@ -112,6 +115,7 @@ function ContextContent({
   sideOffset,
   alignOffset,
   finalFocus,
+  anchor,
   ...popupProps
 }: ContextContentProps) {
   const { visible, portalRef } = useHiddenPopupRelease();
@@ -119,6 +123,7 @@ function ContextContent({
   return (
     <ContextMenuPrimitive.Portal ref={portalRef}>
       <ContextMenuPrimitive.Positioner
+        anchor={anchor}
         side={side}
         align={align}
         sideOffset={sideOffset}

@@ -66,7 +66,7 @@ import type {
   ExportTrajectoryResponse,
   FeedbackRequest,
   FileContent,
-  FileEntry,
+  FileListPage,
   ForkSessionRequest,
   GetDiffRequest,
   HooksListResult,
@@ -213,7 +213,7 @@ interface WorkspaceMethods {
     list: (
       params?: Omit<ListFilesRequest, "workspace">,
       signal?: AbortSignal,
-    ) => AutoPagingPromise<Page<FileEntry>>;
+    ) => AutoPagingPromise<FileListPage>;
     read: (
       params: Omit<ReadFileRequest, "workspace">,
       signal?: AbortSignal,

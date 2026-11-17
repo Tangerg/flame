@@ -15,6 +15,12 @@ export const test = base.extend<{ quietConsole: void }>({
           message.text().includes("https://motion.dev/troubleshooting/reduced-motion-disabled")
         )
           return;
+        if (
+          message.type() === "warning" &&
+          message.text() ===
+            "Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information."
+        )
+          return;
         complaints.push(`${message.type()}: ${message.text()}`);
       });
       page.on("pageerror", (error) => complaints.push(`pageerror: ${error.message}`));

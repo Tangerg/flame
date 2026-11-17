@@ -158,7 +158,7 @@ it("projects a deferred copy refusal and settled guidance in the current languag
 });
 
 it.each(["success", "refusal"] as const)(
-  "keeps the latest copy feedback when an older %s settles",
+  "keeps the copy command stable when an older %s settles",
   async (outcome) => {
     vi.useFakeTimers();
     const older = Promise.withResolvers<void>();
@@ -174,7 +174,7 @@ it.each(["success", "refusal"] as const)(
     fireEvent.click(copy);
     fireEvent.click(copy);
     await act(async () => latest.resolve());
-    expect(screen.getByRole("button", { name: "Copied" })).toBe(copy);
+    expect(screen.getByRole("button", { name: "Copy HEX" })).toBe(copy);
     expect(document.activeElement).toBe(copy);
 
     await act(async () => {
@@ -185,9 +185,13 @@ it.each(["success", "refusal"] as const)(
         );
     });
 
-    expect(screen.getByRole("button", { name: "Copied" })).toBe(copy);
+    expect(screen.getByRole("button", { name: "Copy HEX" })).toBe(copy);
     expect(document.activeElement).toBe(copy);
-    expect(screen.queryByRole("alert")).toBeNull();
+    if (outcome === "refusal")
+      expect(screen.getByRole("alert").textContent).toContain(
+        "Couldn't copy the color",
+      );
+    else expect(screen.queryByRole("alert")).toBeNull();
     expect(writeText.mock.calls).toEqual([["#FB6E30"], ["#FB6E30"]]);
     expect(f.saveFile).not.toHaveBeenCalled();
   },

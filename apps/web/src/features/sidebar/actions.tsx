@@ -1,6 +1,6 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
-import { ariaKeyShortcuts, comboGlyph } from "@/lib/combo";
+import { normalizeHotkey, formatForDisplay, formatHotkey, parseHotkey } from "@tanstack/hotkeys";
 import { useSettingsPaneForIntent } from "@/features/settings/public/intent";
 import {
   SESSION_SEARCH_COMMAND,
@@ -27,6 +27,7 @@ export function SidebarActions() {
   const actions = useWorkIndexActions();
   const toolsPane = useSettingsPaneForIntent("mcp-servers");
   const combo = useCommandCombo(SESSION_SEARCH_COMMAND);
+  const shortcut = combo ? parseHotkey(combo) : undefined;
 
   return (
     <div {...stylex.props(sb.stack)}>
@@ -34,9 +35,11 @@ export function SidebarActions() {
         icon="search"
         onClick={openSessionSearch}
         aria-haspopup="dialog"
-        aria-keyshortcuts={combo ? ariaKeyShortcuts(combo) : undefined}
+        aria-keyshortcuts={shortcut && !("code" in shortcut) ? formatHotkey(shortcut) : undefined}
         look="search"
-        trailing={combo ? <Kbd variant="inline">{comboGlyph(combo)}</Kbd> : undefined}
+        trailing={
+          combo ? <Kbd variant="inline">{formatForDisplay(normalizeHotkey(combo))}</Kbd> : undefined
+        }
       >
         {t("sessionSearch.placeholder")}
       </AgentRow>

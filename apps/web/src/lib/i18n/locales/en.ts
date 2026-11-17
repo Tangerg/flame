@@ -1,4 +1,8 @@
 export const en: Record<string, string> = {
+  "common.copied": "Copied",
+  "common.copyFailed": "Could not copy",
+  "file.loadMore": "Load more files",
+  "message.image.fit": "Fit image",
   "link.openFailed": "Couldn't open the link.",
   "packages.installTitle": "Install a plugin",
   "packages.installedTitle": "Installed packages",
@@ -109,10 +113,9 @@ export const en: Record<string, string> = {
   "composer.persistence.recoveryRequired":
     "Saved drafts couldn't be read before editing. Copy drafts before reloading to recover saved drafts.",
   "composer.persistence.copy": "Copy draft text",
-  "composer.persistence.copied": "Draft text copied",
-  "composer.persistence.copyFailed": "Couldn't copy drafts. Keep this window open and try again.",
+
   "composer.placeholder": "Describe what you want done — @ to reference a file",
-  "composer.placeholder.steer": "Send a message to steer the running turn…",
+
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",
   "composer.model.unavailable": "Unavailable in the current catalog",
@@ -181,15 +184,15 @@ export const en: Record<string, string> = {
   "message.mermaid.enlarge": "Enlarge diagram",
   "message.mermaid.loading": "Loading Mermaid diagram",
   "message.mermaid.copy": "Copy Mermaid",
-  "message.mermaid.copied": "Copied",
+
   "message.mermaid.source": "Mermaid source code",
   "message.code.content": "Code content",
   "message.code.copy": "Copy code",
-  "message.code.copied": "Copied",
+
   "message.code.wrap.enable": "Enable word wrap",
   "message.code.wrap.disable": "Disable word wrap",
   "message.table.copy": "Copy table",
-  "message.table.copied": "Copied",
+
   "message.table.expand": "Expand table",
   "message.table.content": "Table content",
   "message.table.preview": "Table preview",
@@ -317,7 +320,6 @@ export const en: Record<string, string> = {
   "settings.pane.appearance": "Appearance",
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Keyboard shortcuts",
-  "settings.pane.personalization": "Personalization",
   "settings.pane.approvals": "Approvals",
   "settings.appearance.colors": "Theme and color",
   "settings.appearance.typography": "Typography",
@@ -426,9 +428,6 @@ export const en: Record<string, string> = {
   "settings.paperTexture.cotton": "Cotton paper",
   "settings.paperTexture.grain": "Fine grain",
   "settings.paperTexture.strength": "Texture strength",
-  "settings.streamReveal": "Streaming style",
-  "settings.streamReveal.smooth": "Smooth",
-  "settings.streamReveal.typewriter": "Typewriter",
   "settings.language.label": "Language",
   "settings.pane.connection": "Connection",
   "settings.connection.title": "Backend",
@@ -599,10 +598,10 @@ export const en: Record<string, string> = {
   "file.truncated": "truncated",
   "file.backToFiles": "Back to files",
   "file.empty.title": "No files",
-  "file.empty.sub": "This directory has no visible files.",
+
   "file.refreshError.title": "Couldn't refresh files",
   "file.refreshError.sub": "Showing the last loaded files.",
-  "file.directoryRefreshError.sub": "Showing the last loaded files in {{path}}.",
+
   "file.readRefreshError.title": "Couldn't refresh file",
   "file.readRefreshError.sub": "Showing the last loaded content.",
   "file.error.title": "Couldn't open file",
@@ -630,7 +629,7 @@ export const en: Record<string, string> = {
   "connection.error.urlScheme": "Must start with http:// or https://",
   "command.chatSearch": "Find in chat",
   "composer.key.sendDesc": "Send message",
-  "composer.key.approveDesc": "Approve a pending request, otherwise send",
+
   "composer.key.declineDesc": "Decline a pending request",
   "composer.key.stopDesc": "Stop the running response",
   "composer.key.historyPrevDesc": "Recall the previous message",
@@ -843,9 +842,9 @@ export const en: Record<string, string> = {
   "composer.paste.title": "Pasted text",
   "composer.paste.save": "Save",
   "composer.paste.restore": "Put back in message",
-  "composer.mention.status.loading": "Loading project files…",
+
   "composer.mention.status.empty": "No matching files",
-  "composer.mention.status.error": "Couldn’t list project files",
+
   "composer.mention.status.no-workspace": "Choose a project to reference its files",
   "settings.search.empty": "No settings match “{{query}}”.",
   "startup.failed.title": "Flame couldn’t start",
@@ -857,17 +856,19 @@ export const en: Record<string, string> = {
   "startup.failed.body":
     "Something failed before the window was ready. Retry, or copy the diagnostics to report it.",
   "startup.failed.copy": "Copy diagnostics",
-  "startup.failed.copied": "Copied",
+
   "plugins.renderFailed.details": "Details",
   "tool.open.currentFile": "Open the current file",
   "message.user.unfold": "Show full message",
   "message.user.fold": "Show less",
+  "chat.conversation": "Conversation",
+  "message.mermaid.pan": "Pan diagram",
   "message.mermaid.fit": "Fit",
   "message.mermaid.zoomIn": "Zoom in diagram",
   "message.mermaid.zoomOut": "Zoom out diagram",
   "file.range": "Lines {{start}}–{{end}} of {{total}}",
   "file.copyPath": "Copy path",
-  "file.pathCopied": "Path copied",
+
   "file.reveal": "Show in Finder",
   "file.goToLine": "Go to line",
   "file.goToLine.submit": "Go",
@@ -901,7 +902,7 @@ export const en: Record<string, string> = {
   "shortcuts.replace": "Use it here instead",
   "shortcuts.unbound": "No shortcut",
   "composer.reasoningEffort": "Reasoning effort",
-  "message.mermaid.actualSize": "Show at actual size",
+
   "model.effort.none": "Off",
   "model.effort.minimal": "Minimal",
   "model.effort.low": "Low",

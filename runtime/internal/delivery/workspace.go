@@ -81,8 +81,8 @@ func registerWorkspace(registry *Registry) {
 			Error(),
 		},
 	}, func(service interface {
-		ListWorkspaceFiles(context.Context, protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error)
-	}, ctx context.Context, request protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error) {
+		ListWorkspaceFiles(context.Context, protocol.ListFilesRequest) (*protocol.FileListPage, error)
+	}, ctx context.Context, request protocol.ListFilesRequest) (*protocol.FileListPage, error) {
 		return service.ListWorkspaceFiles(ctx, request)
 	})
 

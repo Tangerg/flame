@@ -10,11 +10,10 @@ import {
 function controls(): StreamFollow {
   return {
     isAtBottom: true,
-    state: { isAtBottom: true, targetScrollTop: 100 },
     scrollRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
     contentRef: Object.assign(() => {}, { current: null as HTMLElement | null }),
     stopScroll: vi.fn(),
-    scrollToBottom: vi.fn(() => true),
+    scrollToBottom: vi.fn(),
   };
 }
 

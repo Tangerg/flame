@@ -3,9 +3,8 @@ import { lookupExtensionPoint } from "@/extensions/selectors/extensions";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import {
   type WorkspaceChatPresentation,
-  type WorkspaceColumnWidth,
+  type WorkspacePanelLayout,
   type WorkspaceDrawer,
-  type WorkspaceOptionalColumnWidth,
   type WorkspaceDockSnapshot,
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
@@ -104,16 +103,16 @@ export function useSidebarDrawer(): WorkspaceDrawer {
   return workspaceAccess.navigation.useSidebarDrawer();
 }
 
-export function useSidebarWidth(): WorkspaceColumnWidth {
+export function useSidebarLayout(): WorkspacePanelLayout {
   const workspaceAccess = useWorkspace();
 
-  return workspaceAccess.navigation.useSidebarWidth();
+  return workspaceAccess.navigation.useSidebarLayout();
 }
 
-export function useDockWidth(): WorkspaceOptionalColumnWidth {
+export function useDockLayout(): WorkspacePanelLayout {
   const workspaceAccess = useWorkspace();
 
-  return workspaceAccess.navigation.useDockWidth();
+  return workspaceAccess.navigation.useDockLayout();
 }
 
 export function toggleWorkspaceSidebar(workspaceAccess: WorkspaceAccess): void {

@@ -5,7 +5,6 @@ describe("composer key bindings", () => {
     const handler = () => true;
     const bindings = composerKeyBindings({
       send: handler,
-      approveOrSend: handler,
       declineApproval: handler,
       stopRun: handler,
       historyPrevious: handler,
@@ -13,12 +12,11 @@ describe("composer key bindings", () => {
     });
 
     expect(bindings.map(({ key, description }) => [key, description])).toEqual([
-      ["Enter", "composer.key.sendDesc"],
-      ["Mod+Enter", "composer.key.approveDesc"],
+      ["Mod+Enter", "composer.key.sendDesc"],
       ["Mod+Shift+Backspace", "composer.key.declineDesc"],
       ["Escape", "composer.key.stopDesc"],
-      ["ArrowUp", "composer.key.historyPrevDesc"],
-      ["ArrowDown", "composer.key.historyNextDesc"],
+      ["Mod+ArrowUp", "composer.key.historyPrevDesc"],
+      ["Mod+ArrowDown", "composer.key.historyNextDesc"],
     ]);
   });
 });

@@ -1,7 +1,7 @@
 import { ButtonPrimitive } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
-import { ShikiCodeBlock } from "@/ui/index";
+import { CodeArtifact } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
 const sa = stylex.create({
@@ -27,7 +27,7 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
   const label = t("message.svg.generatedAlt");
 
   return (
-    <ShikiCodeBlock
+    <CodeArtifact
       lang={lang}
       code={code}
       previewLabel={label}

@@ -35,7 +35,7 @@ export function CodeExample({ variant, locale }: LabExampleProps) {
       label={copy.exampleCode}
       language="typescript"
       caption="preview.ts"
-      labels={{ copy: copy.copyCode, copied: copy.copied, wrap: copy.wrap, unwrap: copy.unwrap }}
+      labels={{ copy: copy.copyCode, wrap: copy.wrap, unwrap: copy.unwrap }}
     >
       {variant === views.long.id ? LONG_CODE : SHORT_CODE}
     </CodeBlock>
@@ -54,6 +54,7 @@ export function CalloutExample({ variant, locale }: LabExampleProps) {
 export function ImageExample({ variant, locale }: LabExampleProps) {
   const copy = foundationMessages[locale];
   const labels = {
+    fit: locale === "en" ? "Fit image" : "适应窗口",
     zoomIn: copy.zoomIn,
     zoomOut: copy.zoomOut,
     view: copy.viewImage,

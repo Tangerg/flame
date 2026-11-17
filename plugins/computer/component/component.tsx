@@ -1,6 +1,6 @@
+import { flushSync } from "react-dom";
 import { METHODS } from "../contracts/methods";
 import {
-  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -18,6 +18,8 @@ import { parseJSON, projectNumber } from "@frame/sdk/json";
 import {
   Badge,
   Button,
+  isImeKey,
+  handoffFocus,
   Callout,
   Disclosure,
   EmptyState,
@@ -75,7 +77,7 @@ function ExecuteForm({
   pending,
   execute,
   editor,
-  opener,
+  fallbackFocus,
   t,
 }: {
   surface: Surface | undefined;
@@ -83,7 +85,7 @@ function ExecuteForm({
   pending: boolean;
   execute(input: ExecuteInput): Promise<boolean>;
   editor: RefObject<HTMLTextAreaElement | null>;
-  opener(): HTMLElement | null;
+  fallbackFocus: RefObject<HTMLElement | null>;
   t: Translate;
 }) {
   const [tool, setTool] = useState<ExecuteInput["tool"]>("js");
@@ -92,6 +94,7 @@ function ExecuteForm({
   const [error, setError] = useState<string>();
   const errorId = useId();
   const cancel = useRef<HTMLButtonElement>(null);
+  const reviewElement = useRef<HTMLElement>(null);
   useEffect(() => {
     if (review) cancel.current?.focus();
   }, [review]);
@@ -102,6 +105,18 @@ function ExecuteForm({
     review.workerId === surface.workerId &&
     review.surfaceDigest === surface.surfaceDigest;
   const editing = review === undefined && surface !== undefined;
+
+  function closeReview() {
+    const form = reviewElement.current;
+    const ownedFocus = Boolean(
+      form?.contains(form.ownerDocument.activeElement),
+    );
+    flushSync(() => setReview(undefined));
+    if (ownedFocus)
+      (surface ? editor.current : fallbackFocus.current)?.focus({
+        preventScroll: true,
+      });
+  }
 
   function prepare() {
     if (!surface || !ready || pending) return;
@@ -128,9 +143,21 @@ function ExecuteForm({
       <Metadata>{t("execute.help")}</Metadata>
       {review && (
         <RecordForm
+          ref={reviewElement}
           role="region"
           aria-label={t("execute.review")}
-          opener={opener}
+          onKeyDown={(event) => {
+            if (
+              event.key === "Escape" &&
+              !event.defaultPrevented &&
+              !pending &&
+              !isImeKey(event.nativeEvent)
+            ) {
+              event.preventDefault();
+              event.stopPropagation();
+              closeReview();
+            }
+          }}
         >
           <Callout kind="warning">
             {t(
@@ -160,7 +187,7 @@ function ExecuteForm({
               ref={cancel}
               disabled={pending}
               onClick={() => {
-                setReview(undefined);
+                closeReview();
               }}
             >
               {t("execute.back")}
@@ -170,7 +197,7 @@ function ExecuteForm({
               disabled={!ready || pending || !current}
               onClick={() => {
                 const captured = review;
-                setReview(undefined);
+                closeReview();
                 void execute(captured);
               }}
             >
@@ -195,7 +222,7 @@ function ExecuteForm({
         />
         <FormField label={t("execute.arguments")}>
           <TextArea
-            ref={editing ? editor : undefined}
+            ref={editor}
             font="mono"
             value={argumentsJSON}
             onChange={(event) => {
@@ -549,7 +576,6 @@ function ConsoleHistory({
               title={entry.id}
               open={result !== undefined}
               data-focused={result !== undefined}
-              stickyHeader={result !== undefined}
               onOpenChange={(open) => {
                 if (open) void state.inspect(entry.id);
                 else state.closeInspection();
@@ -664,7 +690,7 @@ function ManualExecution({
   pending,
   execute,
   editor,
-  opener,
+  fallbackFocus,
   t,
 }: {
   surface: ComputerView["surface"];
@@ -672,7 +698,7 @@ function ManualExecution({
   pending: boolean;
   execute(input: ExecuteInput): Promise<boolean>;
   editor: RefObject<HTMLTextAreaElement | null>;
-  opener(): HTMLElement | null;
+  fallbackFocus: RefObject<HTMLElement | null>;
   t: Translate;
 }) {
   return (
@@ -694,7 +720,7 @@ function ManualExecution({
         pending={pending}
         execute={execute}
         editor={editor}
-        opener={opener}
+        fallbackFocus={fallbackFocus}
         t={t}
       />
     </PanelSection>
@@ -715,10 +741,6 @@ function Console({
   const [leaseError, setLeaseError] = useState(false);
   const editor = useRef<HTMLTextAreaElement>(null);
   const refresh = useRef<HTMLButtonElement>(null);
-  const formReturnTarget = useCallback(
-    () => editor.current ?? refresh.current,
-    [],
-  );
   const session = state.snapshot?.session;
   const active =
     session !== undefined &&
@@ -804,7 +826,10 @@ function Console({
             approval={session.approval}
             pending={state.busy(METHODS.reply)}
             respond={(input) => state.submit(METHODS.reply, input)}
-            opener={formReturnTarget}
+            beforeRespond={(source) => {
+              if (!handoffFocus(source, editor.current))
+                handoffFocus(source, refresh.current);
+            }}
             t={t}
           />
         </PanelSection>
@@ -816,7 +841,7 @@ function Console({
           pending={state.busy(METHODS.execute)}
           execute={(input) => state.submit(METHODS.execute, input)}
           editor={editor}
-          opener={formReturnTarget}
+          fallbackFocus={refresh}
           t={t}
         />
       )}

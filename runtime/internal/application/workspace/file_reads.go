@@ -76,6 +76,7 @@ type FileListOptions struct {
 // fileBrowser is the application-owned port for workspace file reads.
 type fileBrowser interface {
 	List(ctx context.Context, root string, options FileListOptions) ([]FileEntry, error)
+	ListDirectory(ctx context.Context, root string, plan DirectoryListPlan) (DirectoryPage, error)
 	Read(ctx context.Context, root string, plan FileReadPlan) (FileReadResult, error)
 	Grep(ctx context.Context, root string, input GrepPlan) (GrepResult, error)
 }
@@ -89,7 +90,28 @@ type FileListInput struct {
 }
 
 // FilePage is a stable cursor page of workspace entries.
+type FileListCoverage struct {
+	ScannedEntries  int
+	ExcludedEntries int
+	BudgetExhausted bool
+}
+type DirectoryListPlan struct {
+	Path           string
+	IncludeIgnored bool
+	Offset         int
+	Revision       string
+	Limit          int
+}
+type DirectoryPage struct {
+	Entries    []FileEntry
+	Revision   string
+	NextOffset int
+	Complete   bool
+	FileListCoverage
+}
 type FilePage struct {
+	Complete bool
+	FileListCoverage
 	Entries    []FileEntry
 	NextCursor string
 }
@@ -217,6 +239,40 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 	if input.NameQuery != nil && len(*input.NameQuery) > maxNameQueryBytes {
 		return FilePage{}, ErrInvalidFileNameQuery
 	}
+	if !input.Recursive && input.Glob == "" && input.NameQuery == nil {
+		size, err := input.Limit.Resolve(defaultFileListPageLimit)
+		if err != nil {
+			return FilePage{}, fmt.Errorf("%w: %w", ErrPageLimit, err)
+		}
+		filters := []string{root, path, strconv.FormatBool(input.IncludeIgnored)}
+		anchor, err := pagination.Decode(input.Cursor, "workspace.directory", filters)
+		if err != nil {
+			return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
+		}
+		plan := DirectoryListPlan{Path: path, IncludeIgnored: input.IncludeIgnored, Limit: size}
+		if len(anchor) > 0 {
+			if len(anchor) != 2 {
+				return FilePage{}, ErrPageCursor
+			}
+			plan.Offset, err = strconv.Atoi(anchor[0])
+			if err != nil || plan.Offset < 0 {
+				return FilePage{}, ErrPageCursor
+			}
+			plan.Revision = anchor[1]
+		}
+		page, err := f.files.ListDirectory(ctx, root, plan)
+		if err != nil {
+			return FilePage{}, err
+		}
+		next := ""
+		if !page.Complete {
+			next, err = pagination.Encode("workspace.directory", filters, []string{strconv.Itoa(page.NextOffset), page.Revision})
+			if err != nil {
+				return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
+			}
+		}
+		return FilePage{Entries: page.Entries, NextCursor: next, Complete: page.Complete, FileListCoverage: page.FileListCoverage}, nil
+	}
 	entries, err := f.files.List(ctx, root, FileListOptions{
 		Path: path, Glob: input.Glob, Recursive: input.Recursive || input.NameQuery != nil, IncludeIgnored: input.IncludeIgnored,
 	})
@@ -241,7 +297,7 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 	if err != nil {
 		return FilePage{}, err
 	}
-	return FilePage{Entries: page, NextCursor: next}, nil
+	return FilePage{Entries: page, NextCursor: next, Complete: next == "", FileListCoverage: FileListCoverage{ScannedEntries: len(entries)}}, nil
 }
 
 // Read returns all or a one-based inclusive line window of a workspace

@@ -132,6 +132,7 @@ export const zhTW = {
   "result.imageUnavailable": "無法顯示此記錄的圖像。",
   "image.view": "檢視圖片",
   "image.close": "關閉圖片",
+  "image.fit": "符合視窗",
   "image.zoomIn": "放大",
   "image.zoomOut": "縮小",
   "image.description": "圖片說明",

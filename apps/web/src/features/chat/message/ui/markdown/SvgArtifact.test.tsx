@@ -38,14 +38,12 @@ describe("SvgArtifact", () => {
   it.each(["svg", "xml", "html", "htm"])(
     "opens a %s SVG fence as an inert image and returns to its source",
     async (language) => {
-      const { container } = testClient.render(
-        <MarkdownRenderer text={fence(language)} reveal="instant" />,
-      );
+      const { container } = testClient.render(<MarkdownRenderer text={fence(language)} />);
       const source = screen.getByRole("button", { name: LABEL });
       const preview = source.querySelector("img");
       expect(preview?.getAttribute("src")).toBe(svgSource(SVG));
       expect(
-        source.closest('[data-slot="shiki-preview-body"]')?.querySelector("svg,script"),
+        source.closest('[data-slot="code-preview-body"]')?.querySelector("svg,script"),
       ).toBeNull();
       expect(container.querySelector("pre")).toBeNull();
 
@@ -67,13 +65,10 @@ describe("SvgArtifact", () => {
       testClient.render(
         <>
           <div className={MESSAGE_CONTENT_CLASS}>
-            <MarkdownRenderer
-              text={"![Architecture](" + PNG + ")\n\n" + fence("svg")}
-              reveal="instant"
-            />
+            <MarkdownRenderer text={"![Architecture](" + PNG + ")\n\n" + fence("svg")} />
           </div>
           <div className={MESSAGE_CONTENT_CLASS}>
-            <MarkdownRenderer text={"![Other reply](" + PNG + ")"} reveal="instant" />
+            <MarkdownRenderer text={"![Other reply](" + PNG + ")"} />
           </div>
         </>,
       );

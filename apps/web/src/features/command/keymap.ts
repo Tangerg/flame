@@ -3,7 +3,7 @@ import { type CommandSpec, type ShortcutSpec } from "@/features/command/public/c
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
-import { dispatchBinding } from "@/lib/combo";
+import { normalizeHotkey } from "@tanstack/hotkeys";
 export function commandShortcuts(commands: readonly CommandSpec[]): ShortcutSpec[] {
   return commands.flatMap((command) =>
     command.combo === undefined
@@ -28,7 +28,7 @@ function keymapOf(
 ): ShortcutSpec[] {
   const bound = new Map<string, ShortcutSpec>();
   for (const spec of [...commandShortcuts(commands), ...shortcuts]) {
-    bound.set(dispatchBinding(spec.key), spec);
+    bound.set(normalizeHotkey(spec.key), { ...spec, key: normalizeHotkey(spec.key) });
   }
   return [...bound.values()];
 }

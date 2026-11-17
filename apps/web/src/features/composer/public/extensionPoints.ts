@@ -4,7 +4,7 @@ import {
   type SlashCommandSpec,
 } from "@/features/composer/public/types";
 import { defineExtensionPoint } from "@/extensions/contracts";
-import { normalizeCombo } from "@/lib/combo";
+import { normalizeHotkey } from "@tanstack/hotkeys";
 import { useMemo } from "react";
 import { lookupExtensionOwner, useExtensionEntries } from "@/extensions/selectors/extensions";
 export const SLASH_COMMAND = defineExtensionPoint<SlashCommandSpec>({
@@ -17,7 +17,7 @@ export const COMPOSER_KEY_BINDING = defineExtensionPoint<ComposerKeyBindingSpec>
   id: "flame.composer.keyBinding",
   keying: "single",
   keyOf: (s) => s.key,
-  normalizeKey: normalizeCombo,
+  normalizeKey: normalizeHotkey,
 });
 
 export const COMPOSER_SUBMIT_MODE = defineExtensionPoint<ComposerSubmitModeSpec>({

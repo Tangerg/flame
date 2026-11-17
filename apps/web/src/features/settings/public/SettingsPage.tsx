@@ -163,7 +163,7 @@ function SettingsRailHeader({
         ref={ref}
         size="lg"
         value={query}
-        onValueChange={onQueryChange}
+        onChange={(event) => onQueryChange(event.target.value)}
         onClear={() => onQueryChange("")}
         clearLabel={t("common.clearSearch")}
         onKeyDown={(event) => {

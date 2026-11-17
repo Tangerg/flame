@@ -27,7 +27,8 @@ function FileIdentityEditor({
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
-          onValueChange={(value) => {
+          onChange={(event) => {
+            const value = event.target.value;
             setPath(value);
             observe("file.path.length", value.length);
           }}

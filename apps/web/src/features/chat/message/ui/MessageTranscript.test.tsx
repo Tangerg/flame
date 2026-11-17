@@ -26,7 +26,6 @@ const CTX: BlockCtx = {
   sessionId: "session",
   expandedIds: new Set(),
   onExpandedChange: () => {},
-  textReveal: "instant",
 };
 
 function row(id: string, createdAt?: string): TranscriptRow {

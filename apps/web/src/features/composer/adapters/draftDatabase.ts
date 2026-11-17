@@ -11,6 +11,7 @@ const draftRecord = z
     endpoint: z.string(),
     session: z.string(),
     value: z.string(),
+    document: z.string().nullable(),
     pastes: z
       .array(pasteReference)
       .refine((pastes) => new Set(pastes.map((paste) => paste.id)).size === pastes.length),
@@ -51,6 +52,10 @@ function completion(transaction: IDBTransaction, failure: { cause?: unknown }): 
 
 /** Only transaction completion confirms a revision. Request success can still be rolled back. */
 export class DraftDatabase {
+  private readonly recovery = new Map<string, unknown>();
+  recoveryRecords(endpoint: string): unknown {
+    return structuredClone(this.recovery.get(endpoint));
+  }
   private connection: Promise<IDBDatabase> | null = null;
   private closed = false;
   private readonly pastes = new Map<string, Map<string, readonly StoredPaste[]>>();
@@ -111,6 +116,7 @@ export class DraftDatabase {
       ),
       done,
     ]);
+    this.recovery.set(endpoint, { drafts, pastes });
     const records = new Map(
       pastes.map((value) => {
         const record = pasteRecord.parse(value);
@@ -135,10 +141,12 @@ export class DraftDatabase {
       retained.set(draft.session, attached);
       texts.set(draft.session, {
         value: draft.value,
+        document: draft.document,
         pastes: attached.map(({ id, text }) => ({ id, text })),
       });
     }
     this.pastes.set(endpoint, retained);
+    this.recovery.delete(endpoint);
     return texts;
   }
 
@@ -159,6 +167,7 @@ export class DraftDatabase {
       return {
         session,
         value: draft.value,
+        document: draft.document,
         pastes,
         added: pastes.filter((paste) => !previous.includes(paste)),
       };
@@ -172,7 +181,7 @@ export class DraftDatabase {
       failure.cause = cause;
       transaction.abort();
     };
-    for (const { session, value, pastes, added } of prepared) {
+    for (const { session, value, document, pastes, added } of prepared) {
       const request = draftStore.get([endpoint, session]);
       request.onsuccess = () => {
         try {
@@ -199,6 +208,7 @@ export class DraftDatabase {
               endpoint,
               session,
               value,
+              document,
               pastes: pastes.map(({ id, record }) => ({ id, record })),
             });
           else draftStore.delete([endpoint, session]);

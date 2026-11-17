@@ -38,7 +38,7 @@ var methodMetadata = map[string]methodMeta{
 	"workspace.changes.list":           {Name: "workspace.changes.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.WorkspaceFileChange]](), Event: nil, ResultNullable: false},
 	"workspace.diff.get":               {Name: "workspace.diff.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Diff](), Event: nil, ResultNullable: false},
 	"workspace.files.search":           {Name: "workspace.files.search", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.GrepResult](), Event: nil, ResultNullable: false},
-	"workspace.files.list":             {Name: "workspace.files.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.FileEntry]](), Event: nil, ResultNullable: false},
+	"workspace.files.list":             {Name: "workspace.files.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.FileListPage](), Event: nil, ResultNullable: false},
 	"workspace.files.read":             {Name: "workspace.files.read", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.FileContent](), Event: nil, ResultNullable: false},
 	"runtime.subscribe":                {Name: "runtime.subscribe", Kind: streamMethod, Operation: subscriptionOperation, Result: reflect.TypeFor[*protocol.RuntimeSubscribeResponse](), Event: reflect.TypeFor[protocol.RuntimeEvent](), ResultNullable: false},
 	"skills.discovered.list":           {Name: "skills.discovered.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.SkillDiscovery](), Event: nil, ResultNullable: false},

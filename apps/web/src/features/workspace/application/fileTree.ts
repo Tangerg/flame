@@ -1,33 +1,14 @@
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  type WorkspaceFileEntry,
-  useWorkspaceFileLists,
-  workspaceFileListQuery,
-} from "@/features/workspace/application/workspaceQueries";
-
-export function useFileTreeData(
-  roots: readonly WorkspaceFileEntry[],
-  cwd: string | undefined,
-  expanded: readonly string[],
-  subscribed: boolean,
-) {
-  const client = useQueryClient();
-  const opened = new Set(expanded);
-  const requests: Array<{ cwd: string | undefined; path: string }> = [];
-  const collect = (entries: readonly WorkspaceFileEntry[]) => {
-    for (const entry of entries) {
-      if (entry.type !== "dir" || !opened.has(entry.path)) continue;
-      const request = { cwd, path: entry.path };
-      requests.push(request);
-      collect(client.getQueryData(workspaceFileListQuery(request).queryKey) ?? []);
-    }
+import { useWorkspaceDirectory, type WorkspaceFileEntry } from "./workspaceQueries";
+export function useDirectory(cwd: string | undefined, path: string, enabled: boolean) {
+  const query = useWorkspaceDirectory({ cwd, path, limit: 100 }, enabled);
+  const entries = new Map<string, WorkspaceFileEntry>();
+  for (const page of query.data?.pages ?? [])
+    for (const entry of page.data) entries.set(entry.path, entry);
+  return {
+    ...query,
+    entries: [...entries.values()].sort(
+      (a, b) => Number(b.type === "dir") - Number(a.type === "dir") || a.name.localeCompare(b.name),
+    ),
+    last: query.data?.pages.at(-1),
   };
-  collect(roots);
-  const results = useWorkspaceFileLists(requests, subscribed);
-  const directories = new Map(requests.map((request, index) => [request.path, results[index]!]));
-  const entries = new Map(roots.map((entry) => [entry.path, entry]));
-  for (const query of results) {
-    for (const entry of query.data ?? []) entries.set(entry.path, entry);
-  }
-  return { entries, directories };
 }

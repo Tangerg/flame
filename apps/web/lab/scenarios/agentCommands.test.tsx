@@ -1,3 +1,4 @@
+import { placeComposerCaret, composerCaret } from "@/test/composerSelection";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -38,7 +39,7 @@ beforeEach(async () => {
   setLocale("en");
   visual = undefined;
   client = undefined;
-  useShortcutOverrides.setState({ overrides: {}, recording: false });
+  useShortcutOverrides.setState({ overrides: {} });
   await import("@/features/chat/message/ui/markdown/MarkdownRenderer");
 });
 
@@ -101,6 +102,7 @@ async function mountAgent(
       </QueryClientProvider>
     </owned.Wrapper>,
   );
+  if (state !== "question") await screen.findByRole("textbox", { name: "Message composer" });
   return { visual: owned, sendInput, createSession, requests };
 }
 
@@ -121,7 +123,7 @@ it.each([
     expect(store.getState().composer.draft.value).toBe(expected);
     const preference = store.getState().modelPreference;
     expect(preference.kind).toBe("explicit");
-    act(() => store.getState().setValue(`${expected} edited`));
+    act(() => visual.composer.access.replaceDraft({ text: `${expected} edited` }));
     expect(store.getState().modelPreference).toEqual(preference);
     expect(store.getState().composer.draft.value).toBe(`${expected} edited`);
   },
@@ -152,6 +154,7 @@ function pressModified(target: Element, key: string, code: string) {
       cancelable: true,
     }),
   );
+  fireEvent.keyUp(target, { key, code, metaKey: mac, ctrlKey: !mac });
 }
 
 function pressShiftF10(target: Element) {
@@ -204,15 +207,13 @@ it.each([
   async ({ author, present, absent }) => {
     const copied = vi.spyOn(clipboard, "writeToClipboard").mockResolvedValue(true);
     const { sendInput, createSession, requests } = await mountAgent("idle");
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
     const value = "Keep this message menu draft — 保留";
-    fireEvent.change(draft, { target: { value } });
+    act(() => visual!.composer.access.replaceDraft({ text: value }));
     const copy = await messageCopyAction(author);
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(7, 7);
-      copy.focus();
-    });
+    act(() => draft.focus());
+    await placeComposerCaret(draft, 7);
+    act(() => copy.focus());
 
     pressShiftF10(copy);
 
@@ -225,8 +226,8 @@ it.each([
     await waitFor(() => expect(screen.queryByRole("menu", { name: author })).toBeNull());
     expect(await messageCopyAction(author)).toBe(copy);
     await waitFor(() => expect(document.activeElement).toBe(copy));
-    expect(draft.value).toBe(value);
-    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+    expect(draft.textContent).toBe(value);
+    expect(composerCaret(draft)).toEqual([7, 7]);
 
     const child = await openCopyMenu(copy);
     expect(screen.queryByRole("menu", { name: author })).toBeNull();
@@ -239,8 +240,8 @@ it.each([
     await act(() => executeCommand("composer.focus"));
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(document.activeElement).toBe(draft);
-    expect(draft.value).toBe(value);
-    expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+    expect(draft.textContent).toBe(value);
+    expect(composerCaret(draft)).toEqual([7, 7]);
     expect(copied).not.toHaveBeenCalled();
     expect(sendInput).not.toHaveBeenCalled();
     expect(createSession).not.toHaveBeenCalled();
@@ -255,15 +256,13 @@ it.each(["keyboard", "pointer"] as const)(
   async (entry) => {
     const copied = vi.spyOn(clipboard, "writeToClipboard").mockResolvedValue(true);
     const { sendInput, createSession, requests } = await mountAgent("idle");
-    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
     const value = "Keep the nested Copy task — 保留";
-    fireEvent.change(draft, { target: { value } });
+    act(() => visual!.composer.access.replaceDraft({ text: value }));
     const copy = await messageCopyAction("You");
-    act(() => {
-      draft.focus();
-      draft.setSelectionRange(5, 5);
-      copy.focus();
-    });
+    act(() => draft.focus());
+    await placeComposerCaret(draft, 5);
+    act(() => copy.focus());
     const { menu, markdown, plain } = await openCopyMenu(copy);
     fireEvent.keyDown(markdown, { key: "ArrowDown", code: "ArrowDown" });
     await waitFor(() => expect(document.activeElement).toBe(plain));
@@ -285,8 +284,8 @@ it.each(["keyboard", "pointer"] as const)(
     await act(() => executeCommand("composer.focus"));
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(document.activeElement).toBe(draft);
-    expect(draft.value).toBe(value);
-    expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 5]);
+    expect(draft.textContent).toBe(value);
+    expect(composerCaret(draft)).toEqual([5, 5]);
     expect(copied).not.toHaveBeenCalled();
     expect(sendInput).not.toHaveBeenCalled();
     expect(createSession).not.toHaveBeenCalled();
@@ -298,34 +297,32 @@ it.each(["keyboard", "pointer"] as const)(
 
 it("returns from the Agent sidebar through the installed Composer command and its key", async () => {
   const { sendInput } = await mountAgent("tool-remote");
-  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+  const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
   const value = "  Keep this Agent draft — 保留  ";
-  fireEvent.change(draft, { target: { value } });
+  act(() => visual!.composer.access.replaceDraft({ text: value }));
   const sidebar = screen.getByRole("button", { name: "Collapse the agent fixture sidebar" });
-  act(() => {
-    draft.focus();
-    draft.setSelectionRange(7, 7);
-    sidebar.focus();
-  });
+  act(() => draft.focus());
+  await placeComposerCaret(draft, 7);
+  act(() => sidebar.focus());
 
   await act(() => executeCommand("composer.focus"));
 
   expect(document.activeElement).toBe(draft);
   expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
-  expect(draft.value).toBe(value);
-  expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+  expect(draft.textContent).toBe(value);
+  expect(composerCaret(draft)).toEqual([7, 7]);
   act(() => sidebar.focus());
   pressModified(sidebar, "l", "KeyL");
   expect(document.activeElement).toBe(draft);
-  expect(draft.value).toBe(value);
-  expect([draft.selectionStart, draft.selectionEnd]).toEqual([7, 7]);
+  expect(draft.textContent).toBe(value);
+  expect(composerCaret(draft)).toEqual([7, 7]);
   expect(sendInput).not.toHaveBeenCalled();
 });
 
 it("closes the Agent's full-width catalogue through the global Escape binding", async () => {
   const { visual, sendInput } = await mountAgent("tool-remote");
-  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
-  fireEvent.change(draft, { target: { value: "Keep the catalogue source — 保留" } });
+  const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
+  act(() => visual!.composer.access.replaceDraft({ text: "Keep the catalogue source — 保留" }));
   act(() => showWorkspaceDock(visual.workspace.access, "main"));
   const catalogue = await screen.findByRole("region", { name: "Open a panel" });
   act(() => catalogue.focus());
@@ -335,20 +332,18 @@ it("closes the Agent's full-width catalogue through the global Escape binding", 
   expect(visual.navigation.get().view).toBeNull();
   expect(screen.queryByRole("region", { name: "Open a panel" })).toBeNull();
   expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
-  expect(draft.value).toBe("Keep the catalogue source — 保留");
+  expect(draft.textContent).toBe("Keep the catalogue source — 保留");
   expect(sendInput).not.toHaveBeenCalled();
 });
 
 it("opens the existing shortcut Settings command and returns to the same Agent draft", async () => {
   const { visual } = await mountAgent("tool-remote");
-  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
-  fireEvent.change(draft, { target: { value: "Keep the shortcut source — 保留" } });
+  const draft = screen.getByRole<HTMLElement>("textbox", { name: "Message composer" });
+  act(() => visual!.composer.access.replaceDraft({ text: "Keep the shortcut source — 保留" }));
   const sidebar = screen.getByRole("button", { name: "Collapse the agent fixture sidebar" });
-  act(() => {
-    draft.focus();
-    draft.setSelectionRange(5, 5);
-    sidebar.focus();
-  });
+  act(() => draft.focus());
+  await placeComposerCaret(draft, 5);
+  act(() => sidebar.focus());
   expect(
     await screen.findByRole("tooltip", { name: "Collapse the agent fixture sidebar" }),
   ).toBeTruthy();
@@ -361,17 +356,14 @@ it("opens the existing shortcut Settings command and returns to the same Agent d
   const tab = screen.getByRole("tab", { name: "Keyboard shortcuts" });
   act(() => tab.focus());
   pressEscape(tab);
-  expect(visual.navigation.get().view).toBe("settings");
+  expect(visual.navigation.get().view).toBeNull();
   expect(draft.isConnected).toBe(true);
-  expect(draft.value).toBe("Keep the shortcut source — 保留");
-  expect(tab.isConnected).toBe(true);
-  expect(document.activeElement).toBe(tab);
-  pressEscape(tab);
+  expect(draft.textContent).toBe("Keep the shortcut source — 保留");
   expect(visual.navigation.get().view).toBeNull();
   await act(() => executeCommand("composer.focus"));
   expect(document.activeElement).toBe(draft);
-  expect(draft.value).toBe("Keep the shortcut source — 保留");
-  expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 5]);
+  expect(draft.textContent).toBe("Keep the shortcut source — 保留");
+  expect(composerCaret(draft)).toEqual([5, 5]);
 });
 
 it.each([

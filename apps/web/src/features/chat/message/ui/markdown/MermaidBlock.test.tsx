@@ -7,8 +7,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shikiEngine";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
 const renderMermaid = vi.hoisted(() =>
   vi.fn(
@@ -47,10 +46,6 @@ afterEach(() => {
 });
 
 describe("MermaidBlock", () => {
-  beforeAll(async () => {
-    await getHighlighter();
-  });
-
   it("announces the rendering placeholder", () => {
     testClient.render(<MermaidBlock code="graph TD; A-->B" />);
 
@@ -74,9 +69,7 @@ describe("MermaidBlock", () => {
     });
     const { container } = testClient.render(<MermaidBlock code="not a graph" />);
 
-    await waitFor(() => expect(container.querySelector(".shiki-block")).toBeTruthy());
+    await waitFor(() => expect(container.querySelector(".code-artifact")).toBeTruthy());
     expect(screen.getByRole("button", { name: "Copy code" })).toBeTruthy();
   });
 });
-
-vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));

@@ -1,11 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  type KeyboardEvent,
-} from "react";
+import { useCallback, useRef, type KeyboardEvent } from "react";
 import type { IconSize } from "./icon-scale";
 import { clsx as cn } from "clsx";
 import {
@@ -17,15 +12,13 @@ import {
   surface,
   type,
 } from "./tokens.stylex";
-import { Icon, useFontSize } from "./font-scale";
+import { Icon } from "./font-scale";
 import { Search, X } from "@flame/icons/react";
 import { Button } from "./button";
 import { isImeKey } from "./keyboard";
 import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
-import { Input } from "@base-ui/react/input";
-import { followTextAreaCaret, textAreaContentHeight } from "./textarea-reading";
-import type { ComponentProps, ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef } from "react";
 
 type FieldEdge = "boxed" | "bare" | "inline";
 
@@ -76,7 +69,16 @@ const styles = stylex.create({
   },
   areaSm: { paddingBlock: space.s1_5 },
   areaMd: { paddingBlock: space.s2 },
-  autosize: { resize: "none" },
+  autosize: {
+    resize: "vertical",
+    minHeight: "2lh",
+    maxHeight: "min(24lh, 60dvh)",
+    overflowY: "auto",
+    fieldSizing: {
+      default: null,
+      "@supports (field-sizing: content)": "content",
+    },
+  },
   searchBox: {
     display: "flex",
     width: "100%",
@@ -121,7 +123,7 @@ function edge(variant: FieldEdge, invalid: boolean) {
 }
 
 export type TextFieldProps = Omit<
-  ComponentProps<typeof Input>,
+  ComponentPropsWithRef<"input">,
   "size" | "className" | "aria-invalid"
 > &
   SharedProps & { size?: FieldSize };
@@ -149,7 +151,7 @@ export function TextField({
     extra,
   );
   return (
-    <Input
+    <input
       {...props}
       aria-invalid={invalid || undefined}
       {...(invalid && { "data-focus-outset": "" })}
@@ -188,85 +190,6 @@ export function TextArea({
   ref,
   ...props
 }: TextAreaProps) {
-  const element = useRef<HTMLTextAreaElement>(null);
-  const requestResizeRef = useRef<() => void>(() => {});
-  const fontSize = useFontSize();
-  useLayoutEffect(() => {
-    const area = element.current;
-    if (area) return followTextAreaCaret(area);
-  }, []);
-  // Safari 17.4 shares this sizing owner with hosts that support field-sizing.
-  useLayoutEffect(() => {
-    const area = element.current;
-    if (!autosize || !area) return;
-    const originalHeight = area.style.height;
-    let active = true;
-    let frame = 0;
-    const resize = () => {
-      if (!active || area.clientWidth === 0) return;
-      const style = getComputedStyle(area);
-      // Measured offscreen: collapsing the live box would move outer scrollports.
-      const content = textAreaContentHeight(area, style);
-      if (content === null) return;
-      const padding =
-        parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-      const border =
-        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-      const scrollTop = area.scrollTop;
-      const height =
-        content + (style.boxSizing === "border-box" ? padding + border : 0);
-      area.style.height = `${height}px`;
-      area.scrollTop = scrollTop;
-    };
-    const schedule = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        resize();
-      });
-    };
-    let width = area.getBoundingClientRect().width;
-    const observer = new ResizeObserver(() => {
-      const next = area.getBoundingClientRect().width;
-      if (next === width) return;
-      width = next;
-      schedule();
-    });
-    observer.observe(area);
-    // A multiline paste can emit input per line; measure its final value before paint.
-    area.addEventListener("input", schedule);
-    area.form?.addEventListener("reset", schedule);
-    document.fonts?.addEventListener("loadingdone", schedule);
-    void document.fonts?.ready.then(schedule);
-    requestResizeRef.current = schedule;
-    return () => {
-      active = false;
-      cancelAnimationFrame(frame);
-      requestResizeRef.current = () => {};
-      observer.disconnect();
-      area.removeEventListener("input", schedule);
-      area.form?.removeEventListener("reset", schedule);
-      document.fonts?.removeEventListener("loadingdone", schedule);
-      area.style.height = originalHeight;
-    };
-  }, [autosize]);
-  useLayoutEffect(
-    () => requestResizeRef.current(),
-    [
-      autosize,
-      variant,
-      size,
-      font,
-      props.value,
-      props.defaultValue,
-      props.rows,
-      props.placeholder,
-      props.style,
-      className,
-      extra,
-      fontSize,
-    ],
-  );
   const well = variant === "well";
   const styled = stylex.props(
     styles.base,
@@ -286,11 +209,8 @@ export function TextArea({
   return (
     <textarea
       {...props}
-      ref={(node) => {
-        element.current = node;
-        if (typeof ref === "function") return ref(node);
-        if (ref) ref.current = node;
-      }}
+      ref={ref}
+      rows={props.rows ?? (autosize ? 4 : undefined)}
       aria-invalid={invalid || undefined}
       {...(invalid && { "data-focus-outset": "" })}
       readOnly={pending || props.readOnly}
@@ -330,9 +250,9 @@ export function SearchField({
   onKeyDown,
   ...props
 }: SearchFieldProps) {
-  const element = useRef<HTMLElement>(null);
+  const element = useRef<HTMLInputElement>(null);
   const setElement = useCallback(
-    (node: HTMLElement | null) => {
+    (node: HTMLInputElement | null) => {
       element.current = node;
       if (typeof ref === "function") return ref(node);
       if (ref) ref.current = node;

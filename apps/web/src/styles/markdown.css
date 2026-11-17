@@ -44,10 +44,7 @@
   max-width: 100%;
   min-width: 0;
   min-height: var(--table-min-height, 0px);
-  max-height: calc(
-    var(--reading-frame-height, 100dvh) - var(--panel-controls-height, 0px) -
-      var(--disclosure-header-height, 0px) - var(--layout-control-gap)
-  );
+  max-height: min(36rem, 80dvh);
   margin-block: calc(var(--prose-space) * 4);
 }
 .md-table-scroller {
@@ -133,7 +130,7 @@
     > [data-block-anchor]
     > [data-slot="message-text"]
     > .md
-    > :is(p.md-media-wide-block, [data-wide-markdown-block="true"], .shiki-block),
+    > :is(p.md-media-wide-block, [data-wide-markdown-block="true"], .code-artifact),
   .msg-content:not([data-user-message-bubble])
     > [data-block-anchor]
     > [data-slot="message-text"]

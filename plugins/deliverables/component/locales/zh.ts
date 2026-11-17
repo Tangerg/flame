@@ -223,6 +223,7 @@ export const zh = {
   "capabilities.limits": "当前安装的限制",
   "image.view": "查看图片",
   "image.close": "关闭图片预览",
+  "image.fit": "适合窗口",
   "image.zoomIn": "放大图片",
   "image.zoomOut": "缩小图片",
   "image.description": "图片说明",

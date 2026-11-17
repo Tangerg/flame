@@ -241,7 +241,12 @@ describe("transactional draft saving", () => {
     await saved();
     expect(testClient.composer.hasUnconfirmedDrafts()).toBe(true);
     expect(JSON.parse(testClient.composer.access.getRecoveryDrafts())).toEqual({
-      targets: [{ active: false, drafts: { shared: { value: "  unsaved A 保留  ", pastes: [] } } }],
+      targets: [
+        {
+          active: false,
+          drafts: { shared: { value: "  unsaved A 保留  ", document: null, pastes: [] } },
+        },
+      ],
     });
     testClient.composer.activate("https://draft-a.test");
     expect(composer().composer.draft.value).toBe("  unsaved A 保留  ");

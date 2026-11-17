@@ -14,11 +14,6 @@ import { zh as schedulesChinese } from "../../../../plugins/schedules/component/
 import { solidFill } from "@/features/theme/kit/scale";
 import { type NotificationLevel } from "@/features/notifications/public/types";
 import {
-  DOCK_MIN_WIDTH_PX,
-  CONVERSATION_READING_MIN_PX,
-  defaultDockWidth,
-} from "@/lib/shellGeometry";
-import {
   VISUAL_DOCK_WIDTH_RATIO,
   DOCK_VIEW_BY_STATE,
   VISUAL_SETTINGS_PANES,
@@ -434,7 +429,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
       dockVisible: dock ? getComputedStyle(dock).visibility !== "hidden" : false,
     };
   });
-  expect(geometry.rowWidth).toBeLessThan(CONVERSATION_READING_MIN_PX + DOCK_MIN_WIDTH_PX);
+  expect(geometry.rowWidth).toBeLessThan(440 + 320);
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(page.getByRole("button", { name: /^Open material full width/ })).toBeEnabled();
@@ -1364,7 +1359,7 @@ test("automatic dock sizing never records a user preference", async ({ page }) =
           row: element.closest(".agent-dock-row")!.getBoundingClientRect().width,
           width: element.getBoundingClientRect().width,
         }));
-        return Math.round(width) - defaultDockWidth(row);
+        return Math.round(width) - Math.min(480, row - 440);
       })
       .toBe(0);
   }
@@ -1401,10 +1396,10 @@ test("dock separator exposes its real range and commits a pointer drag once", as
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
   const persistedRatio = page.getByTestId("persisted-dock-ratio");
-  await expect(separator).toHaveAttribute("aria-valuemin", String(DOCK_MIN_WIDTH_PX));
+  await expect(separator).toHaveAttribute("aria-valuemin", String(320));
   const max = Number(await separator.getAttribute("aria-valuemax"));
   const now = Number(await separator.getAttribute("aria-valuenow"));
-  expect(now).toBeGreaterThan(DOCK_MIN_WIDTH_PX);
+  expect(now).toBeGreaterThan(320);
   expect(now).toBeLessThanOrEqual(max);
   await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
 

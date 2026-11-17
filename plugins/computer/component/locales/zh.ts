@@ -132,6 +132,7 @@ export const zh = {
   "result.imageUnavailable": "无法显示此记录的图像。",
   "image.view": "查看图片",
   "image.close": "关闭图片",
+  "image.fit": "适合窗口",
   "image.zoomIn": "放大",
   "image.zoomOut": "缩小",
   "image.description": "图片说明",

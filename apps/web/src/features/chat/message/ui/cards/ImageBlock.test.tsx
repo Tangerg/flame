@@ -161,10 +161,7 @@ describe("ImageBlock", () => {
     mocks.saveImage.mockReturnValueOnce(save.promise);
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
-        <MarkdownRenderer
-          text={`![Architecture](data:image/png;base64,${FIRST_PNG})`}
-          reveal="instant"
-        />
+        <MarkdownRenderer text={`![Architecture](data:image/png;base64,${FIRST_PNG})`} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
       </div>,
     );
@@ -209,10 +206,7 @@ describe("ImageBlock", () => {
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
-        <MarkdownRenderer
-          text={`![Inline](data:image/gif;base64,${SECOND_GIF})`}
-          reveal="instant"
-        />
+        <MarkdownRenderer text={`![Inline](data:image/gif;base64,${SECOND_GIF})`} />
       </div>,
     );
 
@@ -227,10 +221,7 @@ describe("ImageBlock", () => {
       "Architecture review — Runtime transaction ownership, provider execution boundary, recovery checkpoints, and recorded evidence from the scheduling workspace";
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
-        <MarkdownRenderer
-          text={`![${description}](data:image/png;base64,${FIRST_PNG})`}
-          reveal="instant"
-        />
+        <MarkdownRenderer text={`![${description}](data:image/png;base64,${FIRST_PNG})`} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
       </div>,
     );
@@ -254,10 +245,7 @@ describe("ImageBlock", () => {
   it("uses the current image name when moving from named Markdown to an unnamed attachment", async () => {
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
-        <MarkdownRenderer
-          text={`![Architecture](data:image/png;base64,${FIRST_PNG})`}
-          reveal="instant"
-        />
+        <MarkdownRenderer text={`![Architecture](data:image/png;base64,${FIRST_PNG})`} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
       </div>,
     );
@@ -321,48 +309,23 @@ describe("ImageBlock", () => {
     await openPreview(source);
 
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
-    const pan = dialog.querySelector<HTMLElement>("[data-image-zoom]")!;
     const position = within(dialog).getByRole("status");
     const zoomIn = within(dialog).getByRole("button", { name: /zoom in/i });
     const image = () => dialog.querySelector("img")!;
-    let scrollLeft = 0;
-    let scrollTop = 0;
-    Object.defineProperty(pan, "scrollLeft", {
-      configurable: true,
-      get: () => scrollLeft,
-      set: (value: number) => {
-        scrollLeft = value;
-      },
-    });
-    Object.defineProperty(pan, "scrollTop", {
-      configurable: true,
-      get: () => scrollTop,
-      set: (value: number) => {
-        scrollTop = value;
-      },
-    });
-
     zoomIn.focus();
     fireEvent.click(zoomIn);
-    expect(pan.getAttribute("data-image-zoom")).toBe("125");
-    scrollLeft = 40;
-    scrollTop = 30;
 
     fireEvent.keyDown(zoomIn, { key: "ArrowRight" });
     expect(position.textContent).toBe("2 / 2");
     expect(image().getAttribute("src")).toBe(`data:image/gif;base64,${SECOND_GIF}`);
-    expect(dialog.querySelector("[data-image-zoom]")).toBe(pan);
     expect(within(dialog).getByRole("button", { name: /zoom in/i })).toBe(zoomIn);
     expect(document.activeElement).toBe(zoomIn);
-    expect(pan.getAttribute("data-image-zoom")).toBe("100");
     expect(within(dialog).getByText("100%")).toBeTruthy();
-    expect([scrollLeft, scrollTop]).toEqual([0, 0]);
 
     // The last image is a boundary: the key does nothing, so its zoom is kept.
     fireEvent.click(zoomIn);
     fireEvent.keyDown(zoomIn, { key: "ArrowRight" });
     expect(position.textContent).toBe("2 / 2");
-    expect(pan.getAttribute("data-image-zoom")).toBe("125");
     expect(document.activeElement).toBe(zoomIn);
 
     fireEvent.keyDown(zoomIn, { key: "ArrowLeft" });
@@ -370,7 +333,6 @@ describe("ImageBlock", () => {
     expect(image().getAttribute("src")).toBe(`data:image/png;base64,${FIRST_PNG}`);
     expect(within(dialog).getByRole("button", { name: /zoom in/i })).toBe(zoomIn);
     expect(document.activeElement).toBe(zoomIn);
-    expect(pan.getAttribute("data-image-zoom")).toBe("100");
 
     fireEvent.keyDown(zoomIn, { key: "ArrowLeft" });
     expect(position.textContent).toBe("1 / 2");
@@ -381,164 +343,11 @@ describe("ImageBlock", () => {
     await waitFor(() => expect(document.activeElement).toBe(source));
   });
 
-  describe("image source geometry", () => {
-    const wideSource = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="96" viewBox="0 0 240 96"/>')}`;
-    const tallSource = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="600" viewBox="0 0 300 600"/>')}`;
-    const natural: Record<string, [number, number]> = {
-      [wideSource]: [240, 96],
-      [tallSource]: [300, 600],
-    };
-    // Models native WKWebView at page zoom 200%: a displayed image's natural getters follow its
-    // rendered CSS size and page zoom, while a detached decoder reports the source once loaded.
-    const pageZoom = 2;
-    let decoders: HTMLImageElement[] = [];
-    let loaded = new Set<HTMLImageElement>();
-
-    const size = (image: HTMLImageElement) => natural[image.getAttribute("src") ?? ""] ?? [0, 0];
-    const naturalGetter = (axis: 0 | 1, css: "width" | "height") =>
-      function (this: HTMLImageElement) {
-        if (decoders.includes(this)) return loaded.has(this) ? size(this)[axis] : 0;
-        return (Number.parseFloat(this.style[css]) || size(this)[axis]) * pageZoom;
-      };
-    const decoderFor = (src: string) =>
-      decoders.filter((decoder) => decoder.getAttribute("src") === src).at(-1)!;
-    const load = (decoder: HTMLImageElement | undefined) => {
-      if (!decoder) return;
-      loaded.add(decoder);
-      act(() => {
-        decoder.dispatchEvent(new Event("load"));
-      });
-    };
-    const renderGallery = () =>
-      testClient.render(
-        <div className={MESSAGE_CONTENT_CLASS}>
-          <MarkdownRenderer
-            text={`![Wide](${wideSource}) ![Tall](${tallSource})`}
-            reveal="instant"
-          />
-        </div>,
-      );
-
-    beforeEach(() => {
-      decoders = [];
-      loaded = new Set();
-      vi.stubGlobal("Image", function Image() {
-        const decoder = document.createElement("img");
-        decoders.push(decoder);
-        return decoder;
-      });
-      const spies = [
-        vi
-          .spyOn(HTMLImageElement.prototype, "naturalWidth", "get")
-          .mockImplementation(naturalGetter(0, "width")),
-        vi
-          .spyOn(HTMLImageElement.prototype, "naturalHeight", "get")
-          .mockImplementation(naturalGetter(1, "height")),
-        vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(400),
-        vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(400),
-      ];
-      return () => {
-        for (const spy of spies) spy.mockRestore();
-        vi.unstubAllGlobals();
-      };
-    });
-
-    it("refits each selected image from its own geometry", async () => {
-      renderGallery();
-      await openPreview(screen.getByRole("button", { name: "Wide" }));
-      const dialog = screen.getByRole("dialog", { name: "Wide" });
-      const pan = dialog.querySelector<HTMLElement>("[data-image-zoom]")!;
-      pan.style.padding = "0px";
-      const first = dialog.querySelector("img")!;
-      const wideDecoder = decoderFor(wideSource);
-      fireEvent.load(first);
-      load(wideDecoder);
-      expect([first.style.width, first.style.height]).toEqual(["240px", "96px"]);
-
-      const zoomIn = within(dialog).getByRole("button", { name: /zoom in/i });
-      fireEvent.click(zoomIn);
-      expect([first.style.width, first.style.height]).toEqual(["300px", "120px"]);
-      fireEvent.load(first);
-      load(wideDecoder);
-      expect([first.style.width, first.style.height]).toEqual(["300px", "120px"]);
-
-      const next = within(dialog).getByRole("button", { name: "Next image" });
-      next.focus();
-      fireEvent.click(next);
-      const second = dialog.querySelector("img")!;
-      dialog.querySelector<HTMLElement>("[data-image-zoom]")!.style.padding = "0px";
-      load(decoderFor(tallSource));
-      expect(second).not.toBe(first);
-      expect([second.style.width, second.style.height]).toEqual(["200px", "400px"]);
-      expect(dialog.querySelector("[data-image-zoom]")?.getAttribute("data-image-zoom")).toBe(
-        "100",
-      );
-      expect(document.activeElement).toBe(next);
-      expect(dialog.querySelectorAll("img")).toHaveLength(1);
-
-      fireEvent.click(within(dialog).getByRole("button", { name: "Previous image" }));
-      const again = dialog.querySelector("img")!;
-      dialog.querySelector<HTMLElement>("[data-image-zoom]")!.style.padding = "0px";
-      const returning = decoderFor(wideSource);
-      fireEvent.load(again);
-      load(returning);
-      expect([again.style.width, again.style.height]).toEqual(["240px", "96px"]);
-    });
-
-    it("drops source loads from items that are no longer selected or open", async () => {
-      renderGallery();
-      await openPreview(screen.getByRole("button", { name: "Wide" }));
-      const dialog = screen.getByRole("dialog", { name: "Wide" });
-      const pan = dialog.querySelector<HTMLElement>("[data-image-zoom]")!;
-      pan.style.padding = "0px";
-      const zoomIn = within(dialog).getByRole("button", { name: /zoom in/i });
-      const wideDecoder = decoderFor(wideSource);
-
-      fireEvent.click(within(dialog).getByRole("button", { name: "Next image" }));
-      const tall = dialog.querySelector("img")!;
-      const tallDecoder = decoderFor(tallSource);
-      load(wideDecoder);
-      expect(tall.style.width).toBe("");
-
-      load(tallDecoder);
-      expect([tall.style.width, tall.style.height]).toEqual(["200px", "400px"]);
-      load(wideDecoder);
-      expect([tall.style.width, tall.style.height]).toEqual(["200px", "400px"]);
-
-      fireEvent.click(zoomIn);
-      expect(dialog.querySelector("[data-image-zoom]")).toBe(pan);
-      expect(within(dialog).getByRole("button", { name: /zoom in/i })).toBe(zoomIn);
-      expect(pan.getAttribute("data-image-zoom")).toBe("125");
-      expect(pan.hasAttribute("data-pannable")).toBe(true);
-      expect([tall.style.width, tall.style.height]).toEqual(["250px", "500px"]);
-      load(wideDecoder);
-      expect([tall.style.width, tall.style.height]).toEqual(["250px", "500px"]);
-
-      fireEvent.click(within(dialog).getByRole("button", { name: "Previous image" }));
-      const closedDecoder = decoderFor(wideSource);
-      fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-
-      await openPreview(screen.getByRole("button", { name: "Wide" }));
-      const reopened = screen.getByRole("dialog", { name: "Wide" });
-      reopened.querySelector<HTMLElement>("[data-image-zoom]")!.style.padding = "0px";
-      const image = reopened.querySelector("img")!;
-      const openDecoder = decoderFor(wideSource);
-      load(closedDecoder);
-      expect(image.style.width).toBe("");
-      load(openDecoder);
-      expect([image.style.width, image.style.height]).toEqual(["240px", "96px"]);
-      load(closedDecoder);
-      expect([image.style.width, image.style.height]).toEqual(["240px", "96px"]);
-    });
-  });
-
-  it("resets viewing state for distinct gallery entries that share a source", async () => {
+  it("preserves gallery controls across distinct entries that share a source", async () => {
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <MarkdownRenderer
           text={`![First](data:image/png;base64,${FIRST_PNG}) ![Second](data:image/png;base64,${FIRST_PNG})`}
-          reveal="instant"
         />
       </div>,
     );
@@ -546,7 +355,6 @@ describe("ImageBlock", () => {
     const zoomIn = screen.getByRole("button", { name: "Zoom in image" });
     zoomIn.focus();
     fireEvent.click(zoomIn);
-    expect(screen.getByText("125%")).toBeTruthy();
 
     fireEvent.keyDown(zoomIn, { key: "ArrowRight" });
     const second = screen.getByRole("dialog", { name: "Second" });

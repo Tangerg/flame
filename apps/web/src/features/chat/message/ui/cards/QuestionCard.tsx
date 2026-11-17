@@ -1,15 +1,7 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { type BlockStatus, type QuestionItem } from "@/features/agent/public/contentBlock";
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type CompositionEvent,
-  type KeyboardEvent,
-} from "react";
+import { useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
 import { Divider } from "@/ui/index";
 import { Icon } from "@/ui/index";
@@ -31,7 +23,6 @@ import {
   useQuestionCardActions,
 } from "@/features/chat/message/application/questionCardModel";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { useCompositionCommitGuard } from "@/features/composer/public/composition";
 import {
   color,
   corner,
@@ -151,6 +142,7 @@ interface Props {
   questions: QuestionItem[];
   answered?: boolean;
   answers?: string[][];
+  beforeSubmit?(): void;
 }
 
 const RECOMMENDED_SUFFIX = " (Recommended)";
@@ -163,6 +155,7 @@ export function QuestionCard({
   questions,
   answered,
   answers,
+  beforeSubmit,
 }: Props) {
   const t = useT();
   const questionCardId = useId();
@@ -173,7 +166,6 @@ export function QuestionCard({
   const requestRef = useRef<HTMLDivElement>(null);
   const questionFocusIntent = useRef<{ origin: Element | null } | null>(null);
   const activeQuestionRef = useRef<HTMLDivElement>(null);
-  const composition = useCompositionCommitGuard();
   const actions = useQuestionCardActions({ sessionId, resumeRunId, itemId, questions, draft });
   const activeIndex = Math.min(questionIndex, Math.max(questions.length - 1, 0));
   const activeQuestion = questions[activeIndex];
@@ -212,7 +204,6 @@ export function QuestionCard({
   const navigateQuestion = (nextIndex: number) => {
     const bounded = Math.min(Math.max(nextIndex, 0), Math.max(questions.length - 1, 0));
     if (bounded === activeIndex) return;
-    composition.reset();
     questionFocusIntent.current = { origin: document.activeElement };
     setQuestionIndex(bounded);
   };
@@ -266,8 +257,10 @@ export function QuestionCard({
 
   const submitOrAdvance = (nextDraft: QuestionDraft) => {
     setDraft(nextDraft);
-    if (isLastQuestion) actions.submit(nextDraft);
-    else navigateQuestion(activeIndex + 1);
+    if (isLastQuestion) {
+      beforeSubmit?.();
+      actions.submit(nextDraft);
+    } else navigateQuestion(activeIndex + 1);
   };
 
   const selectOptions = (
@@ -288,39 +281,11 @@ export function QuestionCard({
     submitOrAdvance(draft);
   };
 
-  const handleCompositionStart = () => {
-    composition.start();
-  };
-
   const handleAnswerChange = (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     if (!activeQuestion) return;
     const value = event.currentTarget.value;
-    const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
-    composition.noteChange(nativeComposing);
     if (actionsBlocked) return;
     setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
-  };
-
-  const handleCompositionEnd = (
-    event: CompositionEvent<HTMLTextAreaElement | HTMLInputElement>,
-  ) => {
-    composition.end();
-    if (!activeQuestion || actionsBlocked) return;
-    const value = event.currentTarget.value;
-    setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
-  };
-
-  const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-    const compositionIntent = composition.keyIntent(event.nativeEvent);
-    if (compositionIntent !== null) {
-      if (compositionIntent === "committed-enter") event.preventDefault();
-      return;
-    }
-    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
-      return;
-    }
-    event.preventDefault();
-    if (explicitFreeform) confirmCurrent();
   };
 
   if (!activeQuestion) return null;
@@ -434,11 +399,6 @@ export function QuestionCard({
                 disabled={!runtimeAvailable}
                 pending={actions.disabled}
                 onChange={handleAnswerChange}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onKeyDown={handleAnswerKeyDown}
-                onKeyUp={() => composition.clear()}
-                onBlur={() => composition.clear()}
                 className={stylex.props(qc.textArea).className}
               />
             </div>
@@ -464,11 +424,6 @@ export function QuestionCard({
                 disabled={!runtimeAvailable}
                 pending={actions.disabled}
                 onChange={handleAnswerChange}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onKeyDown={handleAnswerKeyDown}
-                onKeyUp={() => composition.clear()}
-                onBlur={() => composition.clear()}
                 styles={qc.freeField}
               />
             </div>

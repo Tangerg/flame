@@ -1,4 +1,4 @@
-import { langFromPath } from "@/lib/highlight/languages";
+import { getFiletypeFromFileName } from "@pierre/diffs";
 import { fileExtension } from "@/lib/path";
 export type FileKind = "image" | "document" | "code" | "file";
 
@@ -24,5 +24,5 @@ export function fileKind(path: string): FileKind {
   const extension = fileExtension(path);
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
   if (DOCUMENT_EXTENSIONS.has(extension)) return "document";
-  return langFromPath(path) === "text" ? "file" : "code";
+  return getFiletypeFromFileName(path) === "text" ? "file" : "code";
 }

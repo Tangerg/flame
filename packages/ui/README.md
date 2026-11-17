@@ -21,7 +21,7 @@ message channel and bootstrap exports are removed.
 
 `surface.texture` reads the host's optional `--surface-texture` background image,
 with `none` as its fallback. While the host marks `data-paper-texture` on the
-document root, `Panel` and its sticky controls paint this material
+document root, `Panel` and its controls paint this material
 behind content; control and card skins keep their existing solid surfaces. The
 application owns paper choices, strength, theme adaptation and persistence.
 
@@ -134,66 +134,18 @@ The package is private and is consumed through repository-local `file:` dependen
 The offline consumer derives external dependency selections from the root lock,
 then installs packed artifacts without workspace links or the StyleX compiler.
 
-`Panel` owns the content measure and container-responsive gutters.
-It accepts the native section ref and events, so local navigation can keep its
-focus and scroll path without adding another reading-plane wrapper.
-Its explicit `header` slot holds introductory content, `controls` holds the one
-sticky action and filter zone, and children hold the scrolling content. The host
-keeps its existing scroll viewport. The panel does not shrink inside a column
-host: its canvas and sticky-control boundary extend through the complete content.
-The controls scroll with the content when fewer than two body lines and their
-leading gap would remain in the clipped reading frame. They become sticky again
-when that reading space is available. Panel and Disclosure share this fit rule.
-Focus clearance, nested disclosures and Diff reading anchors use that same
-Panel-owned sticky boundary rather than treating flowing controls as an overlay.
+`Panel` owns the content measure, normal-flow header, controls, body and
+container-responsive gutters. The host owns the scroll viewport. Panel and
+Disclosure do not measure sticky clearances or scroll ancestor elements.
+`useFieldVisibility` belongs to a form's actual viewport and observes its content.
+It keeps a focused native field visible through reflow by changing only that
+viewport's offset, preserving the browser's value and selection. Deliberate wheel,
+scrollbar and viewport keyboard scrolling retire this behavior. Nested readers
+keep their own scrolling; oversized fields keep native caret scrolling.
+Inactive content disconnects observation, and later outside focus is never restored.
+`FormActions.feedback` keeps command results next to their actions. Consumers own
+explicit focus handoff before removing an editor or action.
 
-The panel owns its stable DOM ref; forwarded refs project that same element without
-retiring it while new children receive focus during a commit.
-`Panel` projects only its own controls' measured height on its root to keep focused content and anchors
-clear of the controls; wrapped controls update through `ResizeObserver`.
-Its existing viewport observation also projects the clipped host height as
-`--reading-frame-height` for nested source readers. Sizing and body focus use
-the same intersection of the window and each host clip's inner edges, less its
-block scroll padding, because native start alignment places content inside that
-clearance; a context that fits only a host's border box falls back to a smaller
-unit. Reader sizing continues after focus moves outside, and retires with
-inactive content or unmount. `readingUnitFor` gives
-Panel and transcript readers the same context rule: use the outermost declared
-`data-focus-unit` that fits, then the wrapping native label, then the control.
-An option's label cannot hide the heading of its fitting group. Each reader owns
-its available frame and scrolling. `FormGroup` and the application's `SettingRow`
-declare this boundary at their existing roots. Taller units retain the focused
-control's beginning after native autofocus or reflow. The panel observes
-its content, controls and clipped host ancestors, including hosts without a
-control zone. Native window resize also rechecks the current reading frame.
-The existing active field stays visible through layout and page-zoom changes
-without refocusing it or changing its value or text selection. An outer wheel
-gesture or a moved scrollbar that leaves the field behind retires that follow.
-A visible, focused scrollable reader keeps its context when it consumes a
-vertical wheel, including delivery after its inner offset changes. Actual outer
-scrolling still retires that context when the reader leaves the frame; reflow
-notifications without scroll displacement do not. Later outside focus, inactive
-content and unmount stop layout following. A retained hidden panel keeps that
-same reading unit through hidden reflow and restores its clearance once on the
-next visible layout frame, without taking focus from the host's return target.
-The witness then retires if focus remains elsewhere. Body scroll clearance also
-applies to this unfocused reading unit, so sticky controls cannot cover it.
-Resize and scroll-anchoring notifications coalesce into one layout-frame reveal;
-a later outer wheel gesture can still cancel it.
-The same owner records positions after its own reveal, so a queued programmatic
-scroll event during native window animation cannot retire that reflow witness.
-
-When the clipped host has no reading frame, that witness waits for reflow to
-restore one. An explicit wheel gesture still retires it.
-Pointer-caused focus leaves the pressed control in place so activation can
-finish before any row reveal, including reflow during the press.
-The body retains the pressed target until pointerup or cancellation,
-including wrapping labels and slider focus proxies; unrelated autofocus still
-reveals its own unit. Leaving the body clears the press.
-`FormActions.feedback` keeps asynchronous results in the same focus unit as its
-actions. A changed result reuses the Panel reveal rule only while focus remains
-inside that group; later outside focus is left alone. Oversized feedback retains
-the focused-control fallback.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
@@ -212,7 +164,7 @@ DOM emptiness while its children are replaced. Its `cards` variant provides the 
 `Disclosure variant="row"` owns resource summaries that expand directly. Hover
 feedback belongs to its summary trigger; the expanded reading body remains
 untinted while the pointer moves through it. Header and body keep the shared row
-insets and existing sticky-header geometry. An expanded row's summary and body
+insets in normal content flow. An expanded row's summary and body
 are separated by existing whitespace, without an automatic separator.
 A consumer's `data-focused` record marker uses the summary button's shared active
 state; it never tints the expanded source or its semantic change colors.
@@ -285,16 +237,8 @@ moves the actions. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. The growing
 trigger carries the actions to the trailing edge while both fit on one row; once
 the actions wrap as a unit, they start at the leading edge beneath the trigger.
-DOM and keyboard order are unchanged. The header is one reading unit, so a
-focused action is revealed together with the summary it acts on whenever the
-complete header fits. Expanded content stays outside that unit, and an oversized
-header keeps the smaller-unit and control fallback. Its optional
-`stickyHeader` keeps that same complete summary beneath the enclosing Panel's
-controls in a bounded scroll viewport. It returns to normal flow when fewer than
-two body lines and their leading inset would remain below the header.
-The measured header height also keeps focused body content clear; the header does
-not add its own height to its focus offset. Header, viewport and controls resizing
-update this local presentation without tracking the current file or scroll position.
+DOM and keyboard order follow the normal-flow header and body. Base UI owns
+expansion, keyboard activation and content visibility.
 `Select` keeps its popup anchored beside the trigger rather than overlapping the
 selected item with it. Base UI tracks ancestor scrolling and resizing, handles
 viewport collisions and retains selection and focus ownership. Desktop appearance
@@ -423,23 +367,18 @@ localized `CodeActionLabels`; the defaults are English. The wrap label names
 the next action. It is an ordinary button rather
 than a pressed toggle whose label reverses meaning; its active visual indicator
 and the shared wrap preference remain unchanged. Syntax color is a host capability:
-`CodeHighlightProvider` supplies one `CodeSourceComponent`, which React renders
-inside the stable `pre` region as `<Source source language />` and which returns
-the `code` element for exactly that source: escaped highlighted markup when ready,
-the plain literal until then. The copied text is always the original literal;
-without a provider `CodeBlock` renders it plain. The Desktop installs its single Shiki pipeline
-here, so transcript code, captured file previews and recorded evidence share one
-highlighter, cache and scheme-following theme. `copyText` and `useCopyFeedback` are the shared
-plain-text clipboard owner. Input and output wells retain their own sunken surface.
+`CodeHighlightProvider` supplies a source component for the captured literal. Without
+one, `CodeBlock` renders plain code. The desktop installs Pierre File with the
+`shiki-js` engine. Code, file previews and diffs use the shared semantic syntax
+colors; Pierre owns highlighting and its worker caches. Workers and their cache
+lifetime end with the captured source presentation.
 
-`copyText` reports whether the clipboard accepted that write. `useCopyFeedback.copy()`
-returns `true` for current success, `false` for current refusal, or `undefined` when
-the owner unmounts, the material changes or a newer copy supersedes it. Only the
-current intent publishes success feedback and its reset timer. Consumers show
-refusal only for `result === false`; callbacks that ignore the result keep their
-existing behavior. Source consumers must accept the widened optional result when
-rebuilt. Rebuild the shared UI, host and affected installed component resources
-together through their normal build and publication paths.
+`copyText` returns the clipboard result. `useCopy` captures the exact material and
+publishes an immutable receipt through `ClipboardReceiptProvider`, including when
+the initiating control has unmounted. Each receipt records its attempt, source
+label and accepted or refused result. The host projects receipts into its existing
+Toast feed; controls do not maintain a copied timer or replace their focus owner.
+Input and output wells retain their own sunken surface.
 
 `DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
 heading rhythm, nested list markers, quotes, rules, emphasis, inline code and
@@ -579,24 +518,11 @@ portal focus and keeps that capture closed when the owner returns. Ordinary
 dismissal retains Base UI's trigger return; an explicit final-focus policy stays
 with the caller. These are the same semantics used by transcript previews.
 
-`PointerSession` owns one primary pointer, capture, deltas and settlement in the
-actual target window. It settles before releasing capture: completion may commit
-once, cancellation restores a valid preview, and retirement only revokes the old
-operation. Source, visibility, viewport or external authority changes retire before
-new projections apply. Consumers provide the current-source qualification and
-business mutations. `useScrollPan` shares native scroll panning between images and
-diagrams; native wheel scrolling, zoom, fit and keyboard commands retire it before
-taking over.
-
-`ImageViewport` owns fitting, anchored zoom, keyboard panning and pointer dragging
-for one captured `ImageSource`. Its flex frame owns its bounded scroll region and
-zoom tray. A source identity or viewport-size change resets the fit; the detached
-decoder keeps SVG natural geometry independent of displayed size and page zoom.
-`EvidenceImage` retains a bounded inline thumbnail and opens that same original
-source in a media Lightbox. Replacing its source ends the old capture. Its labels
-are supplied by the host or portable component; it owns no image acquisition,
-permission, download, document review or business command. The transcript gallery
-shares this viewport while retaining its own image collection and save outcomes.
+`ImageViewport` delegates transform, fit, zoom and pan to react-zoom-pan-pinch.
+The library owns x/y/scale and gesture state. Fit allows scales below one, actual
+size requests scale one, and a source replacement creates a new camera. Toolbar
+controls supply public intents. EvidenceImage retains its own captured source,
+Lightbox and localized labels; acquisition and saving remain host responsibilities.
 
 `EvidenceImage` accepts known intrinsic width/height and native loading/decoding
 hints without inventing dimensions or making every image lazy. The shared
@@ -611,93 +537,14 @@ fill and ink. A `search-line` slot with `data-current-match` marks a line-based
 result with the same wash and a leading accent rule, preserving its ANSI ink and
 fixed row height. Each consumer retains its own query, matching and navigation.
 
-`TextArea autosize` measures its visible text across supported hosts: the value,
-or its placeholder while empty. Placeholder typography supplies its natural height;
-the native `rows` minimum retains the control's own font metrics. The component owns
-height updates for input, controlled values, placeholder, form reset, width and font changes;
-CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
-Input bursts share one measurement before paint, using the final native value and
-current styles.
-Natural height and caret geometry share the same inert typography mirror. Sizing
-retains the native `rows` minimum and box model, then applies only the final
-height. Measuring never collapses the live control, so it cannot clamp an outer
-reading viewport or displace a focused action beside a capped textarea.
+`TextArea autosize` uses progressive CSS `field-sizing: content` with native rows
+as the fallback on hosts without support. Native controls own caret, selection,
+composition and scrolling. There is no JavaScript height or caret mirror.
 
-`TextArea` also retains its native caret reading position through reflow. A
-temporary, inaccessible text mirror measures the active selection endpoint;
-only the textarea's vertical scroll position changes. Values, selection and
-focus remain native. Wheel reading or a moved scrollbar retires following until
-new focus, input or selection movement. A document `selectionchange` listener
-observes both collapsed caret movement and range changes through native offsets;
-unchanged selections and other focused controls do not restart following.
-Same-control window reactivation does not restart it. Pointer presses and
-composition defer the reveal, and later focus or unmount fences pending work.
-This reading observation is independent of the optional autosize height owner.
-
-The shared stylesheet also applies the application's `data-motion="off"` projection
-and the system reduced-motion preference. Both disable motion with zero duration;
-they do not manufacture transitions on otherwise static components.
-
-The default host theme owns the semantic roles (neutral planes, one accent scale
-generated from the user's configurable accent, and status colors) and follows HeroUI
-3.2.6 for rounded buttons, fields and quiet contact shadows. Button and field radii follow
-the user's radius scale at every size; text chips share the button role.
-Fixed circular marks and explicitly round buttons keep their geometry.
-Desktop size roles are
-24/28/32/36px, independent of navigation density. Controls retain native cursors,
-keyboard focus, wrapping labels and the coarse-pointer target floor. Theme values
-remain with the host; the library renders them without a second appearance store.
-Settings and portable pages share `Panel` as the sole content-measure owner.
-
-`Badge` renders plain, unboxed text without fill, padding or corners. Tonal
-labels use the host's ordinary semantic ink; neutral labels use muted text. The
-shared component keeps the state label visible; consumers select its tone and
-label from the product owner's state.
-
-`ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
-header and footer alignment, and internal body scrolling. Its body supplies the
-keyboard reading region named by its current title. Tab reaches that region so
-native page and boundary keys can read content beyond a field, with the existing
-inset focus perimeter. Explicit field entry still uses `initialFocus`.
-The body supplies the reading frame for its children: a changed
-`FormActions.feedback` whose group still owns focus reveals its fitting unit, or
-the focused control when the unit is taller, using native scrolling without
-moving focus or editing state. The same frame follows a focused
-descendant through body, target and window resizes, aligning an oversized unit
-to its start. Following ends when the reader scrolls it away, uses the wheel,
-focuses the body itself or moves focus outside, including to portaled menus; its
-own reveal and anchoring scrolls do not end it. A pointer press leaves its target
-in place while activation finishes. Header and footer stay outside that frame.
-Readers use `bodyRef` for their initial focus and `bodyStyles` for their existing
-measure and text treatment, rather than nesting another scrolling region.
-Its portal establishes the modal stacking context; nested shared menus and
-selects sit above its local
-panel and scrim without raising unrelated page popups. Its optional submit
-handler makes the popup itself a native form; installed component content keeps
-its own form when no handler is supplied. Desktop dialogs supply their existing
-command handlers and captured targets. Native `initialFocus` and `finalFocus`
-configure entry and retirement without a separate focus trap. A resolver can
-return the current connected opener or a retained fallback. `dismissible={false}`
-blocks Escape, outside presses and the close action while an owner retains an
-unresolved command. Ordinary dialogs keep Base UI's nested-popup priorities;
-composition Escape, including legacy keyCode 229, cannot dismiss the dialog.
-`Form` preserves native submission and
-shares its section spacing with `RecordForm`; only `RecordForm` adds a card
-surface and inset. Inline editors pass their captured `opener` to `RecordForm`.
-On unmount it returns focus only when that form owned focus and removal left
-focus on the document body. Restoration follows the DOM commit so the opener
-can be enabled again; another control's focus is preserved. The opener may be an
-element or a resolver returning the current target or null. The resolver runs only
-when restoration is eligible, after removal, so a filtered-out trigger can return
-to its consumer's persistent search field. `canRestoreFocus` qualifies the captured
-business source; hiding, a retired source, later focus (even if it subsequently
-blurs), or an unavailable destination prevents restoration. `FocusWitness` owns the captured source, later-focus guard and once-only
-delivery. `RemovalFocus` additionally requires physical removal of its boundary; `useRemovalFocus` binds its layout capture and passive
-settlement. It retains the latest committed source binding because an ancestor ref
-can detach before the owner's layout cleanup. Replacing a retained owner's DOM
-node neither restores focus nor leaves the old node as the source for a later
-removal. Synchronous retry replacement uses the separate `handoffFocus`
-guarantee before replacing the error view.
+Focus return is delegated to Base UI for popups. Explicit removal actions may
+call handoffFocus before mutation; it refuses disconnected, hidden, inert or
+outside-owned destinations. Copy operations publish immutable receipt identities
+through ClipboardReceiptProvider, independent of the originating view's lifetime.
 
 `FormActions` groups
 inline editor actions, with `auxiliaryAction` leading and children trailing;
@@ -782,12 +629,7 @@ Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
 editors consume `RecordForm`, `FormField`, and `FormActions` rather than defining
 another set of row insets, field spacing, and footer alignment.
 
-`useCopyAttempt` qualifies each copy by its captured source, latest attempt and
-visible mounted lifetime. It owns no text, persistence confirmation, timer or
-feedback policy. Replacement and hide/reveal permanently retire captured commands,
-even when the original source is shown again. Effect reconnection, including React
-Activity and Suspense, starts a fresh scope without reviving retired commands.
-`useCopyFeedback` uses that same
-qualification for both clipboard completion and its short feedback timer.
-Persistent recovery diagnostics can keep
-the previous result during another attempt without sharing that timer policy.
+ReadingList delegates virtualization, following and anchor correction to Legend.
+Its public pinning retains the complete selected range and rows owning native
+focus, composition or a React portal. It exposes only the library handle for
+navigation. Clipboard receipts are projected by each host's existing Toast feed.

@@ -1,5 +1,4 @@
 import { iconGlyph } from "@/ui/icons/index";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { AgentAppShell } from "@/ui/agent/index";
 import { AgentComposerSurface } from "@/ui/agent/index";
 import { AgentContentCard } from "@/ui/agent/index";
@@ -151,8 +150,8 @@ export function VisualFoundationFixture({ sidebarOpen }: VisualFoundationFixture
       sidebarLabel="Work index"
       sidebarResizeLabel="Resize the work index"
       sidebarOpen={sidebarOpen}
-      sidebarWidth={SIDEBAR_DEFAULT_WIDTH_PX}
-      onResize={() => undefined}
+      sidebarLayout={null}
+      onLayoutChanged={() => undefined}
       onSidebarToggle={() => undefined}
       sidebarExpandLabel="Expand the foundation fixture sidebar"
       sidebarCollapseLabel="Collapse the foundation fixture sidebar"

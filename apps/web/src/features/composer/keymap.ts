@@ -6,10 +6,6 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { composerKeyBindings } from "@/features/composer/application/composerKeyBindings";
 import {
-  recallNextHistoryFromKey,
-  recallPreviousHistoryFromKey,
-} from "@/features/composer/application/composerHistoryKeys";
-import {
   recallNextComposerHistory,
   recallPreviousComposerHistory,
 } from "@/features/composer/public/history";
@@ -28,27 +24,13 @@ export const composerKeymap = (
           submit();
           return true;
         },
-        approveOrSend: ({ submit }) => {
-          if (!runtimeCommandsAvailable(runtimeAccess)) return true;
-          if (agentAccess.submitPendingApproval("approve")) return true;
-          submit();
-          return true;
-        },
         declineApproval: () =>
           runtimeCommandsAvailable(runtimeAccess)
             ? agentAccess.submitPendingApproval("deny")
             : true,
         stopRun: () => runtimeCommandsAvailable(runtimeAccess) && agentAccess.stopCurrentRootRun(),
-        historyPrevious: ({ event }) =>
-          recallPreviousHistoryFromKey({
-            event,
-            recall: recallPreviousComposerHistory.bind(null, composerAccess),
-          }),
-        historyNext: ({ event }) =>
-          recallNextHistoryFromKey({
-            event,
-            recall: recallNextComposerHistory.bind(null, composerAccess),
-          }),
+        historyPrevious: () => recallPreviousComposerHistory(composerAccess),
+        historyNext: () => recallNextComposerHistory(composerAccess),
       })) {
         ctx.contributions.add(COMPOSER_KEY_BINDING, binding);
       }

@@ -2646,7 +2646,7 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "schema.json#/$defs/PageOfFileEntry"
+          "$ref": "schema.json#/$defs/FileListPage"
         }
       },
       "errors": [

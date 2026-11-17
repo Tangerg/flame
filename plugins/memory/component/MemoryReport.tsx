@@ -27,7 +27,6 @@ type RecordCommand = <K extends MutationName>(
   method: K,
   input: MethodInputs[K],
   intent: CommandIntent,
-  control?: HTMLElement,
 ) => void;
 export function MemoryReport({
   page,
@@ -46,7 +45,6 @@ export function MemoryReport({
   feedback,
   resultFocus,
   canRestoreFocus,
-  initiator,
   t,
 }: {
   page?: MemoryPage;
@@ -65,7 +63,6 @@ export function MemoryReport({
   feedback: ReactNode;
   resultFocus: RefObject<HTMLElement | null>;
   canRestoreFocus(): boolean;
-  initiator: RefObject<HTMLElement | undefined>;
   t: Translate;
 }) {
   const rows = page?.Rows ?? [];
@@ -155,12 +152,11 @@ export function MemoryReport({
                           <MemoryAction
                             result={resultFocus}
                             canRestoreFocus={canRestoreFocus}
-                            initiator={initiator}
                             variant="soft"
                             size="md"
                             disabled={disabled}
                             focusableWhenDisabled
-                            onClick={(event) =>
+                            onClick={() =>
                               command(
                                 "flame.memory/review.v2",
                                 {
@@ -169,7 +165,6 @@ export function MemoryReport({
                                   Decision: "approve",
                                 },
                                 { action: "approve", id: item.ID },
-                                event.currentTarget,
                               )
                             }
                           >
@@ -178,13 +173,12 @@ export function MemoryReport({
                           <MemoryAction
                             result={resultFocus}
                             canRestoreFocus={canRestoreFocus}
-                            initiator={initiator}
                             variant="wash"
                             tone="negative"
                             size="md"
                             disabled={disabled}
                             focusableWhenDisabled
-                            onClick={(event) =>
+                            onClick={() =>
                               command(
                                 "flame.memory/review.v2",
                                 {
@@ -193,7 +187,6 @@ export function MemoryReport({
                                   Decision: "reject",
                                 },
                                 { action: "reject", id: item.ID },
-                                event.currentTarget,
                               )
                             }
                           >
@@ -206,6 +199,7 @@ export function MemoryReport({
                             variant="soft"
                             size="md"
                             disabled={disabled || authoring}
+                            focusableWhenDisabled
                             onClick={(event) => edit(item, event.currentTarget)}
                           >
                             {t("edit.action")}

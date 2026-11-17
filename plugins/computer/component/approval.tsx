@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PrimitiveSchemaDefinition } from "@modelcontextprotocol/sdk/types.js";
 import { failureText, type Translate } from "@flame/component-sdk";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
@@ -186,13 +186,13 @@ export function ApprovalForm({
   approval,
   pending,
   respond,
-  opener,
+  beforeRespond,
   t,
 }: {
   approval: Approval;
   pending: boolean;
   respond(input: ReplyInput): Promise<boolean>;
-  opener(): HTMLElement | null;
+  beforeRespond(source: HTMLElement): void;
   t: Translate;
 }) {
   const permission = useMemo(
@@ -207,6 +207,7 @@ export function ApprovalForm({
   const request = permission.request;
   const native = permission.native;
   const disabled = pending || submitted;
+  const form = useRef<HTMLElement>(null);
 
   async function answer(
     action: "accept" | "decline" | "cancel",
@@ -231,6 +232,7 @@ export function ApprovalForm({
         ...(persist ? { _meta: { persist } } : {}),
       });
       permission.reply(responseJSON);
+      if (form.current) beforeRespond(form.current);
       if (
         (await respond({
           sessionId: approval.sessionId,
@@ -246,7 +248,7 @@ export function ApprovalForm({
   }
 
   return (
-    <RecordForm aria-label={t("approval.title")} opener={opener}>
+    <RecordForm ref={form} aria-label={t("approval.title")}>
       <Callout kind="important">
         <RecordBody>{request.message}</RecordBody>
       </Callout>

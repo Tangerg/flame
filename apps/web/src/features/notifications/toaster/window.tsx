@@ -1,3 +1,5 @@
+import { ClipboardReceiptProvider } from "@flame/ui";
+import { t } from "@/lib/i18n/index";
 import { Toast } from "@base-ui/react/toast";
 import { useLayoutEffect, useState, type ReactNode } from "react";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
@@ -45,5 +47,18 @@ function NotificationRoot({ start }: { start: StartWindow }) {
       stop();
     };
   }, [add, close, start]);
-  return content;
+  return (
+    <ClipboardReceiptProvider
+      onReceipt={(receipt) =>
+        add({
+          id: receipt.id,
+          type: receipt.status === "copied" ? "success" : "error",
+          title: t(receipt.status === "copied" ? "common.copied" : "common.copyFailed"),
+          description: receipt.label,
+        })
+      }
+    >
+      {content}
+    </ClipboardReceiptProvider>
+  );
 }

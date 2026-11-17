@@ -10,10 +10,5 @@ export function ReferencesExample({ variant, locale }: LabExampleProps) {
     scenario.long ? messages.samples.referenceLong : messages.samples.referenceShort,
     locale,
   );
-  return (
-    <MarkdownRenderer
-      text={`${answer}\n\n[^来源]: ${note.replaceAll("\n\n", "\n\n    ")}`}
-      reveal="instant"
-    />
-  );
+  return <MarkdownRenderer text={`${answer}\n\n[^来源]: ${note.replaceAll("\n\n", "\n\n    ")}`} />;
 }

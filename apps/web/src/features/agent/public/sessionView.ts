@@ -10,7 +10,7 @@ import {
 export type { AgentMessagePhase, ToolCategory, AgentRunStatus };
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
 import { type ContentBlock } from "@/features/agent/public/contentBlock";
-export type MessageRole = "user" | "assistant" | "system";
+type MessageRole = "user" | "assistant" | "system";
 
 export interface PlanStep {
   readonly id: string;

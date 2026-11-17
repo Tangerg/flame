@@ -1,7 +1,6 @@
 import { type Counter, type Histogram, type Meter } from "@opentelemetry/api";
 interface Instruments {
   reducer: Histogram;
-  shiki: Histogram;
   mermaid: Histogram;
   events: Counter;
 }
@@ -12,10 +11,6 @@ export function bindMetricInstruments(meter: Meter): () => void {
   const instruments: Instruments = {
     reducer: meter.createHistogram("flame.reducer.duration", {
       description: "Time spent reducing one StreamEvent",
-      unit: "ms",
-    }),
-    shiki: meter.createHistogram("flame.shiki.highlight.duration", {
-      description: "Time spent highlighting one code block",
       unit: "ms",
     }),
     mermaid: meter.createHistogram("flame.mermaid.render.duration", {
@@ -42,10 +37,6 @@ export function measureReduce<T>(eventType: string, fn: () => T): T {
       inst.events.add(1, { eventType });
     }
   }
-}
-
-export function measureShikiHighlight(ms: number, lang: string): void {
-  inst?.shiki.record(ms, { lang });
 }
 
 export function measureMermaidRender(ms: number): void {

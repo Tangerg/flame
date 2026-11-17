@@ -112,6 +112,7 @@ export const zh: Record<string, string> = {
   "export.trajectory": "导出完整会话轨迹",
   "image.view": "查看图片",
   "image.close": "关闭图片预览",
+  "image.fit": "适合窗口",
   "image.zoomIn": "放大图片",
   "image.zoomOut": "缩小图片",
   "image.description": "图片说明",

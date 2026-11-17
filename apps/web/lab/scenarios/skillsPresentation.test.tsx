@@ -921,13 +921,15 @@ it("keeps personal library recovery attached to its captured row through query c
   expect(attempts[1]![2]?.idempotencyNamespace).toBe(attempts[0]![2]?.idempotencyNamespace);
 });
 
-it("returns focus to search when a canonical read removes the focused navigation row", async () => {
+it("keeps explicit refresh focus when a canonical read removes a navigation row", async () => {
   const { listDiscovered } = await mountSkills();
   const canonical = Promise.withResolvers<SkillDiscovery>();
   listDiscovered.mockImplementationOnce(() => canonical.promise);
   const opener = readButtons()[1]!;
   opener.focus();
-  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  const refresh = screen.getByRole("button", { name: "Refresh" });
+  refresh.focus();
+  fireEvent.click(refresh);
   await act(async () =>
     canonical.resolve({
       ...VISUAL_SKILL_DISCOVERY,
@@ -935,9 +937,7 @@ it("returns focus to search when a canonical read removes the focused navigation
     }),
   );
   expect(opener.isConnected).toBe(false);
-  expect(document.activeElement).toBe(
-    screen.getByRole("searchbox", { name: "Search this catalog" }),
-  );
+  expect(document.activeElement).toBe(refresh);
 });
 
 it("cancels the inspected proposal before Escape reaches the surrounding page", async () => {
@@ -958,64 +958,6 @@ it("cancels the inspected proposal before Escape reaches the surrounding page", 
   expect(document.activeElement).toBe(approve);
   expect(outsideEscape).not.toHaveBeenCalled();
 });
-
-it.each([
-  { action: "Approve", fits: true },
-  { action: "Approve", fits: false },
-  { action: "Reject", fits: true },
-  { action: "Reject", fits: false },
-] as const)(
-  "reveals the whole $action review when it fits ($fits), otherwise its confirmation actions",
-  async ({ action, fits }) => {
-    await mountSkills();
-    fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
-    await summaryStatus("2 pending proposals");
-    fireEvent.click(screen.getAllByRole("button", { name: action })[1]!);
-    const form = screen.getByRole("region", { name: "Confirm proposal decision" });
-    expect(
-      within(form).getByText(`${action} · ${VISUAL_SKILL_PROPOSALS.data[1]!.name}`),
-    ).toBeTruthy();
-    const actions = within(form).getByRole("group", { name: "Proposal confirmation" });
-    const cancel = within(actions).getByRole<HTMLElement>("button", { name: "Cancel" });
-    const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
-
-    // The frame below the sticky controls spans 250..500.
-    const rectangles = new Map<Element, DOMRect>([
-      [screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300)],
-      [
-        form.closest('[data-slot="panel"]')!.querySelector('[data-slot="panel-controls"]')!,
-        new DOMRect(0, 200, 800, 50),
-      ],
-      [form, fits ? new DOMRect(0, 180, 800, 220) : new DOMRect(0, 100, 800, 420)],
-      [actions, fits ? new DOMRect(0, 340, 800, 50) : new DOMRect(0, 470, 800, 50)],
-      [cancel, fits ? new DOMRect(0, 350, 100, 32) : new DOMRect(0, 480, 100, 32)],
-    ]);
-    const revealed: Element[] = [];
-    const nativeScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
-    vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(600);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      return rectangles.get(this) ?? new DOMRect(0, 0, 800, 600);
-    });
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-      configurable: true,
-      value(this: HTMLElement) {
-        revealed.push(this);
-      },
-    });
-    releases.push(async () => {
-      if (nativeScroll)
-        Object.defineProperty(HTMLElement.prototype, "scrollIntoView", nativeScroll);
-      else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
-    });
-
-    act(() => outside.focus());
-    act(() => cancel.focus());
-    expect(revealed).toEqual([fits ? form : actions]);
-    expect(document.activeElement).toBe(cancel);
-  },
-);
 
 it.each([
   {

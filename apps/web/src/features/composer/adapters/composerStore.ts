@@ -23,6 +23,7 @@ interface ComposerState {
 }
 interface ComposerActions {
   setValue(value: string): void;
+  checkpointDocument(value: string, document: string): void;
   setModel(preference: ComposerModelPreference): void;
   clear(): void;
   captureSubmission(): ComposerSubmission;
@@ -245,6 +246,7 @@ export function createComposerStore() {
     return {
       ...current.state,
       setValue: (value) => edit((draft) => draft.withValue(value)),
+      checkpointDocument: (value, document) => edit((draft) => draft.withDocument(value, document)),
       setModel: (modelPreference) => publish({ modelPreference }, false),
       clear: () => {
         cancelReads(current, current.state.composer.activeSessionId);
@@ -402,6 +404,7 @@ export function createComposerStore() {
         {
           targets: unconfirmed().map((owner) => ({
             active: owner === current,
+            stored: owner.endpoint === null ? undefined : database.recoveryRecords(owner.endpoint),
             drafts: Object.fromEntries(owner.state.composer.durableDraftTexts()),
           })),
         },

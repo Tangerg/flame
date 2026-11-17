@@ -1,32 +1,23 @@
+import { useComposer } from "@/features/composer/public/composer";
+import { ComposerEditor } from "./ComposerEditor";
+import { useNotifications } from "@/features/notifications/public/notifier";
 import {
   type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/public/attachments";
 import { type AgentInput } from "@/features/agent/public/input";
-import { TextArea } from "@flame/ui";
-import { AgentComposerFooter, AgentComposerSurface, useViewportFocus } from "@/ui/agent/index";
-import { useContentVisible } from "@/ui/index";
-import {
-  FileMentionOptions,
-  FileMentionStatus,
-} from "@/features/composer/ui/FileMentionSuggestions";
-import { SlashSuggestions } from "@/features/composer/ui/SlashSuggestions";
-import { SuggestionPopup } from "@/features/composer/ui/SuggestionPopup";
+import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent/index";
+import { SkeletonText } from "@/ui/index";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 import { useT } from "@/lib/i18n/index";
-import { type ComposerSubmission } from "@/features/composer/application/state";
 import { Slot } from "@/extensions/host/Slot";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 import { ComposerPersistenceNotice } from "@/features/composer/ui/ComposerPersistenceNotice";
 import { ComposerFileDropCue, useComposerFileDrop } from "@/features/composer/ui/ComposerFileDrop";
-import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
 import { useCallback, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 interface Props {
   onSend: (input: AgentInput) => boolean;
-  value: string;
-  onChange: (v: string) => void;
-  captureSubmission: () => ComposerSubmission;
   images: readonly ComposerImageAttachment[];
   onRemoveImage: (id: string) => void;
   onAddImages: (files: File[]) => void;
@@ -40,9 +31,6 @@ interface Props {
 
 export function Composer({
   onSend,
-  value,
-  onChange,
-  captureSubmission,
   images,
   onRemoveImage,
   onAddImages,
@@ -55,39 +43,21 @@ export function Composer({
 }: Props) {
   const t = useT();
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
-  const visible = useContentVisible();
-  useViewportFocus(editorRef, visible);
-  const {
-    inputRef,
-    bindInput,
-    retryRef,
-    returnFocusToInput,
-    mentions,
-    slash,
-    suggestions,
-    dismissSuggestions,
-    navigation,
-    knownPaths,
-    placeholder,
-    handleChange,
-    clearCompositionCommit,
-    handleCompositionStart,
-    handleCompositionEnd,
-    handleDrop,
-    handleKeyDown,
-    handleKeyUp,
-    handlePaste,
-    handleSelect,
-  } = useComposerInputController({
-    value,
-    onChange,
-    captureSubmission,
-    onSend,
-    onAddImages,
-    onAddPaste,
-    acceptsImages,
-  });
+  const composer = useComposer();
+  const draftKey = composer.useDraftKey();
+  const persistence = composer.usePersistenceState();
+  const inputRef = useRef<HTMLDivElement>(null);
+  const { messages } = useNotifications();
+  const handleDrop = (
+    files: File[],
+    intake: import("@/features/composer/application/state").ComposerImageIntake,
+  ) => {
+    if (!acceptsImages) {
+      messages.notify("error", t("composer.attachImage.unsupported"));
+      return;
+    }
+    intake.addFiles(files);
+  };
   const { ref: bindDrop, dragging: dropping } = useComposerFileDrop(acceptsImages, handleDrop);
   const bindSurface = useCallback(
     (node: HTMLDivElement | null) => {
@@ -104,75 +74,29 @@ export function Composer({
       className={stylex.props(composerStyles.surface).className}
     >
       {dropping && <ComposerFileDropCue acceptsImages={acceptsImages} />}
-      <SuggestionPopup
-        open={suggestions.open}
-        onDismiss={dismissSuggestions}
-        navigation={navigation}
-        heading={t(mentions.open ? "composer.mention.heading" : "composer.slash.heading")}
-        anchor={surfaceRef}
-        status={
-          mentions.open && mentions.status !== "ready" ? (
-            <FileMentionStatus
-              mentions={mentions}
-              retryRef={retryRef}
-              onReturnFocus={returnFocusToInput}
-              onDismiss={dismissSuggestions}
-            />
-          ) : undefined
-        }
-      >
-        {mentions.open ? (
-          <FileMentionOptions mentions={mentions} navigation={navigation} />
-        ) : (
-          <SlashSuggestions slash={slash} navigation={navigation} />
-        )}
-      </SuggestionPopup>
-      <div ref={editorRef} {...stylex.props(composerStyles.editorInset)}>
+      <div {...stylex.props(composerStyles.editorInset)}>
         <ComposerPersistenceNotice />
         <ComposerAttachments
           images={images}
           pastes={pastes}
-          value={value}
-          knownPaths={knownPaths}
-          onChange={onChange}
           onRemoveImage={onRemoveImage}
           onRemovePaste={onRemovePaste}
           onEditPaste={onEditPaste}
           onRestorePaste={onRestorePaste}
           composerInput={inputRef}
         />
-        <TextArea
-          variant="bare"
-          data-chrome-focus=""
-          size="prose"
-          {...navigation.referenceProps}
-          ref={bindInput}
-          aria-label={t("composer.input.label")}
-          placeholder={placeholder}
-          value={value}
-          onChange={handleChange}
-          onSelect={handleSelect}
-          onBlur={(event) => {
-            navigation.referenceProps.onBlur?.(event);
-            clearCompositionCommit();
-          }}
-          onFocus={(event) => {
-            navigation.referenceProps.onFocus?.(event);
-            clearCompositionCommit();
-          }}
-          onPointerUp={(event) => {
-            navigation.referenceProps.onPointerUp?.(event);
-            clearCompositionCommit();
-          }}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          onPaste={handlePaste}
-          onKeyDown={handleKeyDown}
-          onKeyUp={handleKeyUp}
-          rows={1}
-          autosize
-          className={stylex.props(composerStyles.editor).className}
-        />
+        {persistence.status === "loading" ? (
+          <SkeletonText label={t("common.loading")} />
+        ) : (
+          <ComposerEditor
+            key={draftKey}
+            inputRef={inputRef}
+            onSend={onSend}
+            onAddImages={onAddImages}
+            onAddPaste={onAddPaste}
+            acceptsImages={acceptsImages}
+          />
+        )}
       </div>
       <AgentComposerFooter>
         <Slot name="composer.toolbar.start" />

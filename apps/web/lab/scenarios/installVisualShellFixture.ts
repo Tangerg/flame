@@ -4,7 +4,6 @@ import { type FlameClient } from "@flame/runtime-client";
 import { createElement } from "react";
 import { RenameSession } from "../../../../plugins/trajectory/component/component";
 import { InstalledSessionActionComponent } from "@/features/plugins/ui/InstalledComponent";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
@@ -200,7 +199,7 @@ export async function installVisualShellFixture(
   visual.theme.store.setState({ theme, visualStyle: "flame" });
   visual.workspace.layout.setState({
     sidebarCollapsed: !sidebarOpen,
-    sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
+    sidebarLayout: null,
   });
 
   await loadPluginsForTest(

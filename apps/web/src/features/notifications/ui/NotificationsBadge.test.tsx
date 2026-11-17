@@ -150,7 +150,7 @@ it("keeps current focus and state while other store transitions arrive", async (
   ]);
 });
 
-it("continues at the oldest retained message when a focused entry is evicted", async () => {
+it("evicts bounded history without inventing a different focused message", async () => {
   for (let index = 1; index <= 200; index++) pushInfo(`Event ${index}`);
   await openHistory();
   const oldest = screen.getByRole("button", { name: "Dismiss", description: "Event 1" });
@@ -165,7 +165,8 @@ it("continues at the oldest retained message when a focused entry is evicted", a
   expect(oldest.isConnected).toBe(false);
   expect(screen.queryByText("Event 1")).toBeNull();
   const retained = screen.getByRole("button", { name: "Dismiss", description: "Event 2" });
-  expect(document.activeElement).toBe(retained);
+  expect(document.activeElement).toBe(document.body);
+  retained.focus();
   fireEvent.click(retained);
   expect(testClient.messages.snapshot()[0]?.dismissed).toBe(true);
   expect(document.activeElement).toBe(retained);

@@ -1,4 +1,4 @@
-import { beforeEach as prepareTestClient, onTestFinished as finishTestClient, vi } from "vitest";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
 prepareTestClient(() => {
@@ -7,8 +7,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { waitFor, within } from "@testing-library/react";
-import { beforeAll, describe, expect, it } from "vitest";
-import { getHighlighter } from "@/lib/highlight/shikiEngine";
+import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/index";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { markdownSelectionPayload } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
@@ -23,15 +22,11 @@ const NOTES = [
 ].join("\n");
 
 describe("markdown footnote presentation", () => {
-  beforeAll(async () => {
-    await getHighlighter();
-  });
-
   it("closes each message's repeated references, descriptions and return links", () => {
     const { container } = testClient.render(
       <>
-        <MarkdownRenderer text={NOTES} reveal="instant" />
-        <MarkdownRenderer text={NOTES} reveal="instant" />
+        <MarkdownRenderer text={NOTES} />
+        <MarkdownRenderer text={NOTES} />
       </>,
     );
     const roots = container.querySelectorAll<HTMLElement>(".md");
@@ -75,7 +70,7 @@ describe("markdown footnote presentation", () => {
   });
 
   it("copies the answer and note text without auxiliary labels or return controls", () => {
-    const { container } = testClient.render(<MarkdownRenderer text={NOTES} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={NOTES} />);
     const root = container.querySelector<HTMLElement>(".md")!;
     const range = document.createRange();
     range.selectNodeContents(root);
@@ -100,10 +95,7 @@ describe("markdown footnote presentation", () => {
 
   it("resolves a footnote whose authored label uses the answer's language", () => {
     const { container } = testClient.render(
-      <MarkdownRenderer
-        text={"这是一条带来源的说明。[^来源]\n\n[^来源]: 保留完整的来源内容。"}
-        reveal="instant"
-      />,
+      <MarkdownRenderer text={"这是一条带来源的说明。[^来源]\n\n[^来源]: 保留完整的来源内容。"} />,
     );
     const reference = container.querySelector<HTMLAnchorElement>("a[data-footnote-ref]");
     expect(reference).not.toBeNull();
@@ -121,7 +113,7 @@ describe("markdown footnote presentation", () => {
       "",
       "[Blocked](javascript:alert%281%29)",
     ].join("\n");
-    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={text} />);
     const guide = within(container).getByRole("link", { name: "guide" });
     expect(guide.getAttribute("href")).toBe("https://example.test/protocol");
     expect(guide.getAttribute("target")).toBe("_blank");
@@ -140,7 +132,7 @@ describe("markdown footnote presentation", () => {
     const previousScale = testClient.theme.appearance.read().motionScale;
     testClient.theme.appearance.publishMotionScale(0);
     const { container, rerender, unmount } = testClient.render(
-      <MarkdownRenderer text={NOTES} reveal="smooth" streaming />,
+      <MarkdownRenderer text={NOTES} streaming />,
     );
     try {
       await waitFor(() => {
@@ -148,13 +140,13 @@ describe("markdown footnote presentation", () => {
       });
       const ids = [...container.querySelectorAll("[id]")].map((element) => element.id);
       const complete = `${NOTES}\n\nThe answer then continues.`;
-      rerender(<MarkdownRenderer text={complete} reveal="smooth" streaming />);
+      rerender(<MarkdownRenderer text={complete} streaming />);
       await waitFor(() => {
         expect(container.textContent).toContain("The answer then continues.");
       });
       expect([...container.querySelectorAll("[id]")].map((element) => element.id)).toEqual(ids);
 
-      rerender(<MarkdownRenderer text={complete} reveal="smooth" streaming={false} />);
+      rerender(<MarkdownRenderer text={complete} streaming={false} />);
       await waitFor(() => {
         expect(container.querySelectorAll("a[data-footnote-backref]")).toHaveLength(2);
       });
@@ -165,5 +157,3 @@ describe("markdown footnote presentation", () => {
     }
   });
 });
-
-vi.mock("@/lib/highlight/shikiWorker", () => import("@/test/highlightWorker"));
