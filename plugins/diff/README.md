@@ -28,9 +28,12 @@ its Copy included patch action copies only the accepted bytes, including headers
 and EOF markers. CLI retains complete raw and bounded rows for its own consumers.
 
 The sole Web renderer is the exact `@pierre/diffs` release selected in the plugin
-manifest. It parses each accepted patch once through public `parsePatchFiles`,
-with explicit errors and line matching disabled. Parse failures retain the prior
-accepted read and surface the failure. Missing context remains missing; no
+manifest. It parses each complete Git file patch through public `processFile`,
+with explicit errors and line matching disabled. The accepted projection retains
+the prior parsed file only when its path and exact parser input are unchanged.
+New read facts and the complete included patch still advance independently of
+that rendering identity, including when another file changes. Parse failures
+retain the prior accepted read and surface the failure. Missing context remains missing; no
 reconstructed full files or expand-to-full-source requests are supplied.
 The bounded current-file workload uses Pierre without virtualization. Native
 selection therefore covers every presented line without a second hidden DOM.

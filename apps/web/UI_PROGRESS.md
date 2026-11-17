@@ -23388,12 +23388,9 @@ and unrelated work remain untouched. The compact round-trip-verified receipt is
 `265bf7355a2a0419a316e81ec0825478617ccde0548070568e2b0f82a6a8a17b`.
 
 **Approve** for the six inspected domains in this Find repair; whole-product and
-award-level acceptance remain open. The next distinct task is unchanged Diff
-refresh: current source reparses an identical patch into new file metadata, so
-PreparedDiff retires its prepared code nodes. Its native selection/reading impact
-still needs a direct comparison, including when only another file changes.
-Keep new accepted baseline/time/manifest facts separate from that rendered-source
-identity; no Diff implementation is changed in this batch.
+award-level acceptance remain open. The unchanged Diff refresh identified here
+is completed in [Keep unchanged Diff readers prepared](#keep-unchanged-diff-readers-prepared-2026-11-17).
+This Find batch did not change the Diff implementation.
 
 ### Formatted conversation Find
 
@@ -29112,6 +29109,109 @@ inform persistent identity, task grouping and quiet supporting detail. Static
 artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
+
+### Keep unchanged Diff readers prepared (2026-11-17)
+
+An unchanged successful Refresh replaced every parsed file with new metadata and
+a new cache key. `PreparedDiff` therefore retired its worker and code nodes,
+briefly collapsed to Loading and lost a deep reading position. Actual original
+Wails shows lines **4,731–4,766** immediately before keyboard activation of
+Refresh, then Loading and finally **line 1**. Focus stays on Refresh and the
+accepted time advances. Earlier offscreen indices and an intervening user-change
+boundary are excluded from that witness.
+
+The existing accepted projection now retains a parsed file only when its path
+and **exact single-file parser input** match the previous accepted read. The
+public Pierre `processFile` parses complete Runtime Git file patches with strict
+errors and line matching disabled. Git LF boundaries separate the retained raw
+inputs; literal CR, U+2028 and U+2029 within source remain intact. Every successful
+read still accepts its new comparison, scope, baseline, manifest, complete patch
+and client acceptance time. An unrelated file can change without retiring the
+current reader. A changed current source still receives fresh metadata and
+preparation; malformed input retains the last accepted read and its error.
+
+`visualDiff.ts` owns that rendering projection and `WorkspaceDiff` accepts it in
+its existing pure state updater. `PreparedDiff`, worker readiness, selection/copy,
+query cancellation, Runtime and command ownership remain unchanged. There is no
+scroll restoration effect, focus patch, independent accepted ref or history
+cache. Normal plugin generation changes only the Diff ESM; the other **39**
+component resources, including its module graph, remain byte-identical. Existing
+admitted installations require the ordinary explicit digest rollout and reload.
+
+The existing read-only ZCode Diff input/display distinction and the recorded
+ChatGPT/HeroUI/Radix source-return research remain the references for this repair.
+Better-layout's stable reading context, better-accessibility's focus continuity
+and better-writing's accurate accepted facts guide the change. Bounded agents
+prepare the two owner files, regressions and private native/cleanup helpers;
+primary reviews their actual diffs and owns all serial execution and acceptance.
+
+| Domain        | Inspected evidence and scoped result                                                    |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Accessibility | Clear: Refresh focus, keyboard reader entry, Escape/file-row return and draft insertion |
+| Layout        | Clear: deep reading retained in wide EN and native resized ZH with a 320 px Dock        |
+| Writing       | Clear: accepted time advances with the new read; no new helper copy                     |
+| Typography    | Clear: 14/18 px source, long path and existing localized controls                       |
+| Colors        | Clear visually: existing Orange/blue focus and light/dark source; no fresh ratios       |
+| UI            | Clear: unchanged source remains prepared while the accepted snapshot advances           |
+
+- The same new regression bytes expose **2 failures / 5 passes** on the original
+  implementation. Final Diff verification passes **2 files / 55 tests** in
+  **6.938 s**: presentation **48** and prepared-reader continuity **7**. Exact
+  code/Text nodes, Range contents and worker lifetime survive identical reads
+  and another-file changes; Copy included patch receives the exact new complete
+  patch. Current-source changes, malformed reads and literal non-LF separators
+  retain their positive/error boundaries. The existing plugin Diff unit passes
+  **3 tests**; plugin types, lint, format and eight-catalog checks pass.
+- All **25 Web gates** pass, including installed resources/modules and bundle.
+  Normal `make check-native` passes in **19.695 s**, including Wails build and
+  Desktop test/vet/build. Baseline `make stage-web` passes in **7.820 s**;
+  canonical Lab builds pass in **2.589 / 4.560 s**. No browser visual suite,
+  performance benchmark, separate Runtime project or unchanged full suite is
+  repeated. The last full Frontend result remains **440 files / 5,135 tests** at
+  `90c0dd698`. Raw `git diff --check` reports two generated ESM string-literal
+  whitespace warnings; authored diff checks pass and resource rebuilding verifies
+  exact generated bytes. Literal content is not trimmed to suppress the warnings.
+- Actual **EN/light/14 px/Orange/full motion/default zoom** retains lines
+  **4,968–4,999** through keyboard Refresh. Read time advances
+  **10:30:35 PM → 10:31:18 PM**, with focus on Refresh. Native wheel Up reveals
+  earlier lines; Back focuses the original file row. Cmd+L continues the draft
+  as `Keep diff reading draft. CHECKED Continue here.` The first launch shows a
+  blank window; one ordinary View → Reload restores the canonical scene. Its
+  initial-load health is unqualified, without attributing that isolated symptom
+  to this Diff change.
+- Actual **ZH/dark/18 px/blue/motion off/default zoom** loads normally. Native
+  Window → Move & Resize → Left and keyboard divider Home **501 → 320 px**
+  retain reachable controls. Lines **4,971–4,999** remain through Refresh while
+  time advances **22:31:50 → 22:33:53** and focus stays on Refresh. Escape
+  focuses the original file row. Cmd+L and a visible paste at the retained caret
+  produce `差异核对前的草稿。已核对，继续输入。`; the prior Unicode typing attempt
+  made no visible change and is not successful typing evidence.
+
+Both distributions contain **490 assets**. All **6,857 non-Markdown source inputs**,
+40 component resources, native inputs and sealed/canonical assets match their
+qualified maps. Two fresh nonce/CSP/no-store responses pass for each build.
+Only the native initial URL is overlaid; no input transformation, observer,
+replacement command or new fixture is introduced. Native screenshots/AX remain
+in the tool transcript. Exact Range/worker continuity, another-file changes and
+true current-source changes are regression evidence, not native selection or
+live-Git proof. A sidebar scene-button attempt only focuses that static row; no
+native changed-source positive control is claimed. Nonzero horizontal-offset
+retention, Copy, Send, provider commands, live Runtime, VoiceOver, OS IME,
+quantitative contrast and other platforms remain outside this qualification.
+
+All **three native processes exit 0** and the final app inventory is empty. Both
+preview children join on **SIGINT (-2, wrappers 254)**; port **4175** is closed.
+Three private registrations are retired. All **24 native roots** and **13 initially
+absent checkout roots** return to absence: **1,103 native**, **5,315 build/cache**
+and **1,092 private QA nodes** are removed. Source hashes/modes, dependencies,
+user data, read-only references and unrelated work are preserved. The compact
+round-trip-verified receipt is **10,728 gzip bytes**, SHA-256
+`75c081d4f0c70f0fc8a6d8739b64ffbfb9f5f11c64948f41c64af22014de4ab4`.
+
+**Approve** for the six inspected domains in this repair; whole-product and
+award-level acceptance remain open. Carry the isolated EN first-navigation blank
+forward as an observation: establish its host/startup boundary and reproduction
+before assigning a product cause or implementing a fix.
 
 ### Diff reads through display-language changes (2026-11-12)
 

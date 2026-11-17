@@ -1,5 +1,5 @@
 import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
-import { parseVisualDiff } from "./visualDiff";
+import { parseVisualDiff, retainUnchangedFiles } from "./visualDiff";
 import { DiffReader } from "./DiffReader";
 import {
   useCallback,
@@ -171,6 +171,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       );
       if (!signal.aborted) {
         const projected = parseVisualDiff(diff);
+        const at = new Date().toISOString();
         setSelection((current) =>
           current.view === "file" &&
           !projected.diff.visual.manifest.some(
@@ -179,10 +180,18 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             ? { path: current.path, view: "files" }
             : current,
         );
-        setRead({
+        setRead((previous) => ({
           loading: false,
-          accepted: { ...projected, query, at: new Date().toISOString() },
-        });
+          accepted: {
+            ...projected,
+            rendered: retainUnchangedFiles(
+              projected.rendered,
+              previous.accepted?.rendered,
+            ),
+            query,
+            at,
+          },
+        }));
       }
     } catch (error) {
       if (!signal.aborted) {
@@ -204,7 +213,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const files = accepted?.diff.visual.manifest ?? [];
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
-  const rendered = file ? accepted?.rendered.get(file.path) : undefined;
+  const rendered = file ? accepted?.rendered.get(file.path)?.file : undefined;
   const showingReader = file !== undefined;
   const readingOverview =
     read.loading &&
