@@ -23292,6 +23292,109 @@ inputs. Post-retirement checks again preserve all **5,784** non-Markdown inputs
 and their hash above. This documentation-only receipt changes no qualified
 product source. The continuous UI goal remains active.
 
+#### Keep the current word when earlier details open (2026-11-17)
+
+Expanding an earlier Tool result can insert matches before the current word in
+the same message. `ChatSearchOverlay.tsx` previously retained only that message's
+occurrence number, selecting another word even when the original text nodes
+remained connected. Actual original Wails at `90c0dd698` selects `runtime` in
+`state_24.go` at **26 / 26**. Opening the earlier `codeintel_lsp` result adds three
+paths; the counter becomes **26 / 29** and the original word loses its active
+highlight. The query, draft and later Tool-button focus remain intact.
+
+The existing SearchState now retains the current rendered Range's exact start
+and end nodes and offsets when rebuilding matches. Only a retired or replaced
+rendered word uses the existing message/occurrence fallback, then the existing
+bounded index. Query changes and explicit navigation retain their owners. There
+is no new state, cache, observer, text projection, focus action or scroll repair.
+Inline-flow parsing, UTF-16 boundaries, CSS Highlights and the pending-reflow
+reading witness remain unchanged. The Web README records this distinction.
+
+| Severity         | Location                                 | Before                                                   | After                                                        | Why                                                            |
+| ---------------- | ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| MEDIUM, resolved | `ChatSearchOverlay.tsx` refresh matching | Earlier details change which word is currently selected. | A retained word remains current as preceding matches arrive. | Expanding supporting evidence must not change the read target. |
+
+The inspected task is **read a Tool result → Find the last source path → expand
+and collapse earlier evidence → read a related Dock file → return → close Find
+and continue the original draft**. Existing read-only ZCode current-match research
+supports separating a word's identity from its result index. The earlier
+HeroUI/SearchField and ChatGPT key-scope research remains applicable; it does not
+prove their disclosure behavior. The better-series review uses Flame's existing
+shared controls, StyleX and semantic theme roles.
+
+| Domain        | Inspected evidence and scoped result                                                       |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Accessibility | Clear: current word, later outside focus, scoped Escape, file row and draft caret retained |
+| Layout        | Clear: ordinary native resize, 320 px Dock and independent Tool-result reading             |
+| Writing       | Clear: counter follows the actual current word; existing EN/ZH labels, no new helper copy  |
+| Typography    | Clear: plain/cross-inline matches, 14/18 px source and localized controls                  |
+| Colors        | Clear visually: existing Orange/blue active versus ordinary matches; no fresh ratios       |
+| UI            | Clear: disclosure changes the count without changing the word or forcing another reveal    |
+
+- Two new parameterized regressions expose **2 failures / 52 passes** on the
+  original implementation. Plain and split-inline words retain the same target
+  nodes, complete Range boundaries, query, input caret and focus through
+  **1 / 1 → 2 / 2 → 1 / 1**, without another reveal. Final verification passes
+  **4 files / 170 tests**: Search overlay **54**, message ranges **15**, search
+  installation **1** and Workspace inspection **100**. Existing replacement,
+  removal, outside-focus and reflow assertions remain intact. The same final
+  test bytes were used for the original failure.
+- All **25 Web gates** pass, including type/lint/format, ownership, unused code,
+  styles/locales, bundle and installed modules. Normal `make check-native`
+  passes in **21.475 s**, including Desktop test/vet/build and the Wails build.
+  Baseline `make stage-web` passes in **7.970 s**; canonical Lab builds pass in
+  **2.494 / 2.613 s**. The first copy wrapper expects the wrong Lab directory
+  after both successful baseline builds; correcting it to declared `out/web/lab`
+  seals the existing output without rebuilding. Standard Lab chunk-size warnings
+  are non-failing. No browser visual suite, performance benchmark, separate
+  Runtime integration project or unchanged full suite is repeated. The last full
+  Frontend result is **440 files / 5,135 tests** at `90c0dd698`.
+- Actual **EN/light/14 px/Orange/full motion/default zoom** retains the orange
+  active word in `state_24.go` through **26 / 26 → 29 / 29 → 26 / 26**. The
+  clicked LSP disclosure keeps later focus. Native wheel Up moves the JSON reader
+  from paths 23–24 to 20–22 while the counter stays current and no reveal returns
+  it to the last path. Opening `reading-blocks.md` with its visible `Runtime`
+  text leaves the Conversation query/count unchanged. Back focuses the selected
+  file row. Close Find and Cmd+L continue exactly
+  `Keep search reading draft. CHECKED Continue here.`
+- Actual **ZH/dark/18 px/blue/motion off/default zoom** uses native Window → Move
+  & Resize → Left and focused-divider Home **501 → 320 px**. The same word
+  retains its blue active highlight as the earlier result adds three matches;
+  the counter completes the same round trip. Dock file reading leaves Find's
+  scope intact; Back focuses the selected row. Refocusing the search field and
+  Escape restores the original `inspect_workspace` entry. Cmd+L continues the
+  visible pasted draft as `查找核对前的草稿。已核对，继续输入。`
+
+Original and candidate use the same canonical `tool-agentic` captures. No input
+transform, injected observer, new fixture or replacement command is used. Native
+host code uses one initial-URL overlay; bundle identities and profiles are isolated.
+Both Lab distributions contain **490 assets** and match their qualified maps, as do
+all **6,856 non-Markdown inputs** and each bundle's native inputs. Two fresh
+nonce/CSP/no-store checks pass for each served
+build. Native screenshots and AX evidence remain in the tool transcript, without
+a file archive. Native query-caret offsets and DOM boundaries are not separately
+measured; their exact continuity is regression evidence. Copy, Send, Regenerate,
+live Runtime/provider actions, VoiceOver, OS IME, quantitative contrast and other
+platforms remain outside this qualification.
+
+All **three native processes exit 0**, their app inventory is empty and their
+three private registrations are retired. Both preview children join on
+**SIGINT (-2, wrappers 254)** and port **4175** is closed. All **24 reserved native
+roots** and **13 initially absent checkout roots** return to absence: **1,095
+native**, **5,427 build/cache** and **1,078 private QA nodes** are removed.
+Source hashes/modes are preserved; dependencies, user data, read-only references
+and unrelated work remain untouched. The compact round-trip-verified receipt is
+**9,496 gzip bytes**, SHA-256
+`265bf7355a2a0419a316e81ec0825478617ccde0548070568e2b0f82a6a8a17b`.
+
+**Approve** for the six inspected domains in this Find repair; whole-product and
+award-level acceptance remain open. The next distinct task is unchanged Diff
+refresh: current source reparses an identical patch into new file metadata, so
+PreparedDiff retires its prepared code nodes. Its native selection/reading impact
+still needs a direct comparison, including when only another file changes.
+Keep new accepted baseline/time/manifest facts separate from that rendered-source
+identity; no Diff implementation is changed in this batch.
+
 ### Formatted conversation Find
 
 Find now treats continuous inline prose as one phrase, retaining the original

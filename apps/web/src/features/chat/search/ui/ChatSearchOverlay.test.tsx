@@ -261,6 +261,71 @@ describe("ChatSearchOverlay", () => {
     expect(screen.getByRole("status").textContent).toBe("2 / 3");
   });
 
+  it.each(["plain", "split-inline"] as const)(
+    "keeps the live %s match when earlier content in its message is disclosed and collapsed",
+    async (kind) => {
+      const word =
+        kind === "plain" ? (
+          "alpha"
+        ) : (
+          <>
+            {"al"}
+            <span style={{ display: "inline" }}>ph</span>
+            {"a"}
+          </>
+        );
+      const content = (open: boolean) => (
+        <>
+          <RetainedDisclosure open={open}>alpha from earlier detail</RetainedDisclosure>
+          <p data-testid="retained-match">{word}</p>
+        </>
+      );
+      const { rerender } = testClient.render(<SearchFixture content={content(false)} />);
+      const target = screen.getByTestId("retained-match");
+      const input = searchFor("alpha");
+      const status = screen.getByRole("status");
+      expect(status.textContent).toBe("1 / 1");
+      const original = (highlights.paint.mock.lastCall![0] as Range[])[0]!;
+      const start = original.startContainer;
+      const end = original.endContainer;
+      const startOffset = original.startOffset;
+      const endOffset = original.endOffset;
+      expect(target.contains(start)).toBe(true);
+      expect(target.contains(end)).toBe(true);
+      expect(start === end).toBe(kind === "plain");
+      input.setSelectionRange(1, 4);
+      vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+
+      const expectCurrent = (count: string) => {
+        expect(screen.getByRole("status")).toBe(status);
+        expect(status.textContent).toBe(count);
+        expect(screen.getByTestId("retained-match")).toBe(target);
+        expect(start.isConnected).toBe(true);
+        expect(end.isConnected).toBe(true);
+        const [ranges, active] = highlights.paint.mock.lastCall as [Range[], number];
+        const current = ranges[active]!;
+        expect(current.toString()).toBe("alpha");
+        expect(current.startContainer).toBe(start);
+        expect(current.startOffset).toBe(startOffset);
+        expect(current.endContainer).toBe(end);
+        expect(current.endOffset).toBe(endOffset);
+        expect(searchInput()).toBe(input);
+        expect(input.value).toBe("alpha");
+        expect([input.selectionStart, input.selectionEnd]).toEqual([1, 4]);
+        expect(document.activeElement).toBe(input);
+        expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+      };
+
+      rerender(<SearchFixture content={content(true)} />);
+      await act(async () => {});
+      expectCurrent("2 / 2");
+
+      rerender(<SearchFixture content={content(false)} />);
+      await act(async () => {});
+      expectCurrent("1 / 1");
+    },
+  );
+
   it("finds a later result for the same previously unmatched query", async () => {
     const { rerender } = renderSearch();
     const input = searchFor("arriving");

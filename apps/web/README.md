@@ -958,7 +958,9 @@ captured messages nor such run details.
 
 Conversation Find follows rendered message changes while its query is open.
 Refreshes retain the selected occurrence in its message, rebuild current highlight
-ranges and preserve focus and reading position. Query changes and explicit
+ranges and preserve focus and reading position. Earlier details keep a still-rendered
+word current; replaced text uses its message occurrence as the existing fallback.
+Query changes and explicit
 navigation reveal a match. While Find owns focus, reflow retains an already
 visible current word inside its actual transcript and nested code clips. Manual
 scrolling away, later outside focus, hiding and closing retire that reading

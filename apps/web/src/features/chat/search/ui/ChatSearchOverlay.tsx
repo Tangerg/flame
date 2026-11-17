@@ -90,13 +90,27 @@ function SessionChatSearchOverlay() {
     const root = owningRegion(barRef.current);
     if (!open || !search.query || !root) return;
     const matches = findMessageMatches(search.query, root);
-    // Live ranges collapse when rendered text is replaced; retain the occurrence in its message.
     const current = search.matches[search.activeIndex];
-    const retained = current
+    const rendered = current
       ? matches.findIndex(
-          (match) => match.message === current.message && match.occurrence === current.occurrence,
+          (match) =>
+            match.message === current.message &&
+            match.range.startContainer === current.range.startContainer &&
+            match.range.startOffset === current.range.startOffset &&
+            match.range.endContainer === current.range.endContainer &&
+            match.range.endOffset === current.range.endOffset,
         )
       : -1;
+    // Replaced text retires its live boundaries; retain the message occurrence only as a fallback.
+    const retained =
+      rendered >= 0
+        ? rendered
+        : current
+          ? matches.findIndex(
+              (match) =>
+                match.message === current.message && match.occurrence === current.occurrence,
+            )
+          : -1;
     const activeIndex =
       retained >= 0 ? retained : Math.max(0, Math.min(search.activeIndex, matches.length - 1));
     setSearch({ ...search, matches, activeIndex });
