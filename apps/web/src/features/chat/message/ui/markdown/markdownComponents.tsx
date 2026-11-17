@@ -1,9 +1,11 @@
-import { type Components } from "react-markdown";
+import { type Components, type ExtraProps } from "react-markdown";
 import { Callout, TaskListItem, taskListContent, visibleText, type CalloutKind } from "@flame/ui";
 import {
   Children,
   cloneElement,
+  createContext,
   isValidElement,
+  use,
   type ComponentProps,
   type ReactElement,
   type ReactNode,
@@ -55,7 +57,23 @@ function imagesDeferToTheLink(children: ReactNode): ReactNode {
   });
 }
 
-const sharedMarkdownComponents: Components = {
+export const MarkdownBlockSource = createContext<string | null>(null);
+
+function MarkdownTableAdapter({ children, node }: ComponentProps<"table"> & ExtraProps) {
+  const markdownSource = use(MarkdownBlockSource);
+  if (markdownSource === null) throw new Error("markdown: table source requires its reading owner");
+  const start = node?.position?.start.offset;
+  const end = node?.position?.end.offset;
+  const tableSource =
+    typeof start === "number" && typeof end === "number"
+      ? markdownSource.slice(start, end)
+      : markdownSource;
+  return <MarkdownTable markdownSource={tableSource}>{children}</MarkdownTable>;
+}
+
+// ReactMarkdown uses tag renderers as component types; source changes must keep their identity.
+export const markdownComponents: Components = {
+  table: MarkdownTableAdapter,
   span({ className, node: _node, ...props }) {
     return className?.split(/\s+/).includes("katex-display") ? (
       <MarkdownMath className={className} {...props} />
@@ -274,18 +292,3 @@ const sharedMarkdownComponents: Components = {
     );
   },
 };
-
-export function createMarkdownComponents(markdownSource: string): Components {
-  return {
-    ...sharedMarkdownComponents,
-    table({ children, node }) {
-      const start = node?.position?.start.offset;
-      const end = node?.position?.end.offset;
-      const tableSource =
-        typeof start === "number" && typeof end === "number"
-          ? markdownSource.slice(start, end)
-          : markdownSource;
-      return <MarkdownTable markdownSource={tableSource}>{children}</MarkdownTable>;
-    },
-  };
-}

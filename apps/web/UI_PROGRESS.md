@@ -27548,6 +27548,104 @@ Native screenshots and AX task evidence remain in CUA. The interval fetch finds
 zero incoming main commits at `92faa04b3`. Continue from new content/Dock task
 evidence; the native reverse-Tab finding and continuous UI goal remain open.
 
+#### Transcript tables during global Markdown updates (2026-11-17)
+
+Reference definitions and footnotes intentionally select the whole-document
+Markdown path. The host's remaining table factory created a new React component
+type whenever that block changed. Appending unrelated prose therefore replaced
+an unchanged table and retired its open preview. Actual original Wails at
+`8e8f7763f` closes the preview on the captured append: focus first falls to HTML,
+then the existing whole-message fallback. The draft remains intact.
+
+`markdownComponents.tsx` now declares a stable table adapter and tag map.
+`MarkdownRenderer.tsx` provides the current parsed block through a read-only
+React 19 context. The adapter slices that same source using the current AST
+offsets, so stable reader identity does not retain stale copy material. Existing
+table, preview, selection, focus and scroll owners remain authoritative. Parsing,
+block keys, Runtime facts and command lifecycles are unchanged; no new state,
+focus restoration, retry or timer is introduced. This closes the host exception
+to the stable-type principle in the preceding GenUI repair, supported by React's
+state-identity guidance and the React skills' component/composition rules.
+
+| Severity         | Location                           | Before                                                       | After                                                                   | Why                                                  |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------- |
+| MEDIUM, resolved | `markdownComponents.tsx` table map | Unrelated prose replaces a table and closes its active view. | Stable table types preserve the reader while source projections update. | Incoming text must not retire the object being read. |
+
+The better-series review follows reply reading, table expansion, incoming text,
+explicit close, related-file reading, return and continued authoring. Existing
+ChatGPT/ZCode reading and return research remains the design reference; their
+implementations do not establish this append behavior.
+
+| Domain        | Inspected evidence and scoped result                                                   |
+| ------------- | -------------------------------------------------------------------------------------- |
+| Accessibility | Clear: focused reader survives append; Escape/Close, file return and draft caret work  |
+| Layout        | Clear: ordinary native resize, 320 px Dock and separate reply/file reading spaces      |
+| Writing       | Clear: existing localized preview/return labels; no added product helper copy          |
+| Typography    | Clear: 14/18 px cells, footnotes, prose and wrapped source at default zoom             |
+| Colors        | Clear visually: existing Orange/blue focus and light/dark surfaces; no new measurement |
+| UI            | Clear: preview remains open through append; native keyboard/pointer return paths work  |
+
+- Final counterfactual verification runs the same **47 tests** against the two
+  original production files: **2 fail / 45 pass**. Table identity and
+  open-preview/focus cases expose the defect. Exact updated-table copying already
+  passes and is a positive control against stale source. The exact candidate
+  bytes are restored afterward. Final Frontend verification
+  passes **440 files / 5,135 tests**, with zero failures, pending or skipped tests;
+  all 47 renderer tests pass. Selection continuity is a DOM Range regression,
+  without a native literal-selection claim.
+- All **25 Web gates** pass, including type/lint/format, unused code, ownership,
+  styles, locales, bundle and installed modules. Serial `make stage-web` passes
+  in **7.609 s** and normal `make check-native` in **22.325 s**, including Desktop
+  test/vet/build and the supported Wails build. The separate unchanged Runtime
+  integration project, browser visual suites and performance benchmarks are not
+  run. The final private Lab build passes in **3.215 s**.
+- Actual **EN/light/14 px/Orange/full motion/default zoom** opens Table preview
+  with native Tab/Return. Ctrl+Alt+9 appends the captured paragraph while the
+  preview stays open and Table content retains focus. Escape restores Expand
+  table; the full bilingual append is then visible. `reading-blocks.md` Source
+  End reaches line 64; wheel Up moves the source to its beginning without moving
+  the reply. Back selects and focuses that file. Cmd+L resumes the middle caret,
+  producing `Keep table reading draft. CHECKED Continue here.`
+- Actual **ZH/dark/18 px/blue/motion off/default zoom** uses native Window → Move
+  & Resize → Left, then the focused divider's Home changes **501 → 320 px**.
+  The same append retains 表格预览 and its focused 表格内容. Pointer Close restores
+  展开表格. The related file's Source wraps complete definitions through line 64
+  within the Dock; Back restores its selected row. Cmd+L and CUA paste continue
+  exactly `表格核对前的草稿。已核对，继续输入。` A visible pasted draft establishes this
+  caret witness; the initial unobserved Unicode typing/resize sequence is excluded.
+
+The private driver transforms only two existing Lab inputs: the captured running
+response's text and a once-only native-key input that enters the existing Item
+delta reducer/projection. Original and candidate use the same frozen driver.
+It performs no DOM mutation, focus action, command or synthetic Run transition.
+This qualifies actual Wails presentation of captured input, not live
+Runtime/provider execution. Both sets of **490 Lab assets** and all **6,856
+non-Markdown inputs** match their qualified maps. Only the two production owners
+and the regression file change from HEAD. Private Vite config-loader warnings
+are non-failing. One pre-launch guard rejects a pre-sign executable digest;
+strict signature rechecks establish the final signed digests before launch.
+
+No Copy, Steer, Stop or Send is activated. Native clipboard, VoiceOver, OS IME,
+quantitative contrast and other platforms remain unverified. The Preview-body
+wheel attempt shows no visible movement and is excluded; Source supplies the
+actual wheel witness. Screenshots and AX evidence remain in the native tool
+transcript, without a file archive.
+
+All **three native processes exit 0**, their app inventory is empty and their
+three private registrations are retired. The old preview exits **1** after
+Ctrl+C; the final Vite child joins on **SIGINT (-2, wrapper 254)**. Ports
+**4174/4175** are closed. All **24 reserved native roots** and **13 initially
+absent checkout roots** return to absence: **1,091 native**, **5,959 build/cache**
+and **1,085 private QA nodes** are removed. Source hashes/modes are preserved;
+installed dependencies, user data, references and unrelated work are untouched.
+The compact round-trip-verified witness/build/hash/cleanup receipt is **10,077
+gzip bytes**, SHA-256
+`d01205ac0e4a054ba297eed65b1a1983e4cf86074176a7b9558e42305cb780c9`.
+
+**Approve** for the six inspected domains in this continuity repair. Whole-product
+and award-level acceptance remain open. Continue from a distinct observed
+content/Dock task; no additional confirmed defect is carried from this batch.
+
 #### Complete-report display and original-action continuity (2026-11-13)
 
 The earlier Markdown repair preserves its own readers through independent local

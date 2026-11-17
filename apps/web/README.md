@@ -1013,7 +1013,10 @@ on the host; a Worker does not establish a new cache or a heap-size guarantee.
 Streaming Markdown retains parsed stable blocks and reparses its mutable tail.
 Reference definitions, footnotes and multiline math delimiters that can change prior
 context take an explicit whole-document path. Only the mutable tail is repaired for
-streaming presentation. Replacements and rollbacks retire cached blocks. Smooth
+streaming presentation. Tag renderers retain their component identity when that
+context changes, keeping an unchanged table's selection and open preview attached
+to its reader. Table copying reads the current block's exact table source.
+Replacements and rollbacks retire cached blocks. Smooth
 reveal retains word segmentation before hard line breaks and a moving word cursor;
 the current line is resegmented through Intl, including contextual scripts and
 punctuation. A single growing paragraph can still require paragraph-sized work.

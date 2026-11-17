@@ -7,7 +7,10 @@ import rehypeRaw from "rehype-raw";
 import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
 import remend from "remend";
 import { createStreamingBlockSplitter } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
-import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
+import {
+  MarkdownBlockSource,
+  markdownComponents,
+} from "@/features/chat/message/ui/markdown/markdownComponents";
 import { isInlineImage } from "@/foundation/imageExport";
 import { handleMarkdownCopy } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
@@ -119,25 +122,26 @@ const MarkdownBlock = memo(function MarkdownBlock({
     if (reveal === "typewriter") return [rehypeRaw, labels, rehypeKatex, rehypeStreamCaret];
     return [rehypeRaw, labels, rehypeFadeIn, rehypeKatex];
   }, [footnotePrefix, reveal, streaming]);
-  const components = useMemo(() => createMarkdownComponents(text), [text]);
 
   return (
-    <ReactMarkdown
-      remarkPlugins={remarkPlugins}
-      remarkRehypeOptions={{
-        clobberPrefix: footnotePrefix,
-        footnoteLabel: t("message.markdown.footnotes"),
-        footnoteBackLabel: (index, reuse) =>
-          t("message.markdown.backReference", {
-            reference: `${index + 1}${reuse > 1 ? `-${reuse}` : ""}`,
-          }),
-      }}
-      rehypePlugins={rehypePlugins}
-      components={components}
-      allowElement={allowElement}
-      urlTransform={markdownUrlTransform}
-    >
-      {text}
-    </ReactMarkdown>
+    <MarkdownBlockSource value={text}>
+      <ReactMarkdown
+        remarkPlugins={remarkPlugins}
+        remarkRehypeOptions={{
+          clobberPrefix: footnotePrefix,
+          footnoteLabel: t("message.markdown.footnotes"),
+          footnoteBackLabel: (index, reuse) =>
+            t("message.markdown.backReference", {
+              reference: `${index + 1}${reuse > 1 ? `-${reuse}` : ""}`,
+            }),
+        }}
+        rehypePlugins={rehypePlugins}
+        components={markdownComponents}
+        allowElement={allowElement}
+        urlTransform={markdownUrlTransform}
+      >
+        {text}
+      </ReactMarkdown>
+    </MarkdownBlockSource>
   );
 });

@@ -326,6 +326,104 @@ describe("markdownMessage", () => {
     expect(dialog.querySelector("table")?.getAttribute("dir")).toBe("auto");
   });
 
+  it("keeps an unchanged table when a reference-defined document appends unrelated prose", () => {
+    const tableSource = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
+    const src = [
+      "Read [the protocol][protocol].",
+      tableSource,
+      "[protocol]: https://example.test/protocol",
+      "A later explanation.",
+    ].join("\n\n");
+    const { container, rerender } = testClient.render(
+      <MarkdownRenderer text={src} reveal="instant" />,
+    );
+    const frame = container.querySelector("[data-markdown-table]");
+    const table = container.querySelector("table");
+    expect(frame).toBeTruthy();
+    expect(table?.textContent).toContain("alpha");
+    const alpha = within(table!).getByRole("cell", { name: "alpha" }).firstChild!;
+    const selection = document.getSelection()!;
+    const range = document.createRange();
+    try {
+      range.selectNodeContents(alpha);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const selectedRange = selection.getRangeAt(0);
+      expect(selection.toString()).toBe("alpha");
+
+      rerender(<MarkdownRenderer text={`${src} More context arrives.`} reveal="instant" />);
+
+      expect(container.querySelector("[data-markdown-table]")).toBe(frame);
+      expect(container.querySelector("table")).toBe(table);
+      expect(table?.textContent).toContain("alpha");
+      expect(selection.toString()).toBe("alpha");
+      expect(selection.getRangeAt(0)).toBe(selectedRange);
+    } finally {
+      selection.removeAllRanges();
+    }
+  });
+
+  it("keeps an open table preview and its focused reader when footnoted prose grows", async () => {
+    const tableSource = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
+    const src = [
+      "A recorded claim[^source].",
+      tableSource,
+      "[^source]: Recorded evidence.",
+      "A later explanation.",
+    ].join("\n\n");
+    const { rerender } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
+    fireEvent.click(screen.getByRole("button", { name: "Expand table" }));
+    const dialog = screen.getByRole("dialog", { name: "Table preview" });
+    const reader = within(dialog).getByRole("region", { name: "Table content" });
+    await waitFor(() => expect(document.activeElement).toBe(reader));
+
+    rerender(<MarkdownRenderer text={`${src} More context arrives.`} reveal="instant" />);
+
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBe(dialog);
+    expect(within(dialog).getByRole("region", { name: "Table content" })).toBe(reader);
+    expect(document.activeElement).toBe(reader);
+    expect(reader.textContent).toContain("alpha");
+  });
+
+  it("copies the exact current table slice after its contents and preceding prose change", async () => {
+    const initialTable = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
+    const currentTable = "| Name | Count |\n|---|---:|\n| beta | 27 |\n| gamma | 3 |";
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      const src = ["Before[^source].", initialTable, "[^source]: Evidence.", "After."].join("\n\n");
+      const { container, rerender } = testClient.render(
+        <MarkdownRenderer text={src} reveal="instant" />,
+      );
+      fireEvent.click(within(container).getByRole("button", { name: "Copy table" }));
+      await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(initialTable));
+
+      const current = [
+        "A much longer replacement introduction[^source].",
+        currentTable,
+        "[^source]: Updated evidence.",
+        "New trailing prose.",
+      ].join("\n\n");
+      rerender(<MarkdownRenderer text={current} reveal="instant" />);
+      fireEvent.click(within(container).getByRole("button", { name: "Copy table" }));
+
+      await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(currentTable));
+      expect(writeText).toHaveBeenCalledTimes(2);
+      expect(container.querySelector("table")?.textContent).toContain("beta");
+      expect(container.querySelector("table")?.textContent).not.toContain("alpha");
+    } finally {
+      if (clipboardDescriptor) {
+        Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+      } else {
+        Reflect.deleteProperty(navigator, "clipboard");
+      }
+    }
+  });
+
   it("marks directional and numeric table material like Codex", () => {
     const src = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
     const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
