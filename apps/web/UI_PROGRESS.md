@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `ea6fb780a` passes 440 files / 5,129 tests; subsequent tree and Skills changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -85,6 +85,80 @@ Its paste-based tasks do not qualify OS IME. The later
 production plugin to the existing Lab and qualifies real macOS composition.
 VoiceOver speech, RTL, older-macOS distribution and whole-product visual acceptance
 remain unqualified.
+
+### First navigation in the current native host (2026-11-17)
+
+The isolated EN blank recorded during the Diff repair is not reproduced by this
+bounded control. **It remains an unresolved observation, not a fixed startup
+defect.** Successful later loads do not identify its original navigation, pending
+initialization or native-paint cause. Existing historical wrong-entry, rolled-back
+HTML and Raise/Cancel observations retain their distinct evidence.
+
+The current entries have different owners. Product `/` uses the capability gate
+in `src/bootstrap.ts`, then the `ClientRenderer` startup/failure path. HTTP Lab
+loads `lab/fixture.ts` and its fixture runtime directly. Its initial notification
+content can remain null until plugin, locale and fixture initialization settle;
+the later surface-readiness deadline does not bound those earlier awaits.
+This is a possible blank-content path, not proof that one of those awaits caused
+the prior symptom. The preview's document middleware creates a fresh nonce and
+paired body/CSP with no-store; Reload success alone does not establish old-nonce
+cache reuse. Wails' first navigation, native activation and incremental rendering
+also remain distinct from successful React mounting.
+
+Primary reviews the current Web/native implementations and bounded agents' source
+traces. All **6,857 non-Markdown inputs** and **40 published component resources**
+remain unchanged. Normal `make stage-web` passes in **10.237 s**, canonical Lab
+build in **3.483 s**. Two isolated normal Wails **v3.1.0 / Go 1.27.4 / macOS 14**
+policy builds pass in **4.079 / 1.181 s**, with strict signed-bundle verification.
+The product bundle has its original `/` entry and no Go overlay. Only the Lab
+bundle's initial URL changes; both retain normal services, bindings, menu, zoom
+and all **290 normally staged files**. Canonical and sealed Lab maps match all
+**490 files**. The unchanged source aggregate also matches the prior `805737ee1`
+qualification: **55 Diff regressions**, **3 plugin units**, **25 Web gates** and
+normal `make check-native` **19.695 s**. Those checks are reused, not newly run.
+
+- The fresh product process first exposes its native frame, then the full
+  `wails://localhost/` shell without Reload, Raise or restart. Its isolated
+  unavailable-Runtime feedback opens Connection settings, which displays the
+  deliberate `http://127.0.0.1:9` address. Escape returns to Conversation focus.
+  No connection is applied and no live Runtime/provider action is qualified.
+- The fresh **EN/light/14 px/Orange/full motion/default zoom** Lab already
+  exposes the complete scene on its first observation. The native screenshot
+  contains the real prepared Diff source. No Reload, Raise or restart occurs.
+  Show changed files focuses the original `DockResizer.tsx` row; Cmd+L resumes
+  the middle caret as `Keep startup draft. CHECKED Continue here.`
+- A private runner uses the installed Vite public preview API and unchanged
+  canonical configuration. Its Node HTTP request/response listeners only record
+  permitted metadata; no response, fixture, DOM, input or browser observer is
+  changed. All **235 responses are 200**, including **2 root preflight responses**
+  and **233 native responses**. Exactly **3 HTML responses** comprise those two
+  preflights and **one native navigation**; all are no-store with distinct CSP
+  hashes. There are no aborted requests, request errors or premature closes.
+  This successful request trace cannot explain the earlier failed attempt.
+
+Better Accessibility, Layout, Writing, Typography, Colors and UI guide the scoped
+review: visible connection recovery, keyboard return, source/context identity,
+existing 14 px reading type, Orange/light surfaces and usable first-arrival
+controls are clear in these two flows. No appearance values or interaction owner
+changes. There is no new quantitative contrast, VoiceOver, OS IME, native console,
+DOM evaluation, CSP-error capture, navigation hook or compositor-frame proof.
+No browser visual suite, benchmark, theme/zoom sweep or unchanged test suite is
+started. The previous blank remains unqualified; no retry, timeout extension,
+loading patch or renderer replacement is introduced to conceal it.
+
+Both native processes and the preview join with **exit 0**; the app inventory is
+empty and port **4175** refuses connections. Two exact registrations are retired.
+All **16 native roots** and **13 initially absent checkout roots** return to
+absence: **423 native**, **4,238 build/cache** and **536 private QA nodes** are
+removed. All tracked source hashes and modes are preserved. The round-trip-verified
+compact receipt is **7,732 gzip bytes**, SHA-256
+`db011e2c5057bc6027688859ef38e03d9d5f10dd7243792eb785ce8e3d53fb65`.
+
+**Approve** for the inspected first-arrival/recovery controls only. Whole-product
+and award-level acceptance remain open. Do not repeat successful startup controls
+as a substitute for reproducing the blank. Revisit on a fresh failure, preserving
+the entry, native AX/screenshot and request evidence before recovery; continue
+distinct UI task review while that symptom is absent.
 
 ### Agent fixture command continuity (2026-11-12)
 
@@ -29209,9 +29283,10 @@ round-trip-verified receipt is **10,728 gzip bytes**, SHA-256
 `75c081d4f0c70f0fc8a6d8739b64ffbfb9f5f11c64948f41c64af22014de4ab4`.
 
 **Approve** for the six inspected domains in this repair; whole-product and
-award-level acceptance remain open. Carry the isolated EN first-navigation blank
-forward as an observation: establish its host/startup boundary and reproduction
-before assigning a product cause or implementing a fix.
+award-level acceptance remain open. The isolated EN first-navigation blank is
+followed under [First navigation in the current native host](#first-navigation-in-the-current-native-host-2026-11-17).
+The successful current controls preserve that earlier observation as unresolved;
+revisit on a fresh failure with evidence before recovery.
 
 ### Diff reads through display-language changes (2026-11-12)
 
