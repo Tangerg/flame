@@ -11,17 +11,15 @@
 // feel before you can name it, and one that no amount of care at the callsite
 // can fix, because the callsite is the wrong place to hold the value.
 //
-// The focus ring went the same way twice, in opposite directions. First sixteen
-// callsites drew a second, louder ring over the global one, in seven spellings and
-// ungated by pointer modality. Then, once those were gone, twenty callsites turned
-// the remaining one OFF — see the focus rule below for why that inverted when
-// Tailwind left, and for what it cost.
+// Focus visibility belongs to the browser. Shared CSS supplies the semantic perimeter;
+// field chrome and explicit command destinations retain their visible indicators.
+// Suppression at a callsite must not hide keyboard focus.
 //
 // They live in one place each now: `--color-hover`, `--color-selected`,
 // `--press-scale`, the `--dur-*` ladder and the global focus rule in globals.css.
 // A hand-picked state colour, a surface swap over a transparent rest state, a
 // literal press amount or duration, an all-property transition, a hover answered
-// with opacity, or a focus ring drawn or suppressed at a callsite is that decision
+// with opacity, or a shared focus perimeter suppressed at a callsite is that decision
 // leaking back out.
 //
 // Every pattern here reads StyleX and CSS. They were Tailwind class regexes, and
@@ -71,36 +69,16 @@ const RULES = [
     appliesTo: () => true,
   },
   {
-    // The ring is one rule in globals.css; whether a control gets one is decided THERE, by two
-    // attributes it reads — `data-focus-inset` when the ring would land outside a box that
-    // clips, `data-chrome-focus` when a row state stands in for it.
-    //
-    // A call site cannot participate in that decision, only overrule it. Under Tailwind
-    // `focus-visible:outline-none` was a `@layer utilities` rule that the unlayered global one
-    // beat, so suppressing the browser default at a call site was harmless and this guard said
-    // so in as many words. StyleX inverted it: `#\#` is an ID selector, so every `:not(#\#)` it
-    // stamps on a declaration is an ID-level unit while the global rule carries none — that rule
-    // is (0,4,3), so a single one already beats it. `outline: "none"` in a style object therefore
-    // outranks it and takes the design's ring down with the browser's. (The count is StyleX's own
-    // precedence encoding, measured 1 to 8 on a live route, not the constant this once claimed.) Twenty call sites said it, most of
-    // them on `Button` — 109 of 121 keyboard-reachable controls that had NOT opted out showed
-    // nothing at all, and the two audits either side of this both looked past it: one checks
-    // the ring has room to draw, the other checks the opt-outs keep their promise.
-    //
-    // A real outline VALUE is a different statement and stays legal — a bare field borrows one
-    // to mark itself invalid, and `input` is excluded from the ring rule by selector.
+    // Shared focus-visible rules own the perimeter and semantic chrome exemptions.
+    // StyleX suppression can outrank them and hide keyboard focus. Explicit outline
+    // values for validation or command destinations remain legal.
     pattern: /\boutline(?:Style|Width)?: *(?:"none"|0\b|none;)|\boutline[A-Za-z]*: *\{[^}]*"none"/g,
     message:
       "the ring's suppression belongs in globals.css — a StyleX `outline` outranks it; use `data-chrome-focus` if a row state stands in",
-    // globals.css is exempt for the rules that ARE the focus model, not for the whole file.
-    // Exempting the file let two per-component suppressions sit beside them: both pane
-    // resizers carried `outline: none` at (0,1,0) against the global rule's (0,4,3), so
-    // neither ever suppressed anything, on elements whose own comment says a keyboard user
-    // needs to see their ring. One was found by a runtime walk that happened to reach it; its
-    // twin was three tab stops past where that walk stopped.
+    // Only shared native focus-visible rules may suppress the default perimeter.
     appliesTo: (_line, rel, selector) =>
       (rel !== "styles/globals.css" && rel !== "@flame/ui/globals.css") ||
-      !/:focus-visible|\[data-input-modality(?:=|\])/.test(selector),
+      !selector.includes(":focus-visible"),
   },
   {
     // Opacity as a hover answer, in either of its two forms. A REVEAL — transparent at rest,
@@ -119,16 +97,13 @@ const RULES = [
     appliesTo: () => true,
   },
   {
-    // `:has(:focus-visible)` says the right thing and does not do it. Chromium matches the
-    // selector — `element.matches()` agrees, the rule is in the sheet, it outranks the
-    // `opacity-0` beside it — but it never invalidates the subtree when focus-visible
-    // changes inside `:has()`, so the reveal only lands when some unrelated recalculation
-    // happens to follow. Measured: reattaching the node flipped it from 0 to 1 with nothing
-    // else changed. An affordance that appears at random is worse than one that lingers.
+    // Local reveal effects retain their existing owner. The shared focus proxy
+    // follows the native CSS relationship instead of a JavaScript modality.
     pattern: /:has\(:focus-visible\)/g,
     message:
-      "`:has(:focus-visible)` matches but never invalidates in Chromium — key the reveal on the focusable element's own `focus-visible:`, or keep `focus-within:`",
-    appliesTo: () => true,
+      "focus-driven reveal belongs to reveal.ts; native focus-proxy relationships stay in shared globals.css",
+    appliesTo: (_line, rel, selector) =>
+      rel !== "@flame/ui/globals.css" || !selector.includes("[data-focus-proxy]"),
   },
   {
     // `Icon` renders `aria-hidden` and destructures four props; a name handed to it compiles and

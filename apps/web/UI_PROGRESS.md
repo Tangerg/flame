@@ -1,8 +1,123 @@
 # Desktop UI progress and handoff
 
-UI polishing is **resumed at the user's explicit request (2026-11-12)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing is **paused at the user's explicit request (2026-11-17)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
+
+## Target behavior infrastructure migration (2026-11-17)
+
+The newly supplied desktop report
+`Flame-UI-Target-Architecture-Selection-ZH-2026-11-17.md` replaces the earlier
+conservative selection conclusions. Its 814-line source is read-only under
+`/Users/tangerg/Desktop/docs/flame`, SHA-256
+`0cc601c3ecd56ae7837263e8191a71fcc514f08e46d9dfe1f42687162ebdc7df`.
+A later observed revision has 887 lines, SHA-256
+`667149b4c1bf6c77bf608574f6cd0d07f4a0607b6263463effa104b2cfb6bc32`.
+Its A1 section 11.1 is unchanged; newly added material awaits reconciliation
+after an explicit resume. The external report remains read-only.
+Implementation starts from `0a100056a`. The report's initial code baseline is
+`448e0411f`; its A2UI supplement refers to `805737ee1`. Neither baseline nor
+upstream source review proves that these targets have been integrated here.
+
+The full target remains in scope. Earlier entries below record historical
+qualification; policies intentionally replaced here are not requirements for
+the new owners. Each complete mechanism must migrate its real callers, types,
+data boundary, checks and documentation before publication. A dependency install,
+adapter around the old engine or passing old-policy assertions is not completion.
+No long-lived feature flag, duplicate writable owner, private API patch or
+runtime fallback is an accepted migration state.
+
+| Decision | Target owner and behavior                                                         | Current migration state                                                       |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| D1       | Base UI for ordinary controls, press/focus/dismiss/positioning                    | Retain main line; outer behavior cleanup pending                              |
+| D2       | React Aria Tree/Virtualizer/TreeLoadMoreItem; Runtime/Query paged directory facts | Pending; include protocol/SDK/provider consumers and coverage                 |
+| D3       | Lexical document/selection/history/typeahead; typed references                    | Pending; include drafts, attachments, submission and one-time migration       |
+| D4       | Legend List for all linear reading; normal grid and interaction pinning           | Pending; A2UI model/DOM contracts required before acceptance                  |
+| D5       | react-resizable-panels owns fixed workbench layout                                | Pending; persist final valid layout rather than cancellation rollback         |
+| D6       | react-zoom-pan-pinch owns image/Mermaid/Lab transform                             | Pending; preserve selection, fit and preview-island isolation                 |
+| D7       | TanStack Hotkeys owns grammar, matching, recording and display                    | Read-only inventory complete; full chain pending                              |
+| D8       | New dnd-kit internal sorting; PDD external file adapter                           | Pending; one final order/intake owner per operation                           |
+| D9       | Pierre File/FileDiff/CodeView with one Highlights backend                         | Pending; retire the direct Shiki rendering chain end to end                   |
+| D10      | Public Pierre Highlights ANSI tokens                                              | Pending; one visible-text projection for render/Find/copy                     |
+| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | A1 code migrated, native acceptance partial; other D11 changes pending        |
+| D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Pending; no private repair, splitter or artificial output clock               |
+| D13      | Native fields with CSS field-sizing and explicit capability floor                 | Pending; include actual WKWebView admission and field behavior                |
+| D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Pending audit against the final owners; no new general manager                |
+| D15      | A2UI 1.0 with official React/web_core and trusted Flame catalog                   | Read-only published API/source inventory complete; OpenUI replacement pending |
+
+The first complete cut is **A1 / D11 native focus indication**: retire the
+pre-module modality script, its global attribute, conditional shared selectors
+and protocol-only tests across shipping/Lab entries. Browser `:focus-visible`
+decides when to show a ring; shared CSS retains theme, validation and local
+inset/proxy presentation. Pointer-focused text fields may retain their native
+indicator. This is an explicit target-policy change, not a regression to conceal
+with another listener. The [Selectors focus-visible contract](https://www.w3.org/TR/selectors-4/#the-focus-visible-pseudo)
+allows browser heuristics; its keyboard-input and script-focus guidance is
+non-normative, not a cross-browser promise.
+
+Baseline passes **9 shared field-focus tests**, **34 old modality tests** and
+the existing bootstrap check; normal baseline staging passes in **11.964 s**.
+The old modality cases establish the retired policy. A1 now removes the script,
+global attribute and its 34 protocol-only tests from all shipping/Lab entries.
+Shared CSS uses native `:focus-visible`, including same-node and descendant
+proxies. The normal generated product entry is updated.
+
+Before the stop request, normal staging and the Lab build pass, as do **9 shared
+field-focus tests**, UI/Web typechecks, bootstrap, interactive-chrome and bundle
+unit checks. Two initial new assertions incorrectly inspected boxed fields
+for validation shadows; they now check the existing validation-border contract,
+and the corrected nine-test run passes. No validation behavior is changed.
+Both isolated Wails builds and signature verification pass. The EN/light/14 px/
+Orange/default-zoom scene qualifies the pointer-focused Settings search proxy,
+Tab navigation, Escape return, keyboard file-tree perimeter and exact middle-caret
+continuation (`Keep focus draft. CHECKED Continue here.`). The initial clipboard
+setup is excluded from evidence. Chinese native interaction acceptance is
+**stopped before completion at the user's request**. Full frontend/UI suites,
+25 Web gates, browser visual suites, benchmarks and normal `make check-native`
+are **not run** in this batch. No further acceptance is run after the stop.
+**A1 is only partially qualified; whole-report completion is not claimed**.
+Remaining FocusWitness/RemovalFocus consumers retain
+their current owner until their complete B/E or ordinary-action migration;
+they are not replaced merely to remove an export early.
+
+Follow the report's dependency order: complete A; Composer plus necessary grid;
+A2UI before the final GenUI/list qualification; all linear readers; remaining
+layout/camera, tree and code/ANSI; then standard Markdown/native fields. Active
+editor/model instances advance their own facts, while storage only checkpoints
+them. Old drafts, attachments, messages, provenance and recovery material must
+survive explicit upgrade boundaries; failed conversion retains recoverable
+original data. Pure view preferences may reset under the new disclosed policy.
+No migration runs against user profiles during isolated acceptance.
+
+Read-only handoff identifies two version boundaries to resolve after an explicit
+resume. The report's Hotkeys React 0.26.0 pins core 0.31.0; registry latest has
+already moved to 0.27.0/0.32.0. Do not mix their contracts. Migrate the entire
+combo/registration/recording/display chain and version-0 shortcut overrides,
+preserving absent defaults versus explicit null unbinding. A2UI's published
+0.15.0 React package has React 18/19 and Zod 3.25.76 peers while Flame uses Zod 4;
+its shipped types and JS lack the repository README's accessibilityRef and
+validationErrorsRef. Verify actual label/error integration and structural CSS
+publication before adoption, using a real dependency boundary rather than casts
+or a global override. Official model reads/writes do not prove complete
+cross-restart checkpoints. These inventories are not installation or integration
+results; no Hotkeys or A2UI dependency is added in A1.
+
+The user supersedes the planned end-of-round acceptance with an **immediate
+stop and overall milestone pause**, then explicitly requests committing the
+current code and pushing remote main. Both owned native processes join with
+exit 0; the owned preview joins after SIGINT with child exit -2. Temporary
+bundles, registrations, private profiles and build artifacts remain retained
+for handoff; artifact retirement is not claimed. The private evidence root is
+`flame-native-focus-0b4a299d` under this chat's visualization directory.
+Do not resume acceptance or begin other migrations without an explicit request.
+Preserve the full target and pending states for the user's subsequent adjustments.
+
+The original goal's sole progress file, serial primary-owned checks/builds/native
+execution, normal default-zoom acceptance and publication/cleanup requirements
+remain in force. No extra browser visual suite or separate performance benchmark
+is started. Required representative workload evidence belongs to each changed
+mechanism's scoped acceptance. Whole-report and whole-product completion remain
+open until every target's actual integration, deletion and data contracts pass.
 
 ## Component lab and UI visual verification (2026-11-06)
 

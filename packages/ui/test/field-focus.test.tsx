@@ -21,9 +21,8 @@ beforeEach(() => {
 });
 
 it.each(["bare", "inline", "well"] as const)(
-  "preserves %s validation alongside keyboard focus",
+  "preserves %s validation alongside native visible focus",
   (variant) => {
-    document.documentElement.setAttribute("data-input-modality", "keyboard");
     render(
       <div data-focus-inset="">
         <TextArea variant={variant} invalid aria-label="Configuration" />
@@ -40,15 +39,13 @@ it.each(["bare", "inline", "well"] as const)(
 afterEach(() => {
   cleanup();
   style.remove();
-  document.documentElement.removeAttribute("data-input-modality");
 });
 
 describe.each([
   ["single-line", TextField],
   ["multiline", TextArea],
 ] as const)("%s field focus", (_label, Control) => {
-  it("keeps keyboard focus distinct from its validation state", () => {
-    document.documentElement.setAttribute("data-input-modality", "keyboard");
+  it("keeps visible focus distinct from its validation state", () => {
     const view = render(
       <FormField label="Configuration">
         <Control invalid />
@@ -73,27 +70,32 @@ describe.each([
     expect(getComputedStyle(field).outlineStyle).toBe("solid");
   });
 
-  it("keeps pointer focus quiet", () => {
-    document.documentElement.setAttribute("data-input-modality", "pointer");
+  it("keeps validation visible when focus moves to another control", () => {
     render(
-      <FormField label="Configuration">
-        <Control invalid />
-      </FormField>,
+      <>
+        <FormField label="Configuration">
+          <Control invalid />
+        </FormField>
+        <button type="button">Next field</button>
+      </>,
     );
     const field = screen.getByLabelText("Configuration");
+    const next = screen.getByRole("button", { name: "Next field" });
     act(() => field.focus());
-    expect(getComputedStyle(field).outlineStyle || "none").toBe("none");
+    act(() => next.focus());
+
+    expect(document.activeElement).toBe(next);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(getComputedStyle(field).borderColor).toContain("#bb1234");
   });
 
-  it("retains native focus indication without a host modality owner", () => {
+  it("retains named native focus indication", () => {
     render(<Control aria-label="Configuration" invalid />);
     const field = screen.getByLabelText("Configuration");
 
     act(() => field.focus());
 
-    expect(document.documentElement.hasAttribute("data-input-modality")).toBe(
-      false,
-    );
+    expect(document.activeElement).toBe(field);
     expect(getComputedStyle(field).outlineStyle).toBe("solid");
   });
 });

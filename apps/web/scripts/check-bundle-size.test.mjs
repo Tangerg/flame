@@ -27,7 +27,7 @@ import { artifactDocument, artifactGraph } from "../artifactGraph.vite.mjs";
 const script = fileURLToPath(new URL("./check-bundle-size.mjs", import.meta.url));
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const index =
-  '<script src="/appearance.generated.js"></script><script src="/focus-modality.js"></script><script type="module" src="/assets/entry.js"></script><link rel="stylesheet" href="/assets/entry.css">';
+  '<script src="/appearance.generated.js"></script><script type="module" src="/assets/entry.js"></script><link rel="stylesheet" href="/assets/entry.css">';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "flame bundle budget "));
@@ -37,7 +37,6 @@ function fixture(t) {
   mkdirSync(assets, { recursive: true });
   const files = {
     "appearance.generated.js": {},
-    "focus-modality.js": {},
     "assets/entry.js": { modules: ["src/bootstrap.js"], imports: [] },
     "assets/main.js": { modules: ["src/main.js"], imports: [] },
     "assets/entry.css": {},
@@ -187,18 +186,17 @@ test("import-map declarations and inert template tags are not startup requests",
   assert.match(imported.stdout, /JS[^\n]*FAIL/);
 });
 
-test("both public bootstrap scripts and the immediate main closure count once", (t) => {
+test("the public appearance bootstrap and immediate main closure count once", (t) => {
   const output = fixture(t);
   writeFileSync(join(output.dist, "appearance.generated.js"), Buffer.alloc(10));
-  writeFileSync(join(output.dist, "focus-modality.js"), Buffer.alloc(11));
-  output.size("main.js", 2_785_000 - 21);
+  output.size("main.js", 2_785_000 - 10);
   output.index(
     index +
       '<script type="module" src="/assets/entry.js"></script><link rel="modulepreload" href="/assets/entry.js">',
   );
   const equal = output.run();
   assert.equal(equal.status, 0, equal.stdout + equal.stderr);
-  output.size("main.js", 2_785_000 - 20);
+  output.size("main.js", 2_785_000 - 9);
   const exceeded = output.run();
   assert.equal(exceeded.status, 1, exceeded.stdout + exceeded.stderr);
 });
@@ -298,10 +296,9 @@ async function builtFixture(
   write("package.json", '{"type":"module","name":"artifact-fixture"}');
   write(
     "index.html",
-    '<script src="/appearance.generated.js"></script><script src="/focus-modality.js"></script><script type="module" src="/src/bootstrap.js"></script>',
+    '<script src="/appearance.generated.js"></script><script type="module" src="/src/bootstrap.js"></script>',
   );
   write("public/appearance.generated.js", 'globalThis.fixtureAppearance = "light";');
-  write("public/focus-modality.js", 'globalThis.fixtureModality = "keyboard";');
   write("public/address-only.js", 'export const unused = "not requested";');
   write(
     "node_modules/react/package.json",
