@@ -403,7 +403,7 @@ func (c *Cancellations) waitingChildCancellationContinuation(
 		}
 		return ExecutionContinuation{}, fmt.Errorf("%w: %w", ErrRunNotFound, err)
 	}
-	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns(), sess)
+	return waitingContinuationFromPending(*plan.pending, checkpoint, plan.treeRuns(), sess)
 }
 
 func (c *Cancellations) commitWaitingChildCancellation(
@@ -413,7 +413,7 @@ func (c *Cancellations) commitWaitingChildCancellation(
 	transformation waitingCancellationTransformation,
 	change waitingSubtreeChange,
 ) (CancelResult, error) {
-	durable, err := transformation.durableCommit(plan.pending, newRunCommitID())
+	durable, err := transformation.durableCommit(*plan.pending, newRunCommitID())
 	if err != nil {
 		return CancelResult{}, err
 	}
@@ -470,7 +470,7 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 				return errors.New("runs: waiting child continuation produced an invalid opening disposition")
 			}
 			durable, durableErr := transformation.resumedDurableCommit(
-				plan.pending, opening.CommitID(), resume, opening.Events(),
+				*plan.pending, opening.CommitID(), resume, opening.Events(),
 			)
 			if durableErr != nil {
 				return durableErr

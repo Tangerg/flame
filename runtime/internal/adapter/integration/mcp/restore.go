@@ -92,8 +92,7 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 				continue
 			}
 			candidate.held, candidate.owner = use, p.inner
-			tools[ref] = authorizedTool{Tool: candidate, pool: p, registry: p.registry, source: candidate,
-				config: config, prepare: prepare, host: p.toolHost(candidate)}
+			tools[ref] = authorizedTool{source: candidate, registry: p.registry, pool: p, prepare: prepare}
 		}
 	}
 	result := make([]toolcontract.Tool, 0, len(refs))

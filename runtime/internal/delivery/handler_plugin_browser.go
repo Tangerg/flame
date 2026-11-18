@@ -13,9 +13,6 @@ import (
 )
 
 func (s *Handler) OpenPluginBrowserRealm(ctx context.Context, in protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error) {
-	if s.pluginBrowser == nil {
-		return nil, protocol.ErrPluginUnavailable
-	}
 	var resume *framebrowser.Realm
 	if in.Resume != nil {
 		resume = new(browserRealm(*in.Resume))
@@ -33,9 +30,6 @@ func (s *Handler) OpenPluginBrowserRealm(ctx context.Context, in protocol.OpenPl
 }
 
 func (s *Handler) AcquirePluginComponent(ctx context.Context, in protocol.AcquirePluginComponentRequest) (*protocol.PluginBrowserUseGrant, error) {
-	if s.pluginBrowser == nil {
-		return nil, protocol.ErrPluginUnavailable
-	}
 	installation, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
 		return nil, err
@@ -52,9 +46,6 @@ func (s *Handler) AcquirePluginComponent(ctx context.Context, in protocol.Acquir
 }
 
 func (s *Handler) ClosePluginBrowserRealm(ctx context.Context, in protocol.ClosePluginBrowserRealmRequest) error {
-	if s.pluginBrowser == nil {
-		return protocol.ErrPluginUnavailable
-	}
 	return wirePluginError(s.pluginBrowser.Close(ctx, browserRealm(in.Realm)))
 }
 

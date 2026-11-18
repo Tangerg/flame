@@ -371,11 +371,12 @@ localized `CodeActionLabels`; the defaults are English. The wrap label names
 the next action. It is an ordinary button rather
 than a pressed toggle whose label reverses meaning; its active visual indicator
 and the shared wrap preference remain unchanged. Syntax color is a host capability:
-`CodeHighlightProvider` supplies a source component for the captured literal. Without
-one, `CodeBlock` renders plain code. The desktop installs Pierre File with the
-`shiki-js` engine. Code, file previews and diffs use the shared semantic syntax
-colors; Pierre owns highlighting and its worker caches. Workers and their cache
-lifetime end with the captured source presentation.
+`CodeHighlightProvider` supplies the source components for a captured code literal
+and for one Git file patch, which `DiffBody` presents as a scrollable reader.
+Without them, code and patches render as plain text. Packages present source
+through these slots rather than bundling a highlighter. The desktop installs Pierre
+File and FileDiff with the `shiki-js` engine and one shared worker pool. Code,
+file previews and diffs use the shared semantic syntax colors.
 
 `copyText` returns the clipboard result. `useCopy` captures the exact material and
 publishes an immutable receipt through `ClipboardReceiptProvider`, including when

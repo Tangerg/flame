@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
@@ -462,7 +461,7 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		return err
 	}
 	if commit.ChargesGoal() {
-		if err := e.goalRuns.RecordRun(ctx, *commit.Run); err != nil {
+		if err := e.goalRuns.CaptureGoalRun(ctx, *commit.Run); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)
 		}
 	}
@@ -479,31 +478,7 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 
 func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCommit) error {
 	for _, invocation := range commit.ModelInvocations {
-		var err error
-		switch invocation.State {
-		case modelref.InvocationStarted:
-			err = e.modelInvocations.StartModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.Purpose)
-		case modelref.InvocationCompleted:
-			err = e.modelInvocations.CompleteModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis, invocation.Usage,
-			)
-		case modelref.InvocationFailed:
-			err = e.modelInvocations.FailModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis, invocation.Usage, invocation.KnownResponse,
-			)
-		case modelref.InvocationUnknown:
-			err = e.modelInvocations.MarkModelInvocationUnknown(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,
-			)
-		default:
-			err = fmt.Errorf("unsupported state %q", invocation.State)
-		}
-		if err != nil {
+		if err := e.modelInvocations.RecordModelInvocation(ctx, commit.SessionID, commit.RunID, invocation); err != nil {
 			return fmt.Errorf("segment: record model invocation %q: %w", invocation.CallID, err)
 		}
 	}
@@ -512,29 +487,7 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 
 func (e *Effects) applyToolInvocations(ctx context.Context, commit runs.EventCommit) error {
 	for _, invocation := range commit.ToolInvocations {
-		var err error
-		switch invocation.State {
-		case runs.ToolInvocationStarted:
-			err = e.toolInvocations.StartToolInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.ItemID, invocation.StartedAt, invocation.Caller,
-			)
-		case runs.ToolInvocationCompleted:
-			err = e.toolInvocations.CompleteToolInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.ItemID,
-				invocation.StartedAt, invocation.FinishedAt,
-			)
-		case runs.ToolInvocationIncomplete:
-			err = e.toolInvocations.MarkToolInvocationIncomplete(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.ItemID,
-				invocation.StartedAt, invocation.FinishedAt,
-			)
-		default:
-			err = fmt.Errorf("unsupported state %q", invocation.State)
-		}
-		if err != nil {
+		if err := e.toolInvocations.RecordToolInvocation(ctx, commit.SessionID, commit.RunID, invocation); err != nil {
 			return fmt.Errorf("segment: record Tool invocation %q: %w", invocation.CallID, err)
 		}
 	}

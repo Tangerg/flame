@@ -148,7 +148,7 @@ func (s *sessionCenterPane) drawPreview(view grid.View) {
 
 func (s *sessionCenterPane) Handle(event input.Event) bool {
 	if key, ok := event.(input.Key); ok && key.Down() && key.Mods == input.Alt {
-		s.picker.interruptPointerGesture()
+		s.picker.cancelPress()
 		session, selected := s.picker.Current()
 		switch key.Rune {
 		case 'l':

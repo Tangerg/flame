@@ -123,7 +123,7 @@ func newReaderPane(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer
 		{Size: layout.Fixed(1), Element: scene.NewElement(scene.ElementConfig{Paint: r.drawHeading})},
 		{Size: layout.Flex(1), Element: r.body.Element()},
 	}})
-	r.resetContent(nil, false, false)
+	r.resetContent(nil, readerAtTop)
 	return r
 }
 
@@ -135,16 +135,37 @@ func (r *readerPane) Open(target readerTarget) {
 		r.observingSource = true
 		initial := true
 		r.releaseSource = target.source.Observe(func(document readerDocument) {
-			follow := r.scroll.FollowingEnd()
-			r.replace(document, !initial, follow)
+			r.replace(document, r.placementFor(!initial))
 			initial = false
 		})
 		return
 	}
-	r.replace(target.document, false, false)
+	r.replace(target.document, readerAtTop)
 }
 
-func (r *readerPane) replace(document readerDocument, preserveScroll, follow bool) {
+// readerPlacement is where a replaced document opens: at its top, at the
+// reader's current place, or following its end.
+type readerPlacement uint8
+
+const (
+	readerAtTop readerPlacement = iota
+	readerKeepsPlace
+	readerFollowsEnd
+)
+
+// placementFor keeps a reader that follows the end following it.
+func (r *readerPane) placementFor(keepPlace bool) readerPlacement {
+	switch {
+	case r.scroll.FollowingEnd():
+		return readerFollowsEnd
+	case keepPlace:
+		return readerKeepsPlace
+	default:
+		return readerAtTop
+	}
+}
+
+func (r *readerPane) replace(document readerDocument, placement readerPlacement) {
 	r.refreshFailure = ""
 	r.title = strings.TrimSpace(document.Title)
 	if r.title == "" {
@@ -162,21 +183,18 @@ func (r *readerPane) replace(document readerDocument, preserveScroll, follow boo
 	if len(blocks) == 0 {
 		blocks = append(blocks, &kit.Entry{Theme: r.theme, Body: "No content is available for this entry."})
 	}
-	r.resetContent(blocks, preserveScroll, follow)
-	if follow {
-		r.scroll.ToBottom()
-	}
+	r.resetContent(blocks, placement)
 	r.selection.Clear()
 	if r.query != "" {
 		r.search.Submit(r.searchRows(), r.query, 0)
 	}
 }
 
-func (r *readerPane) resetContent(blocks []base.Block, preserveScroll, follow bool) {
+func (r *readerPane) resetContent(blocks []base.Block, placement readerPlacement) {
 	offset := 0
 	if r.content != nil {
 		r.interruptSelectionGesture()
-		if preserveScroll {
+		if placement == readerKeepsPlace {
 			offset = r.scroll.Offset()
 		}
 		r.content.Close()
@@ -194,9 +212,10 @@ func (r *readerPane) resetContent(blocks []base.Block, preserveScroll, follow bo
 		}
 	}
 	r.scroll.ToTop()
-	if follow {
+	switch placement {
+	case readerFollowsEnd:
 		r.scroll.ToBottom()
-	} else if preserveScroll {
+	case readerKeepsPlace:
 		r.scroll.Reveal(offset, offset+max(r.viewport.Value().Y, 1)-1)
 	}
 	if err := view.Element().SetPaint(r.drawBody); err != nil {

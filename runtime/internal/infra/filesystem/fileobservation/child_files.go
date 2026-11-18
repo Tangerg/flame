@@ -35,29 +35,17 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report fu
 	if err != nil {
 		return nil, err
 	}
-	if len(canonical) == 0 {
-		return nopWatch{}, nil
-	}
-	roots, lifecycle, err := openObservation("observe child files", canonical, func(candidate childFileTarget) string {
+	return startObservation("observe child files", canonical, func(candidate childFileTarget) string {
 		return candidate.physicalBoundary
-	}, report)
-	if err != nil {
-		return nil, err
-	}
-	w := &childFileWatch{
-		observerLifecycle: lifecycle,
-		targets:           canonical,
-		notify:            notify,
-		baselines:         make([]childFileSnapshot, len(canonical)),
-		roots:             roots,
-	}
-	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, errors.Join(lifecycle.abort(err), roots.Close())
-	}
-	lifecycle.start(func(accepted acceptance) error {
-		return w.reconcile(false, accepted)
+	}, report, func(lifecycle *observerLifecycle, roots *observationRoots) *childFileWatch {
+		return &childFileWatch{
+			observerLifecycle: lifecycle,
+			targets:           canonical,
+			notify:            notify,
+			baselines:         make([]childFileSnapshot, len(canonical)),
+			roots:             roots,
+		}
 	})
-	return w, nil
 }
 
 type childFileTarget struct {

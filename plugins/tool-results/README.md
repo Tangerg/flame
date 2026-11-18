@@ -62,15 +62,12 @@ Ctrl/Cmd+A in a focused result reader selects its content rather than the worksp
 Paged or filtered rows and collapsed output previews select the presented material.
 Expanded output represents the whole captured log: copying its whole-reader range
 writes all ANSI-stripped source text, including virtualized lines and trailing
-newlines. Expanded output uses TanStack Virtual for measurement, the rendered
-range and explicit line jumps. Its public range extractor retains only the native
-selection's endpoint rows beside the visible range. Partial copy maps that same
+newlines. Expanded output uses the shared Legend reading list for measurement,
+the rendered range and explicit line jumps. The list keeps the native selection's
+endpoint rows mounted beside the visible range. Partial copy maps that same
 Range through styled UTF-16 line offsets into the complete ANSI-stripped source;
 unmounted middle lines remain exact without hidden full text or stored selection.
-The offset observer resamples the visible native scroller when its layout returns;
-a reveal need not emit a scroll event.
-Font changes invalidate the same virtualizer, and only an explicit Find request
-scrolls to a match. Search fields
+Only an explicit Find request scrolls to a match. Search fields
 and caption controls remain outside each reading range.
 Find is a bounded task: Escape from its query or clear control closes it even over
 a query, ahead of the field's own clear-on-Escape. IME composition keys neither

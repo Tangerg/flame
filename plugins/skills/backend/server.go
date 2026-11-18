@@ -85,7 +85,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: err.Error()}
 		}
 		return nil
 	})

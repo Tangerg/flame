@@ -31,7 +31,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 		ctx,
 		[]string{sessionID},
 		func(commitCtx context.Context) error {
-			open, err := c.listOpenInterrupts(commitCtx, sessionID)
+			open, err := c.interrupts.List(commitCtx, sessionID)
 			if err != nil {
 				return err
 			}

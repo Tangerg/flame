@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
@@ -325,7 +325,7 @@ func TestMixedInterruptPTYRuntime(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script { return mixedInterruptPTYScript() }
-	profile, err := runtimefixture.NewProfile(runtimefixture.CompleteDiscovery())
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
-	profile, err := runtimefixture.NewProfile(runtimefixture.CompleteDiscovery())
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -624,7 +624,7 @@ func TestFlameProcess(t *testing.T) {
 	}
 	os.Args = append([]string{os.Args[0]}, flag.Args()...)
 	runtime := runtimefixture.New()
-	profile, err := runtimefixture.NewProfile(runtimefixture.CompleteDiscovery())
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
 	if err != nil {
 		t.Fatal(err)
 	}

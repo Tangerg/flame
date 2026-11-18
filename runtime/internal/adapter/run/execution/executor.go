@@ -246,6 +246,54 @@ func (i *InteractionExecutor) StageRoot(
 	return ref, nil
 }
 
+var (
+	errProposalCompositionUnavailable = errors.New("execution: captured Tool proposal composition is unavailable")
+	errModelInputUnavailable          = errors.New("execution: captured model input is unavailable")
+	errModelContextUnavailable        = errors.New("execution: captured model context is unavailable")
+	errModelObserversUnavailable      = errors.New("execution: captured model observers are unavailable")
+)
+
+// captureComposition fixes the call composition a Run executes with. A
+// restored checkpoint replays its original capture instead of resolving the
+// current composition again.
+func (i *InteractionExecutor) captureComposition(ctx context.Context, session *interactionSession, checkpoint *interactionCheckpointState) error {
+	if checkpoint != nil {
+		session.modelObservers = slices.Clone(checkpoint.modelObservers)
+		session.modelContexts = slices.Clone(checkpoint.modelContexts)
+		session.modelInputs = slices.Clone(checkpoint.modelInputs)
+		session.toolProposals = slices.Clone(checkpoint.toolProposals)
+		return nil
+	}
+	composition := i.config.CallComposition
+	if composition == nil {
+		return nil
+	}
+	var err error
+	if session.modelObservers, err = composition.Resolve(ctx); err != nil {
+		return err
+	}
+	if session.modelContexts, err = composition.ResolveContext(ctx); err != nil {
+		return err
+	}
+	if session.modelInputs, err = composition.ResolveInput(ctx); err != nil {
+		return err
+	}
+	session.toolProposals, err = composition.ResolveToolProposals(ctx)
+	return err
+}
+
+// validateCaptured revalidates a captured composition member against the live
+// composition; a capture this Runtime can no longer compose is refused.
+func (i *InteractionExecutor) validateCaptured(captured bool, unavailable error, validate func() error) error {
+	if !captured {
+		return nil
+	}
+	if i.config.CallComposition == nil {
+		return unavailable
+	}
+	return validate()
+}
+
 func (i *InteractionExecutor) assembleInteraction(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -290,84 +338,43 @@ func (i *InteractionExecutor) assembleInteraction(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	if checkpoint != nil {
-		session.modelObservers = slices.Clone(checkpoint.modelObservers)
-	} else if i.config.CallComposition != nil {
-		session.modelObservers, err = i.config.CallComposition.Resolve(ctx)
-		if err != nil {
-			return nil, err
-		}
+	if err := i.captureComposition(ctx, session, checkpoint); err != nil {
+		return nil, err
 	}
-	if checkpoint != nil {
-		session.modelContexts = slices.Clone(checkpoint.modelContexts)
-	} else if i.config.CallComposition != nil {
-		session.modelContexts, err = i.config.CallComposition.ResolveContext(ctx)
-		if err != nil {
-			return nil, err
-		}
+	composition := i.config.CallComposition
+	if err := i.validateCaptured(len(session.toolProposals) > 0, errProposalCompositionUnavailable, func() error {
+		return composition.ValidateToolProposals(ctx, session.toolProposals)
+	}); err != nil {
+		return nil, err
 	}
-	if checkpoint != nil {
-		session.modelInputs = slices.Clone(checkpoint.modelInputs)
-	} else if i.config.CallComposition != nil {
-		session.modelInputs, err = i.config.CallComposition.ResolveInput(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if checkpoint != nil {
-		session.toolProposals = slices.Clone(checkpoint.toolProposals)
-	} else if i.config.CallComposition != nil {
-		session.toolProposals, err = i.config.CallComposition.ResolveToolProposals(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(session.toolProposals) > 0 {
-		if i.config.CallComposition == nil {
-			return nil, errors.New("execution: captured Tool proposal composition is unavailable")
-		}
-		if err := i.config.CallComposition.ValidateToolProposals(ctx, session.toolProposals); err != nil {
-			return nil, err
-		}
-	}
-	if i.config.CallComposition != nil {
+	if composition != nil {
 		var activations []plugin.Activation
 		if checkpoint != nil {
 			activations = checkpoint.bindings
-		} else {
-			activations, err = i.config.CallComposition.Activations(ctx, session.compositionBindings())
-			if err != nil {
-				return nil, err
-			}
+		} else if activations, err = composition.Activations(ctx, session.compositionBindings()); err != nil {
+			return nil, err
 		}
 		if err := session.bindCompositionActivations(activations); err != nil {
 			return nil, err
 		}
 	}
-	if len(session.modelInputs) > 0 {
-		if i.config.CallComposition == nil {
-			return nil, errors.New("execution: captured model input is unavailable")
-		}
-		if err := i.config.CallComposition.ValidateInput(ctx, session.modelInputs); err != nil {
-			return nil, err
-		}
+	if err := i.validateCaptured(len(session.modelInputs) > 0, errModelInputUnavailable, func() error {
+		return composition.ValidateInput(ctx, session.modelInputs)
+	}); err != nil {
+		return nil, err
 	}
-	if len(session.modelContexts) > 0 {
-		if i.config.CallComposition == nil {
-			return nil, errors.New("execution: captured model context is unavailable")
-		}
-		if err := i.config.CallComposition.ValidateContext(ctx, session.modelContexts); err != nil {
-			return nil, err
-		}
+	if err := i.validateCaptured(len(session.modelContexts) > 0, errModelContextUnavailable, func() error {
+		return composition.ValidateContext(ctx, session.modelContexts)
+	}); err != nil {
+		return nil, err
+	}
+	if err := i.validateCaptured(len(session.modelObservers) > 0, errModelObserversUnavailable, func() error {
+		return composition.Validate(ctx, session.modelObservers)
+	}); err != nil {
+		return nil, err
 	}
 	if len(session.modelObservers) > 0 {
-		if i.config.CallComposition == nil {
-			return nil, errors.New("execution: captured model observers are unavailable")
-		}
-		if err := i.config.CallComposition.Validate(ctx, session.modelObservers); err != nil {
-			return nil, err
-		}
-		model, streamer = i.config.CallComposition.Bind(model, streamer, session.modelObservers)
+		model, streamer = composition.Bind(model, streamer, session.modelObservers)
 	}
 	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {

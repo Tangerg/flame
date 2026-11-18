@@ -265,7 +265,7 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 	options := acceptedCommandOptions()
 	options.IdempotencyKey = "protocol-lifecycle-steer"
 	options.RequestMeta.ClientCapabilities.InterruptTypes = []protocol.InterruptType{protocol.InterruptQuestion}
-	nomination, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](p.ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer}, delivery.Options{RequestMeta: options.RequestMeta})
+	nomination, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](p.ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer}, protocol.CallMetadata{RequestMeta: options.RequestMeta})
 	if err != nil || nomination.Type != protocol.RunAcceptanceNotRecorded || nomination.CandidateUserItemID == "" {
 		p.t.Fatalf("steer nomination=%+v,%v", nomination, err)
 	}

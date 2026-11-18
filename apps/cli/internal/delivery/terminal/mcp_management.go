@@ -479,6 +479,12 @@ func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDo
 	return paragraphDocument("MCP authorization", detail, lines)
 }
 
+// Exposure actions are local command words; approval actions reuse the wire decisions.
+const (
+	mcpToolEnable  = "enable"
+	mcpToolDisable = "disable"
+)
+
 func (m *mcpScreens) ConfigureMCPTool(arguments string) error {
 	parts := strings.Fields(arguments)
 	if len(parts) != 3 {
@@ -490,8 +496,8 @@ func (m *mcpScreens) ConfigureMCPTool(arguments string) error {
 	}
 	name, action := parts[1], parts[2]
 	switch action {
-	case "enable", "disable":
-		request := protocol.SetMCPToolExposureRequest{Server: server, Name: name, Disabled: action == "disable"}
+	case mcpToolEnable, mcpToolDisable:
+		request := protocol.SetMCPToolExposureRequest{Server: server, Name: name, Disabled: action == mcpToolDisable}
 		if err := protocol.ValidateWireTree(request); err != nil {
 			return err
 		}

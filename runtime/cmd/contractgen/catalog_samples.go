@@ -31,7 +31,6 @@ type contractSample struct {
 // generator or test cannot rewrite the catalog observed by another.
 func contractSamples() []contractSample {
 	return []contractSample{
-
 		// Streaming — RunEvent envelope over every StreamEvent variant.
 		{"segment.started.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"segment.progress.json", reflect.TypeFor[protocol.RunEvent]()},

@@ -489,7 +489,6 @@ func registerArtifactUnions(s *Shapes) {
 			},
 		},
 	})
-
 }
 
 func registerDiffUnions(s *Shapes) {

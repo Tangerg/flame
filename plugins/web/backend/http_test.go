@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 
@@ -115,7 +116,7 @@ func TestHTTPPolicyRefusalsNeverReachTransport(t *testing.T) {
 			if _, known := errors.AsType[*framecall.Refusal](err); !known {
 				t.Fatalf("policy failure is unconfirmed: %v", err)
 			}
-			if _, known := tool.ClassifyFailure(requestToolFailure(err)); !known {
+			if _, known := tool.ClassifyFailure(pluginsdk.RefusedToolFailure(err)); !known {
 				t.Fatalf("model policy failure is unconfirmed: %v", err)
 			}
 		})

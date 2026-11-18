@@ -20,12 +20,10 @@ func (s *ScheduleStore) CapturedRun(ctx context.Context, id string) (schedule.Ru
 			return nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
-
 			return err
 		}
 		var encoded string
 		if err := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT captured_request_json FROM manual_firings WHERE run_id=?`, id).Scan(&encoded); err != nil {
-
 			return err
 		}
 		var scopeErr error

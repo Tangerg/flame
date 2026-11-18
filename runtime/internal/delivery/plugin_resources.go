@@ -48,9 +48,6 @@ func (s *Handler) resourceLease(token string) (resourceLease, bool) {
 }
 
 func (s *Handler) OpenPluginResources(ctx context.Context, in protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
-	if s.plugins == nil || s.resources == nil {
-		return nil, nil, protocol.ErrPluginUnavailable
-	}
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
 		return nil, nil, err
@@ -72,9 +69,6 @@ func (s *Handler) OpenPluginResources(ctx context.Context, in protocol.OpenPlugi
 }
 
 func (s *Handler) ReadPluginResource(ctx context.Context, in protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error) {
-	if s.plugins == nil {
-		return nil, protocol.ErrPluginUnavailable
-	}
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
 		return nil, err
@@ -95,9 +89,6 @@ func (s *Handler) ReadPluginResource(ctx context.Context, in protocol.ReadPlugin
 }
 
 func (s *Handler) ReadPluginLocale(ctx context.Context, in protocol.ReadPluginLocaleRequest) (*protocol.PluginLocaleCatalog, error) {
-	if s.plugins == nil {
-		return nil, protocol.ErrPluginUnavailable
-	}
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
 		return nil, err
@@ -127,5 +118,5 @@ func (e *Endpoint) LeasedPluginResource(ctx context.Context, token, resource str
 	stop := context.AfterFunc(ctx, cancel)
 	defer stop()
 	meta, _ := RequestMetaFrom(lease.owner)
-	return e.Call[protocol.ReadPluginResourceRequest, *protocol.PluginResource](owned, PluginsReadResource, protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: lease.request, Path: resource}, Options{RequestMeta: meta})
+	return e.Call[protocol.ReadPluginResourceRequest, *protocol.PluginResource](owned, PluginsReadResource, protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: lease.request, Path: resource}, protocol.CallMetadata{RequestMeta: meta})
 }

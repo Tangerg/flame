@@ -10,6 +10,15 @@ import (
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
+// commentCollection names the API collection that owns a comment ID: issue
+// comments and pull request review comments are separate resources.
+type commentCollection string
+
+const (
+	issueComments  commentCollection = "issues"
+	reviewComments commentCollection = "pulls"
+)
+
 type commentBody struct {
 	Body string `json:"body"`
 }
@@ -20,29 +29,29 @@ func (c *connector) createComment(ctx context.Context, input contractwire.Create
 		return contractwire.Comment{}, err
 	}
 	if !textPresent(input.Body) {
-		return contractwire.Comment{}, refused("invalid_input", "comment body must be nonblank")
+		return contractwire.Comment{}, invalidInput("comment body must be nonblank")
 	}
 	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", repository.apiPath(), input.Number), commentBody{input.Body}, http.StatusCreated, commentWire.admit)
 }
 
-func commentPath(input contractwire.CommentInput, kind string) (string, error) {
+func commentPath(input contractwire.CommentInput, collection commentCollection) (string, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
 		return "", err
 	}
 	if input.CommentID <= 0 {
-		return "", refused("invalid_input", "a positive comment ID is required")
+		return "", invalidInput("a positive comment ID is required")
 	}
-	return fmt.Sprintf("%s/%s/comments/%d", repository.apiPath(), kind, input.CommentID), nil
+	return fmt.Sprintf("%s/%s/comments/%d", repository.apiPath(), collection, input.CommentID), nil
 }
 
 func (c *connector) updateComment(ctx context.Context, input contractwire.UpdateCommentInput) (contractwire.Comment, error) {
-	path, err := commentPath(input.CommentInput, "issues")
+	path, err := commentPath(input.CommentInput, issueComments)
 	if err != nil {
 		return contractwire.Comment{}, err
 	}
 	if !textPresent(input.Body) {
-		return contractwire.Comment{}, refused("invalid_input", "comment body must be nonblank")
+		return contractwire.Comment{}, invalidInput("comment body must be nonblank")
 	}
 	return writeValue(ctx, c, http.MethodPatch, path, commentBody{input.Body}, http.StatusOK, func(wire commentWire) (contractwire.Comment, error) {
 		if wire.ID != input.CommentID {
@@ -53,15 +62,15 @@ func (c *connector) updateComment(ctx context.Context, input contractwire.Update
 }
 
 func (c *connector) deleteComment(ctx context.Context, input contractwire.CommentInput) (contractwire.DeletedComment, error) {
-	return c.deleteCommentKind(ctx, input, "issues")
+	return c.deleteCommentIn(ctx, input, issueComments)
 }
 
 func (c *connector) deleteReviewComment(ctx context.Context, input contractwire.CommentInput) (contractwire.DeletedComment, error) {
-	return c.deleteCommentKind(ctx, input, "pulls")
+	return c.deleteCommentIn(ctx, input, reviewComments)
 }
 
-func (c *connector) deleteCommentKind(ctx context.Context, input contractwire.CommentInput, kind string) (contractwire.DeletedComment, error) {
-	path, err := commentPath(input, kind)
+func (c *connector) deleteCommentIn(ctx context.Context, input contractwire.CommentInput, collection commentCollection) (contractwire.DeletedComment, error) {
+	path, err := commentPath(input, collection)
 	if err != nil {
 		return contractwire.DeletedComment{}, err
 	}
@@ -76,13 +85,13 @@ func inlineComment(input contractwire.InlineComment) (inlineCommentWire, error) 
 		return inlineCommentWire{}, err
 	}
 	if !textPresent(input.Body) || input.Line <= 0 || input.Side != contractwire.Left && input.Side != contractwire.Right {
-		return inlineCommentWire{}, refused("invalid_input", "inline comment requires a nonblank body and positive line with LEFT or RIGHT side")
+		return inlineCommentWire{}, invalidInput("inline comment requires a nonblank body and positive line with LEFT or RIGHT side")
 	}
 	if (input.StartLine == nil) != (input.StartSide == nil) {
-		return inlineCommentWire{}, refused("invalid_input", "a comment range requires both startLine and startSide")
+		return inlineCommentWire{}, invalidInput("a comment range requires both startLine and startSide")
 	}
 	if input.StartLine != nil && (*input.StartLine <= 0 || *input.StartSide != contractwire.Left && *input.StartSide != contractwire.Right || *input.StartSide == input.Side && *input.StartLine >= input.Line) {
-		return inlineCommentWire{}, refused("invalid_input", "inline comment range is invalid")
+		return inlineCommentWire{}, invalidInput("inline comment range is invalid")
 	}
 	return inlineCommentWire{Path: input.Path, Body: input.Body, Line: input.Line, Side: input.Side, StartLine: input.StartLine, StartSide: input.StartSide}, nil
 }
@@ -102,7 +111,7 @@ func (c *connector) createReviewComment(ctx context.Context, input contractwire.
 		return contractwire.ReviewComment{}, err
 	}
 	if !commitSHA.MatchString(string(input.CommitID)) {
-		return contractwire.ReviewComment{}, refused("invalid_input", "an exact inspected commit SHA is required")
+		return contractwire.ReviewComment{}, invalidInput("an exact inspected commit SHA is required")
 	}
 	location, err := inlineComment(input.Comment)
 	if err != nil {
@@ -126,7 +135,7 @@ func (c *connector) replyReviewComment(ctx context.Context, input contractwire.R
 		return contractwire.ReviewComment{}, err
 	}
 	if input.CommentID <= 0 || !textPresent(input.Body) {
-		return contractwire.ReviewComment{}, refused("invalid_input", "a positive parent comment ID and nonblank reply body are required")
+		return contractwire.ReviewComment{}, invalidInput("a positive parent comment ID and nonblank reply body are required")
 	}
 	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/pulls/%d/comments/%d/replies", repository.apiPath(), input.Number, input.CommentID), commentBody{input.Body}, http.StatusCreated, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
 		if wire.InReplyTo == nil || *wire.InReplyTo != input.CommentID {
@@ -137,12 +146,12 @@ func (c *connector) replyReviewComment(ctx context.Context, input contractwire.R
 }
 
 func (c *connector) updateReviewComment(ctx context.Context, input contractwire.UpdateCommentInput) (contractwire.ReviewComment, error) {
-	path, err := commentPath(input.CommentInput, "pulls")
+	path, err := commentPath(input.CommentInput, reviewComments)
 	if err != nil {
 		return contractwire.ReviewComment{}, err
 	}
 	if !textPresent(input.Body) {
-		return contractwire.ReviewComment{}, refused("invalid_input", "comment body must be nonblank")
+		return contractwire.ReviewComment{}, invalidInput("comment body must be nonblank")
 	}
 	return writeValue(ctx, c, http.MethodPatch, path, commentBody{input.Body}, http.StatusOK, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
 		if wire.ID != input.CommentID {

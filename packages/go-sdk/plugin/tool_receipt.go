@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -35,6 +36,28 @@ func NewToolReceipt(output tool.Output, failed bool) (ToolReceipt, error) {
 		return ToolReceipt{}, err
 	}
 	return ToolReceipt{Result: &ToolResult{Output: output.Clone(), IsError: failed}}, nil
+}
+
+// ToolReceiptFrom projects one decoded stored reply. A reply failure that
+// classify turns into a Tool failure becomes a failed receipt; any other
+// failure stays an error, and a result becomes its JSON output.
+func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (ToolReceipt, error) {
+	if err != nil {
+		failure, known := tool.ClassifyFailure(classify(err))
+		if !known {
+			return ToolReceipt{}, err
+		}
+		return NewToolReceipt(failure.Output(), true)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		return ToolReceipt{}, err
+	}
+	output, err := tool.NewJSONOutput(encoded)
+	if err != nil {
+		return ToolReceipt{}, err
+	}
+	return NewToolReceipt(output, false)
 }
 
 // ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.

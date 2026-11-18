@@ -29,7 +29,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 	})
 	endpoint := host.Endpoint()
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	created := endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{}, options)
 	if created.Failure != nil {
 		t.Fatal(created.Failure)

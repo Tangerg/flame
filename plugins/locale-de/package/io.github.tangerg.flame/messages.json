@@ -918,5 +918,9 @@
   "file.loadMore": "Weitere Dateien laden",
   "message.image.fit": "Bild einpassen",
   "chat.conversation": "Unterhaltung",
-  "message.mermaid.pan": "Diagramm verschieben"
+  "message.mermaid.pan": "Diagramm verschieben",
+  "diff.unmodifiedLines": "{count, plural, one {# unveränderte Zeile} other {# unveränderte Zeilen}}",
+  "diff.unknownUnmodifiedLines": "Unveränderter Kontext ist in diesem Patch nicht enthalten.",
+  "diff.expandAll": "Den gesamten verfügbaren Kontext aufklappen",
+  "diff.noNewline": "Kein Zeilenumbruch am Dateiende"
 }

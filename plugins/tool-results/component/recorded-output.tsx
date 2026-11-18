@@ -1,15 +1,5 @@
-import {
-  useLayoutEffect,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
-import { ArrowDownToLine, Search, X } from "@flame/icons/react";
+import { useLayoutEffect, useCallback, useMemo, useRef, useState } from "react";
+import { ArrowDownToLine, Search } from "@flame/icons/react";
 import {
   ReadingList,
   type ReadingListHandle,
@@ -23,140 +13,35 @@ import {
   readerLineProps,
   readerSourceProps,
   selectAllInReader,
-  isImeKey,
-  SearchField,
-  type CodeActionLabels,
 } from "@flame/ui";
-import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
+import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
+import {
+  containsQuery,
+  enterFind,
+  findBar,
+  FindField,
+  isFindShortcut,
+} from "./find";
+import { frameInset, resultActions } from "./frame";
 
 const TOOL_OUTPUT_QUOTE_SOURCE = quoteSourceProps({ kind: "tool-output" });
 
 const PREVIEW_LINES = 9;
-export const frameInset = "calc(var(--spacing) * 3)";
 
-export const findBar: CSSProperties = {
-  display: "flex",
-  minWidth: 0,
-  paddingInline: `${frameInset} calc(var(--spacing) * 1.5)`,
-  paddingBlockEnd: "var(--layout-label-gap)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "var(--fs-ui-sm)",
-  lineHeight: "var(--leading-body)",
-};
+// Find exists only inside the expanded reader, and its query lives only while
+// Find is open; one closed view keeps collapse and close from leaving either.
+type OutputView =
+  | { mode: "preview" }
+  | { mode: "reading" }
+  | { mode: "finding"; query: string; match: number };
 
-export function resultActions(t: Translate, copy: string): CodeActionLabels {
-  return {
-    copy,
-    wrap: t("action.wrap"),
-    unwrap: t("action.unwrap"),
-  };
-}
+const PREVIEW: OutputView = { mode: "preview" };
+const READING: OutputView = { mode: "reading" };
+const FINDING: OutputView = { mode: "finding", query: "", match: 0 };
 
-export function isFindShortcut(event: KeyboardEvent) {
-  return (
-    !event.defaultPrevented &&
-    !isImeKey(event.nativeEvent) &&
-    (event.metaKey || event.ctrlKey) &&
-    event.key.toLowerCase() === "f"
-  );
-}
-
-// Repeating Find on the already-focused field fires no focus-in, so every
-// explicit entry also asks the containing scroller to reveal the field.
-export function enterFind(field: HTMLElement | null) {
-  if (!field) return;
-  field.focus({ preventScroll: true });
-  field.scrollIntoView({
-    block: "nearest",
-    inline: "nearest",
-    behavior: "instant",
-  });
-}
-
-export function FindField({
-  t,
-  label,
-  fieldLabel,
-  value,
-  fieldRef,
-  status,
-  onChange,
-  onClose,
-  onEnter,
-}: {
-  t: Translate;
-  label: string;
-  fieldLabel: string;
-  value: string;
-  fieldRef: RefObject<HTMLInputElement | null>;
-  status?: ReactNode;
-  onChange: (value: string) => void;
-  onClose: () => void;
-  onEnter?: (backward: boolean) => void;
-}) {
-  return (
-    // Find is a bounded task: Escape closes it even over a query, so the
-    // close runs in capture before the field's own clear-on-Escape.
-    <div
-      role="search"
-      aria-label={label}
-      onKeyDownCapture={(event) => {
-        if (
-          event.key !== "Escape" ||
-          event.defaultPrevented ||
-          isImeKey(event.nativeEvent)
-        )
-          return;
-        event.preventDefault();
-        onClose();
-      }}
-      onKeyDown={(event) => {
-        if (!isFindShortcut(event)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        enterFind(fieldRef.current);
-      }}
-      style={{
-        display: "flex",
-        flex: "1 1 14rem",
-        alignItems: "center",
-        gap: "var(--layout-control-gap)",
-        minWidth: 0,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <SearchField
-          ref={fieldRef}
-          size="sm"
-          aria-label={fieldLabel}
-          placeholder={fieldLabel}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onClear={() => onChange("")}
-          clearLabel={t("find.clear")}
-          onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              onEnter &&
-              !isImeKey(event.nativeEvent)
-            ) {
-              event.preventDefault();
-              onEnter(event.shiftKey);
-            }
-          }}
-        />
-      </div>
-      {status}
-      <IconButton
-        icon={X}
-        size="xs"
-        quiet
-        aria-label={t("find.close")}
-        onClick={onClose}
-      />
-    </div>
-  );
+function openFind(view: OutputView): OutputView {
+  return view.mode === "finding" ? view : FINDING;
 }
 
 export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
@@ -167,9 +52,10 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   );
   const lineStyles = useMemo(() => ansiLineStyles(text), [text]);
   const source = useMemo(() => ansiText(text), [text]);
-  const [expanded, setExpanded] = useState(false);
-  const [finding, setFinding] = useState(false);
-  const [find, setFind] = useState({ query: "", match: 0 });
+  const [view, setView] = useState<OutputView>(PREVIEW);
+  const expanded = view.mode !== "preview";
+  const finding = view.mode === "finding";
+  const query = finding ? view.query : "";
   const [atEnd, setAtEnd] = useState(true);
   const reader = useRef<ReadingListHandle>(null);
   const viewport = useRef<HTMLDivElement>(null);
@@ -179,20 +65,17 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   );
   const matches = useMemo(
     () =>
-      !find.query
+      !query
         ? []
         : lines.flatMap((line, index) =>
-            ansiText(line)
-              .toLocaleLowerCase()
-              .includes(find.query.toLocaleLowerCase())
-              ? [index]
-              : [],
+            containsQuery(ansiText(line), query) ? [index] : [],
           ),
-    [lines, find.query],
+    [lines, query],
   );
-  const selected = matches.length
-    ? matches[find.match % matches.length]
-    : undefined;
+  const selected =
+    finding && matches.length
+      ? matches[view.match % matches.length]
+      : undefined;
   useLayoutEffect(() => {
     if (selected !== undefined)
       void reader.current?.scrollToKey({
@@ -200,7 +83,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         animated: false,
         viewPosition: 0.5,
       });
-  }, [find, selected]);
+  }, [view, selected]);
   useLayoutEffect(() => {
     const intent = expansion.current;
     if (
@@ -217,8 +100,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
     if (finding) enterFind(search.current);
   }, [finding]);
   const closeFind = () => {
-    setFinding(false);
-    setFind({ query: "", match: 0 });
+    setView(READING);
     viewport.current?.focus({ preventScroll: true });
   };
   const previewStart = Math.max(0, lines.length - PREVIEW_LINES);
@@ -261,15 +143,13 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
               if (expanded) {
                 event.currentTarget.focus({ preventScroll: true });
                 expansion.current = null;
-                setExpanded(false);
-                setFinding(false);
-                setFind({ query: "", match: 0 });
+                setView(PREVIEW);
               } else {
                 expansion.current = {
                   origin: event.currentTarget,
                   source: text,
                 };
-                setExpanded(true);
+                setView(READING);
               }
             }}
           >
@@ -299,40 +179,45 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             icon={Search}
             size="xs"
             aria-label={t("find.open")}
-            onClick={() => setFinding(true)}
+            onClick={() => setView(openFind)}
           />
         )}
       </CodeCaption>
-      {finding && (
+      {view.mode === "finding" && (
         <div data-slot="output-controls" style={findBar}>
           <FindField
             t={t}
             label={t("output.search")}
             fieldLabel={t("output.field")}
-            value={find.query}
+            value={view.query}
             fieldRef={search}
             status={
-              find.query && (
+              view.query && (
                 <span role="status">
                   {matches.length
                     ? t("output.matchCount", {
-                        current: (find.match % matches.length) + 1,
+                        current: (view.match % matches.length) + 1,
                         total: matches.length,
                       })
                     : t("output.noMatches")}
                 </span>
               )
             }
-            onChange={(query) => setFind({ query, match: 0 })}
+            onChange={(query) => setView({ mode: "finding", query, match: 0 })}
             onClose={closeFind}
             onEnter={(backward) => {
               if (matches.length)
-                setFind(({ query, match }) => ({
-                  query,
-                  match:
-                    (match + (backward ? matches.length - 1 : 1)) %
-                    matches.length,
-                }));
+                setView((current) =>
+                  current.mode === "finding"
+                    ? {
+                        ...current,
+                        match:
+                          (current.match +
+                            (backward ? matches.length - 1 : 1)) %
+                          matches.length,
+                      }
+                    : current,
+                );
             }}
           />
         </div>
@@ -349,7 +234,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           if (expanded && isFindShortcut(event)) {
             event.preventDefault();
             event.stopPropagation();
-            setFinding(true);
+            setView(openFind);
             enterFind(search.current);
           }
         }}

@@ -84,7 +84,7 @@ func (r *poMCPRuntime) close() {
 
 func (r *poMCPRuntime) must(method delivery.Name, input any, key string) any {
 	r.t.Helper()
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key}
 	result := r.endpoint.Invoke(r.t.Context(), method, input, options)
 	if result.Failure != nil {
 		r.t.Fatalf("%s: %v (%v)", method, result.Failure, errors.Unwrap(result.Failure))
@@ -325,7 +325,6 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t 
 	if slices.Contains(names, "reviews_record") {
 		t.Fatalf("ambiguous bare name remained callable: %s", catalog)
 	}
-
 }
 
 func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {

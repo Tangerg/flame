@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"net/url"
 	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
@@ -89,17 +90,14 @@ func (c *connector) listPulls(ctx context.Context, input contractwire.PullListIn
 	if err != nil {
 		return contractwire.PullPage{}, err
 	}
-	parameters := pagination(input.Page, input.Limit)
-	parameters.Set("state", string(input.State))
-	parameters.Set("sort", "updated")
-	parameters.Set("direction", "desc")
+	filters := url.Values{"state": {string(input.State)}, "sort": {"updated"}, "direction": {"desc"}}
 	if input.Base != nil {
-		parameters.Set("base", *input.Base)
+		filters.Set("base", *input.Base)
 	}
 	if input.Head != nil {
-		parameters.Set("head", *input.Head)
+		filters.Set("head", *input.Head)
 	}
-	page, err := readPage(ctx, c, repository.apiPath()+"/pulls", parameters, input.Page, input.Limit, func(wire pullWire) (contractwire.PullRequest, error) { return wire.admit(repository) })
+	page, err := readPage(ctx, c, repository.apiPath()+"/pulls", filters, input.Page, input.Limit, func(wire pullWire) (contractwire.PullRequest, error) { return wire.admit(repository) })
 	return contractwire.PullPage{PullRequests: page.rows, NextPage: page.next}, err
 }
 
@@ -130,7 +128,7 @@ func (c *connector) listPullFiles(ctx context.Context, input contractwire.Thread
 		return contractwire.FilePage{}, refused("invalid_query", "pull request files are limited to the first 3000 entries")
 	}
 	path := repository.apiPath() + "/pulls/" + strconv.FormatInt(input.Number, 10) + "/files"
-	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, func(wire struct {
+	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, func(wire struct {
 		Path         string  `json:"filename"`
 		PreviousPath *string `json:"previous_filename"`
 		SHA          string  `json:"sha"`

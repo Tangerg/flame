@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -200,7 +201,7 @@ func (r *reducer) approvalInterrupt(prompt ApprovalPrompt) (transcript.Item, tra
 }
 
 func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript.Item, bool, error) {
-	arguments, err := parseToolArguments(prompt.Arguments)
+	arguments, err := tool.ParseArguments(prompt.Arguments)
 	if err != nil {
 		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.PublishedName(prompt.QualifiedName), err)
 	}

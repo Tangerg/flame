@@ -72,7 +72,7 @@ func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, 
 	return endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), delivery.RunsCancel, protocol.CancelRunRequest{
 		RunID:  "run_crash",
 		Reason: "once",
-	}, delivery.Options{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
+	}, protocol.CallMetadata{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
 }
 
 func TestCommandCrashHelper(t *testing.T) {

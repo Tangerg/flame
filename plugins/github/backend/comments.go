@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net/url"
 	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
@@ -32,7 +33,7 @@ func (c *connector) listComments(ctx context.Context, input contractwire.ThreadI
 		return contractwire.CommentPage{}, err
 	}
 	path := repository.apiPath() + "/issues/" + strconv.FormatInt(input.Number, 10) + "/comments"
-	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, commentWire.admit)
+	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, commentWire.admit)
 	return contractwire.CommentPage{Comments: page.rows, NextPage: page.next}, err
 }
 
@@ -59,7 +60,7 @@ func (c *connector) listReviews(ctx context.Context, input contractwire.ThreadIn
 		return contractwire.ReviewPage{}, err
 	}
 	path := repository.apiPath() + "/pulls/" + strconv.FormatInt(input.Number, 10) + "/reviews"
-	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, reviewWire.admit)
+	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, reviewWire.admit)
 	return contractwire.ReviewPage{Reviews: page.rows, NextPage: page.next}, err
 }
 
@@ -95,9 +96,7 @@ func (c *connector) listReviewComments(ctx context.Context, input contractwire.T
 		return contractwire.ReviewCommentPage{}, err
 	}
 	path := repository.apiPath() + "/pulls/" + strconv.FormatInt(input.Number, 10) + "/comments"
-	parameters := pagination(input.Page, input.Limit)
-	parameters.Set("sort", "created")
-	parameters.Set("direction", "asc")
-	page, err := readPage(ctx, c, path, parameters, input.Page, input.Limit, reviewCommentWire.admit)
+	filters := url.Values{"sort": {"created"}, "direction": {"asc"}}
+	page, err := readPage(ctx, c, path, filters, input.Page, input.Limit, reviewCommentWire.admit)
 	return contractwire.ReviewCommentPage{Comments: page.rows, NextPage: page.next}, err
 }

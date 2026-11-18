@@ -24,7 +24,7 @@ type promptView struct {
 	busy              bool
 	queued            int
 	transcriptFocused bool
-	selection         transcriptSelection
+	selection         *transcriptSelection
 	transcriptKeys    *keymap.Map
 	compact           bool
 }
@@ -117,7 +117,7 @@ func (p *promptView) SetTranscriptFocused(focused bool) {
 	p.refreshHelp()
 }
 
-func (p *promptView) SetTranscriptSelection(selection transcriptSelection) {
+func (p *promptView) SetTranscriptSelection(selection *transcriptSelection) {
 	p.selection = selection
 	p.refreshHelp()
 }
@@ -145,19 +145,18 @@ func (p *promptView) refreshHelp() {
 
 func (p *promptView) showTranscriptHelp() {
 	p.help.Keys = p.transcriptKeys
-	if !p.selection.Present {
+	if p.selection == nil {
 		p.help.Show = []keymap.Action{transcriptPrompt}
 		return
 	}
 	p.help.Show = []keymap.Action{base.SelectPrev, base.SelectNext, transcriptPrompt}
-	if p.selection.Expandable {
-		action := base.Expand
-		if p.selection.Expanded {
-			action = base.Collapse
-		}
-		p.help.Show = append(p.help.Show, action, toggleDetails)
+	switch p.selection.disclosure {
+	case disclosureCollapsed:
+		p.help.Show = append(p.help.Show, base.Expand, toggleDetails)
+	case disclosureExpanded:
+		p.help.Show = append(p.help.Show, base.Collapse, toggleDetails)
 	}
-	if p.selection.Readable {
+	if p.selection.readable {
 		p.help.Show = append(p.help.Show, openReader)
 	}
 	p.help.Show = append(p.help.Show, base.Copy)

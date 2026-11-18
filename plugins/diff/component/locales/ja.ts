@@ -58,7 +58,6 @@ export const ja: Record<string, string> = {
   "file.status.renamed": "名前変更",
   "file.status.untracked": "未追跡",
   "reader.region": "{{path}} のスクロール可能な diff",
-  "reader.loading": "差分を読み込み中…",
   "details.title": "比較の詳細",
   "details.emptyTree":
     "まだコミットがありません。変更は空のツリーと比較されます。",
@@ -70,11 +69,6 @@ export const ja: Record<string, string> = {
   "baseline.label": "ベースライン：{{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "マージベース",
-  "reader.unmodifiedLines": "未変更の {count} 行",
-  "reader.unknownUnmodifiedLines":
-    "このパッチに未変更のコンテキストは含まれていません。",
-  "reader.expandAll": "利用可能なコンテキストをすべて展開",
-  "reader.noNewline": "ファイル末尾に改行がありません",
   "budget.empty": "今回の読み取り上限では完全なファイルを含められません。",
   "patch.accepted": "読み取ったパッチ",
 };

@@ -329,7 +329,6 @@ func (o OpeningCommit) Actor() (operation.Actor, bool) {
 
 func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	if o.commandAcceptance == nil {
-
 		return CommandAcceptance{}, false
 	}
 	return *o.commandAcceptance, true

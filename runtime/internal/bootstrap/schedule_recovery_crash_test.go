@@ -35,7 +35,6 @@ func scheduleCrashModel(t *testing.T, home string) chat.Model {
 		for _, message := range request.Messages {
 			for _, part := range message.Parts {
 				if part.ToolResult != nil && part.ToolResult.Name == name {
-
 					result, err := json.Marshal(part.ToolResult.Output.Details)
 					if err != nil {
 						return nil, err
@@ -171,7 +170,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		t.Fatal("original result was not withheld")
 	}
 	receipt, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-	if err != nil || !receipt.Found {
+	if err != nil || receipt.Use != runs.CommandKeyAccepted {
 		t.Fatalf("original receipt: %+v,%v", receipt, err)
 	}
 	segmentID := receipt.Acceptance.SegmentID
@@ -230,8 +229,8 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 		t.Fatalf("original execution ownership did not recover: %v", err)
 	}
 	receipt, err := cfg.stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-	if err != nil || !receipt.Found {
-		t.Fatalf("original accepted command: %t, %v", receipt.Found, err)
+	if err != nil || receipt.Use != runs.CommandKeyAccepted {
+		t.Fatalf("original accepted command: %t, %v", receipt.Use == runs.CommandKeyAccepted, err)
 	}
 	checkpoint, found, err := cfg.stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), receipt.Acceptance.SessionID)
 	if err != nil || !found {
@@ -250,7 +249,7 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 
 func scheduleResolutionCommitted(ctx context.Context, stores *persistence.Bundle) (bool, error) {
 	receipt, err := stores.CommandAcceptances.Lookup(ctx, scheduleCrashKey)
-	if err != nil || !receipt.Found {
+	if err != nil || receipt.Use != runs.CommandKeyAccepted {
 		return false, err
 	}
 	items, err := stores.Transcript.List(ctx, receipt.Acceptance.SessionID)

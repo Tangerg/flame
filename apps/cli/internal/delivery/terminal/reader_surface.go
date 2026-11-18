@@ -166,7 +166,7 @@ func (r *readerSurface) showing(query *readerQuery) bool {
 // update replaces the document query opened, keeping the reader's place.
 func (r *readerSurface) update(query *readerQuery, document readerDocument) {
 	if r.showing(query) {
-		r.pane.replace(document, true, r.pane.scroll.FollowingEnd())
+		r.pane.replace(document, r.pane.placementFor(true))
 	}
 }
 

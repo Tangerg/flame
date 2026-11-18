@@ -111,7 +111,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 		}
 	})
 	endpoint := host.Endpoint()
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	must := func(method delivery.Name, input any, key string) any {
 		t.Helper()
 		attempt := options

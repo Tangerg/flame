@@ -34,7 +34,7 @@ type Result struct {
 
 // Dispatch validates the envelope, decodes its typed parameters and delegates
 // the operation itself to the shared endpoint.
-func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options delivery.Options) Result {
+func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options protocol.CallMetadata) Result {
 	request, ok := message.(*jsonrpc.Request)
 	if !ok || request == nil {
 		return responseError(jsonrpc.ID{}, badEnvelope("expected a JSON-RPC request"))

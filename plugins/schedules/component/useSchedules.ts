@@ -37,6 +37,7 @@ import {
   type Draft,
   type Mutation,
   type Command,
+  type CommandState,
   type Notice,
   type Read,
   type Edit,
@@ -99,8 +100,7 @@ export function useSchedules(context: ComponentContext) {
         : searchElement.current,
     [],
   );
-  const [command, setCommand] = useState<Command>();
-  const pending = useRef<Command>(undefined);
+  const [command, setCommand] = useState<CommandState>();
   const accepted = useRef<{ page: Page; history: string[] }>(undefined);
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
@@ -237,7 +237,6 @@ export function useSchedules(context: ComponentContext) {
   async function observe(captured: Command) {
     try {
       const output = await captured.promise;
-      pending.current = undefined;
       if (!context.signal.aborted) {
         if (edit?.basis || deleting) taskOpener.current = searchElement.current;
         setCommand(undefined);
@@ -253,15 +252,12 @@ export function useSchedules(context: ComponentContext) {
     } catch (error) {
       if (context.signal.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
-        const uncertain = {
-          ...captured,
-          uncertain: true,
+        setCommand({
+          phase: "uncertain",
+          command: captured,
           error: failure(error),
-        };
-        pending.current = uncertain;
-        setCommand(uncertain);
+        });
       } else {
-        pending.current = undefined;
         setCommand(undefined);
         setNotice(
           error instanceof OperationFailure && error.code === "revision"
@@ -281,16 +277,14 @@ export function useSchedules(context: ComponentContext) {
     input: MethodInputs[K],
     label: string,
   ) {
-    if (pending.current || context.signal.aborted) return;
+    if (command || context.signal.aborted) return;
     try {
       const captured = {
         method,
         promise: operations.command(method, input),
         label,
-        uncertain: false,
       };
-      pending.current = captured;
-      setCommand(captured);
+      setCommand({ phase: "submitting", command: captured });
       setNotice(undefined);
       void observe(captured);
     } catch (error) {
@@ -298,14 +292,12 @@ export function useSchedules(context: ComponentContext) {
     }
   }
   function reconcile() {
-    const original = pending.current;
-    if (!original?.uncertain || context.signal.aborted) return;
+    if (command?.phase !== "uncertain" || context.signal.aborted) return;
+    const original = command.command;
     try {
       const retry = {
         ...original,
         promise: original.promise.retry({ signal: context.signal }),
-        uncertain: false,
-        error: undefined,
       };
       const feedback = feedbackElement.current;
       if (
@@ -315,16 +307,19 @@ export function useSchedules(context: ComponentContext) {
           feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
       )
         feedback.focus({ preventScroll: true });
-      pending.current = retry;
-      setCommand(retry);
+      setCommand({ phase: "submitting", command: retry });
       void observe(retry);
     } catch (error) {
       if (!context.signal.aborted)
-        setCommand({ ...original, error: failure(error) });
+        setCommand({
+          phase: "uncertain",
+          command: original,
+          error: failure(error),
+        });
     }
   }
   function add(opener: HTMLElement, template?: (typeof templates)[number]) {
-    if (pending.current) return;
+    if (command) return;
     taskOpener.current = opener;
     setNotice(undefined);
     setEdit({
@@ -380,7 +375,7 @@ export function useSchedules(context: ComponentContext) {
     else submit("flame.schedules/create.v1", draft, t("command.create"));
   }
   function cancelTask() {
-    if (pending.current) return;
+    if (command) return;
     // Base UI resolves the target before sibling buttons are re-enabled.
     // Catalog reads, rather than the retiring editor, can keep them disabled.
     if ((edit?.basis || deleting) && (read.loading || read.error))

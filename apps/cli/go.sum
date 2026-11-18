@@ -2,8 +2,8 @@ codeberg.org/go-fonts/dejavu v0.4.0 h1:2yn58Vkh4CFK3ipacWUAIE3XVBGNa0y1bc95Bmfx9
 codeberg.org/go-fonts/dejavu v0.4.0/go.mod h1:abni088lmhQJvso2Lsb7azCKzwkfcnttl6tL1UTWKzg=
 codeberg.org/go-latex/latex v0.3.0 h1:LKTaDHFbEC2PH1sh0sYv6PZ1pzs/g2aoeV1HItWj/bg=
 codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZfQBj+Lk4=
-github.com/Tangerg/flame/packages/go-sdk v0.1.20-dev.20261117.ta7a9085b89f4 h1:pxODQOR3KJhDqhf3s7jKjiuZJIxGUo/A17qA14xtGKg=
-github.com/Tangerg/flame/packages/go-sdk v0.1.20-dev.20261117.ta7a9085b89f4/go.mod h1:Hilqzn6AGJzEb3l3/Lc+qXFcNIaSpHTl/P6p10O2G+4=
+github.com/Tangerg/flame/packages/go-sdk v0.1.21-dev.20261118.td9d514558f4c h1:cN3T7dc+xf3Q05aBUVfs/WSmDpQQhePLmjd3ZVkM8Pw=
+github.com/Tangerg/flame/packages/go-sdk v0.1.21-dev.20261118.td9d514558f4c/go.mod h1:Hilqzn6AGJzEb3l3/Lc+qXFcNIaSpHTl/P6p10O2G+4=
 github.com/Tangerg/flame/packages/local-runtime v0.1.6-dev.20261117.t12800f1dcd3b h1:du+kRD0xnYWEX27o6cN1tarP/aO8DnGUpei7yipMv4A=
 github.com/Tangerg/flame/packages/local-runtime v0.1.6-dev.20261117.t12800f1dcd3b/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/runtime v0.1.56-dev.20261117.t69a22872375b h1:GX40uMe3kEr0xTNLsVdI1lBT3/avAgcnlZScSSDDIbs=

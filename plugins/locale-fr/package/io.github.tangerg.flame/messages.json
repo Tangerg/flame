@@ -939,5 +939,9 @@
   "file.loadMore": "Charger plus de fichiers",
   "message.image.fit": "Ajuster l’image",
   "chat.conversation": "Conversation",
-  "message.mermaid.pan": "Déplacer le diagramme"
+  "message.mermaid.pan": "Déplacer le diagramme",
+  "diff.unmodifiedLines": "{count, plural, one {# ligne inchangée} other {# lignes inchangées}}",
+  "diff.unknownUnmodifiedLines": "Le contexte inchangé n’est pas inclus dans ce patch.",
+  "diff.expandAll": "Développer tout le contexte disponible",
+  "diff.noNewline": "Aucun saut de ligne en fin de fichier"
 }

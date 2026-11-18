@@ -144,14 +144,25 @@ var providers = mustProviderCatalog(
 	endpointProvider(providerAnthropicCompatible, anthropicMount, true, buildAnthropicModel),
 )
 
+// anthropicRequestFields are top-level Messages API fields Scope forwards verbatim.
+type anthropicRequestFields struct {
+	CacheControl anthropicCacheControl `json:"cache_control"`
+}
+
+type anthropicCacheControl struct {
+	Type string `json:"type"`
+}
+
+const anthropicEphemeralCache = "ephemeral"
+
 func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	if Provider(spec.connection.Provider) == providerAnthropic {
 		// Native Messages requires an explicit cache opt-in. A generic compatible
 		// endpoint makes no promise to implement this vendor extension. Use Scope's
 		// public request extension so request overrides retain their normal meaning.
 		defaults := chat.Options{Model: opts.Model}
-		if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, map[string]any{
-			"cache_control": map[string]any{"type": "ephemeral"},
+		if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, anthropicRequestFields{
+			CacheControl: anthropicCacheControl{Type: anthropicEphemeralCache},
 		}); err != nil {
 			return nil, err
 		}

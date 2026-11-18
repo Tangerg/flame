@@ -21,9 +21,11 @@ type workingDirectoryPicker interface {
 	ChooseWorkingDirectory() (string, error)
 }
 
-// The native picker owns the write destination; IPC callers supply only a basename and bytes.
+// The native picker owns the write destination; IPC callers supply only a
+// basename and bytes, whole or streamed.
 type fileSaver interface {
 	SaveFile(suggestedFilename string, contents []byte) (bool, error)
+	exportDestinationPicker
 }
 
 type pathRevealer interface {
@@ -257,11 +259,7 @@ func (d *DesktopHost) BeginFileSave(name string, size int) (string, error) {
 	if d.shell == nil {
 		return "", errShellUnbound
 	}
-	picker, ok := d.shell.files.(exportDestinationPicker)
-	if !ok {
-		return "", errors.New("streamed exports require a native destination picker")
-	}
-	return d.transfer.begin(name, size, picker)
+	return d.transfer.begin(name, size, d.shell.files)
 }
 func (d *DesktopHost) AppendFileSave(id string, offset int, encoded string) error {
 	return d.transfer.appendChunk(id, offset, encoded)

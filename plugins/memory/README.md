@@ -265,7 +265,8 @@ state. A read never confirms the command. Review and recovery controls share the
 shared removal witness; later search and draft choices retain focus. Each
 restoration retains its original Runtime, callable binding, signal, tracking owner
 and scope/workspace qualification. A retired source cannot target a successor
-catalog or form. Form restoration waits for the opener's committed availability;
+catalog or form; its in-flight command retires with it instead of blocking the
+successor. Form restoration waits for the opener's committed availability;
 record and recovery actions keep their own existing result destination.
 Pin/Unpin selection hands the closing menu to that result even when settlement
 finishes immediately. Its selection intent lasts only until popup close;

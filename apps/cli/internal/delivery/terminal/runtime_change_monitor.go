@@ -34,7 +34,7 @@ func (a *app) followRuntimeChanges() {
 			recovery:           runtimeRecoveryBackoff,
 			subscriptionLimits: a.runtimeChangeSubscriptionLimits(),
 			watchFiles:         a.runtimeSupports(protocol.FeatureFileWatch),
-			resources:          a.observedRuntimeResources(),
+			topics:             a.observedRuntimeTopics(),
 			applyFiles: func(changes []workspace.Change) error {
 				return a.tasks.deliver(ctx, func() {
 					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
@@ -82,43 +82,40 @@ type runtimeChangeMonitor struct {
 	source             changefeed.Source
 	recovery           retry.Backoff
 	watchFiles         bool
-	resources          runtimeResourceObservation
+	topics             []protocol.RuntimeTopic
 	applyFiles         func([]workspace.Change) error
 	applyEvent         func(changefeed.Event) error
 	applyResync        func([]protocol.RuntimeTopic) error
 	subscriptionLimits changefeed.SubscriptionLimits
 }
 
-type runtimeResourceObservation struct {
-	plan      bool
-	goals     bool
-	skills    bool
-	mcp       bool
-	plugins   bool
-	hooks     bool
-	models    bool
-	approvals bool
-}
-
-func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
-	return r.hooks
-}
-
-func (a *app) observedRuntimeResources() runtimeResourceObservation {
-	return runtimeResourceObservation{
-		plan:      a.runtimeSupports(protocol.FeaturePlan),
-		goals:     a.screens.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
-		skills:    a.screens.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
-		mcp:       a.screens.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
-		plugins:   a.screens.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
-		hooks:     a.screens.hooks != nil,
-		models:    true,
-		approvals: true,
+// observedRuntimeTopics lists the resource topics this terminal presents, in
+// subscription order. MCP changes also move the approval projection.
+func (a *app) observedRuntimeTopics() []protocol.RuntimeTopic {
+	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}
+	if a.runtimeSupports(protocol.FeaturePlan) {
+		topics = append(topics, protocol.TopicPlanChanged)
 	}
+	topics = append(topics, protocol.TopicInterruptsChanged)
+	if a.screens.goals != nil && a.runtimeSupports(protocol.FeatureGoals) {
+		topics = append(topics, protocol.TopicGoalsChanged)
+	}
+	if a.screens.skills != nil && a.runtimeSupports(protocol.FeatureSkills) {
+		topics = append(topics, protocol.TopicSkillsChanged)
+	}
+	topics = append(topics, protocol.TopicMCPChanged)
+	if a.screens.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins) {
+		topics = append(topics, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged)
+	}
+	if a.screens.hooks != nil {
+		topics = append(topics, protocol.TopicHooksChanged)
+	}
+	return append(topics, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged)
 }
 
 func (r runtimeChangeMonitor) observesWorkspace() bool {
-	return r.watchFiles && (r.repository != nil || r.resources.hasWorkspaceAuthoredResources())
+	// Hooks are authored in the workspace, so observing them watches its files.
+	return r.watchFiles && (r.repository != nil || slices.Contains(r.topics, protocol.TopicHooksChanged))
 }
 
 func (r runtimeChangeMonitor) run(ctx context.Context) error {
@@ -341,32 +338,7 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	if r.source == nil {
 		return nil
 	}
-	candidates := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}
-	if r.resources.plan {
-		candidates = append(candidates, protocol.TopicPlanChanged)
-	}
-	candidates = append(candidates, protocol.TopicInterruptsChanged)
-	if r.resources.goals {
-		candidates = append(candidates, protocol.TopicGoalsChanged)
-	}
-	if r.resources.skills {
-		candidates = append(candidates, protocol.TopicSkillsChanged)
-	}
-	if r.resources.mcp || r.resources.approvals {
-		candidates = append(candidates, protocol.TopicMCPChanged)
-	}
-	if r.resources.plugins {
-		candidates = append(candidates, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged)
-	}
-	if r.resources.hooks {
-		candidates = append(candidates, protocol.TopicHooksChanged)
-	}
-	if r.resources.models {
-		candidates = append(candidates, protocol.TopicModelsChanged)
-	}
-	if r.resources.approvals {
-		candidates = append(candidates, protocol.TopicApprovalsChanged)
-	}
+	candidates := slices.Clone(r.topics)
 	if r.observesWorkspace() {
 		candidates = append([]protocol.RuntimeTopic{protocol.TopicFilesChanged}, candidates...)
 	}

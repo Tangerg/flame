@@ -46,7 +46,11 @@ type Read = {
   accepted?: { result: HooksListResult; workspace: WorkspaceRef };
   error?: string;
 };
-type Command = { phase: "running" } | { phase: "unknown"; error: string };
+// One trust command at a time; an unknown settlement keeps its original
+// command until a check through the same idempotency key settles it.
+type Command =
+  | { phase: "running"; original: MutationPromise<void> }
+  | { phase: "unknown"; original: MutationPromise<void>; error: string };
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
 export function Hooks({ context }: { context: ComponentContext }) {
@@ -56,7 +60,6 @@ export function Hooks({ context }: { context: ComponentContext }) {
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [observationError, setObservationError] = useState<string>();
-  const pending = useRef<MutationPromise<void>>(undefined);
   const [command, setCommand] = useState<Command>();
   const [commandError, setCommandError] = useState<string>();
   const refresh = useCallback(async () => {
@@ -127,21 +130,19 @@ export function Hooks({ context }: { context: ComponentContext }) {
   }, [runtime, track, componentSignal, workspacePath, observationError]);
 
   async function observe(original: MutationPromise<void>, recover: boolean) {
-    setCommand({ phase: "running" });
+    setCommand({ phase: "running", original });
     try {
       await (recover
         ? context.track(() => original.retry({ signal: context.signal }))
         : original);
       if (context.signal.aborted) return;
-      pending.current = undefined;
       setCommand(undefined);
       await refresh();
     } catch (error) {
       if (context.signal.aborted) return;
       if (mutationSettlementIsUnknown(error))
-        setCommand({ phase: "unknown", error: failureText(error) });
+        setCommand({ phase: "unknown", original, error: failureText(error) });
       else {
-        pending.current = undefined;
         setCommand(undefined);
         setCommandError(failureText(error));
       }
@@ -149,13 +150,12 @@ export function Hooks({ context }: { context: ComponentContext }) {
   }
   function trust(trusted: boolean) {
     const root = read.accepted?.result.projectRoot;
-    if (!root || pending.current || context.signal.aborted) return;
+    if (!root || command || context.signal.aborted) return;
     setCommandError(undefined);
     try {
       const original = context.track(() =>
         context.runtime.hooks.setTrust(root, trusted),
       );
-      pending.current = original;
       void observe(original, false);
     } catch (error) {
       setCommandError(failureText(error));
@@ -200,11 +200,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
         <div role="alert">
           <RecordBody>{t("command.uncertain")}</RecordBody>
           <RecordBody>{command.error}</RecordBody>
-          <Button
-            onClick={() => {
-              if (pending.current) void observe(pending.current, true);
-            }}
-          >
+          <Button onClick={() => void observe(command.original, true)}>
             {t("command.reconcile")}
           </Button>
         </div>

@@ -1,7 +1,6 @@
 package runs
 
 import (
-	"context"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -41,25 +40,6 @@ func (r *runPublications) event(runID, segmentID string, reduced reduction) Even
 		RunID: runID, SegmentID: segmentID,
 		Timestamp: r.nowUTC(), Payload: reduced.Event,
 	}
-}
-
-func (r *runPublications) commitOpening(ctx context.Context, opening OpeningCommit) error {
-	return r.openings.CommitOpening(ctx, opening)
-}
-
-func (r *runPublications) commitEvent(ctx context.Context, commit EventCommit) error {
-	return r.events.CommitEvent(ctx, commit)
-}
-
-func (r *runPublications) commitTreeBarrier(
-	ctx context.Context,
-	barrier TreeBarrierCommit,
-) error {
-	return r.barriers.CommitTreeBarrier(ctx, barrier)
-}
-
-func (r *runPublications) nudge(cwd string, paths []string) {
-	r.workspace.Nudge(cwd, paths)
 }
 
 // The run lifecycle's invalidations for clients that are not following this run.

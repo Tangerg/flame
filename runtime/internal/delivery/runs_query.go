@@ -46,14 +46,14 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	if err != nil {
 		return nil, err
 	}
-	if record.OtherOperation || (record.Found && string(record.Acceptance.Operation) != string(in.Operation)) {
+	if record.Use == runs.CommandKeyForeign || (record.Use == runs.CommandKeyAccepted && string(record.Acceptance.Operation) != string(in.Operation)) {
 		return nil, protocol.ErrIdempotencyConflict
 	}
 	if in.Request != nil {
 		if in.Operation != protocol.RunCommandStart {
 			return nil, protocol.ErrInvalidParams
 		}
-		if record.Found {
+		if record.Use == runs.CommandKeyAccepted {
 			capabilities, _ := clientCapabilitiesFrom(ctx)
 			fingerprint, err := runCommandFingerprint(RunsStart, *in.Request, capabilities)
 			if err != nil {
@@ -65,14 +65,14 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 		}
 	}
 	response := presentRunAcceptance(record)
-	if !record.Found && in.Operation == protocol.RunCommandSteer {
+	if record.Use != runs.CommandKeyAccepted && in.Operation == protocol.RunCommandSteer {
 		response.CandidateUserItemID = runs.SteerItemID(in.Key)
 	}
 	return response, nil
 }
 
 func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcceptance {
-	if !record.Found {
+	if record.Use != runs.CommandKeyAccepted {
 		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
 	}
 	response := &protocol.RunAcceptance{

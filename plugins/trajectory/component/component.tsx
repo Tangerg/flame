@@ -279,41 +279,51 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   );
 }
 
+// A rename is edited, saved once, or held unconfirmed until a check through
+// its original idempotency key settles it.
+type Rename =
+  | { phase: "editing"; failure?: string }
+  | { phase: "saving" }
+  | { phase: "unknown"; original: MutationPromise<Session>; failure: string }
+  | { phase: "checking"; original: MutationPromise<Session> }
+  | { phase: "saved"; session: Session };
+
 export function RenameSession({ context }: { context: ComponentContext }) {
   const session = context.sessionTarget;
   if (!session) throw new Error("A captured Session action target is required");
   const t = useTranslator(catalogs, context.locale);
   const [title, setTitle] = useState(session.title);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string>();
-  const [unknown, setUnknown] = useState<MutationPromise<Session>>();
-  const [saved, setSaved] = useState<Session>();
-  const pending = useRef(false);
-  const observe = async (command: MutationPromise<Session>) => {
-    pending.current = true;
-    setBusy(true);
-    setFailure(undefined);
+  const [rename, setRename] = useState<Rename>({ phase: "editing" });
+  const busy = rename.phase === "saving" || rename.phase === "checking";
+  const unconfirmed = rename.phase === "unknown" || rename.phase === "checking";
+  const failure =
+    rename.phase === "editing" || rename.phase === "unknown"
+      ? rename.failure
+      : undefined;
+  const observe = async (
+    command: MutationPromise<Session>,
+    phase: "saving" | "checking",
+  ) => {
+    setRename(phase === "checking" ? { phase, original: command } : { phase });
     try {
-      const result = await command;
+      const session = await command;
       if (context.signal.aborted) return;
-      setSaved(result);
-      setUnknown(undefined);
+      setRename({ phase: "saved", session });
     } catch (error) {
       if (context.signal.aborted) return;
-      setFailure(failureText(error, String(error)));
-      setUnknown(mutationSettlementIsUnknown(error) ? command : undefined);
-    } finally {
-      pending.current = false;
-      if (!context.signal.aborted) setBusy(false);
+      const failure = failureText(error, String(error));
+      setRename(
+        mutationSettlementIsUnknown(error)
+          ? { phase: "unknown", original: command, failure }
+          : { phase: "editing", failure },
+      );
     }
   };
   return (
     <Form
       onSubmit={(event) => {
         event.preventDefault();
-        if (pending.current || unknown || saved || context.signal.aborted)
-          return;
-        context.signal.throwIfAborted();
+        if (rename.phase !== "editing" || context.signal.aborted) return;
         void observe(
           context.track(() =>
             context.runtime.sessions.update({
@@ -322,6 +332,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
               title,
             }),
           ),
+          "saving",
         );
       }}
     >
@@ -332,14 +343,14 @@ export function RenameSession({ context }: { context: ComponentContext }) {
             autoFocus
             value={title}
             pending={busy}
-            readOnly={Boolean(unknown) || Boolean(saved)}
+            readOnly={rename.phase !== "editing"}
             onChange={(event) => setTitle(event.target.value)}
           />
         </FormField>
         {failure && (
           <p role="alert">{t("rename.failure", { message: failure })}</p>
         )}
-        {unknown && (
+        {unconfirmed && (
           <>
             <p role="status">{t("rename.unconfirmed")}</p>
             <Button
@@ -347,8 +358,13 @@ export function RenameSession({ context }: { context: ComponentContext }) {
               pending={busy}
               aria-busy={busy || undefined}
               onClick={() => {
-                if (pending.current || context.signal.aborted) return;
-                void observe(context.track(() => unknown.retry()));
+                if (rename.phase !== "unknown" || context.signal.aborted)
+                  return;
+                const { original } = rename;
+                void observe(
+                  context.track(() => original.retry()),
+                  "checking",
+                );
               }}
             >
               {busy ? (
@@ -359,12 +375,12 @@ export function RenameSession({ context }: { context: ComponentContext }) {
             </Button>
           </>
         )}
-        {saved && (
+        {rename.phase === "saved" && (
           <p role="status">
             {t("rename.saved", {
-              id: saved.id,
-              revision: saved.revision,
-              title: saved.title || t("rename.untitled"),
+              id: rename.session.id,
+              revision: rename.session.revision,
+              title: rename.session.title || t("rename.untitled"),
             })}
           </p>
         )}
@@ -383,12 +399,10 @@ export function RenameSession({ context }: { context: ComponentContext }) {
           type="submit"
           pending={busy}
           focusableWhenDisabled
-          aria-busy={(busy && !unknown) || undefined}
-          disabled={
-            Boolean(unknown) || Boolean(saved) || context.signal.aborted
-          }
+          aria-busy={rename.phase === "saving" || undefined}
+          disabled={rename.phase !== "editing" || context.signal.aborted}
         >
-          {busy && !unknown ? (
+          {rename.phase === "saving" ? (
             <span role="status">{t("rename.saving")}</span>
           ) : (
             t("rename.save")

@@ -153,7 +153,6 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
 	plan, err := s.prepareCreate(ctx, in)
 	return applySessionCreation(ctx, plan, err)
-
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {

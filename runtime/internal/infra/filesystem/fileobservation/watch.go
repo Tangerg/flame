@@ -50,29 +50,17 @@ func Watch(targets []Target, notify func([]string), report func(error)) (Observa
 	if err != nil {
 		return nil, err
 	}
-	if len(canonical) == 0 {
-		return nopWatch{}, nil
-	}
-	roots, lifecycle, err := openObservation("observe files", canonical, func(candidate target) string {
+	return startObservation("observe files", canonical, func(candidate target) string {
 		return candidate.physicalBoundary
-	}, report)
-	if err != nil {
-		return nil, err
-	}
-	w := &watch{
-		observerLifecycle: lifecycle,
-		targets:           canonical,
-		notify:            notify,
-		fingerprints:      make([]fingerprint, len(canonical)),
-		roots:             roots,
-	}
-	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, errors.Join(lifecycle.abort(err), roots.Close())
-	}
-	lifecycle.start(func(accepted acceptance) error {
-		return w.reconcile(false, accepted)
+	}, report, func(lifecycle *observerLifecycle, roots *observationRoots) *watch {
+		return &watch{
+			observerLifecycle: lifecycle,
+			targets:           canonical,
+			notify:            notify,
+			fingerprints:      make([]fingerprint, len(canonical)),
+			roots:             roots,
+		}
 	})
-	return w, nil
 }
 
 type target struct {
@@ -83,29 +71,46 @@ type target struct {
 	maxEntries       int
 }
 
-// openObservation opens the roots a canonical target set needs and the
-// lifecycle that will drive it. Both watchers assemble this way, and both must
-// close the roots when the lifecycle refuses to start — the one failure path
-// that leaks a descriptor if it is written twice and one copy forgets.
-func openObservation[T any](
+// baselineWatch is a watcher whose first reconcile records the baseline that
+// later reconciles compare against.
+type baselineWatch interface {
+	Observation
+	reconcile(initial bool, accepted acceptance) error
+}
+
+// startObservation opens the roots a canonical target set needs, records the
+// watcher's baseline and only then starts its lifecycle. Every refusal closes
+// the roots: written once, no watcher can forget that descriptor.
+func startObservation[T any, W baselineWatch](
 	label string,
 	canonical []T,
 	boundary func(T) string,
 	report func(error),
-) (*observationRoots, *observerLifecycle, error) {
+	assemble func(*observerLifecycle, *observationRoots) W,
+) (Observation, error) {
+	if len(canonical) == 0 {
+		return nopWatch{}, nil
+	}
 	boundaries := make([]string, len(canonical))
 	for index, candidate := range canonical {
 		boundaries[index] = boundary(candidate)
 	}
 	roots, err := openObservationRoots(boundaries)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", label, err)
+		return nil, fmt.Errorf("%s: %w", label, err)
 	}
 	lifecycle, err := newObserverLifecycle(label, report)
 	if err != nil {
-		return nil, nil, errors.Join(err, roots.Close())
+		return nil, errors.Join(err, roots.Close())
 	}
-	return roots, lifecycle, nil
+	w := assemble(lifecycle, roots)
+	if err := w.reconcile(true, acceptance{}); err != nil {
+		return nil, errors.Join(lifecycle.abort(err), roots.Close())
+	}
+	lifecycle.start(func(accepted acceptance) error {
+		return w.reconcile(false, accepted)
+	})
+	return w, nil
 }
 
 // canonicalTargetSet maps each candidate through one, dropping repeats while

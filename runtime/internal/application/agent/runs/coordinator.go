@@ -398,7 +398,7 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 	// An opening may carry no item commits at all — a resumed segment that only
 	// delivers an approval has nothing to append. Its durable projection is the
 	// admission or resume above, which is what makes the Run exist.
-	commitOpening := c.publications.commitOpening
+	commitOpening := c.publications.openings.CommitOpening
 	if spec.CommitOpening != nil {
 		commitOpening = spec.CommitOpening
 	}

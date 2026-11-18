@@ -102,7 +102,7 @@ func (c *connector) listAnnotations(ctx context.Context, input contractwire.Chec
 		return contractwire.AnnotationPage{}, err
 	}
 	path := repository.apiPath() + "/check-runs/" + strconv.FormatInt(input.CheckRunID, 10) + "/annotations"
-	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, annotationWire.admit)
+	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, annotationWire.admit)
 	return contractwire.AnnotationPage{Annotations: page.rows, NextPage: page.next}, err
 }
 
@@ -129,6 +129,6 @@ func (c *connector) listStatuses(ctx context.Context, input contractwire.CommitI
 		return contractwire.StatusPage{}, err
 	}
 	path := repository.apiPath() + "/commits/" + url.PathEscape(input.Ref) + "/statuses"
-	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, statusWire.admit)
+	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, statusWire.admit)
 	return contractwire.StatusPage{Statuses: page.rows, NextPage: page.next}, err
 }

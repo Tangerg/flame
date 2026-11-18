@@ -91,26 +91,25 @@ export function ConnectionPane() {
   const defaultEndpoint = defaultRuntimeEndpoint();
   const service = useRuntimeServiceStatus();
   const [url, setUrl] = useState(initial);
-  const [token, setToken] = useState("");
-  const [tokenEdited, setTokenEdited] = useState(false);
+  // null keeps the stored token; a string, even empty, replaces it on apply.
+  const [tokenDraft, setTokenDraft] = useState<string | null>(null);
   const [error, setError] = useState<RuntimeEndpointRejection | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const tokenField = useRef<HTMLInputElement>(null);
 
   const trimmed = url.trim();
-  const dirty = trimmed !== initial.trim() || tokenEdited;
+  const dirty = trimmed !== initial.trim() || tokenDraft !== null;
   const isDefault = trimmed === defaultEndpoint;
 
   const apply = (): boolean => {
-    const result = applyRuntimeEndpoint(url, tokenEdited ? token : undefined);
+    const result = applyRuntimeEndpoint(url, tokenDraft ?? undefined);
     if (result.kind === "rejected") {
       setError(result.reason);
       return false;
     }
     setUrl(result.endpoint);
     setError(null);
-    setToken("");
-    setTokenEdited(false);
+    setTokenDraft(null);
     return true;
   };
 
@@ -121,23 +120,22 @@ export function ConnectionPane() {
       return;
     }
     setUrl(result.endpoint);
-    setToken("");
-    setTokenEdited(false);
+    setTokenDraft(null);
     setError(null);
   };
 
   const discardToken = () => {
-    setToken("");
-    setTokenEdited(false);
+    setTokenDraft(null);
     setError((current) => (current === "invalid_token" ? null : current));
     tokenField.current?.focus();
   };
 
-  const tokenState = tokenEdited
-    ? "settings.connection.tokenPending"
-    : hasRuntimeAccessToken()
-      ? "settings.connection.tokenSet"
-      : "settings.connection.tokenNotSet";
+  const tokenState =
+    tokenDraft !== null
+      ? "settings.connection.tokenPending"
+      : hasRuntimeAccessToken()
+        ? "settings.connection.tokenSet"
+        : "settings.connection.tokenNotSet";
 
   const refresh = async () => {
     setRefreshing(true);
@@ -196,10 +194,9 @@ export function ConnectionPane() {
               ]
                 .filter(Boolean)
                 .join(" ")}
-              value={token}
+              value={tokenDraft ?? ""}
               onChange={(event) => {
-                setToken(event.target.value);
-                setTokenEdited(true);
+                setTokenDraft(event.target.value);
               }}
               placeholder={t("settings.connection.tokenPlaceholder")}
               spellCheck={false}
@@ -233,11 +230,10 @@ export function ConnectionPane() {
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={!token && !hasRuntimeAccessToken()}
+                  disabled={!tokenDraft && !hasRuntimeAccessToken()}
                   focusableWhenDisabled
                   onClick={() => {
-                    setToken("");
-                    setTokenEdited(true);
+                    setTokenDraft("");
                   }}
                   styles={vocab.hold}
                 >
@@ -246,7 +242,7 @@ export function ConnectionPane() {
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={!tokenEdited}
+                  disabled={tokenDraft === null}
                   onClick={discardToken}
                   styles={vocab.hold}
                 >

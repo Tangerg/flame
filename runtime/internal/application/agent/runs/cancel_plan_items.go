@@ -15,7 +15,7 @@ func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *
 	if err := c.loadWaitingCancellationSpawningItem(ctx, plan); err != nil {
 		return err
 	}
-	itemsByID, err := pendingItems(ctx, c.items, plan.pending)
+	itemsByID, err := pendingItems(ctx, c.items, *plan.pending)
 	if err != nil {
 		return err
 	}
@@ -84,8 +84,7 @@ func (c *Cancellations) loadWaitingCancellationSpawningItem(
 	if err := validateWaitingCancellationSpawningItem(*plan, item); err != nil {
 		return err
 	}
-	plan.spawningItem = item
-	plan.hasSpawningItem = true
+	plan.spawningItem = &item
 	return nil
 }
 

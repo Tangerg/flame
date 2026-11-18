@@ -61,9 +61,9 @@ type Bundle struct {
 	ApprovalModes         *ModeStore
 	Goals                 *GoalStore
 	ApprovalRules         *ApprovalRuleStore
-	UtilityRole           *utilityRoleStore
+	UtilityRole           *RoleStore
 	Trust                 *trustStore
-	EmbeddingRole         *embeddingRoleStore
+	EmbeddingRole         *RoleStore
 	ToolResults           *ToolResultStore
 	Idempotency           *idempotencyStore
 	AcceptedContinuations *acceptedContinuationStore
@@ -150,9 +150,9 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ApprovalModes:         newModeStore(db),
 		Goals:                 newGoalStore(db),
 		ApprovalRules:         newApprovalRuleStore(db),
-		UtilityRole:           newUtilityRoleStore(db),
+		UtilityRole:           newRoleStore(db, "utility_role", "utility role"),
 		Trust:                 newTrustStore(db),
-		EmbeddingRole:         newEmbeddingRoleStore(db),
+		EmbeddingRole:         newRoleStore(db, "embedding_role", "embedding role"),
 		ToolResults:           newToolResultStore(db),
 		Idempotency:           newIdempotencyStore(db),
 		AcceptedContinuations: newAcceptedContinuationStore(db),

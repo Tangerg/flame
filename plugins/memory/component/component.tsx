@@ -46,12 +46,9 @@ export function Memory({ context }: { context: ComponentContext }) {
     observerSignal,
     load,
     beginEdit,
-    command,
-    observing,
     setSearch,
     clearFilters,
-    setEditorFeedback,
-    setRecordFeedback,
+    clearFeedback,
     setScope,
     searchElement,
     search,
@@ -164,11 +161,10 @@ export function Memory({ context }: { context: ComponentContext }) {
                 { value: "user", label: t("segment.user") },
               ]}
               onChange={(value) => {
-                if (edit || command.current || observing.current) return;
+                if (locked || edit) return;
                 setSearch("");
                 clearFilters();
-                setEditorFeedback(undefined);
-                setRecordFeedback(undefined);
+                clearFeedback();
                 setScope(value as Scope);
               }}
               disabled={locked || Boolean(edit)}

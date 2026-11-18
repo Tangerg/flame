@@ -33,7 +33,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command plu
 			return err
 		}
 		if err := validate(request); err != nil {
-			return &framecall.Refusal{Code: "invalid_input", Message: "model provider: invalid request"}
+			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "model provider: invalid request"}
 		}
 		return nil
 	})

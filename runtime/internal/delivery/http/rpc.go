@@ -95,7 +95,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemInvalidRequest, "method header does not match the RPC envelope", false)
 		return
 	}
-	options := delivery.Options{
+	options := protocol.CallMetadata{
 		IdempotencyKey:       r.Header.Get(headerIdempotencyKey),
 		IdempotencyNamespace: r.Header.Get(headerIdempotencyNamespace),
 		AfterEventID:         r.Header.Get(headerLastEventID),

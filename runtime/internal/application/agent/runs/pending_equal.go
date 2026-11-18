@@ -1,34 +1,26 @@
 package runs
 
-import (
-	"reflect"
-	"slices"
-)
+import "slices"
 
 // Equal reports whether two Pending values describe the same durable tree
-// hand-off. Empty collections have one logical value regardless of nil backing,
-// and timestamps compare by instant rather than location or monotonic metadata.
+// hand-off. Empty collections compare equal whatever their backing, and the
+// creation time compares by instant rather than location.
 func (p Pending) Equal(other Pending) bool {
-	return reflect.DeepEqual(canonicalPending(p), canonicalPending(other))
+	return p.RootRunID == other.RootRunID &&
+		p.ExecutorID == other.ExecutorID &&
+		p.CreatedAt.Equal(other.CreatedAt) &&
+		slices.EqualFunc(p.Interrupts, other.Interrupts, OpenInterrupt.Equal) &&
+		slices.Equal(p.Bindings, other.Bindings) &&
+		slices.EqualFunc(p.Continuations, other.Continuations, Continuation.Equal)
 }
 
-func canonicalPending(pending Pending) Pending {
-	pending.Interrupts = slices.Clone(pending.Interrupts)
-	pending.Bindings = slices.Clone(pending.Bindings)
-	pending.Continuations = slices.Clone(pending.Continuations)
-	pending.CreatedAt = pending.CreatedAt.UTC()
-	for index := range pending.Continuations {
-		pending.Continuations[index] = normalizeContinuationValue(pending.Continuations[index])
-	}
-	pending.Interrupts = nilIfEmpty(pending.Interrupts)
-	pending.Bindings = nilIfEmpty(pending.Bindings)
-	pending.Continuations = nilIfEmpty(pending.Continuations)
-	return pending
+func (c Continuation) Equal(other Continuation) bool {
+	return c.RunID == other.RunID && c.MemberID == other.MemberID && slices.Equal(c.DrainedTools, other.DrainedTools)
 }
 
-func nilIfEmpty[S ~[]E, E any](values S) S {
-	if len(values) == 0 {
-		return nil
+func (i OpenInterrupt) Equal(other OpenInterrupt) bool {
+	if i.ItemID != other.ItemID || (i.Approval == nil) != (other.Approval == nil) {
+		return false
 	}
-	return values
+	return i.Approval == nil || *i.Approval == *other.Approval
 }

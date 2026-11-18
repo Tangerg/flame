@@ -26,7 +26,7 @@ func (b *Backend) BindCapability(name string, contract *plugincontract.Capabilit
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published || b.closed {
+	if b.phase != backendRegistering {
 		return errors.New("plugin: published backend cannot change exports")
 	}
 	if _, exists := b.capabilities[name]; exists {

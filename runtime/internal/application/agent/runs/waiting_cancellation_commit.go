@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -495,7 +494,7 @@ func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() 
 	}
 	for index, expectedIndex := range survivingRequestIndexes {
 		if c.RemainingPending.Bindings[index] != c.ExpectedPending.Bindings[expectedIndex] ||
-			!sameInterruptValue(c.RemainingPending.Interrupts[index], c.ExpectedPending.Interrupts[expectedIndex]) {
+			!c.RemainingPending.Interrupts[index].Equal(c.ExpectedPending.Interrupts[expectedIndex]) {
 			return nil, fmt.Errorf("runs: waiting cancellation changed surviving input request[%d]", index)
 		}
 	}
@@ -514,7 +513,7 @@ func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 	c := w.commit
 	for _, actual := range c.RemainingPending.Continuations {
 		expected := w.continuationByRunID[actual.RunID]
-		if !sameContinuationValue(actual, expected) {
+		if !actual.Equal(expected) {
 			return fmt.Errorf("runs: waiting cancellation changed continuation for Run %q", actual.RunID)
 		}
 	}
@@ -545,22 +544,6 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		}
 	}
 	return nil
-}
-
-func sameContinuationValue(left, right Continuation) bool {
-	return reflect.DeepEqual(normalizeContinuationValue(left), normalizeContinuationValue(right))
-}
-
-func normalizeContinuationValue(value Continuation) Continuation {
-	value.DrainedTools = slices.Clone(value.DrainedTools)
-	if len(value.DrainedTools) == 0 {
-		value.DrainedTools = nil
-	}
-	return value
-}
-
-func sameInterruptValue(left, right OpenInterrupt) bool {
-	return reflect.DeepEqual(left, right)
 }
 
 // parkedTreeSessionID is the Session of the parked tree's root Run, which owns

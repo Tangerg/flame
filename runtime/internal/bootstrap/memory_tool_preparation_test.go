@@ -72,7 +72,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 				}
 			}
 			session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Recall prepared Memory", Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "memory-session").(*protocol.Session)
-			started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Use memory to " + operation + " the prepared workspace fact."}}}, delivery.Options{IdempotencyKey: "memory-recall-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+			started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Use memory to " + operation + " the prepared workspace fact."}}}, protocol.CallMetadata{IdempotencyKey: "memory-recall-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 			if started.Failure != nil {
 				t.Fatal(started.Failure)
 			}

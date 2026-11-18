@@ -26,7 +26,7 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	}
 	var activation struct {
 		sync.Mutex
-		worker *background
+		watcher *watcher
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
@@ -46,10 +46,10 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginmcp.Command[struct{}]) (filewatch.Status, error) {
 			activation.Lock()
 			defer activation.Unlock()
-			if activation.worker == nil {
+			if activation.watcher == nil {
 				return filewatch.Status{Phase: filewatch.Inactive}, nil
 			}
-			return activation.worker.snapshot(), nil
+			return activation.watcher.snapshot(), nil
 		}),
 		backend.BindCapability("filewatch", contracts.Capability),
 	); err != nil {
@@ -79,11 +79,15 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 			if err != nil {
 				return nil, errors.Join(err, host.client.Close())
 			}
-			worker := newBackground(ctx, store, host, namespace, *value.Background, value.ID, host.client.Close)
+			watcher := newWatcher(store, host, namespace, *value.Background, value.ID)
+			background, err := watcher.background(ctx, host.client.Close)
+			if err != nil {
+				return nil, errors.Join(err, host.client.Close())
+			}
 			activation.Lock()
-			activation.worker = worker
+			activation.watcher = watcher
 			activation.Unlock()
-			return worker, nil
+			return background, nil
 		}
 		return nil, errors.New("filewatch: declared background contribution is required")
 	}); err != nil {

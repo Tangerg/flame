@@ -34,24 +34,20 @@ func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit
 	var result []schedule.RunRequest
 	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		if limit <= 0 || limit > schedule.MaximumDispatchBatch {
-
 			return errors.New("schedule: invalid manual dispatch limit")
 		}
 		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state=? AND run_id>? ORDER BY run_id LIMIT ?`, scheduleFiringPending.databaseValue(), afterID, limit)
 		if err != nil {
-
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var id, encoded string
 			if err := rows.Scan(&id, &encoded); err != nil {
-
 				return err
 			}
 			request, err := restoreManual(id, encoded)
 			if err != nil {
-
 				return err
 			}
 			result = append(result, request)

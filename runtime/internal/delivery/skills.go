@@ -96,5 +96,4 @@ func registerSkills(registry *Registry) {
 	}, ctx context.Context, request protocol.SkillProposalRef) error {
 		return service.RejectSkillProposal(ctx, request)
 	})
-
 }

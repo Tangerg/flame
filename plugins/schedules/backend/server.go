@@ -120,7 +120,11 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 			if err != nil {
 				return nil, errors.Join(err, close())
 			}
-			return newBackground(ctx, db, store, scanner, host, value.ID, *value.Background, close), nil
+			background, err := newBackground(ctx, db, store, scanner, host, value.ID, *value.Background, close)
+			if err != nil {
+				return nil, errors.Join(err, close())
+			}
+			return background, nil
 		}
 		return nil, nil
 	}); err != nil {

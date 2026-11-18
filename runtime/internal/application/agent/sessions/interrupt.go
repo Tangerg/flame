@@ -47,15 +47,7 @@ func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomai
 // LookupOpenInterrupt returns the parked run identified by runID without claiming
 // or consuming it. The run use case owns the subsequent admission ordering.
 func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
-	return c.lookupOpenInterrupt(ctx, runID)
-}
-
-func (c *Coordinator) lookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
 	return c.interrupts.Get(ctx, runID)
-}
-
-func (c *Coordinator) listOpenInterrupts(ctx context.Context, sessionID string) ([]runs.Pending, error) {
-	return c.interrupts.List(ctx, sessionID)
 }
 
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
@@ -77,7 +69,7 @@ func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID
 	if finishedAt.IsZero() {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", runID)
 	}
-	pending, found, err := c.lookupOpenInterrupt(ctx, runID)
+	pending, found, err := c.interrupts.Get(ctx, runID)
 	if err != nil {
 		return rundomain.Run{}, err
 	}
@@ -138,7 +130,7 @@ func (c *Coordinator) terminalizePendingRun(
 func (c *Coordinator) parkedExecutions(ctx context.Context, sessionID string, runIDs []string) ([]RunExecutionBinding, error) {
 	var out []RunExecutionBinding
 	for _, runID := range runIDs {
-		pending, found, err := c.lookupOpenInterrupt(ctx, runID)
+		pending, found, err := c.interrupts.Get(ctx, runID)
 		if err != nil {
 			return nil, err
 		}

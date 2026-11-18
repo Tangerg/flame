@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -25,10 +24,8 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 	if !scope.directory {
 		return workspaceapp.DirectoryPage{}, workspaceapp.ErrInvalidFileListPath
 	}
-	for _, part := range strings.Split(scope.physical, "/") {
-		if part == ".git" {
-			return workspaceapp.DirectoryPage{Complete: true}, nil
-		}
+	if insideGitMetadata(scope.physical) {
+		return workspaceapp.DirectoryPage{Complete: true}, nil
 	}
 	handle, err := os.OpenRoot(scope.root)
 	if err != nil {
@@ -45,18 +42,8 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 		return workspaceapp.DirectoryPage{}, workspaceapp.ErrPageCursor
 	}
 	scope.handle = handle
-	for remaining := plan.Offset; remaining > 0; {
-		if err := context.Cause(ctx); err != nil {
-			return workspaceapp.DirectoryPage{}, err
-		}
-		entries, readErr := directory.ReadDir(min(remaining, 256))
-		remaining -= len(entries)
-		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
-				return workspaceapp.DirectoryPage{}, workspaceapp.ErrPageCursor
-			}
-			return workspaceapp.DirectoryPage{}, fmt.Errorf("seek directory page: %w", readErr)
-		}
+	if err := seekDirectory(ctx, directory, plan.Offset); err != nil {
+		return workspaceapp.DirectoryPage{}, err
 	}
 	result := workspaceapp.DirectoryPage{Revision: revision, NextOffset: plan.Offset}
 	budget := max(256, plan.Limit*4)
@@ -69,47 +56,8 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
 			return workspaceapp.DirectoryPage{}, fmt.Errorf("read directory page: %w", readErr)
 		}
-		paths := make([]string, len(children))
-		for index, child := range children {
-			paths[index] = path.Join(scope.physical, child.Name())
-		}
-		ignored := map[string]bool{}
-		repository := false
-		if !plan.IncludeIgnored && len(paths) > 0 {
-			ignored, err = git.IgnoredPaths(ctx, scope.root, paths)
-			switch {
-			case err == nil:
-				repository = true
-			case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
-			default:
-				return workspaceapp.DirectoryPage{}, err
-			}
-		}
-		for index, child := range children {
-			if ignored[paths[index]] && child.IsDir() {
-				tracked, trackedErr := git.HasTrackedFiles(ctx, scope.root, paths[index])
-				if trackedErr != nil {
-					return workspaceapp.DirectoryPage{}, trackedErr
-				}
-				if tracked {
-					delete(ignored, paths[index])
-				}
-			}
-			result.ScannedEntries++
-			result.NextOffset++
-			if child.Name() == ".git" || ignored[paths[index]] || (!repository && !plan.IncludeIgnored && child.IsDir() && backstopExclude[child.Name()]) {
-				result.ExcludedEntries++
-				continue
-			}
-			entry, exists, inspectErr := scope.inspect(path.Join(scope.logical, child.Name()))
-			if inspectErr != nil {
-				return workspaceapp.DirectoryPage{}, inspectErr
-			}
-			if exists {
-				result.Entries = append(result.Entries, entry)
-			} else {
-				result.ExcludedEntries++
-			}
+		if err := scope.page(ctx, children, plan.IncludeIgnored, &result); err != nil {
+			return workspaceapp.DirectoryPage{}, err
 		}
 		if errors.Is(readErr, io.EOF) {
 			result.Complete = true
@@ -125,4 +73,91 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 	}
 	result.BudgetExhausted = !result.Complete && result.ScannedEntries >= budget
 	return result, nil
+}
+
+// seekDirectory skips the entries an earlier page already covered. A directory
+// that ends before the offset no longer matches the cursor.
+func seekDirectory(ctx context.Context, directory *os.File, offset int) error {
+	for remaining := offset; remaining > 0; {
+		if err := context.Cause(ctx); err != nil {
+			return err
+		}
+		entries, err := directory.ReadDir(min(remaining, 256))
+		remaining -= len(entries)
+		if errors.Is(err, io.EOF) {
+			return workspaceapp.ErrPageCursor
+		}
+		if err != nil {
+			return fmt.Errorf("seek directory page: %w", err)
+		}
+	}
+	return nil
+}
+
+// page records one read of children: every child advances the cursor, and
+// only a presentable, unexcluded child becomes an entry.
+func (s fileSelection) page(ctx context.Context, children []os.DirEntry, includeIgnored bool, result *workspaceapp.DirectoryPage) error {
+	excluded, err := s.excludedChildren(ctx, children, includeIgnored)
+	if err != nil {
+		return err
+	}
+	for index, child := range children {
+		result.ScannedEntries++
+		result.NextOffset++
+		if excluded[index] {
+			result.ExcludedEntries++
+			continue
+		}
+		entry, exists, err := s.inspect(path.Join(s.logical, child.Name()))
+		if err != nil {
+			return err
+		}
+		if !exists {
+			result.ExcludedEntries++
+			continue
+		}
+		result.Entries = append(result.Entries, entry)
+	}
+	return nil
+}
+
+// excludedChildren applies Git ignore rules, keeping an ignored directory that
+// still holds tracked files. Outside a repository the backstop excludes bulky
+// directories instead.
+func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEntry, includeIgnored bool) ([]bool, error) {
+	paths := make([]string, len(children))
+	for index, child := range children {
+		paths[index] = path.Join(s.physical, child.Name())
+	}
+	ignored := map[string]bool{}
+	repository := false
+	if !includeIgnored && len(paths) > 0 {
+		var err error
+		ignored, err = git.IgnoredPaths(ctx, s.root, paths)
+		switch {
+		case err == nil:
+			repository = true
+		case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
+		default:
+			return nil, err
+		}
+	}
+	excluded := make([]bool, len(children))
+	for index, child := range children {
+		switch {
+		case child.Name() == gitMetadataDir:
+			excluded[index] = true
+		case ignored[paths[index]] && child.IsDir():
+			tracked, err := git.HasTrackedFiles(ctx, s.root, paths[index])
+			if err != nil {
+				return nil, err
+			}
+			excluded[index] = !tracked
+		case ignored[paths[index]]:
+			excluded[index] = true
+		default:
+			excluded[index] = !repository && !includeIgnored && child.IsDir() && backstopExclude[child.Name()]
+		}
+	}
+	return excluded, nil
 }

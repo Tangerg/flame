@@ -90,7 +90,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 	definition := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Instructions: "Run the captured fixture once", Cron: "0 * * * *", TimeZone: "UTC", Enabled: false}), "manual-definition")
 	scheduleID = definition.ID
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Manual schedule caller"}, "manual-session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run this schedule once now."}}}, delivery.Options{IdempotencyKey: "manual-from-model", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run this schedule once now."}}}, protocol.CallMetadata{IdempotencyKey: "manual-from-model", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

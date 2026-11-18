@@ -312,7 +312,7 @@ func (c *Coordinator) restoreRollbackFiles(
 	if !spec.Scope.RestoresFiles() {
 		return nil
 	}
-	err := c.restore(ctx, spec.SessionID, cwd, spec.ToRunID)
+	err := c.checkpoints.Restore(ctx, spec.SessionID, cwd, spec.ToRunID)
 	if err == nil || errors.Is(err, ErrCheckpointRestoreIncomplete) {
 		return err
 	}
@@ -377,7 +377,7 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 	if err := c.quiesceRollbackWorkspace(m.SessionID, m.CWD); err != nil {
 		return err
 	}
-	if err := c.restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
+	if err := c.checkpoints.Restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
 		if errors.Is(err, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(m.CWD)
 		}
@@ -391,19 +391,11 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 			return err
 		}
 	}
-	return c.completeMutation(ctx, m)
-}
-
-func (c *Coordinator) completeMutation(ctx context.Context, m WorkspaceMutation) error {
 	return c.mutations.Complete(ctx, m)
 }
 
 func (c *Coordinator) completeMutationDetached(ctx context.Context, m WorkspaceMutation) error {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), mutationCleanupTimeout)
 	defer cancel()
-	return c.completeMutation(cleanupCtx, m)
-}
-
-func (c *Coordinator) restore(ctx context.Context, sessionID, cwd, runID string) error {
-	return c.checkpoints.Restore(ctx, sessionID, cwd, runID)
+	return c.mutations.Complete(cleanupCtx, m)
 }

@@ -1,89 +1,19 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import {
-  i18n,
-  registerCustomCSSVariableTheme,
-  type FileDiffMetadata,
-  type FileDiff as DiffInstance,
-} from "@pierre/diffs";
-import {
-  codeSyntaxColors,
-  CodeCaption,
-  CodeFrame,
-  ScrollRegion,
-  selectAllInReader,
-  scrollWithHorizontalArrow,
-  useContentVisible,
-} from "@flame/ui";
+import { CodeCaption, CodeFrame, DiffBody } from "@flame/ui";
 import type { Translate } from "@flame/component-sdk";
-import { copyDiffSelection } from "./diffSelection";
-import { DIFF_RENDERING_OPTIONS, PreparedDiff } from "./PreparedDiff";
-
-registerCustomCSSVariableTheme(DIFF_RENDERING_OPTIONS.theme, codeSyntaxColors);
-
-const appearance = `:host {
-  color-scheme: inherit;
-  --diffs-font-family: var(--font-mono);
-  --diffs-header-font-family: var(--font-sans);
-  --diffs-font-size: var(--fs-code);
-  --diffs-line-height: var(--leading-relaxed);
-  --diffs-addition-base: var(--color-success);
-  --diffs-deletion-base: var(--color-negative);
-  --diffs-modified-base: var(--color-info);
-}`;
 
 export function DiffReader({
-  file,
+  path,
+  source,
   patch,
   layout,
-  locale,
   t,
 }: {
-  file: FileDiffMetadata;
+  path: string;
+  source: string;
   patch: string;
   layout: "unified" | "split";
-  locale: string;
   t: Translate;
 }) {
-  const root = useRef<{
-    node: ShadowRoot;
-    file: FileDiffMetadata;
-    renderer: DiffInstance;
-  } | null>(null);
-  const visible = useContentVisible();
-  useLayoutEffect(() => {
-    i18n.set({
-      locale,
-      messages: {
-        unmodifiedLines: t("reader.unmodifiedLines"),
-        unknownUnmodifiedLines: t("reader.unknownUnmodifiedLines"),
-        expandAll: t("reader.expandAll"),
-        noNewlineAtEndOfFile: t("reader.noNewline"),
-      },
-    });
-  }, [locale, t]);
-  const rendered = useCallback(
-    (
-      node: HTMLElement,
-      renderer: DiffInstance,
-      phase: "mount" | "update" | "unmount",
-    ) => {
-      if (phase !== "unmount" && node.shadowRoot)
-        root.current = { node: node.shadowRoot, file, renderer };
-      else if (root.current?.node === node.shadowRoot) root.current = null;
-    },
-    [file],
-  );
-  const options = useMemo(
-    () => ({
-      diffStyle: layout,
-      disableFileHeader: true,
-      hunkSeparators: "metadata" as const,
-      parseDiffOptions: { disableLineMatching: true },
-      unsafeCSS: appearance,
-      onPostRender: rendered,
-    }),
-    [layout, rendered],
-  );
   return (
     <CodeFrame data-slot="workspace-diff" data-focus-unit="">
       <CodeCaption
@@ -98,29 +28,11 @@ export function DiffReader({
       >
         {t("patch.accepted")}
       </CodeCaption>
-      <ScrollRegion
-        label={t("reader.region", { path: file.name })}
-        onKeyDown={(event) => {
-          if (!visible) return;
-          selectAllInReader(event, root.current?.node ?? event.currentTarget);
-          if (root.current) {
-            const { renderer } = root.current;
-            scrollWithHorizontalArrow(event, (delta) => {
-              renderer.setCodeScrollLeft(renderer.getCodeScrollLeft() + delta);
-            });
-          }
-        }}
-        onCopy={(event) => {
-          if (visible && root.current)
-            copyDiffSelection(event, root.current.node, root.current.file);
-        }}
-      >
-        <PreparedDiff
-          file={file}
-          options={options}
-          loadingLabel={t("reader.loading")}
-        />
-      </ScrollRegion>
+      <DiffBody
+        patch={source}
+        layout={layout}
+        label={t("reader.region", { path })}
+      />
     </CodeFrame>
   );
 }

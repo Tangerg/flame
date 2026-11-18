@@ -18,15 +18,6 @@ import (
 
 const maxIdempotencyKeyBytes = 255
 
-// Options carries binding-neutral per-call metadata. Bindings translate their
-// native representation into this value before invoking the Endpoint.
-type Options struct {
-	RequestMeta          protocol.RequestMeta
-	IdempotencyKey       string
-	IdempotencyNamespace string
-	AfterEventID         string
-}
-
 // Result is the binding-neutral outcome of one operation. Value and Events are
 // type-erased only inside Runtime; typed bindings restore the catalog's declared
 // types before returning to their caller.
@@ -104,7 +95,7 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 
 // Invoke validates and executes the named operation through the catalog's
 // capability, idempotency and safe-problem policies.
-func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options Options) Result {
+func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) Result {
 	if e.validateStorage != nil {
 		if err := e.validateStorage(); err != nil {
 			return failed(projectError(err))
@@ -253,7 +244,7 @@ func allowsEvent(ctx context.Context, event any) bool {
 	return true
 }
 
-func validateOptions(method MethodMeta, options Options) *protocol.Failure {
+func validateOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
 	if runs.ReservedCommandKey(options.IdempotencyKey) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key belongs to a Runtime workflow")
 	}
@@ -333,7 +324,7 @@ func (e *Endpoint) Call[Params, Response any](
 	ctx context.Context,
 	name Name,
 	parameters Params,
-	options Options,
+	options protocol.CallMetadata,
 ) (Response, error) {
 	var zero Response
 	result := e.Invoke(ctx, name, parameters, options)

@@ -47,7 +47,7 @@ func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) delivery
 	if err != nil {
 		return delivery.Result{Failure: protocol.ProjectError(err)}
 	}
-	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
 func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[*memorycontract.ListV2OutputDomainItemSnapshot] {
 	r.t.Helper()

@@ -60,7 +60,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 	if result.UserItemID != "" {
 		response.UserItemID = &result.UserItemID
 	}
-	if result.Reopened {
+	if result.Reopened() {
 		events, err := s.acceptedRunEvents(ctx, result)
 		return response, events, err
 	}

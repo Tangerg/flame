@@ -137,6 +137,14 @@ type ToolInvocationRecovery struct {
 	FinishedAt time.Time
 }
 
+// Transition is the journal transition that closes this attempt.
+func (t ToolInvocationRecovery) Transition() ToolInvocationCommit {
+	return ToolInvocationCommit{
+		CallID: t.CallID, ItemID: t.ItemID, SegmentID: t.SegmentID,
+		State: ToolInvocationIncomplete, StartedAt: t.StartedAt, FinishedAt: t.FinishedAt,
+	}
+}
+
 // RecoveryConversationTransition closes the model context for one lost Run
 // tree. ExpectedCount is the boot snapshot's durable watermark; Messages is
 // empty when the context was already closed, or one Tool message containing an

@@ -119,22 +119,7 @@ func registerWrite[P, R any](backend *pluginmcp.Backend, tools *[]tool.Tool, rec
 			return pluginsdk.ToolReceipt{}, err
 		}
 		value, err := decodeWriteReply[R](contract, receipt.Reply)
-		if err != nil {
-			failure, known := tool.ClassifyFailure(writeFailure(err))
-			if !known {
-				return pluginsdk.ToolReceipt{}, err
-			}
-			return pluginsdk.NewToolReceipt(failure.Output(), true)
-		}
-		encoded, err := json.Marshal(value)
-		if err != nil {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		output, err := tool.NewJSONOutput(encoded)
-		if err != nil {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		return pluginsdk.NewToolReceipt(output, false)
+		return pluginsdk.ToolReceiptFrom(value, err, writeFailure)
 	}
 	*tools = append(*tools, model)
 	return nil
@@ -162,7 +147,7 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 			return nil, err
 		}
 		if len(encoded) > contractwire.MaxWriteBytes {
-			return nil, refused("invalid_input", "write payload exceeds one MiB")
+			return nil, invalidInput("write payload exceeds one MiB")
 		}
 	}
 	request, err := http.NewRequestWithContext(ctx, method, apiOrigin+path, bytes.NewReader(encoded))

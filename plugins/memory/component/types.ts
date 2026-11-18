@@ -28,14 +28,31 @@ export type CommandIntent =
       action: "edit" | "delete" | "approve" | "reject" | "pin" | "unpin";
       id: string;
     };
+export type CommandSource = "editor" | "record";
 export type Command = {
   promise: MutationPromise<unknown>;
   // Updates also pin independent records, so the method cannot identify the submitting form.
-  source: "editor" | "record";
+  source: CommandSource;
   intent: CommandIntent;
+};
+export type Failure = {
+  cause: unknown;
+  fallback: "refused" | "submit" | "check";
+};
+// One command at a time. Checking retries an unknown settlement through the
+// original command, so its idempotency key stays visible until it settles.
+export type CommandState =
+  | { phase: "idle" }
+  | { phase: "submitting"; command: Command }
+  | { phase: "checking"; command: Command }
+  | { phase: "unknown"; command: Command; failure?: Failure };
+export type Outcome = {
+  intent: CommandIntent;
+  state: "refused" | "confirmed";
+  failure?: Failure;
 };
 export type Feedback = {
   intent: CommandIntent;
-  state: "submitting" | "unknown" | "refused" | "confirmed";
-  failure?: { cause: unknown; fallback: "refused" | "submit" | "check" };
+  state: "submitting" | "unknown" | Outcome["state"];
+  failure?: Failure;
 };

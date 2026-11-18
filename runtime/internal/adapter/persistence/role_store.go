@@ -9,18 +9,20 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// roleStore is the shared persistence primitive for single-row role tables,
-// used by utility-role and embedding-role storage.
-type roleStore struct {
+// RoleStore persists one model role as a single row. A present zero role
+// records an explicit choice of the Runtime default; absence permits
+// first-run configuration seeding.
+type RoleStore struct {
 	db    *database
 	table string
 	label string
 }
 
-func newRoleStore(db *database, table, label string) *roleStore {
-	return &roleStore{db: db, table: table, label: label}
+func newRoleStore(db *database, table, label string) *RoleStore {
+	return &RoleStore{db: db, table: table, label: label}
 }
-func (r *roleStore) load(ctx context.Context) (modelref.Role, bool, error) {
+
+func (r *RoleStore) Load(ctx context.Context) (modelref.Role, bool, error) {
 	return scopedPair(ctx, r.db.read, func(ctx context.Context) (modelref.Role, bool, error) {
 		query := fmt.Sprintf("SELECT provider, model FROM %s WHERE id = 1", r.table)
 		var provider, model string
@@ -38,7 +40,8 @@ func (r *roleStore) load(ctx context.Context) (modelref.Role, bool, error) {
 		return role, true, nil
 	})
 }
-func (r *roleStore) save(ctx context.Context, role modelref.Role) error {
+
+func (r *RoleStore) Save(ctx context.Context, role modelref.Role) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		query := fmt.Sprintf(`INSERT INTO %s (id, provider, model) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, model = excluded.model`, r.table)
 		_, err := r.db.connection(ctx).ExecContext(ctx, query, role.Provider(), role.Model())

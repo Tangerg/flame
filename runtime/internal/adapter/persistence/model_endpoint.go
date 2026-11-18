@@ -327,16 +327,18 @@ func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID
 // RecoverModelInvocation projects known physical evidence into a failed logical
 // attempt, or closes an unobserved attempt as unknown. The source CAS joins the
 // existing Run recovery transaction and never permits replay or continuation.
-func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessionID, runID, segmentID, callID string, startedAt, finishedAt time.Time, source *modelref.EndpointObservation, purpose rundomain.ModelCallPurpose) error {
+func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, abandoned runs.ModelInvocationRecovery) error {
+	sessionID, runID, segmentID, callID := abandoned.SessionID, abandoned.RunID, abandoned.SegmentID, abandoned.CallID
+	startedAt, finishedAt, source := abandoned.StartedAt, abandoned.FinishedAt, abandoned.Endpoint
 	return m.db.write(ctx, func(ctx context.Context) error {
-		if err := purpose.Validate(); err != nil {
+		if err := abandoned.Purpose.Validate(); err != nil {
 			return err
 		}
 		var actualPurpose string
 		if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
 			return err
 		}
-		if actualPurpose != purpose.String() {
+		if actualPurpose != abandoned.Purpose.String() {
 			return errors.New("sqlite: recovered model purpose changed")
 		}
 		if source != nil {
@@ -349,7 +351,10 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 			}
 		}
 		if source == nil || !source.HasResponse() {
-			return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
+			return m.RecordModelInvocation(ctx, sessionID, runID, runs.ModelInvocationCommit{
+				Purpose: abandoned.Purpose, CallID: callID, SegmentID: segmentID,
+				State: modelref.InvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
+			})
 		}
 		if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 			return err

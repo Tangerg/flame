@@ -67,15 +67,12 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 	var result []agentmemory.LedgerFact
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
-
 			return err
 		}
 		if watermark < 0 {
-
 			return errors.New("sqlite: agent memory watermark must not be negative")
 		}
 		if limit <= 0 || limit > agentmemory.MaxLedgerFoldFacts {
-
 			return fmt.Errorf(
 				"sqlite: agent memory pending limit must be between 1 and %d",
 				agentmemory.MaxLedgerFoldFacts,
@@ -88,7 +85,6 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 		 ORDER BY seq
 		 LIMIT ?`, project, watermark, limit)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: list pending agent memory: %w", err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -97,18 +93,15 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 			var fact agentmemory.LedgerFact
 			var capturedAt int64
 			if err := rows.Scan(&fact.Sequence, &fact.Day, &fact.Content, &capturedAt); err != nil {
-
 				return fmt.Errorf("sqlite: scan pending agent memory: %w", err)
 			}
 			fact.CapturedAt = time.Unix(0, capturedAt).UTC()
 			if err := fact.Validate(); err != nil {
-
 				return fmt.Errorf("sqlite: decode invalid agent memory ledger fact %d: %w", fact.Sequence, err)
 			}
 			facts = append(facts, fact)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: iterate pending agent memory: %w", err)
 		}
 		result = facts
@@ -121,7 +114,6 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 	var result agentmemory.State
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
-
 			return err
 		}
 		var st agentmemory.State
@@ -130,18 +122,15 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 			`SELECT watermark, updated_at FROM agent_memory_state WHERE project = ?`, project).
 			Scan(&st.Watermark, &updatedAt)
 		if errors.Is(err, sql.ErrNoRows) {
-
 			return nil
 		}
 		if err != nil {
-
 			return fmt.Errorf("sqlite: load agent memory state: %w", err)
 		}
 		if st.Watermark != 0 || updatedAt != 0 {
 			st.UpdatedAt = time.Unix(0, updatedAt).UTC()
 		}
 		if err := st.Validate(); err != nil {
-
 			return fmt.Errorf("sqlite: decode invalid agent memory state: %w", err)
 		}
 		result = st

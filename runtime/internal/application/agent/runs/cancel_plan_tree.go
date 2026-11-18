@@ -45,13 +45,10 @@ func newCancellationPlan(
 		targetRunIDSet[runID] = struct{}{}
 	}
 	plan := cancellationPlan{
-		root:       bindings[runTree.root.ID()],
-		target:     bindings[targetRunID],
-		executor:   executor,
-		hasPending: pending != nil,
-	}
-	if pending != nil {
-		plan.pending = *pending
+		root:     bindings[runTree.root.ID()],
+		target:   bindings[targetRunID],
+		executor: executor,
+		pending:  pending,
 	}
 	for _, runID := range runTree.topology.Postorder() {
 		member := bindings[runID]

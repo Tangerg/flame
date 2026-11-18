@@ -63,16 +63,3 @@ export function parseVisualDiff(diff: Diff) {
   }
   return { diff, rendered };
 }
-
-export function retainUnchangedFiles(
-  next: ReadonlyMap<string, RenderedFile>,
-  previous: ReadonlyMap<string, RenderedFile> | undefined,
-) {
-  const rendered = new Map<string, RenderedFile>();
-  for (const [path, current] of next) {
-    const prior = previous?.get(path);
-    // Exact parser input owns reader identity; accepted read facts still advance.
-    rendered.set(path, prior?.source === current.source ? prior : current);
-  }
-  return rendered;
-}

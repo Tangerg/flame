@@ -368,6 +368,20 @@ type Subscription struct {
 	Events     iter.Seq[Event]
 }
 
+// Opening says how a start or resume command reached its Segment.
+type Opening uint8
+
+const (
+	// OpeningAdmitted is a fresh admission whose Events stream live.
+	OpeningAdmitted Opening = iota
+	// OpeningReopened returns an accepted command's original opening. Its Events
+	// are absent; the caller re-attaches the live stream by identity.
+	OpeningReopened
+	// OpeningRetired reopens a command whose original material is gone, so
+	// nothing attaches to imported material that reuses its Run identity.
+	OpeningRetired
+)
+
 // StartResult identifies the admitted Segment and exposes its event stream.
 type StartResult struct {
 	RunID     string
@@ -376,13 +390,7 @@ type StartResult struct {
 	// UserItemID is absent for an autonomous Goal or a response-only Resume.
 	UserItemID string
 	Events     iter.Seq[Event]
-	// Reopened is true when this is a previously accepted command's original
-	// opening returned by acceptance lookup rather than a freshly admitted Run.
-	// Its Events are absent; the caller re-attaches the live stream by identity.
-	Reopened bool
-	// MaterialRetired prevents attachment to imported replacement material that
-	// happens to reuse an accepted command's original Run identity.
-	MaterialRetired bool
+	Opening    Opening
 }
 
 // Validate checks the semantic Run-opening invariants before any Session is
@@ -462,3 +470,7 @@ type ActiveRunConflictError struct {
 func (a *ActiveRunConflictError) Error() string {
 	return fmt.Sprintf("runs: session already has a %s run %q", a.State, a.RunID)
 }
+
+// Reopened reports that the command was accepted earlier and carries no live
+// Events of its own.
+func (r StartResult) Reopened() bool { return r.Opening != OpeningAdmitted }

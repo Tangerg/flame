@@ -16,10 +16,10 @@ type binding struct {
 }
 
 type operationCaller interface {
-	invokeOperation(context.Context, delivery.Name, any, delivery.Options) (delivery.Result, error)
+	invokeOperation(context.Context, delivery.Name, any, protocol.CallMetadata) (delivery.Result, error)
 }
 
-func (r *Runtime) invokeOperation(ctx context.Context, name delivery.Name, request any, options delivery.Options) (delivery.Result, error) {
+func (r *Runtime) invokeOperation(ctx context.Context, name delivery.Name, request any, options protocol.CallMetadata) (delivery.Result, error) {
 	endpoint, err := r.endpoint()
 	if err != nil {
 		return delivery.Result{}, err
@@ -31,7 +31,7 @@ func (r *binding) invoke[Request, Response any](
 	ctx context.Context,
 	name delivery.Name,
 	request Request,
-	options delivery.Options,
+	options protocol.CallMetadata,
 ) (Response, error) {
 	var zero Response
 	if r == nil || r.caller == nil {
@@ -55,7 +55,7 @@ func (r *binding) invokeAck[Request any](
 	ctx context.Context,
 	name delivery.Name,
 	request Request,
-	options delivery.Options,
+	options protocol.CallMetadata,
 ) error {
 	_, err := r.invoke[Request, struct{}](ctx, name, request, options)
 	return err
@@ -65,7 +65,7 @@ func (r *binding) invokeStream[Request, Ack, Event any](
 	ctx context.Context,
 	name delivery.Name,
 	request Request,
-	options delivery.Options,
+	options protocol.CallMetadata,
 ) (Ack, iter.Seq2[Event, error], error) {
 	var zero Ack
 	if r == nil || r.caller == nil {

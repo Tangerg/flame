@@ -25,16 +25,22 @@ func OpenPendingStart(ctx context.Context, source OpeningSource, store *workbenc
 	if store == nil {
 		return conversation.SegmentStream{}, workbench.ErrUnavailable
 	}
-	return openStartCommand(ctx, source, pending.Command, pending.Replay, policy, func() (conversation.SegmentStream, error) {
+	return openStartCommand(ctx, source, pending.Command, pending.Replay, policy, replayPending(ctx, store, pending.ReplayCommand, source.StartRun))
+}
+
+// replayPending dispatches a durable pending command only once its store
+// admits dispatch, rebuilding the command from the recorded replay.
+func replayPending[C any](ctx context.Context, store *workbench.Store, replay func() (C, error), send func(context.Context, C) (conversation.SegmentStream, error)) func() (conversation.SegmentStream, error) {
+	return func() (conversation.SegmentStream, error) {
 		if err := store.DispatchReady(); err != nil {
 			return conversation.SegmentStream{}, err
 		}
-		command, err := pending.ReplayCommand()
+		command, err := replay()
 		if err != nil {
 			return conversation.SegmentStream{}, err
 		}
-		return source.StartRun(ctx, command)
-	})
+		return send(ctx, command)
+	}
 }
 
 func openStartCommand(ctx context.Context, source OpeningSource, command authoring.StartRun, guard authoring.ReplayGuard, policy mutation.ReplayPolicy, dispatch func() (conversation.SegmentStream, error)) (conversation.SegmentStream, error) {
@@ -56,16 +62,7 @@ func OpenPendingResume(ctx context.Context, source OpeningSource, store *workben
 	if store == nil {
 		return conversation.SegmentStream{}, workbench.ErrUnavailable
 	}
-	return openResumeCommand(ctx, source, pending.Command, pending.Replay, policy, func() (conversation.SegmentStream, error) {
-		if err := store.DispatchReady(); err != nil {
-			return conversation.SegmentStream{}, err
-		}
-		command, err := pending.ReplayCommand()
-		if err != nil {
-			return conversation.SegmentStream{}, err
-		}
-		return source.ResumeRun(ctx, command)
-	})
+	return openResumeCommand(ctx, source, pending.Command, pending.Replay, policy, replayPending(ctx, store, pending.ReplayCommand, source.ResumeRun))
 }
 
 func openResumeCommand(ctx context.Context, source OpeningSource, command conversation.ResumeRun, guard authoring.ReplayGuard, policy mutation.ReplayPolicy, dispatch func() (conversation.SegmentStream, error)) (conversation.SegmentStream, error) {

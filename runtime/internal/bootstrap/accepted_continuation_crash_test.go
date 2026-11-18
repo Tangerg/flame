@@ -186,8 +186,8 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 
 const acceptedCommandKey = "resume-crash"
 
-func acceptedCommandOptions() delivery.Options {
-	return delivery.Options{IdempotencyKey: acceptedCommandKey, IdempotencyNamespace: testsupport.IdempotencyNamespace,
+func acceptedCommandOptions() protocol.CallMetadata {
+	return protocol.CallMetadata{IdempotencyKey: acceptedCommandKey, IdempotencyNamespace: testsupport.IdempotencyNamespace,
 		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 }
 
@@ -214,7 +214,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	}
 	accepted := bindings[0]
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey)
-	if err != nil || !record.Found || record.Acceptance.Operation != "resume" || record.Acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || record.Acceptance.UserItemID != accepted.InputItemID {
+	if err != nil || record.Use != runapp.CommandKeyAccepted || record.Acceptance.Operation != "resume" || record.Acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || record.Acceptance.UserItemID != accepted.InputItemID {
 		t.Fatalf("crash lost original command acceptance: %+v,%v", record, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
@@ -243,7 +243,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, accepted.RootRunID())
 	endpoint := host.Endpoint()
 	lookup := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: acceptedCommandKey, Operation: protocol.RunCommandResume}
-	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, lookup, delivery.Options{})
+	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, lookup, protocol.CallMetadata{})
 	if err != nil || ack.SegmentID != record.Acceptance.SegmentID || ack.UserItemID != accepted.InputItemID || ack.Run == nil || ack.Run.Status != protocol.RunStatusFinished {
 		t.Fatalf("acceptance lookup after terminal=%+v,%v", ack, err)
 	}
@@ -337,7 +337,7 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 	if err != nil || len(bindings) != 0 {
 		t.Fatalf("rollback kept acceptance: %+v,%v", bindings, err)
 	}
-	if record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey); err != nil || record.Found {
+	if record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey); err != nil || record.Use == runapp.CommandKeyAccepted {
 		t.Fatalf("rollback kept command acceptance: %+v,%v", record, err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))

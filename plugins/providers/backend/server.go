@@ -79,7 +79,7 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		remote.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) ([]string, error) {
 			spec, err := newClientSpec(command.Input)
 			if err != nil {
-				return nil, &framecall.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
+				return nil, invalidConnection()
 			}
 			values, err := listModels(ctx, spec, deployments)
 			if err != nil {
@@ -90,7 +90,7 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		verify.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) (struct{}, error) {
 			spec, err := newClientSpec(command.Input)
 			if err != nil {
-				return struct{}{}, &framecall.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
+				return struct{}{}, invalidConnection()
 			}
 			if err := verifyConnection(ctx, spec); err != nil {
 				return struct{}{}, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
@@ -135,4 +135,8 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		return nil, err
 	}
 	return server, nil
+}
+
+func invalidConnection() error {
+	return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "model provider: invalid connection"}
 }

@@ -14,8 +14,7 @@ function sourceLine(file: FileDiffMetadata, line: Element): string {
   );
   const source = deleted ? file.deletionLines : file.additionLines;
   const text = hunk ? source[hunk[index] + number - hunk[start]] : undefined;
-  if (text === undefined)
-    throw new Error("workspace diff: rendered line has no captured source");
+  if (text === undefined) throw new Error("workspace diff: rendered line has no captured source");
   return text;
 }
 
@@ -30,11 +29,7 @@ export function copyDiffSelection(
   const document = root.ownerDocument;
   const selection = document.getSelection();
   const selected = selection?.getComposedRanges({ shadowRoots: [root] })[0];
-  if (
-    !selected ||
-    !root.contains(selected.startContainer) ||
-    !root.contains(selected.endContainer)
-  )
+  if (!selected || !root.contains(selected.startContainer) || !root.contains(selected.endContainer))
     return;
   const range = document.createRange();
   range.setStart(selected.startContainer, selected.startOffset);
@@ -58,12 +53,7 @@ export function copyDiffSelection(
     const previous = parts.at(-1);
     // Opposite EOF sides remain separate displayed rows even without source newlines.
     if (previous !== undefined && !previous.endsWith("\n")) parts.push("\n");
-    parts.push(
-      text.slice(
-        offset,
-        beyondLine ? text.length : offset + slice.toString().length,
-      ),
-    );
+    parts.push(text.slice(offset, beyondLine ? text.length : offset + slice.toString().length));
   }
   const text = parts.join("");
   if (text === "") return;

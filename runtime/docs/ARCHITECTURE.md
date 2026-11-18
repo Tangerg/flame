@@ -112,7 +112,7 @@ transaction.
 selection translation and evidence observation. `adapter/integration/mcp` owns
 source authorization and a single private connection ledger behind `Pool`. It
 constructs the complete pool and admits startup attempts before releasing any
-configuration or handshake work. `delivery/http` passes fresh `delivery.Options`
+configuration or handshake work. `delivery/http` passes fresh `protocol.CallMetadata`
 for each HTTP request; dispatch obtains request metadata only from that envelope.
 
 The dependency gate classifies every production Go package and local import.

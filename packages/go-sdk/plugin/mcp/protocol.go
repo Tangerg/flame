@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
@@ -82,7 +83,7 @@ func ProtocolJSON() ([]byte, error) {
 	}
 	astral, bmp := receipt.Descriptor(), receipt.Descriptor()
 	astral.Name, bmp.Name = "\U0001f600", "\uffff"
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "\ufeffcontract", Composition: plugincontract.Collection, Scope: "installation"}, astral, bmp)
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "\ufeffcontract", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, astral, bmp)
 	if err != nil {
 		return nil, err
 	}

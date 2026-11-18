@@ -156,6 +156,10 @@
     "v0.1.20-dev.20261117.ta7a9085b89f4": {
       "tree": "a7a9085b89f470237de742b617edc35d559dcab1",
       "time": "2026-11-17T11:15:23Z"
+    },
+    "v0.1.21-dev.20261118.td9d514558f4c": {
+      "tree": "d9d514558f4c837aa40c5995aff9d78ab67b6f26",
+      "time": "2026-11-18T10:12:19Z"
     }
   },
   "github.com/Tangerg/flame/plugins": {

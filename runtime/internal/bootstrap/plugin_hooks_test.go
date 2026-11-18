@@ -77,7 +77,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	if content, err := os.ReadFile(filepath.Join(cfg.defaultWorkspacePath, "hook-effects")); err != nil || string(content) != "once\n" {
 		t.Fatalf("original command was redispatched: %q %v", content, err)
 	}
-	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, delivery.Options{IdempotencyKey: "remove-held-hooks", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, protocol.CallMetadata{IdempotencyKey: "remove-held-hooks", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("captured source was not retained: %v", blocked.Failure)
 	}
@@ -108,7 +108,7 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "optional hook source"}, "hook-session").(*protocol.Session)
 	start := func(key string) delivery.Result {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}}, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}}, protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Events != nil {
 			for _, err := range result.Events {
 				if err != nil {

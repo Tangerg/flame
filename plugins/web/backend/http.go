@@ -56,7 +56,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 		var err error
 		invocation, err = r.binding.Contract().Prepare((chat.ToolCall{ID: id, Name: "http_request", Arguments: input.String()}).Request(), tool.Admission{})
 		if err != nil {
-			return &framecall.Refusal{Code: "invalid_request", Message: "web: invalid HTTP request"}
+			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "web: invalid HTTP request"}
 		}
 		return nil
 	})
@@ -98,35 +98,11 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 	return pluginmcp.DecodeReply[wire.HTTPResponse](encoded.Bytes())
 }
 
-func requestToolFailure(err error) error {
-	refusal, known := errors.AsType[*framecall.Refusal](err)
-	if !known {
-		return err
-	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(refusal.Message), Cause: err})
-	return errors.Join(failure, failureErr)
-}
-
 func (r *requests) receipt(ctx context.Context, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	receipt, err := pluginstorage.ReadReceipt(ctx, r.db, input)
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
 	result, err := pluginmcp.DecodeReply[wire.HTTPResponse](receipt.Reply)
-	if err != nil {
-		failure, known := tool.ClassifyFailure(requestToolFailure(err))
-		if !known {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		return pluginsdk.NewToolReceipt(failure.Output(), true)
-	}
-	encoded, err := json.Marshal(result)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
-	}
-	output, err := tool.NewJSONOutput(encoded)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
-	}
-	return pluginsdk.NewToolReceipt(output, false)
+	return pluginsdk.ToolReceiptFrom(result, err, pluginsdk.RefusedToolFailure)
 }

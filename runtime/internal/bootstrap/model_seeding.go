@@ -46,8 +46,8 @@ func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 }
 
 type utilityRoleSeedStore interface {
-	LoadUtilityRole(ctx context.Context) (modelref.Role, bool, error)
-	SaveUtilityRole(ctx context.Context, role modelref.Role) error
+	roleLoader
+	Save(ctx context.Context, role modelref.Role) error
 }
 
 // seedUtilityRole writes the config-file utility model into the store on first
@@ -56,7 +56,7 @@ type utilityRoleSeedStore interface {
 // over the config file. An empty / identical-to-main UtilityModel seeds
 // nothing (maintenance then runs on the main model).
 func seedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config.Settings) error {
-	_, present, err := store.LoadUtilityRole(ctx)
+	_, present, err := store.Load(ctx)
 	if err != nil {
 		return err
 	}
@@ -70,5 +70,5 @@ func seedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config
 	if err != nil {
 		return err
 	}
-	return store.SaveUtilityRole(ctx, role)
+	return store.Save(ctx, role)
 }

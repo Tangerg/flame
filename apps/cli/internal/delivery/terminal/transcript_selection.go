@@ -8,48 +8,48 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+type entryDisclosure uint8
+
+const (
+	disclosureFixed entryDisclosure = iota
+	disclosureCollapsed
+	disclosureExpanded
+)
+
+func disclosureOf(tool toolDisclosure) entryDisclosure {
+	switch {
+	case tool == nil || !tool.Expandable():
+		return disclosureFixed
+	case tool.Expanded():
+		return disclosureExpanded
+	default:
+		return disclosureCollapsed
+	}
+}
+
+// transcriptSelection is what prompt help shows about the selected entry; a
+// nil selection means no entry is selected.
 type transcriptSelection struct {
-	Present    bool
-	Readable   bool
-	Expandable bool
-	Expanded   bool
+	disclosure entryDisclosure
+	readable   bool
 }
 
-type transcriptPointerGesture struct {
-	target  transcriptEntryID
-	active  bool
-	header  bool
-	dragged bool
+// A press on the first row of a tool entry toggles its details on click.
+type transcriptPressTarget struct {
+	entry  transcriptEntryID
+	header bool
 }
-
-func (t *transcriptPointerGesture) begin(target transcriptEntryID, header bool) {
-	*t = transcriptPointerGesture{target: target, active: true, header: header}
-}
-
-func (t *transcriptPointerGesture) drag() { t.dragged = true }
-
-func (t *transcriptPointerGesture) release(
-	selected transcriptEntryID,
-	selectedPresent bool,
-) (click, activate bool) {
-	click = t.active && !t.dragged
-	activate = click && selectedPresent && t.header && t.target == selected
-	t.cancel()
-	return click, activate
-}
-
-func (t *transcriptPointerGesture) cancel() { *t = transcriptPointerGesture{} }
 
 func (t *transcriptView) handleMouse(mouse input.Mouse) {
 	if mouse.Action == input.MouseCancel {
-		t.pointerGesture.cancel()
+		t.press.cancel()
 		return
 	}
 	if mouse.Action == input.MouseLeave {
 		return
 	}
 	if mouse.Button != input.ButtonLeft {
-		t.cancelPointerGesture(mouse)
+		t.cancelPress(mouse)
 		return
 	}
 	switch mouse.Action {
@@ -57,23 +57,19 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 		point, _ := t.selection.Range()
 		id, ok := t.nativeEntries[point.Content]
 		offset := point.Position.Line
-		if !ok {
-			t.pointerGesture.cancel()
+		if !ok || !t.selectPointerEntry(id) {
+			t.press.cancel()
 			return
 		}
-		if !t.selectPointerEntry(id) {
-			t.pointerGesture.cancel()
-			return
-		}
-		t.pointerGesture.begin(id, offset == 0 && t.tool(id) != nil)
+		t.press.begin(transcriptPressTarget{entry: id, header: offset == 0 && t.tool(id) != nil})
 	case input.MouseDrag:
-		t.pointerGesture.drag()
+		t.press.drag()
 	case input.MouseUp:
-		click, activate := t.pointerGesture.release(t.selected, t.hasSelected)
+		pressed, click := t.press.release()
 		if click {
 			t.selection.Clear()
 		}
-		if activate {
+		if click && pressed.header && t.isSelected(pressed.entry) {
 			t.toggleSelected()
 		} else if !click {
 			t.copySelection()
@@ -81,24 +77,27 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 	}
 }
 
-func (t *transcriptView) cancelPointerGesture(mouse input.Mouse) {
+func (t *transcriptView) cancelPress(mouse input.Mouse) {
 	switch mouse.Action {
 	case input.MouseDown, input.MouseUp, input.MouseDrag, input.MouseCancel:
-		t.pointerGesture.cancel()
+		t.press.cancel()
 	}
 }
 
 func (t *transcriptView) ensureSelection() {
 	first := t.firstEntry()
-	if t.hasSelected && t.selected >= first && t.selected < first+blockOffset(t.content.Len()) {
+	if t.selected != nil && *t.selected >= first && *t.selected < first+blockOffset(t.content.Len()) {
 		return
 	}
 	if t.content.Len() == 0 {
-		t.hasSelected = false
+		t.selected = nil
 		return
 	}
-	t.selected = first + blockOffset(t.content.Len()-1)
-	t.hasSelected = true
+	t.selected = new(first + blockOffset(t.content.Len()-1))
+}
+
+func (t *transcriptView) isSelected(id transcriptEntryID) bool {
+	return t.selected != nil && *t.selected == id
 }
 
 func (t *transcriptView) moveSelection(delta int) bool {
@@ -108,7 +107,7 @@ func (t *transcriptView) moveSelection(delta int) bool {
 	t.ensureSelection()
 	first := t.firstEntry()
 	last := first + blockOffset(t.content.Len()-1)
-	next := t.selected
+	next := *t.selected
 	switch {
 	case delta < 0 && next > first:
 		next--
@@ -149,7 +148,7 @@ func (t *transcriptView) setSelectedEntry(id transcriptEntryID, reveal, clearTex
 	if _, ok := t.entries[id]; !ok {
 		return
 	}
-	t.selected, t.hasSelected = id, true
+	t.selected = &id
 	if clearTextSelection {
 		t.selectionIntent = nil
 		t.selection.Clear()
@@ -164,13 +163,19 @@ func (t *transcriptView) setSelectedEntry(id transcriptEntryID, reveal, clearTex
 func (t *transcriptView) syncSelectedEntry() {
 	t.Element().Invalidate()
 	for id, entry := range t.entries {
-		entry.selected = t.hasSelected && id == t.selected
-		entry.focused = entry.selected && t.focused
+		switch {
+		case !t.isSelected(id):
+			entry.rail = railHidden
+		case t.focused:
+			entry.rail = railFocused
+		default:
+			entry.rail = railSelected
+		}
 	}
 }
 
 func (t *transcriptView) revealSelected() {
-	if !t.hasSelected {
+	if t.selected == nil {
 		return
 	}
 	top, width := 0, max(t.projected.Value().Width(), 1)
@@ -180,7 +185,7 @@ func (t *transcriptView) revealSelected() {
 			continue
 		}
 		height := body.HeightForWidth(width)
-		if id == t.selected {
+		if id == *t.selected {
 			t.scroll.Reveal(top, top+max(height-1, 0))
 			return
 		}
@@ -214,14 +219,17 @@ func (t *transcriptView) setSelectedExpanded(expanded bool) bool {
 // the viewport, so every actual height change remeasures and reveals the same
 // stable block identity before another command can target it.
 func (t *transcriptView) mutateSelectedDisclosure(mutate func(toolDisclosure)) bool {
-	tool := t.tool(t.selected)
-	if !t.hasSelected || tool == nil || !tool.Expandable() {
+	if t.selected == nil {
+		return true
+	}
+	tool := t.tool(*t.selected)
+	if tool == nil || !tool.Expandable() {
 		return true
 	}
 	before := tool.Expanded()
 	mutate(tool)
 	if tool.Expanded() != before {
-		t.projectEntry(t.selected)
+		t.projectEntry(*t.selected)
 		t.revealSelected()
 		t.refreshSearch()
 	}
@@ -230,11 +238,11 @@ func (t *transcriptView) mutateSelectedDisclosure(mutate func(toolDisclosure)) b
 }
 
 func (t *transcriptView) copySelected() bool {
-	if !t.hasSelected {
+	if t.selected == nil {
 		return true
 	}
 	layout := t.content.Layout()
-	top, height, ok := layout.Extent(t.entries[t.selected].nativeID)
+	top, height, ok := layout.Extent(t.entries[*t.selected].nativeID)
 	if !ok {
 		return true
 	}
@@ -266,27 +274,26 @@ func (t *transcriptView) announceSelection() {
 	if t.onSelection == nil {
 		return
 	}
-	_, readable := t.readerTargetForSelected()
-	selection := transcriptSelection{Present: t.hasSelected, Readable: readable}
-	if tool := t.tool(t.selected); tool != nil && tool.Expandable() {
-		selection.Expandable = true
-		selection.Expanded = tool.Expanded()
+	if t.selected == nil {
+		t.onSelection(nil)
+		return
 	}
-	t.onSelection(selection)
+	_, readable := t.readerTargetForSelected()
+	t.onSelection(&transcriptSelection{disclosure: disclosureOf(t.tool(*t.selected)), readable: readable})
 }
 
 func (t *transcriptView) selectedReaderTarget() (readerTarget, bool) {
-	if !t.hasSelected {
+	if t.selected == nil {
 		t.ensureSelection()
 	}
 	return t.readerTargetForSelected()
 }
 
 func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
-	if !t.hasSelected {
+	if t.selected == nil {
 		return readerTarget{}, false
 	}
-	entry := t.entries[t.selected]
+	entry := t.entries[*t.selected]
 	if entry == nil || entry.content == nil {
 		return readerTarget{}, false
 	}

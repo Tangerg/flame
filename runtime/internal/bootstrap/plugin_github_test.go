@@ -136,7 +136,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 			}
 		}
 		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "GitHub " + test.name}, "github-session-"+test.name).(*protocol.Session)
-		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: test.prompt}}}, delivery.Options{IdempotencyKey: "github-run-" + test.name, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: test.prompt}}}, protocol.CallMetadata{IdempotencyKey: "github-run-" + test.name, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if run.Failure != nil {
 			t.Fatal(run.Failure)
 		}

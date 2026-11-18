@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -120,7 +119,7 @@ func newWriteSetStores(t *testing.T, db *persistence.Bundle) (sessionStores, *pe
 		Sessions:            ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
-		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
+		ChildRunStarts: ss.childStarts, Goals: ss.goals,
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
 			return db.ReadSnapshot(ctx, read)
 		},
@@ -133,15 +132,6 @@ func newWriteSetStores(t *testing.T, db *persistence.Bundle) (sessionStores, *pe
 	}
 	ss.SessionStores = sessionStores
 	return ss, runs, ints
-}
-
-func mustGoalRuns(tb testing.TB, store goals.RunEvidence) *goals.RunRecorder {
-	tb.Helper()
-	recorder, err := goals.NewRunRecorder(store)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	return recorder
 }
 
 func bootstrapSession(id, title, cwd string) session.Session {

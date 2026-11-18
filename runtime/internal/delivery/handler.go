@@ -115,7 +115,6 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
-	plugins   bool
 	git       bool
 	isolation bool
 }
@@ -152,6 +151,11 @@ func (c HandlerConfig) validate() error {
 	}{
 		{name: "Sessions", value: c.Sessions},
 		{name: "MCP", value: c.MCP},
+		{name: "Plugins", value: c.Plugins},
+		{name: "PluginSelections", value: c.PluginSelections},
+		{name: "PluginCompositions", value: c.PluginCompositions},
+		{name: "PluginCalls", value: c.PluginCalls},
+		{name: "PluginBrowser", value: c.PluginBrowser},
 		{name: "Approvals", value: c.Approvals},
 		{name: "Models", value: c.Models},
 		{name: "Tools", value: c.Tools},
@@ -200,7 +204,6 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
-			plugins:   capabilityAvailable(cfg.Plugins),
 			git:       cfg.GitAvailable,
 			isolation: cfg.IsolationAvailable,
 		},
@@ -338,11 +341,17 @@ func capabilitiesFor(
 		// the run protocol), which come from protocol's registry. Advertising them
 		// here by hand would let discovery promise a negotiation the runtime does
 		// not perform.
-		Features: advertisedFeatures(map[string]bool{protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: features.plugins, protocol.FeatureSkills: true, protocol.FeatureGit: features.git, protocol.FeatureFileWatch: true, protocol.FeatureSessionExport: true, protocol.FeatureCheckpoints: // File checkpoints (restoreType on rollback) ride the shadow-git
-		// store, which needs the git binary — same gate as the git feature.
-		features.git, protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeatureIsolation: // An isolated Session jails its shells; without a backend for that
-		// jail the policy cannot be honored, so the surface is not offered.
-		features.isolation, protocol.FeaturePlan: true, protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureChildRuns: true,
+		Features: advertisedFeatures(map[string]bool{
+			protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: true,
+			protocol.FeatureSkills: true, protocol.FeatureFileWatch: true, protocol.FeatureSessionExport: true,
+			protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeaturePlan: true,
+			protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureChildRuns: true,
+			protocol.FeatureGit: features.git,
+			// File checkpoints ride the shadow-git store, which needs the git binary.
+			protocol.FeatureCheckpoints: features.git,
+			// An isolated Session jails its shells; without a jail backend the
+			// policy cannot be honored, so the surface is not offered.
+			protocol.FeatureIsolation: features.isolation,
 		}),
 	}
 }

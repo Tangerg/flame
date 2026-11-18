@@ -100,7 +100,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	endpoint := host.Endpoint()
 	must := func(method delivery.Name, input any, key string) any {
 		t.Helper()
-		options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key}
+		options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key}
 		result := endpoint.Invoke(t.Context(), method, input, options)
 		if result.Failure != nil {
 			t.Fatalf("%s: %v (%v)", method, result.Failure, errors.Unwrap(result.Failure))

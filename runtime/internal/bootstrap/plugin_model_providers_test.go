@@ -33,14 +33,14 @@ func TestInstalledModelProviderAbsenceAndDisablementLeaveManagementAvailable(t *
 	cfg := poMCPConfig(t)
 	cfg.modelProviders = nil
 	r := poMCPOpen(t, cfg)
-	failed := r.endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "needs a provider"}, delivery.Options{IdempotencyKey: "without-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	failed := r.endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "needs a provider"}, protocol.CallMetadata{IdempotencyKey: "without-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if failed.Failure == nil || !errors.Is(failed.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("absent provider = %v", failed.Failure)
 	}
 	installed := activateModelProviders(r)
 	r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "historical session"}, "with-provider")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-provider")
-	failed = r.endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "disabled provider"}, delivery.Options{IdempotencyKey: "without-enabled-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	failed = r.endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "disabled provider"}, protocol.CallMetadata{IdempotencyKey: "without-enabled-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if failed.Failure == nil || !errors.Is(failed.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled provider = %v", failed.Failure)
 	}
@@ -102,7 +102,7 @@ func TestInstalledModelProviderRestartsWaitingRunWithOriginalCredentialsAndEndpo
 	}
 	configure(original.URL, "original-key", "configure-original")
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "original provider"}, "create-original").(*protocol.Session)
-	options := delivery.Options{IdempotencyKey: "start-original", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion}}}}
+	options := protocol.CallMetadata{IdempotencyKey: "start-original", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion}}}}
 	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "ask before continuing"}}}, options)
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
@@ -117,7 +117,7 @@ func TestInstalledModelProviderRestartsWaitingRunWithOriginalCredentialsAndEndpo
 	if waiting.Status != protocol.RunStatusWaiting || calls.Load() != 1 {
 		t.Fatalf("run did not retain its original wait: %+v calls=%d", waiting, calls.Load())
 	}
-	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, delivery.Options{IdempotencyKey: "remove-captured-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, protocol.CallMetadata{IdempotencyKey: "remove-captured-provider", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("waiting provider was not retained: %v", blocked.Failure)
 	}

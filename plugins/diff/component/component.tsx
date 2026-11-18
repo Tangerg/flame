@@ -1,5 +1,5 @@
 import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
-import { parseVisualDiff, retainUnchangedFiles } from "./visualDiff";
+import { parseVisualDiff } from "./visualDiff";
 import { DiffReader } from "./DiffReader";
 import {
   useCallback,
@@ -180,18 +180,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             ? { path: current.path, view: "files" }
             : current,
         );
-        setRead((previous) => ({
-          loading: false,
-          accepted: {
-            ...projected,
-            rendered: retainUnchangedFiles(
-              projected.rendered,
-              previous.accepted?.rendered,
-            ),
-            query,
-            at,
-          },
-        }));
+        setRead({ loading: false, accepted: { ...projected, query, at } });
       }
     } catch (error) {
       if (!signal.aborted) {
@@ -213,7 +202,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const files = accepted?.diff.visual.manifest ?? [];
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
-  const rendered = file ? accepted?.rendered.get(file.path)?.file : undefined;
+  const rendered = file ? accepted?.rendered.get(file.path) : undefined;
+  const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const showingReader = file !== undefined;
   const readingOverview =
     read.loading &&
@@ -469,7 +459,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               </Toolbar>
               {file && (
                 <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
-                  {!file.binary && rendered && rendered.hunks.length > 0 && (
+                  {!file.binary && readable && (
                     <Select
                       size="sm"
                       label={t("layout.label")}
@@ -649,13 +639,13 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               )}
               {file.binary ? (
                 <Metadata>{t("file.binary")}</Metadata>
-              ) : rendered && rendered.hunks.length > 0 ? (
+              ) : readable ? (
                 <DiffReader
                   key={file.path}
-                  file={rendered}
+                  path={file.path}
+                  source={rendered.source}
                   patch={accepted.diff.visual.patch}
                   layout={layout}
-                  locale={context.locale}
                   t={t}
                 />
               ) : (

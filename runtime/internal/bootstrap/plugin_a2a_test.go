@@ -45,7 +45,7 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-a2a")
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 0 })
 	call.Method, call.Input = testsupport.A2AAgentsV1Method, `{}`
-	response := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, call, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	response := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, call, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if response.Failure == nil {
 		t.Fatal("disabled connector accepted a new call")
 	}

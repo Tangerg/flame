@@ -56,51 +56,12 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		return runtime.RetirePluginCommand(cmd.Context(), request, commandID)
 	}))
 	root.AddCommand(newPluginCallCommand(provider))
-	root.AddCommand(newPluginRequirementsCommand(provider))
-	root.AddCommand(newPluginPointCommand(provider))
-	root.AddCommand(newPluginResolveCompositionCommand(provider))
-	root.AddCommand(&cobra.Command{Use: "compositions", Short: "Inspect explicit outer-to-inner plugin compositions", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		values, err := runtime.ListPluginCompositions(cmd.Context())
-		if err != nil {
-			return err
-		}
-		if values == nil {
-			values = []protocol.PluginComposition{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginComposition]{Data: values})
-	}})
-	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		values, err := runtime.ListPluginProviders(cmd.Context())
-		if err != nil {
-			return err
-		}
-		if values == nil {
-			values = []protocol.PluginProviderSelection{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginProviderSelection]{Data: values})
-	}})
-	root.AddCommand(&cobra.Command{Use: "list", Short: "Inspect releases, installation state and component diagnostics", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		installations, err := runtime.ListPlugins(cmd.Context())
-		if err != nil {
-			return err
-		}
-		if installations == nil {
-			installations = []protocol.PluginInstallation{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
-	}})
+	root.AddCommand(pluginResolveCommand(provider, "requirements", "Resolve one contribution's declared collaborators", "Exact installation, release digest and contribution as JSON", pluginRuntime.ResolvePluginRequirements))
+	root.AddCommand(pluginResolveCommand(provider, "point", "Resolve values of a consumer-defined point", "Point request as JSON; contract and attributes contain JSON strings", pluginRuntime.ResolvePluginPoint))
+	root.AddCommand(pluginResolveCommand(provider, "resolve-composition", "Resolve current bindings in the explicit composition order", "Consumer contract as a JSON string inside the request", pluginRuntime.ResolvePluginComposition))
+	root.AddCommand(pluginListCommand(provider, "compositions", "Inspect explicit outer-to-inner plugin compositions", pluginRuntime.ListPluginCompositions))
+	root.AddCommand(pluginListCommand(provider, "providers", "Inspect explicit plugin provider choices", pluginRuntime.ListPluginProviders))
+	root.AddCommand(pluginListCommand(provider, "list", "Inspect releases, installation state and component diagnostics", pluginRuntime.ListPlugins))
 	root.AddCommand(
 		pluginMutationCommand(provider, "set-composition", "Set explicit outer-to-inner members for a consumer contract", pluginRuntime.SetPluginComposition),
 		pluginMutationCommand(provider, "select-provider", "Select a declared provider without changing its enablement or private data", pluginRuntime.SelectPluginProvider),
@@ -114,6 +75,49 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		}),
 	)
 	return root
+}
+
+func pluginListCommand[T any](provider runtimeProvider, use, short string, list func(pluginRuntime, context.Context) ([]T, error)) *cobra.Command {
+	return &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := list(runtime, cmd.Context())
+		if err != nil {
+			return err
+		}
+		return writePage(cmd, values)
+	}}
+}
+
+func pluginResolveCommand[R, T any](provider runtimeProvider, use, short, requestHelp string, resolve func(pluginRuntime, context.Context, R) ([]T, error)) *cobra.Command {
+	var input string
+	command := &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		request, err := decodePluginRequest[R](input)
+		if err != nil {
+			return err
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := resolve(runtime, cmd.Context(), request)
+		if err != nil {
+			return err
+		}
+		return writePage(cmd, values)
+	}}
+	command.Flags().StringVar(&input, "request", "{}", requestHelp)
+	return command
+}
+
+// writePage keeps an empty result a JSON array, never null.
+func writePage[T any](cmd *cobra.Command, values []T) error {
+	if values == nil {
+		values = []T{}
+	}
+	return writeJSONLine(cmd.OutOrStdout(), protocol.Page[T]{Data: values})
 }
 
 func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
@@ -134,78 +138,6 @@ func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 		return writeJSONLine(cmd.OutOrStdout(), original)
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Original Runtime store namespace and command key as JSON")
-	return command
-}
-
-func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command {
-	var input string
-	command := &cobra.Command{Use: "resolve-composition", Short: "Resolve current bindings in the explicit composition order", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		request, err := decodePluginRequest[protocol.ResolvePluginCompositionRequest](input)
-		if err != nil {
-			return err
-		}
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		values, err := runtime.ResolvePluginComposition(cmd.Context(), request)
-		if err != nil {
-			return err
-		}
-		if values == nil {
-			values = []protocol.PluginOperationBinding{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginOperationBinding]{Data: values})
-	}}
-	command.Flags().StringVar(&input, "request", "{}", "Consumer contract as a JSON string inside the request")
-	return command
-}
-
-func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
-	var input string
-	command := &cobra.Command{Use: "requirements", Short: "Resolve one contribution's declared collaborators", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		request, err := decodePluginRequest[protocol.ResolvePluginRequirementsRequest](input)
-		if err != nil {
-			return err
-		}
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		values, err := runtime.ResolvePluginRequirements(cmd.Context(), request)
-		if err != nil {
-			return err
-		}
-		if values == nil {
-			values = []protocol.PluginCollaborator{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginCollaborator]{Data: values})
-	}}
-	command.Flags().StringVar(&input, "request", "{}", "Exact installation, release digest and contribution as JSON")
-	return command
-}
-
-func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
-	var input string
-	command := &cobra.Command{Use: "point", Short: "Resolve values of a consumer-defined point", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		request, err := decodePluginRequest[protocol.ResolvePluginPointRequest](input)
-		if err != nil {
-			return err
-		}
-		runtime, err := requirePluginRuntime(cmd, provider)
-		if err != nil {
-			return err
-		}
-		values, err := runtime.ResolvePluginPoint(cmd.Context(), request)
-		if err != nil {
-			return err
-		}
-		if values == nil {
-			values = []protocol.PluginPointBinding{}
-		}
-		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginPointBinding]{Data: values})
-	}}
-	command.Flags().StringVar(&input, "request", "{}", "Point request as JSON; contract and attributes contain JSON strings")
 	return command
 }
 

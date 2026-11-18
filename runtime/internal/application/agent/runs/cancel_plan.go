@@ -23,15 +23,13 @@ type cancellationRun struct {
 // durable pending state, and process-local executor bindings; none of those
 // outer representations belongs in the execution domain itself.
 type cancellationPlan struct {
-	root            cancellationRun
-	target          cancellationRun
-	targetSubtree   []cancellationRun
-	survivingTree   []cancellationRun
-	executor        ExecutorRef
-	pending         Pending
-	hasPending      bool
-	spawningItem    transcript.Item
-	hasSpawningItem bool
+	root          cancellationRun
+	target        cancellationRun
+	targetSubtree []cancellationRun
+	survivingTree []cancellationRun
+	executor      ExecutorRef
+	pending       *Pending
+	spawningItem  *transcript.Item
 	// items are every Item the hand-off names, and interrupts its open
 	// interrupts projected from them.
 	items                map[string]transcript.Item
@@ -67,8 +65,7 @@ func (p cancellationPlan) survivingRuns() []rundomain.Run {
 // domain or executor contract.
 type cancellationPlanSource struct {
 	runs             []rundomain.Run
-	pending          Pending
-	hasPending       bool
+	pending          *Pending
 	live             liveSegment
 	hasLive          bool
 	executor         ExecutorRef
@@ -87,16 +84,12 @@ func (c *Cancellations) cancellationPlanFor(
 		return cancellationPlan{}, liveSegment{}, false, err
 	}
 
-	var pending *Pending
-	if source.hasPending {
-		pending = &source.pending
-	}
 	plan, err := newCancellationPlan(
 		cmd.RunID,
 		source.runs,
 		source.executor,
 		source.memberIDsByRunID,
-		pending,
+		source.pending,
 	)
 	if err != nil {
 		return cancellationPlan{}, liveSegment{}, false, err
@@ -143,9 +136,13 @@ func (c *Cancellations) readCancellationPlanSource(
 			rootRunID,
 		)
 	}
-	pending, pendingFound, err := c.interrupts.LookupOpenInterrupt(ctx, rootRunID)
+	open, pendingFound, err := c.interrupts.LookupOpenInterrupt(ctx, rootRunID)
 	if err != nil {
 		return cancellationPlanSource{}, err
+	}
+	var pending *Pending
+	if pendingFound {
+		pending = &open
 	}
 	var live liveSegment
 	var liveFound bool
@@ -159,7 +156,6 @@ func (c *Cancellations) readCancellationPlanSource(
 		cmd.RunID,
 		root,
 		pending,
-		pendingFound,
 		live,
 		liveFound,
 	)
@@ -169,7 +165,6 @@ func (c *Cancellations) readCancellationPlanSource(
 	return cancellationPlanSource{
 		runs:             runs,
 		pending:          pending,
-		hasPending:       pendingFound,
 		live:             live,
 		hasLive:          liveFound,
 		executor:         executor,
@@ -181,14 +176,13 @@ func (c *Cancellations) resolveCancellationOwner(
 	ctx context.Context,
 	targetRunID string,
 	root rundomain.Run,
-	pending Pending,
-	hasPending bool,
+	pending *Pending,
 	live liveSegment,
 	hasLive bool,
 ) (ExecutorRef, map[string]string, error) {
 	switch root.State() {
 	case rundomain.Running:
-		if hasPending {
+		if pending != nil {
 			return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
 				ctx,
 				targetRunID,
@@ -220,7 +214,7 @@ func (c *Cancellations) resolveCancellationOwner(
 			ExecutorID: live.record.ExecutorID,
 		}, live.owner.executorMemberSnapshot(), nil
 	case rundomain.Waiting:
-		if !hasPending {
+		if pending == nil {
 			return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
 				ctx,
 				targetRunID,

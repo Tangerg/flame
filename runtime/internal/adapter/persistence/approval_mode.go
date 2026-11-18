@@ -62,15 +62,11 @@ func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID string) (bool,
 		if err := validateSessionResource("read Session Plan mode", sessionID); err != nil {
 			return false, err
 		}
-		var present int
-		err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT 1 FROM session_plan_modes WHERE session_id = ?`, sessionID).Scan(&present)
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		if err != nil {
+		var active bool
+		if err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM session_plan_modes WHERE session_id = ?)`, sessionID).Scan(&active); err != nil {
 			return false, fmt.Errorf("sqlite: read session Plan mode: %w", err)
 		}
-		return true, nil
+		return active, nil
 	})
 }
 

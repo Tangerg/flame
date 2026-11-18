@@ -100,7 +100,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	if err == nil || len(output) != 0 || !strings.Contains(string(stderr), protocol.ErrInternalError.Error()) || strings.Contains(string(stderr), protocol.ErrIdempotencyConflict.Error()) {
 		t.Fatalf("conflicting private receipt became a definite recovery: stdout=%s stderr=%s error=%v", output, stderr, err)
 	}
-	recovered := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{
+	recovered := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{
 		IdempotencyKey: arguments[len(arguments)-1], RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
 	})
 	if recovered.Value != nil || recovered.Failure == nil || !errors.Is(recovered.Failure, protocol.ErrInternalError) || recovered.Failure.Problem().Type != protocol.ErrInternalError.Error() {

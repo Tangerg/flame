@@ -178,7 +178,7 @@ func openConnection(ctx context.Context, cfg Config, target settings.Runtime) (*
 	}
 	discovery, err := connection.discovery.Discover(ctx, connection.callOptions())
 	if err == nil {
-		connection.profile, err = newProfile(discovery, connection.meta.ClientCapabilities)
+		connection.profile, err = NewProfile(discovery, connection.meta.ClientCapabilities)
 	}
 	if err != nil {
 		return connection, classifyError(err)

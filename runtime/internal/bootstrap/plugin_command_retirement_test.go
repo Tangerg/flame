@@ -57,7 +57,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	}
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
-	options := delivery.Options{IdempotencyKey: "prepared-review"}
+	options := protocol.CallMetadata{IdempotencyKey: "prepared-review"}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := r.endpoint.Invoke(ctx, delivery.PluginsCall, request, options)
 	cancel()
@@ -80,13 +80,13 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
 	wrongStore := lookup
 	wrongStore.Namespace = "idp_00000000000000000000000000000000"
-	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, wrongStore, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, wrongStore, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("retirement crossed stores: %+v", result)
 	}
 	for range 2 {
 		r.must(delivery.PluginsRetireCommand, lookup, "")
 	}
-	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, lookup, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, lookup, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
 		t.Fatalf("retirement not publicly observable: %+v", result)
 	}
 	r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-retirement")

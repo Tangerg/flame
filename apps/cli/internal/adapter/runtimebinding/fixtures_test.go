@@ -16,7 +16,6 @@ func configureIntegrationRuntime(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_APIKEY", "test-key")
-
 }
 
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {

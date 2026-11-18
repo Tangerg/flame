@@ -140,16 +140,40 @@ func (c CommandIdentity) Validate() error {
 	return nil
 }
 
+// CommandKeyUse is what one key holds in the shared command idempotency space.
+type CommandKeyUse uint8
+
+const (
+	CommandKeyUnused CommandKeyUse = iota
+	// CommandKeyAccepted holds a Run command acceptance.
+	CommandKeyAccepted
+	// CommandKeyForeign is claimed by another kind of command, so no Run
+	// command may reuse it.
+	CommandKeyForeign
+)
+
 // CommandAcceptanceRecord is the read-only projection of a command-record lookup
-// by key. At most one of Found or OtherOperation is true; neither means the key
-// is unused. CurrentRun is read consistently through the original material
-// reference; deleting and importing the same Run ID cannot restore that reference.
+// by key; Acceptance and its material exist only for an accepted key. CurrentRun
+// is read consistently through the original material reference; deleting and
+// importing the same Run ID cannot restore that reference.
 type CommandAcceptanceRecord struct {
-	Acceptance     CommandAcceptance
-	Found          bool
-	CurrentRun     *run.Run
-	OtherOperation bool
-	AppliedItem    *transcript.Item
+	Use         CommandKeyUse
+	Acceptance  CommandAcceptance
+	CurrentRun  *run.Run
+	AppliedItem *transcript.Item
+}
+
+// Conflicts reports whether the key cannot carry this command: another kind of
+// command claimed it, or it accepted a different Run command.
+func (r CommandAcceptanceRecord) Conflicts(operation CommandOperation, fingerprint string) bool {
+	switch r.Use {
+	case CommandKeyForeign:
+		return true
+	case CommandKeyAccepted:
+		return r.Acceptance.Operation != operation || r.Acceptance.Fingerprint != fingerprint
+	default:
+		return false
+	}
 }
 
 // commandAcceptanceReader observes original command facts without admitting,
@@ -202,18 +226,22 @@ func lookupAcceptedCommand(ctx context.Context, acceptances commandAcceptanceRea
 	if err != nil {
 		return StartResult{}, false, err
 	}
-	if record.OtherOperation {
+	if record.Conflicts(operation, identity.Fingerprint) {
 		return StartResult{}, false, ErrCommandKeyConflict
 	}
-	if !record.Found {
+	if record.Use != CommandKeyAccepted {
 		return StartResult{}, false, nil
 	}
 	accepted := record.Acceptance
-	if accepted.Fingerprint != identity.Fingerprint || accepted.Operation != operation {
-		return StartResult{}, false, ErrCommandKeyConflict
-	}
 	return StartResult{
 		RunID: accepted.RunID, SegmentID: accepted.SegmentID, SessionID: accepted.SessionID,
-		UserItemID: accepted.UserItemID, Reopened: true, MaterialRetired: record.CurrentRun == nil,
+		UserItemID: accepted.UserItemID, Opening: reopening(record),
 	}, true, nil
+}
+
+func reopening(record CommandAcceptanceRecord) Opening {
+	if record.CurrentRun == nil {
+		return OpeningRetired
+	}
+	return OpeningReopened
 }

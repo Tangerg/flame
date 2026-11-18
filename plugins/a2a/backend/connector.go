@@ -251,5 +251,5 @@ func complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, resu
 }
 
 func invalidRequest() error {
-	return &framecall.Refusal{Code: "invalid_request", Message: "a2a: invalid request"}
+	return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "a2a: invalid request"}
 }

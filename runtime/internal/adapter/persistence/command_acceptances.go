@@ -39,10 +39,10 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			if err != nil {
 				return err
 			}
-			if record.OtherOperation {
+			if record.Use == runs.CommandKeyForeign {
 				return runs.ErrCommandKeyConflict
 			}
-			if record.Found {
+			if record.Use == runs.CommandKeyAccepted {
 				previous := record.Acceptance
 				if !previous.Equal(acceptance) {
 					return runs.ErrCommandKeyConflict
@@ -106,7 +106,7 @@ func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 			if err != nil {
 				return nil, err
 			}
-			if !record.Found || record.CurrentRun == nil {
+			if record.Use != runs.CommandKeyAccepted || record.CurrentRun == nil {
 				return nil, errors.New("sqlite: accepted input changed inside its snapshot")
 			}
 			inputs = append(inputs, record.Acceptance)
@@ -136,7 +136,7 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 			return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: look up command acceptance: %w", err)
 		}
 		if kind != idempotencyRunAcceptance {
-			return runs.CommandAcceptanceRecord{OtherOperation: true}, nil
+			return runs.CommandAcceptanceRecord{Use: runs.CommandKeyForeign}, nil
 		}
 		acceptance := runs.CommandAcceptance{Key: key, Fingerprint: digest, Operation: runs.CommandOperation(operation.String), SessionID: sessionID.String, RunID: runID.String, SegmentID: segmentID.String, UserItemID: userItemID.String}
 		if len(steerInput) > 0 {
@@ -148,7 +148,7 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		if err := acceptance.Validate(); err != nil {
 			return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
 		}
-		record := runs.CommandAcceptanceRecord{Acceptance: acceptance, Found: true}
+		record := runs.CommandAcceptanceRecord{Use: runs.CommandKeyAccepted, Acceptance: acceptance}
 		if !materialRun.Valid {
 			return record, nil
 		}

@@ -74,7 +74,7 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 			return wire.HTTPResponse{}, err
 		}
 		response, err := requests.execute(ctx, contracts.Request.Name(), id, input)
-		return response, requestToolFailure(err)
+		return response, pluginsdk.RefusedToolFailure(err)
 	})
 	if err != nil {
 		return nil, err

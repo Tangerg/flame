@@ -65,7 +65,7 @@ func TestCompletedRunsUseSelectedSkillLearningAndHumanPublication(t *testing.T) 
 	target := protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}
 	run := func(index int) {
 		t.Helper()
-		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Read the fixture eight times and finish."}}}, delivery.Options{IdempotencyKey: fmt.Sprintf("learning-run-%d", index), RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Read the fixture eight times and finish."}}}, protocol.CallMetadata{IdempotencyKey: fmt.Sprintf("learning-run-%d", index), RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if started.Failure != nil {
 			t.Fatal(started.Failure)
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 
@@ -37,11 +38,11 @@ func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, er
 
 func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire.SearchResponse, error) {
 	if len(input.Query) > maxQueryBytes {
-		return wire.SearchResponse{}, &framecall.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
+		return wire.SearchResponse{}, &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
 	}
 	prepared, err := input.Prepare()
 	if err != nil {
-		return wire.SearchResponse{}, errors.Join(&framecall.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
+		return wire.SearchResponse{}, errors.Join(&framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "web: invalid search request"}, err)
 	}
 	response, err := r.search(ctx, prepared)
 	if err != nil {
@@ -70,7 +71,7 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire
 func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (capture.Page, error) {
 	prepared, err := input.Prepare()
 	if err != nil {
-		return capture.Page{}, errors.Join(&framecall.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
+		return capture.Page{}, errors.Join(&framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "web: invalid fetch request"}, err)
 	}
 	if err := capture.ValidateURL(prepared.URL); err != nil {
 		return capture.Page{}, err

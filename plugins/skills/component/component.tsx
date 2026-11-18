@@ -84,19 +84,19 @@ function SkillCommandFeedback({
       {notice && <p role="status">{noticeText(notice, t)}</p>}
       {command && (
         <section aria-label={t("command.status.label")}>
-          <p role={command.uncertain ? "alert" : "status"}>
-            {command.uncertain
+          <p role={command.phase === "uncertain" ? "alert" : "status"}>
+            {command.phase === "uncertain"
               ? t("command.uncertain")
               : t("command.pending", {
-                  label: commandLabel(command.intent, t),
+                  label: commandLabel(command.command.intent, t),
                 })}
           </p>
-          {command.error && <RecordBody>{command.error}</RecordBody>}
-          {command.uncertain && (
+          {command.phase === "uncertain" && (
             <>
+              <RecordBody>{command.error}</RecordBody>
               <Metadata>
                 {t("command.original", {
-                  key: command.promise.idempotencyKey,
+                  key: command.command.promise.idempotencyKey,
                 })}
               </Metadata>
               <Button onClick={reconcile}>{t("command.reconcile")}</Button>
@@ -204,7 +204,7 @@ export function Skills({ context }: { context: ComponentContext }) {
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const instructions = useRef<HTMLElement>(null);
-  const feedbackIntent = command?.intent ?? notice?.intent;
+  const feedbackIntent = command?.command.intent ?? notice?.intent;
   const feedbackName =
     feedbackIntent?.action === "archive" || feedbackIntent?.action === "restore"
       ? feedbackIntent.name

@@ -5,9 +5,7 @@ package recovery
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -45,7 +43,7 @@ type conversationStore interface {
 }
 
 type goalRunRecorder interface {
-	RecordRun(ctx context.Context, value run.Run) error
+	CaptureGoalRun(ctx context.Context, value run.Run) error
 }
 
 type executorCheckpointStore interface {
@@ -56,24 +54,13 @@ type executorCheckpointStore interface {
 type modelInvocationStore interface {
 	ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error)
 	ValidateIndependentEndpoint(context.Context, modelref.EndpointObservation) error
-	ListStartedModelInvocations(
-		ctx context.Context,
-		yield func(sessionID, runID, segmentID, callID string, startedAt time.Time, purpose run.ModelCallPurpose) error,
-	) error
-	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
-	RecoverModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *modelref.EndpointObservation, run.ModelCallPurpose) error
+	ListOpenModelInvocations(context.Context) ([]runs.OpenModelInvocation, error)
+	RecoverModelInvocation(context.Context, runs.ModelInvocationRecovery) error
 }
 
 type toolInvocationStore interface {
-	ListStartedToolInvocations(
-		ctx context.Context,
-		yield func(sessionID, runID, segmentID, callID, itemID string, startedAt time.Time) error,
-	) error
-	MarkToolInvocationIncomplete(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID, itemID string,
-		startedAt, finishedAt time.Time,
-	) error
+	ListOpenToolInvocations(context.Context) ([]runs.OpenToolInvocation, error)
+	RecordToolInvocation(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error
 }
 
 // childRunStartReservations owns the process-scoped callback ledger behind
@@ -164,54 +151,11 @@ func (p *Persistence) ListIndependentEndpoints(ctx context.Context) ([]modelref.
 }
 
 func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.OpenModelInvocation, error) {
-	var invocations []runs.OpenModelInvocation
-	err := p.modelInvocations.ListStartedModelInvocations(
-		ctx,
-		func(sessionID, runID, segmentID, callID string, startedAt time.Time, purpose run.ModelCallPurpose) error {
-			invocations = append(invocations, runs.OpenModelInvocation{
-				Purpose:   purpose,
-				SessionID: sessionID, RunID: runID, SegmentID: segmentID,
-				CallID: callID, StartedAt: startedAt,
-			})
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("recovery: list open model invocations: %w", err)
-	}
-	for index, invocation := range invocations {
-		source, found, err := p.modelInvocations.EndpointForCaller(ctx, invocation.CallID)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			continue
-		}
-		record := source.Snapshot()
-		if record.SessionID != invocation.SessionID || record.RunID != invocation.RunID || record.Invocation.Caller.ID != invocation.CallID {
-			return nil, errors.New("recovery: endpoint differs from its logical call ownership")
-		}
-		invocations[index].Endpoint = &source
-	}
-	return invocations, nil
+	return p.modelInvocations.ListOpenModelInvocations(ctx)
 }
 
 func (p *Persistence) ListOpenToolInvocations(ctx context.Context) ([]runs.OpenToolInvocation, error) {
-	var invocations []runs.OpenToolInvocation
-	err := p.toolInvocations.ListStartedToolInvocations(
-		ctx,
-		func(sessionID, runID, segmentID, callID, itemID string, startedAt time.Time) error {
-			invocations = append(invocations, runs.OpenToolInvocation{
-				SessionID: sessionID, RunID: runID, SegmentID: segmentID,
-				CallID: callID, ItemID: itemID, StartedAt: startedAt,
-			})
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("recovery: list open Tool invocations: %w", err)
-	}
-	return invocations, nil
+	return p.toolInvocations.ListOpenToolInvocations(ctx)
 }
 
 func (p *Persistence) ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error) {
@@ -275,21 +219,8 @@ func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCom
 
 func (p *Persistence) recoverModelInvocations(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, invocation := range commit.ModelInvocations() {
-		if err := p.modelInvocations.RecoverModelInvocation(
-			ctx,
-			invocation.SessionID,
-			invocation.RunID,
-			invocation.SegmentID,
-			invocation.CallID,
-			invocation.StartedAt,
-			invocation.FinishedAt,
-			invocation.Endpoint, invocation.Purpose,
-		); err != nil {
-			return fmt.Errorf(
-				"recovery: settle abandoned model invocation %q: %w",
-				invocation.CallID,
-				err,
-			)
+		if err := p.modelInvocations.RecoverModelInvocation(ctx, invocation); err != nil {
+			return fmt.Errorf("recovery: settle abandoned model invocation %q: %w", invocation.CallID, err)
 		}
 	}
 	return nil
@@ -297,21 +228,8 @@ func (p *Persistence) recoverModelInvocations(ctx context.Context, commit runs.R
 
 func (p *Persistence) markToolInvocationsIncomplete(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, invocation := range commit.ToolInvocations() {
-		if err := p.toolInvocations.MarkToolInvocationIncomplete(
-			ctx,
-			invocation.SessionID,
-			invocation.RunID,
-			invocation.SegmentID,
-			invocation.CallID,
-			invocation.ItemID,
-			invocation.StartedAt,
-			invocation.FinishedAt,
-		); err != nil {
-			return fmt.Errorf(
-				"recovery: mark Tool invocation %q incomplete: %w",
-				invocation.CallID,
-				err,
-			)
+		if err := p.toolInvocations.RecordToolInvocation(ctx, invocation.SessionID, invocation.RunID, invocation.Transition()); err != nil {
+			return fmt.Errorf("recovery: mark Tool invocation %q incomplete: %w", invocation.CallID, err)
 		}
 	}
 	return nil
@@ -366,7 +284,7 @@ func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryC
 
 func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, charged := range commit.GoalRuns() {
-		if err := p.goalRuns.RecordRun(ctx, charged); err != nil {
+		if err := p.goalRuns.CaptureGoalRun(ctx, charged); err != nil {
 			return fmt.Errorf("recovery: record Goal Run for Run %q: %w", charged.ID(), err)
 		}
 	}

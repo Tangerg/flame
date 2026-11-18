@@ -28,38 +28,8 @@ type picker[T any] struct {
 	cancel func()
 	group  *scene.Group
 
-	pointerGesture pickerPointerGesture
+	press pointerPress[int]
 }
-
-type pickerPointerGesture struct {
-	index   int
-	active  bool
-	dragged bool
-}
-
-func (p *pickerPointerGesture) begin(index int) {
-	*p = pickerPointerGesture{index: index, active: true}
-}
-
-func (p *pickerPointerGesture) drag() bool {
-	if !p.active {
-		return false
-	}
-	p.dragged = true
-	return true
-}
-
-func (p *pickerPointerGesture) release(index int) (pressed int, commit bool) {
-	if !p.active {
-		return -1, false
-	}
-	pressed = p.index
-	commit = !p.dragged && index == pressed
-	p.cancel()
-	return pressed, commit
-}
-
-func (p *pickerPointerGesture) cancel() { *p = pickerPointerGesture{} }
 
 func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, label, detail func(T) string, pick func(T)) *picker[T] {
 	p := &picker[T]{theme: theme, glyphs: glyphs, label: label, detail: detail, pick: pick}
@@ -67,27 +37,27 @@ func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, la
 	p.query.Controller().SetPlaceholder(placeholder)
 	p.items = base.NewFilter(base.FilterConfig[T]{Row: p.row})
 	p.query.Controller().Session().Subscribe(func(base.ChangeMap) {
-		p.pointerGesture.cancel()
+		p.press.cancel()
 		p.items.SetPattern(p.query.Controller().Text())
 	})
 	return p
 }
 
 func (p *picker[T]) SetItems(items []T) {
-	p.pointerGesture.cancel()
+	p.press.cancel()
 	p.items.SetItems(items, func(item T) string { return strings.TrimSpace(p.label(item) + " " + p.detail(item)) })
 	p.items.SetPattern(p.query.Controller().Text())
 }
 
 func (p *picker[T]) Current() (T, bool) { return p.items.Current() }
 
-func (p *picker[T]) interruptPointerGesture() { p.pointerGesture.cancel() }
+func (p *picker[T]) cancelPress() { p.press.cancel() }
 
 func (p *picker[T]) Reset() {
 	p.query.Controller().Clear()
 	p.items.SetPattern("")
 	p.items.Select(0)
-	p.pointerGesture.cancel()
+	p.press.cancel()
 }
 
 func (p *picker[T]) Element() scene.Element {
@@ -97,7 +67,7 @@ func (p *picker[T]) Element() scene.Element {
 			Element: scene.ElementConfig{Focusable: func() bool { return true },
 				FocusChanged: func(has bool) {
 					if !has {
-						p.pointerGesture.cancel()
+						p.press.cancel()
 					}
 				},
 				Preview: func(event scene.Event) scene.EventResult {
@@ -106,12 +76,12 @@ func (p *picker[T]) Element() scene.Element {
 						return scene.EventResult{}
 					}
 					if !event.CurrentLayout() {
-						p.pointerGesture.cancel()
+						p.press.cancel()
 						return scene.EventResult{Consumed: true}
 					}
 					consumed := p.handleListMouse(mouse)
 					return scene.EventResult{Consumed: consumed, Capture: consumed && mouse.Action == input.MouseDown, Focus: consumed && mouse.Action == input.MouseDown}
-				}, Detached: func() { p.pointerGesture.cancel() }},
+				}, Detached: func() { p.press.cancel() }},
 		})
 		footer := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) {
 			label := fmt.Sprintf("%d/%d · ↑↓ move · enter select · esc close", p.items.Matched(), p.items.Len())
@@ -125,7 +95,7 @@ func (p *picker[T]) Element() scene.Element {
 				if !ok || !key.Down() {
 					return scene.EventResult{}
 				}
-				p.pointerGesture.cancel()
+				p.press.cancel()
 				return scene.EventResult{Consumed: p.handleKey(key, key)}
 			}},
 		})
@@ -157,32 +127,32 @@ func (p *picker[T]) handleKey(key input.Key, event input.Event) bool {
 func (p *picker[T]) handleListMouse(mouse input.Mouse) bool {
 	switch mouse.Action {
 	case input.MouseCancel:
-		p.pointerGesture.cancel()
+		p.press.cancel()
 		return true
 	case input.WheelUp, input.WheelDown:
-		p.pointerGesture.cancel()
+		p.press.cancel()
 		return p.items.Handle(mouse)
 	case input.MouseDown:
 		if mouse.Button != input.ButtonLeft || !p.items.Handle(mouse) {
-			p.pointerGesture.cancel()
+			p.press.cancel()
 			return false
 		}
-		p.pointerGesture.begin(p.items.Selected())
+		p.press.begin(p.items.Selected())
 		return true
 	case input.MouseDrag:
-		if mouse.Button != input.ButtonLeft || !p.pointerGesture.drag() {
-			p.pointerGesture.cancel()
+		if mouse.Button != input.ButtonLeft || !p.press.drag() {
+			p.press.cancel()
 			return false
 		}
 		p.items.Handle(mouse)
 		return true
 	case input.MouseUp:
-		if mouse.Button != input.ButtonLeft || !p.pointerGesture.active {
-			p.pointerGesture.cancel()
+		if _, held := p.press.pressed(); mouse.Button != input.ButtonLeft || !held {
+			p.press.cancel()
 			return false
 		}
-		pressed, commit := p.pointerGesture.release(p.listIndexAt(mouse.Pos))
-		if commit && p.items.Selected() == pressed {
+		pressed, click := p.press.release()
+		if click && p.listIndexAt(mouse.Pos) == pressed && p.items.Selected() == pressed {
 			if item, ok := p.items.Current(); ok && p.pick != nil {
 				p.pick(item)
 			}

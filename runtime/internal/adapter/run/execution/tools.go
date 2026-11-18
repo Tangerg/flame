@@ -68,9 +68,26 @@ type ToolAuthorizationRequest struct {
 // ToolCallStarted fact is committed. Naming the outcome is the only way to
 // build one, so no decision can deny a call and rewrite it too.
 type ToolAuthorizationDecision struct {
+	toolVerdict
+	approval *runs.ApprovalPrompt
+}
+
+// toolVerdict is what every pre-call decision states: a refusal with the reason
+// the model sees, or permission with the arguments that replace the model's own.
+type toolVerdict struct {
 	reason    string
 	arguments *tool.Arguments
-	approval  *runs.ApprovalPrompt
+}
+
+// Denied reports the refusal and the reason shown to the model.
+func (v toolVerdict) Denied() (string, bool) { return v.reason, v.reason != "" }
+
+// EffectiveArguments reports the replacement arguments, when any were supplied.
+func (v toolVerdict) EffectiveArguments() (tool.Arguments, bool) {
+	if v.arguments == nil {
+		return tool.Arguments{}, false
+	}
+	return *v.arguments, true
 }
 
 // allowTool proceeds with the model's own arguments.
@@ -78,13 +95,13 @@ func allowTool() ToolAuthorizationDecision { return ToolAuthorizationDecision{} 
 
 // allowToolWithArguments proceeds with arguments policy replaced.
 func allowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision {
-	return ToolAuthorizationDecision{arguments: &arguments}
+	return ToolAuthorizationDecision{toolVerdict: toolVerdict{arguments: &arguments}}
 }
 
 // denyTool refuses the call. The reason reaches the model as a recoverable Tool
 // result, so a blank one becomes the generic wording rather than nothing.
 func denyTool(reason string) ToolAuthorizationDecision {
-	return ToolAuthorizationDecision{reason: toolDenialReason(reason)}
+	return ToolAuthorizationDecision{toolVerdict: toolVerdict{reason: toolDenialReason(reason)}}
 }
 
 // askToolApproval waits for a durable human answer to prompt.
@@ -107,18 +124,6 @@ func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.Ap
 		return errors.New("execution: Tool approval prompt differs from its invocation")
 	}
 	return nil
-}
-
-// Denied reports the refusal and the reason shown to the model.
-func (d ToolAuthorizationDecision) Denied() (string, bool) { return d.reason, d.reason != "" }
-
-// EffectiveArguments reports the replacement arguments, when policy supplied any.
-func (d ToolAuthorizationDecision) EffectiveArguments() (tool.Arguments, bool) {
-	if d.arguments == nil {
-
-		return tool.Arguments{}, false
-	}
-	return *d.arguments, true
 }
 
 // Approval reports the prompt this call waits on, when it waits on one.
@@ -172,8 +177,7 @@ type InteractionToolHookInput struct {
 // rewritten arguments, or both. A denial carries neither, so the outcome names
 // itself the same way the authorization decision does.
 type InteractionToolHookDecision struct {
-	reason          string
-	arguments       *tool.Arguments
+	toolVerdict
 	requireApproval bool
 }
 
@@ -183,27 +187,15 @@ func allowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionT
 	if arguments != nil {
 		arguments = new(*arguments)
 	}
-	return InteractionToolHookDecision{requireApproval: requireApproval, arguments: arguments}
+	return InteractionToolHookDecision{toolVerdict: toolVerdict{arguments: arguments}, requireApproval: requireApproval}
 }
 
 // denyToolHook refuses the call, naming the hook when the hook did not.
 func denyToolHook(reason string) InteractionToolHookDecision {
 	if trimmed := strings.TrimSpace(reason); trimmed != "" {
-		return InteractionToolHookDecision{reason: trimmed}
+		return InteractionToolHookDecision{toolVerdict: toolVerdict{reason: trimmed}}
 	}
-	return InteractionToolHookDecision{reason: "denied by a PreToolUse hook"}
-}
-
-// Denied reports the refusal and the reason shown to the model.
-func (d InteractionToolHookDecision) Denied() (string, bool) { return d.reason, d.reason != "" }
-
-// EffectiveArguments reports the rewritten arguments, when a hook supplied any.
-func (d InteractionToolHookDecision) EffectiveArguments() (tool.Arguments, bool) {
-	if d.arguments == nil {
-
-		return tool.Arguments{}, false
-	}
-	return *d.arguments, true
+	return InteractionToolHookDecision{toolVerdict: toolVerdict{reason: "denied by a PreToolUse hook"}}
 }
 
 // RequiresApproval reports a hook escalating a call the gate would have passed.

@@ -138,29 +138,13 @@ func readMethods(directory, receiver string, graph *schemaGraph) ([]method, erro
 		if err != nil {
 			return nil, err
 		}
-		imports := make(map[string]string)
-		for _, imported := range file.Imports {
-			path, err := strconv.Unquote(imported.Path.Value)
-			if err != nil {
-				return nil, err
-			}
-			name := filepath.Base(path)
-			if imported.Name != nil {
-				name = imported.Name.Name
-			}
-			imports[name] = path
+		imports, err := fileImports(file)
+		if err != nil {
+			return nil, err
 		}
 		for _, declaration := range file.Decls {
 			decl, ok := declaration.(*ast.FuncDecl)
-			if !ok || decl.Recv == nil || len(decl.Recv.List) != 1 || !decl.Name.IsExported() {
-				continue
-			}
-			owner := decl.Recv.List[0].Type
-			if pointer, ok := owner.(*ast.StarExpr); ok {
-				owner = pointer.X
-			}
-			name, ok := owner.(*ast.Ident)
-			if !ok || name.Name != receiver {
+			if !ok || !exportedMethodOf(decl, receiver) {
 				continue
 			}
 			if decl.Name.Name == "ServiceStartup" {
@@ -173,44 +157,9 @@ func readMethods(directory, receiver string, graph *schemaGraph) ([]method, erro
 				return nil, fmt.Errorf("service repeats method %s", decl.Name.Name)
 			}
 			seen[decl.Name.Name] = true
-			method := method{name: decl.Name.Name, fqn: file.Name.Name + "." + receiver + "." + decl.Name.Name}
-			if decl.Type.TypeParams != nil {
-				return nil, fmt.Errorf("method %s cannot have type parameters", method.fqn)
-			}
-			for _, field := range decl.Type.Params.List {
-				shape, err := graph.expression(field.Type, imports)
-				if err != nil {
-					return nil, fmt.Errorf("%s parameter: %w", method.fqn, err)
-				}
-				if len(field.Names) == 0 {
-					return nil, fmt.Errorf("%s has an unnamed parameter", method.fqn)
-				}
-				for _, name := range field.Names {
-					if name.Name == "_" {
-						return nil, fmt.Errorf("%s has a discarded wire parameter", method.fqn)
-					}
-					method.params = append(method.params, parameter{name: name.Name, shape: shape})
-				}
-			}
-			var results []ast.Expr
-			if decl.Type.Results != nil {
-				for _, result := range decl.Type.Results.List {
-					for range max(1, len(result.Names)) {
-						results = append(results, result.Type)
-					}
-				}
-			}
-			if len(results) > 0 && isIdentifier(results[len(results)-1], "error") {
-				results = results[:len(results)-1]
-			}
-			if len(results) > 1 {
-				return nil, fmt.Errorf("%s has multiple business results", method.fqn)
-			}
-			if len(results) == 1 {
-				method.result, err = graph.expression(results[0], imports)
-				if err != nil {
-					return nil, fmt.Errorf("%s result: %w", method.fqn, err)
-				}
+			method, err := graph.method(decl, file.Name.Name+"."+receiver+"."+decl.Name.Name, imports)
+			if err != nil {
+				return nil, err
 			}
 			methods = append(methods, method)
 		}
@@ -220,6 +169,83 @@ func readMethods(directory, receiver string, graph *schemaGraph) ([]method, erro
 	}
 	slices.SortFunc(methods, func(a, b method) int { return strings.Compare(a.name, b.name) })
 	return methods, nil
+}
+
+// fileImports maps each local import name to its path.
+func fileImports(file *ast.File) (map[string]string, error) {
+	imports := make(map[string]string)
+	for _, imported := range file.Imports {
+		path, err := strconv.Unquote(imported.Path.Value)
+		if err != nil {
+			return nil, err
+		}
+		name := filepath.Base(path)
+		if imported.Name != nil {
+			name = imported.Name.Name
+		}
+		imports[name] = path
+	}
+	return imports, nil
+}
+
+func exportedMethodOf(decl *ast.FuncDecl, receiver string) bool {
+	if decl.Recv == nil || len(decl.Recv.List) != 1 || !decl.Name.IsExported() {
+		return false
+	}
+	owner := decl.Recv.List[0].Type
+	if pointer, ok := owner.(*ast.StarExpr); ok {
+		owner = pointer.X
+	}
+	name, ok := owner.(*ast.Ident)
+	return ok && name.Name == receiver
+}
+
+// method translates one service method. Every parameter crosses the bridge by
+// name, and a trailing error is the transport failure, not a business result.
+func (g *schemaGraph) method(decl *ast.FuncDecl, fqn string, imports map[string]string) (method, error) {
+	result := method{name: decl.Name.Name, fqn: fqn}
+	if decl.Type.TypeParams != nil {
+		return method{}, fmt.Errorf("method %s cannot have type parameters", fqn)
+	}
+	for _, field := range decl.Type.Params.List {
+		shape, err := g.expression(field.Type, imports)
+		if err != nil {
+			return method{}, fmt.Errorf("%s parameter: %w", fqn, err)
+		}
+		if len(field.Names) == 0 {
+			return method{}, fmt.Errorf("%s has an unnamed parameter", fqn)
+		}
+		for _, name := range field.Names {
+			if name.Name == "_" {
+				return method{}, fmt.Errorf("%s has a discarded wire parameter", fqn)
+			}
+			result.params = append(result.params, parameter{name: name.Name, shape: shape})
+		}
+	}
+	var results []ast.Expr
+	if decl.Type.Results != nil {
+		for _, field := range decl.Type.Results.List {
+			for range max(1, len(field.Names)) {
+				results = append(results, field.Type)
+			}
+		}
+	}
+	if len(results) > 0 && isIdentifier(results[len(results)-1], "error") {
+		results = results[:len(results)-1]
+	}
+	switch len(results) {
+	case 0:
+		return result, nil
+	case 1:
+		shape, err := g.expression(results[0], imports)
+		if err != nil {
+			return method{}, fmt.Errorf("%s result: %w", fqn, err)
+		}
+		result.result = shape
+		return result, nil
+	default:
+		return method{}, fmt.Errorf("%s has multiple business results", fqn)
+	}
 }
 
 func startupHook(signature *ast.FuncType, imports map[string]string) bool {

@@ -68,7 +68,7 @@ func evaluateEvent(ctx context.Context, db sqlite.Database, method string, comma
 	}
 	receipt, reply, err := pluginstorage.AdmitCommand(ctx, db, method, string(command.ID), input, func(context.Context) error {
 		if err := command.Input.Validate(); err != nil {
-			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: err.Error()}
 		}
 		return nil
 	})
@@ -165,7 +165,7 @@ func (e *eventCommands) rule(ctx context.Context, id string, input framevalue.JS
 			return err
 		}
 		if err := request.Validate(); err != nil {
-			return &framecall.Refusal{Code: "invalid_input", Message: err.Error()}
+			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: err.Error()}
 		}
 		return nil
 	})

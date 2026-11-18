@@ -34,7 +34,7 @@ func (c *Coordinator) SetUtilityRole(ctx context.Context, provider, model string
 			return modelref.Role{}, fmt.Errorf("models: utility model %q on %q: %w", role.Model(), role.Provider(), err)
 		}
 	}
-	if err := c.utilityStore.SaveUtilityRole(ctx, role); err != nil {
+	if err := c.utilityStore.Save(ctx, role); err != nil {
 		return modelref.Role{}, err
 	}
 
@@ -71,7 +71,7 @@ func (c *Coordinator) SetEmbeddingRole(ctx context.Context, providerID, model st
 			return modelref.Role{}, fmt.Errorf("models: build embedding model %q on %q: %w", role.Model(), role.Provider(), err)
 		}
 	}
-	if err := c.embeddingStore.SaveEmbeddingRole(ctx, role); err != nil {
+	if err := c.embeddingStore.Save(ctx, role); err != nil {
 		return modelref.Role{}, fmt.Errorf("models: persist embedding role: %w", err)
 	}
 

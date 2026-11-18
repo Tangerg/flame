@@ -188,14 +188,19 @@ func connectionError(id mcpserver.ID, err error) error {
 	return err
 }
 
+// available admits one looked-up server; an absent or disabled server is unavailable.
+func available(server mcpserver.Server, found bool, err error) (mcpserver.Server, error) {
+	if err == nil && (!found || !server.Enabled) {
+		err = ErrUnavailable
+	}
+	return server, err
+}
+
 func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
-	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	descriptor, err := available(p.registry.Dispatchable(ctx, id))
 	if err != nil {
 		return nil, err
-	}
-	if !found || !descriptor.Enabled {
-		return nil, ErrUnavailable
 	}
 	session, err := p.inner.waitSession(ctx, descriptor)
 	if err != nil {
@@ -206,12 +211,9 @@ func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (_ *BorrowedS
 
 func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
 	defer func() { err = connectionError(id, err) }()
-	descriptor, found, err := p.registry.Definition(ctx, id)
+	descriptor, err := available(p.registry.Definition(ctx, id))
 	if err != nil {
 		return plugin.Activation{}, err
-	}
-	if !found || !descriptor.Enabled {
-		return plugin.Activation{}, ErrUnavailable
 	}
 	session, err := p.inner.serviceSession(ctx, descriptor)
 	if err != nil {
@@ -228,12 +230,9 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ p
 // exact projection under admission; waiting never starts a replacement attempt.
 func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
 	defer func() { err = connectionError(id, err) }()
-	descriptor, found, err := p.registry.Definition(ctx, id)
+	descriptor, err := available(p.registry.Definition(ctx, id))
 	if err != nil {
 		return plugin.Activation{}, err
-	}
-	if !found || !descriptor.Enabled {
-		return plugin.Activation{}, ErrUnavailable
 	}
 	session, err := p.inner.waitSession(ctx, descriptor)
 	if err != nil {
@@ -244,11 +243,11 @@ func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID)
 
 func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority framevalue.Digest) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
-	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	descriptor, err := available(p.registry.Dispatchable(ctx, id))
 	if err != nil {
 		return nil, err
 	}
-	if !found || !descriptor.Enabled || descriptor.AuthorityFingerprint() != authority {
+	if descriptor.AuthorityFingerprint() != authority {
 		return nil, ErrUnavailable
 	}
 	session, err := p.inner.waitSession(ctx, descriptor)

@@ -984,4 +984,8 @@ export const en: Record<string, string> = {
   "composer.image.reading": "Reading {{name}}…",
   "composer.image.failed": "Couldn't read {{name}}. Remove it and choose it again.",
   "composer.image.ready": "{{name}} is ready",
+  "diff.unmodifiedLines": "{count, plural, one {# unchanged line} other {# unchanged lines}}",
+  "diff.unknownUnmodifiedLines": "Unchanged context is not included in this patch.",
+  "diff.expandAll": "Expand all available context",
+  "diff.noNewline": "No newline at end of file",
 };

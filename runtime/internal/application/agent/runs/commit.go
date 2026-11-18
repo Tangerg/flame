@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -148,11 +147,7 @@ func (m ModelInvocationCommit) Validate() error {
 		if err := m.KnownResponse.Validate(); err != nil {
 			return err
 		}
-		var reported *corechat.Usage
-		if m.KnownResponse.Metadata != nil {
-			reported = m.KnownResponse.Metadata.Usage
-		}
-		if !reflect.DeepEqual(m.Usage, reported) {
+		if !modelref.UsageMatchesResponse(m.Usage, m.KnownResponse) {
 			return errors.New("runs: usage differs from known response evidence")
 		}
 	}

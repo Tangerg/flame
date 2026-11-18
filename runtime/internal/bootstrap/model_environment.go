@@ -34,13 +34,13 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityRole, err := loadUtilityRole(ctx, cfg.stores.UtilityRole)
+	utilityRole, err := loadRole(ctx, cfg.stores.UtilityRole, "utility")
 	if err != nil {
 		return modelEnvironment{}, err
 	}
 	utilityRoleState := models.NewRoleState(utilityRole)
 
-	embeddingRole, err := loadEmbeddingRole(ctx, cfg.stores.EmbeddingRole)
+	embeddingRole, err := loadRole(ctx, cfg.stores.EmbeddingRole, "embedding")
 	if err != nil {
 		return modelEnvironment{}, err
 	}

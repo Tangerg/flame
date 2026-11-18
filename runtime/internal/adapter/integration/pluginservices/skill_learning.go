@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 
-	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	skillspec "github.com/Tangerg/scope/skills"
 	"github.com/google/uuid"
@@ -114,7 +113,7 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 	if err := request.Validate(); err != nil {
 		return err
 	}
-	state := &learningAdmission{modelCalls: make(map[string]framevalue.JSON)}
+	state := &learningAdmission{models: newExternalCallLedger("skill learning", skilllearning.MaxModelCalls)}
 	reply, err := invokeResolvedCommand[skilllearning.Run, skilllearning.MineResult](mining, s.commands, method.Name(), request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		grant, release, err := s.grant(ctx, session, input.SessionID, state)
 		if err != nil {

@@ -18,7 +18,7 @@ import (
 
 func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ runs.RecoveryVerdict, resultErr error) {
 	var zero runs.UncertainExecutionPlan
-	if active.Run.State() != run.Running || !active.Run.Lineage().IsRoot() || active.Run.SessionID() != active.Session.ID() || !i.acceptsBuild(active.Context.BuildID) || len(active.Context.Dependencies()) == 0 {
+	if !i.mayRecover(active) {
 		return zero, runs.RecoveryUnavailable, nil
 	}
 	if err := active.Context.ValidateOwnership(active.Context.RootMemberID, active.Run.SessionID()); err != nil {
@@ -35,15 +35,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if checkpoint.handoff.rootID != rootID {
 		return zero, runs.RecoveryUnavailable, errors.New("execution: context root differs from its owner")
 	}
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, active.Run.SessionID(), rootID.String())
-	if err != nil {
-		return zero, runs.RecoveryUnavailable, err
-	}
-	if !found {
-		return zero, runs.RecoveryUnavailable, errors.New("execution: retained context has no acknowledged tree")
-	}
-	checkpoint.tree, err = decodeExecutionTree(head, rootID)
-	if err != nil {
+	if err := i.attachRecoveryTree(ctx, &checkpoint, active.Run.SessionID(), rootID); err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
 	if i.config.OriginalToolResults == nil {
@@ -53,36 +45,11 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if err != nil || len(proofs) == 0 {
 		return zero, runs.RecoveryUnavailable, err
 	}
-	items := make(map[string]transcript.Item, len(active.Items))
-	for _, item := range active.Items {
-		items[item.ID()] = item
+	segment, receipted, err := drainSegmentTools(active, checkpoint)
+	if err != nil || !receipted {
+		return zero, runs.RecoveryUnavailable, err
 	}
-	var drained []runs.DrainedTool
-	var tools []runs.RecoveredTool
-	pendingCalls := make(map[string]bool)
-	for _, invocation := range active.Tools {
-		if invocation.RunID != active.Run.ID() || invocation.SegmentID != active.Run.ActiveSegmentID() {
-			continue
-		}
-		metadata, found := checkpoint.toolMetadata[invocation.CallID]
-		if !found || metadata.Receipt == nil {
-			return zero, runs.RecoveryUnavailable, nil
-		}
-		item, found := items[invocation.ItemID]
-		if !found || item.RunID() != active.Run.ID() || item.SessionID() != active.Run.SessionID() || item.Status() != transcript.ItemRunning {
-			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool Item is unavailable")
-		}
-		original, found := item.ToolCall()
-		if !found || !original.Invocation.MatchesSource(metadata.Start.ToolName, metadata.Receipt.Tool) {
-			return zero, runs.RecoveryUnavailable, errors.New("execution: captured Tool attribution differs from the original Item")
-		}
-		drained = append(drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})
-		metadata.Start.Source = metadata.Receipt.Tool
-		tools = append(tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
-		pendingCalls[invocation.CallID] = true
-	}
-	slices.SortFunc(drained, func(a, b runs.DrainedTool) int { return strings.Compare(a.CallID, b.CallID) })
-	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{SessionID: active.Run.SessionID(), ExecutorID: "exec_recovery_" + active.Run.ID(), RootRunID: active.Run.ID(), Checkpoint: active.Context.Clone(), Capabilities: active.Run.Capabilities(), GoalIncarnationID: active.Run.GoalIncarnationID(), Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(), Members: []runs.ExecutionMember{{RunID: active.Run.ID(), MemberID: rootID.String(), ModelSelection: active.Run.ModelSelection(), Metrics: active.Run.Metrics(), DrainedTools: drained}}})
+	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{SessionID: active.Run.SessionID(), ExecutorID: "exec_recovery_" + active.Run.ID(), RootRunID: active.Run.ID(), Checkpoint: active.Context.Clone(), Capabilities: active.Run.Capabilities(), GoalIncarnationID: active.Run.GoalIncarnationID(), Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(), Members: []runs.ExecutionMember{{RunID: active.Run.ID(), MemberID: rootID.String(), ModelSelection: active.Run.ModelSelection(), Metrics: active.Run.Metrics(), DrainedTools: segment.drained}}})
 	if err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
@@ -104,7 +71,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if pendingCheckpointSources(session, checkpoint) {
 		return zero, runs.RecoveryDeferred, nil
 	}
-	if err := i.verifySettledTools(ctx, session, active.Run.SessionID(), checkpoint, proofs, pendingCalls); err != nil {
+	if err := i.verifySettledTools(ctx, session, active.Run.SessionID(), checkpoint, proofs, segment.pending); err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
 	if err := session.validateCapturedToolArguments(proofs); err != nil {
@@ -119,7 +86,70 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	if _, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]}); err != nil {
 		return zero, runs.RecoveryUnavailable, err
 	}
-	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: tools}, runs.RecoveryReady, nil
+	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: segment.tools}, runs.RecoveryReady, nil
+}
+
+// mayRecover reports whether a running root's retained context was written by
+// this build and captured the dependencies its recovery needs.
+func (i *InteractionExecutor) mayRecover(active runs.ActiveExecution) bool {
+	return active.Run.State() == run.Running && active.Run.Lineage().IsRoot() && active.Run.SessionID() == active.Session.ID() && i.acceptsBuild(active.Context.BuildID) && len(active.Context.Dependencies()) > 0
+}
+
+var errRecoveryTreeUnavailable = errors.New("execution: retained context has no acknowledged tree")
+
+// attachRecoveryTree loads the acknowledged tree head a retained checkpoint
+// resumes from.
+func (i *InteractionExecutor) attachRecoveryTree(ctx context.Context, checkpoint *interactionCheckpointState, sessionID string, rootID scoperun.ProcessID) error {
+	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, sessionID, rootID.String())
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errRecoveryTreeUnavailable
+	}
+	checkpoint.tree, err = decodeExecutionTree(head, rootID)
+	return err
+}
+
+// drainedSegment is the active Segment's Tool calls that recovery settles
+// from their original receipts.
+type drainedSegment struct {
+	drained []runs.DrainedTool
+	tools   []runs.RecoveredTool
+	pending map[string]bool
+}
+
+// drainSegmentTools reports receipted false when any active call lacks an
+// original receipt; a mismatched Item is a contradiction, not unavailability.
+func drainSegmentTools(active runs.ActiveExecution, checkpoint interactionCheckpointState) (drainedSegment, bool, error) {
+	items := make(map[string]transcript.Item, len(active.Items))
+	for _, item := range active.Items {
+		items[item.ID()] = item
+	}
+	segment := drainedSegment{pending: make(map[string]bool)}
+	for _, invocation := range active.Tools {
+		if invocation.RunID != active.Run.ID() || invocation.SegmentID != active.Run.ActiveSegmentID() {
+			continue
+		}
+		metadata, found := checkpoint.toolMetadata[invocation.CallID]
+		if !found || metadata.Receipt == nil {
+			return drainedSegment{}, false, nil
+		}
+		item, found := items[invocation.ItemID]
+		if !found || item.RunID() != active.Run.ID() || item.SessionID() != active.Run.SessionID() || item.Status() != transcript.ItemRunning {
+			return drainedSegment{}, false, errors.New("execution: captured Tool Item is unavailable")
+		}
+		original, found := item.ToolCall()
+		if !found || !original.Invocation.MatchesSource(metadata.Start.ToolName, metadata.Receipt.Tool) {
+			return drainedSegment{}, false, errors.New("execution: captured Tool attribution differs from the original Item")
+		}
+		segment.drained = append(segment.drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})
+		metadata.Start.Source = metadata.Receipt.Tool
+		segment.tools = append(segment.tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
+		segment.pending[invocation.CallID] = true
+	}
+	slices.SortFunc(segment.drained, func(a, b runs.DrainedTool) int { return strings.Compare(a.CallID, b.CallID) })
+	return segment, true, nil
 }
 
 func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, continuation runs.ExecutionContinuation) (_ runs.ExecutorRef, err error) {
@@ -139,12 +169,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 		return runs.ExecutorRef{}, err
 	}
 	rootID, _ := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
-	if err != nil || !found {
-		return runs.ExecutorRef{}, errors.Join(errors.New("execution: recovery head is unavailable"), err)
-	}
-	checkpoint.tree, err = decodeExecutionTree(head, rootID)
-	if err != nil {
+	if err := i.attachRecoveryTree(ctx, &checkpoint, continuation.SessionID, rootID); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}

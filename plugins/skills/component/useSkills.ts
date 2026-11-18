@@ -26,6 +26,7 @@ import {
   type OpenedDocument,
   type CatalogReturn,
   type Command,
+  type CommandState,
   type CommandIntent,
   type Notice,
   type Review,
@@ -100,8 +101,7 @@ export function useSkills(context: ComponentContext) {
     target: "document" | "catalog";
     active: Element | null;
   }>(null);
-  const [command, setCommand] = useState<Command>();
-  const pending = useRef<Command>(undefined);
+  const [command, setCommand] = useState<CommandState>();
   const [review, setReview] = useState<Review>();
   const reviewElement = useRef<HTMLElement>(null);
   function closeReview() {
@@ -241,7 +241,7 @@ export function useSkills(context: ComponentContext) {
     return () => controller.abort();
   }, [runtime, componentSignal, track, workspace]);
   function navigate(next: Target) {
-    if (pending.current || componentSignal.aborted) return;
+    if (command || componentSignal.aborted) return;
     if (next === target) {
       void refresh();
       return;
@@ -260,7 +260,7 @@ export function useSkills(context: ComponentContext) {
       position.element.scrollTop = 0;
   }
   function openDocument(name: string, opener: HTMLElement) {
-    if (pending.current || componentSignal.aborted) return;
+    if (command || componentSignal.aborted) return;
     catalogReturn.current = { opener, scroll: scrollPositions(panel.current) };
     pendingFocus.current = {
       target: "document",
@@ -301,7 +301,6 @@ export function useSkills(context: ComponentContext) {
   async function observe(captured: Command) {
     try {
       await captured.promise;
-      pending.current = undefined;
       if (!componentSignal.aborted) {
         setCommand(undefined);
         setNotice({
@@ -313,15 +312,12 @@ export function useSkills(context: ComponentContext) {
     } catch (error) {
       if (componentSignal.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
-        const uncertain = {
-          ...captured,
-          uncertain: true,
+        setCommand({
+          phase: "uncertain",
+          command: captured,
           error: failure(error),
-        };
-        pending.current = uncertain;
-        setCommand(uncertain);
+        });
       } else {
-        pending.current = undefined;
         setCommand(undefined);
         setNotice(
           isErrorType(error, "revision_conflict")
@@ -337,16 +333,11 @@ export function useSkills(context: ComponentContext) {
     }
   }
   function submit(make: () => MutationPromise<void>, intent: CommandIntent) {
-    if (pending.current || componentSignal.aborted) return;
+    if (command || componentSignal.aborted) return;
     try {
-      const captured = {
-        promise: track(make),
-        intent,
-        uncertain: false,
-      };
-      pending.current = captured;
+      const captured = { promise: track(make), intent };
       closeReview();
-      setCommand(captured);
+      setCommand({ phase: "submitting", command: captured });
       setNotice(undefined);
       void observe(captured);
     } catch (error) {
@@ -366,23 +357,24 @@ export function useSkills(context: ComponentContext) {
     );
   }
   function reconcile() {
-    const original = pending.current;
-    if (!original?.uncertain || componentSignal.aborted) return;
+    if (command?.phase !== "uncertain" || componentSignal.aborted) return;
+    const original = command.command;
     try {
       const retry = {
         ...original,
         promise: track(() =>
           original.promise.retry({ signal: componentSignal }),
         ),
-        uncertain: false,
-        error: undefined,
       };
-      pending.current = retry;
-      setCommand(retry);
+      setCommand({ phase: "submitting", command: retry });
       void observe(retry);
     } catch (error) {
       if (!componentSignal.aborted)
-        setCommand({ ...original, error: failure(error) });
+        setCommand({
+          phase: "uncertain",
+          command: original,
+          error: failure(error),
+        });
     }
   }
   const snapshot = read.accepted;

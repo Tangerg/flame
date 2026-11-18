@@ -1,18 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
 import { Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
-import {
-  createContext,
-  useContext,
-  useSyncExternalStore,
-  type ComponentPropsWithoutRef,
-  type ComponentType,
-  type ReactNode,
-} from "react";
+import { useSyncExternalStore, type ComponentPropsWithoutRef } from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopy } from "./clipboard";
 import { IconButton } from "./icon-button";
 import { selectAllInReader } from "./reader-selection";
+import { useCodeSource } from "./source-renderers";
 import { color, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
@@ -33,34 +27,6 @@ function setCodeWrap(next: boolean): void {
   if (wrapCode === next) return;
   wrapCode = next;
   for (const listener of wrapListeners) listener();
-}
-
-export interface CodeSourceProps {
-  source: string;
-  language: string;
-  wrapped?: boolean;
-}
-
-export type CodeSourceComponent = ComponentType<CodeSourceProps>;
-
-function PlainCodeSource({ source }: CodeSourceProps) {
-  return (
-    <pre>
-      <code>{source}</code>
-    </pre>
-  );
-}
-
-const CodeSource = createContext<CodeSourceComponent>(PlainCodeSource);
-
-export function CodeHighlightProvider({
-  component,
-  children,
-}: {
-  component: CodeSourceComponent;
-  children: ReactNode;
-}) {
-  return <CodeSource value={component}>{children}</CodeSource>;
 }
 
 export interface CodeActionLabels {
@@ -239,7 +205,7 @@ export function CodeBody({
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }) {
   const wrapped = useCodeWrap();
-  const Source = useContext(CodeSource);
+  const Source = useCodeSource();
   return (
     <div
       dir="ltr"

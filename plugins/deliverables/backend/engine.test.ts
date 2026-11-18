@@ -18,7 +18,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Engine } from "./engine";
-import { type PrivateDirectory, type ProcessPlan } from "./confinement";
+import { type ProcessPlan } from "./confinement";
 import { runProcess } from "./process";
 import { LIMITS } from "../contracts/limits";
 import release from "./office-release.json";
@@ -92,8 +92,6 @@ let mode:
   | "process-failure";
 let nextPID: number;
 let kills: ReturnType<typeof vi.spyOn>;
-let source: Uint8Array | undefined;
-let profile: string | undefined;
 let changedOutput: Uint8Array;
 const groups = new Map<number, () => void>();
 const confinementCommand =
@@ -147,7 +145,7 @@ function simulate(command: string, args: readonly string[]) {
         const path = native
           ? argv[argv.indexOf("--input-path") + 1]!
           : argv.at(-1)!;
-        source = await readFile(path);
+        await readFile(path);
         const profilePath = native
           ? argv[argv.indexOf("--profile-directory") + 1]!
           : fileURLToPath(
@@ -162,7 +160,7 @@ function simulate(command: string, args: readonly string[]) {
         );
         expect((await lstat(profilePath)).mode & 0o777).toBe(0o700);
         expect((await lstat(profileFile)).mode & 0o777).toBe(0o600);
-        profile = await readFile(profileFile, "utf8");
+        await readFile(profileFile, "utf8");
         const format =
           argv[argv.indexOf(native ? "--format" : "--convert-to") + 1]!;
         const output = native
@@ -230,8 +228,6 @@ beforeEach(async () => {
   text = "A readable report\n";
   mode = "normal";
   nextPID = 900000;
-  source = undefined;
-  profile = undefined;
   changedOutput = Buffer.from("PK recalculated fixture");
   groups.clear();
   vi.mocked(spawn).mockClear();
@@ -273,16 +269,6 @@ describe("professional rendering owner", () => {
 });
 
 describe("confined process boundary", () => {
-  function directory(): PrivateDirectory {
-    return {
-      root: data,
-      input: join(data, "input"),
-      output: join(data, "output"),
-      home: join(data, "home"),
-      temporary: join(data, "tmp"),
-    };
-  }
-
   it("terminates descendants even after the parent returns zero and waits for close", async () => {
     let child!: EventEmitter & {
       pid: number;

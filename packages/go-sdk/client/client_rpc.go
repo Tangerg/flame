@@ -34,7 +34,7 @@ func (e *TransportError) Error() string {
 	return fmt.Sprintf("runtime: transport returned http %d", e.StatusCode)
 }
 
-func (r *Client) invokeOperation(ctx context.Context, name string, parameters any, options callConfig) (result callResult, err error) {
+func (r *Client) invokeOperation(ctx context.Context, name string, parameters any, options protocol.CallMetadata) (result callResult, err error) {
 	meta, found := lookupMethod(name)
 	if !found {
 		return callResult{}, protocol.NewFailure(protocol.ErrMethodNotFound, "unknown runtime operation")
@@ -78,7 +78,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	return r.readAcknowledgement(call, response, id, meta, parameters, operation)
 }
 
-func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, parameters any, options callConfig) (*http.Request, error) {
+func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, parameters any, options protocol.CallMetadata) (*http.Request, error) {
 	body, err := encodeRemoteRequest(id, name, parameters, options.RequestMeta)
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)

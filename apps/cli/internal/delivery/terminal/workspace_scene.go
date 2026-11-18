@@ -7,6 +7,9 @@ import (
 	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
+// workbenchSceneKey keeps the workbench beneath every dialog layered over it.
+const workbenchSceneKey = "workspace"
+
 // workspaceScene composes the workbench and its currently presented dialogs.
 // Attachment, focus restoration and historical input remain owned by scene.
 type workspaceScene struct {
@@ -24,8 +27,8 @@ func (w *workspaceScene) Element() scene.Element {
 func (w *workspaceScene) setWorkbench(element scene.Element) {
 	w.Element()
 	items := w.group.Items()
-	item := scene.Item{Key: "workspace", Element: element, Size: layout.Flex(1)}
-	if len(items) == 0 || items[0].Key != "workspace" {
+	item := scene.Item{Key: workbenchSceneKey, Element: element, Size: layout.Flex(1)}
+	if len(items) == 0 || items[0].Key != workbenchSceneKey {
 		items = append([]scene.Item{item}, items...)
 	} else {
 		items[0] = item
@@ -38,7 +41,7 @@ func (w *workspaceScene) setWorkbench(element scene.Element) {
 func (w *workspaceScene) hasModal() bool {
 	w.Element()
 	for _, item := range w.group.Items() {
-		if item.Key != "workspace" {
+		if item.Key != workbenchSceneKey {
 			return true
 		}
 	}

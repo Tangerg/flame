@@ -23,17 +23,17 @@ type sourceRegistry interface {
 	Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error)
 }
 
-// Captured tools cannot retain authority after their source or session is withdrawn.
+// Captured tools cannot retain authority after their source or session is
+// withdrawn. The source stays unexported so its session-borrowing methods are
+// reachable only through the admission below.
 type authorizedTool struct {
-	toolcontract.Tool
+	source   Executable
 	registry sourceRegistry
 	pool     *Pool
-	source   Executable
-	config   ServerConfig
 	prepare  ToolPreparation
-	host     ToolHost
 }
 
+func (t authorizedTool) Definition() toolcontract.Definition  { return t.source.Definition() }
 func (t authorizedTool) MCPSource() (CapturedSource, bool)    { return t.source.MCPSource() }
 func (t authorizedTool) SourceFingerprint() framevalue.Digest { return t.source.SourceFingerprint() }
 func (t authorizedTool) SourceConfig() ServerConfig           { return t.source.SourceConfig() }
@@ -47,7 +47,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 	if err := t.admit(ctx); err != nil {
 		return toolcontract.Result{}, err
 	}
-	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
+	if installation, managed := t.source.config.Server.Source.Origin().Installation(); managed {
 		captured, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
@@ -57,16 +57,15 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 			return toolcontract.Result{}, err
 		}
 		t.source = t.source.WithCallMetadata(metadata)
-		t.Tool = t.source
 		ctx, err = pluginmcp.WithInvocation(ctx, captured)
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
 	}
 	if t.prepare == nil {
-		return t.Tool.Call(ctx, invocation)
+		return t.source.Call(ctx, invocation)
 	}
-	call, release, err := t.prepare(ctx, t.source, t.host)
+	call, release, err := t.prepare(ctx, t.source, t.pool.toolHost(t.source))
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
@@ -87,7 +86,7 @@ func (t authorizedTool) admit(ctx context.Context) error {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
-	current, found, err := t.registry.Dispatchable(ctx, t.config.ID())
+	current, found, err := t.registry.Dispatchable(ctx, t.source.config.ID())
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return errors.Join(err, cause)
 	}
@@ -108,7 +107,7 @@ func (t authorizedTool) admit(ctx context.Context) error {
 		}
 		return failure
 	}
-	if !t.config.Server.SameConnection(current) {
+	if !t.source.config.Server.SameConnection(current) {
 		return rejected("source configuration is no longer current")
 	}
 	if !t.source.Current() {
@@ -130,7 +129,7 @@ func rejected(reason string) error {
 func (p *Pool) authorizedTools(catalog []Executable, prepare ToolPreparation) []toolcontract.Tool {
 	result := make([]toolcontract.Tool, 0, len(catalog))
 	for _, executable := range catalog {
-		result = append(result, authorizedTool{Tool: executable, pool: p, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: prepare, host: p.toolHost(executable)})
+		result = append(result, authorizedTool{source: executable, registry: p.registry, pool: p, prepare: prepare})
 	}
 	return result
 }
@@ -141,13 +140,13 @@ func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Ac
 	if t.pool == nil {
 		return result, ErrUnavailable
 	}
-	borrowed, err := t.pool.BorrowActivation(ctx, t.config.ID(), activation)
+	borrowed, err := t.pool.BorrowActivation(ctx, t.source.config.ID(), activation)
 	if err != nil {
 		return result, err
 	}
 	defer func() { err = errors.Join(err, borrowed.Close()) }()
 	ctx = borrowed.Context()
-	_, err = t.pool.SessionActor(ctx, t.config.ID(), borrowed.Session())
+	_, err = t.pool.SessionActor(ctx, t.source.config.ID(), borrowed.Session())
 	if err != nil {
 		return result, err
 	}
@@ -155,10 +154,10 @@ func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Ac
 	if err != nil {
 		return result, err
 	}
-	if fingerprint != t.config.AuthorityFingerprint() {
+	if fingerprint != t.source.config.AuthorityFingerprint() {
 		return result, plugin.ErrStale
 	}
-	tools, err := sourceTools(ctx, nil, t.config, borrowed.Session())
+	tools, err := sourceTools(ctx, nil, t.source.config, borrowed.Session())
 	if err != nil {
 		return result, err
 	}
@@ -187,7 +186,7 @@ func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Ac
 		}
 		candidate.held = borrowed
 		candidate.owner = t.source.owner
-		t.Tool, t.source, t.host = candidate, candidate, t.pool.toolHost(candidate)
+		t.source = candidate
 		return t.Call(ctx, invocation)
 	}
 	return result, ErrUnavailable

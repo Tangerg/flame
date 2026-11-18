@@ -13,7 +13,3 @@ func newToolInvocation(source tool.Ref, name string, arguments tool.Arguments, r
 		Result: result,
 	}
 }
-
-func parseToolArguments(raw string) (tool.Arguments, error) {
-	return tool.ParseArguments(raw)
-}

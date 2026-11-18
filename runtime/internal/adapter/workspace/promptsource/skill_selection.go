@@ -67,7 +67,6 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources S
 		return nil, err
 	}
 	return set.selectReaders(ctx, sources)
-
 }
 
 func (s *resolvedSkills) names() []string {

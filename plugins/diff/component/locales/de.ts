@@ -63,7 +63,6 @@ export const de: Record<string, string> = {
   "file.status.renamed": "Umbenannt",
   "file.status.untracked": "Nicht verfolgt",
   "reader.region": "Scrollbarer Diff für {{path}}",
-  "reader.loading": "Änderungen werden geladen…",
   "details.title": "Vergleichsdetails",
   "details.emptyTree":
     "Noch keine Commits. Änderungen werden mit einem leeren Baum verglichen.",
@@ -75,12 +74,6 @@ export const de: Record<string, string> = {
   "baseline.label": "Basis: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "Merge-Basis",
-  "reader.unmodifiedLines":
-    "{count, plural, one {# unveränderte Zeile} other {# unveränderte Zeilen}}",
-  "reader.unknownUnmodifiedLines":
-    "Unveränderter Kontext ist in diesem Patch nicht enthalten.",
-  "reader.expandAll": "Den gesamten verfügbaren Kontext aufklappen",
-  "reader.noNewline": "Kein Zeilenumbruch am Dateiende",
   "budget.empty": "Keine vollständige Datei passt in das Leselimit.",
   "patch.accepted": "Enthaltener Patch",
 };

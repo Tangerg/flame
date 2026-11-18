@@ -63,10 +63,19 @@ func (m *StreamingMethod[P, C, R]) Descriptor() frame.MethodDescriptor {
 	return m.contract.Descriptor()
 }
 
+// streamFrameKind orders a stream: chunks, then exactly one result or error.
+type streamFrameKind string
+
+const (
+	streamChunk  streamFrameKind = "chunk"
+	streamResult streamFrameKind = "result"
+	streamError  streamFrameKind = "error"
+)
+
 type streamValue struct {
-	Kind    string         `json:"kind"`
-	Value   jsontext.Value `json:"value,omitzero"`
-	Message string         `json:"message,omitzero"`
+	Kind    streamFrameKind `json:"kind"`
+	Value   jsontext.Value  `json:"value,omitzero"`
+	Message string          `json:"message,omitzero"`
 }
 
 type streamCapacityKey struct{}
@@ -99,7 +108,7 @@ func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(c
 					yield(streamValue{}, errors.New("plugin: invalid stream value ordering"))
 					return
 				}
-				frame := streamValue{Kind: "chunk"}
+				frame := streamValue{Kind: streamChunk}
 				var data []byte
 				if item.Chunk != nil {
 					data, err = json.Marshal(item.Chunk)
@@ -107,7 +116,7 @@ func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(c
 						err = contract.ValidateChunk(data)
 					}
 				} else {
-					frame.Kind, final = "result", true
+					frame.Kind, final = streamResult, true
 					data, err = json.Marshal(item.Result)
 					if err == nil {
 						err = contract.ValidateOutput(data)
@@ -144,7 +153,7 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 	writer := sse.NewHTTPWriter(w)
 	for frame, err := range sequence {
 		if err != nil {
-			frame = streamValue{Kind: "error", Message: err.Error()}
+			frame = streamValue{Kind: streamError, Message: err.Error()}
 		}
 		data, encodeErr := json.Marshal(frame)
 		if encodeErr != nil || int64(len(data)) > limits.MaxResponseBytes {
@@ -245,12 +254,12 @@ func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue
 	if err := json.Unmarshal(data, &frame, json.RejectUnknownMembers(true)); err != nil {
 		return StreamValue[C, R]{}, err
 	}
-	if frame.Kind == "error" && (len(frame.Value) != 0 || frame.Message == "") || frame.Kind != "error" && frame.Message != "" {
+	if frame.Kind == streamError && (len(frame.Value) != 0 || frame.Message == "") || frame.Kind != streamError && frame.Message != "" {
 		return StreamValue[C, R]{}, errors.New("plugin: invalid stream frame fields")
 	}
 	var item StreamValue[C, R]
 	switch frame.Kind {
-	case "chunk":
+	case streamChunk:
 		if err := method.ValidateChunk(frame.Value); err != nil {
 			return item, err
 		}
@@ -258,7 +267,7 @@ func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue
 		if err := json.Unmarshal(frame.Value, item.Chunk, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return StreamValue[C, R]{}, err
 		}
-	case "result":
+	case streamResult:
 		if err := method.ValidateOutput(frame.Value); err != nil {
 			return item, err
 		}
@@ -266,7 +275,7 @@ func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue
 		if err := json.Unmarshal(frame.Value, item.Result, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return StreamValue[C, R]{}, err
 		}
-	case "error":
+	case streamError:
 		return item, errors.New(frame.Message)
 	default:
 		return item, errors.New("plugin: unknown stream frame")

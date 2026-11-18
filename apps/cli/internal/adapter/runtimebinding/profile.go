@@ -16,8 +16,8 @@ type Profile struct {
 	client    *protocol.ClientCapabilities
 }
 
-// newProfile borrows its inputs and retains independent protocol values.
-func newProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) (Profile, error) {
+// NewProfile borrows its inputs and retains independent protocol values.
+func NewProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) (Profile, error) {
 	if err := validateDiscovery(discovery); err != nil {
 		return Profile{}, fmt.Errorf("negotiate runtime profile: %w", err)
 	}

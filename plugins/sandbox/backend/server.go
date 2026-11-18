@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -11,22 +10,12 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
-	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/scope/core/tool"
 )
 
 const executeTool = "sandbox_execute"
-
-func commandFailure(err error) error {
-	refusal, known := errors.AsType[*framecall.Refusal](err)
-	if !known {
-		return err
-	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(refusal.Message), Cause: err})
-	return errors.Join(failure, failureErr)
-}
 
 func newServer(runner *runner) (*sdk.Server, error) {
 	if runner == nil {
@@ -51,7 +40,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 			return sandbox.Result{}, err
 		}
 		result, err := runner.execute(ctx, contracts.Execute.Name(), id, original)
-		return result, commandFailure(err)
+		return result, pluginsdk.RefusedToolFailure(err)
 	})
 	if err != nil {
 		return nil, err
@@ -86,22 +75,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 				return pluginsdk.ToolReceipt{}, err
 			}
 			result, err := readOutcome(receipt.Reply)
-			if err != nil {
-				failure, known := tool.ClassifyFailure(commandFailure(err))
-				if !known {
-					return pluginsdk.ToolReceipt{}, err
-				}
-				return pluginsdk.NewToolReceipt(failure.Output(), true)
-			}
-			encoded, err := json.Marshal(result)
-			if err != nil {
-				return pluginsdk.ToolReceipt{}, err
-			}
-			output, err := tool.NewJSONOutput(encoded)
-			if err != nil {
-				return pluginsdk.ToolReceipt{}, err
-			}
-			return pluginsdk.NewToolReceipt(output, false)
+			return pluginsdk.ToolReceiptFrom(result, err, pluginsdk.RefusedToolFailure)
 		}),
 		backend.BindCapability("sandbox", contracts.Capability),
 	); err != nil {

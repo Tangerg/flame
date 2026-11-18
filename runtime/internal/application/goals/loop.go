@@ -239,7 +239,7 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 		// admission.
 	}
 
-	if result.Reopened {
+	if result.Reopened() {
 		return runSettlement{}, nil
 	}
 	finished := drainRootBoundary(result.Events, result.RunID)

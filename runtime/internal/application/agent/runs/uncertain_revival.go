@@ -102,7 +102,6 @@ func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source
 }
 
 func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, source uncertainRevivalSource, contexts sessionExecutionContexts, executor uncertainExecutionRecovery, candidate run.Run, sess session.Session, admission ownership.RunAdmission) error {
-
 	defer func() {
 		if _, pending := r.deferred[candidate.ID()]; !pending {
 			admission.Release()

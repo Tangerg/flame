@@ -8,6 +8,7 @@ import (
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -374,7 +375,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if e.ArgumentsText != "" && e.Arguments != "" {
 		return nil, errors.New("tool call carries both parsed and rejected arguments")
 	}
-	arguments, err := parseToolArguments(e.Arguments)
+	arguments, err := tool.ParseArguments(e.Arguments)
 	if err != nil {
 		return nil, fmt.Errorf("tool %q arguments: %w", e.ToolName, err)
 	}
@@ -516,7 +517,7 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 	}
 	invocation := ref.attemptInvocation
 	if e.Arguments != "" {
-		parsed, err := parseToolArguments(e.Arguments)
+		parsed, err := tool.ParseArguments(e.Arguments)
 		if err != nil {
 			return nil, fmt.Errorf("tool %q effective arguments: %w", invocation.Name, err)
 		}

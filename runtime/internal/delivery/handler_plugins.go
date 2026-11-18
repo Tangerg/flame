@@ -39,9 +39,6 @@ func presentProviderSelection(value plugin.ProviderSelection) *protocol.PluginPr
 }
 
 func (s *Handler) ListPluginProviders(ctx context.Context) (*protocol.Page[protocol.PluginProviderSelection], error) {
-	if s.pluginSelections == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin provider selection is unavailable")
-	}
 	selections, err := s.pluginSelections.List(ctx)
 	if err != nil {
 		return nil, wirePluginError(err)
@@ -54,9 +51,6 @@ func (s *Handler) ListPluginProviders(ctx context.Context) (*protocol.Page[proto
 }
 
 func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
-	if s.pluginSelections == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin provider selection is unavailable")
-	}
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
 		return nil, err

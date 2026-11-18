@@ -93,7 +93,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	}
 	refuse := func(method delivery.Name, input any, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("%s refusal: %v, want %v", method, result.Failure, want)
 		}

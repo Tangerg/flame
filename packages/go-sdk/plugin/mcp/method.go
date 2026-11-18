@@ -139,6 +139,10 @@ type Classifier func(err error) (code string, refused bool)
 
 var ErrOutcomeUnconfirmed = errors.New("plugin: outcome is unconfirmed")
 
+// InvalidInputCode refuses a command whose input fails its method's own
+// validation, before any effect.
+const InvalidInputCode = "invalid_input"
+
 // Only an explicitly classified business refusal is a known outcome. Storage,
 // transport and unrecognized failures remain protocol errors; encoding them as
 // refusals would falsely claim that a possibly committed effect did not happen.

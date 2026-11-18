@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	framehost "github.com/Tangerg/frame/host"
@@ -79,25 +80,26 @@ func (p *setupParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ActivationResource starts business work only after successful setup.
+// ActivationResource starts business work only after successful setup. The
+// Backend calls Start at most once and Close exactly once, never concurrently
+// and never Start after Close; Close may follow setup without any Start.
 type ActivationResource interface {
 	io.Closer
 	Start() error
 }
 
 type setupActivation struct {
-	mu             sync.Mutex
-	lifetime       context.Context
-	startAttempted bool
-	startErr       error
-	closed         bool
-	setupErr       error
-	cancel         context.CancelFunc
-	ready          chan struct{}
-	done           chan struct{}
-	resource       io.Closer
-	err            error
-	once           sync.Once
+	mu       sync.Mutex
+	lifetime context.Context
+	start    func() error
+	closed   bool
+	setupErr error
+	cancel   context.CancelFunc
+	ready    chan struct{}
+	done     chan struct{}
+	resource io.Closer
+	err      error
+	once     sync.Once
 }
 
 func (a *setupActivation) close() error {
@@ -124,12 +126,12 @@ func (a *setupActivation) close() error {
 // Close cancels and joins every setup lifetime before releasing its resources.
 func (b *Backend) Close() error {
 	b.mu.Lock()
-	if b.closed {
+	if b.phase == backendClosed {
 		b.mu.Unlock()
 		<-b.closeDone
 		return b.closeErr
 	}
-	b.closed = true
+	b.phase = backendClosed
 	sessions := make(map[*sdk.ServerSession]*setupActivation, len(b.activations))
 	for session, activation := range b.activations {
 		sessions[session] = activation
@@ -152,7 +154,7 @@ func (b *Backend) Close() error {
 func (b *Backend) OnSetup(handler func(context.Context, Setup) (io.Closer, error)) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published || b.closed || handler == nil || b.setup != nil {
+	if b.phase != backendRegistering || handler == nil || b.setup != nil {
 		return errors.New("plugin: setup must be registered once before publication")
 	}
 	b.setup = handler
@@ -173,7 +175,7 @@ func (b *Backend) registerSetup() error {
 			return nil, err
 		}
 		b.mu.Lock()
-		if !b.published || b.closed {
+		if b.phase != backendPublished {
 			b.mu.Unlock()
 			return nil, errors.New("plugin: backend setup is unavailable")
 		}
@@ -193,6 +195,12 @@ func (b *Backend) registerSetup() error {
 		}
 		lifetime, cancel := context.WithCancel(context.WithoutCancel(ctx))
 		activation := &setupActivation{lifetime: lifetime, cancel: cancel, ready: make(chan struct{}), done: make(chan struct{})}
+		activation.start = sync.OnceValue(func() error {
+			if resource, ok := activation.resource.(ActivationResource); ok {
+				return startActivation(resource)
+			}
+			return nil
+		})
 		b.activations[session] = activation
 		b.setupJoins.Add(1)
 		handler := b.setup
@@ -251,7 +259,7 @@ func validateSetup(values []SetupContribution) error {
 			if err := value.Background.Validate(); err != nil {
 				return err
 			}
-			if value.Background.Scope != "installation" {
+			if value.Background.Scope != extension.ScopeInstallation {
 				return errors.New("plugin: background role must identify its installation")
 			}
 			if err := validateSetupInstallation(value.Background.Reference); err != nil {
@@ -351,7 +359,7 @@ func (b *Backend) registerActivation() error {
 		}
 		b.mu.RLock()
 		activation := b.activations[session]
-		available := b.published && !b.closed
+		available := b.phase == backendPublished
 		b.mu.RUnlock()
 		if !available || activation == nil {
 			return nil, errors.New("plugin: setup is required before activation")
@@ -366,14 +374,8 @@ func (b *Backend) registerActivation() error {
 		if activation.closed || activation.lifetime.Err() != nil || activation.setupErr != nil {
 			return nil, errors.New("plugin: setup lifetime is unavailable")
 		}
-		if !activation.startAttempted {
-			activation.startAttempted = true
-			if resource, ok := activation.resource.(ActivationResource); ok {
-				activation.startErr = startActivation(resource)
-			}
-		}
-		if activation.startErr != nil {
-			return nil, activation.startErr
+		if err := activation.start(); err != nil {
+			return nil, err
 		}
 		return reply(true, nil, nil)
 	})

@@ -66,7 +66,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
-	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("lost response became a definite result: %+v", result)
 	}
@@ -114,7 +114,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		t.Fatalf("restart changed the original pending binding: %+v, %t, %v", restored, found, err)
 	}
 	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
-	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, lookup, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrInternalError) {
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, lookup, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("dispatched command became eligible for retirement: %+v", result)
 	}
 	assertUnresolvedInstallationIsHeld(t, r, installed)
@@ -126,7 +126,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	}
 	otherStore := lookup
 	otherStore.Namespace = "idp_00000000000000000000000000000000"
-	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, otherStore, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, otherStore, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("public route lookup crossed store identity: %+v", result)
 	}
 	if _, err := os.Stat(evidence); !errors.Is(err, os.ErrNotExist) {
@@ -374,7 +374,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Lost review response"}, "session").(*protocol.Session)
 	invoke := func(method delivery.Name, request any, key string) delivery.Result {
 		t.Helper()
-		result := runtime.endpoint.Invoke(t.Context(), method, request, delivery.Options{
+		result := runtime.endpoint.Invoke(t.Context(), method, request, protocol.CallMetadata{
 			IdempotencyKey: key,
 			RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{
 				InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval},

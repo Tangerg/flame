@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	framecall "github.com/Tangerg/frame/call"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -33,4 +34,15 @@ func DefiniteToolFailure(cause error) error {
 		return err
 	}
 	return failure
+}
+
+// RefusedToolFailure reports a business refusal to the model as a rejected
+// call carrying the refusal message; every other error is returned unchanged.
+func RefusedToolFailure(err error) error {
+	refusal, known := errors.AsType[*framecall.Refusal](err)
+	if !known {
+		return err
+	}
+	failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(refusal.Message), Cause: err})
+	return errors.Join(failure, failureErr)
 }

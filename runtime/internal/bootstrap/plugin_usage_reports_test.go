@@ -39,7 +39,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 		t.Fatal(err)
 	}
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: testsupport.UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
-	options := delivery.Options{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
 	if first.Failure == nil {
 		t.Fatal("lost backend response became a known success")
@@ -87,7 +87,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	run := func(key string) {
 		t.Helper()
 		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Accounting evidence"}, key+"-session").(*protocol.Session)
-		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Produce one retained model attempt."}}}, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Produce one retained model attempt."}}}, protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if started.Failure != nil {
 			t.Fatal(started.Failure)
 		}

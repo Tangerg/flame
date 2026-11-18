@@ -58,7 +58,6 @@ export const ko: Record<string, string> = {
   "file.status.renamed": "이름 변경됨",
   "file.status.untracked": "추적되지 않음",
   "reader.region": "{{path}}의 스크롤 가능한 diff",
-  "reader.loading": "차이점 불러오는 중…",
   "details.title": "비교 세부 정보",
   "details.emptyTree":
     "아직 커밋이 없습니다. 변경 사항은 빈 트리와 비교됩니다.",
@@ -70,11 +69,6 @@ export const ko: Record<string, string> = {
   "baseline.label": "기준: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "병합 기준",
-  "reader.unmodifiedLines": "변경되지 않은 {count}개 줄",
-  "reader.unknownUnmodifiedLines":
-    "이 패치에는 변경되지 않은 문맥이 포함되어 있지 않습니다.",
-  "reader.expandAll": "사용 가능한 문맥 모두 펼치기",
-  "reader.noNewline": "파일 끝에 줄바꿈이 없습니다",
   "budget.empty": "이번 읽기 한도에 전체 파일을 포함할 수 없습니다.",
   "patch.accepted": "읽은 패치",
 };

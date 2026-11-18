@@ -53,7 +53,7 @@ func NewObservation(capture Capture) (Observation, error) {
 	if err := errors.Join(identity.ValidateSession(capture.SessionID), identity.ValidateRun(capture.RunID), extension.ValidateInvocation(capture.Invocation)); err != nil {
 		return Observation{}, errors.Join(ErrInvalid, err)
 	}
-	if capture.Invocation.Origin != extension.Automatic || capture.Invocation.Parent != "" || capture.Invocation.Target.Scope != "installation" {
+	if capture.Invocation.Origin != extension.Automatic || capture.Invocation.Parent != "" || capture.Invocation.Target.Scope != extension.ScopeInstallation {
 		return Observation{}, ErrInvalid
 	}
 	seen := make(map[string]bool, len(capture.Paths))

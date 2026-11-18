@@ -897,5 +897,9 @@
   "file.loadMore": "載入更多檔案",
   "message.image.fit": "符合視窗",
   "chat.conversation": "對話",
-  "message.mermaid.pan": "拖動畫布"
+  "message.mermaid.pan": "拖動畫布",
+  "diff.unmodifiedLines": "{count} 行未變更的內容",
+  "diff.unknownUnmodifiedLines": "此補丁未包含未變更的上下文。",
+  "diff.expandAll": "展開所有可用上下文",
+  "diff.noNewline": "檔案末尾沒有換行符號"
 }

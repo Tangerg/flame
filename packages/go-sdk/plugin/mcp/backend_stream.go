@@ -74,10 +74,10 @@ func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method
 			}
 			return nil, err
 		}
-		if value.Kind == "result" {
+		if value.Kind == streamResult {
 			return &methodResult[jsontext.Value]{Value: new(value.Value), valueJSON: value.Value}, nil
 		}
-		if value.Kind != "chunk" || index == ^uint64(0) {
+		if value.Kind != streamChunk || index == ^uint64(0) {
 			return nil, errors.New("plugin: invalid backend stream ordering")
 		}
 		index++

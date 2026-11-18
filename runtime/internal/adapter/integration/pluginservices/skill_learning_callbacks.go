@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"reflect"
 	"sync"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -16,7 +15,6 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 
-	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
@@ -26,28 +24,11 @@ import (
 type learningSourceRevision struct{ name, revision string }
 
 type learningAdmission struct {
+	models                 *externalCallLedger
 	mu                     sync.Mutex
-	modelCalls             map[string]framevalue.JSON
 	historyRead, skillRead bool
 	source                 learningSourceRevision
 	failure                error
-}
-
-func (a *learningAdmission) model(id string, input framevalue.JSON) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if original, found := a.modelCalls[id]; found {
-		if original != input {
-			return &framecall.Refusal{Code: framecall.ConflictCode, Message: framecall.ErrConflict.Error()}
-		}
-		return &framecall.Refusal{Code: "model_redelivery", Message: "skill learning: original model invocation cannot be redelivered"}
-	}
-	if len(a.modelCalls) >= skilllearning.MaxModelCalls {
-		return &framecall.Refusal{Code: "model_budget", Message: "skill learning: model budget exhausted"}
-	}
-	// External models have no receipt: admission must precede their first I/O.
-	a.modelCalls[id] = input
-	return nil
 }
 
 func (a *learningAdmission) read(skill bool) error {
@@ -108,14 +89,14 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 	}
 	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (response *chat.Response, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
-		if !learningModelRequest(chat.Request(command.Input)) {
-			return nil, &framecall.Refusal{Code: "model_envelope", Message: "skill learning: model envelope refused"}
+		if !learningModelRequests.admits(chat.Request(command.Input)) {
+			return nil, &framecall.Refusal{Code: refusalModelEnvelope, Message: "skill learning: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
 			return nil, err
 		}
-		if err := state.model(string(command.ID), input); err != nil {
+		if err := state.models.admit(string(command.ID), externalModelCall, input); err != nil {
 			return nil, err
 		}
 		captured, release, err := s.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: skilllearning.MaxModelInputBytes, MaxOutputTokens: skilllearning.MaxModelOutputTokens})
@@ -147,25 +128,7 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 	return s.callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, conversation, read, model, admit)
 }
 
-func learningModelRequest(request chat.Request) bool {
-	options := request.Options
-	if options.MaxOutputTokens == nil || *options.MaxOutputTokens <= 0 || *options.MaxOutputTokens > skilllearning.MaxModelOutputTokens || len(request.Messages) != 2 || request.Messages[0].Role != chat.RoleSystem || request.Messages[1].Role != chat.RoleUser || len(request.Tools) != 0 || request.ToolChoice != nil {
-		return false
-	}
-	if options.OutputFormat == nil || options.OutputFormat.Type != chat.OutputFormatText {
-		return false
-	}
-	options.MaxOutputTokens, options.OutputFormat = nil, nil
-	if !reflect.DeepEqual(options, chat.Options{}) {
-		return false
-	}
-	for _, message := range request.Messages {
-		if len(message.Parts) != 1 || !reflect.DeepEqual(message, chat.Message{Role: message.Role, Parts: []chat.Part{chat.NewTextPart(message.Text())}}) {
-			return false
-		}
-	}
-	return len(request.Messages[0].Text())+len(request.Messages[1].Text()) <= skilllearning.MaxModelInputBytes
-}
+var learningModelRequests = auxiliaryTextRequest{maxOutputTokens: skilllearning.MaxModelOutputTokens, maxInputBytes: skilllearning.MaxModelInputBytes}
 
 func (a *learningAdmission) admitDraft(candidate skilllearning.Proposal, sessionID string) (skilllearning.Admission, error) {
 	read, err := a.outcome()

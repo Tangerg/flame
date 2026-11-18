@@ -897,5 +897,9 @@
   "file.loadMore": "파일 더 불러오기",
   "message.image.fit": "창에 맞추기",
   "chat.conversation": "대화",
-  "message.mermaid.pan": "다이어그램 이동"
+  "message.mermaid.pan": "다이어그램 이동",
+  "diff.unmodifiedLines": "변경되지 않은 {count}개 줄",
+  "diff.unknownUnmodifiedLines": "이 패치에는 변경되지 않은 문맥이 포함되어 있지 않습니다.",
+  "diff.expandAll": "사용 가능한 문맥 모두 펼치기",
+  "diff.noNewline": "파일 끝에 줄바꿈이 없습니다"
 }

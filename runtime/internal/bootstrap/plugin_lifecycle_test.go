@@ -71,7 +71,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 	cleanup(host)
 	endpoint := host.Endpoint()
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		t.Helper()
 		attempt := options

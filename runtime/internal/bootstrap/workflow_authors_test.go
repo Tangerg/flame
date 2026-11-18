@@ -115,7 +115,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if ok, err := store.Save(ctx, opening); err != nil || !ok {
 			t.Fatalf("original goal commit: %t %v", ok, err)
 		}
-		recorder, err := goals.NewRunRecorder(store)
+		settler, err := goals.NewRunSettler(store)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,11 +125,11 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			if err := cfg.stores.Runs.Restore(ctx, raw); err != nil {
 				return err
 			}
-			return recorder.RecordRun(ctx, raw)
+			return store.CaptureGoalRun(ctx, raw)
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := recorder.Drain(ctx, store, calls, session.ID, nil); !errors.Is(err, plugin.ErrUnavailable) {
+		if err := settler.Drain(ctx, store, calls, session.ID, nil); !errors.Is(err, plugin.ErrUnavailable) {
 			t.Fatalf("substitute consumed a pending receipt: %v", err)
 		}
 		if p, found, err := store.PendingGoalRun(ctx, session.ID); err != nil || !found || !p.Owns(original) {
@@ -140,7 +140,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatalf("new goal attributed to %v, %v", created.Source, err)
 		}
 		r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "restore-original-goal")
-		if err := recorder.Drain(ctx, store, calls, session.ID, nil); err != nil {
+		if err := settler.Drain(ctx, store, calls, session.ID, nil); err != nil {
 			t.Fatal(err)
 		}
 		head, err := store.Get(ctx, session.ID)
@@ -151,7 +151,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if !found || paused.IncarnationID() != original.IncarnationID() || paused.Revision() != 2 || paused.Status() != goal.StatusPaused || paused.Reason().Code() != goal.ReasonRunNotCompleted || paused.Used().Runs != 1 {
 			t.Fatalf("the original author did not consume its own terminal evidence: %+v", paused.Snapshot())
 		}
-		if err := recorder.RecordRun(ctx, raw); err != nil {
+		if err := store.CaptureGoalRun(ctx, raw); err != nil {
 			t.Fatal(err)
 		}
 		if _, pending, err := store.PendingGoalRun(ctx, session.ID); err != nil || pending {

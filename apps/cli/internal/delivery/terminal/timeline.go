@@ -114,7 +114,7 @@ func (t *timelinePane) Element() scene.Element {
 
 func (t *timelinePane) Handle(event input.Event) bool {
 	if key, ok := event.(input.Key); ok && key.Down() && key.Mods == input.Alt && key.Rune == 'f' {
-		t.picker.interruptPointerGesture()
+		t.picker.cancelPress()
 		if t.live {
 			return true
 		}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
@@ -48,7 +49,7 @@ type AnalyzerContracts struct {
 
 func NewAnalyzerContracts() (AnalyzerContracts, error) {
 	method, err := pluginmcp.NewMethod[Snapshot, Findings](frame.MethodConfig{
-		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: frame.Query, Target: "installation",
+		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: frame.Query, Target: extension.ScopeInstallation,
 		Description: "Analyze an inspected review snapshot and return findings without changing its records.",
 	})
 	if err != nil {

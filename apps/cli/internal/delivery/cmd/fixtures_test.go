@@ -7,19 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func commandRuntimeProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimefixture.Profile {
+func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 	t.Helper()
-	discovery, client := runtimefixture.CompleteDiscovery()
-	for _, edit := range edits {
-		edit(discovery, client)
-	}
-	profile, err := runtimefixture.NewProfile(discovery, client)
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
 	if err != nil {
 		t.Fatal(err)
 	}

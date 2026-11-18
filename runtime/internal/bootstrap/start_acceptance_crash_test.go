@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -39,7 +41,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Found {
+			if record.Use == runapp.CommandKeyAccepted {
 				os.Exit(commandCrashExit)
 			}
 			return nil
@@ -66,7 +68,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 		}, options)
 		t.Fatalf("start commit crash was not reached: %v", result.Failure)
 	}
-	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: startCrashKey, Operation: protocol.RunCommandStart}, delivery.Options{})
+	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: startCrashKey, Operation: protocol.RunCommandStart}, protocol.CallMetadata{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +109,7 @@ func TestStartAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), startCrashKey)
-	if err != nil || !record.Found || record.CurrentRun == nil {
+	if err != nil || record.Use != runapp.CommandKeyAccepted || record.CurrentRun == nil {
 		t.Fatalf("committed opening: %+v,%v", record, err)
 	}
 	if err := stores.Close(); err != nil {

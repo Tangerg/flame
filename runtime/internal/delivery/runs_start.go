@@ -62,7 +62,7 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}
-	if result.Reopened {
+	if result.Reopened() {
 		events, err := s.acceptedRunEvents(ctx, result)
 		return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, events, err
 	}
@@ -85,7 +85,7 @@ func runCommandIdentity(ctx context.Context) *runs.CommandIdentity {
 // is no longer attachable yields the identity with an empty stream so the client
 // re-reads durable state instead of failing the retry.
 func (s *Handler) acceptedRunEvents(ctx context.Context, accepted runs.StartResult) (iter.Seq2[protocol.RunEvent, error], error) {
-	if accepted.MaterialRetired {
+	if accepted.Opening == runs.OpeningRetired {
 		return emptyRunEventStream, nil
 	}
 	_, events, err := s.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: accepted.RunID, SegmentID: accepted.SegmentID})

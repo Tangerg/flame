@@ -80,6 +80,14 @@ type boundMethod struct {
 	stream   func(context.Context, *sdk.ServerSession, *invokeParams) (iter.Seq2[streamValue, error], error)
 }
 
+type backendPhase uint8
+
+const (
+	backendRegistering backendPhase = iota
+	backendPublished
+	backendClosed
+)
+
 // Backend owns declaration/code binding and publication. Setup is explicit;
 // after Publish no export can change. User code runs outside this owner's lock.
 type Backend struct {
@@ -87,10 +95,9 @@ type Backend struct {
 	mu           sync.RWMutex
 	methods      map[string]boundMethod
 	capabilities map[string]*plugincontract.Capability
-	published    bool
+	phase        backendPhase
 	closeDone    chan struct{}
 	closeErr     error
-	closed       bool
 	setup        func(context.Context, Setup) (io.Closer, error)
 	activations  map[*sdk.ServerSession]*setupActivation
 	setupJoins   sync.WaitGroup
@@ -137,7 +144,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		}
 		b.mu.RLock()
 		defer b.mu.RUnlock()
-		if !b.published || b.closed {
+		if b.phase != backendPublished {
 			return nil, errors.New("plugin: backend is not published")
 		}
 		methods := make([]frame.MethodDescriptor, 0, len(b.methods))
@@ -164,7 +171,7 @@ func (b *Backend) resolveMethod(params *invokeParams) (boundMethod, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	method, found := b.methods[params.Method]
-	if !b.published || b.closed || !found {
+	if b.phase != backendPublished || !found {
 		return boundMethod{}, errors.New("plugin: operation export is not published")
 	}
 	if params.Contract != method.contract.Identity().Digest() {
@@ -179,10 +186,10 @@ func (b *Backend) resolveMethod(params *invokeParams) (boundMethod, error) {
 func (b *Backend) Publish() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published || b.closed {
+	if b.phase != backendRegistering {
 		return errors.New("plugin: backend is already published")
 	}
-	b.published = true
+	b.phase = backendPublished
 	return nil
 }
 
@@ -195,7 +202,7 @@ func (b *Backend) register(method boundMethod) error {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published || b.closed {
+	if b.phase != backendRegistering {
 		return errors.New("plugin: published backend cannot change exports")
 	}
 	if _, found := b.methods[method.contract.Name()]; found {

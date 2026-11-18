@@ -33,9 +33,12 @@ export type CommandIntent = {
 export type Command = {
   promise: MutationPromise<void>;
   intent: CommandIntent;
-  uncertain: boolean;
-  error?: string;
 };
+// One command at a time. An uncertain settlement keeps its original command
+// until a check through the same idempotency key settles it.
+export type CommandState =
+  | { phase: "submitting"; command: Command }
+  | { phase: "uncertain"; command: Command; error: string };
 export type Notice =
   | { kind: "completed"; intent: CommandIntent }
   | { kind: "revisionConflict"; intent: CommandIntent }

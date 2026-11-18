@@ -24,14 +24,14 @@ func TestFeedbackReceiptAndOriginalAnnotationSurviveWithdrawalAndRestart(t *test
 	other := *in.Source
 	other.Release = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	stale.Source = &other
-	if res := r.endpoint.Invoke(t.Context(), "feedback.create", stale, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: "stale"}); res.Failure == nil {
+	if res := r.endpoint.Invoke(t.Context(), "feedback.create", stale, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: "stale"}); res.Failure == nil {
 		t.Fatal("action silently rebound to a different release")
 	}
 	r.must("feedback.create", in, "vote")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.must("feedback.create", in, "vote")
-	if result := r.endpoint.Invoke(t.Context(), "feedback.create", in, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: "second-vote"}); result.Failure == nil {
+	if result := r.endpoint.Invoke(t.Context(), "feedback.create", in, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: "second-vote"}); result.Failure == nil {
 		t.Fatal("withdrawn provider admitted a new annotation")
 	}
 	// A fresh read cut still contains the evidence, even though its original author cannot run.

@@ -153,7 +153,6 @@ func (r *runTreeOwner) committedTerminalRun() (run.Run, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.terminalRun == nil {
-
 		return run.Run{}, false
 	}
 

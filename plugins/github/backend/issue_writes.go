@@ -14,7 +14,7 @@ func textPresent(value string) bool { return utf8.ValidString(value) && strings.
 
 func targetRepository(input contractwire.IssueInput) (repository, error) {
 	if input.Number <= 0 {
-		return repository{}, refused("invalid_input", "a positive issue or PR number is required")
+		return repository{}, invalidInput("a positive issue or PR number is required")
 	}
 	return newRepository(input.Repository)
 }
@@ -23,7 +23,7 @@ func metadataNames(names []string) error {
 	seen := make(map[string]bool, len(names))
 	for _, name := range names {
 		if !textPresent(name) || seen[name] {
-			return refused("invalid_input", "metadata names must be nonblank and distinct")
+			return invalidInput("metadata names must be nonblank and distinct")
 		}
 		seen[name] = true
 	}
@@ -36,7 +36,7 @@ func (c *connector) createIssue(ctx context.Context, input contractwire.CreateIs
 		return contractwire.Issue{}, err
 	}
 	if !textPresent(input.Title) {
-		return contractwire.Issue{}, refused("invalid_input", "issue title must be nonblank")
+		return contractwire.Issue{}, invalidInput("issue title must be nonblank")
 	}
 	if err := metadataNames(input.Labels); err != nil {
 		return contractwire.Issue{}, err
@@ -59,34 +59,34 @@ func (c *connector) updateIssue(ctx context.Context, input contractwire.UpdateIs
 		return contractwire.Issue{}, err
 	}
 	if input.Title == nil && input.Body == nil && input.State == nil && input.StateReason == nil && input.Labels == nil && input.Assignees == nil && input.DuplicateIssueID == nil {
-		return contractwire.Issue{}, refused("invalid_input", "an issue edit must supply at least one field")
+		return contractwire.Issue{}, invalidInput("an issue edit must supply at least one field")
 	}
 	if input.Title != nil && !textPresent(*input.Title) {
-		return contractwire.Issue{}, refused("invalid_input", "issue title must be nonblank")
+		return contractwire.Issue{}, invalidInput("issue title must be nonblank")
 	}
 	if input.State != nil && *input.State != contractwire.Open && *input.State != contractwire.Closed {
-		return contractwire.Issue{}, refused("invalid_input", "issue state must be open or closed")
+		return contractwire.Issue{}, invalidInput("issue state must be open or closed")
 	}
 	if input.StateReason != nil {
 		if input.State == nil {
-			return contractwire.Issue{}, refused("invalid_input", "stateReason requires an explicit state change")
+			return contractwire.Issue{}, invalidInput("stateReason requires an explicit state change")
 		}
 		switch *input.StateReason {
 		case contractwire.Completed, contractwire.NotPlanned, contractwire.Duplicate:
 			if *input.State != contractwire.Closed {
-				return contractwire.Issue{}, refused("invalid_input", "a closing reason requires closed state")
+				return contractwire.Issue{}, invalidInput("a closing reason requires closed state")
 			}
 		case contractwire.Reopened:
 			if *input.State != contractwire.Open {
-				return contractwire.Issue{}, refused("invalid_input", "reopened requires open state")
+				return contractwire.Issue{}, invalidInput("reopened requires open state")
 			}
 		default:
-			return contractwire.Issue{}, refused("invalid_input", "unknown issue state reason")
+			return contractwire.Issue{}, invalidInput("unknown issue state reason")
 		}
 	}
 	duplicate := input.StateReason != nil && *input.StateReason == contractwire.Duplicate
 	if duplicate != (input.DuplicateIssueID != nil) || input.DuplicateIssueID != nil && *input.DuplicateIssueID <= 0 {
-		return contractwire.Issue{}, refused("invalid_input", "duplicate reason requires a positive canonical issue ID and no other reason accepts it")
+		return contractwire.Issue{}, invalidInput("duplicate reason requires a positive canonical issue ID and no other reason accepts it")
 	}
 	if input.Labels != nil {
 		if err := metadataNames(*input.Labels); err != nil {

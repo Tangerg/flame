@@ -265,6 +265,16 @@ func (o EndpointOutcome) ReportedUsage() *chat.Usage {
 	return o.Response.reportedUsage()
 }
 
+// UsageMatchesResponse reports whether usage is exactly what a known response
+// reported: retained usage and the response evidence are one provider fact.
+func UsageMatchesResponse(usage *chat.Usage, response *chat.Response) bool {
+	var reported *chat.Usage
+	if response != nil && response.Metadata != nil {
+		reported = response.Metadata.Usage
+	}
+	return reflect.DeepEqual(usage, reported)
+}
+
 func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
 	if response == nil || response.Metadata == nil || response.Metadata.Usage == nil {
 		return nil

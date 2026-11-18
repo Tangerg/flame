@@ -33,9 +33,6 @@ func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.PluginComman
 	if in.Namespace != s.idempotency.Namespace {
 		return nil, protocol.ErrIdempotencyStoreMismatch
 	}
-	if s.pluginCalls == nil {
-		return nil, protocol.ErrPluginUnavailable
-	}
 	identity := operation.Identity(operation.Bind(ctx, s.idempotency.Namespace, operation.ScopedKey(ctx, in.Key)))
 	command, err := s.pluginCalls.Command(ctx, identity)
 	if err != nil {
@@ -53,17 +50,11 @@ func (s *Handler) RetirePluginCommand(ctx context.Context, in protocol.PluginCom
 	if in.Namespace != s.idempotency.Namespace {
 		return protocol.ErrIdempotencyStoreMismatch
 	}
-	if s.pluginCalls == nil {
-		return protocol.ErrPluginUnavailable
-	}
 	identity := operation.Identity(operation.Bind(ctx, s.idempotency.Namespace, operation.ScopedKey(ctx, in.Key)))
 	return wirePluginError(s.pluginCalls.RetireCommand(ctx, identity))
 }
 
 func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {
-	if s.pluginCalls == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
-	}
 	contract, err := plugincontract.ParsePoint([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
@@ -92,9 +83,6 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 }
 
 func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {
-	if s.pluginCalls == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin requirements are unavailable")
-	}
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
 		return nil, err
@@ -130,9 +118,6 @@ func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
 }
 
 func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
-	if s.pluginCalls == nil {
-		return "", nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin calls are unavailable")
-	}
 	request, err := parsePluginCall(in)
 	if err != nil {
 		return "", nil, err
@@ -178,9 +163,6 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 }
 
 func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
-	if s.pluginCalls == nil {
-		return "", nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
-	}
 	request, err := parsePluginCall(in)
 	if err != nil {
 		return "", nil, err
@@ -231,9 +213,6 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 }
 
 func (s *Handler) NotifyPluginChange(ctx context.Context, notice protocol.PluginChangeNotice) error {
-	if s.pluginCalls == nil {
-		return protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin changes are unavailable")
-	}
 	contribution, err := plugin.ParseContributionID(notice.Contribution)
 	if err != nil {
 		return protocol.InvalidParameters(err)

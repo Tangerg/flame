@@ -27,35 +27,24 @@ fit, not a clean comparison. Web deliberately removes the former full raw reread
 its Copy included patch action copies only the accepted bytes, including headers
 and EOF markers. CLI retains complete raw and bounded rows for its own consumers.
 
-The sole Web renderer is the exact `@pierre/diffs` release selected in the plugin
-manifest. It parses each complete Git file patch through public `processFile`,
-with explicit errors and line matching disabled. The accepted projection retains
-the prior parsed file only when its path and exact parser input are unchanged.
-New read facts and the complete included patch still advance independently of
-that rendering identity, including when another file changes. Parse failures
-retain the prior accepted read and surface the failure. Missing context remains missing; no
-reconstructed full files or expand-to-full-source requests are supplied.
-The bounded current-file workload uses Pierre without virtualization. Native
-selection therefore covers every presented line without a second hidden DOM.
-Pierre's public worker pool owns one worker and one cached diff for this reader.
-Its portable script is captured as text inside the same approved component entry;
-there is no additional script request or CSP exception. Syntax tokenization stays
-off the interaction thread. The reader publishes code only after the public
-highlight cache is ready, so asynchronous token replacement cannot invalidate a
-native selection. Changing the captured file or retiring its reader terminates
-the old pool and its pending work.
-Flame's reader handles Select All and projects the native composed range into
-public parsed source lines for clipboard text. Gutters and EOF labels are excluded;
-partial UTF-16 offsets, blank lines, CRLF and the final source newline are preserved.
-Selections containing only reader annotations retain native copy behavior.
-When a selection crosses the EOF of one side into the other, the displayed rows
-remain separated. Split-layout selection follows the selected physical columns;
-the independent included-patch action always copies the same accepted patch.
-The public post-render handle binds selection to the rendered source and retires
-with it. Shared semantic CSS variables and the public i18n interface own appearance
-and all visible reader labels across the eight package catalogs. There is no
-private DOM rewrite or alternate renderer. Native composed-range support is part
-of the shared Chrome 137 / Safari 26 browser floor.
+The package parses each complete Git file patch through public `@pierre/diffs`
+`processFile`, with explicit errors and line matching disabled, and checks it
+against the manifest. Parse failures retain the prior accepted read and surface
+the failure. Missing context remains missing; no reconstructed full files or
+expand-to-full-source requests are supplied.
+The host renders the accepted file patch through the shared `@flame/ui`
+`DiffBody` slot. The package bundles no highlighter, worker or theme: the host's
+Pierre renderer, its single worker pool and its reader labels serve code and
+diffs alike, and a host without that slot shows the literal patch. The bounded
+current-file workload renders without virtualization, so native selection covers
+every presented line without a second hidden DOM. The host reader handles Select
+All and projects the native composed range into parsed source lines for clipboard
+text. Gutters and EOF labels are excluded; partial UTF-16 offsets, blank lines,
+CRLF and the final source newline are preserved. When a selection crosses the EOF
+of one side into the other, the displayed rows remain separated. Split-layout
+selection follows the selected physical columns; the independent included-patch
+action always copies the same accepted patch. Native composed-range support is
+part of the shared Chrome 137 / Safari 26 browser floor.
 
 File rows navigate to one reader;
 they do not expand every file's code into a single report. The comparison and

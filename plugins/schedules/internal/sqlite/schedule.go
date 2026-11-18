@@ -80,7 +80,6 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 	var result schedule.Schedule
 	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		if err := schedule.ValidateID(id); err != nil {
-
 			return err
 		}
 		row := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx,
@@ -88,11 +87,9 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 		 FROM schedules WHERE id = ?`, id)
 		sc, err := scanSchedule(row.Scan)
 		if errors.Is(err, sql.ErrNoRows) {
-
 			return schedule.ErrNotFound
 		}
 		if err != nil {
-
 			return fmt.Errorf("sqlite: get schedule: %w", err)
 		}
 		result = sc
@@ -194,7 +191,6 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 	var result []schedule.Occurrence
 	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		if limit <= 0 {
-
 			return errors.New("sqlite: schedule pending limit must be positive")
 		}
 		query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
@@ -209,7 +205,6 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		args = append(args, limit)
 		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -217,13 +212,11 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		for rows.Next() {
 			occurrence, err := scanOccurrence(rows.Scan)
 			if err != nil {
-
 				return fmt.Errorf("sqlite: scan pending schedule occurrence: %w", err)
 			}
 			occurrences = append(occurrences, occurrence)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
 		}
 		result = occurrences
@@ -342,7 +335,6 @@ func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...
 	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, q, args...)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: %s: %w", operation, err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -350,13 +342,11 @@ func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...
 		for rows.Next() {
 			sc, err := scanSchedule(rows.Scan)
 			if err != nil {
-
 				return fmt.Errorf("sqlite: scan schedule: %w", err)
 			}
 			out = append(out, sc)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: %s: %w", operation, err)
 		}
 		result = out

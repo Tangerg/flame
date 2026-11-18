@@ -25,14 +25,16 @@ func LimitBody(response *http.Response, mode BodyMode, maxFrameBytes int64, tooL
 	if response == nil || response.Body == nil {
 		return
 	}
-	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	response.Body = &boundedBody{
-		body:        response.Body,
-		limit:       maxFrameBytes,
-		remaining:   maxFrameBytes,
-		tooLarge:    tooLarge,
-		eventStream: mode == DocumentOrEvents && response.StatusCode >= 200 && response.StatusCode < 300 && err == nil && strings.EqualFold(mediaType, "text/event-stream"),
+	var frames frameAdmission = &documentFrame{remaining: maxFrameBytes}
+	if mode == DocumentOrEvents && isEventStream(response) {
+		frames = &eventFrames{limit: maxFrameBytes, remaining: maxFrameBytes}
 	}
+	response.Body = &boundedBody{body: response.Body, frames: frames, tooLarge: tooLarge}
+}
+
+func isEventStream(response *http.Response) bool {
+	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	return response.StatusCode >= 200 && response.StatusCode < 300 && err == nil && strings.EqualFold(mediaType, "text/event-stream")
 }
 
 func validateFrameLimit(maxFrameBytes int64, tooLarge error) {
@@ -41,94 +43,111 @@ func validateFrameLimit(maxFrameBytes int64, tooLarge error) {
 	}
 }
 
-type boundedBody struct {
-	body        io.ReadCloser
-	limit       int64
-	remaining   int64
-	tooLarge    error
-	eventStream bool
-	lineHasData bool
-	pendingEnd  carriageReturnEnd
-	failed      bool
+// frameAdmission accepts the prefix of each read that fits its current frame.
+// Rejection is final: the body reports tooLarge for every later read.
+type frameAdmission interface {
+	admit(read []byte) (accepted int, ok bool)
 }
 
-type carriageReturnEnd uint8
-
-const (
-	noCarriageReturn carriageReturnEnd = iota
-	carriageReturnLine
-	carriageReturnEvent
-)
+type boundedBody struct {
+	body     io.ReadCloser
+	frames   frameAdmission
+	tooLarge error
+	failed   bool
+}
 
 func (b *boundedBody) Read(destination []byte) (int, error) {
 	if b.failed {
 		return 0, b.tooLarge
 	}
-	if len(destination) == 0 {
-		return b.body.Read(destination)
-	}
 	read, readErr := b.body.Read(destination)
-	if !b.eventStream {
-		if int64(read) > b.remaining {
-			accepted := int(b.remaining)
-			b.remaining = 0
-			b.failed = true
-			return accepted, b.tooLarge
-		}
-		b.remaining -= int64(read)
-		return read, readErr
-	}
-
-	for index, value := range destination[:read] {
-		if !b.admitEventByte(value) {
-			b.failed = true
-			return index, b.tooLarge
-		}
+	if accepted, ok := b.frames.admit(destination[:read]); !ok {
+		b.failed = true
+		return accepted, b.tooLarge
 	}
 	return read, readErr
 }
 
-func (b *boundedBody) admitEventByte(value byte) bool {
-	// CR, LF and CRLF all terminate SSE lines. A split CRLF still charges both
-	// bytes to the same event, so the reset waits until the next byte is known.
-	if previous := b.pendingEnd; previous != noCarriageReturn {
-		b.pendingEnd = noCarriageReturn
-		if value == '\n' {
-			b.remaining--
-			if b.remaining < 0 {
-				return false
-			}
-			if previous == carriageReturnEvent {
-				b.remaining = b.limit
-			}
-			return true
-		}
-		if previous == carriageReturnEvent {
-			b.remaining = b.limit
+func (b *boundedBody) Close() error {
+	return b.body.Close()
+}
+
+type documentFrame struct{ remaining int64 }
+
+func (d *documentFrame) admit(read []byte) (int, bool) {
+	if int64(len(read)) > d.remaining {
+		accepted := int(d.remaining)
+		d.remaining = 0
+		return accepted, false
+	}
+	d.remaining -= int64(len(read))
+	return len(read), true
+}
+
+// eventScan is the SSE line position. CR, LF and CRLF all terminate a line, so
+// a CR stays pending until the next byte shows whether an LF completes it.
+type eventScan uint8
+
+const (
+	lineStart eventScan = iota
+	lineData
+	dataLineCR
+	blankLineCR
+)
+
+type eventFrames struct {
+	limit     int64
+	remaining int64
+	scan      eventScan
+}
+
+func (e *eventFrames) admit(read []byte) (int, bool) {
+	for index, value := range read {
+		if !e.admitByte(value) {
+			return index, false
 		}
 	}
-	b.remaining--
-	if b.remaining < 0 {
+	return len(read), true
+}
+
+func (e *eventFrames) admitByte(value byte) bool {
+	if e.scan == dataLineCR || e.scan == blankLineCR {
+		// A split CRLF charges both bytes to the event the blank line ends.
+		eventEnded := e.scan == blankLineCR
+		e.scan = lineStart
+		if value == '\n' {
+			admitted := e.charge()
+			if admitted && eventEnded {
+				e.remaining = e.limit
+			}
+			return admitted
+		}
+		if eventEnded {
+			e.remaining = e.limit
+		}
+	}
+	if !e.charge() {
 		return false
 	}
 	switch value {
 	case '\r':
-		b.pendingEnd = carriageReturnLine
-		if !b.lineHasData {
-			b.pendingEnd = carriageReturnEvent
+		if e.scan == lineData {
+			e.scan = dataLineCR
+		} else {
+			e.scan = blankLineCR
 		}
-		b.lineHasData = false
 	case '\n':
-		if !b.lineHasData {
-			b.remaining = b.limit
+		if e.scan != lineData {
+			e.remaining = e.limit
 		}
-		b.lineHasData = false
+		e.scan = lineStart
 	default:
-		b.lineHasData = true
+		e.scan = lineData
 	}
 	return true
 }
 
-func (b *boundedBody) Close() error {
-	return b.body.Close()
+func (e *eventFrames) charge() bool {
+	e.remaining--
+	return e.remaining >= 0
 }

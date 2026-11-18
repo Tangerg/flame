@@ -84,7 +84,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			r.must(delivery.PluginsReadResource, resource, "")
 			refused := func(method delivery.Name, input any, want error) {
 				t.Helper()
-				result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{})
+				result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{})
 				if !errors.Is(result.Failure, want) {
 					t.Fatalf("%s: got %v, want %v", method, result.Failure, want)
 				}

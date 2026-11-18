@@ -939,5 +939,9 @@
   "file.loadMore": "Cargar más archivos",
   "message.image.fit": "Ajustar imagen",
   "chat.conversation": "Conversación",
-  "message.mermaid.pan": "Mover diagrama"
+  "message.mermaid.pan": "Mover diagrama",
+  "diff.unmodifiedLines": "{count, plural, one {# línea sin cambios} other {# líneas sin cambios}}",
+  "diff.unknownUnmodifiedLines": "El contexto sin cambios no está incluido en este parche.",
+  "diff.expandAll": "Expandir todo el contexto disponible",
+  "diff.noNewline": "Sin salto de línea al final del archivo"
 }

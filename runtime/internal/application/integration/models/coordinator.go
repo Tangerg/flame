@@ -75,14 +75,9 @@ type embeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
-// utilityRoleSaver persists the utility-model role across restarts.
-type utilityRoleSaver interface {
-	SaveUtilityRole(ctx context.Context, role modelref.Role) error
-}
-
-// embeddingRoleSaver persists the embedding-model role across restarts.
-type embeddingRoleSaver interface {
-	SaveEmbeddingRole(ctx context.Context, role modelref.Role) error
+// roleSaver persists one model role across restarts.
+type roleSaver interface {
+	Save(ctx context.Context, role modelref.Role) error
 }
 
 // Coordinator owns provider configuration and durable model roles.
@@ -101,12 +96,12 @@ type Coordinator struct {
 	// that persists it.
 	utilityRoleState *RoleState
 	utilityValidator ChatModelValidator
-	utilityStore     utilityRoleSaver
+	utilityStore     roleSaver
 	utilityMu        sync.Mutex
 
 	embeddingRoleState *RoleState
 	embeddingValidator embeddingModelValidator
-	embeddingStore     embeddingRoleSaver
+	embeddingStore     roleSaver
 	embeddingMu        sync.Mutex
 	invalidations      invalidation.Publish
 }
@@ -123,11 +118,11 @@ type Config struct {
 
 	UtilityRoleState *RoleState
 	UtilityValidator ChatModelValidator
-	UtilityStore     utilityRoleSaver
+	UtilityStore     roleSaver
 
 	EmbeddingRoleState *RoleState
 	EmbeddingValidator embeddingModelValidator
-	EmbeddingStore     embeddingRoleSaver
+	EmbeddingStore     roleSaver
 
 	Invalidations invalidation.Publish
 }

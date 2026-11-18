@@ -31,9 +31,6 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	}
 	results := sessions.ReferencedToolResults
 	if format == protocol.ExportFormatMarkdown {
-		if s.pluginCalls == nil {
-			return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "no session Markdown renderer is available")
-		}
 		results = sessions.ExpandedToolResults
 	}
 	result, err := s.sessions.ExportSession(ctx, request.SessionID, results)

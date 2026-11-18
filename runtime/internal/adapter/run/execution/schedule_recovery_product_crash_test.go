@@ -23,6 +23,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -158,7 +159,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			receipt, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-			if err != nil || !receipt.Found || receipt.CurrentRun == nil || receipt.CurrentRun.State() != run.Running {
+			if err != nil || receipt.Use != runs.CommandKeyAccepted || receipt.CurrentRun == nil || receipt.CurrentRun.State() != run.Running {
 				t.Fatalf("original opening: %+v,%v", receipt, err)
 			}
 			items, err := stores.Transcript.List(t.Context(), receipt.Acceptance.SessionID)

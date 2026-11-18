@@ -25,7 +25,7 @@ func (c *connector) createPull(ctx context.Context, input contractwire.CreatePul
 		return contractwire.PullRequest{}, err
 	}
 	if !textPresent(input.Title) || !textPresent(input.Head) || !textPresent(input.Base) || input.HeadRepository != nil && !textPresent(*input.HeadRepository) {
-		return contractwire.PullRequest{}, refused("invalid_input", "PR title, head and base must be nonblank")
+		return contractwire.PullRequest{}, invalidInput("PR title, head and base must be nonblank")
 	}
 	payload := struct {
 		Title               string  `json:"title"`
@@ -50,7 +50,7 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 		return contractwire.Review{}, err
 	}
 	if !commitSHA.MatchString(string(input.CommitID)) {
-		return contractwire.Review{}, refused("invalid_input", "an exact inspected review commit SHA is required")
+		return contractwire.Review{}, invalidInput("an exact inspected review commit SHA is required")
 	}
 	var expectedState string
 	switch input.Event {
@@ -61,10 +61,10 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 	case contractwire.CommentReview:
 		expectedState = "COMMENTED"
 	default:
-		return contractwire.Review{}, refused("invalid_input", "a submitted review event is required")
+		return contractwire.Review{}, invalidInput("a submitted review event is required")
 	}
 	if input.Event != contractwire.Approve && (input.Body == nil || !textPresent(*input.Body)) {
-		return contractwire.Review{}, refused("invalid_input", "COMMENT and REQUEST_CHANGES reviews require a nonblank body")
+		return contractwire.Review{}, invalidInput("COMMENT and REQUEST_CHANGES reviews require a nonblank body")
 	}
 	comments := make([]inlineCommentWire, len(input.Comments))
 	for i, comment := range input.Comments {
@@ -93,10 +93,10 @@ func (c *connector) mergePull(ctx context.Context, input contractwire.MergePullI
 		return contractwire.MergeResult{}, err
 	}
 	if !commitSHA.MatchString(string(input.HeadSHA)) {
-		return contractwire.MergeResult{}, refused("invalid_input", "an exact inspected head SHA is required for merge")
+		return contractwire.MergeResult{}, invalidInput("an exact inspected head SHA is required for merge")
 	}
 	if input.MergeMethod != contractwire.Merge && input.MergeMethod != contractwire.Squash && input.MergeMethod != contractwire.Rebase {
-		return contractwire.MergeResult{}, refused("invalid_input", "mergeMethod must be merge, squash or rebase")
+		return contractwire.MergeResult{}, invalidInput("mergeMethod must be merge, squash or rebase")
 	}
 	payload := struct {
 		SHA     string                   `json:"sha"`

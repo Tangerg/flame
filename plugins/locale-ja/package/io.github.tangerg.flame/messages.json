@@ -897,5 +897,9 @@
   "file.loadMore": "ファイルをさらに読み込む",
   "message.image.fit": "画像をウィンドウに合わせる",
   "chat.conversation": "会話",
-  "message.mermaid.pan": "図を移動"
+  "message.mermaid.pan": "図を移動",
+  "diff.unmodifiedLines": "未変更の {count} 行",
+  "diff.unknownUnmodifiedLines": "このパッチに未変更のコンテキストは含まれていません。",
+  "diff.expandAll": "利用可能なコンテキストをすべて展開",
+  "diff.noNewline": "ファイル末尾に改行がありません"
 }

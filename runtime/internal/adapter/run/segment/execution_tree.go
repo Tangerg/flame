@@ -84,7 +84,7 @@ func (e *Effects) reconcileExecutionTree(readCtx context.Context, tree runs.Exec
 	}
 	for _, acceptance := range tree.InputAcceptances {
 		record, lookupErr := e.commandAcceptances.Lookup(readCtx, acceptance.Key)
-		if lookupErr != nil || !record.Found || !record.Acceptance.Equal(acceptance) {
+		if lookupErr != nil || record.Use != runs.CommandKeyAccepted || !record.Acceptance.Equal(acceptance) {
 			return errors.Join(err, lookupErr)
 		}
 	}

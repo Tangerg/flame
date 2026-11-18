@@ -160,7 +160,6 @@ func CurrentOf(state State) (Current, error) {
 // State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
 	if c.state == nil {
-
 		return State{}, false
 	}
 	return *c.state, true

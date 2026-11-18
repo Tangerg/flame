@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"reflect"
 	"slices"
 	"time"
 
@@ -412,11 +411,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		if failed.Accounting == nil || failed.Accounting.CallID != failed.CallID {
 			return factReduction{}, errExecutorContract
 		}
-		var reported *corechat.Usage
-		if failed.KnownResponse.Metadata != nil {
-			reported = failed.KnownResponse.Metadata.Usage
-		}
-		if !reflect.DeepEqual(failed.Accounting.ReportedUsage, reported) {
+		if !modelref.UsageMatchesResponse(failed.Accounting.ReportedUsage, failed.KnownResponse) {
 			return factReduction{}, errExecutorContract
 		}
 	}

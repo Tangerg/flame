@@ -326,7 +326,6 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 	go func() {
 		var events []runs.ExecutorEvent
 		sequence(func(event runs.ExecutorEvent) bool {
-
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()

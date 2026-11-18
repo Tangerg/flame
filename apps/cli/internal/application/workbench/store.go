@@ -513,29 +513,25 @@ func validateHistory(history []historyEntry) error {
 }
 
 func validateStashes(stashes []Stash) error {
-	seen := make(map[string]struct{}, len(stashes))
-	for index, stash := range stashes {
-		if err := stash.Validate(); err != nil {
-			return fmt.Errorf("stash %d: %w", index+1, err)
-		}
-		if _, duplicate := seen[stash.ID]; duplicate {
-			return fmt.Errorf("stash %d repeats identity %s", index+1, stash.ID)
-		}
-		seen[stash.ID] = struct{}{}
-	}
-	return nil
+	return validateDistinct("stash", stashes, func(stash Stash) string { return stash.ID })
 }
 
 func validateWorkspaces(workspaces []Workspace) error {
-	seen := make(map[string]struct{}, len(workspaces))
-	for index, workspace := range workspaces {
-		if err := workspace.Validate(); err != nil {
-			return fmt.Errorf("workspace %d: %w", index+1, err)
+	return validateDistinct("workspace", workspaces, func(workspace Workspace) string { return workspace.Path })
+}
+
+// validateDistinct validates each record and rejects a repeated identity.
+func validateDistinct[T interface{ Validate() error }](noun string, records []T, identity func(T) string) error {
+	seen := make(map[string]struct{}, len(records))
+	for index, record := range records {
+		if err := record.Validate(); err != nil {
+			return fmt.Errorf("%s %d: %w", noun, index+1, err)
 		}
-		if _, duplicate := seen[workspace.Path]; duplicate {
-			return fmt.Errorf("workspace %d repeats path %q", index+1, workspace.Path)
+		key := identity(record)
+		if _, duplicate := seen[key]; duplicate {
+			return fmt.Errorf("%s %d repeats %q", noun, index+1, key)
 		}
-		seen[workspace.Path] = struct{}{}
+		seen[key] = struct{}{}
 	}
 	return nil
 }

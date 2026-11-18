@@ -118,7 +118,7 @@ func (t treePublisher) commitIncrementalReduction(
 	if commit.State == StateTerminalize && route.member.ParentID == "" {
 		commit.ObsoleteCheckpointRootID = route.member.MemberID
 	}
-	if err := t.publications.commitEvent(ctx, commit); err != nil {
+	if err := t.publications.events.CommitEvent(ctx, commit); err != nil {
 		return false, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
 	}
 	if commit.State == StateTerminalize {
@@ -163,7 +163,7 @@ func (t treePublisher) publishAuthoritativeAtomically(
 		if err := combined.Validate(); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: validate authoritative fact: %w", err)
 		}
-		if err := t.publications.commitEvent(ctx, combined); err != nil {
+		if err := t.publications.events.CommitEvent(ctx, combined); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
 		for _, write := range combined.Items {
@@ -206,7 +206,7 @@ func (t treePublisher) publishTerminalAtomically(
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
-	if err := t.publications.commitEvent(ctx, combined); err != nil {
+	if err := t.publications.events.CommitEvent(ctx, combined); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still
@@ -314,7 +314,7 @@ func (t treePublisher) publishTreeBarrier(
 		if commitErr != nil {
 			return commitErr
 		}
-		if commitTreeBarrierErr := t.publications.commitTreeBarrier(interruptCtx, commit); commitTreeBarrierErr != nil {
+		if commitTreeBarrierErr := t.publications.barriers.CommitTreeBarrier(interruptCtx, commit); commitTreeBarrierErr != nil {
 			return commitTreeBarrierErr
 		}
 		for _, projected := range projection.reductions {
@@ -508,7 +508,7 @@ func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 		}
 	}
 	if reduced.Nudge != nil {
-		t.publications.nudge(reduced.Nudge.WorkspaceCWD, reduced.Nudge.Paths)
+		t.publications.workspace.Nudge(reduced.Nudge.WorkspaceCWD, reduced.Nudge.Paths)
 	}
 	return nil
 }

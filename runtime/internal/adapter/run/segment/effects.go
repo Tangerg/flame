@@ -13,12 +13,10 @@ package segment
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -48,7 +46,7 @@ type commandAcceptanceStore interface {
 // goalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
 // runs in the same transaction as terminalizing that Run.
 type goalRunRecorder interface {
-	RecordRun(ctx context.Context, value run.Run) error
+	CaptureGoalRun(ctx context.Context, value run.Run) error
 }
 
 // InterruptStore is the run-segment lifecycle view of the interrupt registry.
@@ -95,55 +93,15 @@ type toolResultStore interface {
 // modelInvocationJournal applies provider-attempt transitions. It is an
 // operational evidence journal. A known inner response can accompany outer failure;
 // it never creates executable Transcript continuation or advances Run accounting.
-// The consumer-owned methods keep application enums out of storage.
 type modelInvocationJournal interface {
-	StartModelInvocation(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID string,
-		startedAt time.Time,
-		purpose run.ModelCallPurpose,
-	) error
-	CompleteModelInvocation(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID string,
-		startedAt, finishedAt time.Time,
-		firstOutputLatencyMillis *int64,
-		usage *chat.Usage,
-	) error
-	FailModelInvocation(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID string,
-		startedAt, finishedAt time.Time,
-		firstOutputLatencyMillis *int64,
-		usage *chat.Usage, response *chat.Response,
-	) error
-	MarkModelInvocationUnknown(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID string,
-		startedAt, finishedAt time.Time,
-	) error
+	RecordModelInvocation(ctx context.Context, sessionID, runID string, invocation runs.ModelInvocationCommit) error
 }
 
 // toolInvocationJournal records pre-call and terminal attempt boundaries without
 // using Transcript insertion order as an operational lock. Final semantic Tool
 // Items are still committed through TranscriptStore in canonical model order.
 type toolInvocationJournal interface {
-	StartToolInvocation(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID, itemID string,
-		startedAt time.Time,
-		caller *plugin.ToolCaller,
-	) error
-	CompleteToolInvocation(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID, itemID string,
-		startedAt, finishedAt time.Time,
-	) error
-	MarkToolInvocationIncomplete(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID, itemID string,
-		startedAt, finishedAt time.Time,
-	) error
+	RecordToolInvocation(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error
 }
 
 // runWriter applies the run's lifecycle transitions inside the event commit:

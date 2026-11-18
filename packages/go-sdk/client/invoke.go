@@ -99,7 +99,7 @@ func (r *Client) invoke[Request, Response any](
 	ctx context.Context,
 	name string,
 	request Request,
-	options callConfig,
+	options protocol.CallMetadata,
 ) (Response, error) {
 	var zero Response
 	if r == nil {
@@ -123,7 +123,7 @@ func (r *Client) invokeAck[Request any](
 	ctx context.Context,
 	name string,
 	request Request,
-	options callConfig,
+	options protocol.CallMetadata,
 ) error {
 	_, err := r.invoke[Request, struct{}](ctx, name, request, options)
 	return err
@@ -133,7 +133,7 @@ func (r *Client) invokeStream[Request, Ack, Event any](
 	ctx context.Context,
 	name string,
 	request Request,
-	options callConfig,
+	options protocol.CallMetadata,
 ) (Ack, iter.Seq2[Event, error], error) {
 	var zero Ack
 	if r == nil {

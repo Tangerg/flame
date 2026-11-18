@@ -60,7 +60,6 @@ export const en: Record<string, string> = {
   "file.status.renamed": "Renamed",
   "file.status.untracked": "Untracked",
   "reader.region": "Scrollable diff for {{path}}",
-  "reader.loading": "Loading diff…",
   "details.title": "Comparison details",
   "details.emptyTree":
     "No commits yet. Changes are compared with an empty tree.",
@@ -72,12 +71,6 @@ export const en: Record<string, string> = {
   "baseline.label": "Baseline: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "merge base",
-  "reader.unmodifiedLines":
-    "{count, plural, one {# unchanged line} other {# unchanged lines}}",
-  "reader.unknownUnmodifiedLines":
-    "Unchanged context is not included in this patch.",
-  "reader.expandAll": "Expand all available context",
-  "reader.noNewline": "No newline at end of file",
   "budget.empty": "No complete file fits this read’s budget.",
   "patch.accepted": "Included patch",
 };

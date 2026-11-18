@@ -41,6 +41,13 @@ var (
 // Crossing it returns ErrListingTooLarge so callers can narrow the request.
 const maxListEntries = 20000
 
+// gitMetadataDir holds a repository's private state; listings never enter it.
+const gitMetadataDir = ".git"
+
+func insideGitMetadata(physical string) bool {
+	return slices.Contains(strings.Split(physical, "/"), gitMetadataDir)
+}
+
 // backstopExclude are directories never worth listing. `.git` is always
 // skipped (even with includeIgnored — its internals are never useful); the
 // rest are skipped only when not includeIgnored, as a coarse stand-in for
@@ -96,10 +103,8 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 		return nil, fmt.Errorf("%w: %w", errInvalidGlob, err)
 	}
 
-	for _, part := range strings.Split(scope.physical, "/") {
-		if part == ".git" {
-			return []workspaceapp.FileEntry{}, nil
-		}
+	if insideGitMetadata(scope.physical) {
+		return []workspaceapp.FileEntry{}, nil
 	}
 	repository := false
 	var files []string
@@ -272,7 +277,7 @@ func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgn
 		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
-		if child.Name() == ".git" || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
+		if child.Name() == gitMetadataDir || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
 			continue
 		}
 		rel := path.Join(scope.logical, child.Name())
@@ -344,7 +349,7 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 			if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 				return nil, err
 			}
-			if child.Name() == ".git" {
+			if child.Name() == gitMetadataDir {
 				continue
 			}
 			candidate := path.Join(directory, child.Name())

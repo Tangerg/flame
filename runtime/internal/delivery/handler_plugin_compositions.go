@@ -18,9 +18,6 @@ type compositionUseCases interface {
 }
 
 func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
-	if s.pluginCompositions == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
-	}
 	contract, err := plugincontract.ParseCapability([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
@@ -46,9 +43,6 @@ func presentComposition(value plugin.OrderedComposition) *protocol.PluginComposi
 }
 
 func (s *Handler) ListPluginCompositions(ctx context.Context) (*protocol.Page[protocol.PluginComposition], error) {
-	if s.pluginCompositions == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
-	}
 	values, err := s.pluginCompositions.List(ctx)
 	if err != nil {
 		return nil, wirePluginError(err)
@@ -61,9 +55,6 @@ func (s *Handler) ListPluginCompositions(ctx context.Context) (*protocol.Page[pr
 }
 
 func (s *Handler) SetPluginComposition(ctx context.Context, in protocol.SetPluginCompositionRequest) (*protocol.PluginComposition, error) {
-	if s.pluginCompositions == nil {
-		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
-	}
 	contract, err := framevalue.ParseJSON([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)

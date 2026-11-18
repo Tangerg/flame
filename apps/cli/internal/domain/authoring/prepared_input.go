@@ -41,7 +41,6 @@ func (m Message) PreparedInput(input []protocol.ContentBlock) ([]protocol.Conten
 		if err := protocol.ValidateWireTree(block); err != nil {
 			return nil, fmt.Errorf("%w: attachment %d: %w", ErrCommandInputUnavailable, index+1, err)
 		}
-
 	}
 	return input, nil
 }

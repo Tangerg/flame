@@ -215,9 +215,9 @@ func (w waitingCancellationBuilder) validate() error {
 		)
 	case !w.plan.target.run.Lineage().IsChild():
 		return errors.New("runs: waiting cancellation target is not a child Run")
-	case !w.plan.hasPending:
+	case w.plan.pending == nil:
 		return errors.New("runs: waiting cancellation plan has no pending set")
-	case !w.plan.hasSpawningItem:
+	case w.plan.spawningItem == nil:
 		return errors.New("runs: waiting cancellation plan has no spawning Item")
 	case w.finishedAt.IsZero():
 		return errors.New("runs: waiting cancellation finish time is required")
@@ -447,7 +447,7 @@ func (w waitingCancellationBuilder) remainingPending(
 	if len(interrupts) == 0 {
 		return nil, nil
 	}
-	reduced := w.plan.pending
+	reduced := *w.plan.pending
 	reduced.Interrupts = interrupts
 	reduced.Bindings = bindings
 	reduced.Continuations = continuations

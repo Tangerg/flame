@@ -101,14 +101,22 @@ func (r *runs) stopClock() {
 	}
 }
 
-// runShutdown is the cancellation a closing terminal still owes.
+// shutdownCancellation is what a closing terminal still owes: nothing, the
+// cancellation of an acknowledged Run, or the cancellation of a staged start.
+type shutdownCancellation uint8
+
+const (
+	shutdownOwesNothing shutdownCancellation = iota
+	shutdownCancelsRun
+	shutdownCancelsStart
+)
+
 type runShutdown struct {
-	target        conversation.CancelRun
-	opening       authoring.CommandID
-	cancelRuntime bool
-	replay        authoring.ReplayGuard
-	pendingStart  workbench.PendingRun
-	cancelOpening bool
+	owes         shutdownCancellation
+	target       conversation.CancelRun
+	opening      authoring.CommandID
+	replay       authoring.ReplayGuard
+	pendingStart workbench.PendingRun
 }
 
 // settleOpeningForShutdown settles an acknowledged start before the terminal
@@ -128,45 +136,44 @@ func (r *runs) settleOpeningForShutdown() error {
 // detached terminal leaves its Run alive and only finishes a cancellation the
 // user already asked for; stageable reports whether a start may be staged.
 func (r *runs) planShutdown(detach, stageable bool) (runShutdown, error) {
-	var plan runShutdown
-	var planErr error
 	if pending := r.execution.pendingCancel; pending != nil {
-		plan.target, plan.opening, plan.cancelRuntime, plan.replay = pending.request, pending.openingCommandID, true, pending.replay
-	} else if !detach {
-		plan.target, plan.cancelRuntime = r.activeCancellation()
-		plan.opening = r.openingCommandForRun(plan.target.RunID)
-		replay, err := r.replayPolicy.NewGuard()
-		if err != nil {
-			planErr = err
-			plan.cancelRuntime = false
-		}
-		plan.replay = replay
+		return runShutdown{owes: shutdownCancelsRun, target: pending.request, opening: pending.openingCommandID, replay: pending.replay}, nil
 	}
-	if plan.cancelRuntime || !stageable || planErr != nil {
-		return plan, planErr
+	if !detach {
+		if target, active := r.activeCancellation(); active {
+			replay, err := r.replayPolicy.NewGuard()
+			if err != nil {
+				return runShutdown{}, err
+			}
+			return runShutdown{owes: shutdownCancelsRun, target: target, opening: r.openingCommandForRun(target.RunID), replay: replay}, nil
+		}
+	}
+	if !stageable {
+		return runShutdown{}, nil
 	}
 	if detach {
 		for _, pending := range r.workbench.PendingRuns(r.session.current.ID) {
 			if pending.State == workbench.PendingRunCanceling {
-				plan.pendingStart, plan.cancelOpening = pending, true
-				break
+				return runShutdown{owes: shutdownCancelsStart, pendingStart: pending}, nil
 			}
 		}
-		return plan, nil
+		return runShutdown{}, nil
 	}
-	var err error
-	plan.pendingStart, plan.cancelOpening, err = r.stageOpeningCancellation()
-	return plan, err
+	pending, staged, err := r.stageOpeningCancellation()
+	if err != nil || !staged {
+		return runShutdown{}, err
+	}
+	return runShutdown{owes: shutdownCancelsStart, pendingStart: pending}, nil
 }
 
 func (r *runs) finishShutdown(ctx context.Context, plan runShutdown) error {
-	switch {
-	case plan.cancelRuntime:
+	switch plan.owes {
+	case shutdownCancelsRun:
 		if err := r.cancelRuntimeNow(ctx, plan.target, plan.replay); err != nil {
 			return err
 		}
 		return r.retireCanceledRuntimeOwnership(plan.target.RunID, plan.opening)
-	case plan.cancelOpening:
+	case shutdownCancelsStart:
 		return r.cancelOpeningRunNow(ctx, plan.pendingStart)
 	default:
 		return nil

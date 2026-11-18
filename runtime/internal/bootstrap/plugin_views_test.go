@@ -58,7 +58,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	checkFailure := func(method delivery.Name, input any, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
@@ -104,7 +104,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	descendants.IncludeDescendants = true
 	descendants.Limit = new(1)
 	checkFailure(delivery.SessionsTrajectory, descendants, protocol.ErrCapabilityNotNeg)
-	options := delivery.Options{RequestMeta: meta}
+	options := protocol.CallMetadata{RequestMeta: meta}
 	invoke := func(method delivery.Name, input any) *protocol.Page[protocol.TrajectoryEntry] {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), method, input, options)
@@ -214,7 +214,6 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	if _, err := os.Stat(retained); err != nil {
 		t.Fatalf("uninstall discarded backend data: %v", err)
 	}
-
 }
 
 func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *testing.T) {
@@ -277,12 +276,12 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatal("restart changed admitted components")
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"Cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
@@ -290,7 +289,6 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	if _, err := os.Stat(retained); err != nil {
 		t.Fatalf("uninstall discarded backend data: %v", err)
 	}
-
 }
 
 func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing.T) {
@@ -319,7 +317,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	read := protocol.UsageSummaryRequest{}
 	refused := func(input any, method delivery.Name, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}

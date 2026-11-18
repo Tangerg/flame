@@ -14,7 +14,6 @@ import (
 )
 
 func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
-
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.
 	inspection, err := checkpoint.tree.Inspect()

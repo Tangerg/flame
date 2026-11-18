@@ -80,7 +80,7 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 		return Admission{}, rundomain.ErrSessionBusy
 	}
 	admission := heldSessionAdmission(sessionID, release)
-	open, err := c.listOpenInterrupts(ctx, sessionID)
+	open, err := c.interrupts.List(ctx, sessionID)
 	if err != nil {
 		admission.Release()
 		return Admission{}, err

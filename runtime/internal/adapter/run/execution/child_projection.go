@@ -90,7 +90,6 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 			return progressed, err
 		}
 		progressed = progressed || projected
-
 	}
 	return progressed, nil
 }

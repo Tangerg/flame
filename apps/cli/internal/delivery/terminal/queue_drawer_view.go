@@ -144,7 +144,8 @@ func (q *queueDrawer) drawEntry(view grid.View, entry authoring.QueueEntry, inde
 		style = style.Merge(q.theme.Selection)
 		view.Fill(row, q.theme.Selection)
 	}
-	if q.pointerGesture.target == rowTarget {
+	pressed, _ := q.press.pressed()
+	if pressed == rowTarget {
 		style = style.Merge(grid.Style{Attr: grid.Bold | grid.Reverse})
 	}
 	hits := []queueHit{{area: row, target: rowTarget}}
@@ -154,7 +155,7 @@ func (q *queueDrawer) drawEntry(view grid.View, entry authoring.QueueEntry, inde
 	}
 	prefix := fmt.Sprintf("%s %d. ", marker, index+1)
 	right := width
-	if width >= 40 && (selected || q.hovered.id == entry.ID || q.pointerGesture.target.id == entry.ID) {
+	if width >= 40 && (selected || q.hovered.id == entry.ID || pressed.id == entry.ID) {
 		right = q.drawActions(view, row, entry.ID, right, style, &hits)
 	}
 	view.Text(0, 0, prefix, style.Merge(q.theme.Muted))
@@ -183,7 +184,7 @@ func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id author
 		if q.hovered == button.target {
 			style = style.Merge(button.style)
 		}
-		if q.pointerGesture.target == button.target {
+		if pressed, _ := q.press.pressed(); pressed == button.target {
 			style = style.Merge(grid.Style{Attr: grid.Bold | grid.Reverse})
 		}
 		view.Text(x, row.Min.Y, button.label, style)

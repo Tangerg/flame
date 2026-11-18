@@ -3970,6 +3970,10 @@
           "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted value.JSON) (*tool.Output, error)"
         },
         {
+          "name": "RefusedToolFailure",
+          "signature": "func(err error) error"
+        },
+        {
           "name": "RegisterTools",
           "signature": "func(server *mcp.Server, tools ...tool.Tool) error"
         },
@@ -4020,6 +4024,10 @@
         {
           "name": "ToolProposalMethod",
           "signature": "func() (*mcp.Method[chat.ToolCall, chat.ToolCall], error)"
+        },
+        {
+          "name": "ToolReceiptFrom",
+          "signature": "func[R any](result R, err error, classify func(error) error) (ToolReceipt, error)"
         },
         {
           "name": "ToolReceiptQuery",
@@ -5246,6 +5254,11 @@
           "value": "\"io.github.tangerg.flame/operations.describe\""
         },
         {
+          "name": "InvalidInputCode",
+          "type": "untyped string",
+          "value": "\"invalid_input\""
+        },
+        {
           "name": "InvocationHeader",
           "type": "untyped string",
           "value": "\"Flame-Invocation\""
@@ -5361,6 +5374,10 @@
         {
           "name": "NewBackend",
           "signature": "func(server *mcp.Server) (*Backend, error)"
+        },
+        {
+          "name": "NewBackground",
+          "signature": "func(lifetime context.Context, config BackgroundConfig) (*Background, error)"
         },
         {
           "name": "NewBinding",
@@ -5493,6 +5510,38 @@
             {
               "name": "Publish",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Background",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "Start",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "BackgroundConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Prepare",
+              "type": "func(context.Context) error"
+            },
+            {
+              "name": "Run",
+              "type": "func(context.Context)"
+            },
+            {
+              "name": "Release",
+              "type": "func() error"
             }
           ]
         },
@@ -11381,12 +11430,40 @@
           ]
         },
         {
+          "name": "CallMetadata",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RequestMeta",
+              "type": "RequestMeta"
+            },
+            {
+              "name": "IdempotencyKey",
+              "type": "string"
+            },
+            {
+              "name": "IdempotencyNamespace",
+              "type": "string"
+            },
+            {
+              "name": "AfterEventID",
+              "type": "string"
+            }
+          ]
+        },
+        {
           "name": "CallOptions",
           "kind": "struct",
           "fields": [
             {
               "name": "RequestMeta",
               "type": "RequestMeta"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
             }
           ]
         },
@@ -11573,6 +11650,12 @@
             {
               "name": "IdempotencyNamespace",
               "type": "string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
             }
           ]
         },
@@ -14645,6 +14728,12 @@
               "name": "IdempotencyNamespace",
               "type": "string"
             }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
+            }
           ]
         },
         {
@@ -16412,6 +16501,12 @@
               "name": "AfterEventID",
               "type": "string"
             }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
+            }
           ]
         },
         {
@@ -16642,6 +16737,12 @@
             {
               "name": "AfterEventID",
               "type": "string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
             }
           ]
         },
@@ -17870,6 +17971,12 @@
             {
               "name": "RequestMeta",
               "type": "RequestMeta"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Metadata",
+              "signature": "func() CallMetadata"
             }
           ]
         },

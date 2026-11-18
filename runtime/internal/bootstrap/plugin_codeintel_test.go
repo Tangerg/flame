@@ -61,7 +61,7 @@ func TestInstalledCodeIntelligenceFormatsThroughTheRuntimeFileOwner(t *testing.T
 			t.Fatal(err)
 		}
 		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: name}, "session-"+name).(*protocol.Session)
-		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Change the value."}}}, delivery.Options{IdempotencyKey: "run-" + name, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Change the value."}}}, protocol.CallMetadata{IdempotencyKey: "run-" + name, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if started.Failure != nil {
 			t.Fatal(started.Failure)
 		}

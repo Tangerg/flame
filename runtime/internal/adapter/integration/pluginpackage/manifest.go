@@ -36,6 +36,62 @@ func parse(ctx context.Context, root *os.Root, digest framevalue.Digest) (plugin
 	return builder.Release(digest)
 }
 
+// manifestFields is the portable manifest envelope. Other members are reported
+// as diagnostics; they never reject the package.
+var manifestFields = []string{"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
+
+var authorFields = []string{"name", "email", "url"}
+
+func validateManifestField(key string, raw jsontext.Value) error {
+	switch key {
+	case "extensions":
+		return nil
+	case "keywords":
+		var keywords []string
+		if err := framevalue.DecodeValue(raw, &keywords, "plugin declaration"); err != nil {
+			return fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
+		}
+		if keywords == nil {
+			return fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
+		}
+		return nil
+	case "author":
+		return validateAuthor(raw)
+	default:
+		return requireText(raw, "manifest field", key)
+	}
+}
+
+func validateAuthor(raw jsontext.Value) error {
+	var author map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &author); err != nil {
+		return fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
+	}
+	if author == nil {
+		return fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
+	}
+	for field, value := range author {
+		if !slices.Contains(authorFields, field) {
+			return fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
+		}
+		if err := requireText(value, "author field", field); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func requireText(raw jsontext.Value, kind, name string) error {
+	var text string
+	if string(raw) == "null" {
+		return fmt.Errorf("%w: invalid %s %q", plugin.ErrInvalid, kind, name)
+	}
+	if err := json.Unmarshal(raw, &text); err != nil {
+		return fmt.Errorf("%w: %s %q: %w", plugin.ErrInvalid, kind, name, err)
+	}
+	return nil
+}
+
 func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) {
 	body, err := read(ctx, root, "plugin.json", maxManifestBytes)
 	if err != nil {
@@ -52,51 +108,13 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 		return nil, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
 	}
 	var unknown []plugin.Diagnostic
-	known := []string{"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
 	for _, key := range slices.Sorted(maps.Keys(envelope)) {
-		raw := envelope[key]
-		if !slices.Contains(known, key) {
+		if !slices.Contains(manifestFields, key) {
 			unknown = append(unknown, plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentManifestField, Name: key}, Code: plugin.DiagnosticUnknownField})
 			continue
 		}
-		if key == "extensions" {
-			continue
-		}
-		if key == "keywords" {
-			var v []string
-			if err = framevalue.DecodeValue(raw, &v, "plugin declaration"); err != nil {
-				return nil, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
-			}
-			if v == nil {
-				return nil, fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
-			}
-			continue
-		}
-		if key == "author" {
-			var v map[string]jsontext.Value
-			if err = json.Unmarshal(raw, &v); err != nil {
-				return nil, fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
-			}
-			if v == nil {
-				return nil, fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
-			}
-			for field, value := range v {
-				var text string
-				if !slices.Contains([]string{"name", "email", "url"}, field) || string(value) == "null" {
-					return nil, fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
-				}
-				if err := json.Unmarshal(value, &text); err != nil {
-					return nil, fmt.Errorf("%w: author field %q: %w", plugin.ErrInvalid, field, err)
-				}
-			}
-			continue
-		}
-		var text string
-		if string(raw) == "null" {
-			return nil, fmt.Errorf("%w: invalid manifest field %q", plugin.ErrInvalid, key)
-		}
-		if err := json.Unmarshal(raw, &text); err != nil {
-			return nil, fmt.Errorf("%w: manifest field %q: %w", plugin.ErrInvalid, key, err)
+		if err := validateManifestField(key, envelope[key]); err != nil {
+			return nil, err
 		}
 	}
 	var schema, name, version, description string
@@ -156,38 +174,10 @@ func admitManagedBackends(raw jsontext.Value, release *plugin.Builder, root *os.
 }
 
 func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root, nativeServers []string) error {
-	var namespaces map[string]jsontext.Value
-	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
-		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
-		return nil
-	}
-	raw, found := namespaces[plugin.Namespace]
+	resources := declarationResources{root: root}
+	members, found := loadDeclaration(ctx, raw, release, resources)
 	if !found {
 		return nil
-	}
-	var reference struct {
-		Declaration string `json:"declaration"`
-	}
-	if err := json.Unmarshal(raw, &reference, json.RejectUnknownMembers(true)); err != nil || !plugin.ValidResourcePath(reference.Declaration) || !strings.HasPrefix(reference.Declaration, plugin.Namespace+"/") {
-		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return nil
-	}
-	body, err := read(ctx, root, reference.Declaration, maxManifestBytes)
-	if err != nil {
-		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return nil
-	}
-	var members map[string]jsontext.Value
-	var requiredProtocol string
-	if err := json.Unmarshal(body, &members); err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != sdkplugin.DeclarationProtocol {
-		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return nil
-	}
-	for field := range members {
-		if !slices.Contains(declarationFields, field) {
-			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-			return nil
-		}
 	}
 	if raw, found := members["managedBackends"]; found {
 		if err := admitManagedBackends(raw, release, root, nativeServers); err != nil {
@@ -196,18 +186,11 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 	}
 	var contributes map[string]jsontext.Value
 	if raw := members["contributes"]; len(raw) != 0 {
-		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil {
+		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil || !onlyFields(contributes, presentationFields) {
 			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
 			return nil
 		}
-		for field := range contributes {
-			if !slices.Contains(presentationFields, field) {
-				report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-				return nil
-			}
-		}
 	}
-	resources := declarationResources{root: root}
 	admitContributions(members["contributions"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "contributions"}, func(w wireContribution) error {
 		value, err := resources.contribution(ctx, w)
 		if err != nil {
@@ -235,38 +218,11 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 	})
 	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
 	admitContributions(members["components"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "components"}, func(w wireComponent) error {
-		var contribution plugin.ContributionID
-		if w.Contribution != nil {
-			if err := w.Contribution.Validate(); err != nil {
-				return err
-			}
-			contribution = *w.Contribution
-		}
-		var material string
-		if w.Material != nil {
-			if *w.Material == "" {
-				return plugin.ErrInvalid
-			}
-			material = *w.Material
-		}
-		var settingsIntent string
-		if w.SettingsIntent != nil {
-			if *w.SettingsIntent == "" {
-				return plugin.ErrInvalid
-			}
-			settingsIntent = *w.SettingsIntent
-		}
-		if !plugin.ValidResourcePath(w.Entry) || !strings.HasPrefix(w.Entry, plugin.Namespace+"/") {
-			return plugin.ErrInvalid
-		}
-		if _, err := read(ctx, root, w.Entry, maxPackageBytes); err != nil {
+		component, err := resources.component(ctx, w)
+		if err != nil {
 			return err
 		}
-		var selector *plugin.RendererSelector
-		if w.Selector != nil {
-			selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name, Shape: w.Selector.Shape}
-		}
-		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, LocalizedTitles: w.LocalizedTitles, ToolCategory: w.ToolCategory, TargetView: w.TargetView, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
+		return release.AdmitComponent(component)
 	})
 	admitContributions(members["terminalViews"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "terminalViews"}, func(w wireTerminalView) error {
 		view, err := w.domain()
@@ -276,44 +232,136 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		return release.AdmitTerminalView(view)
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
-		switch component {
-		case "locales":
-			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireLocale) error {
-				value := plugin.Locale{Tag: w.Tag, Title: w.Title, Entry: w.Entry}
-				if !plugin.ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, plugin.Namespace+"/") {
-					return plugin.ErrInvalid
-				}
-				body, err := read(ctx, root, value.Entry, maxManifestBytes)
-				if err != nil {
-					return err
-				}
-				if _, err := decodeLocale(body); err != nil {
-					return err
-				}
-				return release.AdmitLocale(value)
-			})
-		case "themes":
-			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireTheme) error {
-				theme, err := w.domain()
-				if err != nil {
-					return err
-				}
-				return release.AdmitTheme(theme)
-			})
-		default:
-			report(release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, plugin.DiagnosticUnsupportedContribution)
-		}
+		admitPresentation(ctx, release, resources, component, contributes[component])
 	}
 	return nil
 }
 
+// loadDeclaration reads the Flame namespace's declaration. An absent namespace
+// is not found; an invalid one is reported on the release and also not found.
+func loadDeclaration(ctx context.Context, raw jsontext.Value, release *plugin.Builder, resources declarationResources) (map[string]jsontext.Value, bool) {
+	var namespaces map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
+		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
+		return nil, false
+	}
+	raw, found := namespaces[plugin.Namespace]
+	if !found {
+		return nil, false
+	}
+	var reference struct {
+		Declaration string `json:"declaration"`
+	}
+	var members map[string]jsontext.Value
+	var requiredProtocol string
+	err := json.Unmarshal(raw, &reference, json.RejectUnknownMembers(true))
+	var body []byte
+	if err == nil {
+		body, err = resources.read(ctx, reference.Declaration)
+	}
+	if err == nil {
+		err = json.Unmarshal(body, &members)
+	}
+	if err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != sdkplugin.DeclarationProtocol || !onlyFields(members, declarationFields) {
+		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+		return nil, false
+	}
+	return members, true
+}
+
+func onlyFields(members map[string]jsontext.Value, allowed []string) bool {
+	for field := range members {
+		if !slices.Contains(allowed, field) {
+			return false
+		}
+	}
+	return true
+}
+
+func admitPresentation(ctx context.Context, release *plugin.Builder, resources declarationResources, component string, raw jsontext.Value) {
+	scope := plugin.Component{Kind: plugin.ComponentContribution, Name: component}
+	switch component {
+	case "locales":
+		admitContributions(raw, release, scope, func(w wireLocale) error {
+			locale, err := resources.locale(ctx, w)
+			if err != nil {
+				return err
+			}
+			return release.AdmitLocale(locale)
+		})
+	case "themes":
+		admitContributions(raw, release, scope, func(w wireTheme) error {
+			theme, err := w.domain()
+			if err != nil {
+				return err
+			}
+			return release.AdmitTheme(theme)
+		})
+	default:
+		report(release, scope, plugin.DiagnosticUnsupportedContribution)
+	}
+}
+
 type declarationResources struct{ root *os.Root }
 
-func (r declarationResources) read(ctx context.Context, resource string) ([]byte, error) {
+// Declared resources live under the Flame namespace of the package root.
+func (r declarationResources) readWithin(ctx context.Context, resource string, limit int64) ([]byte, error) {
 	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 		return nil, plugin.ErrInvalid
 	}
-	return read(ctx, r.root, resource, maxManifestBytes)
+	return read(ctx, r.root, resource, limit)
+}
+
+func (r declarationResources) read(ctx context.Context, resource string) ([]byte, error) {
+	return r.readWithin(ctx, resource, maxManifestBytes)
+}
+
+func (r declarationResources) component(ctx context.Context, w wireComponent) (plugin.ClientComponent, error) {
+	var contribution plugin.ContributionID
+	if w.Contribution != nil {
+		if err := w.Contribution.Validate(); err != nil {
+			return plugin.ClientComponent{}, err
+		}
+		contribution = *w.Contribution
+	}
+	material, err := presentText(w.Material)
+	if err != nil {
+		return plugin.ClientComponent{}, err
+	}
+	settingsIntent, err := presentText(w.SettingsIntent)
+	if err != nil {
+		return plugin.ClientComponent{}, err
+	}
+	if _, err := r.readWithin(ctx, w.Entry, maxPackageBytes); err != nil {
+		return plugin.ClientComponent{}, err
+	}
+	var selector *plugin.RendererSelector
+	if w.Selector != nil {
+		selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name, Shape: w.Selector.Shape}
+	}
+	return plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, LocalizedTitles: w.LocalizedTitles, ToolCategory: w.ToolCategory, TargetView: w.TargetView, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent}, nil
+}
+
+func (r declarationResources) locale(ctx context.Context, w wireLocale) (plugin.Locale, error) {
+	body, err := r.read(ctx, w.Entry)
+	if err != nil {
+		return plugin.Locale{}, err
+	}
+	if _, err := decodeLocale(body); err != nil {
+		return plugin.Locale{}, err
+	}
+	return plugin.Locale{Tag: w.Tag, Title: w.Title, Entry: w.Entry}, nil
+}
+
+// presentText admits an optional member that, when declared, is never empty.
+func presentText(value *string) (string, error) {
+	if value == nil {
+		return "", nil
+	}
+	if *value == "" {
+		return "", plugin.ErrInvalid
+	}
+	return *value, nil
 }
 
 func (r declarationResources) point(ctx context.Context, resource string) (*plugincontract.Point, error) {

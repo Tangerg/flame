@@ -34,7 +34,6 @@ import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { splitFilePath } from "@/lib/path";
-import chatSearch from "@/features/chat/search/index";
 import appearanceSettings from "@/features/settings/appearance";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
@@ -859,7 +858,6 @@ export async function installVisualWorkspaceFixture(
     fileView,
     appearanceSettings,
     createProviderCatalogPlugin(runtimeClient),
-    chatSearch,
     approvalsSettings,
     connectionSettings,
     createInstalledPluginLoader(visual.installedPlugins),

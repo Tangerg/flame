@@ -52,10 +52,10 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 		if err != nil {
 			return "", err
 		}
-		if record.OtherOperation || record.Found && (record.Acceptance.Operation != CommandSteerInput || record.Acceptance.Fingerprint != cmd.Acceptance.Fingerprint) {
+		if record.Conflicts(CommandSteerInput, cmd.Acceptance.Fingerprint) {
 			return "", ErrCommandKeyConflict
 		}
-		if record.Found {
+		if record.Use == CommandKeyAccepted {
 			return record.Acceptance.UserItemID, nil
 		}
 	}

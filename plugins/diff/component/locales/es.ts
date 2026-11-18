@@ -64,7 +64,6 @@ export const es: Record<string, string> = {
   "file.status.renamed": "Renombrado",
   "file.status.untracked": "Sin seguimiento",
   "reader.region": "Diff desplazable de {{path}}",
-  "reader.loading": "Cargando diferencias…",
   "details.title": "Detalles de la comparación",
   "details.emptyTree":
     "Aún no hay commits. Los cambios se comparan con un árbol vacío.",
@@ -76,12 +75,6 @@ export const es: Record<string, string> = {
   "baseline.label": "Base: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusión",
-  "reader.unmodifiedLines":
-    "{count, plural, one {# línea sin cambios} other {# líneas sin cambios}}",
-  "reader.unknownUnmodifiedLines":
-    "El contexto sin cambios no está incluido en este parche.",
-  "reader.expandAll": "Expandir todo el contexto disponible",
-  "reader.noNewline": "Sin salto de línea al final del archivo",
   "budget.empty": "Ningún archivo completo cabe en el límite de esta lectura.",
   "patch.accepted": "Parche incluido",
 };

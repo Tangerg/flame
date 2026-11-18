@@ -41,34 +41,6 @@ type queuePresentation struct {
 	hits []queueHit
 }
 
-type queuePointerGesture struct {
-	target  queueTarget
-	active  bool
-	dragged bool
-}
-
-func (q *queuePointerGesture) begin(target queueTarget) {
-	*q = queuePointerGesture{target: target, active: true}
-}
-
-func (q *queuePointerGesture) drag(target queueTarget) bool {
-	if !q.active {
-		return false
-	}
-	if target != q.target {
-		q.dragged = true
-	}
-	return true
-}
-
-func (q *queuePointerGesture) release(target queueTarget) bool {
-	commit := q.active && !q.dragged && target.kind != queueTargetNone && target == q.target
-	q.cancel()
-	return commit
-}
-
-func (q *queuePointerGesture) cancel() { *q = queuePointerGesture{} }
-
 type queueDrawerActions struct {
 	BeginEdit  func(authoring.QueueEntry) error
 	SaveEdit   func(authoring.QueueEntry, authoring.Message, bool) error
@@ -96,9 +68,9 @@ type queueDrawer struct {
 	editingMessage authoring.Message
 	editor         *kit.Composer
 
-	hovered        queueTarget
-	pointerGesture queuePointerGesture
-	notice         string
+	hovered queueTarget
+	press   pointerPress[queueTarget]
+	notice  string
 
 	presentation scene.Snapshot[queuePresentation]
 	group        *scene.Group
@@ -130,7 +102,7 @@ func (q *queueDrawer) Element() scene.Element {
 						return scene.EventResult{}
 					}
 					if mouse.Action != input.MouseCancel && !event.CurrentLayout() {
-						q.pointerGesture.cancel()
+						q.press.cancel()
 						return scene.EventResult{Consumed: true}
 					}
 					consumed := q.handleMouse(mouse)
@@ -140,10 +112,10 @@ func (q *queueDrawer) Element() scene.Element {
 				FocusChanged: func(has bool) {
 					if !has {
 						q.hovered = queueTarget{}
-						q.pointerGesture.cancel()
+						q.press.cancel()
 					}
 				},
-				Detached: func() { q.pointerGesture.cancel() },
+				Detached: func() { q.press.cancel() },
 			},
 			Layout: func(space image.Point, items []scene.Item) []image.Rectangle {
 				if len(items) == 0 {
@@ -175,7 +147,7 @@ func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actio
 
 func (q *queueDrawer) Set(snapshot authoring.QueueSnapshot) {
 	q.hovered = queueTarget{}
-	q.pointerGesture.cancel()
+	q.press.cancel()
 	selected, hasSelected := q.selectedEntry()
 	entries := snapshot.Entries
 	editingIndex := -1
@@ -216,7 +188,7 @@ func (q *queueDrawer) Editing() bool { return q.editingEntry != nil }
 
 func (q *queueDrawer) Handle(event input.Event) bool {
 	if key, ok := event.(input.Key); ok && key.Down() {
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		return q.handleKey(key)
 	}
 	if mouse, ok := event.(input.Mouse); ok {
@@ -316,22 +288,22 @@ func (q *queueDrawer) handleEditKey(key input.Key) bool {
 
 func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 	if q.Editing() {
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		return false
 	}
 	switch mouse.Action {
 	case input.MouseCancel:
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		return true
 	case input.MouseLeave:
 		q.hovered = queueTarget{}
 		return false
 	case input.WheelUp:
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		q.moveSelection(-1)
 		return true
 	case input.WheelDown:
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		q.moveSelection(1)
 		return true
 	}
@@ -340,28 +312,32 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 	case input.MouseMove:
 		q.hovered = target
 	case input.MouseDown:
-		q.pointerGesture.cancel()
+		q.press.cancel()
 		if mouse.Button != input.ButtonLeft {
 			return false
 		}
 		q.hovered = target
 		if target.kind != queueTargetNone {
-			q.pointerGesture.begin(target)
+			q.press.begin(target)
 		}
 	case input.MouseDrag:
-		if mouse.Button != input.ButtonLeft || !q.pointerGesture.drag(target) {
-			q.pointerGesture.cancel()
+		pressed, held := q.press.pressed()
+		if mouse.Button != input.ButtonLeft || !held {
+			q.press.cancel()
 			return false
+		}
+		if target != pressed {
+			q.press.drag()
 		}
 		q.hovered = target
 	case input.MouseUp:
 		if mouse.Button != input.ButtonLeft {
-			q.pointerGesture.cancel()
+			q.press.cancel()
 			return false
 		}
-		commit := q.pointerGesture.release(target)
+		pressed, click := q.press.release()
 		q.hovered = target
-		if commit {
+		if click && target == pressed {
 			q.activate(target)
 		}
 	}
@@ -371,7 +347,7 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 func (q *queueDrawer) Closed() {
 	_ = q.releaseEdit()
 	q.hovered = queueTarget{}
-	q.pointerGesture.cancel()
+	q.press.cancel()
 }
 
 func (q *queueDrawer) selectedEntry() (authoring.QueueEntry, bool) {

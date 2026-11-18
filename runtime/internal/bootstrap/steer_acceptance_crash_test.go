@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -46,7 +48,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Found {
+			if record.Use == runapp.CommandKeyAccepted {
 				checkpoint, found, err := stores.ExecutorCheckpoints.LoadSessionCheckpoint(ctx, record.Acceptance.SessionID)
 				if err != nil || !found || len(checkpoint.Payload) == 0 {
 					t.Fatalf("accepted steer lost context: %t,%v", found, err)
@@ -83,7 +85,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 		result := endpoint.Invoke(t.Context(), delivery.RunsSteer, protocol.SteerRunRequest{RunID: started.RunID, ExpectedSegmentID: started.SegmentID, Input: input}, options)
 		t.Fatalf("steer crash cut not reached: %v", result.Failure)
 	}
-	receipt, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: steerCrashKey, Operation: protocol.RunCommandSteer}, delivery.Options{})
+	receipt, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: steerCrashKey, Operation: protocol.RunCommandSteer}, protocol.CallMetadata{})
 	if err != nil || receipt.Type != protocol.RunAcceptanceAccepted || receipt.Run.Status != protocol.RunStatusFinished || receipt.AppliedItem != nil || len(receipt.Input) != 1 || receipt.Input[0].Text != input[0].Text {
 		t.Fatalf("cold receipt=%+v,%v", receipt, err)
 	}

@@ -57,7 +57,6 @@ export const zh: Record<string, string> = {
   "file.status.renamed": "已重命名",
   "file.status.untracked": "未跟踪",
   "reader.region": "{{path}} 的可滚动 diff",
-  "reader.loading": "正在加载差异…",
   "details.title": "比较详情",
   "details.emptyTree": "尚无提交。更改将与空树进行比较。",
   "details.worktree": "相对 HEAD 的更改，包括已暂存、未暂存和未跟踪的文件。",
@@ -67,10 +66,6 @@ export const zh: Record<string, string> = {
   "baseline.label": "基线：{{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "合并基础",
-  "reader.unmodifiedLines": "{count} 行未更改的内容",
-  "reader.unknownUnmodifiedLines": "此补丁未包含未更改的上下文。",
-  "reader.expandAll": "展开所有可用上下文",
-  "reader.noNewline": "文件末尾没有换行符",
   "budget.empty": "此次读取的预算无法容纳完整文件。",
   "patch.accepted": "本次已读取的补丁",
 };

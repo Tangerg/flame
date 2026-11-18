@@ -41,7 +41,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		})
 	})}
 	ctx := t.Context()
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},

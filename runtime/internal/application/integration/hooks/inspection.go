@@ -53,7 +53,6 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		default:
 			return fmt.Errorf("%w: hook %d has unknown scope %q", errInvalidInspection, index+1, hook.Scope)
 		}
-
 	}
 	return nil
 }

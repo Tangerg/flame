@@ -55,7 +55,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 	input := protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run with the selected model."}}}
 	start := func() *protocol.StartRunResponse {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, input, delivery.Options{IdempotencyKey: "routed-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, input, protocol.CallMetadata{IdempotencyKey: "routed-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}

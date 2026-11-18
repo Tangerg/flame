@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/frame"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -69,7 +70,7 @@ func EncodeReply[T any](value T, err error, classify Classifier) (framevalue.JSO
 }
 
 func ReceiptQuery() (*Method[ReceiptRequest, Receipt], error) {
-	return NewMethod[ReceiptRequest, Receipt](frame.MethodConfig{Name: ReceiptMethod, Kind: frame.Query, Target: "installation", Description: ReceiptMethod})
+	return NewMethod[ReceiptRequest, Receipt](frame.MethodConfig{Name: ReceiptMethod, Kind: frame.Query, Target: extension.ScopeInstallation, Description: ReceiptMethod})
 }
 
 func DecodeReply[T any](data []byte) (T, error) {

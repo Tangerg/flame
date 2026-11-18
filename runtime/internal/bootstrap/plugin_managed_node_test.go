@@ -100,7 +100,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 		t.Fatalf("managed operation did not reach Core: %+v", response)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Managed Tool"}, "session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Read accounting with the managed tool."}}}, delivery.Options{IdempotencyKey: "run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Read accounting with the managed tool."}}}, protocol.CallMetadata{IdempotencyKey: "run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

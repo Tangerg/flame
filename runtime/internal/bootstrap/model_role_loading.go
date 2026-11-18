@@ -7,34 +7,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// utilityRoleLoader is the boot-time load view of the utility-role store.
-// Persistence after startup belongs to the model-role application use case.
-type utilityRoleLoader interface {
-	LoadUtilityRole(ctx context.Context) (modelref.Role, bool, error)
+// roleLoader is the boot-time load view of a model-role store. Persistence
+// after startup belongs to the model-role application use case.
+type roleLoader interface {
+	Load(ctx context.Context) (modelref.Role, bool, error)
 }
 
-// loadUtilityRole reads the persisted startup assignment. Runtime mutation and
-// client resolution are owned by their respective application and adapter types.
-func loadUtilityRole(ctx context.Context, loader utilityRoleLoader) (modelref.Role, error) {
-	role, _, err := loader.LoadUtilityRole(ctx)
+// loadRole reads the persisted startup assignment; absence is the zero role.
+func loadRole(ctx context.Context, loader roleLoader, name string) (modelref.Role, error) {
+	role, _, err := loader.Load(ctx)
 	if err != nil {
-		return modelref.Role{}, fmt.Errorf("bootstrap: load utility role: %w", err)
-	}
-	return role, nil
-}
-
-// embeddingRoleLoader is the boot-time load view of the embedding-role store.
-// Persistence after startup belongs to the model-role application use case.
-type embeddingRoleLoader interface {
-	LoadEmbeddingRole(ctx context.Context) (modelref.Role, error)
-}
-
-// loadEmbeddingRole reads the persisted startup assignment. Runtime mutation
-// and embedding resolution remain with their application and adapter owners.
-func loadEmbeddingRole(ctx context.Context, loader embeddingRoleLoader) (modelref.Role, error) {
-	role, err := loader.LoadEmbeddingRole(ctx)
-	if err != nil {
-		return modelref.Role{}, fmt.Errorf("bootstrap: load embedding role: %w", err)
+		return modelref.Role{}, fmt.Errorf("bootstrap: load %s role: %w", name, err)
 	}
 	return role, nil
 }

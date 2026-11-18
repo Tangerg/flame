@@ -1000,9 +1000,10 @@ their existing owners. Save failures lead with the command reason, followed by
 the captured image description, so changing the current image cannot misidentify
 the failed save.
 
-Transcript code blocks and file readers render through Pierre File with one shared
-worker pool from Pierre's `WorkerPoolContextProvider`, installed beside the code
-highlight provider in each presentation root. Code appears as literal text at once
+Transcript code blocks, file readers and package diffs render through Pierre File
+and FileDiff with one shared worker pool from Pierre's `WorkerPoolContextProvider`,
+installed beside the code highlight provider in each presentation root. The host
+owns Pierre's reader labels and keeps its module-wide catalog on the display locale. Code appears as literal text at once
 and highlighting follows; changing source updates the same reader instead of
 creating a worker. The pool's workers are Blob module workers, which inherit the
 page CSP.

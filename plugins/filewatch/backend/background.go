@@ -77,95 +77,60 @@ func (s *observationStream) close() {
 	}
 }
 
-type background struct {
-	ctx             context.Context
-	cancel          context.CancelFunc
-	done            chan struct{}
-	closeDone       chan struct{}
-	mu              sync.Mutex
-	started, closed bool
-	closeErr        error
-	status          filewatch.Status
-	store           *store
-	host            host
-	namespace       string
-	target          framecall.Target
-	contribution    string
-	closeHost       func() error
+// watcher follows the configured trigger's Runtime file events from
+// activation until Close and admits each captured observation as a Run.
+type watcher struct {
+	mu           sync.Mutex
+	status       filewatch.Status
+	store        *store
+	host         host
+	namespace    string
+	target       framecall.Target
+	contribution string
 }
 
-func newBackground(ctx context.Context, store *store, host host, namespace string, target framecall.Target, contribution string, closeHost func() error) *background {
-	lifetime, cancel := context.WithCancel(ctx)
-	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
+func newWatcher(store *store, host host, namespace string, target framecall.Target, contribution string) *watcher {
+	return &watcher{store: store, host: host, namespace: namespace, target: target, contribution: contribution, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
 
-func (b *background) Start() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.closed || b.ctx.Err() != nil {
-		return errors.New("filewatch: background lifetime is closed")
-	}
-	if b.started {
-		return nil
-	}
-	if err := pluginstorage.BindRuntimeTarget(b.ctx, b.store.db, b.namespace); err != nil {
-		return err
-	}
-	b.started = true
-	go b.run()
-	return nil
+func (w *watcher) background(lifetime context.Context, release func() error) (*pluginmcp.Background, error) {
+	return pluginmcp.NewBackground(lifetime, pluginmcp.BackgroundConfig{
+		Prepare: func(ctx context.Context) error { return pluginstorage.BindRuntimeTarget(ctx, w.store.db, w.namespace) },
+		Run:     w.run,
+		Release: release,
+	})
 }
 
-func (b *background) Close() error {
-	b.cancel()
-	b.mu.Lock()
-	if b.closed {
-		b.mu.Unlock()
-		<-b.closeDone
-		return b.closeErr
-	}
-	b.closed = true
-	if !b.started {
-		close(b.done)
-	}
-	b.mu.Unlock()
-	<-b.done
-	b.closeErr = b.closeHost()
-	close(b.closeDone)
-	return b.closeErr
+func (w *watcher) snapshot() filewatch.Status {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.status
 }
 
-func (b *background) snapshot() filewatch.Status {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.status
-}
-
-func (b *background) observationStatus(revision int64, phase filewatch.Phase, err error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.status.Revision, b.status.Phase, b.status.Error = revision, phase, ""
+func (w *watcher) observationStatus(revision int64, phase filewatch.Phase, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.status.Revision, w.status.Phase, w.status.Error = revision, phase, ""
 	if err != nil {
-		b.status.Error = err.Error()
+		w.status.Error = err.Error()
 	}
 }
 
-func (b *background) dispatchStatus(err error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.status.DispatchError = ""
+func (w *watcher) dispatchStatus(err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.status.DispatchError = ""
 	if err != nil {
-		b.status.DispatchError = err.Error()
+		w.status.DispatchError = err.Error()
 	}
 }
 
-func (b *background) invocation() framecall.Invocation {
-	return framecall.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+func (w *watcher) invocation() framecall.Invocation {
+	return framecall.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: w.target}
 }
 
-func (b *background) run() {
-	defer close(b.done)
-	defer b.observationStatus(0, filewatch.Inactive, nil)
+func (w *watcher) run(ctx context.Context) {
+	defer w.observationStatus(0, filewatch.Inactive, nil)
 	var stream *observationStream
 	defer func() { stream.close() }()
 	var notices <-chan observationNotice
@@ -175,10 +140,10 @@ func (b *background) run() {
 	stop := func(err error) {
 		stream.close()
 		stream, notices = nil, nil
-		b.observationStatus(current.Revision(), filewatch.Failed, err)
+		w.observationStatus(current.Revision(), filewatch.Failed, err)
 	}
 	refresh := func() {
-		configuration, err := b.store.configuration(b.ctx)
+		configuration, err := w.store.configuration(ctx)
 		if err != nil {
 			stop(err)
 			return
@@ -191,7 +156,7 @@ func (b *background) run() {
 		current = configuration
 		trigger, enabled := current.Trigger()
 		if !enabled {
-			b.observationStatus(current.Revision(), filewatch.Disabled, nil)
+			w.observationStatus(current.Revision(), filewatch.Disabled, nil)
 			return
 		}
 		generation = uuid.NewString()
@@ -200,28 +165,28 @@ func (b *background) run() {
 			stop(err)
 			return
 		}
-		ctx, err := pluginmcp.WithInvocation(b.ctx, b.invocation())
+		invocation, err := pluginmcp.WithInvocation(ctx, w.invocation())
 		if err == nil {
-			stream, err = openStream(ctx, b.host, generation, trigger)
+			stream, err = openStream(invocation, w.host, generation, trigger)
 		}
 		if err != nil {
 			stop(err)
 			return
 		}
 		notices = stream.notices
-		b.observationStatus(current.Revision(), filewatch.Watching, nil)
+		w.observationStatus(current.Revision(), filewatch.Watching, nil)
 	}
 	refresh()
-	b.reconcile()
+	w.reconcile(ctx)
 	timer := time.NewTicker(time.Second)
 	defer timer.Stop()
 	for {
 		select {
-		case <-b.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-timer.C:
 			refresh()
-			b.reconcile()
+			w.reconcile(ctx)
 		case notice, open := <-notices:
 			if !open {
 				stop(io.ErrUnexpectedEOF)
@@ -236,7 +201,7 @@ func (b *background) run() {
 				stop(err)
 				continue
 			}
-			observation, relevant, err := b.captureNotice(current, generation, notice.event, gap)
+			observation, relevant, err := w.captureNotice(current, generation, notice.event, gap)
 			if err != nil {
 				stop(err)
 				continue
@@ -244,7 +209,7 @@ func (b *background) run() {
 			if !relevant {
 				continue
 			}
-			if err := b.store.capture(b.ctx, observation); err != nil {
+			if err := w.store.capture(ctx, observation); err != nil {
 				if errors.Is(err, filewatch.ErrRevision) {
 					refresh()
 				} else {
@@ -252,13 +217,13 @@ func (b *background) run() {
 				}
 				continue
 			}
-			b.notify()
-			b.reconcile()
+			w.notify(ctx)
+			w.reconcile(ctx)
 		}
 	}
 }
 
-func (b *background) captureNotice(configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
+func (w *watcher) captureNotice(configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
 	trigger, enabled := configuration.Trigger()
 	if !enabled {
 		return filewatch.Observation{}, false, filewatch.ErrInvalid
@@ -281,51 +246,51 @@ func (b *background) captureNotice(configuration filewatch.Configuration, genera
 		return filewatch.Observation{}, false, nil
 	}
 	observation, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft,
-		SessionID: identity.SessionPrefix + uuid.NewString(), RunID: identity.RunPrefix + uuid.NewString(), Invocation: b.invocation()})
+		SessionID: identity.SessionPrefix + uuid.NewString(), RunID: identity.RunPrefix + uuid.NewString(), Invocation: w.invocation()})
 	return observation, true, err
 }
 
-func (b *background) reconcile() {
-	events, err := b.store.pending(b.ctx)
+func (w *watcher) reconcile(ctx context.Context) {
+	events, err := w.store.pending(ctx)
 	if err != nil {
-		b.dispatchStatus(err)
+		w.dispatchStatus(err)
 		return
 	}
 	var failures error
 	for _, event := range events {
-		if b.ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return
 		}
 		observation, err := filewatch.NewObservation(event.Capture)
-		if err == nil && event.Capture.Invocation.Target != b.target {
+		if err == nil && event.Capture.Invocation.Target != w.target {
 			err = errors.New("filewatch: capture belongs to another installation")
 		}
 		if err == nil {
-			ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
-			ctx, err = pluginmcp.WithInvocation(ctx, event.Capture.Invocation)
+			admission, cancel := context.WithTimeout(ctx, 30*time.Second)
+			admission, err = pluginmcp.WithInvocation(admission, event.Capture.Invocation)
 			if err == nil {
-				err = b.host.Admit(ctx, b.namespace, observation)
+				err = w.host.Admit(admission, w.namespace, observation)
 			}
 			if err == nil {
-				err = b.store.acceptRun(ctx, event.Capture.Invocation.ID)
+				err = w.store.acceptRun(admission, event.Capture.Invocation.ID)
 			}
 			cancel()
 		}
 		if err != nil {
 			failures = errors.Join(failures, err)
 		} else {
-			b.notify()
+			w.notify(ctx)
 		}
 	}
-	b.dispatchStatus(failures)
+	w.dispatchStatus(failures)
 }
 
-func (b *background) notify() {
-	ctx, err := pluginmcp.WithInvocation(b.ctx, b.invocation())
+func (w *watcher) notify(ctx context.Context) {
+	invocation, err := pluginmcp.WithInvocation(ctx, w.invocation())
 	if err == nil {
-		err = b.host.Notify(ctx, b.contribution)
+		err = w.host.Notify(invocation, w.contribution)
 	}
-	if err != nil && b.ctx.Err() == nil {
-		slog.ErrorContext(b.ctx, "filewatch: read invalidation failed", "error", err)
+	if err != nil && ctx.Err() == nil {
+		slog.ErrorContext(ctx, "filewatch: read invalidation failed", "error", err)
 	}
 }

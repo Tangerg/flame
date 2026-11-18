@@ -43,12 +43,11 @@ type transcriptView struct {
 	clipboard        base.Clipboard
 	entrance         grid.Drawable
 	focused          bool
-	selected         transcriptEntryID
-	hasSelected      bool
+	selected         *transcriptEntryID
 	entries          map[transcriptEntryID]*transcriptEntry
-	pointerGesture   transcriptPointerGesture
+	press            pointerPress[transcriptPressTarget]
 	onFocusChange    func(bool)
-	onSelection      func(transcriptSelection)
+	onSelection      func(*transcriptSelection)
 	onCopy           func(string)
 	keys             *keymap.Map
 	matcher          keymap.Matcher
@@ -127,7 +126,7 @@ func (t *transcriptView) ToggleDetails() {
 		if tracked.block.Expanded() == before {
 			continue
 		}
-		selectedChanged = selectedChanged || t.focused && tracked.id == t.selected
+		selectedChanged = selectedChanged || t.focused && t.isSelected(tracked.id)
 		t.projectEntry(tracked.id)
 	}
 	if selectedChanged {
@@ -206,8 +205,8 @@ func (t *transcriptView) Draw(frame scene.Frame) {
 	paintReadingSelection(window.Body, window.BodyFrom, window.Content, selection, t.theme.Selection)
 	matches, current := t.search.presentationFor(window.Content)
 	paintReadingMatches(window.Body, window.BodyFrom, matches, current, t.theme)
-	if t.hasSelected {
-		if entry := t.entries[t.selected]; entry != nil {
+	if t.selected != nil {
+		if entry := t.entries[*t.selected]; entry != nil {
 			top, height, ok := window.Content.Extent(entry.nativeID)
 			if ok && window.Content.Width() > transcriptEntryInset {
 				style := t.theme.Subtle
@@ -244,7 +243,7 @@ func (t *transcriptView) Handle(event input.Event) bool {
 		return handled
 	}
 	if !handled {
-		t.cancelPointerGesture(mouse)
+		t.cancelPress(mouse)
 		return false
 	}
 	t.handleMouse(mouse)
@@ -256,7 +255,7 @@ func (t *transcriptView) handleKey(event input.Event) bool {
 	if !ok || !key.Down() {
 		return false
 	}
-	t.pointerGesture.cancel()
+	t.press.cancel()
 	if !t.focused {
 		return false
 	}
@@ -276,7 +275,7 @@ func (t *transcriptView) Focus(has bool) {
 	t.focused = has
 	if !has {
 		t.matcher.Clear()
-		t.pointerGesture.cancel()
+		t.press.cancel()
 	}
 	if has {
 		t.ensureSelection()
@@ -292,7 +291,7 @@ func (t *transcriptView) Focused() bool { return t.focused }
 
 func (t *transcriptView) OnFocusChange(change func(bool)) { t.onFocusChange = change }
 
-func (t *transcriptView) OnSelection(change func(transcriptSelection)) { t.onSelection = change }
+func (t *transcriptView) OnSelection(change func(*transcriptSelection)) { t.onSelection = change }
 
 func (t *transcriptView) OnCopy(copied func(string)) { t.onCopy = copied }
 
@@ -393,7 +392,7 @@ func (t *transcriptView) mutateTrackedTool(tracked trackedTool, mutate func(muta
 	before := tracked.block.Expanded()
 	mutate(tracked.block)
 	t.projectEntry(tracked.id)
-	return t.focused && tracked.id == t.selected && before && !tracked.block.Expanded()
+	return t.focused && t.isSelected(tracked.id) && before && !tracked.block.Expanded()
 }
 
 func (t *transcriptView) appendCompleted(block conversation.Block) error {
@@ -647,8 +646,8 @@ func (t *transcriptView) DiscardExcess() {
 		}
 	}
 	t.history.DiscardBefore(first)
-	if t.hasSelected && t.selected < first {
-		t.hasSelected = false
+	if t.selected != nil && *t.selected < first {
+		t.selected = nil
 		t.ensureSelection()
 		t.syncSelectedEntry()
 		t.announceSelection()
@@ -661,7 +660,7 @@ func (t *transcriptView) Reset() {
 	old := t.entries
 	t.entries = make(map[transcriptEntryID]*transcriptEntry)
 	t.order = nil
-	t.hasSelected = false
+	t.selected = nil
 	t.selectionIntent = nil
 	t.resetWindow(false)
 	for _, entry := range old {
@@ -673,7 +672,7 @@ func (t *transcriptView) Reset() {
 	clear(t.pendingQuestions)
 	t.history.Reset()
 	t.activeToolGroup = nil
-	t.pointerGesture.cancel()
+	t.press.cancel()
 	t.toolViews = nil
 }
 

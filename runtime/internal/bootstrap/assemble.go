@@ -86,9 +86,9 @@ func buildAssemblyCore(
 	execution executionComposition,
 ) (*Instance, error) {
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	goalRuns, err := goals.NewRunRecorder(cfg.stores.Goals)
+	goalRuns, err := goals.NewRunSettler(cfg.stores.Goals)
 	if err != nil {
-		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
+		return nil, fmt.Errorf("runtime: Goal Run settler: %w", err)
 	}
 	retirer, err := sessions.NewResourceRetirer(cfg.stores.ResourceRetirements, sessionResourceCleanups(workspaceServices.checkpoints, execution.isolation)...)
 	if err != nil {
@@ -113,7 +113,6 @@ func buildAssemblyCore(
 		ToolResults:         cfg.stores.ToolResults,
 		ChildRunStarts:      cfg.stores.ChildRunStarts,
 		Goals:               cfg.stores.Goals,
-		GoalRuns:            goalRuns,
 		Tx:                  persistence.Transactor(cfg.stores.Transactor),
 		ReadSnapshot:        persistence.Transactor(cfg.stores.ReadSnapshot),
 	})
@@ -203,7 +202,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
-	runSegmentConfig.GoalRuns = goalRuns
+	runSegmentConfig.GoalRuns = cfg.stores.Goals
 	runSegmentConfig.ToolResults = cfg.stores.ToolResults
 	runSegmentConfig.RememberedRules = cfg.stores.ApprovalRules
 	runSegmentConfig.AcceptedContinuations = cfg.stores.AcceptedContinuations
@@ -352,7 +351,7 @@ func buildAssemblyCore(
 		Interrupts:          cfg.stores.Interrupts,
 		Transcript:          cfg.stores.Transcript,
 		Messages:            execution.conversation.store,
-		GoalRuns:            goalRuns,
+		GoalRuns:            cfg.stores.Goals,
 		ExecutorCheckpoints: cfg.stores.ExecutorCheckpoints,
 		ModelInvocations:    cfg.stores.ModelInvocations,
 		ToolInvocations:     cfg.stores.ToolInvocations,

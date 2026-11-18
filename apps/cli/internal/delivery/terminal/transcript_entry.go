@@ -18,12 +18,19 @@ const transcriptEntryInset = 2
 // transcriptEntry gives every retained block the same interrupt surface. The
 // wrapped block remains responsible for its content; this wrapper owns only the
 // stable selection rail used by transcript-focused keyboard navigation.
+type selectionRail uint8
+
+const (
+	railHidden selectionRail = iota
+	railSelected
+	railFocused
+)
+
 type transcriptEntry struct {
 	theme      kit.Theme
 	glyphs     kit.Glyphs
 	content    base.Block
-	selected   bool
-	focused    bool
+	rail       selectionRail
 	settled    bool
 	projection *transcriptEntry
 	document   *content.StreamDocument
@@ -55,11 +62,11 @@ func (t *transcriptEntry) Draw(view grid.View) {
 		return
 	}
 	t.content.Draw(view.Sub(grid.Area(inset, 0, contentWidth, height)))
-	if !t.selected {
+	if t.rail == railHidden {
 		return
 	}
 	style := t.theme.Subtle
-	if t.focused {
+	if t.rail == railFocused {
 		style = t.theme.Accent
 	}
 	for row := range height {

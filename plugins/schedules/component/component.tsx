@@ -493,7 +493,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     })}
                     disabled={disabled}
                     finalFocus={
-                      command?.method === "flame.schedules/runNow.v1"
+                      command?.command.method === "flame.schedules/runNow.v1"
                         ? feedbackElement
                         : undefined
                     }
@@ -686,17 +686,17 @@ function ScheduleFeedback({
         ))}
       {command && (
         <>
-          <p role={command.uncertain ? "alert" : "status"}>
-            {command.uncertain
+          <p role={command.phase === "uncertain" ? "alert" : "status"}>
+            {command.phase === "uncertain"
               ? t("command.uncertain")
-              : t("command.progress", { label: command.label })}
+              : t("command.progress", { label: command.command.label })}
           </p>
-          {command.error && <RecordBody>{command.error}</RecordBody>}
-          {command.uncertain && (
+          {command.phase === "uncertain" && (
             <>
+              <RecordBody>{command.error}</RecordBody>
               <Metadata>
                 {t("command.original", {
-                  key: command.promise.idempotencyKey,
+                  key: command.command.promise.idempotencyKey,
                 })}
               </Metadata>
               <Button variant="soft" onClick={reconcile}>

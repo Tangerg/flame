@@ -150,7 +150,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	malformed := request
 	malformed.Method = "io.github.tangerg.flame.examples/reviews.update"
 	malformed.Input = `{"id":"` + strings.Repeat("x", 129) + `","expectedRevision":1,"status":"resolved"}`
-	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, malformed, delivery.Options{
+	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, malformed, protocol.CallMetadata{
 		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
 	})
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrInvalidParams) || refused.Value != nil {
@@ -226,7 +226,7 @@ func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected strin
 	t.Helper()
 	const toolName = "reviews_update_review"
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Receipt history"}, "session").(*protocol.Session)
-	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, delivery.Options{IdempotencyKey: "history-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, protocol.CallMetadata{IdempotencyKey: "history-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

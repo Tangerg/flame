@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -124,17 +123,8 @@ func commandTool[P any](name string, method frame.MethodDescriptor, execute func
 			return wire.Result{}, err
 		}
 		result, err := execute(ctx, method.Name, id, input)
-		return result, commandFailure(err)
+		return result, pluginsdk.RefusedToolFailure(err)
 	})
-}
-
-func commandFailure(err error) error {
-	refusal, known := errors.AsType[*framecall.Refusal](err)
-	if !known {
-		return err
-	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(refusal.Message), Cause: err})
-	return errors.Join(failure, failureErr)
 }
 
 func (c *connector) receipt(ctx context.Context, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
@@ -143,20 +133,5 @@ func (c *connector) receipt(ctx context.Context, input pluginmcp.ReceiptRequest)
 		return pluginsdk.ToolReceipt{}, err
 	}
 	result, err := pluginmcp.DecodeReply[wire.Result](receipt.Reply)
-	if err != nil {
-		failure, known := tool.ClassifyFailure(commandFailure(err))
-		if !known {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		return pluginsdk.NewToolReceipt(failure.Output(), true)
-	}
-	data, err := json.Marshal(result)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
-	}
-	output, err := tool.NewJSONOutput(data)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
-	}
-	return pluginsdk.NewToolReceipt(output, false)
+	return pluginsdk.ToolReceiptFrom(result, err, pluginsdk.RefusedToolFailure)
 }

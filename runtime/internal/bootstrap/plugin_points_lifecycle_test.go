@@ -89,7 +89,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	if len(withdrawn.Data) != 0 {
 		t.Fatalf("disabled analyzer remains publicly selectable: %+v", withdrawn.Data)
 	}
-	query := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	query := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(query.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("new query ignored its unavailable captured collaborator: %v", query.Failure)
 	}
@@ -107,13 +107,13 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	if _, found, err := cfg.stores.PluginCommands.Get(t.Context(), operation.Identity(calling)); err != nil || found {
 		t.Fatalf("unavailable activation admitted a command route: found=%t, %v", found, err)
 	}
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, delivery.Options{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, protocol.CallMetadata{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("delivery turned a pre-admission refusal into uncertainty: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID, Enabled: true}, "reenable-analyzer")
 	wait(analyzer, "analyzer")
-	retired := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	retired := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(retired.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("old catalog observation was retargeted to a new instance: %v", retired.Failure)
 	}
@@ -123,7 +123,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	// New point values cannot grant authority absent from the original setup.
 	second := activate(analyzerSource, "second-analyzer")
 	wait(second, "analyzer")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if result.Failure == nil {
 		t.Fatal("current point values bypassed the consumer's frozen collaborators")
 	}
@@ -134,7 +134,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	wait(other, "reviews")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: consumer.ID}, "disable-consumer")
 	point := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
-	result = r.endpoint.Invoke(t.Context(), delivery.PluginsResolvePoint, point, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result = r.endpoint.Invoke(t.Context(), delivery.PluginsResolvePoint, point, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled consumer borrowed another installation's declaration: %v", result.Failure)
 	}

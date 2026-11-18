@@ -97,15 +97,11 @@ func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
 		if err := validateSessionResource("check Session existence", id); err != nil {
 			return false, err
 		}
-		var one int
-		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		if err != nil {
+		var exists bool
+		if err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, id).Scan(&exists); err != nil {
 			return false, fmt.Errorf("sqlite: session exists: %w", err)
 		}
-		return true, nil
+		return exists, nil
 	})
 }
 func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, error) {

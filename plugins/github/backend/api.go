@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -44,6 +46,8 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 func refused(code, message string) error {
 	return &framecall.Refusal{Code: code, Message: "github: " + message}
 }
+
+func invalidInput(message string) error { return refused(pluginmcp.InvalidInputCode, message) }
 
 func query[T any](ctx context.Context, c *connector, path string, parameters url.Values, decode func(response) (T, error)) (T, error) {
 	var zero T
@@ -181,7 +185,10 @@ func admitRows[W, R any](rows []W, limit int, admit func(W) (R, error)) ([]R, er
 	return result, nil
 }
 
-func readPage[W, R any](ctx context.Context, c *connector, path string, parameters url.Values, current int64, limit int, admit func(W) (R, error)) (page[R], error) {
+// readPage reads one page of a listing; filters never carry the page cursor.
+func readPage[W, R any](ctx context.Context, c *connector, path string, filters url.Values, current int64, limit int, admit func(W) (R, error)) (page[R], error) {
+	parameters := pagination(current, limit)
+	maps.Copy(parameters, filters)
 	return query(ctx, c, path, parameters, func(result response) (page[R], error) {
 		var wire []W
 		if err := json.Unmarshal(result.body, &wire); err != nil {
@@ -245,9 +252,9 @@ func (c *connector) listIssues(ctx context.Context, input contractwire.ListInput
 	if err != nil {
 		return contractwire.IssuePage{}, err
 	}
-	parameters := url.Values{"state": {string(input.State)}, "page": {strconv.FormatInt(input.Page, 10)}, "per_page": {strconv.Itoa(input.Limit)}, "sort": {"updated"}, "direction": {"desc"}}
+	filters := url.Values{"state": {string(input.State)}, "sort": {"updated"}, "direction": {"desc"}}
 	path := repository.apiPath() + "/issues"
-	page, err := readPage(ctx, c, path, parameters, input.Page, input.Limit, func(wire issueWire) (contractwire.Issue, error) { return wire.admit(repository) })
+	page, err := readPage(ctx, c, path, filters, input.Page, input.Limit, func(wire issueWire) (contractwire.Issue, error) { return wire.admit(repository) })
 	return contractwire.IssuePage{Issues: page.rows, NextPage: page.next}, err
 }
 

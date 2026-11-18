@@ -10,6 +10,7 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
+	framecall "github.com/Tangerg/frame/call"
 	framehost "github.com/Tangerg/frame/host"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -27,6 +28,9 @@ type PointBinding struct {
 	Value     framevalue.JSON
 }
 
+// pointSelectionRule names Flame's composition of point values in a Frame selection.
+const pointSelectionRule = "flame-point/1"
+
 // ResolvePoint admits consumer-owned values without executing a backend. Order
 // is an immutable projection supplied by the consuming composition owner.
 func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contract *plugincontract.Point, target plugincontract.PointContext, order []PointReference) ([]PointBinding, error) {
@@ -41,31 +45,14 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 	if err != nil {
 		return nil, err
 	}
-	var declarations []plugin.Dependency
-	var providers []framehost.UnitRef
-	for _, snapshot := range snapshots {
-		if !snapshot.Installation.Enabled() {
-			continue
-		}
-		declaration := snapshot.Selected.Declaration()
-		declaresTarget := target.Target.Scope != extension.ScopeInstallation || target.Target.Reference == snapshot.Installation.ID().String()
-		for _, definition := range declaration.Points {
-			if definition.Contract == contract.Identity() && declaresTarget {
-				declarations = append(declarations, snapshot.Installation.Dependency())
-			}
-		}
-		if slices.ContainsFunc(declaration.PointValues, func(value plugin.PointValue) bool { return value.Contract == contract.Identity() }) {
-			unit := framehost.UnitRef{InstallationID: snapshot.Installation.ID().Host(), Release: snapshot.Selected.Digest(), UnitID: PointValuesUnit}
-			providers = append(providers, unit)
-		}
-	}
-	if len(declarations) == 0 {
+	participants := collectPointParticipants(snapshots, contract.Identity(), target.Target)
+	if len(participants.declarations) == 0 {
 		return nil, plugin.ErrUnavailable
 	}
 	if !applicable {
 		return []PointBinding{}, nil
 	}
-	if err := activatePointProviders(ctx, host, providers); err != nil {
+	if err := activatePointProviders(ctx, host, participants.providers); err != nil {
 		return nil, err
 	}
 	point, err := DataPoint(contract)
@@ -80,24 +67,100 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 	if err != nil {
 		return nil, FrameworkError(err)
 	}
-	type boundCandidate struct {
-		binding   PointBinding
-		candidate framehost.Candidate[framevalue.JSON, framevalue.JSON]
+	bound, err := bindPointCandidates(candidates)
+	if err != nil {
+		return nil, err
 	}
-	bindings := make(map[string]boundCandidate, len(candidates))
-	values := make([]plugincontract.PointValue, 0, len(candidates))
+	keys, err := pointOrderKeys(order)
+	if err != nil {
+		return nil, err
+	}
+	composed, err := contract.Compose(bound.values, keys)
+	if err != nil {
+		return nil, errors.Join(plugin.ErrUnavailable, err)
+	}
+	result := make([]PointBinding, 0, len(composed))
+	selected := make([]framehost.Candidate[framevalue.JSON, framevalue.JSON], 0, len(composed))
+	for _, value := range composed {
+		candidate := bound.byKey[value.Key]
+		result = append(result, candidate.binding)
+		selected = append(selected, candidate.candidate)
+	}
+	selection, err := framehost.Select(snapshot, point, pointSelectionRule, selected...)
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	plan, err := framehost.Capture(snapshot, selection.Ref())
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	if err := host.Admission().Admit(ctx, func(admitted context.Context) error {
+		if err := validatePointDeclaration(admitted, store, participants.declarations); err != nil {
+			return err
+		}
+		_, err := host.ValidatePlanUnder(admitted, plan)
+		return err
+	}); err != nil {
+		return nil, FrameworkError(err)
+	}
+	return result, nil
+}
+
+// pointParticipants are the enabled installations that declare the point for
+// this target and the units that provide its values.
+type pointParticipants struct {
+	declarations []plugin.Dependency
+	providers    []framehost.UnitRef
+}
+
+func collectPointParticipants(snapshots []plugin.Snapshot, contract framevalue.JSON, target framecall.Target) pointParticipants {
+	var participants pointParticipants
+	for _, snapshot := range snapshots {
+		if !snapshot.Installation.Enabled() {
+			continue
+		}
+		declaration := snapshot.Selected.Declaration()
+		declaresTarget := target.Scope != extension.ScopeInstallation || target.Reference == snapshot.Installation.ID().String()
+		for _, definition := range declaration.Points {
+			if definition.Contract == contract && declaresTarget {
+				participants.declarations = append(participants.declarations, snapshot.Installation.Dependency())
+			}
+		}
+		if slices.ContainsFunc(declaration.PointValues, func(value plugin.PointValue) bool { return value.Contract == contract }) {
+			participants.providers = append(participants.providers, framehost.UnitRef{InstallationID: snapshot.Installation.ID().Host(), Release: snapshot.Selected.Digest(), UnitID: PointValuesUnit})
+		}
+	}
+	return participants
+}
+
+type boundPointCandidate struct {
+	binding   PointBinding
+	candidate framehost.Candidate[framevalue.JSON, framevalue.JSON]
+}
+
+type boundPointCandidates struct {
+	byKey  map[string]boundPointCandidate
+	values []plugincontract.PointValue
+}
+
+func bindPointCandidates(candidates []framehost.Candidate[framevalue.JSON, framevalue.JSON]) (boundPointCandidates, error) {
+	bound := boundPointCandidates{byKey: make(map[string]boundPointCandidate, len(candidates)), values: make([]plugincontract.PointValue, 0, len(candidates))}
 	for _, candidate := range candidates {
 		binding, err := readPointBinding(candidate)
 		if err != nil {
-			return nil, err
+			return boundPointCandidates{}, err
 		}
 		key := binding.Reference.key()
-		if _, exists := bindings[key]; exists {
-			return nil, plugin.ErrInvalid
+		if _, exists := bound.byKey[key]; exists {
+			return boundPointCandidates{}, plugin.ErrInvalid
 		}
-		bindings[key] = boundCandidate{binding: binding, candidate: candidate}
-		values = append(values, plugincontract.PointValue{Key: key, Data: binding.Value})
+		bound.byKey[key] = boundPointCandidate{binding: binding, candidate: candidate}
+		bound.values = append(bound.values, plugincontract.PointValue{Key: key, Data: binding.Value})
 	}
+	return bound, nil
+}
+
+func pointOrderKeys(order []PointReference) ([]string, error) {
 	keys := make([]string, 0, len(order))
 	for _, reference := range order {
 		if err := reference.Installation.Validate(); err != nil {
@@ -108,35 +171,7 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 		}
 		keys = append(keys, reference.key())
 	}
-	composed, err := contract.Compose(values, keys)
-	if err != nil {
-		return nil, errors.Join(plugin.ErrUnavailable, err)
-	}
-	result := make([]PointBinding, 0, len(composed))
-	selected := make([]framehost.Candidate[framevalue.JSON, framevalue.JSON], 0, len(composed))
-	for _, value := range composed {
-		binding := bindings[value.Key]
-		result = append(result, binding.binding)
-		selected = append(selected, binding.candidate)
-	}
-	selection, err := framehost.Select(snapshot, point, "flame-point/1", selected...)
-	if err != nil {
-		return nil, FrameworkError(err)
-	}
-	plan, err := framehost.Capture(snapshot, selection.Ref())
-	if err != nil {
-		return nil, FrameworkError(err)
-	}
-	if err := host.Admission().Admit(ctx, func(admitted context.Context) error {
-		if err := validatePointDeclaration(admitted, store, declarations); err != nil {
-			return err
-		}
-		_, err := host.ValidatePlanUnder(admitted, plan)
-		return err
-	}); err != nil {
-		return nil, FrameworkError(err)
-	}
-	return result, nil
+	return keys, nil
 }
 
 func activatePointProviders(ctx context.Context, host framehost.Host, providers []framehost.UnitRef) error {

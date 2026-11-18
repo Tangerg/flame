@@ -153,7 +153,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: contributor.ID, Contribution: "contributor"}}}, "select-proposals")
 			session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "public proposal"}, "session").(*protocol.Session)
 			meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}
-			result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "update review"}}}, delivery.Options{IdempotencyKey: "start", RequestMeta: meta})
+			result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "update review"}}}, protocol.CallMetadata{IdempotencyKey: "start", RequestMeta: meta})
 			if result.Failure != nil {
 				t.Fatal(result.Failure)
 			}
@@ -167,7 +167,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				}
 			}
 			drainRun(result)
-			interrupts := r.endpoint.Invoke(t.Context(), delivery.InterruptsList, protocol.ListInterruptsRequest{RootRunID: started.RunID}, delivery.Options{RequestMeta: meta})
+			interrupts := r.endpoint.Invoke(t.Context(), delivery.InterruptsList, protocol.ListInterruptsRequest{RootRunID: started.RunID}, protocol.CallMetadata{RequestMeta: meta})
 			if interrupts.Failure != nil {
 				t.Fatal(interrupts.Failure)
 			}
@@ -205,7 +205,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					}
 				} else {
 					waitCallContributor(t, r, contributor.ID)
-					result := r.endpoint.Invoke(t.Context(), delivery.RunsResume, protocol.ResumeRunRequest{RunID: started.RunID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove}}}}, delivery.Options{IdempotencyKey: "approve", RequestMeta: meta})
+					result := r.endpoint.Invoke(t.Context(), delivery.RunsResume, protocol.ResumeRunRequest{RunID: started.RunID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove}}}}, protocol.CallMetadata{IdempotencyKey: "approve", RequestMeta: meta})
 					if result.Failure != nil {
 						t.Fatalf("resume captured proposal: %v; cause: %v", result.Failure, errors.Unwrap(result.Failure))
 					}

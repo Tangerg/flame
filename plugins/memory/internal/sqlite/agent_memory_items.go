@@ -87,7 +87,6 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 	var result []agentmemory.Item
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
-
 			return err
 		}
 		rows, err := framesqlite.Connection(ctx, a.db).QueryContext(ctx,
@@ -95,7 +94,6 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 		 WHERE scope = 'project' AND project = ?
 		 LIMIT ?`, project, agentmemory.MaxVisiblePerTarget+agentmemory.MaxRejectedPerTarget+1)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: list agent memory items: %w", err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -103,13 +101,11 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 		for rows.Next() {
 			item, scanErr := scanItem(rows)
 			if scanErr != nil {
-
 				return scanErr
 			}
 			items = append(items, item)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: iterate agent memory items: %w", err)
 		}
 		visible, rejected := 0, 0
@@ -121,7 +117,6 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 			}
 		}
 		if visible > agentmemory.MaxVisiblePerTarget || rejected > agentmemory.MaxRejectedPerTarget {
-
 			return errors.New("sqlite: agent memory target exceeds its lifecycle bounds")
 		}
 		result = items
@@ -222,7 +217,6 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 	var result []agentmemory.Item
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		if _, err := memoryPartition(agentmemory.ScopeProject, project); err != nil {
-
 			return err
 		}
 		rows, err := framesqlite.Connection(ctx, a.db).QueryContext(ctx,
@@ -234,7 +228,6 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 		 )
 		 LIMIT ?`, project, 2*agentmemory.MaxVisiblePerTarget+1)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: list agent memory items for search: %w", err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -251,34 +244,28 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 			)
 			if scanErr := rows.Scan(&rawID, &scopeText, &snapshot.Project, &snapshot.Content, &originText, &statusText,
 				&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.Revision, &snapshot.EmbeddingSpace, &blob); scanErr != nil {
-
 				return fmt.Errorf("sqlite: scan agent memory item: %w", scanErr)
 			}
 			if err := decodeItemSnapshot(&snapshot, rawID, scopeText, originText, statusText, pinned, createdAt, updatedAt); err != nil {
-
 				return err
 			}
 			if len(blob) != 0 {
 				snapshot.Embedding, err = decodeVec(blob)
 				if err != nil {
-
 					return err
 				}
 			}
 			item, err := restoreItem(snapshot)
 			if err != nil {
-
 				return err
 			}
 			visibleByScope[item.Scope()]++
 			if visibleByScope[item.Scope()] > agentmemory.MaxVisiblePerTarget {
-
 				return fmt.Errorf("sqlite: agent memory %s search target exceeds its complete-list bound", item.Scope())
 			}
 			items = append(items, item)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: iterate agent memory items: %w", err)
 		}
 		result = items
@@ -312,7 +299,6 @@ func (a *AgentMemoryStore) listItems(
 		args = append(args, maximum+1)
 		rows, err := framesqlite.Connection(ctx, a.db).QueryContext(ctx, query, args...)
 		if err != nil {
-
 			return fmt.Errorf("sqlite: list %s: %w", operation, err)
 		}
 		defer func() { _ = rows.Close() }()
@@ -320,17 +306,14 @@ func (a *AgentMemoryStore) listItems(
 		for rows.Next() {
 			item, err := scanItem(rows)
 			if err != nil {
-
 				return err
 			}
 			items = append(items, item)
 		}
 		if err := rows.Err(); err != nil {
-
 			return fmt.Errorf("sqlite: iterate %s: %w", operation, err)
 		}
 		if len(items) > maximum {
-
 			return fmt.Errorf("sqlite: %s target exceeds its complete-list bound of %d", operation, maximum)
 		}
 		result = items
@@ -346,11 +329,9 @@ func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agen
 		item, err := scanItem(framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
 			`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE id = ?`, id.String()))
 		if errors.Is(err, sql.ErrNoRows) {
-
 			return nil
 		}
 		if err != nil {
-
 			return err
 		}
 		storedItem, foundItem = item, true
@@ -540,7 +521,6 @@ func (a *AgentMemoryStore) countVisibleItems(
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		token, err := memoryPartition(scope, project)
 		if err != nil {
-
 			return err
 		}
 		var count int
@@ -548,11 +528,9 @@ func (a *AgentMemoryStore) countVisibleItems(
 		SELECT count(*) FROM agent_memory_items
 		WHERE scope = ? AND project = ? AND status IN ('active','pending')`,
 			token, project).Scan(&count); err != nil {
-
 			return fmt.Errorf("sqlite: count visible agent memory items: %w", err)
 		}
 		if count > agentmemory.MaxVisiblePerTarget {
-
 			return fmt.Errorf(
 				"sqlite: agent memory target exceeds its complete-list bound of %d",
 				agentmemory.MaxVisiblePerTarget,
@@ -570,18 +548,15 @@ func (a *AgentMemoryStore) itemByDigest(ctx context.Context, scope agentmemory.S
 	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
 		token, err := memoryPartition(scope, project)
 		if err != nil {
-
 			return err
 		}
 		item, err := scanItem(framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
 			`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE scope = ? AND project = ? AND digest = ?`,
 			token, project, digest))
 		if errors.Is(err, sql.ErrNoRows) {
-
 			return nil
 		}
 		if err != nil {
-
 			return err
 		}
 		storedItem, foundItem = item, true

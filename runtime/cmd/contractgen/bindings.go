@@ -50,7 +50,7 @@ func writeGoBindings(local, remote string) error {
 			if request != "" {
 				request += ", "
 			}
-			option, convert := goOptions(meta)
+			option := goOptions(meta)
 			result := goType(meta.Result)
 			name := fmt.Sprintf("%q", meta.Name.String())
 			if !target.remote {
@@ -60,11 +60,11 @@ func writeGoBindings(local, remote string) error {
 			switch {
 			case meta.Kind == delivery.KindStream:
 				event := goType(meta.Event)
-				fmt.Fprintf(&body, "(%s, iter.Seq2[%s,error], error) { return r.invokeStream[%s,%s,%s](ctx,%s,%s,%s(options)) }\n", result, event, goType(meta.Params), result, event, name, argument, convert)
+				fmt.Fprintf(&body, "(%s, iter.Seq2[%s,error], error) { return r.invokeStream[%s,%s,%s](ctx,%s,%s,options.Metadata()) }\n", result, event, goType(meta.Params), result, event, name, argument)
 			case meta.Result == nil:
-				fmt.Fprintf(&body, "error { return r.invokeAck[%s](ctx,%s,%s,%s(options)) }\n", goType(meta.Params), name, argument, convert)
+				fmt.Fprintf(&body, "error { return r.invokeAck[%s](ctx,%s,%s,options.Metadata()) }\n", goType(meta.Params), name, argument)
 			default:
-				fmt.Fprintf(&body, "(%s,error) { return r.invoke[%s,%s](ctx,%s,%s,%s(options)) }\n", result, goType(meta.Params), result, name, argument, convert)
+				fmt.Fprintf(&body, "(%s,error) { return r.invoke[%s,%s](ctx,%s,%s,options.Metadata()) }\n", result, goType(meta.Params), result, name, argument)
 			}
 		}
 		if err := writeGoProjection(target.directory, "operations.generated.go", body.String()); err != nil {
@@ -149,20 +149,20 @@ func goBindingImports(values ...reflect.Type) []string {
 	return slices.Sorted(maps.Keys(paths))
 }
 
-func goOptions(meta delivery.MethodMeta) (string, string) {
+func goOptions(meta delivery.MethodMeta) string {
 	switch {
 	case meta.Operation == delivery.OperationExtension:
-		return "PluginCallOptions", "pluginCallOptions"
+		return "PluginCallOptions"
 	case meta.Operation == delivery.OperationCommand && meta.Kind == delivery.KindStream:
-		return "RunCommandOptions", "runCommandOptions"
+		return "RunCommandOptions"
 	case meta.Operation == delivery.OperationCommand:
-		return "CommandOptions", "commandOptions"
+		return "CommandOptions"
 	case meta.ReplayCursor == delivery.ReplayCursorRun:
-		return "RunSubscriptionOptions", "runSubscriptionOptions"
+		return "RunSubscriptionOptions"
 	case meta.Operation == delivery.OperationSubscription:
-		return "SubscriptionOptions", "subscriptionOptions"
+		return "SubscriptionOptions"
 	default:
-		return "CallOptions", "callOptions"
+		return "CallOptions"
 	}
 }
 
