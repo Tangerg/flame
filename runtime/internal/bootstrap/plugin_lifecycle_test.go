@@ -72,7 +72,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	cleanup(host)
 	endpoint := host.Endpoint()
 	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
-	invoke := func(method delivery.Name, input any, key string) delivery.Result {
+	invoke := func(method delivery.Name, input any, key string) protocol.OperationResult {
 		t.Helper()
 		attempt := options
 		attempt.IdempotencyKey = key

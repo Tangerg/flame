@@ -160,7 +160,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	skillSources := promptsource.SkillSources{Packages: deps.packageSkills, Discover: reviews.Discover}
-	environment.skills, err = workspace.NewSkills(deps.workspace.scope, promptsource.NewSkills(cfg.skillsUserDir, skillSources), deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
+	skillCatalog, err := promptsource.NewSkills(cfg.skillsUserDir, skillSources)
+	if err != nil {
+		return environment, err
+	}
+	environment.skills, err = workspace.NewSkills(deps.workspace.scope, skillCatalog, deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
 	if err != nil {
 		return environment, err
 	}
@@ -206,7 +210,9 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)
 	}
-	mcpPool.SetToolSink(builtToolset.Resolver.SetMCPTools, prepareTool)
+	if err := mcpPool.SetToolSink(builtToolset.Resolver.SetMCPTools, prepareTool); err != nil {
+		return environment, err
+	}
 	environment.tools = builtToolset
 	environment.closers = append(environment.closers, terminalClosers(builtToolset.Closers)...)
 	return environment, nil

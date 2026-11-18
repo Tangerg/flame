@@ -125,11 +125,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server, r
 	if redialErr != nil {
 		return Server{}, redialErr
 	}
-	status, ok := c.statusesByName()[srv.ID()]
-	if ok {
-		return serverView(srv, &status)
-	}
-	return serverView(srv, nil)
+	return serverView(srv, c.statusesByName()[srv.ID()])
 }
 
 // DeleteServer deletes a server from the registry and drops it from the live

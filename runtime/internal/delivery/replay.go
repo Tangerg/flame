@@ -26,12 +26,12 @@ type storedOutcome struct {
 	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
 
-func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string, execute func() Result) Result {
+func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string, execute func() protocol.OperationResult) protocol.OperationResult {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	var result Result
+	var result protocol.OperationResult
 	executed := false
 	var payload []byte
 	if handler, ok := e.target.(*Handler); ok && (method.Meta.Name == SessionsCreate || method.Meta.Name == sessionsFork || method.Meta.Name == feedbackCreate) {
@@ -76,7 +76,7 @@ func (s *Handler) prepareAtomicOutcome(ctx context.Context, method *Method, requ
 		if err != nil {
 			return operation.PreparedOutcome{}, err
 		}
-		payload, err := encodeStoredOutcome(Result{Value: struct{}{}})
+		payload, err := encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
 		return operation.PreparedOutcome{Payload: payload, Commit: write}, err
 	case protocol.CreateSessionRequest:
 		creation, err = s.prepareCreate(ctx, in)
@@ -94,11 +94,11 @@ func (s *Handler) prepareAtomicOutcome(ctx context.Context, method *Method, requ
 	if err := method.Meta.ValidateResult(&view); err != nil {
 		return operation.PreparedOutcome{}, err
 	}
-	payload, err := encodeStoredOutcome(Result{Value: &view})
+	payload, err := encodeStoredOutcome(protocol.OperationResult{Value: &view})
 	return operation.PreparedOutcome{Payload: payload, Commit: creation.Commit, Publish: creation.Publish}, err
 }
 
-func replayOutcome(method *Method, payload []byte) Result {
+func replayOutcome(method *Method, payload []byte) protocol.OperationResult {
 	var stored storedOutcome
 	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
@@ -113,10 +113,10 @@ func replayOutcome(method *Method, payload []byte) Result {
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: decode stored result: %w", err)))
 	}
-	return Result{Value: value}
+	return protocol.OperationResult{Value: value}
 }
 
-func encodeStoredOutcome(result Result) ([]byte, error) {
+func encodeStoredOutcome(result protocol.OperationResult) ([]byte, error) {
 	var stored storedOutcome
 	if result.Failure != nil {
 		problem := result.Failure.Problem()

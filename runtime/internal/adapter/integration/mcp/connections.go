@@ -98,9 +98,7 @@ type connections struct {
 	// Shutdown joins them. Resource ownership remains exclusively in sessions.
 	retirements map[*sessionCloseAttempt]struct{}
 
-	// oauthSessions is the durable credential boundary. It is optional so the
-	// infrastructure remains usable in processes that deliberately opt out of
-	// persistence; callers that enable OAuth supply it.
+	// oauthSessions is the durable credential boundary.
 	oauthSessions oauthSessionStore
 
 	// attempts joins every in-flight dial/OAuth operation during Shutdown. Add is

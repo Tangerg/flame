@@ -44,7 +44,7 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 					return nil, err
 				}
 				if _, attached := call.Params.Meta[ToolContextMetadataKey]; attached {
-					captured, err := ToolContextFromMetadata(call.Params.Meta)
+					captured, err := toolContextFromMetadata(call.Params.Meta)
 					if err != nil {
 						return nil, err
 					}

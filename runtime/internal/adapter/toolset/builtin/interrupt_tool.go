@@ -40,7 +40,7 @@ func newInterruptTool[Args any](
 		return nil, fmt.Errorf("%s: invalid definition: %w", config.Name, err)
 	}
 	if interrupt == nil {
-		interrupt = runs.InterruptUnavailable
+		return nil, fmt.Errorf("%s: interrupt boundary is required", config.Name)
 	}
 	return &interruptTool[Args]{definition: definition, interrupt: interrupt, plan: plan, resolve: resolve}, nil
 }

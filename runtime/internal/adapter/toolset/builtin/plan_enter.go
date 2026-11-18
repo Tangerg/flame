@@ -6,6 +6,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/samber/lo"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -29,8 +30,8 @@ type enterer struct {
 }
 
 func newEnter(modes planEnterPolicy, available func(context.Context) (bool, error)) (toolcontract.Tool, error) {
-	if modes == nil {
-		return nil, nil
+	if lo.IsNil(modes) || available == nil {
+		return nil, errors.New("enter_plan_mode: Plan mode policy and availability are required")
 	}
 	return toolcontract.NewFunc[enterArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.EnterPlanMode), Description: enterDescription},
@@ -43,14 +44,12 @@ func (e *enterer) enter(ctx context.Context, _ enterArgs) (string, error) {
 	if sessionID == "" {
 		return "", errors.New("enter_plan_mode: no active session")
 	}
-	if e.available != nil {
-		ready, err := e.available(ctx)
-		if err != nil {
-			return "", err
-		}
-		if !ready {
-			return "", pluginsdk.DefiniteToolFailure(plugin.ErrUnavailable)
-		}
+	ready, err := e.available(ctx)
+	if err != nil {
+		return "", err
+	}
+	if !ready {
+		return "", pluginsdk.DefiniteToolFailure(plugin.ErrUnavailable)
 	}
 	changed, err := e.modes.EnterPlanMode(ctx, sessionID)
 	if err != nil {

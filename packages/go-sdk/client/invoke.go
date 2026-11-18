@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"iter"
 	"reflect"
 
@@ -13,11 +12,6 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-type callResult struct {
-	Value   any
-	Failure *protocol.Failure
-	Events  iter.Seq2[any, error]
-}
 type methodMeta struct {
 	Name           string
 	Kind           methodKind
@@ -37,14 +31,6 @@ func (m methodMeta) decodeResult(encoded []byte) (any, error) {
 		return nil, err
 	}
 	return target.Elem().Interface(), nil
-}
-func valueAs[T any](r callResult) (T, bool) {
-	var zero T
-	if r.Value == nil && reflect.TypeFor[T]().Kind() == reflect.Interface {
-		return zero, true
-	}
-	value, ok := r.Value.(T)
-	return value, ok
 }
 
 // methodKind is how a Runtime method delivers its result.
@@ -109,14 +95,7 @@ func (r *Client) invoke[Request, Response any](
 	if err != nil {
 		return zero, err
 	}
-	if result.Failure != nil {
-		return zero, result.Failure
-	}
-	value, ok := valueAs[Response](result)
-	if !ok {
-		return zero, fmt.Errorf("runtime: %s returned an invalid response type: %w", name, protocol.ErrInvalidResponse)
-	}
-	return value, nil
+	return result.Response[Response](name)
 }
 
 func (r *Client) invokeAck[Request any](
@@ -143,28 +122,5 @@ func (r *Client) invokeStream[Request, Ack, Event any](
 	if err != nil {
 		return zero, nil, err
 	}
-	if result.Failure != nil {
-		return zero, nil, result.Failure
-	}
-	ack, ok := valueAs[Ack](result)
-	if !ok || result.Events == nil {
-		return zero, nil, fmt.Errorf("runtime: %s returned an invalid stream: %w", name, protocol.ErrInvalidResponse)
-	}
-	return ack, func(yield func(Event, error) bool) {
-		var zero Event
-		for value, err := range result.Events {
-			if err != nil {
-				yield(zero, err)
-				return
-			}
-			event, ok := value.(Event)
-			if !ok {
-				yield(zero, fmt.Errorf("runtime: %s returned an invalid event type: %w", name, protocol.ErrInvalidResponse))
-				return
-			}
-			if !yield(event, nil) {
-				return
-			}
-		}
-	}, nil
+	return result.Stream[Ack, Event](name)
 }

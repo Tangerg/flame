@@ -54,6 +54,9 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 	if deps.Now == nil {
 		return nil, errors.New("sessions: Plan clock is required")
 	}
+	if lo.IsNil(deps.Author) {
+		return nil, errors.New("sessions: Plan author is required")
+	}
 	return &PlanCoordinator{store: deps.Store, author: deps.Author, now: deps.Now, invalidations: deps.Invalidations}, nil
 }
 
@@ -84,9 +87,6 @@ func (c *PlanCoordinator) prepareAuthorDecision(ctx context.Context, sessionID s
 	if err != nil {
 		return plan.Replacement{}, err
 	}
-	if c.author == nil {
-		return plan.Replacement{}, fmt.Errorf("plan: author unavailable: %w", plugin.ErrUnavailable)
-	}
 	document, err := c.author.AuthorPlan(ctx, doc.Source, plan.ProposalOf(doc.Steps))
 	if err != nil {
 		return plan.Replacement{}, err
@@ -104,9 +104,6 @@ func (c *PlanCoordinator) prepareAuthorDecision(ctx context.Context, sessionID s
 }
 
 func (c *PlanCoordinator) Review(ctx context.Context, state plan.State) (string, error) {
-	if c.author == nil {
-		return "", plugin.ErrUnavailable
-	}
 	document, err := planworkflow.Seal(plan.ProposalOf(state.Steps()))
 	if err != nil {
 		return "", err

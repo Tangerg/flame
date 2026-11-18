@@ -62,9 +62,6 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 			return toolcontract.Result{}, err
 		}
 	}
-	if t.prepare == nil {
-		return t.source.Call(ctx, invocation)
-	}
 	call, release, err := t.prepare(ctx, t.source, t.pool.toolHost(t.source))
 	if err != nil {
 		return toolcontract.Result{}, err
@@ -137,9 +134,6 @@ func (p *Pool) authorizedTools(catalog []Executable, prepare ToolPreparation) []
 // CallActivation preserves both the frozen Frame graph and Flame's per-call
 // authority and callback preparation. It never borrows today's catalog graph.
 func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Activation, invocation toolcontract.Invocation) (result toolcontract.Result, err error) {
-	if t.pool == nil {
-		return result, ErrUnavailable
-	}
 	borrowed, err := t.pool.BorrowActivation(ctx, t.source.config.ID(), activation)
 	if err != nil {
 		return result, err

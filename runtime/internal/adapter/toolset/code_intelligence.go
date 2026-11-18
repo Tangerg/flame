@@ -26,9 +26,6 @@ type CodeIntelligenceUse interface {
 }
 
 func withCodeIntelligence(inner toolcontract.Tool, intelligence CodeIntelligence, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
-	if intelligence == nil {
-		return inner
-	}
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (out toolcontract.Result, err error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {

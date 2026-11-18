@@ -305,9 +305,6 @@ func restoreOAuthHandler(
 	store oauthSessionStore,
 	target mcpserver.OAuthTarget,
 ) (auth.OAuthHandler, error) {
-	if store == nil {
-		return nil, nil
-	}
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}

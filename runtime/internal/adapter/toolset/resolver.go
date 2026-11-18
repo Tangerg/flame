@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
+	"github.com/samber/lo"
 )
 
 // The per-Run application-context seam (cwd, session, isolation, goal incarnation)
@@ -40,7 +41,7 @@ type Resolver struct {
 	telemetry     oteltool.Middleware
 	skillSources  promptsource.SkillSources
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
-	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
+	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator
 	codeIntel     CodeIntelligence           // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
 	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
@@ -129,17 +130,17 @@ type resolverDeps struct {
 	SkillSources  promptsource.SkillSources
 	SkillsUserDir string
 	SkillUsage    builtin.SkillUsageRecorder
-	Shell         []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
-	AskUser       toolcontract.Tool   // ask_user HITL tool (both groups)
-	EnterPlan     toolcontract.Tool   // enter_plan_mode (root group only); nil → omitted
-	ExitPlan      toolcontract.Tool   // exit_plan_mode (root group only); nil → omitted
-	Plan          toolcontract.Tool   // set_plan execution-plan tool (root group only); nil → omitted
-	ToolResult    toolcontract.Tool   // read_tool_result offloaded-output reader (both groups); nil → omitted
-	GoalGet       toolcontract.Tool   // get_goal state reader (root group only); nil → omitted
-	GoalReport    toolcontract.Tool   // report_goal_outcome loop signal (Goal-owned root Runs only); nil → omitted
-	ProposeSkill  toolcontract.Tool   // propose_skill pending submission (root group only); nil → omitted
-	CodeIntel     CodeIntelligence    // backs post-mutation diagnostics
-	ReadTracker   *readTracker        // backs the read-before-patch and stale-read guards
+	Shell         []toolcontract.Tool
+	AskUser       toolcontract.Tool
+	EnterPlan     toolcontract.Tool
+	ExitPlan      toolcontract.Tool
+	Plan          toolcontract.Tool
+	ToolResult    toolcontract.Tool
+	GoalGet       toolcontract.Tool
+	GoalReport    toolcontract.Tool
+	ProposeSkill  toolcontract.Tool
+	CodeIntel     CodeIntelligence
+	ReadTracker   *readTracker
 	// MCPToolDisabled reports whether an identified MCP tool is hidden.
 	MCPToolDisabled func(domaintool.Ref) bool
 	RestoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
@@ -150,8 +151,22 @@ type resolverDeps struct {
 // through an explicit seam after its cyclic application owner exists; the MCP
 // Tool set is seeded and hot-swapped via [Resolver.SetMCPTools].
 func newResolver(d resolverDeps) (*Resolver, error) {
-	if d.ReadTracker == nil {
-		return nil, errors.New("toolset: resolver read tracker is nil")
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"read tracker", d.ReadTracker}, {"code intelligence", d.CodeIntel}, {"Skill usage recorder", d.SkillUsage},
+		{"Goal availability", d.GoalAvailable}, {"Plan availability", d.PlanAvailable},
+		{"MCP exposure policy", d.MCPToolDisabled}, {"MCP restoration", d.RestoreMCP},
+		{"ask_user", d.AskUser}, {"enter_plan_mode", d.EnterPlan}, {"exit_plan_mode", d.ExitPlan}, {"set_plan", d.Plan},
+		{"read_tool_result", d.ToolResult}, {"get_goal", d.GoalGet}, {"report_goal_outcome", d.GoalReport}, {"propose_skill", d.ProposeSkill},
+	} {
+		if lo.IsNil(required.value) {
+			return nil, fmt.Errorf("toolset: resolver %s is required", required.name)
+		}
+	}
+	if err := d.SkillSources.Validate(); err != nil {
+		return nil, fmt.Errorf("toolset: %w", err)
 	}
 	telemetry, err := oteltool.NewMiddleware(oteltool.MiddlewareConfig{})
 	if err != nil {
@@ -190,7 +205,7 @@ func (r *Resolver) appendStatic(
 	group domaintool.Group, planAvailable bool,
 ) {
 	for _, spec := range r.staticSpecs {
-		if spec.tool == nil || spec.placement != at || !spec.audience.includes(group) || !spec.availability.admits(ctx, planAvailable) {
+		if spec.placement != at || !spec.audience.includes(group) || !spec.availability.admits(ctx, planAvailable) {
 			continue
 		}
 		if spec.deferred {
@@ -256,9 +271,6 @@ func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcont
 	}
 	if len(installed) == 0 {
 		return current, pending, nil, nil
-	}
-	if r.restoreMCP == nil {
-		return nil, nil, nil, fmt.Errorf("%w: original MCP restoration is unavailable", plugin.ErrUnavailable)
 	}
 	original, close, err := r.restoreMCP(ctx, installed, cloneManifestBindings(retained.Bindings))
 	if err != nil {
@@ -339,7 +351,7 @@ func (r *Resolver) exposedMCPTools(values []toolcontract.Tool, capturedMCP []dom
 		if !found {
 			return nil, errors.New("toolset: MCP tool has no source identity")
 		}
-		if (capturedMCP != nil && !slices.Contains(capturedMCP, ref)) || (r.mcpToolDisabled != nil && r.mcpToolDisabled(ref)) {
+		if (capturedMCP != nil && !slices.Contains(capturedMCP, ref)) || r.mcpToolDisabled(ref) {
 			if out == nil {
 				out = append(make([]toolcontract.Tool, 0, len(values)-1), values[:i]...)
 			}
@@ -365,9 +377,6 @@ func (r *Resolver) SetMCPTools(tools []toolcontract.Tool, pending []mcpserver.ID
 // write authority; retaining the old stamps would let discarded context
 // authorize later filesystem mutations.
 func (r *Resolver) ForgetSessionContext(sessionID string) {
-	if r == nil || r.readTracker == nil {
-		return
-	}
 	r.readTracker.forgetSession(sessionID)
 }
 
@@ -375,9 +384,6 @@ func (r *Resolver) ForgetSessionContext(sessionID string) {
 // workspace root. Sessions may share a working tree, so invalidating only the
 // Session that requested rollback would leave sibling authority stale.
 func (r *Resolver) ForgetWorkspace(root string) {
-	if r == nil || r.readTracker == nil {
-		return
-	}
 	r.readTracker.forgetWorkspace(root)
 }
 
@@ -448,7 +454,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	// Built-once, session-keyed helpers (plan/result/transcript search)
 	// are projected from the resolver's group and placement policy.
 	planAvailable := true
-	if group == domaintool.GroupRoot && r.planAvailable != nil {
+	if group == domaintool.GroupRoot {
 		planAvailable, err = r.planAvailable(ctx)
 		if err != nil {
 			return manifestBuilder{}, err
@@ -465,12 +471,9 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 		// Keep only the generic tool at this seam; no Driver or runtime state enters
 		// the Agent module.
 		if createGoal := r.createGoalTool(); createGoal != nil {
-			available := true
-			if r.goalAvailable != nil {
-				available, err = r.goalAvailable(ctx)
-				if err != nil {
-					return manifestBuilder{}, err
-				}
+			available, err := r.goalAvailable(ctx)
+			if err != nil {
+				return manifestBuilder{}, err
 			}
 			if available {
 				tools.direct(createGoal)

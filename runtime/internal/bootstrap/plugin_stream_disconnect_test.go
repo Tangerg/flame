@@ -52,7 +52,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	defer r.close()
 	installed := installCallContributor(t, r, binary, "stream-drop", trace.URL, contract)
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
-	invoke := func() delivery.Result {
+	invoke := func() protocol.OperationResult {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, protocol.CallMetadata{IdempotencyKey: "original-stream", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}
 	first := invoke()

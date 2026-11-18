@@ -13,9 +13,6 @@ import (
 // retained by an original command/checkpoint owner. A serialized graph alone
 // cannot authorize a newly published execution.
 func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plugin.Activation) error {
-	if p.installed == nil {
-		return ErrUnavailable
-	}
 	host := p.installed.host
 	if err := host.Admission().CheckAdmitted(ctx); err != nil {
 		return err

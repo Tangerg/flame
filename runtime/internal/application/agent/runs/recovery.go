@@ -474,7 +474,7 @@ func newRecoveryPlanner(
 		planner.observeTime(invocation.StartedAt)
 	}
 	for _, source := range independent {
-		if claims.includes(source.Snapshot().SessionID) {
+		if claims.includes(source.Snapshot().Invocation.SessionID) {
 			planner.observeTime(source.Snapshot().FinishedAt)
 		}
 	}
@@ -482,7 +482,7 @@ func newRecoveryPlanner(
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
 	for _, source := range independent {
-		if !claims.includes(source.Snapshot().SessionID) {
+		if !claims.includes(source.Snapshot().Invocation.SessionID) {
 			continue
 		}
 		planner.independent = append(planner.independent, source)

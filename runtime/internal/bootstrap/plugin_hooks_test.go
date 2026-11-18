@@ -106,7 +106,7 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	writeHookSource(t, cfg.defaultWorkspacePath, "{")
 	r := poMCPOpen(t, cfg)
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "optional hook source"}, "hook-session").(*protocol.Session)
-	start := func(key string) delivery.Result {
+	start := func(key string) protocol.OperationResult {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}}, protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Events != nil {

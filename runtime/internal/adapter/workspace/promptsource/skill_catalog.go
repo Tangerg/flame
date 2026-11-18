@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
+	"github.com/samber/lo"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	app "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -24,7 +25,17 @@ type DiscoverSkills func(context.Context, skilllearning.Candidates, *SkillCaptur
 type SkillSources struct {
 	Packages PackageSkills
 	Discover DiscoverSkills
-	Capture  *SkillCapture
+	// Capture is one execution's frozen discovery choice; nil reads the
+	// current catalog.
+	Capture *SkillCapture
+}
+
+// Validate reports whether both catalog owners are present.
+func (s SkillSources) Validate() error {
+	if lo.IsNil(s.Packages) || s.Discover == nil {
+		return errors.New("skill sources: package skills and discovery are required")
+	}
+	return nil
 }
 
 type candidates struct {
@@ -85,9 +96,6 @@ func (c *candidates) bundles(bundles []PackageSkillBundle, packages PackageSkill
 	return nil
 }
 func (c *candidates) selectReaders(ctx context.Context, sources SkillSources) (*resolvedSkills, error) {
-	if sources.Discover == nil {
-		return nil, nil
-	}
 	slices.SortFunc(c.input.Items, func(a, b skilllearning.Candidate) int {
 		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.Source, b.Source))
 	})

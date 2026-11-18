@@ -26,7 +26,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	}
 	r.poMCPTools(server(first), memoryToolsReady)
 	r.poMCPTools(server(second), memoryToolsReady)
-	list := func() delivery.Result {
+	list := func() protocol.OperationResult {
 		return memoryQueryResult(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser})
 	}
 	if response := list(); response.Failure == nil || !errors.Is(response.Failure, protocol.ErrPluginUnavailable) {

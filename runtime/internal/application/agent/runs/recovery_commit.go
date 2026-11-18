@@ -211,7 +211,7 @@ func validateIndependentEndpoints(observations []modelref.EndpointObservation, l
 		}
 		source := observation.Snapshot()
 		owner, found := lostByID[source.RunID]
-		if !found || owner.State().SessionID() != source.SessionID || source.SegmentID == "" || source.FinishedAt.After(owner.State().UpdatedAt()) {
+		if !found || owner.State().SessionID() != source.Invocation.SessionID || source.SegmentID == "" || source.FinishedAt.After(owner.State().UpdatedAt()) {
 			return errors.New("runs: independent source has no lost Run owner")
 		}
 		if _, duplicate := seen[source.Invocation.ID]; duplicate {
@@ -567,7 +567,7 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, attempt Invo
 		return err
 	}
 	record := source.Snapshot()
-	if record.SessionID != attempt.SessionID || record.RunID != attempt.RunID || record.Invocation.Caller.ID != attempt.CallID || record.Invocation.StartedAt.Before(attempt.StartedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
+	if record.Invocation.SessionID != attempt.SessionID || record.RunID != attempt.RunID || record.Invocation.Caller.ID != attempt.CallID || record.Invocation.StartedAt.Before(attempt.StartedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
 		return errors.New("runs: recovery endpoint differs from its original call")
 	}
 	return nil

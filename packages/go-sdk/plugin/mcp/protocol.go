@@ -60,7 +60,7 @@ func ProtocolJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	delivery, err := StreamDeliveryContract()
+	delivery, err := streamDeliveryContract()
 	if err != nil {
 		return nil, err
 	}

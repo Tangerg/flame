@@ -42,10 +42,10 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.Call
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }
-func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) delivery.Result {
+func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) protocol.OperationResult {
 	request, err := memoryQuery(r, input)
 	if err != nil {
-		return delivery.Result{Failure: protocol.ProjectError(err)}
+		return protocol.OperationResult{Failure: protocol.ProjectError(err)}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }

@@ -56,7 +56,7 @@ type proposer struct {
 // NewProposal builds propose_skill. A nil submitter omits the capability.
 func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 	if lo.IsNil(proposals) {
-		return nil, nil
+		return nil, errors.New("propose_skill: Skill proposal submitter is required")
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.ProposeSkill), Description: proposalDescription},

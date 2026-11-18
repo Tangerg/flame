@@ -109,7 +109,7 @@ type usageView struct {
 // static tool environment.
 func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 	if lo.IsNil(starter) {
-		return nil, nil
+		return nil, errors.New("create_goal: Goal starter is required")
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.CreateGoal), Description: createDescription},
@@ -120,7 +120,7 @@ func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 // NewGet builds get_goal over the read-only side of Goal state.
 func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 	if lo.IsNil(reader) {
-		return nil, nil
+		return nil, errors.New("get_goal: Goal reader is required")
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.GetGoal), Description: getDescription},
@@ -131,7 +131,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 // NewReport builds report_goal_outcome, the active Goal loop's terminal signal.
 func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 	if lo.IsNil(reporter) {
-		return nil, nil
+		return nil, errors.New("report_goal_outcome: Goal outcome reporter is required")
 	}
 	return toolcontract.NewFunc[reportArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.ReportGoalOutcome), Description: reportDescription},

@@ -24,8 +24,8 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 	if lo.IsNil(lifetime) {
 		return nil, errors.New("mcp: lifetime is required")
 	}
-	if oauthSessions != nil && lo.IsNil(oauthSessions) {
-		return nil, errors.New("mcp: supplied oauth session store is nil")
+	if lo.IsNil(oauthSessions) || callbacks == nil {
+		return nil, errors.New("mcp: oauth session store and Runtime callbacks are required")
 	}
 	seen := make(map[mcpserver.ID]struct{}, len(servers))
 	for _, srv := range servers {

@@ -225,7 +225,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	options := func(key string) protocol.CallMetadata {
 		return protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 	}
-	invoke := func(method delivery.Name, request any, key string) delivery.Result {
+	invoke := func(method delivery.Name, request any, key string) protocol.OperationResult {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), method, request, options(key))
 		if result.Failure != nil {
@@ -233,7 +233,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 		}
 		return result
 	}
-	drain := func(result delivery.Result) {
+	drain := func(result protocol.OperationResult) {
 		t.Helper()
 		events := iter.Seq2[protocol.RunEvent, error](func(yield func(protocol.RunEvent, error) bool) {
 			for event, err := range result.Events {

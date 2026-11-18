@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -22,12 +21,7 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	statuses := c.statusesByName()
 	out := make([]Server, 0, len(servers))
 	for _, server := range servers {
-		status, ok := statuses[server.ID()]
-		var live *ServerStatus
-		if ok {
-			live = &status
-		}
-		view, err := serverView(server, live)
+		view, err := serverView(server, statuses[server.ID()])
 		if err != nil {
 			return nil, err
 		}
@@ -36,22 +30,12 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	return out, nil
 }
 
-func (c *Coordinator) statusesByName() map[mcpserver.ID]ServerStatus {
-	statuses := make(map[mcpserver.ID]ServerStatus)
+// statusesByName indexes the live connection projections. A server absent
+// from the map has no live connection.
+func (c *Coordinator) statusesByName() map[mcpserver.ID]*mcpserver.ConnectionStatus {
+	statuses := make(map[mcpserver.ID]*mcpserver.ConnectionStatus)
 	for _, status := range c.connections.Statuses() {
-		view := statusView(status)
-		statuses[view.Server] = view
+		statuses[status.Server] = &status
 	}
 	return statuses
-}
-
-// ServerStatus resolves one safe live status notification read model.
-func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ID) (ServerStatus, error) {
-	if err := name.Validate(); err != nil {
-		return ServerStatus{}, fmt.Errorf("mcp: server status: %w", err)
-	}
-	if status, ok := c.statusesByName()[name]; ok {
-		return status, nil
-	}
-	return ServerStatus{Server: name}, nil
 }

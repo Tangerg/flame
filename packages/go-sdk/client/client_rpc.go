@@ -34,18 +34,18 @@ func (e *TransportError) Error() string {
 	return fmt.Sprintf("runtime: transport returned http %d", e.StatusCode)
 }
 
-func (r *Client) invokeOperation(ctx context.Context, name string, parameters any, options protocol.CallMetadata) (result callResult, err error) {
+func (r *Client) invokeOperation(ctx context.Context, name string, parameters any, options protocol.CallMetadata) (result protocol.OperationResult, err error) {
 	meta, found := lookupMethod(name)
 	if !found {
-		return callResult{}, protocol.NewFailure(protocol.ErrMethodNotFound, "unknown runtime operation")
+		return protocol.OperationResult{}, protocol.NewFailure(protocol.ErrMethodNotFound, "unknown runtime operation")
 	}
 	operation, err := invocationOperation(meta, parameters)
 	if err != nil {
-		return callResult{}, err
+		return protocol.OperationResult{}, err
 	}
 	call, err := r.begin(ctx)
 	if err != nil {
-		return callResult{}, err
+		return protocol.OperationResult{}, err
 	}
 	dispatched := false
 	defer func() {
@@ -58,22 +58,22 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	}()
 	id, err := jsonrpc.MakeID(rand.Text())
 	if err != nil {
-		return callResult{}, err
+		return protocol.OperationResult{}, err
 	}
 	request, err := r.newRPCRequest(call.ctx, id, name, parameters, options)
 	if err != nil {
-		return callResult{}, err
+		return protocol.OperationResult{}, err
 	}
 	if err := call.ctx.Err(); err != nil {
-		return callResult{}, context.Cause(call.ctx)
+		return protocol.OperationResult{}, context.Cause(call.ctx)
 	}
 	dispatched = true
 	response, err := r.http.Do(request)
 	if err != nil {
-		return callResult{}, call.readError(err)
+		return protocol.OperationResult{}, call.readError(err)
 	}
 	if err := call.attach(response.Body); err != nil {
-		return callResult{}, err
+		return protocol.OperationResult{}, err
 	}
 	return r.readAcknowledgement(call, response, id, meta, parameters, operation)
 }
@@ -119,21 +119,21 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 	return request, nil
 }
 
-func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (callResult, error) {
+func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (protocol.OperationResult, error) {
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != protocol.RPCCallStatus {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
-			return callResult{}, pluginmcp.ErrStaleCall
+			return protocol.OperationResult{}, pluginmcp.ErrStaleCall
 		}
-		return callResult{}, call.readError(decodeTransportError(response, mediaType, r.maxMessageBytes))
+		return protocol.OperationResult{}, call.readError(decodeTransportError(response, mediaType, r.maxMessageBytes))
 	}
 	if err != nil {
-		return callResult{}, invalidRemote("response content type is invalid")
+		return protocol.OperationResult{}, invalidRemote("response content type is invalid")
 	}
 	if mediaType == protocol.RPCDocumentMediaType {
 		encoded, err := readRemoteMessage(response.Body, r.maxMessageBytes)
 		if err != nil {
-			return callResult{}, call.readError(err)
+			return protocol.OperationResult{}, call.readError(err)
 		}
 		result, err := decodeRemoteResponse(encoded, id, meta)
 		if err == nil && result.Failure == nil && meta.Kind == streamMethod {
@@ -142,12 +142,12 @@ func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, 
 		return result, err
 	}
 	if mediaType != protocol.RPCStreamMediaType || meta.Kind != streamMethod {
-		return callResult{}, invalidRemote("response content type does not match the operation")
+		return protocol.OperationResult{}, invalidRemote("response content type does not match the operation")
 	}
 	return r.readStreamAcknowledgement(call, response.Body, id, meta, parameters, operation)
 }
 
-func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (callResult, error) {
+func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (protocol.OperationResult, error) {
 	// SSE's web-standard decoder repairs malformed UTF-8. Runtime JSON is exact,
 	// so reject those bytes before the SSE reader can replace their meaning.
 	reader := sse.NewReader(transform.NewReader(body, encoding.UTF8Validator))
@@ -155,22 +155,22 @@ func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id 
 	reader.MaxEventBytes = r.maxMessageBytes
 	for frame, err := range reader.Messages() {
 		if err != nil {
-			return callResult{}, call.readError(err)
+			return protocol.OperationResult{}, call.readError(err)
 		}
 		if frame.ID != "" || frame.Event != "message" {
-			return callResult{}, invalidRemote("stream acknowledgement has invalid sse metadata")
+			return protocol.OperationResult{}, invalidRemote("stream acknowledgement has invalid sse metadata")
 		}
 		result, err := decodeRemoteResponse(frame.Data, id, meta)
 		if err != nil || result.Failure != nil {
 			return result, err
 		}
 		if err := validateStreamIdentity(parameters, result.Value); err != nil {
-			return callResult{}, err
+			return protocol.OperationResult{}, err
 		}
 		result.Events = remoteEvents(call, reader, meta.Event, operation, result.Value)
 		return result, nil
 	}
-	return callResult{}, call.readError(io.ErrUnexpectedEOF)
+	return protocol.OperationResult{}, call.readError(io.ErrUnexpectedEOF)
 }
 
 func setOptionalHeader(headers http.Header, name, value string) {
@@ -200,39 +200,39 @@ func encodeRemoteRequest(id jsonrpc.ID, name string, parameters any, metadata pr
 	return jsonrpc.EncodeMessage(&jsonrpc.Request{ID: id, Method: name, Params: encoded})
 }
 
-func decodeRemoteResponse(encoded []byte, id jsonrpc.ID, method methodMeta) (callResult, error) {
+func decodeRemoteResponse(encoded []byte, id jsonrpc.ID, method methodMeta) (protocol.OperationResult, error) {
 	message, err := protocol.DecodeRPCMessage(encoded)
 	if err != nil {
-		return callResult{}, invalidRemote("invalid json-rpc response")
+		return protocol.OperationResult{}, invalidRemote("invalid json-rpc response")
 	}
 	response, ok := message.(*jsonrpc.Response)
 	if !ok || response.ID.Raw() != id.Raw() {
-		return callResult{}, invalidRemote("response does not acknowledge this request")
+		return protocol.OperationResult{}, invalidRemote("response does not acknowledge this request")
 	}
 	if response.Error != nil {
 		rpcError, ok := errors.AsType[*jsonrpc.Error](response.Error)
 		if !ok {
-			return callResult{}, invalidRemote("invalid operation error envelope")
+			return protocol.OperationResult{}, invalidRemote("invalid operation error envelope")
 		}
 		var problem protocol.ProblemData
 		if err := protocol.DecodeResponse(rpcError.Data, &problem); err != nil {
-			return callResult{}, invalidRemote("invalid operation problem")
+			return protocol.OperationResult{}, invalidRemote("invalid operation problem")
 		}
 		code, known := problemCodes[problem.Type]
 		if !known || int64(code) != rpcError.Code || rpcError.Message != problem.Type {
-			return callResult{}, invalidRemote("operation problem does not match its envelope")
+			return protocol.OperationResult{}, invalidRemote("operation problem does not match its envelope")
 		}
 		failure, err := protocol.DecodeFailure(problem)
 		if err != nil {
-			return callResult{}, invalidRemote("invalid operation problem data")
+			return protocol.OperationResult{}, invalidRemote("invalid operation problem data")
 		}
-		return callResult{Failure: failure}, nil
+		return protocol.OperationResult{Failure: failure}, nil
 	}
 	value, err := method.decodeResult(response.Result)
 	if err != nil {
-		return callResult{}, invalidRemote("response violates the runtime contract")
+		return protocol.OperationResult{}, invalidRemote("response violates the runtime contract")
 	}
-	return callResult{Value: value}, nil
+	return protocol.OperationResult{Value: value}, nil
 }
 
 func decodeRemoteValue(encoded []byte, valueType reflect.Type) (any, error) {

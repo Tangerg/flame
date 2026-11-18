@@ -10,17 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ValueAs restores the declared Go type after validation. An opaque JSON null
-// is a valid interface result even though an assertion on a nil interface fails.
-func (r Result) ValueAs[Response any]() (Response, bool) {
-	var zero Response
-	if r.Value == nil && reflect.TypeFor[Response]().Kind() == reflect.Interface {
-		return zero, true
-	}
-	value, ok := r.Value.(Response)
-	return value, ok
-}
-
 // ValidateResult applies the catalog's result contract to an in-process value.
 func (m MethodMeta) ValidateResult(value any) error {
 	expected := m.resultType()

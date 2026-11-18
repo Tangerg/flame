@@ -152,9 +152,6 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		if !materialRun.Valid {
 			return record, nil
 		}
-		if materialRun.String != acceptance.RunID {
-			return runs.CommandAcceptanceRecord{}, errors.New("sqlite: command material differs from its accepted Run")
-		}
 		current, found, err := newRunStore(s.db).Run(ctx, materialRun.String)
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, err

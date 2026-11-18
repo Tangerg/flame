@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"fmt"
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -16,13 +15,13 @@ type binding struct {
 }
 
 type operationCaller interface {
-	invokeOperation(context.Context, delivery.Name, any, protocol.CallMetadata) (delivery.Result, error)
+	invokeOperation(context.Context, delivery.Name, any, protocol.CallMetadata) (protocol.OperationResult, error)
 }
 
-func (r *Runtime) invokeOperation(ctx context.Context, name delivery.Name, request any, options protocol.CallMetadata) (delivery.Result, error) {
+func (r *Runtime) invokeOperation(ctx context.Context, name delivery.Name, request any, options protocol.CallMetadata) (protocol.OperationResult, error) {
 	endpoint, err := r.endpoint()
 	if err != nil {
-		return delivery.Result{}, err
+		return protocol.OperationResult{}, err
 	}
 	return endpoint.Invoke(ctx, name, request, options), nil
 }
@@ -41,14 +40,7 @@ func (r *binding) invoke[Request, Response any](
 	if err != nil {
 		return zero, err
 	}
-	if result.Failure != nil {
-		return zero, result.Failure
-	}
-	value, ok := result.ValueAs[Response]()
-	if !ok {
-		return zero, fmt.Errorf("runtime: %s returned an invalid response type: %w", name, protocol.ErrInvalidResponse)
-	}
-	return value, nil
+	return result.Response[Response](string(name))
 }
 
 func (r *binding) invokeAck[Request any](
@@ -75,28 +67,5 @@ func (r *binding) invokeStream[Request, Ack, Event any](
 	if err != nil {
 		return zero, nil, err
 	}
-	if result.Failure != nil {
-		return zero, nil, result.Failure
-	}
-	ack, ok := result.ValueAs[Ack]()
-	if !ok || result.Events == nil {
-		return zero, nil, fmt.Errorf("runtime: %s returned an invalid stream: %w", name, protocol.ErrInvalidResponse)
-	}
-	return ack, func(yield func(Event, error) bool) {
-		var zero Event
-		for value, err := range result.Events {
-			if err != nil {
-				yield(zero, err)
-				return
-			}
-			event, ok := value.(Event)
-			if !ok {
-				yield(zero, fmt.Errorf("runtime: %s returned an invalid event type: %w", name, protocol.ErrInvalidResponse))
-				return
-			}
-			if !yield(event, nil) {
-				return
-			}
-		}
-	}, nil
+	return result.Stream[Ack, Event](string(name))
 }

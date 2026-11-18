@@ -208,13 +208,12 @@ func currentSchema() []string {
 			%[1]s,
 			%[2]s,
 			endpoint_json TEXT CHECK (endpoint_json IS NULL OR json_valid(endpoint_json)),
-			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('%[5]s', '%[6]s')),
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_nano_usd INTEGER CHECK (endpoint_cost_nano_usd IS NULL OR (endpoint_cost_nano_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
 			known_response TEXT CHECK (known_response IS NULL OR (%[7]s AND json_valid(known_response))),
 			FOREIGN KEY (run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE,
 			CHECK (run_id IS NULL OR session_id IS NOT NULL),
-			CHECK ((endpoint_json IS NULL) = (endpoint_kind IS NULL)),
+			CHECK (endpoint_json IS NULL OR json_extract(endpoint_json,'$.kind') IN ('%[5]s', '%[6]s')),
 			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL AND logical_purpose IS NOT NULL)),
 			CHECK (%[8]s),
 			CHECK ((%[9]s AND finished_at IS NULL) OR (NOT %[9]s AND finished_at IS NOT NULL AND finished_at >= started_at))
@@ -609,6 +608,7 @@ func currentSchema() []string {
 			user_item_id TEXT,
 			steer_input BLOB,
 			material_run_id TEXT REFERENCES runs(run_id) ON DELETE SET NULL,
+			CHECK (material_run_id IS NULL OR material_run_id = run_id),
 			CHECK (
 				(kind IN ('%[1]s','%[2]s')
 					AND payload IS NOT NULL AND expires_at IS NOT NULL

@@ -103,16 +103,6 @@ const (
 	ServerNeedsAuth    ServerStateType = "needsAuth"
 )
 
-// ServerStatus is the application status notification read model. Known is
-// false after a removed server's final invalidation.
-type ServerStatus struct {
-	Server    mcpserver.ID
-	Known     bool
-	State     mcpserver.ConnectionState
-	Failure   mcpserver.ConnectionFailure
-	ToolCount *int
-}
-
 // TestResult is the semantic outcome of a non-persisting connection probe.
 type TestResult string
 
@@ -150,7 +140,7 @@ func maskedValues(values map[string]string) map[string]string {
 	return masked
 }
 
-func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
+func serverView(server mcpserver.Server, status *mcpserver.ConnectionStatus) (Server, error) {
 	view := Server{
 		ID:               server.ID(),
 		Description:      server.Description,
@@ -162,7 +152,7 @@ func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 		view.State.Type = ServerDisabled
 		return view, nil
 	}
-	if status == nil || !status.Known {
+	if status == nil {
 		return view, nil
 	}
 	switch status.State {
@@ -170,7 +160,7 @@ func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 		view.State.Type = ServerConnecting
 	case mcpserver.ConnectionConnected:
 		view.State.Type = ServerConnected
-		view.State.ToolCount = status.ToolCount
+		view.State.ToolCount = &status.ToolCount
 	case mcpserver.ConnectionFailed:
 		view.State = ServerState{Type: ServerFailed, Failure: status.Failure}
 	case mcpserver.ConnectionNeedsAuth:
@@ -179,13 +169,4 @@ func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 		return Server{}, fmt.Errorf("mcp: project connection state %q", status.State)
 	}
 	return view, nil
-}
-
-func statusView(status mcpserver.ConnectionStatus) ServerStatus {
-	view := ServerStatus{Server: status.Server, Known: true, State: status.State, Failure: status.Failure}
-	if status.State == mcpserver.ConnectionConnected {
-		count := status.ToolCount
-		view.ToolCount = &count
-	}
-	return view
 }

@@ -372,7 +372,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Lost review response"}, "session").(*protocol.Session)
-	invoke := func(method delivery.Name, request any, key string) delivery.Result {
+	invoke := func(method delivery.Name, request any, key string) protocol.OperationResult {
 		t.Helper()
 		result := runtime.endpoint.Invoke(t.Context(), method, request, protocol.CallMetadata{
 			IdempotencyKey: key,
@@ -385,7 +385,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		}
 		return result
 	}
-	drain := func(result delivery.Result) {
+	drain := func(result protocol.OperationResult) {
 		t.Helper()
 		events := iter.Seq2[protocol.RunEvent, error](func(yield func(protocol.RunEvent, error) bool) {
 			for event, err := range result.Events {

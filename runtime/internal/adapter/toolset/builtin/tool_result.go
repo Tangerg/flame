@@ -11,6 +11,7 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"unicode/utf8"
 
@@ -62,7 +63,7 @@ type toolResultReader struct {
 // to the calling session, so one tool instance serves every session.
 func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
 	if lo.IsNil(store) {
-		return nil, nil
+		return nil, errors.New("read_tool_result: Tool-result store is required")
 	}
 	return toolcontract.NewFunc[toolResultReadArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.ReadToolResult), Description: toolResultDescription},

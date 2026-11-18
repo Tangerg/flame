@@ -158,7 +158,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				t.Fatal(result.Failure)
 			}
 			started := result.Value.(*protocol.StartRunResponse)
-			drainRun := func(result delivery.Result) {
+			drainRun := func(result protocol.OperationResult) {
 				t.Helper()
 				for _, err := range result.Events {
 					if err != nil {

@@ -34,14 +34,14 @@ type BuildConfig struct {
 	SkillsUserDir    string
 	CodeIntelligence CodeIntelligence
 	PlanAvailable    func(context.Context) (bool, error)
-	Plan             builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
-	PlanMode         builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
+	Plan             builtin.PlanUseCases
+	PlanMode         builtin.PlanModePolicy
 	Interrupt        runs.InterruptFunc
-	ToolResults      builtin.ToolResultStore        // backs read_tool_result (reads offloaded tool output); nil → omitted
-	SkillUsage       builtin.SkillUsageRecorder     // records skill loads for the idle-lifecycle curator; nil → use recording off
-	SkillProposals   builtin.SkillProposalSubmitter // backs root-only propose_skill; nil → omitted
-	GoalReader       goalReader                     // backs get_goal; nil → omitted
-	GoalReporter     builtin.GoalOutcomeReporter    // backs report_goal_outcome; nil → omitted
+	ToolResults      builtin.ToolResultStore
+	SkillUsage       builtin.SkillUsageRecorder
+	SkillProposals   builtin.SkillProposalSubmitter
+	GoalReader       goalReader
+	GoalReporter     builtin.GoalOutcomeReporter
 
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
@@ -112,27 +112,22 @@ func Build(config BuildConfig) (_ Built, err error) {
 		}
 	}()
 
-	interrupt := config.Interrupt
-	if interrupt == nil {
-		interrupt = runs.InterruptUnavailable
-	}
-
 	// ask_user is a build-time Tool shared by root and delegated roles. A child
 	// question waits at the same durable tree boundary as child approval.
-	askUserTool, err := builtin.NewAskUser(interrupt)
+	askUserTool, err := builtin.NewAskUser(config.Interrupt)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build ask_user: %w", err)
 	}
 
 	// Plan mode and Plan state form one lifecycle. The family keeps
 	// exit_plan_mode bound to the exact store maintained by set_plan.
-	planFamily, err := builtin.BuildPlan(config.PlanMode, config.Plan, config.PlanAvailable, interrupt)
+	planFamily, err := builtin.BuildPlan(config.PlanMode, config.Plan, config.PlanAvailable, config.Interrupt)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build Plan family: %w", err)
 	}
 	// read_tool_result reads back a tool output the runtime offloaded on
 	// eviction. Working-directory independent (keys off the session id), so built
-	// once and given to both roles. nil store → nil tool, simply omitted.
+	// once and given to both roles.
 	toolResultTool, err := builtin.NewToolResultReader(config.ToolResults)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build read_tool_result: %w", err)

@@ -18,8 +18,11 @@ type Skills struct {
 }
 
 // NewSkills returns the workspace Skill-discovery adapter.
-func NewSkills(userDir string, packages SkillSources) Skills {
-	return Skills{userDir: userDir, packages: packages}
+func NewSkills(userDir string, packages SkillSources) (Skills, error) {
+	if err := packages.Validate(); err != nil {
+		return Skills{}, err
+	}
+	return Skills{userDir: userDir, packages: packages}, nil
 }
 
 var _ workspaceapp.SkillCatalog = Skills{}

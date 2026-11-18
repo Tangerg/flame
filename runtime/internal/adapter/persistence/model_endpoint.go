@@ -23,7 +23,7 @@ import (
 	"github.com/Tangerg/scope/core/embedding"
 )
 
-const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_nano_usd,usage,COALESCE(endpoint_kind,'')`
+const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_nano_usd,usage`
 
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
@@ -127,13 +127,13 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
 			args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, string(runs.ToolInvocationStarted), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
 		}
-		query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
- SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
+		query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
+ SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,? FROM (` + scope + `) scope
  WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-		parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind())}
+		parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded)}
 		parameters = append(parameters, args...)
 		parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
 		result, err := m.db.connection(ctx).ExecContext(ctx, query, parameters...)
@@ -219,9 +219,8 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var finishedAt *int64
 	var response *string
 	var encodedUsage *string
-	var kind string
 	var costNanoUSD *int64
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &costNanoUSD, &encodedUsage, &kind); err != nil {
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.RunID, &value.SegmentID, &costNanoUSD, &encodedUsage); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
 	if value.Cost, err = accounting.CostFromOptionalNanoUSD(costNanoUSD); err != nil {
@@ -234,9 +233,6 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var admission storedEndpointInvocation
 	if err := decodeStoredJSON([]byte(encoded), &admission); err != nil {
 		return modelref.EndpointObservation{}, err
-	}
-	if modelref.EndpointKind(kind) != admission.Kind {
-		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint kind differs from its admission")
 	}
 	value.Invocation, err = admission.invocation()
 	if err != nil {

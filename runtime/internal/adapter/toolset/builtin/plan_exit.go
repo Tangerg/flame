@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/samber/lo"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -37,8 +38,8 @@ type exiter struct {
 }
 
 func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
-	if modes == nil || plan == nil {
-		return nil, nil
+	if lo.IsNil(modes) || lo.IsNil(plan) {
+		return nil, errors.New("exit_plan_mode: Plan mode policy and Plan state are required")
 	}
 	e := &exiter{modes: modes, plan: plan}
 	return newInterruptTool[exitArgs](

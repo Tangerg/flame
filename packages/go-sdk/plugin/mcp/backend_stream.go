@@ -33,9 +33,9 @@ func chunkDeliveryMethod() (*Method[deliveredChunk, bool], error) {
 	return NewMethod[deliveredChunk, bool](frame.MethodConfig{Name: "flame.stream/deliver.v1", Kind: frame.Command, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
 }
 
-// StreamDeliveryContract projects the existing acknowledged chunk callback for
+// streamDeliveryContract projects the existing acknowledged chunk callback for
 // independent language bindings. Its schema identity remains owned here.
-func StreamDeliveryContract() (frame.MethodDescriptor, error) {
+func streamDeliveryContract() (frame.MethodDescriptor, error) {
 	method, err := chunkDeliveryMethod()
 	if err != nil {
 		return frame.MethodDescriptor{}, err

@@ -170,7 +170,7 @@ func (d *Driver) Start(
 		}
 		return goal.Goal{}, ErrGoalActive
 	}
-	if quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
+	if _, quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
 		return goal.Goal{}, quiesceDriveErr
 	}
 	// A terminating drive may have committed its final accounting after the
@@ -257,7 +257,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		}
 		return g, nil
 	}
-	if quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
+	if _, quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
 		return goal.Goal{}, quiesceDriveErr
 	}
 	g, ok, err = loadGoal(ctx, d.goals, sessionID)
@@ -315,14 +315,9 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 		return goal.Goal{}, err
 	}
 	wasActive := initiallyPresent && initial.Status() == goal.StatusActive
-	drive := d.mutations.quiesce(sessionID)
-	var quiesceErr error
-	if drive != nil {
-		quiesceErr = drive.await(ctx)
-		if !drive.completed() {
-			return goal.Goal{}, quiesceErr
-		}
-		d.mutations.forget(sessionID, drive)
+	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
+	if !completed {
+		return goal.Goal{}, quiesceErr
 	}
 	current, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
@@ -382,9 +377,9 @@ func (d *Driver) UpdateObjective(
 		}
 	}
 
-	quiesceErr, err := d.quiesceObjectiveUpdate(ctx, sessionID)
-	if err != nil {
-		return goal.Goal{}, err
+	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
+	if !completed {
+		return goal.Goal{}, quiesceErr
 	}
 
 	current, err := d.editableGoal(ctx, sessionID)
@@ -436,22 +431,6 @@ func (d *Driver) editableGoal(ctx context.Context, sessionID string) (goal.Goal,
 	return current, nil
 }
 
-func (d *Driver) quiesceObjectiveUpdate(
-	ctx context.Context,
-	sessionID string,
-) (error, error) {
-	drive := d.mutations.quiesce(sessionID)
-	if drive == nil {
-		return nil, nil
-	}
-	quiesceErr := drive.await(ctx)
-	if !drive.completed() {
-		return nil, quiesceErr
-	}
-	d.mutations.forget(sessionID, drive)
-	return quiesceErr, nil
-}
-
 // Clear quiesces the owned drive and conditionally removes the authoritative
 // Goal aggregate. An already-absent Goal is a successful idempotent clear, which
 // lets a stale UI intent converge with automatic completion.
@@ -471,14 +450,9 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	if !present {
 		return nil
 	}
-	drive := d.mutations.quiesce(sessionID)
-	var quiesceErr error
-	if drive != nil {
-		quiesceErr = drive.await(ctx)
-		if !drive.completed() {
-			return quiesceErr
-		}
-		d.mutations.forget(sessionID, drive)
+	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
+	if !completed {
+		return quiesceErr
 	}
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
@@ -502,20 +476,22 @@ func (d *Driver) Current(ctx context.Context, sessionID string) (goal.Goal, bool
 	return loadGoal(ctx, d.goals, sessionID)
 }
 
-// quiesceDrive joins a lingering drive before a new Goal incarnation is
-// written. The drive stays registered until its goroutine actually exits, so
-// a timed-out caller cannot lose the only join point and a later command cannot
-// overlap the old Run's admission with a replacement.
-func (d *Driver) quiesceDrive(ctx context.Context, sessionID string) error {
+// quiesceDrive stops and joins the session's lingering drive before a new Goal
+// incarnation is written. When ctx ends first, completed is false and the drive
+// stays registered, so a timed-out caller cannot lose the only join point and a
+// later command cannot overlap the old Run's admission with a replacement.
+// Otherwise err is the completed drive's own outcome.
+func (d *Driver) quiesceDrive(ctx context.Context, sessionID string) (completed bool, err error) {
 	drive := d.mutations.quiesce(sessionID)
 	if drive == nil {
-		return nil
+		return true, nil
 	}
-	err := drive.await(ctx)
-	if drive.completed() {
-		d.mutations.forget(sessionID, drive)
+	err = drive.await(ctx)
+	if !drive.completed() {
+		return false, err
 	}
-	return err
+	d.mutations.forget(sessionID, drive)
+	return true, err
 }
 
 // Reconcile clears orphaned and completed Goals and pauses active Goals whose

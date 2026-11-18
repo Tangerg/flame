@@ -17,7 +17,7 @@ import (
 //
 // Every mutation is wrapped so a successful change is type-checked by the
 // code-intelligence analyzer and any new problems are folded into the tool
-// result. ci may be nil — the wrap is then a no-op.
+// result.
 // locker is owner-scoped: resolver-owned builds reuse one locker so
 // read/check/mutate stays atomic across concurrent Runs, not merely across the
 // tools resolved for one Run.

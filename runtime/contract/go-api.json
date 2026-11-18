@@ -3301,15 +3301,7 @@
           "signature": "func(provider string, model string, reasoningEffort string) (Selection, error)"
         },
         {
-          "name": "ValidateModelIdentity",
-          "signature": "func(value string) error"
-        },
-        {
           "name": "ValidateProviderIdentity",
-          "signature": "func(value string) error"
-        },
-        {
-          "name": "ValidateReasoningEffortIdentity",
           "signature": "func(value string) error"
         },
         {
@@ -4012,10 +4004,6 @@
         {
           "name": "ToolContextFromContext",
           "signature": "func(ctx context.Context) (ToolContext, error)"
-        },
-        {
-          "name": "ToolContextFromMetadata",
-          "signature": "func(metadata mcp.Meta) (ToolContext, error)"
         },
         {
           "name": "ToolProposalContract",
@@ -5392,10 +5380,6 @@
           "signature": "func() *Callbacks"
         },
         {
-          "name": "NewCallbacksWithLimits",
-          "signature": "func(limits CallbacksLimits) (*Callbacks, error)"
-        },
-        {
           "name": "NewCapabilityBinding",
           "signature": "func(session *mcp.ClientSession, name string, contract *contract.Capability) (*CapabilityBinding, error)"
         },
@@ -5458,10 +5442,6 @@
         {
           "name": "StreamCapacity",
           "signature": "func(ctx context.Context) (int64, bool)"
-        },
-        {
-          "name": "StreamDeliveryContract",
-          "signature": "func() (frame.MethodDescriptor, error)"
         },
         {
           "name": "StreamHost",
@@ -5686,24 +5666,6 @@
             {
               "name": "WaitRPC",
               "signature": "func(ctx context.Context) error"
-            }
-          ]
-        },
-        {
-          "name": "CallbacksLimits",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MaxSessions",
-              "type": "int"
-            },
-            {
-              "name": "MaxCalls",
-              "type": "int"
-            },
-            {
-              "name": "MaxPendingRequests",
-              "type": "int"
             }
           ]
         },
@@ -8750,6 +8712,7 @@
         "github.com/Tangerg/flame/packages/go-sdk/model",
         "github.com/Tangerg/frame/call",
         "github.com/Tangerg/go-sdk/jsonrpc",
+        "iter",
         "reflect",
         "time"
       ],
@@ -14302,6 +14265,38 @@
               "name": "ComponentID",
               "type": "string",
               "tag": "json:\"componentId\""
+            }
+          ]
+        },
+        {
+          "name": "OperationResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Value",
+              "type": "any"
+            },
+            {
+              "name": "Events",
+              "type": "iter.Seq2[any, error]"
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Response",
+              "signature": "func[T any](method string) (T, error)"
+            },
+            {
+              "name": "Stream",
+              "signature": "func[Ack, Event any](method string) (Ack, iter.Seq2[Event, error], error)"
+            },
+            {
+              "name": "ValueAs",
+              "signature": "func[T any]() (T, bool)"
             }
           ]
         },

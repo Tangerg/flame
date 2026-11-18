@@ -18,15 +18,6 @@ import (
 
 const maxIdempotencyKeyBytes = 255
 
-// Result is the binding-neutral outcome of one operation. Value and Events are
-// type-erased only inside Runtime; typed bindings restore the catalog's declared
-// types before returning to their caller.
-type Result struct {
-	Value   any
-	Events  iter.Seq2[any, error]
-	Failure *protocol.Failure
-}
-
 // Endpoint executes the one Runtime operation catalog independently of any
 // transport envelope.
 type Endpoint struct {
@@ -95,7 +86,7 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 
 // Invoke validates and executes the named operation through the catalog's
 // capability, idempotency and safe-problem policies.
-func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) Result {
+func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) protocol.OperationResult {
 	if e.validateStorage != nil {
 		if err := e.validateStorage(); err != nil {
 			return failed(projectError(err))
@@ -161,8 +152,8 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if failure := e.enforceCapabilities(ctx, method.Meta, parameters); failure != nil {
 		return failed(failure)
 	}
-	execute := func() Result { return e.execute(ctx, method, parameters) }
-	var result Result
+	execute := func() protocol.OperationResult { return e.execute(ctx, method, parameters) }
+	var result protocol.OperationResult
 	if options.IdempotencyKey != "" && method.Meta.Idempotency == IdempotencyOwnerRun {
 		// Serialize through the opening acknowledgement, never the stream lifetime.
 		// The durable Run acceptance remains the only command outcome authority.
@@ -185,7 +176,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	return result
 }
 
-func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) Result {
+func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) protocol.OperationResult {
 	raw := method.invoke(e.target, ctx, parameters)
 	if raw.err != nil {
 		return failed(projectError(raw.err))
@@ -193,7 +184,7 @@ func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) 
 	if err := method.Meta.ValidateResult(raw.value); err != nil {
 		return failed(runtimeProduced("an invalid response", err))
 	}
-	return Result{Value: raw.value, Events: validateEvents(ctx, method.Meta.Event, raw.events)}
+	return protocol.OperationResult{Value: raw.value, Events: validateEvents(ctx, method.Meta.Event, raw.events)}
 }
 
 func validateEvents(ctx context.Context, eventType reflect.Type, events iter.Seq2[any, error]) iter.Seq2[any, error] {
@@ -296,7 +287,9 @@ func validateIdempotencyKey(key string) *protocol.Failure {
 	return nil
 }
 
-func failed(failure *protocol.Failure) Result { return Result{Failure: failure} }
+func failed(failure *protocol.Failure) protocol.OperationResult {
+	return protocol.OperationResult{Failure: failure}
+}
 
 // commandIdentity is the request's idempotency key and fingerprint. It reaches an
 // owner-run-stream handler through the context because the handler owns the

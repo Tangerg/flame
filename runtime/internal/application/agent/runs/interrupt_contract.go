@@ -26,12 +26,6 @@ import (
 // never on execution internals.
 type InterruptFunc func(context.Context, toolcontract.Invocation, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error)
 
-// InterruptUnavailable is the fail-closed default for a tool environment that
-// has no execution interrupt provider.
-func InterruptUnavailable(context.Context, toolcontract.Invocation, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-	return run.InterruptResolution{}, nil, errors.New("runs: execution interrupts are unavailable")
-}
-
 // ApprovalPrompt is the complete durable plan for one gated tool call.
 // Arguments are the effective arguments after PreToolUse rewriting, so a
 // continuation (including one restored after restart) can resume without

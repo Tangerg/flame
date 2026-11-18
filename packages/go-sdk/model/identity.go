@@ -33,7 +33,7 @@ func (i ProviderIdentity) String() string { return i.value }
 type ModelIdentity struct{ value string }
 
 func NewModelIdentity(value string) (ModelIdentity, error) {
-	if err := ValidateModelIdentity(value); err != nil {
+	if err := validateModelIdentity(value); err != nil {
 		return ModelIdentity{}, err
 	}
 	return ModelIdentity{value: value}, nil
@@ -44,7 +44,7 @@ func (i ModelIdentity) String() string { return i.value }
 type ReasoningEffortIdentity struct{ value string }
 
 func NewReasoningEffortIdentity(value string) (ReasoningEffortIdentity, error) {
-	if err := ValidateReasoningEffortIdentity(value); err != nil {
+	if err := validateReasoningEffortIdentity(value); err != nil {
 		return ReasoningEffortIdentity{}, err
 	}
 	return ReasoningEffortIdentity{value: value}, nil
@@ -56,11 +56,11 @@ func ValidateProviderIdentity(value string) error {
 	return validateIdentity(value, MaximumProviderIdentityCharacters, ErrProviderIdentity)
 }
 
-func ValidateModelIdentity(value string) error {
+func validateModelIdentity(value string) error {
 	return validateIdentity(value, MaximumModelIdentityCharacters, ErrModelIdentity)
 }
 
-func ValidateReasoningEffortIdentity(value string) error {
+func validateReasoningEffortIdentity(value string) error {
 	return validateIdentity(value, MaximumReasoningEffortCharacters, ErrReasoningEffortIdentity)
 }
 
@@ -77,11 +77,11 @@ func ValidateSelection(provider, model, reasoningEffort string) error {
 	if err := ValidateProviderIdentity(provider); err != nil {
 		return err
 	}
-	if err := ValidateModelIdentity(model); err != nil {
+	if err := validateModelIdentity(model); err != nil {
 		return err
 	}
 	if reasoningEffort != "" {
-		return ValidateReasoningEffortIdentity(reasoningEffort)
+		return validateReasoningEffortIdentity(reasoningEffort)
 	}
 	return nil
 }

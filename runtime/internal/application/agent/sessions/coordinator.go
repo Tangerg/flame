@@ -66,8 +66,7 @@ type TranscriptStore interface {
 // planBoundaries is the lifecycle coordinator's read view of the Plan a Run
 // boundary recorded. Rollback and fork both need "the value as of that run", which
 // the live projection cannot answer: it keeps the latest value and no history. A
-// false ok is "never recorded", not "empty" — see [PlanBoundary]. nil disables it
-// (no Plan to move with a boundary).
+// false ok is "never recorded", not "empty" — see [PlanBoundary].
 // Boundary transfers the recorded steps to the caller.
 type planBoundaries interface {
 	Boundary(ctx context.Context, runID string) (plan.Document, bool, error)

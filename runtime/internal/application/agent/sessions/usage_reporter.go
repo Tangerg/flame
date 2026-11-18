@@ -120,8 +120,8 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 			return err
 		}
 		scope := "unattached"
-		if source.SessionID != "" {
-			sessions[source.SessionID] = struct{}{}
+		if source.Invocation.SessionID != "" {
+			sessions[source.Invocation.SessionID] = struct{}{}
 			scope = "session"
 		}
 		if source.RunID != "" {

@@ -10,6 +10,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
+	"github.com/samber/lo"
 
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -44,8 +45,8 @@ func (s setArgs) steps() []plandomain.Step {
 type setter struct{ plans planReplacer }
 
 func newSet(plans planReplacer) (toolcontract.Tool, error) {
-	if plans == nil {
-		return nil, nil
+	if lo.IsNil(plans) {
+		return nil, errors.New("set_plan: Plan use cases are required")
 	}
 	return toolcontract.NewFunc[setArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.SetPlan), Description: setDescription},

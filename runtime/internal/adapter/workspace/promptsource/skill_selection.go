@@ -46,14 +46,9 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources S
 		return nil, err
 	}
 	packages := sources.Packages
-	var bundles []PackageSkillBundle
-	if packages != nil {
-		bundles, err = packages.SkillBundles(ctx, retained)
-		if err != nil {
-			return nil, err
-		}
-	} else if len(retained) != 0 {
-		return nil, workspaceapp.ErrSkillUnavailable
+	bundles, err := packages.SkillBundles(ctx, retained)
+	if err != nil {
+		return nil, err
 	}
 	if project == nil && user == nil && len(bundles) == 0 && (sources.Capture == nil || sources.Capture.Command == "") {
 		return nil, nil

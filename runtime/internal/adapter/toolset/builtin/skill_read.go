@@ -3,6 +3,7 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,10 +13,11 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	skillspec "github.com/Tangerg/scope/skills"
 	skillstool "github.com/Tangerg/scope/tools/skills"
+	"github.com/samber/lo"
 )
 
 // SkillUsageRecorder records that a skill was loaded, feeding the idle-lifecycle
-// curator's last-used signal. nil disables use recording.
+// curator's last-used signal.
 type SkillUsageRecorder interface {
 	RecordUse(ctx context.Context, name string, now time.Time) error
 }
@@ -30,15 +32,15 @@ type SkillUsageRecorder interface {
 // Rebuilt per resolution because both the project directory and admitted source
 // selection belong to that execution. Existing tools never change libraries.
 func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.SkillSources, retained []plugin.Dependency) ([]toolcontract.Tool, []plugin.Dependency, error) {
-	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
-	if recorder != nil {
-		// Wrap only the user source: the curator governs the user library, and
-		// merge resolves a shadowed name to the project copy, so this records
-		// exactly the user-resolved loads (a project skill never touches the
-		// user-library usage record).
-		decorateUser = func(user skillspec.ResourceSource) skillspec.ResourceSource {
-			return recordingSource{ResourceSource: user, recorder: recorder}
-		}
+	if lo.IsNil(recorder) {
+		return nil, nil, errors.New("skill: usage recorder is required")
+	}
+	// Wrap only the user source: the curator governs the user library, and
+	// merge resolves a shadowed name to the project copy, so this records
+	// exactly the user-resolved loads (a project skill never touches the
+	// user-library usage record).
+	decorateUser := func(user skillspec.ResourceSource) skillspec.ResourceSource {
+		return recordingSource{ResourceSource: user, recorder: recorder}
 	}
 	source, dependencies, err := promptsource.OverlaySkillSource(ctx, cwd, userDir, packages, decorateUser, retained)
 	if err != nil {

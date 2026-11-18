@@ -336,9 +336,7 @@ func buildAssemblyCore(
 	if newCreateErr != nil {
 		return nil, fmt.Errorf("runtime: build create_goal: %w", newCreateErr)
 	}
-	if execution.tools.tools.Resolver != nil {
-		execution.tools.tools.Resolver.UseCreateGoalTool(createGoalTool)
-	}
+	execution.tools.tools.Resolver.UseCreateGoalTool(createGoalTool)
 
 	recoveryPersistence, err := recovery.New(recovery.Config{
 		Sessions:            cfg.stores.Sessions,

@@ -53,8 +53,8 @@ func Open(
 	publish invalidation.Publish,
 	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
-	if lo.IsNil(registry) {
-		return nil, errors.New("mcp connection: source registry is required")
+	if lo.IsNil(registry) || lo.IsNil(commands) || installed == nil {
+		return nil, errors.New("mcp connection: source registry, invocation restorer and installed backends are required")
 	}
 	configs := make([]ServerConfig, len(servers))
 	for index, server := range servers {
@@ -101,9 +101,6 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launchPermit, error) {
 	if _, managed := name.Origin().Installation(); managed {
-		if p.installed == nil {
-			return nil, errors.New("mcp: installed backend requires Frame")
-		}
 		value, err := p.installed.acquire(ctx, name)
 		if err != nil {
 			return nil, err
@@ -167,13 +164,17 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 
 // setToolSink publishes the initial catalog and live connection changes to the
 // resolver through the connection owner's publication boundary.
-func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepare ToolPreparation) {
+func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepare ToolPreparation) error {
+	if sink == nil || prepare == nil {
+		return errors.New("mcp: tool sink and preparation are required")
+	}
 	p.inner.setToolSink(func(catalog []Executable, pending, changed []mcpserver.ID) {
 		sink(p.authorizedTools(catalog, prepare), pending)
 		if len(changed) > 0 {
 			p.publish.Notify(invalidation.ForMCP(changed...))
 		}
 	})
+	return nil
 }
 
 // Shutdown releases every live connection under the caller's shutdown budget.
@@ -276,9 +277,6 @@ func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.
 // OpenRPC preserves the invoking call while applying this backend's frozen
 // dependency authority. Retirement is owned by the same session ledger.
 func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
-	if p.callbacks == nil {
-		return sdk.ParamsBase{}, nil, errors.New("mcp: Runtime callbacks are unavailable")
-	}
 	actor, err := p.SessionActor(ctx, id, session)
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
@@ -342,9 +340,6 @@ type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func
 // A projection receives only the named callbacks on its original borrowed
 // session. This grant never exposes the Runtime's general RPC surface.
 func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
-	if p.callbacks == nil {
-		return sdk.ParamsBase{}, nil, ErrUnavailable
-	}
 	if _, err := p.SessionActor(ctx, id, session); err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}

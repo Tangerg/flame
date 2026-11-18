@@ -81,7 +81,7 @@ func decodeParameters(raw []byte, parameterType reflect.Type) (any, *protocol.Fa
 	return target.Elem().Interface(), nil
 }
 
-func adaptResult(id jsonrpc.ID, result delivery.Result) Result {
+func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Result {
 	if result.Failure != nil {
 		return responseError(id, errorToRPC(result.Failure))
 	}

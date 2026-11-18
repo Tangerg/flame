@@ -409,8 +409,8 @@ func (c *Openings) resolveOpeningError(ctx context.Context, sessionID string, er
 	}
 	// The durable unique index rejected the INSERT, which means another writer
 	// got there first. Naming that Run is the pre-admission conflict answer too.
-	if active, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && active != nil {
-		return active
+	if conflict, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
+		return conflict
 	}
 	return err
 }
@@ -472,14 +472,14 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	// without knowing which run and what state. Waiting counts — a Run parked on a
 	// person is still the Session's Run. A live Run holds the admission lease, so
 	// the same durable read must also explain a refused claim.
-	active, err := c.activeRunConflict(ctx, sess.ID())
+	conflict, err := c.activeRunConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
 		return ownership.RunAdmission{}, err
 	}
-	if active != nil {
+	if conflict != nil {
 		runAdmission.Release()
-		return ownership.RunAdmission{}, active
+		return ownership.RunAdmission{}, conflict
 	}
 	if !ok {
 		// An opening not yet committed or a working-tree mutation has no durable
@@ -493,7 +493,7 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 // it has none. One author, because the same conflict is reachable twice: this process
 // can see the Run before admission, and the durable unique index can reject the
 // INSERT after another process created one.
-func (c *Openings) activeRunConflict(ctx context.Context, sessionID string) (error, error) {
+func (c *Openings) activeRunConflict(ctx context.Context, sessionID string) (*ActiveRunConflictError, error) {
 	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
 	if err != nil || !found {
 		return nil, err

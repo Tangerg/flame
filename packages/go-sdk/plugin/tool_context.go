@@ -43,9 +43,9 @@ func ToolContextFromContext(ctx context.Context) (ToolContext, error) {
 
 type toolContextKey struct{}
 
-// ToolContextFromMetadata admits the closed workspace projection at the MCP
+// toolContextFromMetadata admits the closed workspace projection at the MCP
 // boundary. Other request metadata cannot become workspace or callback authority.
-func ToolContextFromMetadata(metadata sdk.Meta) (ToolContext, error) {
+func toolContextFromMetadata(metadata sdk.Meta) (ToolContext, error) {
 	encoded := metadata[ToolContextMetadataKey]
 	var captured ToolContext
 	if err := json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true)); err != nil {

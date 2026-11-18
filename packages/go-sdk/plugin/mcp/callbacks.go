@@ -118,11 +118,13 @@ type CallbackLimits struct {
 	MaxResponseBytes int64
 }
 
-type CallbacksLimits struct {
-	MaxSessions        int
-	MaxCalls           int
-	MaxPendingRequests int
-}
+// One Host's callback endpoint admits at most these sessions, live calls and
+// queued requests; beyond them a callback is refused rather than queued.
+const (
+	maxCallbackSessions        = 256
+	maxCallbackCalls           = 4096
+	maxPendingCallbackRequests = 4096
+)
 
 type callbackActivation struct {
 	credential string
@@ -173,7 +175,6 @@ func (r *callbackRetirement) detach() {
 // code. No owner lock is held while a handler performs I/O or a nested call.
 type Callbacks struct {
 	mu          sync.Mutex
-	limits      CallbacksLimits
 	pending     int
 	activations map[*sdk.ClientSession]*callbackActivation
 	credentials map[string]*callbackActivation
@@ -190,18 +191,7 @@ type Callbacks struct {
 }
 
 func NewCallbacks() *Callbacks {
-	callbacks, err := NewCallbacksWithLimits(CallbacksLimits{MaxSessions: 256, MaxCalls: 4096, MaxPendingRequests: 4096})
-	if err != nil {
-		panic(err)
-	}
-	return callbacks
-}
-
-func NewCallbacksWithLimits(limits CallbacksLimits) (*Callbacks, error) {
-	if limits.MaxSessions < 1 || limits.MaxCalls < 1 || limits.MaxPendingRequests < 1 {
-		return nil, errors.New("plugin: callback capacities must be positive")
-	}
-	return &Callbacks{limits: limits, activations: make(map[*sdk.ClientSession]*callbackActivation), credentials: make(map[string]*callbackActivation), done: make(chan struct{}), rpcReady: make(chan struct{})}, nil
+	return &Callbacks{activations: make(map[*sdk.ClientSession]*callbackActivation), credentials: make(map[string]*callbackActivation), done: make(chan struct{}), rpcReady: make(chan struct{})}
 }
 
 func (c *Callbacks) AdmitSession(session *sdk.ClientSession) error {
@@ -219,7 +209,7 @@ func (c *Callbacks) AdmitSession(session *sdk.ClientSession) error {
 		}
 		return nil
 	}
-	if len(c.activations) >= c.limits.MaxSessions {
+	if len(c.activations) >= maxCallbackSessions {
 		return ErrCallbackCapacity
 	}
 	activation := &callbackActivation{credential: callbackToken(), calls: make(map[string]*callbackCall), done: make(chan struct{})}
@@ -409,7 +399,7 @@ func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits
 	for _, admitted := range c.activations {
 		count += len(admitted.calls)
 	}
-	if count >= c.limits.MaxCalls {
+	if count >= maxCallbackCalls {
 		c.mu.Unlock()
 		return CallbackRef{}, nil, ErrCallbackCapacity
 	}
@@ -561,7 +551,7 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "callback call is no longer active", http.StatusGone)
 		return
 	}
-	if c.pending >= c.limits.MaxPendingRequests {
+	if c.pending >= maxPendingCallbackRequests {
 		c.mu.Unlock()
 		http.Error(w, "callback request capacity exceeded", http.StatusTooManyRequests)
 		return

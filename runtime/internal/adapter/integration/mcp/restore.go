@@ -17,6 +17,9 @@ import (
 // tools. The returned release belongs to the restored Run manifest; none of
 // these sessions are published as today's catalog for new executions.
 func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activations []plugin.Activation, prepare ToolPreparation) (_ []toolcontract.Tool, _ func() error, err error) {
+	if prepare == nil {
+		return nil, nil, errors.New("mcp: restored tools require call preparation")
+	}
 	groups := make(map[mcpserver.ID]struct{})
 	var sources []mcpserver.ID
 	seen := make(map[domaintool.Ref]struct{}, len(refs))

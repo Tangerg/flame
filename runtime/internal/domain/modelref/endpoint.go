@@ -288,7 +288,6 @@ func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
 type EndpointRecord struct {
 	Cost           accounting.Cost
 	Usage          *chat.Usage
-	SessionID      string
 	RunID          string
 	SegmentID      string
 	Invocation     EndpointInvocation
@@ -312,19 +311,11 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	if err := record.Invocation.Validate(); err != nil {
 		return zero, err
 	}
-	if record.Invocation.SessionID != "" && record.Invocation.SessionID != record.SessionID {
-		return zero, errors.New("models: endpoint session differs from its admission")
-	}
-	if record.SessionID != "" {
-		if err := identity.ValidateSession(record.SessionID); err != nil {
-			return zero, err
-		}
-	}
 	if (record.RunID == "") != (record.SegmentID == "") {
 		return zero, errors.New("models: endpoint execution association is incomplete")
 	}
 	if record.RunID != "" {
-		if record.SessionID == "" {
+		if record.Invocation.SessionID == "" {
 			return zero, errors.New("models: endpoint run has no session")
 		}
 		if err := identity.ValidateRun(record.RunID); err != nil {
