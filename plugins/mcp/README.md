@@ -18,6 +18,10 @@ the accepted prefix and original in-flight command; they never restart that
 prefix after an unknown result. Accepted writes refresh read projections without
 making a failed read appear to undo a successful command.
 
+Escape inside Add or Edit follows the inline Cancel action, retains the source
+draft, and returns focus to the corresponding opener. A nested confirmation
+handles Escape in its own dialog.
+
 Tool visibility and auto-approve writes own one command and feedback key per exact
 server, separate from that server's configuration editor, while still locking the
 same server resource, including its in-flight connection test. Their progress,

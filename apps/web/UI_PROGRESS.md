@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -18699,6 +18699,47 @@ exact qualification root. No native process or private endpoint listener remains
 Both existing UI caches and the protected 123-byte draft remain byte-exact.
 Preserved in-thread evidence: **180 text records / 51 capture hashes**; gzip SHA-256
 `f81a5197e52ecb0b67a2780d1c5bd939d9cdea89c21903dca024ff0277341bb0`.
+
+### Escape scope in the MCP editor (2026-11-19)
+
+At `6441c09c7`, Wails shows two Escape outcomes in the same HTTP editor.
+From Description, Escape leaves the editor and input focus in place. From
+the selected Streamable HTTP radio, the workspace shortcut closes Settings.
+The inline form has a Cancel action and no local Escape handler.
+
+`ServerForm` now handles Escape on its own `RecordForm` through the existing
+Cancel callback. It leaves already handled keys and IME composition to
+their owners. The actual DOM target must be inside the form, so the
+portaled Delete confirmation retains its own keyboard dismissal. The
+same explicit opener receives focus, and the component source keeps the
+draft. Better Accessibility and the existing inline Memory editor inform
+the local scope. [WAI-ARIA modal focus and dismissal](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+
+- Wails v3.1.0, EN/light/14 px/Flame Orange/full motion at Actual Size.
+  Settings search `mcp` survives Escape from Description. Focus returns
+  to Edit for the same recorded server. Return reopens the form with
+  `retained settings note`. Escape in the nested confirmation first
+  closes the dialog and restores Delete. Escape from that control
+  closes the editor and restores Edit. An additional Escape from the
+  tooltipped Edit leaves Settings open in this run. The Chinese Add
+  route provides the workspace-close witness.
+- Wails v3.1.0, ZH/dark/18 px/`#3B82F6`/motion off at Actual Size in
+  the native left-tiled window. A conversation draft survives Cmd+comma
+  and the Add server form. Escape from the selected stdio control returns
+  to Add. Reopening retains `retained-local-name` and focuses the name.
+  Escape exits the form and a second Escape exits Settings. Cmd+L and
+  paste continue the original caret as `设置前草稿继续尾段`.
+
+Scoped formatting, plugin and Web typechecks, 20 eight-locale plugin
+catalogs, `make check-native`, canonical Lab build and both signed bundles
+pass. The 87 Web contract tests and bootstrap, plugin resource, bundle
+and module checks pass. The concurrent Runtime acknowledgement update
+`108ed3675` was present before the final Lab assets and native executables
+were built. Normal publishing regenerates the tracked MCP component. Both native profiles use recorded servers and unsent local
+drafts. The confirmation is dismissed through Escape. Live MCP execution,
+command settlement, physical IME and VoiceOver remain outside the scope.
+Private apps, processes, previews, registrations, profiles, logs, caches
+and checkout build outputs are removed.
 
 ### Literal MCP command-error reading (2026-11-12)
 

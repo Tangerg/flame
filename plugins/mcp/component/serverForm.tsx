@@ -12,6 +12,7 @@ import {
   FormField,
   FormGroup,
   FormRow,
+  isImeKey,
   ModalDialog,
   RecordForm,
   Segmented,
@@ -119,7 +120,22 @@ export function ServerForm({
       close(onDone);
   };
   return (
-    <RecordForm ref={form}>
+    <RecordForm
+      ref={form}
+      onKeyDown={(event) => {
+        // Keyboard events from the Delete portal also bubble through this React handler.
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent) ||
+          !event.currentTarget.contains(event.target as Node)
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        close(onCancel);
+      }}
+    >
       <FormRow>
         <FormField label={t("mcp.form.name.aria")}>
           <TextField
