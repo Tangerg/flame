@@ -126,10 +126,21 @@ export function createComposer(
         },
       };
     },
-    replaceDraft: (input) => {
-      useComposerStore.getState().replaceDraft(input);
-      presentDraft();
-      presentFocus(() => focus());
+    replaceDraft: (input, requestConfirmation) => {
+      const state = useComposerStore.getState();
+      const { draft } = state.composer;
+      const replace = state.captureDraftReplacement();
+      const apply = () => {
+        if (!replace(input)) return false;
+        presentDraft();
+        presentFocus(() => focus());
+        return true;
+      };
+      if (draft.imageAttachments.length > 0 || draft.pastes.length > 0) {
+        requestConfirmation(apply);
+      } else {
+        apply();
+      }
     },
     beginDraftReplacement: () => {
       const replace = useComposerStore.getState().captureDraftReplacement();

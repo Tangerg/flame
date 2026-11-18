@@ -10,11 +10,11 @@ import { Icon } from "@/ui/index";
 import { vocab } from "@flame/ui";
 import {
   editAndRerunMessage,
-  editMessageInComposer,
   forkFromMessage,
   regenerateMessage,
   restoreCheckpoint,
 } from "@/features/chat/message-actions/public/messageActions";
+import { useEditCurrentMessage } from "@/features/chat/public/messageContext";
 import { messageCopyPayloads } from "@/features/chat/message-actions/public/copyPayloads";
 import { messageContextMenuModel } from "@/features/chat/message-actions/public/contextMenu";
 import { writeToClipboard } from "@/lib/clipboard";
@@ -35,6 +35,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
   const agentAccess = useAgent();
   const composerAccess = useComposer();
   const runtimeAccess = useRuntime();
+  const editInComposer = useEditCurrentMessage();
 
   const t = useT();
   const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
@@ -90,7 +91,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="edit"
                 onSelect={() => {
-                  selection.current = { edit: () => editMessageInComposer(composerAccess, msg) };
+                  selection.current = { edit: editInComposer };
                 }}
               >
                 {t("msgActions.editInComposer")}

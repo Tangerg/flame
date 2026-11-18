@@ -208,6 +208,11 @@ export const en: Record<string, string> = {
   "msgActions.copiedPlain": "Copied as plain text",
   "msgActions.edit": "Edit message",
   "msgActions.editInComposer": "Edit in composer",
+  "msgActions.replaceDraft.title": "Replace current draft?",
+  "msgActions.replaceDraft.body":
+    "This will replace the draft and its attachments with the selected message.",
+  "msgActions.replaceDraft.confirm": "Replace draft",
+  "msgActions.replaceDraft.changed": "Your draft changed. Open the message again to replace it.",
   "msgActions.editRerun": "Edit & rerun from here",
   "msgActions.editRerunRestore": "Edit & rerun, restore files",
   "msgActions.fork": "Fork up to here",

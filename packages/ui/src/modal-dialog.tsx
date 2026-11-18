@@ -86,6 +86,7 @@ const styles = stylex.create({
 export function ModalDialog({
   open,
   onOpenChange,
+  onOpenChangeComplete,
   title,
   description,
   closeLabel,
@@ -106,6 +107,7 @@ export function ModalDialog({
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
+  onOpenChangeComplete?: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
   closeLabel?: string;
@@ -133,6 +135,7 @@ export function ModalDialog({
   return (
     <Dialog.Root
       open={open}
+      onOpenChangeComplete={onOpenChangeComplete}
       onOpenChange={(next, details) => {
         // Base UI checks only isComposing; WebKit reports some IME keys solely
         // as keyCode 229. Canceling leaves the composition's own Escape intact.

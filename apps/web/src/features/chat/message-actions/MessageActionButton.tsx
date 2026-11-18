@@ -1,10 +1,11 @@
 import { iconGlyph, type IconName } from "@/ui/icons/index";
 import { IconButton, type ButtonTone } from "@flame/ui";
+import { type MouseEventHandler } from "react";
 interface MessageActionButtonProps {
   icon: IconName;
   role: string;
   title?: string;
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   tone?: ButtonTone;
   className?: string;
   "aria-label": string;

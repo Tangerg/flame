@@ -10,6 +10,7 @@ import { type RestoreType } from "@/features/agent/public/session";
 import {
   beginComposerDraftReplacement,
   replaceComposerDraft,
+  type RequestDraftReplacementConfirmation,
 } from "@/features/composer/public/draft";
 import {
   messageDraftContent,
@@ -22,10 +23,6 @@ import {
   canRegenerateMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
 export type { RestoreType };
-
-function prefillComposer(composerAccess: ComposerAccess, msg: Message): void {
-  replaceComposerDraft(composerAccess, messageDraftContent(msg));
-}
 
 function reportRollbackError(notifications: NotificationFeed, err: unknown): void {
   const copy = describeRpcError(err);
@@ -60,9 +57,13 @@ export function regenerateMessage(
     .catch((error) => reportRollbackError(notifications, error));
 }
 
-export function editMessageInComposer(composerAccess: ComposerAccess, msg: Message): void {
+export function editMessageInComposer(
+  composerAccess: ComposerAccess,
+  msg: Message,
+  requestConfirmation: RequestDraftReplacementConfirmation,
+): void {
   if (!messageHasDraftContent(msg)) return;
-  prefillComposer(composerAccess, msg);
+  replaceComposerDraft(composerAccess, messageDraftContent(msg), requestConfirmation);
 }
 
 export function editAndRerunMessage(

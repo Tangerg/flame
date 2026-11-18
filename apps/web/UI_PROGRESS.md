@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -22379,6 +22379,65 @@ Verification and limits:
   preexisting shared UI cache, dependencies, reference trees, user data and
   primary checkout are preserved. The private fixture, logs, receipts, agent
   scratch directory and publication clone belong to final guarded cleanup.
+
+### Draft attachments when editing past messages (2026-11-19)
+
+Actual Wails on `b11e32cca` reproduced lost draft material through the
+historical message's Edit button and its `Edit in composer` context-menu
+action. Both replaced `sparedrafttail` and a 15-line pasted attachment with
+the historical prompt. Cmd+Z recovered `sparedrafttail`. The paste chip
+remained absent. The editor owns text undo and the Composer draft owns the
+attachment records.
+
+Both edit entries use the source message's shared confirmation. Composer
+requests confirmation when its current draft holds pasted text or an image
+selection. The existing captured draft, Session and storage check guards the
+approved operation. Cancel returns to the originating message control and
+preserves the draft. Text-only drafts continue through the immediate path.
+
+The first candidate replaced the draft successfully during dialog close and
+left focus at the message's Copy button. The accepted path uses the shared
+dialog's close-completion callback, suppresses its source focus return for the
+confirmed action, and presents Composer once React removes the modal. The
+workspace remains the owner of revealing a hidden Composer after full-width
+inspection.
+
+Read-only ZCode's `ConversationComposer.tsx` captures draft content and
+attachments at its workspace scope boundary. Better-accessibility informs the
+least destructive initial focus and the source return. Base UI documents the
+transition-completion event and its focus contract.
+[Base UI Dialog](https://base-ui.com/react/components/dialog)
+
+- EN/light/14 px/Flame Orange at default zoom. From a draft with its actual
+  paste chip, keyboard Edit opens the dialog on Cancel. Escape returns to Edit,
+  the chip remains readable from line 1 through line 15, and Cmd+L resumes the
+  original caret to produce `sparedraftqxtail`. Pointer context-menu
+  cancellation returns to that message. Confirming from the same menu opens the
+  historical prompt in the focused Composer. With a text-only draft, Edit
+  presents the prompt immediately.
+- ZH/dark/18 px/`#3B82F6` with motion off and native left tiling at default
+  zoom. Divider End yields a 320 px Dock (AX 71.454% on the Conversation
+  side). In completed child 3 of 4 at full width, Escape returns to the exact
+  child Edit button. Cmd+L reveals the retained paste and resumes its draft at
+  `当前草稿保留继续尾段`. Reopening full width and confirming by keyboard loads
+  the complete child prompt in the focused main Composer and restores the
+  320 px Dock with that child still selected.
+- A separate English full-motion replay opens the context menu by pointer,
+  confirms by keyboard and reaches the same Composer after the animation.
+
+Scoped Prettier, shared UI build and offline package smoke, Web typecheck,
+eight locale catalogs, `make check-native`, the five-document Lab build,
+strict native signatures, 89 Web contracts, bootstrap, installed resources and
+module linkage pass. The production bundle gate passes all 26 metadata tests.
+The Wails runs cover the recorded conversation and real pasted-text intake.
+Pending image reads during confirmation, live Runtime rollback, OS IME,
+VoiceOver and whole-workspace visual acceptance remain unqualified. Browser
+suites and performance benchmarks were outside this review.
+
+Five owned native launches exited and three preview sessions stopped. Both app
+registrations, four private Library paths, ten checkout output roots and the
+private QA directory were removed. Continue with the separate history-rerun
+entry using actual isolated evidence.
 
 ### Selection quote placement, keyboard access and dismissal
 

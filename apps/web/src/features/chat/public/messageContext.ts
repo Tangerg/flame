@@ -3,6 +3,7 @@ import { createContext, use } from "react";
 export interface MessageContextValue {
   sessionId: string;
   message: Message;
+  editInComposer(origin?: HTMLElement): void;
 }
 
 export const MessageContext = createContext<MessageContextValue | null>(null);
@@ -17,4 +18,10 @@ export function useCurrentMessageSessionId(): string {
   const ctx = use(MessageContext);
   if (!ctx) throw new Error("useCurrentMessageSessionId() must be called inside a MessageBlock");
   return ctx.sessionId;
+}
+
+export function useEditCurrentMessage() {
+  const ctx = use(MessageContext);
+  if (!ctx) throw new Error("useEditCurrentMessage() must be called inside a MessageBlock");
+  return ctx.editInComposer;
 }

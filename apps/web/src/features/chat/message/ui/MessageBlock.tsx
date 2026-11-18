@@ -2,13 +2,25 @@ import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence } from "motion/react";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
-import { memo, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Slot } from "@/extensions/host/Slot";
 import { MessageContext } from "@/features/chat/public/messageContext";
 import {
+  editMessageInComposer,
   messageActionsVisibility,
   type MessageActionsVisibility,
 } from "@/features/chat/message-actions/public/messageActions";
+import { useComposer } from "@/features/composer/public/composer";
+import { useNotifications } from "@/features/notifications/public/notifier";
 import { messageActionMaterialization } from "@/features/chat/message/application/messageBlockModel";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n/index";
@@ -20,12 +32,19 @@ import {
   MessageVisibleMaterialProvider,
   useVisibleActionMaterialization,
 } from "@/features/chat/message/ui/messageVisibleMaterial";
-import { reveal } from "@/ui/index";
+import { ConfirmDialog, reveal, useContentVisible } from "@/ui/index";
 import { Badge, quoteSourceProps } from "@flame/ui";
 import { corner, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles } from "@/features/chat/message/ui/messageStyles";
 import { UserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
 import { SteerInputStatus } from "@/features/chat/message/ui/SteerInputStatus";
+
+interface DraftReplacement {
+  status: "confirming" | "dismissed" | "confirmed" | "ready";
+  origin: HTMLElement | null;
+  replace: () => boolean;
+}
+
 function MessageBlockInner({
   row,
   ctx,
@@ -46,7 +65,35 @@ function MessageBlockInner({
   const msg = row.message;
   const isUser = msg.role === "user";
   const t = useT();
-  const messageContext = useMemo(() => ({ sessionId, message: msg }), [sessionId, msg]);
+  const composer = useComposer();
+  const { messages } = useNotifications();
+  const visible = useContentVisible();
+  const columnRef = useRef<HTMLDivElement>(null);
+  const [draftReplacement, setDraftReplacement] = useState<DraftReplacement | null>(null);
+  useLayoutEffect(() => {
+    if (draftReplacement?.status !== "ready") return;
+    // The closing dialog and its focus manager must be gone before presenting Composer.
+    setDraftReplacement(null);
+    if (draftReplacement.replace()) return;
+    const origin = draftReplacement.origin?.isConnected
+      ? draftReplacement.origin
+      : columnRef.current;
+    if (visible && origin && origin.ownerDocument.activeElement === origin.ownerDocument.body)
+      origin.focus({ preventScroll: true });
+    messages.notify("info", t("msgActions.replaceDraft.changed"), { source: "composer" });
+  }, [draftReplacement, messages, t, visible]);
+  const editInComposer = useCallback(
+    (origin?: HTMLElement) => {
+      editMessageInComposer(composer, msg, (replace) => {
+        setDraftReplacement({ status: "confirming", origin: origin ?? columnRef.current, replace });
+      });
+    },
+    [composer, msg],
+  );
+  const messageContext = useMemo(
+    () => ({ sessionId, message: msg, editInComposer }),
+    [sessionId, msg, editInComposer],
+  );
 
   const visibleMaterialOwner = useMemo(
     () => new MessageVisibleMaterialOwner(sessionId, msg.id),
@@ -69,7 +116,6 @@ function MessageBlockInner({
           isLast,
         });
 
-  const columnRef = useRef<HTMLDivElement | null>(null);
   const heldFocus = useRef(false);
   const lastFocused = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -175,6 +221,37 @@ function MessageBlockInner({
           </MessageContextMenu>
         )}
         {actionMaterialization === "settled" && terminalFooter}
+        {draftReplacement && draftReplacement.status !== "ready" && (
+          <ConfirmDialog
+            open={visible && draftReplacement.status === "confirming"}
+            onOpenChange={(open) => {
+              if (!open && draftReplacement.status === "confirming")
+                setDraftReplacement({ ...draftReplacement, status: "dismissed" });
+            }}
+            onOpenChangeComplete={(open) => {
+              if (open) return;
+              setDraftReplacement(
+                draftReplacement.status === "confirmed"
+                  ? { ...draftReplacement, status: "ready" }
+                  : null,
+              );
+            }}
+            title={t("msgActions.replaceDraft.title")}
+            body={t("msgActions.replaceDraft.body")}
+            confirmLabel={t("msgActions.replaceDraft.confirm")}
+            cancelLabel={t("common.cancel")}
+            destructive
+            finalFocus={
+              draftReplacement.status === "confirmed"
+                ? false
+                : () =>
+                    draftReplacement.origin?.isConnected
+                      ? draftReplacement.origin
+                      : (columnRef.current ?? false)
+            }
+            onConfirm={() => setDraftReplacement({ ...draftReplacement, status: "confirmed" })}
+          />
+        )}
       </MessageVisibleMaterialProvider>
     </MessageContext.Provider>
   );

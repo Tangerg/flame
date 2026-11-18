@@ -18,6 +18,7 @@ export interface ComposerSubmission {
 }
 
 export type ComposerDraftReplacement = (input: ComposerDraftInput) => boolean;
+export type RequestDraftReplacementConfirmation = (replace: () => boolean) => void;
 
 export type ComposerPersistenceState =
   | { status: "saved" }
@@ -56,7 +57,10 @@ export interface ComposerStatePort {
   retryPersistence(): void;
   getRecoveryDrafts(): string;
   captureSubmission(): ComposerSubmission;
-  replaceDraft(input: ComposerDraftInput): void;
+  replaceDraft(
+    input: ComposerDraftInput,
+    requestConfirmation: RequestDraftReplacementConfirmation,
+  ): void;
   beginDraftReplacement(): ComposerDraftReplacement;
   appendText(text: string): void;
   captureAppendText(): (text: string) => boolean;

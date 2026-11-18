@@ -346,6 +346,11 @@ Mod+Enter submits, and Mod+ArrowUp/Down explicitly recalls history.
 TanStack Hotkeys owns shortcut parsing, recording, matching and display. Commands
 run in the bubble phase and respect defaultPrevented and editable ownership.
 
+Opening a past message for editing asks before replacing a draft with images
+or pasted-text attachments. Cancel returns to the message and preserves the
+draft. Confirmation applies to the captured draft, Session and storage scope.
+The resolved result reaches the existing Composer only after the dialog closes.
+
 File suggestions show the filename above its complete wrapping parent directory
 before insertion. Literal path text keeps directory then filename in DOM order,
 with the exact path in the accessible name, hover title and accepted reference.

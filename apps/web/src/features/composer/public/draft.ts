@@ -1,7 +1,9 @@
 import { useComposer, type ComposerAccess } from "@/features/composer/public/composer";
 
 import { type ComposerDraftInput } from "@/features/composer/domain/draft";
+import { type RequestDraftReplacementConfirmation } from "@/features/composer/application/state";
 export type { ComposerDraftInput } from "@/features/composer/domain/draft";
+export type { RequestDraftReplacementConfirmation };
 
 export function useComposerText(): string {
   const composerAccess = useComposer();
@@ -24,8 +26,9 @@ export function captureComposerSubmission(composerAccess: ComposerAccess) {
 export function replaceComposerDraft(
   composerAccess: ComposerAccess,
   input: ComposerDraftInput,
+  requestConfirmation: RequestDraftReplacementConfirmation,
 ): void {
-  composerAccess.replaceDraft(input);
+  composerAccess.replaceDraft(input, requestConfirmation);
 }
 
 export function beginComposerDraftReplacement(composerAccess: ComposerAccess) {
