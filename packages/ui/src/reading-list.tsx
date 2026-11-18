@@ -89,6 +89,7 @@ export function ReadingList<T>({
   ref,
   style,
   renderAll = false,
+  maintainScrollAtEndThreshold,
   initialEndLayoutReady,
   onFollowChange,
 }: {
@@ -103,6 +104,7 @@ export function ReadingList<T>({
   ref?: Ref<ReadingListHandle>;
   style?: CSSProperties;
   renderAll?: boolean;
+  maintainScrollAtEndThreshold?: number;
   initialEndLayoutReady?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
 }) {
@@ -394,6 +396,7 @@ export function ReadingList<T>({
         recycleItems={false}
         maintainVisibleContentPosition
         maintainScrollAtEnd={{ animated: false }}
+        maintainScrollAtEndThreshold={maintainScrollAtEndThreshold}
         onReady={waitingForInitialEnd ? onInitialEndReady : undefined}
         onLayout={
           waitingForInitialEnd && initialEndLayoutReady

@@ -39032,6 +39032,68 @@ inside the 384 px output viewport's 38.4 px end threshold and returns to
 the tail during measurement. The next batch will check that output
 policy against the captured reader's manual-position contract.
 
+### Short wheel movements in recorded output (2026-11-19)
+
+Signed Wails on `fdbdc8a31` reproduces the first wheel rebound even after
+initial placement settles. A real 36 px movement in the 384 px viewport
+puts the 50,000-line output at offset 7994260 px. Legend stops following,
+then re-arms it at the same offset inside its 38.4 px threshold.
+Measuring the two newly visible rows lowers the extent by 280 px.
+Following returns the focused viewport to its new maximum of 7994016 px.
+
+`RecordedOutput` opts into Legend's physical end tolerance through
+`ReadingList`'s optional `maintainScrollAtEndThreshold`. Zero keeps
+Legend's one-pixel tolerance for fractional geometry. Legend owns the
+visible position during measurement and end following. The conversation
+and reasoning readers use the library's viewport-relative default.
+[Legend end-following API](https://legendapp.com/open-source/list/v3/api/#maintainscrollatendthreshold)
+
+Read-only ZCode `ToolCallBlocks/renderers/ExecuteOutput.tsx` suspends
+following when a running log is read upward. The actual ChatGPT webview
+`chatgpt-code-block-4e29dd64664a.js` ties its follow controls and input
+handlers to streaming code. These support choosing the follow policy at
+Flame's captured output boundary. The existing caption and local Jump
+continue to identify the named output viewport.
+
+- EN/light/Flame Orange with motion off in the 1440 × 900 window. The
+  same 36 px wheel input keeps a 36 px gap, even after 280 px of row
+  measurement, at offset 7993980 px. Pointer Jump reaches offset
+  7994016 px and focuses the output. A separate 20 px wheel movement
+  keeps its gap. Scrolling down 20 px resumes following at the edge.
+  Collapse focuses the same expansion control. After re-expansion,
+  first Up keeps its 40 px gap through two measurements and Down
+  reaches the tail. The Composer continues as `shortwheelqxtail`.
+- ZH/dark/18 px/custom blue with full motion in the native 1121 × 950
+  left tile. A 20 px wheel gap remains at offset 7995141 px after 270 px
+  of measured row changes. Find reaches the unique line 31415 and
+  Escape returns to the reader. Page Up starts its range at line 31389.
+  Reverse Tab and Enter on Jump reach the physical tail with
+  output focus. Tab reaches Arguments and reverse Tab returns to the
+  reader. Collapse focuses the expansion control and the Composer
+  continues as `短滚轮阅读草稿继续尾段`.
+- The standard Lab build keeps the local Jump visible after the short
+  wheel input. Activating it returns focus to the reader and the
+  Composer continues as `cleanwheelqxtail`. In the main transcript,
+  pointer Jump, Up and Down return to checkpoint 40. Cmd+L and paste
+  replace the original backwards selection to yield `mainstabletail`.
+
+The installed Tool results resource adds only the threshold property.
+Scoped formatting, Icons, the packed UI consumer, plugin typecheck and
+locales, the complete Web check, `make check-native` and the five-entry
+Lab gate pass. The first Web attempt reports a missing locked Node
+archive. The repository's runtime preparation stages and verifies that
+archive. With `TMPDIR=/tmp`, the rerun passes all 137 Web tests,
+including the isolated Runtime integration project. The Web check also
+passes 937 locale keys in eight catalogs, bootstrap, installed resource
+reproduction, all 26 bundle checks and module linking.
+
+Four private bundles pass strict signature verification. Five launches
+and three loopback previews exit. The Web test runner retires its
+temporary Runtime roots. Cleanup removes four registrations, eight
+private Library directories, ten checkout outputs and the scratch tree.
+The native task paths use captured data. VoiceOver and Tool execution
+through the GUI remain open.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -260,6 +260,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             data={lineIndices}
             keyExtractor={String}
             label={t("output.region")}
+            maintainScrollAtEndThreshold={0}
             onFollowChange={(list, value) => {
               setAtEnd(value);
               const node = list.getScrollableNode();
