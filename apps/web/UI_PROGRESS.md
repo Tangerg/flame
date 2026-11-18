@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -8417,6 +8417,54 @@ resources and four read-only references remain preserved. The private root
 **Approve** for the inspected Plan state semantics and keyboard reading flow.
 The unverified scenarios above retain their boundaries. The batch stays local;
 the continuous whole-product UI goal remains active.
+
+### Goal conflict review inside the editor (2026-11-19)
+
+In signed Wails on `3a62243fa`, the real Goal editor sends a save and receives a
+captured Runtime `revision_conflict`. The draft stays in the textarea. The
+existing Session refresh already puts the new objective in the Goal row behind
+the modal, while the form asks the user to reload. Cancel is needed to read the
+complete refreshed objective out of the form. Better-writing and
+Better-accessibility guide feedback that gives the user the next action in the
+same editing context.
+[W3C Error Suggestion guidance](https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html)
+
+The command action delivers its original error along with the existing translated
+message. Goal editing recognizes `revision_conflict` and explains that the user
+can review the latest loaded objective before saving again. The shared text
+editor renders that objective in its feedback body as a bounded, named reading
+region. The Goal row's accepted Session projection supplies the text. The
+conflict context stays available while the user revises the existing draft.
+Saving or cancelling completes the same editor interaction and retires that
+context. Runtime keeps its command admission and projection repair.
+
+The real Goal command owner and SDK run in signed Wails over an isolated
+fixture transport. The fixture refuses the first update with
+`revision_conflict`, then the existing Session repair reads a different
+objective on the same paused Goal. English light, 14 px and Flame Orange at
+default zoom keep both the attempted draft and the complete refreshed objective
+visible. The context remains while the user revises the draft. Explicit Save
+accepts `Review the updated Linux and macOS evidence before posting results.`
+and returns focus to Edit goal. Reopening starts from that accepted text and
+the conversation continues at `goalconflictdraftqxtail`. The first save
+recheck had an invalid paused Goal receipt. Adding the required pause reason to
+the isolated fixture yields the passing acknowledgement without changing
+product validation.
+
+Chinese dark, 18 px, custom `#3B82F6` and full motion use a left-tiled window
+at default zoom. Shift+Tab and Enter open the editor. The full draft and error
+are visible when Tab enters the named reader. End reveals the last line after
+18 recorded checks, with both footer actions visible. Escape returns to Edit
+goal and the refreshed Goal remains in the tray. Composer continues at
+`目标冲突草稿继续尾段`.
+
+Web typecheck, Prettier, 936 keys across eight locales, bootstrap, 89 Web
+contracts, 26 bundle checks, exact component resources, production module
+linking, native staging, Lab builds and signature checks pass. Four app
+launches and three preview servers exit. Two private registrations, four
+Library paths, ten checkout output roots and the scratch tree are removed.
+The fixture covers conflict, projection repair, save and cancellation in the
+desktop UI. Live Runtime execution and provider decisions remain open.
 
 ### Goal save feedback and pending dismissal
 

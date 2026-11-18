@@ -263,6 +263,9 @@ export const en: Record<string, string> = {
   "goal.edit.label": "Goal",
   "goal.edit.save": "Save",
   "goal.edit.saving": "Saving…",
+  "goal.edit.conflict":
+    "The goal changed while you were saving. Review the latest loaded objective before saving again.",
+  "goal.edit.latestObjective": "Latest loaded objective",
   "goal.error.start": "Could not start the goal",
   "goal.error.attachmentsUnsupported": "Goal objectives cannot include attachments",
   "goal.error.pause": "Could not pause the goal",

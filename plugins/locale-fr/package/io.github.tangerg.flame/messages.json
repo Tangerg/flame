@@ -227,6 +227,8 @@
   "goal.edit.label": "Objectif",
   "goal.edit.save": "Enregistrer",
   "goal.edit.saving": "Enregistrement…",
+  "goal.edit.conflict": "L’objectif a changé pendant l’enregistrement. Vérifiez le dernier objectif chargé avant d’enregistrer à nouveau.",
+  "goal.edit.latestObjective": "Dernier objectif chargé",
   "goal.error.start": "Impossible de lancer l’objectif",
   "goal.error.attachmentsUnsupported": "Un objectif Goal ne peut pas inclure de pièces jointes",
   "goal.error.pause": "Impossible de mettre l’objectif en pause",

@@ -236,6 +236,8 @@
   "goal.edit.label": "目标",
   "goal.edit.save": "保存",
   "goal.edit.saving": "正在保存…",
+  "goal.edit.conflict": "保存期间目标发生了变化。请核对最近加载的目标，再保存。",
+  "goal.edit.latestObjective": "最近加载的目标",
   "goal.error.start": "无法开启目标模式",
   "goal.error.attachmentsUnsupported": "Goal 目标暂不支持附件",
   "goal.error.pause": "无法暂停目标",

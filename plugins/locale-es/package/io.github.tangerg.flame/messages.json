@@ -227,6 +227,8 @@
   "goal.edit.label": "Objetivo",
   "goal.edit.save": "Guardar",
   "goal.edit.saving": "Guardando…",
+  "goal.edit.conflict": "El objetivo cambió mientras guardabas. Revisa el último objetivo cargado antes de volver a guardar.",
+  "goal.edit.latestObjective": "Último objetivo cargado",
   "goal.error.start": "No se pudo iniciar el objetivo",
   "goal.error.attachmentsUnsupported": "Los objetivos de Goal no admiten archivos adjuntos",
   "goal.error.pause": "No se pudo pausar el objetivo",

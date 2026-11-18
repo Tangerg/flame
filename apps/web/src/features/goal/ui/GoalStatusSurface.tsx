@@ -1,4 +1,5 @@
 import { useNotifications } from "@/features/notifications/public/notifier";
+import { isErrorType } from "@flame/runtime-client";
 import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import { useRuntime } from "@/features/connection/public/runtime";
 import { tupleKey } from "@/lib/tupleKey";
@@ -8,7 +9,15 @@ import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
 import { Icon } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
-import { Button, Disclosure, IconButton, ModalDialog, ScrollRegion, vocab } from "@flame/ui";
+import {
+  Button,
+  Disclosure,
+  IconButton,
+  Metadata,
+  ModalDialog,
+  ScrollRegion,
+  vocab,
+} from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
 import { color, leading, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
@@ -98,6 +107,7 @@ const gs = stylex.create({
     overflowWrap: "anywhere",
     lineHeight: leading.body,
   },
+  conflictReader: { maxHeight: "20dvh" },
 });
 
 export function GoalStatusSurface() {
@@ -131,6 +141,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
   const readerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState(goal.objective);
   const [editorError, setEditorError] = useState<string>();
+  const [hasRevisionConflict, setHasRevisionConflict] = useState(false);
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const active = goalIsActive(goal);
   const canChangeStatus = goalCanChangeStatus(goal);
@@ -149,7 +160,10 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
   const editAction = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("goal.error.update"),
-    onError: setEditorError,
+    onError: (message, error) => {
+      if (isErrorType(error, "revision_conflict")) setHasRevisionConflict(true);
+      else setEditorError(message);
+    },
   });
   const busy = clearAction.busy || statusAction.busy || editAction.busy;
   const createdAt = goalCreatedAtMillis(goal.createdAt);
@@ -170,6 +184,14 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     clearAction.run(() => clearGoal(goal.sessionId));
   };
 
+  const changeEditorOpen = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditorError(undefined);
+      setHasRevisionConflict(false);
+    }
+  };
+
   const save = () => {
     if (!canSave) return;
     if (!runtimeCommandsAvailable(runtimeAccess)) {
@@ -179,7 +201,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     setEditorError(undefined);
     editAction.run(async () => {
       await updateGoal({ sessionId: goal.sessionId, objective: nextObjective });
-      setDialogOpen(false);
+      changeEditorOpen(false);
     });
   };
 
@@ -193,6 +215,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     setDraft(value);
     setEditorError(undefined);
   };
+  const latestObjectiveLabel = t("goal.edit.latestObjective");
 
   const summary = (
     <>
@@ -282,7 +305,7 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
       </ModalDialog>
       <TextEditorDialog
         open={dialogOpen && canEdit}
-        onOpenChange={setDialogOpen}
+        onOpenChange={changeEditorOpen}
         icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}
@@ -293,7 +316,21 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
         saveLabel={t("goal.edit.save")}
         savingLabel={t("goal.edit.saving")}
         busy={editAction.busy}
-        error={editorError}
+        error={editorError ?? (hasRevisionConflict ? t("goal.edit.conflict") : undefined)}
+        feedbackBody={
+          hasRevisionConflict && (
+            <div>
+              <Metadata>{latestObjectiveLabel}</Metadata>
+              <ScrollRegion
+                label={latestObjectiveLabel}
+                styles={[gs.objectiveReader, gs.conflictReader]}
+                data-focus-inset=""
+              >
+                {goal.objective}
+              </ScrollRegion>
+            </div>
+          )
+        }
         saveDisabled={!canSave || controlsDisabled}
         onSave={save}
       />

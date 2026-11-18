@@ -383,6 +383,11 @@ saving, Close, Escape and outside dismissal share the same unavailable contract
 as Cancel and Save. Settlement restores dismissal; draft, error, command and
 return-focus ownership remain with their existing callers and shared controls.
 
+After a Goal save conflicts with a Runtime change, the editor leaves the
+draft editable and shows the latest loaded objective beside the feedback.
+The existing Session projection supplies that objective when the user decides
+whether to revise the draft, save again or cancel.
+
 Installed component recovery keeps Reload window focusable while its original
 cleanup gate is pending. The shared pending button blocks repeat activation;
 refused cleanup retains the recovery action and diagnostics without reclaiming

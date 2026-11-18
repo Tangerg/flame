@@ -32,6 +32,7 @@ interface TextEditorDialogProps extends Pick<
   savingLabel: string;
   busy?: boolean;
   error?: string;
+  feedbackBody?: ReactNode;
   invalid?: boolean;
   saveDisabled?: boolean;
   onSave: () => void;
@@ -55,6 +56,7 @@ export function TextEditorDialog({
   savingLabel,
   busy = false,
   error,
+  feedbackBody,
   invalid = false,
   saveDisabled = false,
   onSave,
@@ -137,6 +139,7 @@ export function TextEditorDialog({
           {error}
         </SystemMessage>
       )}
+      {feedbackBody}
     </ModalDialog>
   );
 }

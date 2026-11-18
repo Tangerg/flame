@@ -231,6 +231,8 @@
   "goal.edit.label": "目標",
   "goal.edit.save": "儲存",
   "goal.edit.saving": "正在儲存…",
+  "goal.edit.conflict": "儲存期間目標有變更。請核對最近載入的目標，再儲存。",
+  "goal.edit.latestObjective": "最近載入的目標",
   "goal.error.start": "無法開啟目標模式",
   "goal.error.attachmentsUnsupported": "Goal 目標暫不支援附件",
   "goal.error.pause": "無法暫停目標",

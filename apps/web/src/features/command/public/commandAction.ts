@@ -6,7 +6,7 @@ export interface CommandActionConfig {
   wasRetired?: (error: unknown) => boolean;
   fallback: string;
   source?: NotifySource;
-  onError?: (message: string) => void;
+  onError?: (message: string, error: unknown) => void;
 }
 
 export interface CommandAction {
@@ -33,7 +33,7 @@ export function useCommandAction({
         .catch((error: unknown) => {
           if (wasRetired?.(error)) return;
           const message = rpcErrorText(error) ?? fallback;
-          if (onError) onError(message);
+          if (onError) onError(message, error);
           else messages.notify("error", message, source ? { source } : undefined);
         })
         .finally(() => {

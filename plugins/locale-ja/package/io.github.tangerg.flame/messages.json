@@ -227,6 +227,8 @@
   "goal.edit.label": "ゴール",
   "goal.edit.save": "保存",
   "goal.edit.saving": "保存中…",
+  "goal.edit.conflict": "保存中にゴールが変更されました。もう一度保存する前に、最後に読み込まれたゴールを確認してください。",
+  "goal.edit.latestObjective": "最後に読み込まれたゴール",
   "goal.error.start": "目標を開始できませんでした",
   "goal.error.attachmentsUnsupported": "Goal の目標には添付ファイルを含められません",
   "goal.error.pause": "目標を一時停止できませんでした",

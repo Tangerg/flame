@@ -227,6 +227,8 @@
   "goal.edit.label": "Ziel",
   "goal.edit.save": "Speichern",
   "goal.edit.saving": "Wird gespeichert…",
+  "goal.edit.conflict": "Das Ziel hat sich beim Speichern geändert. Prüfe vor dem erneuten Speichern das zuletzt geladene Ziel.",
+  "goal.edit.latestObjective": "Zuletzt geladenes Ziel",
   "goal.error.start": "Das Ziel konnte nicht gestartet werden",
   "goal.error.attachmentsUnsupported": "Goal-Ziele können keine Anhänge enthalten",
   "goal.error.pause": "Das Ziel konnte nicht pausiert werden",
