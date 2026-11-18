@@ -35,11 +35,11 @@ func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	}
 	t.Cleanup(func() { _ = stores.Close() })
 	return assemblyConfig{
-		processRunner: testProcessRunner(t),
-		stores:        stores,
-		provider:      "anthropic", model: "claude-test",
-		approvalMode: approval.ModeSafe,
-		userHome:     t.TempDir(), defaultWorkspacePath: workspace,
+		processRunner:    testProcessRunner(t),
+		stores:           stores,
+		defaultSelection: testsupport.MustModelSelection("anthropic", "claude-test"),
+		approvalMode:     approval.ModeSafe,
+		userHome:         t.TempDir(), defaultWorkspacePath: workspace,
 		skillsUserDir:    t.TempDir(),
 		modelProviders:   testChatResolver(client),
 		buildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",

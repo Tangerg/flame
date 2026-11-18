@@ -20,6 +20,12 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
+// These names match the package declaration's export and its dependency id.
+const (
+	capabilityExport    = "reviews"
+	analyzersDependency = "analyzers"
+)
+
 func newServer(store *store) (*sdk.Server, error) {
 	if store == nil {
 		return nil, fmt.Errorf("reviews: store is required")
@@ -115,7 +121,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			return nil, err
 		}
 		for _, value := range values {
-			if value.Export != "reviews" || len(value.Requires) != 1 || value.Requires[0].ID != "analyzers" || !value.Requires[0].Optional {
+			if value.Export != capabilityExport || len(value.Requires) != 1 || value.Requires[0].ID != analyzersDependency || !value.Requires[0].Optional {
 				return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
 			}
 			actual, err := plugincontract.AdmitCapability(value.Requires[0].Contract)
@@ -161,7 +167,7 @@ func newServer(store *store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := backend.BindCapability("reviews", contracts.Capability); err != nil {
+	if err := backend.BindCapability(capabilityExport, contracts.Capability); err != nil {
 		return nil, err
 	}
 	if err := backend.Publish(); err != nil {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -156,7 +154,6 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg assemblyConfig,
-	defaultSelection modelchoice.Selection,
 	callbacks *pluginmcp.Callbacks,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
@@ -195,20 +192,19 @@ func buildExecutionComposition(
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
-		lifetime:         lifetime.context,
-		config:           cfg,
-		approvalPolicy:   policy.approvals,
-		mcp:              policy.mcp,
-		defaultSelection: defaultSelection,
-		callbacks:        callbacks,
-		workspaceScope:   workspaceServices.scope,
-		conversation:     conversation.store,
-		publish:          policy.invalidations.publish,
-		goalReader:       policy.goalReader,
-		goalStore:        policy.goals,
-		skillStore:       workspaceServices.skillStore,
-		workspace:        workspaceServices,
-		skillArchives:    workspaceServices.skillMaintenance,
+		lifetime:       lifetime.context,
+		config:         cfg,
+		approvalPolicy: policy.approvals,
+		mcp:            policy.mcp,
+		callbacks:      callbacks,
+		workspaceScope: workspaceServices.scope,
+		conversation:   conversation.store,
+		publish:        policy.invalidations.publish,
+		goalReader:     policy.goalReader,
+		goalStore:      policy.goals,
+		skillStore:     workspaceServices.skillStore,
+		workspace:      workspaceServices,
+		skillArchives:  workspaceServices.skillMaintenance,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
@@ -283,13 +279,8 @@ func buildExecutionComposition(
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
 	}
-	if cfg.toolResultOffloadEnabled {
-		toolResultThreshold := cfg.toolResultThreshold
-		interactionConfig.ToolResultStore = cfg.stores.ToolResults
-		interactionConfig.ToolResultOffload = executionadapter.ToolResultOffloadPolicyValues{
-			Threshold:  &toolResultThreshold,
-			ReaderName: string(builtincontract.ReadToolResult),
-		}
+	if threshold := cfg.toolResultOffloadThreshold; threshold != nil {
+		interactionConfig.ToolResultOffload = &executionadapter.ToolResultOffload{Store: cfg.stores.ToolResults, Threshold: *threshold}
 	}
 	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)
 	if err != nil {
@@ -314,15 +305,4 @@ func buildExecutionComposition(
 		executor:          interactionExecutor,
 		toolRegistry:      toolRegistry,
 	}, nil
-}
-
-func runtimeDefaultModelSelection(cfg assemblyConfig) (modelchoice.Selection, error) {
-	selection, err := modelchoice.New(cfg.provider, cfg.model)
-	if err == nil {
-		err = selection.ValidateExact()
-	}
-	if err != nil {
-		return modelchoice.Selection{}, fmt.Errorf("runtime: default model selection: %w", err)
-	}
-	return selection, nil
 }

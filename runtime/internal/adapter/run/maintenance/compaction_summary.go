@@ -73,7 +73,7 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string,
 			text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 				Operation:    "compaction",
 				SystemPrompt: compactionPrompt, UserPrompt: input,
-				MaxInputBytes: maxModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
+				Budget: modeladapter.AuxiliaryBudget{MaxInputBytes: maxModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens},
 			})
 			if err != nil {
 				return "", err

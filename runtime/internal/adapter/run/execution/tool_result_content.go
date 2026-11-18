@@ -15,8 +15,8 @@ import (
 // evictToolContent reduces model-facing text without changing the original
 // structured result, media, citations or opaque block metadata. One existing
 // text blob owns the omitted bytes; block previews name their exact byte range.
-func evictToolContent(ctx context.Context, store toolResultOffloader, policy toolResultOffloadPolicy, sessionID, toolName string, output toolcontract.Output) (toolcontract.Output, *transcript.ToolResultRef) {
-	if store == nil || !policy.enabled || sessionID == "" || toolName == policy.readerName {
+func evictToolContent(ctx context.Context, policy toolResultOffloadPolicy, sessionID, toolName string, output toolcontract.Output) (toolcontract.Output, *transcript.ToolResultRef) {
+	if !policy.evicts(sessionID, toolName) {
 		return output, nil
 	}
 	eligible := func(block content.Block) bool {
@@ -40,12 +40,12 @@ func evictToolContent(ctx context.Context, store toolResultOffloader, policy too
 		if !eligible(block) {
 			continue
 		}
-		preview := renderToolResultRangePreview(block.Text, reference.ID.String(), policy.readerName, body.Len(), previewBytes)
+		preview := renderToolResultRangePreview(block.Text, reference.ID.String(), body.Len(), previewBytes)
 		if len(preview) >= len(block.Text) {
 			continue
 		}
 		projected.Content[index].Text = preview
-		withReference, err := modeladapter.WithToolResultBlockReference(projected.Content[index], reference, policy.readerName, modeladapter.ToolResultRange{OffsetBytes: body.Len(), LengthBytes: len(block.Text)})
+		withReference, err := modeladapter.WithToolResultBlockReference(projected.Content[index], reference, modeladapter.ToolResultRange{OffsetBytes: body.Len(), LengthBytes: len(block.Text)})
 		if err != nil {
 			return output, nil
 		}
@@ -55,7 +55,7 @@ func evictToolContent(ctx context.Context, store toolResultOffloader, policy too
 	if body.Len() == 0 {
 		return output, nil
 	}
-	if err := store.Stage(ctx, transcript.ToolResultStage{ID: reference.ID, SessionID: sessionID, Body: body.String()}); err != nil {
+	if err := policy.store.Stage(ctx, transcript.ToolResultStage{ID: reference.ID, SessionID: sessionID, Body: body.String()}); err != nil {
 		slog.WarnContext(ctx, "execution: persist offloaded tool content", "session.id", sessionID, "tool.name", toolName, "error", err)
 		return output, nil
 	}

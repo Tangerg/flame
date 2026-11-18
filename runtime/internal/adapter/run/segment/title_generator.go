@@ -61,7 +61,7 @@ func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string)
 	text, err := g.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		Operation:    "title",
 		SystemPrompt: titlePrompt, UserPrompt: msg,
-		MaxInputBytes: titleModelInputBytes, MaxOutputTokens: titleModelOutputTokens,
+		Budget: modeladapter.AuxiliaryBudget{MaxInputBytes: titleModelInputBytes, MaxOutputTokens: titleModelOutputTokens},
 	})
 	if err != nil {
 		return fallback, err

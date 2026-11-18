@@ -90,8 +90,7 @@ type InteractionExecutorConfig struct {
 	ModelContextCompactor     ModelContextCompactor
 	ModelContextState         interactionModelContextState
 	LifecycleHooks            interactionLifecycleHooks
-	ToolResultStore           toolResultOffloader
-	ToolResultOffload         ToolResultOffloadPolicyValues
+	ToolResultOffload         *ToolResultOffload
 	UnknownEffectPollInterval *time.Duration
 	StatePollInterval         *time.Duration
 }
@@ -150,7 +149,6 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "model-context compactor", value: config.ModelContextCompactor},
 		{name: "model-context state", value: config.ModelContextState},
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
-		{name: "Tool-result store", value: config.ToolResultStore},
 	} {
 		if capability.value != nil && lo.IsNil(capability.value) {
 			return nil, fmt.Errorf("execution: Interaction %s is typed nil", capability.name)

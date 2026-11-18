@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -48,25 +48,25 @@ func (s *Handler) ListSessionTrajectory(ctx context.Context, in protocol.ListSes
 
 func presentTrajectoryEntry(row sessions.TrajectoryEntry) (protocol.TrajectoryEntry, error) {
 	entry := protocol.TrajectoryEntry{OccurredAt: row.OccurredAt}
-	switch {
-	case row.Run != nil:
-		entry.Type, entry.Run = protocol.TrajectoryEntryRun, new(presentRun(*row.Run))
-	case row.Model != nil:
-		model, err := presentModelInvocation(row.Model.RunID, row.Model.ModelInvocationCommit)
+	switch source := row.Source.(type) {
+	case sessions.TrajectoryRun:
+		entry.Type, entry.Run = protocol.TrajectoryEntryRun, new(presentRun(source.Run))
+	case sessions.TrajectoryModel:
+		model, err := presentModelInvocation(source.RunID, source.Invocation)
 		if err != nil {
 			return protocol.TrajectoryEntry{}, err
 		}
 		entry.Type, entry.Model = protocol.TrajectoryEntryModel, &model
-	case row.Endpoint != nil:
-		value, err := presentModelEndpoint(*row.Endpoint)
+	case sessions.TrajectoryEndpoint:
+		value, err := presentModelEndpoint(source.Observation)
 		if err != nil {
 			return protocol.TrajectoryEntry{}, err
 		}
 		entry.Type, entry.Endpoint = protocol.TrajectoryEntryEndpoint, &value
-	case row.Item != nil:
-		entry.Type, entry.Item = protocol.TrajectoryEntryItem, new(presentItem(*row.Item))
+	case sessions.TrajectoryItem:
+		entry.Type, entry.Item = protocol.TrajectoryEntryItem, new(presentItem(source.Item))
 	default:
-		return protocol.TrajectoryEntry{}, errors.New("delivery: trajectory entry has no source")
+		return protocol.TrajectoryEntry{}, fmt.Errorf("delivery: unknown trajectory source %T", source)
 	}
 	return entry, nil
 }

@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -86,12 +88,9 @@ type RecoveryCommitInput struct {
 	DeleteCheckpointSessionIDs []string
 }
 
-// OpenModelInvocation is an operational provider attempt that crossed the
-// external boundary but has no durable outer settlement. A physical result
-// may already be known. Boot recovery precedes new executor admission.
-type OpenModelInvocation struct {
-	Purpose   rundomain.ModelCallPurpose
-	Endpoint  *modelref.EndpointObservation
+// InvocationAttempt locates one journaled attempt inside the Run Segment that
+// started it. The journal row's Session is its Run's Session by schema.
+type InvocationAttempt struct {
 	SessionID string
 	RunID     string
 	SegmentID string
@@ -99,16 +98,50 @@ type OpenModelInvocation struct {
 	StartedAt time.Time
 }
 
+// Validate checks the attempt identity before it can influence recovery.
+func (a InvocationAttempt) Validate() error {
+	if err := identity.ValidateSession(a.SessionID); err != nil {
+		return err
+	}
+	if err := identity.ValidateRun(a.RunID); err != nil {
+		return err
+	}
+	if err := identity.ValidateSegment(a.SegmentID); err != nil {
+		return err
+	}
+	if err := ValidateInvocation(a.CallID); err != nil {
+		return err
+	}
+	if a.StartedAt.IsZero() || a.StartedAt.Location() != time.UTC {
+		return errors.New("open invocation start time is required in UTC")
+	}
+	return nil
+}
+
+func (a InvocationAttempt) compare(other InvocationAttempt) int {
+	return cmp.Or(
+		strings.Compare(a.SessionID, other.SessionID),
+		strings.Compare(a.RunID, other.RunID),
+		strings.Compare(a.SegmentID, other.SegmentID),
+		strings.Compare(a.CallID, other.CallID),
+	)
+}
+
+// OpenModelInvocation is an operational provider attempt that crossed the
+// external boundary but has no durable outer settlement. A physical result
+// may already be known. Boot recovery precedes new executor admission.
+type OpenModelInvocation struct {
+	InvocationAttempt
+	Purpose  rundomain.ModelCallPurpose
+	Endpoint *modelref.EndpointObservation
+}
+
 // OpenToolInvocation is an operational Tool attempt without a durable
 // terminal observation. ItemID binds the attempt back to its canonical
 // Transcript lifecycle without copying arguments or results into the journal.
 type OpenToolInvocation struct {
-	SessionID string
-	RunID     string
-	SegmentID string
-	CallID    string
-	ItemID    string
-	StartedAt time.Time
+	InvocationAttempt
+	ItemID string
 }
 
 // ModelInvocationRecovery closes a boot-abandoned outer operation. A known
@@ -116,24 +149,13 @@ type OpenToolInvocation struct {
 // The state is implied by the recovery operation rather than stored as an
 // application enum in the persistence port.
 type ModelInvocationRecovery struct {
-	Purpose    rundomain.ModelCallPurpose
-	Endpoint   *modelref.EndpointObservation
-	SessionID  string
-	RunID      string
-	SegmentID  string
-	CallID     string
-	StartedAt  time.Time
+	OpenModelInvocation
 	FinishedAt time.Time
 }
 
 // ToolInvocationRecovery marks one boot-abandoned Tool attempt incomplete.
 type ToolInvocationRecovery struct {
-	SessionID  string
-	RunID      string
-	SegmentID  string
-	CallID     string
-	ItemID     string
-	StartedAt  time.Time
+	OpenToolInvocation
 	FinishedAt time.Time
 }
 
@@ -405,12 +427,6 @@ func newRecoveryPlanner(
 	toolInvocations = slices.DeleteFunc(slices.Clone(toolInvocations), func(open OpenToolInvocation) bool {
 		return !claims.includes(open.SessionID)
 	})
-	if err := validateOpenModelInvocations(modelInvocations); err != nil {
-		return nil, err
-	}
-	if err := validateOpenToolInvocations(toolInvocations); err != nil {
-		return nil, err
-	}
 	pendingByRun, err := indexRecoveryPending(pending, activeRoots)
 	if err != nil {
 		return nil, err
@@ -481,18 +497,10 @@ func newRecoveryPlanner(
 		}
 	}
 	for _, invocation := range modelInvocations {
-		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{
-			Purpose:   invocation.Purpose,
-			SessionID: invocation.SessionID, RunID: invocation.RunID, SegmentID: invocation.SegmentID,
-			CallID: invocation.CallID, StartedAt: invocation.StartedAt, FinishedAt: planner.finishedAt, Endpoint: invocation.Endpoint,
-		})
+		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{OpenModelInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
 	for _, invocation := range toolInvocations {
-		planner.commit.ToolInvocations = append(planner.commit.ToolInvocations, ToolInvocationRecovery{
-			SessionID: invocation.SessionID, RunID: invocation.RunID, SegmentID: invocation.SegmentID,
-			CallID: invocation.CallID, ItemID: invocation.ItemID,
-			StartedAt: invocation.StartedAt, FinishedAt: planner.finishedAt,
-		})
+		planner.commit.ToolInvocations = append(planner.commit.ToolInvocations, ToolInvocationRecovery{OpenToolInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
 	return planner, nil
 }
@@ -533,31 +541,11 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
-	for _, comparison := range []int{
-		strings.Compare(left.SessionID, right.SessionID),
-		strings.Compare(left.RunID, right.RunID),
-		strings.Compare(left.SegmentID, right.SegmentID),
-		strings.Compare(left.CallID, right.CallID),
-	} {
-		if comparison != 0 {
-			return comparison
-		}
-	}
-	return 0
+	return left.InvocationAttempt.compare(right.InvocationAttempt)
 }
 
 func compareToolInvocationRecoveries(left, right ToolInvocationRecovery) int {
-	if comparison := compareModelInvocationRecoveries(
-		ModelInvocationRecovery{
-			SessionID: left.SessionID, RunID: left.RunID, SegmentID: left.SegmentID, CallID: left.CallID,
-		},
-		ModelInvocationRecovery{
-			SessionID: right.SessionID, RunID: right.RunID, SegmentID: right.SegmentID, CallID: right.CallID,
-		},
-	); comparison != 0 {
-		return comparison
-	}
-	return strings.Compare(left.ItemID, right.ItemID)
+	return cmp.Or(left.InvocationAttempt.compare(right.InvocationAttempt), strings.Compare(left.ItemID, right.ItemID))
 }
 
 func (r *recoveryPlanner) planTree(rootRunID string) error {

@@ -14,6 +14,8 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
+const capabilityExport = "filewatch"
+
 func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -51,7 +53,7 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 			}
 			return activation.watcher.snapshot(), nil
 		}),
-		backend.BindCapability("filewatch", contracts.Capability),
+		backend.BindCapability(capabilityExport, contracts.Capability),
 	); err != nil {
 		return nil, nil, err
 	}
@@ -61,7 +63,7 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 			return nil, err
 		}
 		for _, value := range values {
-			if value.Export != "filewatch" || value.Background == nil {
+			if value.Export != capabilityExport || value.Background == nil {
 				continue
 			}
 			ref, err := pluginmcp.CallbackFromContext(ctx)

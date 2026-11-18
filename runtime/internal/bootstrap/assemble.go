@@ -45,10 +45,6 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err := validateAssemblyConfig(cfg); err != nil {
 		return nil, err
 	}
-	defaultSelection, err := runtimeDefaultModelSelection(cfg)
-	if err != nil {
-		return nil, err
-	}
 	callbacks := pluginmcp.NewCallbacks()
 	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error { return callbacks.Close() }))
 	policy, err := buildPolicyComposition(ctx, cfg, lifetime, callbacks)
@@ -62,7 +58,6 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	execution, err := buildExecutionComposition(
 		ctx,
 		cfg,
-		defaultSelection,
 		callbacks,
 		lifetime,
 		buildTools,
@@ -148,7 +143,7 @@ func buildAssemblyCore(
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
 		Models:                modelCapabilities,
-		DefaultModelSelection: execution.models.defaultSelection,
+		DefaultModelSelection: cfg.defaultSelection,
 		Checkpoints:           workspaceServices.checkpoints,
 		Admissions:            admissionGate,
 		Invalidations:         policy.invalidations.publish,
@@ -396,10 +391,6 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace git watch: %w", err)
 	}
-	modelInvocations, err := persistence.NewModelInvocationReader(cfg.stores.ModelInvocations)
-	if err != nil {
-		return nil, fmt.Errorf("runtime: construct model invocation reader: %w", err)
-	}
 	modelEndpoints, err := models.NewEndpointObservations(cfg.stores.ModelInvocations)
 	if err != nil {
 		return nil, err
@@ -407,7 +398,7 @@ func buildAssemblyCore(
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		ReadSnapshot:     cfg.stores.ReadSnapshot,
 		Trajectory:       cfg.stores.Trajectory,
-		ModelInvocations: modelInvocations,
+		ModelInvocations: cfg.stores.ModelInvocations,
 		Transcript:       cfg.stores.Transcript,
 		Interrupts:       cfg.stores.Interrupts,
 		Runs:             cfg.stores.Runs,
@@ -428,7 +419,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
 	trajectoryReader, err := persistence.NewTrajectoryExportReader(persistence.TrajectoryExportConfig{
-		Snapshots: sessionStores, Sessions: cfg.stores.Sessions, ModelInvocations: modelInvocations,
+		Snapshots: sessionStores, Sessions: cfg.stores.Sessions, ModelInvocations: cfg.stores.ModelInvocations,
 		ToolInvocations: cfg.stores.ToolInvocations,
 		Annotations:     cfg.stores.Annotations, ReadSnapshot: persistence.Transactor(cfg.stores.ReadSnapshot),
 	})

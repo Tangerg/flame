@@ -264,19 +264,10 @@ func validateRecoveryModelInvocations(
 		if err := invocation.Purpose.Validate(); err != nil {
 			return err
 		}
-		if err := validateRecoveryInvocation(
-			invocation.SessionID,
-			invocation.RunID,
-			invocation.SegmentID,
-			invocation.CallID,
-			invocation.StartedAt,
-			invocation.FinishedAt,
-			lostByID,
-			recoveredSessions,
-		); err != nil {
+		if err := validateRecoveryInvocation(invocation.InvocationAttempt, invocation.FinishedAt, lostByID, recoveredSessions); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
 		}
-		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt); err != nil {
+		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.InvocationAttempt, invocation.FinishedAt); err != nil {
 			return err
 		}
 		if _, duplicate := seen[invocation.CallID]; duplicate {
@@ -304,16 +295,7 @@ func validateRecoveryToolInvocations(
 	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	for index, invocation := range invocations {
-		if err := validateRecoveryInvocation(
-			invocation.SessionID,
-			invocation.RunID,
-			invocation.SegmentID,
-			invocation.CallID,
-			invocation.StartedAt,
-			invocation.FinishedAt,
-			lostByID,
-			recoveredSessions,
-		); err != nil {
+		if err := validateRecoveryInvocation(invocation.InvocationAttempt, invocation.FinishedAt, lostByID, recoveredSessions); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
 		if err := identity.ValidateItem(invocation.ItemID); err != nil {
@@ -355,44 +337,32 @@ func validateRecoveryToolInvocations(
 }
 
 func validateRecoveryInvocation(
-	sessionID, runID, segmentID, callID string,
-	startedAt, finishedAt time.Time,
+	attempt InvocationAttempt,
+	finishedAt time.Time,
 	lostByID map[string]rundomain.Replacement,
 	recoveredSessions map[string]struct{},
 ) error {
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := attempt.Validate(); err != nil {
 		return err
 	}
-	if _, recovered := recoveredSessions[sessionID]; !recovered {
-		return fmt.Errorf("invocation Session %q is outside this recovery ownership", sessionID)
+	if _, recovered := recoveredSessions[attempt.SessionID]; !recovered {
+		return fmt.Errorf("invocation Session %q is outside this recovery ownership", attempt.SessionID)
 	}
-	if err := identity.ValidateRun(runID); err != nil {
-		return err
-	}
-	if err := identity.ValidateSegment(segmentID); err != nil {
-		return err
-	}
-	if err := ValidateInvocation(callID); err != nil {
-		return err
-	}
-	if startedAt.IsZero() || finishedAt.IsZero() {
-		return errors.New("invocation start and finish times are required")
-	}
-	if finishedAt.Before(startedAt) {
+	if finishedAt.Before(attempt.StartedAt) {
 		return errors.New("invocation finish time precedes start time")
 	}
-	if recovery, found := lostByID[runID]; found {
+	if recovery, found := lostByID[attempt.RunID]; found {
 		expected := recovery.Expected()
 		lost := recovery.State()
-		if lost.SessionID() != sessionID || !lost.FinishedAt().Equal(finishedAt) {
-			return fmt.Errorf("invocation differs from its recovered lost Run %q", runID)
+		if lost.SessionID() != attempt.SessionID || !lost.FinishedAt().Equal(finishedAt) {
+			return fmt.Errorf("invocation differs from its recovered lost Run %q", attempt.RunID)
 		}
-		if expected.State() != rundomain.Running || expected.ActiveSegmentID() != segmentID {
+		if expected.State() != rundomain.Running || expected.ActiveSegmentID() != attempt.SegmentID {
 			return fmt.Errorf(
 				"invocation belongs to Segment %q, not recovered active Segment %q for Run %q",
-				segmentID,
+				attempt.SegmentID,
 				expected.ActiveSegmentID(),
-				runID,
+				attempt.RunID,
 			)
 		}
 	}
@@ -589,7 +559,7 @@ func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationReco
 	return cloned
 }
 
-func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time) error {
+func validateRecoveryEndpoint(source *modelref.EndpointObservation, attempt InvocationAttempt, finishedAt time.Time) error {
 	if source == nil {
 		return nil
 	}
@@ -597,7 +567,7 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, r
 		return err
 	}
 	record := source.Snapshot()
-	if record.SessionID != sessionID || record.RunID != runID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
+	if record.SessionID != attempt.SessionID || record.RunID != attempt.RunID || record.Invocation.Caller.ID != attempt.CallID || record.Invocation.StartedAt.Before(attempt.StartedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
 		return errors.New("runs: recovery endpoint differs from its original call")
 	}
 	return nil

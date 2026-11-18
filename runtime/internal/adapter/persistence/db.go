@@ -161,6 +161,7 @@ func currentSchema() []string {
 			created_at         INTEGER NOT NULL,
 			finished_at        INTEGER NOT NULL DEFAULT 0,
 			updated_at         INTEGER NOT NULL,
+			UNIQUE (run_id, session_id),
 			CHECK (
 				(spawned_by_item_id = '' AND parent_run_id = '' AND root_run_id = '') OR
 				(spawned_by_item_id != '' AND parent_run_id != '' AND root_run_id != '' AND
@@ -198,8 +199,8 @@ func currentSchema() []string {
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('%[3]s','%[4]s')),
 			call_id     TEXT    PRIMARY KEY,
-			session_id  TEXT,
-			run_id      TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
+			session_id  TEXT REFERENCES sessions(id) ON DELETE CASCADE,
+			run_id      TEXT,
 			segment_id  TEXT,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
@@ -211,6 +212,8 @@ func currentSchema() []string {
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_nano_usd INTEGER CHECK (endpoint_cost_nano_usd IS NULL OR (endpoint_cost_nano_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
 			known_response TEXT CHECK (known_response IS NULL OR (%[7]s AND json_valid(known_response))),
+			FOREIGN KEY (run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE,
+			CHECK (run_id IS NULL OR session_id IS NOT NULL),
 			CHECK ((endpoint_json IS NULL) = (endpoint_kind IS NULL)),
 			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL AND logical_purpose IS NOT NULL)),
 			CHECK (%[8]s),
@@ -238,11 +241,12 @@ func currentSchema() []string {
 			call_id     TEXT    NOT NULL,
 			item_id     TEXT    NOT NULL,
 			session_id  TEXT    NOT NULL,
-			run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+			run_id      TEXT    NOT NULL,
 			segment_id  TEXT    NOT NULL,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER,
+			FOREIGN KEY (run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE,
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at IS NULL) OR
@@ -259,10 +263,11 @@ func currentSchema() []string {
 			publication_id TEXT PRIMARY KEY,
 			digest TEXT NOT NULL,
 			session_id TEXT NOT NULL,
-			run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+			run_id TEXT NOT NULL,
 			segment_id TEXT NOT NULL,
 			` + resultPublicationSourceColumn + `,
-			` + resultPublicationResultsColumn + `
+			` + resultPublicationResultsColumn + `,
+			FOREIGN KEY (run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_run
 			ON tool_invocations(run_id, segment_id)`,
@@ -332,11 +337,12 @@ func currentSchema() []string {
 		// item id — so a surviving row at boot proves exactly one accepted-paused
 		// tree to revive from its latest head. It is deleted with its root Run.
 		`CREATE TABLE IF NOT EXISTS accepted_continuations (
-			root_run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+			root_run_id TEXT PRIMARY KEY,
 			session_id  TEXT NOT NULL,
 			interrupt   TEXT NOT NULL,
 			segments    TEXT NOT NULL,
-			input_item_id TEXT NOT NULL
+			input_item_id TEXT NOT NULL,
+			FOREIGN KEY (root_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
 		)`,
 		// pending_workspace_mutations is the recoverable operation log for file
 		// rollbacks. Git reset is non-atomic across paths; files+history also

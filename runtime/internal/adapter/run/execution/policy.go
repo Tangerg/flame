@@ -54,9 +54,6 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	if err != nil {
 		return interactionExecutionPolicy{}, err
 	}
-	if toolResultOffload.enabled && lo.IsNil(config.ToolResultStore) {
-		return interactionExecutionPolicy{}, errors.New("execution: enabled Tool-result offload requires a store")
-	}
 	return interactionExecutionPolicy{
 		deltaBufferCapacity:       deltaBuffer,
 		maxConcurrentToolCalls:    toolConcurrency,

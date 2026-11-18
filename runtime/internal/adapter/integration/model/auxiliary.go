@@ -92,30 +92,40 @@ func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 // Input bytes and output tokens are deliberately mandatory: background
 // maintenance must never inherit a provider's context/output defaults.
 type AuxiliaryPrompt struct {
-	Operation       string
-	SystemPrompt    string
-	UserPrompt      string
-	MaxInputBytes   int
-	MaxOutputTokens int64
+	Operation    string
+	SystemPrompt string
+	UserPrompt   string
+	Budget       AuxiliaryBudget
 }
+
+func (p AuxiliaryPrompt) inputBytes() int { return len(p.SystemPrompt) + len(p.UserPrompt) }
 
 func (p AuxiliaryPrompt) validate() error {
 	if strings.TrimSpace(p.Operation) == "" {
 		return errors.New("auxiliary model: operation is required")
 	}
-	if err := (AuxiliaryBudget{MaxInputBytes: p.MaxInputBytes, MaxOutputTokens: p.MaxOutputTokens}).Validate(); err != nil {
+	if err := p.Budget.Validate(); err != nil {
 		return err
 	}
-	inputBytes := len(p.SystemPrompt) + len(p.UserPrompt)
-	if inputBytes > p.MaxInputBytes {
+	if p.inputBytes() > p.Budget.MaxInputBytes {
 		return fmt.Errorf(
 			"auxiliary model: prompt is %d bytes; input limit is %d",
-			inputBytes,
-			p.MaxInputBytes,
+			p.inputBytes(),
+			p.Budget.MaxInputBytes,
 		)
 	}
 	return nil
 }
+
+// auxiliaryFailureStage separates a model that answered unusably from a call
+// that never produced an answer; Scope's output contract draws that line.
+type auxiliaryFailureStage string
+
+const (
+	failedResolving auxiliaryFailureStage = "resolve"
+	failedCalling   auxiliaryFailureStage = "call"
+	failedResponse  auxiliaryFailureStage = "response"
+)
 
 // Complete resolves the live auxiliary selection and returns a complete text
 // generation inside the caller's resource envelope. A rejected or incomplete
@@ -147,16 +157,14 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 			attribute.Int("auxiliary.input_bytes", len(prompt.SystemPrompt)+len(prompt.UserPrompt)),
 		),
 	)
-	stage := "resolve"
+	stage := failedResolving
 	defer func() {
 		if err != nil {
-			// An unusable completion is the model answering, not the call
-			// failing: Scope's output contract is what separates them.
-			if stage == "call" && errors.Is(err, chatclient.ErrInvalidOutput) {
-				stage = "response"
+			if stage == failedCalling && errors.Is(err, chatclient.ErrInvalidOutput) {
+				stage = failedResponse
 			}
 			span.SetStatus(codes.Error, "auxiliary model failed")
-			span.SetAttributes(attribute.String("auxiliary.failure_stage", stage))
+			span.SetAttributes(attribute.String("auxiliary.failure_stage", string(stage)))
 			if errors.Is(err, context.Canceled) {
 				span.SetAttributes(attribute.String("error.type", "canceled"))
 			} else if errors.Is(err, context.DeadlineExceeded) {
@@ -165,7 +173,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		}
 		span.End()
 	}()
-	captured, release, err := r(ctx, AuxiliaryBudget{MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
+	captured, release, err := r(ctx, prompt.Budget)
 	if err != nil {
 		return "", err
 	}
@@ -180,11 +188,11 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	if err != nil {
 		return "", err
 	}
-	stage = "call"
+	stage = failedCalling
 	text, err = client.Output(ctx, &chat.Request{Messages: []chat.Message{
 		chat.NewSystemMessage(prompt.SystemPrompt),
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
-	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
+	}, Options: chat.Options{MaxOutputTokens: &prompt.Budget.MaxOutputTokens}}, chatclient.Text())
 	if err != nil {
 		if _, complete := err.(*chatclient.OutputCompletionError); complete {
 			err = &coreinvocation.Failure{Kind: coreinvocation.FailureFailed, Cause: err}

@@ -13,9 +13,6 @@ const sessionAnnotationPredicate = `session_id = ?
 // decoded. Final wire encoding has a separate bound because escaping expands JSON.
 func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID string) (records, bytes int64, err error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (records, bytes int64, err error) {
-		if err := s.validateTrajectoryJournalOwnership(ctx, sessionID); err != nil {
-			return 0, 0, err
-		}
 		query := `SELECT COALESCE(SUM(records), 0), COALESCE(SUM(bytes), 0) FROM (
 		SELECT COUNT(*) records, SUM(length(CAST(title AS BLOB)) + length(CAST(workspace_path AS BLOB))
 			+ length(CAST(id AS BLOB)) + length(CAST(parent_id AS BLOB)) + length(CAST(reasoning_effort AS BLOB))
@@ -49,27 +46,5 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 			err = fmt.Errorf("sqlite: measure trajectory export: %w", err)
 		}
 		return records, bytes, err
-	})
-}
-func (s *SessionStore) validateTrajectoryJournalOwnership(ctx context.Context, sessionID string) error {
-	return s.db.read(ctx, func(ctx context.Context) error {
-		for _, table := range []string{"model_invocations", "tool_invocations"} {
-			query := `SELECT EXISTS(SELECT 1 FROM ` + table + ` attempt LEFT JOIN runs owner ON owner.run_id = attempt.run_id
-			WHERE (attempt.session_id = ? OR owner.session_id = ?)
-			AND (owner.run_id IS NULL OR attempt.session_id != owner.session_id)`
-			if table == "model_invocations" {
-				query = `SELECT EXISTS(SELECT 1 FROM model_invocations attempt LEFT JOIN runs owner ON owner.run_id=attempt.run_id
-			WHERE (attempt.session_id=? OR owner.session_id=?) AND ((attempt.run_id IS NOT NULL AND (owner.run_id IS NULL OR attempt.session_id IS NULL OR attempt.session_id!=owner.session_id)) OR (attempt.endpoint_json IS NULL AND owner.run_id IS NULL))`
-			}
-			query += `)`
-			var invalid bool
-			if err := s.db.connection(ctx).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
-				return fmt.Errorf("sqlite: inspect trajectory journal ownership: %w", err)
-			}
-			if invalid {
-				return fmt.Errorf("sqlite: trajectory %s has inconsistent session ownership", table)
-			}
-		}
-		return nil
 	})
 }

@@ -66,7 +66,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			return nil, config.Settings{}, err
 		}
 	}
-	settings, err := loadConfig(cfg.ConfigDirectories)
+	settings, err := config.Load(cfg.ConfigDirectories)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}

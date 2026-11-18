@@ -15,7 +15,7 @@ import (
 // fields, and wins as a whole. Callers must pass the unoverlaid durable
 // registry so an environment credential cannot masquerade as stored state.
 func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistry, cfg config.Settings) error {
-	id := cfg.Provider
+	id := cfg.DefaultSelection.Provider()
 	_, ok, err := registry.Get(ctx, id)
 	if err != nil {
 		return err
@@ -63,10 +63,10 @@ func seedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config
 	if present {
 		return nil
 	}
-	if cfg.UtilityModel == "" || cfg.UtilityModel == cfg.Model {
+	if cfg.UtilityModel == "" || cfg.UtilityModel == cfg.DefaultSelection.Model() {
 		return nil
 	}
-	role, err := modelref.NewRole(cfg.Provider, cfg.UtilityModel)
+	role, err := modelref.NewRole(cfg.DefaultSelection.Provider(), cfg.UtilityModel)
 	if err != nil {
 		return err
 	}

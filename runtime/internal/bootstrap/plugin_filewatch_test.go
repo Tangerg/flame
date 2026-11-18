@@ -132,7 +132,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	}
 	draft := testsupport.FilewatchConfigureV1InputDomainDraft{}
 	draft.Title, draft.Workspace, draft.Paths = "Original file trigger", workspace.Ref.Path, []string{"source.txt"}
-	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.provider, cfg.model
+	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.defaultSelection.Provider(), cfg.defaultSelection.Model()
 	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "1"), Trigger: &draft}, "configure-source")
 	wait(func() bool { return status(testsupport.FilewatchStatusPhaseWatching, 2) })
 	if err := os.WriteFile(path, []byte("external source edit"), 0600); err != nil {

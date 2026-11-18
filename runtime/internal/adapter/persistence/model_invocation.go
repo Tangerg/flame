@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // ModelInvocationStore records logical Interaction observations and distinct
@@ -47,9 +46,6 @@ func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]
 			if err := rows.Scan(&invocation.SessionID, &invocation.RunID, &invocation.SegmentID, &invocation.CallID, &startedAt, &rawPurpose); err != nil {
 				return nil, fmt.Errorf("sqlite: scan started model invocation: %w", err)
 			}
-			if err := validateModelInvocationIdentity(invocation.SessionID, invocation.RunID, invocation.SegmentID, invocation.CallID); err != nil {
-				return nil, fmt.Errorf("sqlite: restore started model invocation: %w", err)
-			}
 			if invocation.Purpose, err = rundomain.ParseModelCallPurpose(rawPurpose); err != nil {
 				return nil, err
 			}
@@ -64,14 +60,12 @@ func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]
 			if err != nil {
 				return nil, err
 			}
-			if !found {
-				continue
+			if found {
+				open[index].Endpoint = &source
 			}
-			record := source.Snapshot()
-			if record.SessionID != invocation.SessionID || record.RunID != invocation.RunID || record.Invocation.Caller.ID != invocation.CallID {
-				return nil, errors.New("sqlite: endpoint differs from its logical call ownership")
+			if err := open[index].Validate(); err != nil {
+				return nil, fmt.Errorf("sqlite: restore started model invocation: %w", err)
 			}
-			open[index].Endpoint = &source
 		}
 		return open, nil
 	})
@@ -149,34 +143,15 @@ func (m *ModelInvocationStore) finish(ctx context.Context, sessionID, runID stri
 		return nil
 	})
 }
-func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string) error {
-	if err := validateRunCoordinates("model invocation", sessionID, runID, segmentID); err != nil {
-		return err
-	}
-	if err := runs.ValidateInvocation(callID); err != nil {
-		return fmt.Errorf("sqlite: model invocation: %w", err)
-	}
-	return nil
-}
 
-// modelInvocationRecord retains an attempt and any known response evidence;
-// failed response evidence never authorizes conversation continuation.
-type modelInvocationRecord struct {
-	KnownResponse            *chat.Response
-	FirstOutputLatencyMillis *int64
-	Usage                    *chat.Usage
-	CallID                   string
-	SegmentID                string
-	State                    string
-	StartedAt                time.Time
-	FinishedAt               time.Time
-}
+// modelInvocationColumns is the logical journal projection scanModelInvocation decodes.
+const modelInvocationColumns = `call_id, segment_id, logical_purpose, state, started_at, finished_at, usage, first_output_latency_millis, known_response`
 
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
-func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]modelInvocationRecord, error) {
-	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelInvocationRecord, error) {
-		query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
+func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
+	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]runs.ModelInvocationCommit, error) {
+		query := `SELECT ` + modelInvocationColumns + ` FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
 		args := []any{runID}
 		if beforeCallID != "" {
 			query += ` AND (started_at, call_id) < (?, ?)`
@@ -191,7 +166,7 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 		defer func() {
 			_ = rows.Close()
 		}()
-		var records []modelInvocationRecord
+		var records []runs.ModelInvocationCommit
 		for rows.Next() {
 			record, err := scanModelInvocation(rows)
 			if err != nil {
@@ -205,48 +180,44 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 		return records, nil
 	})
 }
-func scanModelInvocation(row scanRow) (modelInvocationRecord, error) {
-	var record modelInvocationRecord
+func scanModelInvocation(row scanRow) (runs.ModelInvocationCommit, error) {
+	var record runs.ModelInvocationCommit
+	var purpose, state string
 	var startedAt int64
 	var finishedAt sql.NullInt64
 	var usage sql.NullString
 	var response sql.NullString
 	var latency sql.NullInt64
-	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency, &response); err != nil {
-		return modelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
+	if err := row.Scan(&record.CallID, &record.SegmentID, &purpose, &state, &startedAt, &finishedAt, &usage, &latency, &response); err != nil {
+		return runs.ModelInvocationCommit{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
 	}
+	var err error
+	if record.Purpose, err = rundomain.ParseModelCallPurpose(purpose); err != nil {
+		return runs.ModelInvocationCommit{}, err
+	}
+	record.State = modelref.InvocationState(state)
 	if response.Valid {
-		if record.State != string(modelref.InvocationFailed) {
-			return modelInvocationRecord{}, errors.New("sqlite: response evidence has invalid model state")
-		}
 		if err := decodeStoredJSON([]byte(response.String), &record.KnownResponse); err != nil {
-			return modelInvocationRecord{}, err
+			return runs.ModelInvocationCommit{}, err
 		}
 		if record.KnownResponse == nil {
-			return modelInvocationRecord{}, errors.New("sqlite: null model response evidence")
-		}
-		if err := record.KnownResponse.Validate(); err != nil {
-			return modelInvocationRecord{}, err
+			return runs.ModelInvocationCommit{}, errors.New("sqlite: null model response evidence")
 		}
 	}
 	if latency.Valid {
 		record.FirstOutputLatencyMillis = new(latency.Int64)
 	}
 	if usage.Valid {
-		var err error
-		record.Usage, err = decodeModelInvocationUsage(usage.String)
-		if err != nil {
-			return modelInvocationRecord{}, err
-		}
-	}
-	if record.KnownResponse != nil {
-		if !modelref.UsageMatchesResponse(record.Usage, record.KnownResponse) {
-			return modelInvocationRecord{}, errors.New("sqlite: retained usage differs from known response")
+		if record.Usage, err = decodeModelInvocationUsage(usage.String); err != nil {
+			return runs.ModelInvocationCommit{}, err
 		}
 	}
 	record.StartedAt = time.Unix(0, startedAt).UTC()
 	if finishedAt.Valid {
 		record.FinishedAt = time.Unix(0, finishedAt.Int64).UTC()
+	}
+	if err := record.Validate(); err != nil {
+		return runs.ModelInvocationCommit{}, fmt.Errorf("sqlite: restore model invocation: %w", err)
 	}
 	return record, nil
 }

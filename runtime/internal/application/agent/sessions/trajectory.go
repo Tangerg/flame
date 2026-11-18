@@ -14,41 +14,58 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
+// TrajectoryKind names the timeline fact an entry projects. Its spelling is the
+// durable ordering and cursor vocabulary.
 type TrajectoryKind string
 
 const (
-	trajectoryRun      TrajectoryKind = "run"
-	TrajectoryEndpoint TrajectoryKind = "endpoint"
-	trajectoryModel    TrajectoryKind = "model"
-	trajectoryItem     TrajectoryKind = "item"
+	TrajectoryKindRun      TrajectoryKind = "run"
+	TrajectoryKindEndpoint TrajectoryKind = "endpoint"
+	TrajectoryKindModel    TrajectoryKind = "model"
+	TrajectoryKindItem     TrajectoryKind = "item"
 )
 
-type TrajectoryModelInvocation struct {
-	RunID string
-	runs.ModelInvocationCommit
-}
-
+// TrajectoryEntry is one timeline record projecting exactly one durable fact.
 type TrajectoryEntry struct {
 	OccurredAt time.Time
-	Run        *run.Run
-	Endpoint   *modelref.EndpointObservation
-	Model      *TrajectoryModelInvocation
-	Item       *transcript.Item
+	Source     TrajectorySource
+}
+
+// TrajectorySource is closed to the four timeline facts below.
+type TrajectorySource interface {
+	trajectoryKey() (TrajectoryKind, string)
+}
+
+type TrajectoryRun struct{ Run run.Run }
+
+type TrajectoryModel struct {
+	RunID      string
+	Invocation runs.ModelInvocationCommit
+}
+
+type TrajectoryEndpoint struct{ Observation modelref.EndpointObservation }
+
+type TrajectoryItem struct{ Item transcript.Item }
+
+func (s TrajectoryRun) trajectoryKey() (TrajectoryKind, string) {
+	return TrajectoryKindRun, s.Run.ID()
+}
+
+func (s TrajectoryModel) trajectoryKey() (TrajectoryKind, string) {
+	return TrajectoryKindModel, s.Invocation.CallID
+}
+
+func (s TrajectoryEndpoint) trajectoryKey() (TrajectoryKind, string) {
+	return TrajectoryKindEndpoint, s.Observation.Snapshot().Invocation.ID
+}
+
+func (s TrajectoryItem) trajectoryKey() (TrajectoryKind, string) {
+	return TrajectoryKindItem, s.Item.ID()
 }
 
 func (e TrajectoryEntry) Position() TrajectoryPosition {
-	switch {
-	case e.Run != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryRun, ID: e.Run.ID()}
-	case e.Model != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryModel, ID: e.Model.CallID}
-	case e.Endpoint != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryEndpoint, ID: e.Endpoint.Snapshot().Invocation.ID}
-	case e.Item != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryItem, ID: e.Item.ID()}
-	default:
-		return TrajectoryPosition{}
-	}
+	kind, id := e.Source.trajectoryKey()
+	return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: kind, ID: id}
 }
 
 type TrajectoryPosition struct {
@@ -57,13 +74,17 @@ type TrajectoryPosition struct {
 	ID         string
 }
 
+func (p TrajectoryPosition) key() []string {
+	return []string{strconv.FormatInt(p.OccurredAt, 10), string(p.Kind), p.ID}
+}
+
 func (p TrajectoryPosition) validate() error {
 	switch p.Kind {
-	case trajectoryRun:
+	case TrajectoryKindRun:
 		return identity.ValidateRun(p.ID)
-	case trajectoryModel, TrajectoryEndpoint:
+	case TrajectoryKindModel, TrajectoryKindEndpoint:
 		return runs.ValidateInvocation(p.ID)
-	case trajectoryItem:
+	case TrajectoryKindItem:
 		return identity.ValidateItem(p.ID)
 	default:
 		return errors.New("sessions: unknown trajectory kind")
@@ -99,8 +120,7 @@ func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID str
 		return pagination.Page[TrajectoryEntry]{}, err
 	}
 	return pagination.PageOf(rows, size, namespace, filters, func(entry TrajectoryEntry) []string {
-		position := entry.Position()
-		return []string{strconv.FormatInt(position.OccurredAt, 10), string(position.Kind), position.ID}
+		return entry.Position().key()
 	})
 }
 

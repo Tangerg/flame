@@ -104,6 +104,32 @@ const viewPageNamespace = "sessions"
 // viewPageLimit is the widest session page this read will serve.
 const viewPageLimit = 100
 
+func catalogAnchorKey(value session.Session) []string {
+	return []string{strconv.FormatBool(value.Favorite()), strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID()}
+}
+
+func parseCatalogAnchor(key []string) (*session.CatalogAnchor, error) {
+	if len(key) == 0 {
+		return nil, nil
+	}
+	if len(key) != 3 {
+		return nil, pagination.ErrInvalidCursor
+	}
+	favorite, err := strconv.ParseBool(key[0])
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
+	}
+	updatedAtNanos, err := strconv.ParseInt(key[1], 10, 64)
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
+	}
+	anchor, err := session.NewCatalogAnchor(favorite, time.Unix(0, updatedAtNanos).UTC(), key[2])
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
+	}
+	return &anchor, nil
+}
+
 // ListViewPage resolves one page of user-facing sessions, continuing after
 // cursor. The page is bounded by the query, so only the sessions being returned
 // are resolved against the filesystem and the live-run registry.
@@ -121,28 +147,9 @@ func (c *Coordinator) ListViewPage(
 	if err != nil {
 		return pagination.Page[View]{}, err
 	}
-	var after *session.CatalogAnchor
-	if len(encodedAnchor) > 0 {
-		if len(encodedAnchor) != 3 {
-			return pagination.Page[View]{}, pagination.ErrInvalidCursor
-		}
-		favorite := encodedAnchor[0] == "1"
-		if encodedAnchor[0] != "0" && !favorite {
-			return pagination.Page[View]{}, pagination.ErrInvalidCursor
-		}
-		updatedAtNanos, parseErr := strconv.ParseInt(encodedAnchor[1], 10, 64)
-		if parseErr != nil {
-			return pagination.Page[View]{}, pagination.ErrInvalidCursor
-		}
-		decoded, anchorErr := session.NewCatalogAnchor(
-			favorite,
-			time.Unix(0, updatedAtNanos).UTC(),
-			encodedAnchor[2],
-		)
-		if anchorErr != nil {
-			return pagination.Page[View]{}, pagination.ErrInvalidCursor
-		}
-		after = &decoded
+	after, err := parseCatalogAnchor(encodedAnchor)
+	if err != nil {
+		return pagination.Page[View]{}, err
 	}
 	size, err := limit.Resolve(viewPageLimit)
 	if err != nil {
@@ -156,13 +163,7 @@ func (c *Coordinator) ListViewPage(
 	if err != nil {
 		return pagination.Page[View]{}, err
 	}
-	bounded, err := pagination.PageOf(values, size, viewPageNamespace, filterIdentity, func(value session.Session) []string {
-		favorite := "0"
-		if value.Favorite() {
-			favorite = "1"
-		}
-		return []string{favorite, strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID()}
-	})
+	bounded, err := pagination.PageOf(values, size, viewPageNamespace, filterIdentity, catalogAnchorKey)
 	if err != nil {
 		return pagination.Page[View]{}, err
 	}

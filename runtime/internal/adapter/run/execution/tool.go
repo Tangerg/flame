@@ -41,7 +41,6 @@ type observedInteractionTool struct {
 	presenter         interactionToolPresenter
 	authorizer        interactionToolAuthorizer
 	hooks             interactionToolHooks
-	offloader         toolResultOffloader
 	offloadPolicy     toolResultOffloadPolicy
 	start             runs.RootExecutionStart
 	concurrent        func(toolcontract.Invocation) (string, bool)
@@ -621,20 +620,13 @@ func (o *observedInteractionTool) offload(
 		}
 	}
 	if rich {
-		return evictToolContent(ctx, o.offloader, o.offloadPolicy, o.start.SessionID, toolName, output)
+		return evictToolContent(ctx, o.offloadPolicy, o.start.SessionID, toolName, output)
 	}
 	text, textual := output.Text()
 	if !textual {
 		return output, nil
 	}
-	preview, reference := evictToolResult(
-		ctx,
-		o.offloader,
-		o.offloadPolicy,
-		o.start.SessionID,
-		toolName,
-		text,
-	)
+	preview, reference := evictToolResult(ctx, o.offloadPolicy, o.start.SessionID, toolName, text)
 	if reference == nil {
 		return output, nil
 	}
@@ -645,7 +637,7 @@ func (o *observedInteractionTool) offload(
 		reference.ModelOnly = true
 		projected.Details = output.Clone().Details
 	}
-	projected, err := modeladapter.WithToolResultReference(projected, *reference, o.offloadPolicy.readerName, modeladapter.ToolResultRange{LengthBytes: len(text)})
+	projected, err := modeladapter.WithToolResultReference(projected, *reference, modeladapter.ToolResultRange{LengthBytes: len(text)})
 	if err != nil {
 		slog.WarnContext(ctx, "execution: project offloaded tool reference", "error", err)
 		return output, nil
@@ -730,9 +722,8 @@ func wrapInteractionTools(
 			observed := &observedInteractionTool{
 				ref: ref, sourceFingerprint: fingerprint, inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
-				hooks: config.ToolHooks, offloader: config.ToolResultStore,
-				offloadPolicy: offloadPolicy,
-				start:         start,
+				hooks: config.ToolHooks, offloadPolicy: offloadPolicy,
+				start: start,
 			}
 			if err := observed.captureReceiptSource(ctx, config.OriginalToolResults); err != nil {
 				return nil, err

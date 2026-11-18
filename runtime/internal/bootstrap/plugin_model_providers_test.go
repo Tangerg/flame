@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func activateModelProviders(r *poMCPRuntime) *protocol.PluginInstallation {
@@ -92,7 +93,7 @@ func TestInstalledModelProviderRestartsWaitingRunWithOriginalCredentialsAndEndpo
 	t.Cleanup(replacement.Close)
 	cfg := poMCPConfig(t)
 	cfg.modelProviders = nil
-	cfg.provider, cfg.model = "openai-compatible", "frozen-model"
+	cfg.defaultSelection = testsupport.MustModelSelection("openai-compatible", "frozen-model")
 	cfg.approvalMode = approval.ModeYolo
 	cfg.maintenance = noMaintenance{}
 	r := poMCPOpen(t, cfg)

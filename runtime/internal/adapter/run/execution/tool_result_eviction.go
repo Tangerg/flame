@@ -5,10 +5,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"log/slog"
-	"strings"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/samber/lo"
 )
 
 // toolResultOffloader is the narrow write capability the observer needs to
@@ -24,18 +25,21 @@ type toolResultOffloader interface {
 // makes it no smaller than the original body.
 const toolResultPreviewBytes = 2000
 
-// ToolResultOffloadPolicyValues is the construction boundary for optional
-// Tool-result eviction. An omitted threshold disables eviction; a present
-// threshold must be positive and names the exact read-back Tool.
-type ToolResultOffloadPolicyValues struct {
-	Threshold  *int
-	ReaderName string
+// ToolResultOffload evicts Tool results longer than Threshold bytes into Store
+// behind a bounded preview. A nil offload disables eviction.
+type ToolResultOffload struct {
+	Store     toolResultOffloader
+	Threshold int
 }
 
+// toolResultReaderName is the one Tool that reads an offloaded body back; its
+// own output is never offloaded again.
+const toolResultReaderName = string(builtincontract.ReadToolResult)
+
+// toolResultOffloadPolicy is enabled exactly when it holds a store.
 type toolResultOffloadPolicy struct {
-	enabled    bool
-	threshold  int
-	readerName string
+	store     toolResultOffloader
+	threshold int
 }
 
 type toolResultOffloadIdentity struct {
@@ -43,52 +47,49 @@ type toolResultOffloadIdentity struct {
 	ReaderName string `json:"readerName"`
 }
 
-func newToolResultOffloadPolicy(values ToolResultOffloadPolicyValues) (toolResultOffloadPolicy, error) {
-	if values.Threshold == nil {
-		if strings.TrimSpace(values.ReaderName) != "" {
-			return toolResultOffloadPolicy{}, errors.New("execution: disabled Tool-result offload cannot name a reader Tool")
-		}
+func newToolResultOffloadPolicy(offload *ToolResultOffload) (toolResultOffloadPolicy, error) {
+	if offload == nil {
 		return toolResultOffloadPolicy{}, nil
 	}
-	if *values.Threshold <= 0 {
+	if lo.IsNil(offload.Store) {
+		return toolResultOffloadPolicy{}, errors.New("execution: Tool-result offload requires a store")
+	}
+	if offload.Threshold <= 0 {
 		return toolResultOffloadPolicy{}, errors.New("execution: Tool-result offload threshold must be positive")
 	}
-	if err := modeladapter.ValidateToolResultReader(values.ReaderName); err != nil {
-		return toolResultOffloadPolicy{}, err
-	}
-	return toolResultOffloadPolicy{enabled: true, threshold: *values.Threshold, readerName: values.ReaderName}, nil
+	return toolResultOffloadPolicy{store: offload.Store, threshold: offload.Threshold}, nil
+}
+
+func (p toolResultOffloadPolicy) enabled() bool { return p.store != nil }
+
+// evicts reports whether output from toolName is offloaded in sessionID.
+func (p toolResultOffloadPolicy) evicts(sessionID, toolName string) bool {
+	return p.enabled() && sessionID != "" && toolName != toolResultReaderName
 }
 
 func (p toolResultOffloadPolicy) identity() *toolResultOffloadIdentity {
-	if !p.enabled {
+	if !p.enabled() {
 		return nil
 	}
-	return &toolResultOffloadIdentity{Threshold: p.threshold, ReaderName: p.readerName}
+	return &toolResultOffloadIdentity{Threshold: p.threshold, ReaderName: toolResultReaderName}
 }
 
 func evictToolResult(
 	ctx context.Context,
-	store toolResultOffloader,
 	policy toolResultOffloadPolicy,
 	sessionID string,
 	toolName string,
 	output string,
 ) (string, *transcript.ToolResultRef) {
-	if store == nil || !policy.enabled || len(output) <= policy.threshold ||
-		toolName == policy.readerName || sessionID == "" {
+	if !policy.evicts(sessionID, toolName) || len(output) <= policy.threshold {
 		return output, nil
 	}
 	id := transcript.ToolResultID(rand.Text())
-	preview := renderToolResultPreview(
-		output,
-		string(id),
-		policy.readerName,
-		min(toolResultPreviewBytes, policy.threshold),
-	)
+	preview := renderToolResultPreview(output, string(id), min(toolResultPreviewBytes, policy.threshold))
 	if len(preview) >= len(output) {
 		return output, nil
 	}
-	if err := store.Stage(ctx, transcript.ToolResultStage{
+	if err := policy.store.Stage(ctx, transcript.ToolResultStage{
 		ID: id, SessionID: sessionID, Body: output,
 	}); err != nil {
 		slog.WarnContext(ctx, "execution: persist offloaded tool result", "session.id", sessionID, "tool.name", toolName, "error", err)

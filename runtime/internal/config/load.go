@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/spf13/viper"
 )
@@ -27,10 +28,9 @@ import (
 const maximumRuntimeConfigBytes int64 = 256 << 10
 
 // Load resolves configuration from yaml + env + defaults. A missing config
-// file is fine (defaults + env only). Provider catalog validation, default
-// model selection, and provider-specific API-key fallback are deliberately
-// outside config-source parsing because they depend on the live provider
-// catalog.
+// file is fine (defaults + env only). Provider catalog admission and
+// provider-specific API-key fallback are deliberately outside config-source
+// parsing because they depend on the live provider catalog.
 func Load(configDirectories []string) (Settings, error) {
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	v.SetConfigType("yaml")
@@ -65,6 +65,10 @@ func Load(configDirectories []string) (Settings, error) {
 	if source.Model == "" {
 		return Settings{}, errors.New("config: model is required — set `model:` in config/config.yaml or FLAME_MODEL; names never infer a model")
 	}
+	selection, err := modelchoice.New(source.Provider, source.Model)
+	if err != nil {
+		return Settings{}, fmt.Errorf("config: model selection: %w", err)
+	}
 
 	// Viper applies FLAME_APIKEY over yaml `apiKey`; recover that source here so
 	// later composition cannot mistake a process-scoped secret for durable input.
@@ -73,21 +77,24 @@ func Load(configDirectories []string) (Settings, error) {
 		apiKey = EnvironmentAPIKey(environmentKey)
 	}
 
-	if source.ToolResultOffload.Threshold <= 0 {
-		return Settings{}, errors.New("config: toolResultOffload.threshold must be positive; use toolResultOffload.enabled: false to disable eviction")
+	var offloadThreshold *int
+	if source.ToolResultOffload.Enabled {
+		if source.ToolResultOffload.Threshold <= 0 {
+			return Settings{}, errors.New("config: toolResultOffload.threshold must be positive; use toolResultOffload.enabled: false to disable eviction")
+		}
+		offloadThreshold = &source.ToolResultOffload.Threshold
 	}
 
 	return Settings{
-		Provider:     source.Provider,
-		Model:        source.Model,
-		APIKey:       apiKey,
-		BaseURL:      source.BaseURL,
-		UtilityModel: source.UtilityModel,
+		DefaultSelection: selection,
+		APIKey:           apiKey,
+		BaseURL:          source.BaseURL,
+		UtilityModel:     source.UtilityModel,
 
-		ToolResultOffload:    source.ToolResultOffload,
-		SandboxShell:         source.Sandbox.Shell,
-		SandboxReadOnlyPaths: source.Sandbox.ReadOnlyPaths,
-		Server:               source.Server,
+		ToolResultOffloadThreshold: offloadThreshold,
+		SandboxShell:               source.Sandbox.Shell,
+		SandboxReadOnlyPaths:       source.Sandbox.ReadOnlyPaths,
+		Server:                     source.Server,
 	}, nil
 }
 
@@ -138,17 +145,22 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 // Settings is intentionally not reused here: it is the resolved application
 // value, while sandbox and LSP retain their source nesting only in YAML.
 type configShape struct {
-	Provider          string                    `mapstructure:"provider"`
-	Model             string                    `mapstructure:"model"`
-	APIKey            string                    `mapstructure:"apiKey"`
-	BaseURL           string                    `mapstructure:"baseURL"`
-	UtilityModel      string                    `mapstructure:"utilityModel"`
-	ToolResultOffload ToolResultOffloadSettings `mapstructure:"toolResultOffload"`
+	Provider          string                 `mapstructure:"provider"`
+	Model             string                 `mapstructure:"model"`
+	APIKey            string                 `mapstructure:"apiKey"`
+	BaseURL           string                 `mapstructure:"baseURL"`
+	UtilityModel      string                 `mapstructure:"utilityModel"`
+	ToolResultOffload toolResultOffloadShape `mapstructure:"toolResultOffload"`
 	Sandbox           struct {
 		Shell         bool     `mapstructure:"shell"`
 		ReadOnlyPaths []string `mapstructure:"readOnlyPaths"`
 	} `mapstructure:"sandbox"`
 	Server Server `mapstructure:"server"`
+}
+
+type toolResultOffloadShape struct {
+	Enabled   bool `mapstructure:"enabled"`
+	Threshold int  `mapstructure:"threshold"`
 }
 
 func decodeConfig(v *viper.Viper) (configShape, error) {

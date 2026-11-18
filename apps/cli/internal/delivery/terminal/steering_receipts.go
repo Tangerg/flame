@@ -23,18 +23,44 @@ const (
 	steerUnconfirmed steerReceiptStatus = "unconfirmed"
 )
 
+// runFinishEvidence is how far this client has confirmed the steered Run's
+// end. A finish event alone cannot prove absence of the steer's Item; only an
+// authoritative read of the finished Run can.
+type runFinishEvidence uint8
+
+const (
+	finishUnseen runFinishEvidence = iota
+	finishObserved
+	finishReadFailed
+	finishRead
+)
+
 // These are observations for one locally issued command, not execution state.
 // Item and terminal-read evidence may both arrive before the acknowledgement.
 type steerReceipt struct {
-	sessionID         string
-	commandID         authoring.CommandID
-	runID             string
-	receipt           protocol.SteerRunResponse
-	userItems         map[string]struct{}
-	finishedObserved  bool
-	afterFinishedRead bool
-	readFailure       error
-	presented         steerReceiptStatus
+	sessionID string
+	commandID authoring.CommandID
+	runID     string
+	receipt   protocol.SteerRunResponse
+	userItems map[string]struct{}
+	finish    runFinishEvidence
+	// readFailure explains finishReadFailed and is nil in every other state.
+	readFailure error
+	presented   steerReceiptStatus
+}
+
+func (s *steerReceipt) observeFinished() {
+	if s.finish == finishUnseen {
+		s.finish = finishObserved
+	}
+}
+
+func (s *steerReceipt) readFinished() {
+	s.finish, s.readFailure = finishRead, nil
+}
+
+func (s *steerReceipt) failRead(err error) {
+	s.finish, s.readFailure = finishReadFailed, err
 }
 
 func (s *steerReceipt) status() steerReceiptStatus {
@@ -42,17 +68,16 @@ func (s *steerReceipt) status() steerReceiptStatus {
 		if _, found := s.userItems[s.receipt.UserItemID]; found {
 			return steerApplied
 		}
-		if s.afterFinishedRead {
+		switch s.finish {
+		case finishUnseen:
+			return steerAccepted
+		case finishObserved:
+			return steerVerifying
+		case finishRead:
 			return steerNotApplied
 		}
-		if s.readFailure == nil {
-			if s.finishedObserved {
-				return steerVerifying
-			}
-			return steerAccepted
-		}
 	}
-	if s.finishedObserved || s.afterFinishedRead || s.readFailure != nil {
+	if s.finish != finishUnseen {
 		return steerUnconfirmed
 	}
 	return steerPending
@@ -106,8 +131,7 @@ func (s *steerReceipts) observeSnapshot(snapshot conversation.SessionSnapshot) {
 		}
 		for _, run := range snapshot.Runs {
 			if run.ID == entry.runID && run.Status == protocol.RunStatusFinished {
-				entry.afterFinishedRead = true
-				entry.readFailure = nil
+				entry.readFinished()
 				break
 			}
 		}
@@ -124,7 +148,7 @@ func (s *steerReceipts) observeEvent(sessionID string, envelope conversation.Run
 			entry.observeBlock(event.Block)
 		case conversation.SegmentFinished:
 			if event.Run.Status == protocol.RunStatusFinished {
-				entry.finishedObserved = true
+				entry.observeFinished()
 			}
 		}
 	}
@@ -133,8 +157,7 @@ func (s *steerReceipts) observeEvent(sessionID string, envelope conversation.Run
 func (s *steerReceipts) needingRead(sessionID string) []*steerReceipt {
 	var pending []*steerReceipt
 	for _, entry := range s.entries {
-		if entry.sessionID == sessionID && entry.finishedObserved && !entry.afterFinishedRead &&
-			entry.readFailure == nil && entry.status() != steerApplied {
+		if entry.sessionID == sessionID && entry.finish == finishObserved && entry.status() != steerApplied {
 			pending = append(pending, entry)
 		}
 	}
@@ -182,13 +205,14 @@ func (s *steerDesk) readSteerReceipts() {
 				s.receipts.observeSnapshot(snapshot)
 			}
 			for _, entry := range pending {
-				if entry.afterFinishedRead || entry.status() == steerApplied {
+				if entry.finish == finishRead || entry.status() == steerApplied {
 					continue
 				}
-				entry.readFailure = err
-				if entry.readFailure == nil {
-					entry.readFailure = fmt.Errorf("authoritative read did not include finished run %s", entry.runID)
+				failure := err
+				if failure == nil {
+					failure = fmt.Errorf("authoritative read did not include finished run %s", entry.runID)
 				}
+				entry.failRead(failure)
 			}
 			s.presentSteerReceipts()
 			s.readSteerReceipts()
@@ -231,7 +255,7 @@ func (s *steerDesk) presentSteerReceipts() {
 		label += " · " + shortIdentity(selected.runID)
 	}
 	label += " · " + identity
-	if selected.readFailure != nil && status == steerUnconfirmed {
+	if selected.finish == finishReadFailed && status == steerUnconfirmed {
 		label += ": " + selected.readFailure.Error()
 	}
 	s.notify(label)

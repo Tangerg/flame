@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -53,11 +52,10 @@ type toolEnvironment struct {
 // process-owned tool runtime. Keeping the contract as one value lets construction
 // transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
-	framework        frameworkComposition
-	defaultSelection modelchoice.Selection
-	callbacks        *pluginmcp.Callbacks
-	workspaceScope   *workspace.Scope
-	conversation     interface {
+	framework      frameworkComposition
+	callbacks      *pluginmcp.Callbacks
+	workspaceScope *workspace.Scope
+	conversation   interface {
 		Read(context.Context, string) ([]chat.Message, error)
 	}
 	publish        invalidation.Publish
@@ -121,7 +119,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		environment.closers = append(environment.closers, terminalStep(func(ctx context.Context) error { return installed.Close(context.WithoutCancel(ctx)) }))
 		providerAdapters = installed
 	}
-	modelServices, err := buildModelEnvironment(ctx, cfg, deps.defaultSelection, deps.callbacks, providerAdapters)
+	modelServices, err := buildModelEnvironment(ctx, cfg, deps.callbacks, providerAdapters)
 	if err != nil {
 		return environment, err
 	}
@@ -143,7 +141,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
-	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, modelServices.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
+	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, cfg.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
 	if err != nil {
 		return environment, err
 	}

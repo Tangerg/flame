@@ -14,7 +14,7 @@ import (
 type TrajectoryExportConfig struct {
 	Snapshots        sessions.SnapshotReader
 	Sessions         *SessionStore
-	ModelInvocations *modelInvocationReader
+	ModelInvocations *ModelInvocationStore
 	ToolInvocations  *ToolInvocationStore
 	Annotations      *annotationStore
 	ReadSnapshot     Transactor
@@ -23,7 +23,7 @@ type TrajectoryExportConfig struct {
 type trajectoryExportReader struct {
 	snapshots        sessions.SnapshotReader
 	sessions         *SessionStore
-	modelInvocations *modelInvocationReader
+	modelInvocations *ModelInvocationStore
 	toolInvocations  *ToolInvocationStore
 	annotations      *annotationStore
 	readSnapshot     Transactor
@@ -73,7 +73,7 @@ func (r *trajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessi
 				return err
 			}
 		}
-		evidence.ModelEndpoints, err = r.modelInvocations.store.ListSessionEndpoints(ctx, sessionID)
+		evidence.ModelEndpoints, err = r.modelInvocations.ListSessionEndpoints(ctx, sessionID)
 		if err != nil {
 			return err
 		}

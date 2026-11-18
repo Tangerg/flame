@@ -129,7 +129,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
 	cfg.modelProviders = nil
-	cfg.provider, cfg.model = "openai-compatible", "knowledge-model"
+	cfg.defaultSelection = testsupport.MustModelSelection("openai-compatible", "knowledge-model")
 	r := poMCPOpen(t, cfg)
 	baseURL, key := provider.URL+"/v1", "local-embedding-fixture"
 	activateModelProviders(r)

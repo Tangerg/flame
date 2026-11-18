@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -43,10 +42,10 @@ func (t *ToolInvocationStore) ListOpenToolInvocations(ctx context.Context) ([]ru
 			if err := rows.Scan(&invocation.SessionID, &invocation.RunID, &invocation.SegmentID, &invocation.CallID, &invocation.ItemID, &startedAt); err != nil {
 				return nil, fmt.Errorf("sqlite: scan started Tool invocation: %w", err)
 			}
-			if err := validateToolInvocationIdentity(invocation.SessionID, invocation.RunID, invocation.SegmentID, invocation.CallID, invocation.ItemID); err != nil {
+			invocation.StartedAt = time.Unix(0, startedAt).UTC()
+			if err := invocation.Validate(); err != nil {
 				return nil, fmt.Errorf("sqlite: restore started Tool invocation: %w", err)
 			}
-			invocation.StartedAt = time.Unix(0, startedAt).UTC()
 			open = append(open, invocation)
 		}
 		if err := rows.Err(); err != nil {
@@ -185,12 +184,10 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 			return nil, err
 		}
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `
-		SELECT attempt.call_id, attempt.item_id, attempt.run_id, attempt.segment_id,
-		       attempt.state, attempt.started_at, attempt.finished_at, owner.session_id
-		  FROM tool_invocations attempt
-		  LEFT JOIN runs owner ON owner.run_id = attempt.run_id
-		 WHERE attempt.session_id = ?
-		 ORDER BY attempt.started_at, attempt.call_id, attempt.segment_id`, sessionID)
+		SELECT call_id, item_id, run_id, segment_id, state, started_at, finished_at
+		  FROM tool_invocations
+		 WHERE session_id = ?
+		 ORDER BY started_at, call_id, segment_id`, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
 		}
@@ -202,12 +199,8 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 			var record toolInvocationRecord
 			var startedAt int64
 			var finishedAt sql.NullInt64
-			var ownerSessionID sql.NullString
-			if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &ownerSessionID); err != nil {
+			if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID, &record.State, &startedAt, &finishedAt); err != nil {
 				return nil, fmt.Errorf("sqlite: scan session tool invocation: %w", err)
-			}
-			if !ownerSessionID.Valid || ownerSessionID.String != sessionID {
-				return nil, errors.New("sqlite: tool invocation run belongs to another session")
 			}
 			if err := validateToolInvocationIdentity(sessionID, record.RunID, record.SegmentID, record.CallID, record.ItemID); err != nil {
 				return nil, fmt.Errorf("sqlite: restore tool invocation: %w", err)

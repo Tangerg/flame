@@ -53,7 +53,7 @@ type Bundle struct {
 	ProviderSelections    *providerSelectionStore
 	PluginCompositions    *compositionStore
 	ChatHistory           *MessageStore
-	Trajectory            *trajectoryReader
+	Trajectory            *trajectoryStore
 	ModelInvocations      *ModelInvocationStore
 	ToolInvocations       *ToolInvocationStore
 	ChildRunStarts        *ChildRunStartReservationStore
@@ -142,7 +142,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ProviderSelections:    newProviderSelectionStore(db),
 		PluginCompositions:    newCompositionStore(db),
 		ChatHistory:           newMessageStore(db),
-		Trajectory:            &trajectoryReader{store: newTrajectoryStore(db)},
+		Trajectory:            newTrajectoryStore(db),
 		ModelInvocations:      newModelInvocationStore(db),
 		ToolInvocations:       newToolInvocationStore(db),
 		ChildRunStarts:        newChildRunStartReservationStore(db),

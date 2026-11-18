@@ -547,7 +547,7 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 		t.Fatalf("build chat client: %v", err)
 	}
 	cfg := composeConfig(
-		config.Settings{Provider: "anthropic", Model: "claude-test"},
+		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
 		stores,
 		testChatResolver(client),
 		stores.Providers,

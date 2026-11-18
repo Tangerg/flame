@@ -87,16 +87,37 @@ const (
 	rootTail
 )
 
+// availability gates a static Tool on one per-Run fact beyond its audience.
+// Goal-only capabilities key off the immutable incarnation stamped at Run
+// admission, never mutable Goal state.
+type availability uint8
+
+const (
+	alwaysAvailable availability = iota
+	whenPlanAvailable
+	goalRunsOnly
+)
+
+func (a availability) admits(ctx context.Context, planAvailable bool) bool {
+	switch a {
+	case whenPlanAvailable:
+		return planAvailable
+	case goalRunsOnly:
+		_, owned := executionctx.GoalIncarnationID(ctx)
+		return owned
+	default:
+		return true
+	}
+}
+
 // staticSpec is the policy record for one built-once per-Run capability. A Run
-// consumes entries in its placement and audience, with Goal-only capabilities
-// keyed by the immutable incarnation stamped at Run admission.
+// consumes entries in its placement and audience when their availability holds.
 type staticSpec struct {
-	tool            toolcontract.Tool
-	audience        audience
-	placement       placement
-	deferred        bool
-	requiresPlan    bool
-	requiresGoalRun bool
+	tool         toolcontract.Tool
+	audience     audience
+	placement    placement
+	availability availability
+	deferred     bool
 }
 
 // resolverDeps bundles the working-directory-independent inputs the resolver captures
@@ -145,13 +166,13 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		planAvailable: d.PlanAvailable,
 		staticSpecs: []staticSpec{
 			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
-			{tool: d.EnterPlan, requiresPlan: true, audience: audienceRoot, placement: interactionTail},
-			{tool: d.ExitPlan, requiresPlan: true, audience: audienceRoot, placement: interactionTail},
-			{tool: d.Plan, requiresPlan: true, audience: audienceRoot, placement: afterSkill},
+			{tool: d.EnterPlan, audience: audienceRoot, placement: interactionTail, availability: whenPlanAvailable},
+			{tool: d.ExitPlan, audience: audienceRoot, placement: interactionTail, availability: whenPlanAvailable},
+			{tool: d.Plan, audience: audienceRoot, placement: afterSkill, availability: whenPlanAvailable},
 			{tool: d.ToolResult, audience: audienceBoth, placement: afterSkill},
 			{tool: d.ProposeSkill, audience: audienceRoot, placement: afterSkill, deferred: true},
 			{tool: d.GoalGet, audience: audienceRoot, placement: rootTail},
-			{tool: d.GoalReport, audience: audienceRoot, placement: rootTail, requiresGoalRun: true},
+			{tool: d.GoalReport, audience: audienceRoot, placement: rootTail, availability: goalRunsOnly},
 		},
 		codeIntel:       d.CodeIntel,
 		readTracker:     d.ReadTracker,
@@ -169,16 +190,8 @@ func (r *Resolver) appendStatic(
 	group domaintool.Group, planAvailable bool,
 ) {
 	for _, spec := range r.staticSpecs {
-		if spec.requiresPlan && !planAvailable {
+		if spec.tool == nil || spec.placement != at || !spec.audience.includes(group) || !spec.availability.admits(ctx, planAvailable) {
 			continue
-		}
-		if spec.tool == nil || spec.placement != at || !spec.audience.includes(group) {
-			continue
-		}
-		if spec.requiresGoalRun {
-			if _, owned := executionctx.GoalIncarnationID(ctx); !owned {
-				continue
-			}
 		}
 		if spec.deferred {
 			into.deferTools(spec.tool)

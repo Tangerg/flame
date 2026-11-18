@@ -8,18 +8,18 @@ import (
 // renderToolResultPreview renders the model-facing replacement for an offloaded
 // tool result. This wording contains the agent tool's retrieval contract, so it
 // belongs with the executor adapter rather than in a generic component.
-func renderToolResultPreview(body, id, readToolName string, previewBytes int) string {
+func renderToolResultPreview(body, id string, previewBytes int) string {
 	marker := fmt.Sprintf(
 		"\n\n…[%d bytes offloaded to keep the context small — retrieve omitted bytes with %s: {\"result_id\":\"%s\"}; page with offset_bytes and limit_bytes.]…\n\n",
-		len(body), readToolName, id,
+		len(body), toolResultReaderName, id,
 	)
 	return toolResultPreview(body, marker, previewBytes)
 }
 
-func renderToolResultRangePreview(body, id, readToolName string, offsetBytes, previewBytes int) string {
+func renderToolResultRangePreview(body, id string, offsetBytes, previewBytes int) string {
 	marker := fmt.Sprintf(
 		"\n\n…[This content block spans %d bytes at blob offset %d. Retrieve with %s: {\"result_id\":\"%s\",\"offset_bytes\":%d}; page with limit_bytes within this block's range.]…\n\n",
-		len(body), offsetBytes, readToolName, id, offsetBytes,
+		len(body), offsetBytes, toolResultReaderName, id, offsetBytes,
 	)
 	return toolResultPreview(body, marker, previewBytes)
 }

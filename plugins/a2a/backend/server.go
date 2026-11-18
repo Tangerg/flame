@@ -18,6 +18,15 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
+// Command tools record receipts under their contract method; a receipt query
+// arrives under the model-facing tool name.
+const (
+	sendTool   = "a2a_send"
+	cancelTool = "a2a_cancel"
+)
+
+const capabilityExport = "remote-agents"
+
 func newServer(connector *connector) (*sdk.Server, error) {
 	if connector == nil {
 		return nil, errors.New("a2a: connector is required")
@@ -53,11 +62,11 @@ func newServer(connector *connector) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	send, err := commandTool[wire.SendRequest]("a2a_send", contracts.Send.Descriptor(), connector.send)
+	send, err := commandTool[wire.SendRequest](sendTool, contracts.Send.Descriptor(), connector.send)
 	if err != nil {
 		return nil, err
 	}
-	cancel, err := commandTool[wire.TaskRequest]("a2a_cancel", contracts.Cancel.Descriptor(), connector.cancel)
+	cancel, err := commandTool[wire.TaskRequest](cancelTool, contracts.Cancel.Descriptor(), connector.cancel)
 	if err != nil {
 		return nil, err
 	}
@@ -93,16 +102,16 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
 			switch input.Method {
-			case "a2a_send":
+			case sendTool:
 				input.Method = contracts.Send.Name()
-			case "a2a_cancel":
+			case cancelTool:
 				input.Method = contracts.Cancel.Name()
 			default:
 				return pluginsdk.ToolReceipt{}, nil
 			}
 			return connector.receipt(ctx, input)
 		}),
-		backend.BindCapability("remote-agents", contracts.Capability),
+		backend.BindCapability(capabilityExport, contracts.Capability),
 	); err != nil {
 		return nil, err
 	}

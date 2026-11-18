@@ -180,7 +180,7 @@ func newSessionStateE2ERuntime(
 		t.Fatal(err)
 	}
 	cfg := composeConfig(
-		config.Settings{Provider: "anthropic", Model: "claude-test"},
+		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
 		stores,
 		testChatResolver(client),
 		stores.Providers,

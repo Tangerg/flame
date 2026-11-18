@@ -46,7 +46,7 @@ baseURL: ""
 # head+tail placeholder the model reads back on demand via the read_tool_result
 # tool — so one giant file read or command dump stops re-inflating every later
 # request. Enabled by default at 50000 bytes. Disable with the explicit enabled
-# flag; threshold must remain positive. Both fields have FLAME_* overrides.
+# flag; an enabled threshold must be positive. Both fields have FLAME_* overrides.
 # toolResultOffload:
 #   enabled: true
 #   threshold: 50000

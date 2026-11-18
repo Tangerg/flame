@@ -307,7 +307,7 @@ func (o *observedInteractionModel) begin(
 	); err != nil {
 		return modelCallSource{}, "", err
 	}
-	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {
+	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID, Purpose: run.ModelConversation}); err != nil {
 		return modelCallSource{}, "", fmt.Errorf("execution: commit model call start: %w", err)
 	}
 	return invocation, callID, nil

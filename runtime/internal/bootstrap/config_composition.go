@@ -13,20 +13,18 @@ import (
 // the construction input consumed by assembly.
 func composeConfig(cfg config.Settings, stores *persistence.Bundle, adapters modelProviderAdapters, providers models.ProviderRegistry, buildID string) assemblyConfig {
 	return assemblyConfig{
-		stores:                   stores,
-		resources:                []terminalResource{stores},
-		buildID:                  buildID,
-		modelProviders:           adapters,
-		skillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
-		sandboxShell:             cfg.SandboxShell,
-		sandboxReadOnlyPaths:     cfg.SandboxReadOnlyPaths,
-		sandboxDir:               filepath.Join(stores.DataDirectory, "sandbox"),
-		providerRegistry:         providers,
-		provider:                 cfg.Provider,
-		model:                    cfg.Model,
-		checkpointDir:            filepath.Join(stores.DataDirectory, "checkpoints"),
-		toolResultOffloadEnabled: cfg.ToolResultOffload.Enabled,
-		toolResultThreshold:      cfg.ToolResultOffload.Threshold,
-		approvalMode:             approval.ModeBalanced,
+		stores:                     stores,
+		resources:                  []terminalResource{stores},
+		buildID:                    buildID,
+		modelProviders:             adapters,
+		skillsUserDir:              filepath.Join(stores.DataDirectory, "skills"),
+		sandboxShell:               cfg.SandboxShell,
+		sandboxReadOnlyPaths:       cfg.SandboxReadOnlyPaths,
+		sandboxDir:                 filepath.Join(stores.DataDirectory, "sandbox"),
+		providerRegistry:           providers,
+		defaultSelection:           cfg.DefaultSelection,
+		checkpointDir:              filepath.Join(stores.DataDirectory, "checkpoints"),
+		toolResultOffloadThreshold: cfg.ToolResultOffloadThreshold,
+		approvalMode:               approval.ModeBalanced,
 	}
 }

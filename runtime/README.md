@@ -223,7 +223,8 @@ restores its captured call counts without manufacturing reported-zero usage.
 ## Evidence retention
 
 Physical model evidence has one journal owner. Run-linked rows follow the Run's
-existing deletion lifetime; Session-only rows are deleted atomically with that
+existing deletion lifetime, and their Session is the Run's Session by a composite
+foreign key, so no reader re-checks the copy; Session-only rows cascade with that
 Session. Unattached rows are retained without an automatic expiry. Failed Session
 deletion rolls evidence removal back. Unknown consumption remains unknown after
 restart and does not authorize another provider request. Pending plugin commands

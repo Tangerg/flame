@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
@@ -14,7 +13,6 @@ import (
 // execution, utility-model work, and embedding-backed search. Its live role
 // states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
-	defaultSelection   modelchoice.Selection
 	chatResolver       *modeladapter.ObservedResolver
 	utilityRoleState   *models.RoleState
 	utilityModel       modeladapter.AuxiliaryResolver
@@ -25,7 +23,7 @@ type modelEnvironment struct {
 	capabilities       *modeladapter.Capabilities
 }
 
-func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection, callbacks *pluginmcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
+func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *pluginmcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
 	resolver, err := modeladapter.NewChatResolver(cfg.providerRegistry, providers)
 	if err != nil {
 		return modelEnvironment{}, err
@@ -59,7 +57,6 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 		return modelEnvironment{}, err
 	}
 	environment := modelEnvironment{
-		defaultSelection:   defaultSelection,
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
 		embeddingRoleState: embeddingRoleState,

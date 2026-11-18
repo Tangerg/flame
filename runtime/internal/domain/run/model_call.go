@@ -6,7 +6,7 @@ import "fmt"
 type ModelCallPurpose uint8
 
 const (
-	ModelConversation ModelCallPurpose = iota
+	ModelConversation ModelCallPurpose = iota + 1
 	ModelIndependent
 )
 

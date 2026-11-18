@@ -88,11 +88,10 @@ type assemblyConfig struct {
 	// empty or an unknown mode fails assembly.
 	approvalMode approval.Mode
 
-	// Provider / Model name the runtime's default provider+model; the one a Run
-	// runs against when it doesn't pick a model. providers.list / models.list
-	// are served from the registry + catalog, not these.
-	provider string
-	model    string
+	// defaultSelection is the exact model a Run runs against when it doesn't
+	// pick one. providers.list / models.list are served from the registry +
+	// catalog, not this.
+	defaultSelection modelchoice.Selection
 
 	// CheckpointDir roots the per-session shadow-git repos backing run-boundary
 	// file snapshots (<FLAME_HOME>/runtime/checkpoints); the checkpoint adapter enables
@@ -109,10 +108,9 @@ type assemblyConfig struct {
 	// process root, not the server process's current working directory.
 	defaultWorkspacePath string
 
-	// ToolResultOffloadEnabled explicitly controls context eviction. When true,
-	// ToolResultThreshold must be positive.
-	toolResultOffloadEnabled bool
-	toolResultThreshold      int
+	// toolResultOffloadThreshold enables context eviction above this many
+	// bytes; nil disables it.
+	toolResultOffloadThreshold *int
 }
 
 // validateAssemblyConfig reports whether the construction-time bundle has
@@ -169,6 +167,9 @@ func validateAssemblyConfig(c assemblyConfig) error {
 	}
 	if lo.IsNil(c.providerRegistry) {
 		return errors.New("runtime: ProviderRegistry is required")
+	}
+	if err := c.defaultSelection.ValidateExact(); err != nil {
+		return fmt.Errorf("runtime: default model selection: %w", err)
 	}
 	return nil
 }

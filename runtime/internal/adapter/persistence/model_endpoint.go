@@ -123,7 +123,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			WHERE call_id=? AND endpoint_json IS NULL AND state=?
 			UNION ALL SELECT session_id,run_id,segment_id,started_at FROM tool_invocations
 			WHERE call_id=? AND state=?
-		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
+		) owner JOIN runs ON runs.run_id=owner.run_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
 			args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, string(runs.ToolInvocationStarted), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
 		}
@@ -331,9 +331,6 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, aband
 	sessionID, runID, segmentID, callID := abandoned.SessionID, abandoned.RunID, abandoned.SegmentID, abandoned.CallID
 	startedAt, finishedAt, source := abandoned.StartedAt, abandoned.FinishedAt, abandoned.Endpoint
 	return m.db.write(ctx, func(ctx context.Context) error {
-		if err := abandoned.Purpose.Validate(); err != nil {
-			return err
-		}
 		var actualPurpose string
 		if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
 			return err
@@ -342,10 +339,6 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, aband
 			return errors.New("sqlite: recovered model purpose changed")
 		}
 		if source != nil {
-			record := source.Snapshot()
-			if record.RunID != runID || record.SessionID != sessionID || record.SegmentID != segmentID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || record.FinishedAt.After(finishedAt) {
-				return errors.New("sqlite: recovered endpoint differs from original call")
-			}
 			if err := m.validateEndpointProjection(ctx, *source); err != nil {
 				return err
 			}
@@ -355,9 +348,6 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, aband
 				Purpose: abandoned.Purpose, CallID: callID, SegmentID: segmentID,
 				State: modelref.InvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
 			})
-		}
-		if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
-			return err
 		}
 		if err := instant.Validate(startedAt, finishedAt); err != nil {
 			return err
@@ -418,24 +408,6 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			if !exists {
 				return session.ErrNotFound
 			}
-		}
-		ownership := `SELECT EXISTS(SELECT 1 FROM model_invocations source LEFT JOIN runs owner ON owner.run_id=source.run_id LEFT JOIN sessions scope ON scope.id=source.session_id WHERE source.endpoint_json IS NOT NULL AND ((source.run_id IS NOT NULL AND (owner.run_id IS NULL OR source.session_id IS NULL OR source.session_id!=owner.session_id)) OR (source.session_id IS NOT NULL AND scope.id IS NULL))`
-		var ownershipArgs []any
-		if sessionID != "" {
-			ownership += ` AND (source.session_id=? OR owner.session_id=?)`
-			ownershipArgs = append(ownershipArgs, sessionID, sessionID)
-		}
-		if !since.IsZero() {
-			ownership += ` AND source.started_at>=?`
-			ownershipArgs = append(ownershipArgs, since.UTC().UnixNano())
-		}
-		ownership += `)`
-		var invalid bool
-		if err := m.db.connection(ctx).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
-			return err
-		}
-		if invalid {
-			return errors.New("sqlite: physical usage source has inconsistent ownership")
 		}
 		query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL`
 		var args []any

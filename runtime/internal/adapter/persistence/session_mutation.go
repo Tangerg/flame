@@ -74,9 +74,6 @@ func (s *SessionStore) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	return s.db.write(ctx, func(ctx context.Context) error {
-		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
-			return fmt.Errorf("sqlite: delete Session endpoints: %w", err)
-		}
 		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
 			return fmt.Errorf("sqlite: delete Session: %w", err)
 		}

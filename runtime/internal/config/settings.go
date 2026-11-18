@@ -1,6 +1,10 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+)
 
 type apiKeySource uint8
 
@@ -60,24 +64,21 @@ type Server struct {
 }
 
 type Settings struct {
-	Provider     string
-	Model        string
-	APIKey       APIKeyInput
-	BaseURL      string
-	UtilityModel string
+	// DefaultSelection is exact: a Run that names no model runs against it.
+	DefaultSelection modelchoice.Selection
+	APIKey           APIKeyInput
+	BaseURL          string
+	UtilityModel     string
 
-	ToolResultOffload ToolResultOffloadSettings
+	// ToolResultOffloadThreshold is the byte size above which Tool results are
+	// offloaded; nil disables offload.
+	ToolResultOffloadThreshold *int
 
 	// Unsupported isolation must fail startup; false explicitly selects plain shells.
 	SandboxShell         bool
 	SandboxReadOnlyPaths []string
 
 	Server Server
-}
-
-type ToolResultOffloadSettings struct {
-	Enabled   bool
-	Threshold int
 }
 
 const defaultToolResultOffloadThreshold = 50_000
