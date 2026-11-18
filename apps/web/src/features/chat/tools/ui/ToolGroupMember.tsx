@@ -13,7 +13,7 @@ import {
 } from "@/features/chat/tools/application/toolCardModel";
 import { toolCallIconFor } from "@/features/agent/public/toolIcon";
 import { ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
-import { AgentActivityBody, ToolText } from "@/ui/agent/index";
+import { AgentActivityBody, stackedActivityDetail, ToolText } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
 import {
@@ -71,7 +71,13 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
   const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
   const disclosable = model.disclosable;
   const disclosed = disclosable && expanded;
-  const rowClassName = stylex.props(gm.row, typeStep.uiSm, disclosed && gm.rowExpanded).className;
+  const stackDetail = disclosed && model.detail?.kind === "path";
+  const rowClassName = stylex.props(
+    gm.row,
+    typeStep.uiSm,
+    disclosed && gm.rowExpanded,
+    stackDetail && stackedActivityDetail.trigger,
+  ).className;
 
   const summary = (
     <>
@@ -87,7 +93,13 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
           <Icon name="chevron-down" size="xs" />
         </span>
       )}
-      {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
+      {model.detail && (
+        <ToolText
+          value={model.detail}
+          styles={[stackDetail ? stackedActivityDetail.detail : vocab.fill, vocab.faint]}
+          wrap={stackDetail}
+        />
+      )}
       {model.diffStat && <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />}
       {headline && (
         <span
@@ -103,7 +115,7 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
 
   return (
     <div>
-      <div {...stylex.props(gm.line, reveal.host)}>
+      <div {...stylex.props(gm.line, reveal.host, stackDetail && stackedActivityDetail.header)}>
         {disclosable ? (
           <ButtonPrimitive
             id={summaryId}

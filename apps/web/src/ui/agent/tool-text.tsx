@@ -23,6 +23,7 @@ export function ToolText({
       <FilePath
         path={value.value}
         className={stylex.props(face.mono, typeStep.code, styles).className}
+        wrap={wrap}
       />
     );
   }

@@ -1931,16 +1931,21 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       narrativeTool(
         "item_n_read",
         "read",
-        { path: "src/checkout/checkout.tsx" },
+        {
+          path: "packages/alpha/checkout/跨区域账单/payment-retry/captured-order/client/Checkout.tsx",
+        },
         { content: "export function Checkout() {\n  …\n}\n", total_lines: 212 },
       ),
       narrativeTool(
         "item_n_read_2",
         "read",
         {
-          path: "/Users/visual/scope/apps/web/src/features/chat/tools/ui/ToolGroup.tsx",
+          path: "packages/beta/checkout/跨区域账单/payment-retry/captured-order/client/Checkout.tsx",
         },
-        { content: "export function ToolGroup() {\n  …\n}\n", total_lines: 148 },
+        {
+          content: "export function Checkout() {\n  const order = usePaymentDraft();\n  …\n}\n",
+          total_lines: 148,
+        },
       ),
       narrativeTool(
         "item_n_read_3",

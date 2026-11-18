@@ -43,6 +43,7 @@ export function ToolCard({ tool, expanded, onExpandedChange }: Props) {
   const model = toolCardModel(t, tool);
   const summaryId = useId();
   const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
+  const stackDetail = expanded && model.disclosable && model.detail?.kind === "path";
 
   return (
     <>
@@ -53,7 +54,12 @@ export function ToolCard({ tool, expanded, onExpandedChange }: Props) {
         summaryId={summaryId}
         contentInset="rows"
         label={<ToolText value={model.intent.label} styles={tc.full} wrap={expanded} />}
-        detail={model.detail ? <ToolText value={model.detail} styles={tc.full} /> : undefined}
+        detail={
+          model.detail ? (
+            <ToolText value={model.detail} styles={tc.full} wrap={stackDetail} />
+          ) : undefined
+        }
+        detailPlacement={stackDetail ? "below" : undefined}
         trailing={
           <>
             {model.diffStat && (

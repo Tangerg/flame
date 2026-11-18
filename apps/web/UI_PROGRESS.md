@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -38547,6 +38547,49 @@ view, so the Chinese workspace supplies the file-return witness. The check
 covers local reading and keyboard continuity. Live Tool execution, physical
 IME, VoiceOver and other operating systems remain unverified. Browser
 visual suites and benchmarks were outside the scope.
+
+### Complete paths in expanded tool rows (2026-11-19)
+
+At `9a221e80f`, the existing `narrative` scene now exercises two captured
+Read records for `Checkout.tsx`. The mixed-language paths differ in their
+`packages/alpha` and `packages/beta` directories. At Actual Size with 440 px
+of conversation width, both original expanded headers visibly read
+`…/client/Checkout.tsx`. The accessible names still include both directories.
+The first inline-wrapping candidate exposes the directories but splits the
+basename and places the action icons midway through five lines of path.
+
+`ToolGroupMember` and `ToolCard` now use the shared activity layout for a
+path detail below the first line of the same trigger. The operation,
+status and actions align on the first line. `ToolText` delegates full path
+rendering to `FilePath`, which preserves the literal text and directory ink.
+The separator provides a natural wrap opportunity and long segments can
+wrap to fit the available column. The collapsed trigger still prioritizes
+the filename within the compact path. Better Typography and Better Layout
+guide the visible hierarchy. Existing control order and disclosures remain.
+[Chrome single-line overflow](https://developer.chrome.com/docs/modern-web-guidance/guides/ui-atoms/single-line-overflow)
+[CSS Text overflow wrapping](https://www.w3.org/TR/css-text-3/#overflow-wrap-property)
+
+- Wails v3.1.0, ZH/dark/18 px/`#3B82F6`/motion off at Actual Size in a
+  native left-tiled window. Both expanded headers show the distinguishing
+  prefix and the complete basename. Tab and Return open the beta and alpha
+  file targets individually. The Files panel exposes the corresponding full
+  path each time. Return to conversation restores the matching Open the
+  current file button while both tool entries remain expanded. Cmd+L and
+  paste continue the original draft as `核对来源后继续尾段`.
+- Wails v3.1.0, EN/light/14 px/Flame Orange/full motion at Actual Size.
+  The standalone Read shows `runtime/internal/session/store.go` together
+  with a visible keyboard outline. Pointer collapse returns the path and
+  source controls to their compact state. The neighboring command remains
+  reachable. An extra character on one native typing attempt and repeated
+  input on a later attempt leave exact English caret continuation unqualified.
+
+Scoped Prettier, Web types, `make check-native`, canonical Lab build, both
+bundle signatures, 81 Web schema contract tests, bootstrap, plugin resource,
+bundle and module checks pass. The QA previews, app instances, registrations,
+profiles, logs, caches and checkout outputs are removed. The Files renderer
+uses the existing eight-line Lab sample. The matching path and focus qualify
+captured reading and navigation. Live filesystem reads, OS IME, VoiceOver,
+browser visual suites and benchmarks were outside this scope.
 
 ### Native activation follow-up
 

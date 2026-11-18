@@ -1063,6 +1063,8 @@ of the summary name. Reasoning previews and prose use the existing faint text ro
 Grouped Tool details mount on the first open. Closing a member hides its controls
 from keyboard and accessibility navigation. The result, filter and Arguments
 are retained for the mounted tool row.
+Expanded tool rows wrap complete file paths under the operation and status.
+The collapsed summary uses the compact path treatment.
 Transcript, reasoning and recorded-output readers delegate virtual rendering,
 end follow and anchoring to Legend. Focus, composition, native selection ranges
 and React portal owners pin their rows through the public alwaysRender API.

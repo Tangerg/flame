@@ -134,6 +134,12 @@ const styles = stylex.create({
   bodyRows: { paddingBlock: space.s1_5 },
 });
 
+export const stackedActivityDetail = stylex.create({
+  header: { alignItems: "flex-start" },
+  trigger: { flexWrap: "wrap", rowGap: space.s0_5 },
+  detail: { flex: "0 0 100%", order: 1, paddingInlineStart: space.s6 },
+});
+
 const TRAY_TONE = {
   neutral: styles.trayNeutral,
   warning: styles.trayWarning,
@@ -165,6 +171,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
   ActivityLeading & {
     label: ReactNode;
     detail?: ReactNode;
+    detailPlacement?: "inline" | "below";
     // A glimpse of the shut body; it sits beside the toggle so changing text never renames the control.
     preview?: ReactNode;
     trailing?: ReactNode;
@@ -187,6 +194,7 @@ export function AgentActivityDisclosure({
   leading,
   label,
   detail,
+  detailPlacement = "inline",
   preview,
   trailing,
   actions,
@@ -209,6 +217,7 @@ export function AgentActivityDisclosure({
   const triggerId = summaryId ?? ownSummaryId;
   const framed = shell !== "line" && icon !== undefined;
   const disclosable = children != null;
+  const stackDetail = detail != null && detailPlacement === "below";
   return (
     <Collapsible.Root
       {...props}
@@ -227,6 +236,7 @@ export function AgentActivityDisclosure({
           stylex.props(
             reveal.host,
             styles.header,
+            stackDetail && stackedActivityDetail.header,
             ink === "dim" ? styles.headerPublishesDim : styles.headerPublishes,
           ).className,
         )}
@@ -235,8 +245,12 @@ export function AgentActivityDisclosure({
           disclosable={disclosable}
           id={triggerId}
           className={
-            stylex.props(styles.trigger, skin.trigger, preview != null && styles.triggerFit)
-              .className
+            stylex.props(
+              styles.trigger,
+              skin.trigger,
+              preview != null && styles.triggerFit,
+              stackDetail && stackedActivityDetail.trigger,
+            ).className
           }
         >
           <span
@@ -270,7 +284,15 @@ export function AgentActivityDisclosure({
             </span>
           )}
           {detail != null ? (
-            <span {...stylex.props(styles.detail, vocab.truncate, skin.text)}>{detail}</span>
+            <span
+              {...stylex.props(
+                styles.detail,
+                stackDetail ? stackedActivityDetail.detail : vocab.truncate,
+                skin.text,
+              )}
+            >
+              {detail}
+            </span>
           ) : (
             preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />
           )}
