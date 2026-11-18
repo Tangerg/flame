@@ -158,62 +158,68 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 	if err != nil {
 		return err
 	}
-	mark := func(ctx context.Context, command pluginmcp.Command[scopewire.Request], phase string) error {
-		if len(command.Input.Tools) == 0 {
-			return nil
-		}
+	mark := func(ctx context.Context, command pluginmcp.Command[scopewire.Request], phase, method string) error {
 		owner, err := pluginmcp.InvocationFromContext(ctx)
 		if err != nil || owner.ID != string(command.ID) || owner.Target.Reference != string(command.ID) {
 			return errors.New("observer: original model identity was replaced")
 		}
-		return record(ctx, trace, map[string]string{"layer": layer, "phase": phase, "id": string(command.ID)})
+		return record(ctx, trace, map[string]string{"layer": layer, "phase": phase, "method": method, "id": string(command.ID)})
 	}
-	method, err := pluginsdk.ModelMethod()
+	continuation, err := pluginsdk.ModelMethod()
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) (pluginsdk.ModelResult, error) {
-		if err := mark(ctx, command, "before"); err != nil {
-			return pluginsdk.ModelResult{}, err
+	method, err := pluginsdk.ModelObserverCallMethod()
+	if err != nil {
+		return err
+	}
+	callName := method.Descriptor().Name
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) (struct{}, error) {
+		if err := mark(ctx, command, "before", callName); err != nil {
+			return struct{}{}, err
 		}
 		next, err := pluginmcp.CallbackFromContext(ctx)
 		if err != nil {
-			return pluginsdk.ModelResult{}, err
+			return struct{}{}, err
 		}
-		response, err := pluginsdk.CallModel(ctx, next, command.ID, (*chat.Request)(&command.Input).Clone())
-		if err != nil {
-			return pluginsdk.ModelResult{}, err
+		if _, err := pluginmcp.CallHost(ctx, next, continuation, command.ID, command.Input); err != nil {
+			return struct{}{}, err
 		}
-		if err := mark(ctx, command, "after"); err != nil {
-			return pluginsdk.ModelResult{}, err
-		}
-		return pluginsdk.ModelResult{Response: response}, nil
+		return struct{}{}, mark(ctx, command, "after", callName)
 	}); err != nil {
 		return err
 	}
-	stream, err := pluginsdk.ModelStreamMethod()
+	stream, err := pluginsdk.ModelObserverStreamMethod()
 	if err != nil {
 		return err
 	}
-	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error] {
-		return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult], error) bool) {
-			if err := mark(ctx, command, "before"); err != nil {
-				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
+	type observationFrame = pluginmcp.StreamValue[scopewire.ResponseDelta, struct{}]
+	streamName := stream.Descriptor().Name
+	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[scopewire.Request]) iter.Seq2[observationFrame, error] {
+		return func(yield func(observationFrame, error) bool) {
+			if err := mark(ctx, command, "before", streamName); err != nil {
+				yield(observationFrame{}, err)
 				return
 			}
 			next, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
-				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(observationFrame{}, err)
 				return
 			}
 			for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, (*chat.Request)(&command.Input).Clone()) {
-				if !yield(value, err) || err != nil {
+				if err != nil {
+					yield(observationFrame{}, err)
+					return
+				}
+				if value.Chunk != nil && !yield(observationFrame{Chunk: value.Chunk}, nil) {
 					return
 				}
 			}
-			if err := mark(ctx, command, "after"); err != nil {
-				yield(pluginmcp.StreamValue[scopewire.ResponseDelta, pluginsdk.ModelResult]{}, err)
+			if err := mark(ctx, command, "after", streamName); err != nil {
+				yield(observationFrame{}, err)
+				return
 			}
+			yield(observationFrame{Result: new(struct{})}, nil)
 		}
 	}); err != nil {
 		return err

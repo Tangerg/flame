@@ -89,9 +89,8 @@ func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.Respon
 			}
 		}
 		response, err := accumulated.Response()
-		if err != nil {
-			response = nil
-			failure = errors.Join(failure, err)
+		if failure == nil {
+			failure = err
 		}
 		result, err := modelResult(response, failure)
 		if err != nil {

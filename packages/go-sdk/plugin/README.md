@@ -507,6 +507,14 @@ stream consumers preserve the same cancellation and terminal rules. Ordinary una
 and installed unary admission refuse stream methods before delivery/route persistence.
 Only implemented streaming entrances advertise stream support.
 
+`flame.model-observers.v2` publishes `ModelObserverCallMethod` and
+`ModelObserverStreamMethod`. An observer consumes its captured continuation
+using the original model callback methods. It acknowledges each streamed chunk by
+returning that chunk unchanged and acknowledges the end of observation with
+`{}`. The host forwards the original chunk and takes the model outcome from
+the captured continuation. An observer failure retains an already completed
+provider response and its usage. Rebuild installed observers and Runtime together.
+
 ## Backend streams
 
 `pluginmcp.StreamingMethod.RegisterServer` binds a real SDK backend stream under the same

@@ -189,6 +189,11 @@ unknown outcomes, original reported usage and captured per-call price. `Steps`
 counts these calls; preparation failures without dispatch evidence do not count.
 An adapter that proves the original request never executed withdraws the pending
 endpoint observation and preserves the logical Model failure in the Run's history.
+Installed model observers acknowledge the captured continuation's chunks and
+completion. Runtime joins that continuation before settling the logical Model
+call. A refusal before invoking the continuation establishes that no provider work
+ran for that call.
+An observer failure after provider completion preserves that response and its usage.
 The Run reducer owns accumulation across calls and resumed
 segments; terminal segment facts contain outcome, unresolved effects and duration.
 `SegmentUsage` and cumulative completion fields are removed. Scope process snapshots

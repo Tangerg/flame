@@ -61,6 +61,7 @@ func TestInstalledModelDecoratorsObserveFrozenBeforeAfterOrder(t *testing.T) {
 	}
 	cfg := poMCPConfig(t)
 	cfg.modelProviders = testChatResolver(client)
+	cfg.maintenance = noMaintenance{}
 	r := poMCPOpen(t, cfg)
 	defer r.close()
 	contract, err := pluginsdk.ModelObserverContract()

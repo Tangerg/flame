@@ -3905,8 +3905,16 @@
           "signature": "func() (*mcp.Method[scopewire.Request, ModelResult], error)"
         },
         {
+          "name": "ModelObserverCallMethod",
+          "signature": "func() (*mcp.Method[scopewire.Request, struct{}], error)"
+        },
+        {
           "name": "ModelObserverContract",
           "signature": "func() (*contract.Capability, error)"
+        },
+        {
+          "name": "ModelObserverStreamMethod",
+          "signature": "func() (*mcp.StreamingMethod[scopewire.Request, scopewire.ResponseDelta, struct{}], error)"
         },
         {
           "name": "ModelSelectionContract",

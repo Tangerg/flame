@@ -2,7 +2,6 @@ package pluginservices
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"iter"
 	"sync"
@@ -16,7 +15,6 @@ import (
 
 	framehost "github.com/Tangerg/frame/host"
 
-	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -101,13 +99,13 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, stre
 	if err != nil {
 		return nil, nil, err
 	}
-	method, err := pluginsdk.ModelMethod()
+	method, err := pluginsdk.ModelObserverCallMethod()
 	if err != nil {
 		return nil, nil, err
 	}
 	name := method.Descriptor().Name
 	if streaming {
-		stream, err := pluginsdk.ModelStreamMethod()
+		stream, err := pluginsdk.ModelObserverStreamMethod()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -144,82 +142,25 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, stre
 	return borrowed, bound, nil
 }
 
-// observationAdmission is this transparent contract's one-delivery rule, not a
-// universal restriction on decoration. The captured request cannot be transformed.
-type observationAdmission struct {
-	mu           sync.Mutex
-	request      *chat.Request
-	id           string
-	entered      bool
-	known        *chat.Response
-	pending      *chat.ResponseDelta
-	forwarded    chan struct{}
-	violation    error
-	innerFailure error
-}
-
-func (a *observationAdmission) enter(command pluginmcp.Command[scopewire.Request]) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	exact, err := sameObservationJSON(a.request, &command.Input)
-	if a.entered || string(command.ID) != a.id || err != nil || !exact {
-		a.violation = &framecall.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
-		a.violation = errors.Join(a.violation, err)
-		return a.violation
-	}
-	a.entered = true
-	return nil
-}
-
-func (a *observationAdmission) retain(response *chat.Response, failure error) {
-	a.mu.Lock()
-	a.innerFailure = failure
-	if response != nil && response.Validate() == nil {
-		a.known = response.Clone()
-	}
-	a.mu.Unlock()
-}
-
-func (a *observationAdmission) outcome(response *chat.Response, err error) (*chat.Response, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	err = errors.Join(err, a.violation, a.innerFailure)
-	if err != nil {
-		return a.known.Clone(), err
-	}
-	exact, encodingErr := sameObservationJSON(a.known, response)
-	if !a.entered || a.known == nil || a.pending != nil || encodingErr != nil || !exact {
-		return a.known.Clone(), errors.Join(encodingErr, errors.New("model observer changed or omitted its captured outcome"))
-	}
-	return a.known.Clone(), nil
-}
-
-func sameObservationJSON(left, right any) (bool, error) {
-	encodedLeft, err := framevalue.EncodeJSON(left)
-	if err != nil {
-		return false, err
-	}
-	encodedRight, err := framevalue.EncodeJSON(right)
-	if err != nil {
-		return false, err
-	}
-	return encodedLeft == encodedRight, nil
-}
-
 func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	ctx, err := enterContributionPhase(ctx, o.binding)
 	if err != nil {
-		return nil, err
+		return nil, continuationNotExecuted(err)
 	}
 	borrowed, binding, err := o.prepare(ctx, request, false)
 	if err != nil {
-		return nil, err
+		return nil, continuationNotExecuted(err)
 	}
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
 	invocation, _ := pluginmcp.InvocationFromContext(ctx)
-	admission := &observationAdmission{request: request.Clone(), id: invocation.ID}
+	frozen := request.Clone()
+	input, err := framevalue.EncodeJSON((*scopewire.Request)(frozen))
+	if err != nil {
+		return nil, continuationNotExecuted(err)
+	}
+	admission := &observedContinuation{request: input, id: pluginmcp.CommandID(invocation.ID)}
 	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		if err := admission.enter(command); err != nil {
 			return nil, err
@@ -227,37 +168,25 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		calling, release := modelContinuationContext(ctx, requestCtx)
 		defer release()
 		if err := calling.Err(); err != nil {
-			return nil, errors.Join(err, context.Cause(calling))
+			failure := continuationNotExecuted(errors.Join(err, context.Cause(calling)))
+			admission.finish(nil, failure)
+			return nil, failure
 		}
-		response, err := o.next.Call(calling, (*chat.Request)(&command.Input).Clone())
-		admission.retain(response, err)
+		response, err := o.next.Call(calling, frozen.Clone())
+		admission.finish(response, err)
 		return response, err
 	})
 	if err != nil {
-		return nil, err
+		return nil, continuationNotExecuted(err)
 	}
 	metadata, release, err := o.owner.calls.pool.OpenRPC(ctx, o.binding.ServerID, session, next)
 	if err != nil {
-		return nil, err
+		return nil, continuationNotExecuted(err)
 	}
 	defer release()
-	input, err := framevalue.EncodeJSON(admission.request)
-	if err != nil {
-		return nil, err
-	}
-	raw, err := binding.InvokeWithMetadata(ctx, pluginmcp.CommandID(invocation.ID), input, metadata)
+	_, observerErr := binding.InvokeWithMetadata(ctx, admission.id, input, metadata)
 	release()
-	if err != nil {
-		return admission.outcome(nil, err)
-	}
-	var result pluginsdk.ModelResult
-	if err := json.Unmarshal(raw.Bytes(), &result, json.RejectUnknownMembers(true)); err != nil {
-		return admission.outcome(nil, err)
-	}
-	if result.Failure != nil {
-		err = result.Failure
-	}
-	return admission.outcome(result.Response, err)
+	return admission.outcome(observerErr)
 }
 
 func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
@@ -265,19 +194,24 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		calling, err := enterContributionPhase(ctx, o.binding)
 		if err != nil {
-			yield(nil, err)
+			yield(nil, continuationNotExecuted(err))
 			return
 		}
 		borrowed, binding, err := o.prepare(calling, frozen, true)
 		if err != nil {
-			yield(nil, err)
+			yield(nil, continuationNotExecuted(err))
 			return
 		}
 		defer borrowed.Close()
 		calling = borrowed.Context()
 		session := borrowed.Session()
-		invocation, _ := pluginmcp.InvocationFromContext(ctx)
-		admission := &observationAdmission{request: frozen, id: invocation.ID}
+		invocation, _ := pluginmcp.InvocationFromContext(calling)
+		input, err := framevalue.EncodeJSON((*scopewire.Request)(frozen))
+		if err != nil {
+			yield(nil, continuationNotExecuted(err))
+			return
+		}
+		admission := &observedContinuation{request: input, id: pluginmcp.CommandID(invocation.ID)}
 		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 			return func(yield func(*chat.ResponseDelta, error) bool) {
 				if err := admission.enter(command); err != nil {
@@ -287,114 +221,45 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 				continuation, release := modelContinuationContext(calling, requestCtx)
 				defer release()
 				if err := continuation.Err(); err != nil {
-					yield(nil, errors.Join(err, context.Cause(continuation)))
+					failure := continuationNotExecuted(errors.Join(err, context.Cause(continuation)))
+					admission.finish(nil, failure)
+					yield(nil, failure)
 					return
 				}
-				var accumulated chat.ResponseAccumulator
-				sequence := o.nextStream.Stream(continuation, (*chat.Request)(&command.Input).Clone())
-				if sequence == nil {
-					yield(nil, errors.New("model observer continuation returned no stream"))
-					return
-				}
-				for delta, err := range sequence {
-					if err != nil {
-						if response, complete := accumulated.Response(); complete == nil {
-							admission.retain(response, err)
-						} else {
-							admission.retain(nil, err)
-						}
-						yield(nil, err)
-						return
-					}
-					if err := accumulated.Add(delta); err != nil {
-						yield(nil, err)
-						return
-					}
-					admission.mu.Lock()
-					pending := admission.pending != nil
-					if !pending {
-						admission.pending = delta.Clone()
-						admission.forwarded = make(chan struct{})
-					}
-					forwarded := admission.forwarded
-					admission.mu.Unlock()
-					if pending {
-						yield(nil, errors.New("model observer did not forward its pending chunk"))
-						return
-					}
-					if !yield(delta.Clone(), nil) {
-						return
-					}
-					// Callback frame writing alone does not mean the remote
-					// observer has forwarded it to this chain's consumer.
-					select {
-					case <-forwarded:
-					case <-continuation.Done():
-						return
-					}
-				}
-				if response, err := accumulated.Response(); err == nil {
-					admission.retain(response, nil)
-				}
+				admission.relay(continuation, o.nextStream.Stream(continuation, frozen.Clone()), yield)
 			}
 		})
 		if err != nil {
-			yield(nil, err)
+			yield(nil, continuationNotExecuted(err))
 			return
 		}
 		metadata, release, err := o.owner.calls.pool.OpenRPC(calling, o.binding.ServerID, session, next)
 		if err != nil {
-			yield(nil, err)
+			yield(nil, continuationNotExecuted(err))
 			return
 		}
 		defer release()
-		input, err := framevalue.EncodeJSON(frozen)
-		if err != nil {
-			yield(nil, err)
-			return
-		}
-		var result *pluginsdk.ModelResult
+		var observerErr error
 		for value, err := range o.owner.calls.pool.Stream(calling, o.binding.ServerID, session, binding, invocation.ID, input, metadata) {
 			if err != nil {
-				yield(nil, err)
+				observerErr = err
+				break
+			}
+			if value.Chunk == nil {
+				continue
+			}
+			chunk, err := admission.matchChunk(*value.Chunk)
+			if err != nil {
+				observerErr = err
+				break
+			}
+			if !yield(chunk.delta.Clone(), nil) {
 				return
 			}
-			if value.Chunk != nil {
-				var delta chat.ResponseDelta
-				if err := json.Unmarshal(*value.Chunk, &delta, json.RejectUnknownMembers(true)); err != nil {
-					yield(nil, err)
-					return
-				}
-				admission.mu.Lock()
-				exact, comparisonErr := sameObservationJSON(admission.pending, &delta)
-				admission.mu.Unlock()
-				if comparisonErr != nil || !exact {
-					yield(nil, errors.Join(comparisonErr, errors.New("model observer changed or reordered its captured chunk")))
-					return
-				}
-				if !yield(delta.Clone(), nil) {
-					return
-				}
-				admission.mu.Lock()
-				admission.pending = nil
-				close(admission.forwarded)
-				admission.mu.Unlock()
-			} else if value.Result != nil {
-				result = new(pluginsdk.ModelResult)
-				if err := json.Unmarshal(*value.Result, result, json.RejectUnknownMembers(true)); err != nil {
-					yield(nil, err)
-					return
-				}
-			}
+			admission.acknowledgeChunk(chunk)
 		}
-		if result == nil {
-			yield(nil, pluginmcp.ErrStreamUnconfirmed)
-			return
-		}
-		if result.Failure != nil {
-			err = result.Failure
-		}
-		if _, err := admission.outcome(result.Response, err); err != nil {
+		release()
+		if _, err := admission.outcome(observerErr); err != nil {
 			yield(nil, err)
 		}
 	}
