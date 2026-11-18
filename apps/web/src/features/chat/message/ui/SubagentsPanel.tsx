@@ -20,6 +20,7 @@ import { delegatedTranscriptRows } from "@/features/agent/public/conversation";
 import { agentRunIsFinished, agentRunIsRunning } from "@/features/agent/public/runPresentation";
 import {
   openWorkspaceSubagentRun,
+  useActiveWorkspaceViewId,
   useWorkspaceSubagentRunId,
   useExpandedWorkspaceToolIds,
   useSetWorkspaceToolExpanded,
@@ -44,6 +45,7 @@ import { MessageTranscript } from "@/features/chat/message/ui/MessageTranscript"
 import { readingColumn as rc } from "./readingColumn";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
 import { SubagentStopButton } from "@/features/chat/message/ui/SubagentStopButton";
+import { SubagentReadingSurface } from "./SubagentReadingSurface";
 const styles = stylex.create({
   header: {
     display: "flex",
@@ -199,6 +201,7 @@ export function SubagentsPanel() {
   const t = useT();
   const sessionId = useActiveSessionId();
   const visible = useContentVisible();
+  const fullWidth = useActiveWorkspaceViewId() !== null;
   const summaryId = useId();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
@@ -347,6 +350,7 @@ export function SubagentsPanel() {
               <ContentVisibility visible={active} key={run.id}>
                 <SubagentTranscript
                   active={active}
+                  fullWidth={fullWidth}
                   entry={entry}
                   summary={delegatedRunSummary(
                     t,
@@ -398,12 +402,15 @@ function SubagentTranscript({
   entry,
   summary,
   active,
+  fullWidth,
 }: {
   entry: SubagentEntry;
   summary: DelegatedRunSummary;
   active: boolean;
+  fullWidth: boolean;
 }) {
   const t = useT();
+  const visible = useContentVisible();
   const [reader, setReader] = useState<{ list: ReadingListHandle; atEnd: boolean } | null>(null);
   const expandedIds = useExpandedWorkspaceToolIds();
   const onExpandedChange = useSetWorkspaceToolExpanded();
@@ -415,7 +422,10 @@ function SubagentTranscript({
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   const hasRunDetails = Boolean(summary.detail || narrative.run.outcome?.unresolvedEffects?.length);
   return (
-    <div
+    <SubagentReadingSurface
+      reader={reader?.list ?? null}
+      visible={visible}
+      fullWidth={fullWidth}
       role="region"
       aria-label={summary.label}
       tabIndex={-1}
@@ -460,6 +470,6 @@ function SubagentTranscript({
         }}
         placement="reader-footer"
       />
-    </div>
+    </SubagentReadingSurface>
   );
 }

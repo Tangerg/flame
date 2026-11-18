@@ -974,6 +974,12 @@ position and local disclosures. The selected reader alone receives interaction
 and focus. Its Jump to bottom control occupies a fixed footer below the scroll
 viewport. The footer keeps its size as Legend shows or hides the control.
 Source navigation and return focus stay with the inspection owner.
+Opening the same task full width or moving it back into the Dock keeps the
+visible reading point through line wrapping. The retained reader captures a
+line or block before the change and hands its position to Legend once the new
+layout is measured. A temporarily clamped viewport keeps the original point
+for the return. Local reading input adopts the user's current position, while
+an end-following reader continues to show the latest reply.
 Row and selected-header cancellation actions reference their existing visible
 identity as their accessible description. Target changes and keyed reordering
 retain that relationship without copying task text; cancellation admission and

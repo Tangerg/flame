@@ -38875,6 +38875,64 @@ five loopback previews exit. Cleanup removes five registrations, ten private
 Library directories, ten checkout outputs and the scratch tree. This pass
 exercises captured data. VoiceOver and live Run execution remain open.
 
+### Delegated reading across Dock and full width (2026-11-19)
+
+Signed Wails on `2d69f6d44`, with a 320 px Dock inside a left-tiled
+1121 × 950 px window at Actual Size, exposes two ways to lose the current
+paragraph. At offset 3664 in a 316 px viewport, the nested list and
+`The structure settles back into prose.` are visible. Opening full width
+clamps to its 3066 px end. Moving back puts the Dock at 4613 px, 949 px
+away, with that paragraph above the viewport. At offset 2715, opening full
+width preserves the number while rewrapping the earlier long paragraph
+entirely above the viewport.
+
+`SubagentReadingSurface` captures the visible block or clipped text line
+before the explicit presentation change. The same visible task and published
+Legend reader own the transition. A one-shot correction runs when the live
+viewport, total extent and mounted row agree with Legend. A retired block
+can fall back to the same owned row. Presentation clamping keeps the
+original witness available for the return. Local reading input, hiding the
+reader and replacement retire it. End following, source inspection and
+focus return use their existing owners. The work applies to explicit Dock
+and full-width commands. Better Layout informs the reading continuity,
+and the actual ChatGPT subagent panel informs the centered wide reading
+measure. Legend disables native CSS scroll anchoring in its list to avoid
+competing adjustments. [React pre-update snapshots](https://react.dev/reference/react/Component#getsnapshotbeforeupdate) [Legend List offset command](https://legendapp.com/open-source/list/v3/api/#scrolltooffset)
+
+- ZH/dark/18 px/custom blue with full motion. The 3664 px reading point
+  moves to 2879 px full width with the same nested list at the reading
+  edge and returns to exactly 3664 px. A separate long paragraph moves
+  from 2715 to 2237 px and stays at the top through rewrapping. Native wheel
+  reading in full width then moves to the evidence at 1288 px and returns
+  to that evidence at 1907 px.
+- A shallow native wheel movement places the Chinese prose at 4327 px.
+  Full width genuinely reaches within 1 px of its physical end and keeps
+  the original prose visible. Returning restores 4327 px and the same
+  paragraph bounds. The original Composer caret continues as
+  `全宽往返草稿继续尾段`.
+- EN/light/Flame Orange with motion off in a 1440 × 900 px window. Keyboard
+  opening and restoring the 720 px Dock keeps the latest reply at a 0 px end
+  gap in both presentations. In the earlier reading path,
+  `Where the boundary is enforced` stays within 0.8 px of its original
+  viewport position.
+  Tab and Enter open `runtime/internal/session/store.go:4` from full width.
+  Back to task returns focus to that exact link at the original 0 px offset.
+  Moving back to the Dock keeps the new reading position and the Composer
+  continues as `reflowreturnqxtail`.
+
+Scoped format, Web typecheck, 89 Web contracts, 937 locale keys in eight
+catalogs, bootstrap, installed plugin resources, 26 bundle checks, module
+linking, `make check-native` and the five-entry Lab gate pass. Four private
+signed Wails launches and three loopback previews exit. Cleanup removes four
+registrations, eight private Library directories, ten checkout outputs and
+the scratch tree. The paths use captured data. VoiceOver, continuous width
+changes and live Run execution remain open.
+
+A separate setup attempt focused the delegated viewport with Jump and then
+pressed Up repeatedly. Focus moved to the Composer while the transcript stayed at
+4612 px. The measured clamp path uses a native fractional wheel movement.
+The next batch will isolate who owns the Up key while a reader has focus.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
