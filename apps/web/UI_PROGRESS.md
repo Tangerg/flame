@@ -38984,6 +38984,54 @@ During the recorded output's first measurement, Up kept focus and reached
 7993976 px briefly. A later row-size update returned the viewport to its
 7994016 px end. The next batch will isolate this early measurement path.
 
+### First output scroll during line measurement (2026-11-19)
+
+The 50,000-line captured output starts at the tail in signed Wails. With
+a retained Composer caret, an immediate Up moves 40 px from the end.
+The two newly visible lines each shrink from a 160 px estimate to 20 px.
+Legend's measurement anchor initially keeps the 40 px gap. The pending
+absolute target then returns the viewport to its new maximum while
+following is still off. An actual wheel movement of the same 40 px
+keeps its gap through the same two measurements.
+
+The guarded Up and Down handling in `ReadingList` calls the focused
+viewport's relative `scrollBy` operation. Legend sees the actual movement
+through its existing scroll handler and maintains the visible position
+through measurement. The guard and WebKit line step from the previous
+batch still protect the held editing selection. [CSSOM View relative scrolling](https://drafts.csswg.org/cssom-view/#dom-element-scrollby) [Legend visible content position](https://legendapp.com/open-source/list/v3/guides/#maintain-visible-content-position)
+
+- EN/light/Flame Orange with motion off in the 1440 × 900 window. The
+  first Up after expansion leaves the viewport at 7993976 px, exactly
+  40 px from the new end after 280 px of measurement correction. Down
+  returns to 7994016 px and the viewport keeps native focus. The
+  Composer continues as `outputstartupkeepqx`.
+- ZH/dark/18 px/custom blue with full motion in the native 1121 × 950
+  left tile. The two lines shrink by 270 px in total. The initial Up
+  stays 40 px from the new end at 7995121 px. Local Find reaches the
+  unique line 31415. Escape and Page Up keep output focus, then
+  Collapse focuses the restored expansion control. The Composer
+  continues as `工具输出行高草稿继续尾段`.
+- The standard Lab build repeats expansion, Up, Jump visibility and
+  Down at the tail, then continues the Composer as
+  `plainoutputqxtail`. In the main transcript, native pointer Jump,
+  Up and Down retain its visible focus treatment and backward editing
+  selection. Cmd+L and paste replace exactly the selected word,
+  yielding `mainstabletail`.
+
+Scoped formatting, the packed UI and Icons consumer, Web typecheck, 89 Web
+contracts, 937 locale keys in eight catalogs, bootstrap, installed plugin
+resources, 26 bundle checks, module linking, `make check-native` and
+the five-entry Lab gate pass. Four private bundles pass strict signature
+verification. Five launches and three loopback previews exit. Cleanup
+removes four registrations, eight private Library directories, ten
+checkout outputs and the scratch tree. The paths use captured data.
+VoiceOver and live Run execution remain open.
+
+A separate native wheel movement of 36 px immediately re-arms following
+inside the 384 px output viewport's 38.4 px end threshold and returns to
+the tail during measurement. The next batch will check that output
+policy against the captured reader's manual-position contract.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

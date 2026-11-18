@@ -347,15 +347,11 @@ export function ReadingList<T>({
 
     // WebKit can send the default arrow action to the editor that retains the selection.
     event.preventDefault();
-    const { clientHeight, scrollHeight, scrollTop } = viewport;
-    const delta =
-      event.key === "ArrowUp" ? -WEBKIT_LINE_SCROLL : WEBKIT_LINE_SCROLL;
-    const offset = Math.max(
-      0,
-      Math.min(scrollHeight - clientHeight, scrollTop + delta),
-    );
-    if (offset !== scrollTop)
-      void reader.scrollToOffset({ offset, animated: false });
+    // A relative scroll preserves the step as Legend measures rows.
+    viewport.scrollBy({
+      top: event.key === "ArrowUp" ? -WEBKIT_LINE_SCROLL : WEBKIT_LINE_SCROLL,
+      behavior: "instant",
+    });
   };
   const keys = new Set(data.map(keyExtractor));
   const pinned = [
