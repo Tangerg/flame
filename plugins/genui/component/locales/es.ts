@@ -1,5 +1,6 @@
 export const es: Record<string, string> = {
   "tabs.label": "Vistas",
+  "dialog.close": "Cerrar",
   "interaction.running": "Esperando el resultado…",
   "interaction.failed": "La operación ha fallado.",
   "interaction.complete": "Acción aceptada.",

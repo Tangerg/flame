@@ -1,5 +1,6 @@
 export const zhTW: Record<string, string> = {
   "tabs.label": "檢視",
+  "dialog.close": "關閉",
   "interaction.running": "正在等候操作結果…",
   "interaction.failed": "操作失敗。",
   "interaction.complete": "動作已接受。",

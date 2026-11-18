@@ -306,7 +306,7 @@ const implementations: ReactCatalogComponent[] = [
           open={open}
           onOpenChange={setOpen}
           title={text(props.label)}
-          closeLabel={t("interaction.cancel")}
+          closeLabel={t("dialog.close")}
         >
           {buildChild(props.child)}
         </ModalDialog>

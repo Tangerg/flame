@@ -1,5 +1,6 @@
 export const ja: Record<string, string> = {
   "tabs.label": "表示",
+  "dialog.close": "閉じる",
   "interaction.running": "操作の結果を待っています…",
   "interaction.failed": "操作に失敗しました。",
   "interaction.complete": "操作が受理されました。",

@@ -462,9 +462,12 @@ the requested notification level through the production notification owner.
 Tool invocations retain Runtime delivery categories, approvals and streamed
 items. Recorded Web pages in `scenarios/web-pages.json` are offline captures;
 offsets, limits and counts are Unicode codepoints. The lab never fetches those
-pages. The `genui-report` state loads the built GenUI ESM and declared Tool selector
-through the real installed captured-result lifecycle. The
-Computer fixture retains its isolated recorded surfaces and in-memory transport.
+pages. The `genui-report` state loads the built GenUI ESM and declared Tool
+selector. The fixture instantiates the declared component definition for its
+visual source lifetime and projects the installed captured-result context.
+The report includes a form and the trusted Dialog for native focus and value
+continuity checks. The Computer fixture retains its isolated recorded surfaces
+and in-memory transport.
 Its existing story exposes control, recorded images, unreadable image/audio,
 embedded resources and resource links as typed named variants. The images variant
 seeds landscape, portrait and small original records; expand a record and activate

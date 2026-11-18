@@ -1,5 +1,10 @@
 import { createElement, type ReactNode } from "react";
-import { type CapturedToolResult, type PluginComponent } from "@flame/component-sdk";
+import {
+  isComponentDefinition,
+  type CapturedToolResult,
+  type ComponentDefinition,
+  type PluginComponent,
+} from "@flame/component-sdk";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
@@ -15,12 +20,16 @@ const RecordedResult = Object.values(
     { eager: true },
   ),
 )[0]!.RecordedResult;
-const releasedGenUI = import.meta.glob<Record<string, PluginComponent>>(
+const releasedGenUI = import.meta.glob<Record<string, unknown>>(
   "../../../../plugins/genui/package/**/components/component.js",
 );
 
 export async function visualToolResults(runtimeClient: () => FlameClient, genui = false) {
-  const renderers = (declaration.components as PluginClientComponent[]).map((entry) => ({
+  const renderers: {
+    key: string;
+    declaration: PluginClientComponent;
+    component: PluginComponent | ComponentDefinition;
+  }[] = (declaration.components as PluginClientComponent[]).map((entry) => ({
     key: entry.id,
     declaration: entry,
     component: RecordedResult,
@@ -30,7 +39,8 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
       const load = releasedGenUI[`../../../../plugins/genui/package/${entry.entry}`];
       if (!load) throw new Error("genui fixture requires its built release component");
       const component = (await load())[entry.export];
-      if (!component) throw new Error("genui release component export is missing");
+      if (!isComponentDefinition(component))
+        throw new Error("genui release export must be a component definition");
       renderers.push({ key: `genui:${entry.id}`, declaration: entry, component });
     }
   }
@@ -42,6 +52,13 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
         if (!entry.selector || entry.placement !== "toolResultRenderer") continue;
         const lifetime = ctx.contributions.child(renderer.key);
         const sources = visualComponentProps(runtimeClient(), lifetime, entry.id);
+        const component = isComponentDefinition(renderer.component)
+          ? renderer.component.create({
+              runtimeIdentity: sources.runtime,
+              component: sources.component,
+              signal: sources.resources,
+            })
+          : renderer.component;
         const Result = ({
           toolResult,
           fallback,
@@ -53,7 +70,7 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
             ...sources,
             toolResult,
             fallback,
-            entry: renderer.component,
+            entry: component,
           });
         lifetime.add(
           TOOL_RESULT_RENDERER,

@@ -1,5 +1,6 @@
 export const zh: Record<string, string> = {
   "tabs.label": "视图",
+  "dialog.close": "关闭",
   "interaction.running": "正在等待操作结果…",
   "interaction.failed": "操作失败。",
   "interaction.complete": "动作已接受。",

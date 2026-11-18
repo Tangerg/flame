@@ -32,6 +32,8 @@ messages may write only under `/data/`. Operation results are published under
 `/data/operations/<operation id>`. Business identifiers and exact quantities use
 strings. A field's current native value and validation state are projected from
 the A2UI model. Remote presentation messages cannot overwrite an edited draft.
+Closing a trusted Dialog returns to its opener and keeps the surface's draft
+values available when the same dialog is reopened.
 
 ## Captured actions
 

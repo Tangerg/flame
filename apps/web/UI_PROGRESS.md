@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -42,14 +42,14 @@ runtime fallback is an accepted migration state.
 | D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Integrated as one current document; V4 not run                                        |
 | D13      | Native fields with CSS field-sizing and explicit capability floor                 | field-sizing with rows fallback; V6 and the WKWebView floor not run                   |
 | D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Not separately audited                                                                |
-| D15      | A2UI 1.0 with official React/web_core and trusted Flame catalog                   | Integrated; one shared web_core instance; V1 not run natively                         |
+| D15      | A2UI 1.0 with official React/web_core and trusted Flame catalog                   | Integrated with one shared web_core. Focused V1 evidence below. Full V1 remains open. |
 
 Engines landed in `c03ffcd92`. A later root-cause batch removed regressions that
 batch introduced: Find and the turn rail derived facts from the virtual window,
 GenUI bundled two A2UI cores, Composer writes flattened references and doubled
 restored newlines, history recall reset after one step, saved v1 drafts failed to
-read, and every code block created its own worker. V1–V6 remain unexecuted in the
-native host; none of them is claimed by these integrations.
+read, and every code block created its own worker. The captured A2UI report
+exercise below covers part of V1 in Wails. The full V1–V6 runs remain open.
 
 The first complete cut is **A1 / D11 native focus indication**: retire the
 pre-module modality script, its global attribute, conditional shared selectors
@@ -124,6 +124,48 @@ remain in force. No extra browser visual suite or separate performance benchmark
 is started. Required representative workload evidence belongs to each changed
 mechanism's scoped acceptance. Whole-report and whole-product completion remain
 open until every target's actual integration, deletion and data contracts pass.
+
+### Captured A2UI report and dialog return (2026-11-19)
+
+At `fb21056bb`, Wails shows raw JSON for the normal `genui-report` scene.
+Opening the fixture's diagnostics exposes React error 130 with an object element
+type. The conversation Lab registered the built GenUI export directly. That
+export is a component definition with a factory. The installed production
+module loader already calls that factory during source admission.
+[React error 130](https://react.dev/errors/130)
+
+`visualToolResults.tsx` validates the built export and creates the component
+once with the recorded Runtime identity, component reference and contribution
+signal. The Lab then renders through the installed captured-result context.
+The standard `genui-report` fixture now includes the trusted Dialog.
+The independent A2UI fixture exposes the second issue: the previous Cancel
+button leaves an edited Portal note intact after reopening. The ordinary Dialog
+dismissal now reads Close across eight locales. Local edits remain in the
+surface model and Base UI restores focus to the opener. Better Accessibility
+and Better Writing guide the focus and label choices.
+[Base UI Dialog](https://base-ui.com/react/components/dialog)
+
+- Wails v3.1.0, ZH/dark/18 px/`#3B82F6`/motion off at Actual Size, using
+  the native tiled window. The conversation report renders its named Review
+  note. The trusted Dialog exposes 关闭, retains the exact 详情备注 value after
+  clicking it and reopening, and returns focus to its opener on Close and
+  Escape. The report field retains 报告备注.
+- Wails v3.1.0, EN/light/14 px/Flame Orange at Actual Size, using the
+  independent A2UI fixture. The report displays `9007199254740993` in full.
+  Tab from Review note reaches Send review. Return records the exact edited
+  note in the local in-memory submission and shows Action accepted. Leaving
+  the form and returning retains both local fields, including the Portal note
+  after Escape and reopening the dialog.
+
+Canonical Lab build, both signed native bundles, `make check-native`, scoped
+Prettier, Web/plugin types, 20 eight-locale plugin catalogs, 81 Web schema
+contract tests, and bootstrap, plugin resource, bundle and plugin module checks
+pass. Normal generation rebuilds the tracked GenUI ESM. Both final Wails
+processes quit normally. Private registrations, previews, profiles, temporary
+logs, caches and checkout build outputs are removed. The captured routes
+qualify a subset of V1. Production CSP, live Runtime submission and recovery,
+source replacement, physical IME, VoiceOver and the full V1/V2 runs remain
+open. Browser visual suites and benchmarks were outside this scoped exercise.
 
 ## Component lab and UI visual verification (2026-11-06)
 
