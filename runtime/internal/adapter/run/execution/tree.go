@@ -60,8 +60,8 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 }
 
 // captureHumanInputBarrier first proves that the tree contains an externally
-// addressable input wait, then pauses every surviving nonterminal member at its
-// next safe boundary — running branches, external input waiters, and parents
+// addressable input wait, then holds every surviving nonterminal member at
+// rest — running branches once they yield, external input waiters, and parents
 // waiting on children alike — so no answer recipient can advance while the
 // complete answer set is delivered. Proving the wait first avoids capturing a
 // half-step with no durable Interrupt to resume; retired child subtrees are
@@ -106,31 +106,14 @@ func (i *interactionSession) captureHumanInputBarrier(
 		}
 		var unsettled bool
 		for _, snapshot := range captured.Processes {
-			status := snapshot.Status
-			processID := snapshot.ID
-			if status.Terminal() || i.retiredSubtreeMember(processID, parents) {
+			if snapshot.Status.Terminal() || i.retiredSubtreeMember(snapshot.ID, parents) {
 				continue
 			}
-			if status == scoperun.StatusPaused {
-				continue
+			held, err := i.holdAtBarrier(ctx, tree, snapshot, requestedPauses)
+			if err != nil {
+				return scoperun.Log{}, nil, false, err
 			}
-			// A surviving nonterminal member the continuation will release is not yet
-			// at the barrier. Pause acknowledges intent before its committed snapshot
-			// advances, so the cut is safe only once a later capture observes every
-			// intended member Paused.
-			unsettled = true
-			if _, requested := requestedPauses[processID]; requested {
-				continue
-			}
-			process, found := i.engine.Process(processID)
-			if !found {
-				return scoperun.Log{}, nil, false, nil
-			}
-			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
-				!errors.Is(err, scoperun.ErrProcessFinished) {
-				return scoperun.Log{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", processID, err)
-			}
-			requestedPauses[processID] = struct{}{}
+			unsettled = unsettled || !held
 		}
 		if unsettled {
 			select {
@@ -143,6 +126,99 @@ func (i *interactionSession) captureHumanInputBarrier(
 		}
 		return tree, interruptions, true, nil
 	}
+}
+
+// holdAtBarrier moves one surviving member toward a quiescent pause and reports
+// whether it is already there. Scope records a pause without waiting for work
+// already under way: a step in flight still commits after it, and a child still
+// being started joins the tree unpaused. A cut taken before either lands
+// publishes less input than the tree goes on to raise. A member that left the
+// engine since the read is settled by the next read.
+func (i *interactionSession) holdAtBarrier(
+	ctx context.Context,
+	tree scoperun.Log,
+	member scoperun.ProcessInspection,
+	requestedPauses map[scoperun.ProcessID]struct{},
+) (bool, error) {
+	switch member.Status {
+	case scoperun.StatusPaused:
+		rest, err := pausedAtRest(tree, member.ID)
+		if err != nil {
+			return false, err
+		}
+		if rest {
+			return !startsChild(member), nil
+		}
+		// Let the step under way commit; the member is paused again once it yields.
+		delete(requestedPauses, member.ID)
+		process, found := i.engine.Process(member.ID)
+		if !found {
+			return false, nil
+		}
+		if err := process.Resume(ctx); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
+			return false, fmt.Errorf("resume Interaction member %s: %w", member.ID, err)
+		}
+		return false, nil
+	case scoperun.StatusWaiting:
+		if _, requested := requestedPauses[member.ID]; requested {
+			return false, nil
+		}
+		process, found := i.engine.Process(member.ID)
+		if !found {
+			return false, nil
+		}
+		if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
+			!errors.Is(err, scoperun.ErrProcessFinished) {
+			return false, fmt.Errorf("pause Interaction member %s: %w", member.ID, err)
+		}
+		requestedPauses[member.ID] = struct{}{}
+		return false, nil
+	default:
+		// A running member may be mid-step; it is paused once it yields.
+		return false, nil
+	}
+}
+
+// pausedAtRest reports whether member's latest pause landed with no step under
+// way: it had yielded, or a step or a checkpoint committed after the pause.
+// Scope checkpoints only while no step is in flight, so a log that starts after
+// the pause also proves rest.
+func pausedAtRest(tree scoperun.Log, member scoperun.ProcessID) (bool, error) {
+	pause := -1
+	for index, entry := range tree.Entries {
+		if control, ok := entry.Record.(scoperun.ControlRequested); ok && control.Process == member && control.Kind == scoperun.ControlPause {
+			pause = index
+		}
+	}
+	if pause < 0 {
+		return true, nil
+	}
+	for _, entry := range tree.Entries[pause+1:] {
+		switch record := entry.Record.(type) {
+		case scoperun.Stepped:
+			if record.Process == member {
+				return true, nil
+			}
+		case scoperun.Checkpoint:
+			return true, nil
+		}
+	}
+	before, err := scoperun.Log{Root: tree.Root, Entries: tree.Entries[:pause]}.Inspect()
+	if err != nil {
+		return false, err
+	}
+	snapshot, found := before.Process(member)
+	return found && snapshot.Status == scoperun.StatusWaiting, nil
+}
+
+// startsChild reports a member with a child start still being prepared.
+func startsChild(member scoperun.ProcessInspection) bool {
+	for _, pending := range member.PendingEffects {
+		if _, spawn := pending.Request.Effect().ChildStart(); spawn && !pending.Outcome.Valid() {
+			return true
+		}
+	}
+	return false
 }
 
 func hasWaitingBarrier(inspection scoperun.TreeInspection, root scoperun.ProcessID) bool {
