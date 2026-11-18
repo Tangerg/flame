@@ -172,6 +172,7 @@ export const fr = {
   "origin.model": "Modèle",
   "origin.automatic": "Automatique",
   "list.title": "Livrables conservés",
+  "list.back": "Retour à la liste des documents",
   "list.filters": "Filtres des livrables",
   "list.search": "Rechercher les titres de cette page",
   "list.format": "Filtrer par format",

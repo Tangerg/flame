@@ -162,6 +162,7 @@ export const zhTW = {
   "origin.model": "模型",
   "origin.automatic": "自動",
   "list.title": "已保留成果",
+  "list.back": "返回文件清單",
   "list.filters": "成果篩選",
   "list.search": "搜尋本頁標題",
   "list.format": "依格式篩選",

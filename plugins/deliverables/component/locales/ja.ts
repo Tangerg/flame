@@ -170,6 +170,7 @@ export const ja = {
   "origin.model": "モデル",
   "origin.automatic": "自動",
   "list.title": "保存済み成果物",
+  "list.back": "文書一覧に戻る",
   "list.filters": "成果物の絞り込み",
   "list.search": "このページのタイトルを検索",
   "list.format": "形式で絞り込み",

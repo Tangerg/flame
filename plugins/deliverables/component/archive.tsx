@@ -102,8 +102,12 @@ export function ArchiveList({
   state,
   dateTime,
   onOpen,
+  searchFieldRef,
   t,
-}: ArchiveProps & { onOpen: OpenForReading }) {
+}: ArchiveProps & {
+  onOpen: OpenForReading;
+  searchFieldRef: Ref<HTMLInputElement>;
+}) {
   const [search, setSearch] = useState("");
   const [format, setFormat] = useState("all");
   const entries =
@@ -116,6 +120,7 @@ export function ArchiveList({
     <PanelSection title={t("list.title")}>
       <Toolbar label={t("list.filters")}>
         <SearchField
+          ref={searchFieldRef}
           aria-label={t("list.search")}
           value={search}
           clearLabel={t("search.clear")}

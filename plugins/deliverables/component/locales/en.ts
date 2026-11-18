@@ -170,6 +170,7 @@ export const en = {
   "origin.model": "Model",
   "origin.automatic": "Automatic",
   "list.title": "Retained deliverables",
+  "list.back": "Back to document list",
   "list.filters": "Deliverable filters",
   "list.search": "Search this page of titles",
   "list.format": "Filter by format",

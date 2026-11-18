@@ -170,6 +170,7 @@ export const es = {
   "origin.model": "Modelo",
   "origin.automatic": "Automático",
   "list.title": "Entregables conservados",
+  "list.back": "Volver a la lista de documentos",
   "list.filters": "Filtros de entregables",
   "list.search": "Buscar títulos en esta página",
   "list.format": "Filtrar por formato",

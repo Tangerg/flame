@@ -174,6 +174,7 @@ export const de = {
   "origin.model": "Modell",
   "origin.automatic": "Automatisch",
   "list.title": "Gespeicherte Arbeitsergebnisse",
+  "list.back": "Zurück zur Dokumentliste",
   "list.filters": "Ergebnisfilter",
   "list.search": "Titel auf dieser Seite durchsuchen",
   "list.format": "Nach Format filtern",

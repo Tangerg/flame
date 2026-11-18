@@ -613,6 +613,13 @@ function Workspace({
     [locale],
   );
   const state = useDeliverables(context);
+  const bodyViewport = useRef<HTMLDivElement>(null);
+  const archiveSearchField = useRef<HTMLInputElement>(null);
+  const archiveOrigin = useRef<{
+    documentId: string;
+    element: HTMLElement;
+    scrollTop: number;
+  }>(null);
   const historyEntry = useRef<HTMLElement>(null);
   // The pending page may lack enough scroll range to reveal the reader fully.
   const openingFocus = useRef<HTMLElement | null>(null);
@@ -631,6 +638,36 @@ function Workspace({
     openingFocus.current = settled ? null : (entry ?? origin);
     entry?.focus({ preventScroll: true });
     if (settled) entry?.scrollIntoView({ block: "start", inline: "nearest" });
+  };
+  const openFromArchive: OpenForReading = (value, origin) => {
+    const viewport = bodyViewport.current;
+    if (viewport && !state.signal.aborted) {
+      archiveOrigin.current = {
+        documentId: value.id,
+        element: origin,
+        scrollTop: viewport.scrollTop,
+      };
+    }
+    openForReading(value, origin);
+  };
+  const returnToArchive = () => {
+    openingFocus.current = null;
+    const viewport = bodyViewport.current;
+    const origin = archiveOrigin.current;
+    if (
+      viewport &&
+      origin &&
+      origin.documentId === state.selection?.id &&
+      viewport.contains(origin.element)
+    ) {
+      viewport.scrollTop = origin.scrollTop;
+      origin.element.focus({ preventScroll: true });
+      if (origin.element.ownerDocument.activeElement === origin.element) {
+        origin.element.scrollIntoView({ block: "nearest", inline: "nearest" });
+        return;
+      }
+    }
+    archiveSearchField.current?.focus();
   };
   useLayoutEffect(() => {
     const owner = openingFocus.current;
@@ -663,10 +700,14 @@ function Workspace({
   const catalogError = state.catalog?.error ?? catalog?.error;
   return (
     <Panel
+      bodyViewportRef={bodyViewport}
       label={t("panel.title")}
       header={<PanelHeader title={t("panel.title")} />}
       controls={
         <Toolbar label={t("panel.controls")}>
+          {state.selection && (
+            <Button onClick={returnToArchive}>{t("list.back")}</Button>
+          )}
           <Button
             pending={refreshing}
             aria-busy={refreshing || undefined}
@@ -691,7 +732,8 @@ function Workspace({
       <ArchiveList
         state={state}
         dateTime={dateTime}
-        onOpen={openForReading}
+        onOpen={openFromArchive}
+        searchFieldRef={archiveSearchField}
         t={t}
       />
       <RevisionHistory

@@ -155,6 +155,11 @@ owns focus. Another control's focus cancels the opening intent, including a
 return to the original catalog row. Settlement retires the intent; Refresh and
 background reads do not originate it.
 Refresh uses the same focusable pending boundary while the list or catalog rereads.
+Refresh and Back to document list remain above the shared Panel reading viewport.
+Returning uses the archive row and reading position from the last catalog
+opening. If that row is unavailable, focus goes to the current title search.
+The catalog keeps its query, format and accepted page, and the revision reader
+keeps its selection and local disclosures.
 An unread selected revision uses its short identity until metadata is available.
 The history region's existing identity disclosure keeps the full document and
 revision identities available during reading and after failure. Native facts

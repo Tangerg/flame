@@ -162,6 +162,7 @@ export const zh = {
   "origin.model": "模型",
   "origin.automatic": "自动",
   "list.title": "已保留成果",
+  "list.back": "返回文档列表",
   "list.filters": "成果筛选",
   "list.search": "搜索本页标题",
   "list.format": "按格式筛选",

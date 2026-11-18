@@ -168,6 +168,7 @@ export const ko = {
   "origin.model": "모델",
   "origin.automatic": "자동",
   "list.title": "보관된 결과물",
+  "list.back": "문서 목록으로 돌아가기",
   "list.filters": "결과물 필터",
   "list.search": "이 페이지 제목 검색",
   "list.format": "형식별 필터",
