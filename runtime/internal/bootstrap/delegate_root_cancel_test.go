@@ -82,17 +82,16 @@ func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T)
 	}
 	collected := collectRunEvents(events)
 	entered := make(map[string]bool, 2)
+	deadline := time.NewTimer(lifecycleWaitBudget(t))
+	defer deadline.Stop()
 	for len(entered) < 2 {
 		select {
 		case name := <-childEntered:
 			entered[name] = true
-		case <-time.After(lifecycleWaitBudget(t)):
+		case <-deadline.C:
 			t.Fatalf("only %d delegated children reached a provider call", len(entered))
 		}
 	}
-	// Let the parent settle into waiting on the delegate Tool, so the cancel
-	// meets a tree that is genuinely mid-delegation.
-	time.Sleep(200 * time.Millisecond)
 
 	canceled, err := api.CancelRun(ctx, protocol.CancelRunRequest{
 		RunID: started.RunID, Reason: "stop the whole tree",

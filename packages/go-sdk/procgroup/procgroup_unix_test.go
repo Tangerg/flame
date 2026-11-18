@@ -25,6 +25,14 @@ func TestStopReachesWhatTheChildSpawned(t *testing.T) {
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
+	stopped := false
+	defer func() {
+		if !stopped {
+			if err := Stop(command); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Errorf("clean up command group: %v", err)
+			}
+		}
+	}()
 	if err := command.Wait(); err != nil {
 		t.Fatalf("the launching shell did not exit cleanly: %v", err)
 	}
@@ -39,11 +47,12 @@ func TestStopReachesWhatTheChildSpawned(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if pid <= 0 {
-		t.Skip("the spawned process never reported its pid on this system")
+		t.Fatal("the spawned process never reported its pid")
 	}
 	if err := Stop(command); err != nil {
 		t.Fatalf("Stop = %v", err)
 	}
+	stopped = true
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
 		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
 			return

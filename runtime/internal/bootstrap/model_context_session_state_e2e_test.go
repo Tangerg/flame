@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -97,45 +98,42 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 		durableGoal.IncarnationID() == "" {
 		t.Fatalf("durable active Goal = %+v", durableGoal)
 	}
+	settlementCtx, cancel := context.WithTimeout(ctx, lifecycleWaitBudget(t))
+	defer cancel()
+	_, changes, err := api.SubscribeRuntime(settlementCtx, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	model.releaseOpeningCall()
 
-	goalSettlementTimeout := lifecycleWaitBudget(t)
-	deadline := time.Now().Add(goalSettlementTimeout)
-	for {
-		current, getErr := api.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID})
+	cleared := false
+	for event, eventErr := range changes {
+		if eventErr != nil {
+			t.Fatal(eventErr)
+		}
+		if event.Type != protocol.RuntimeGoalsChanged || !slices.Contains(event.SessionIDs, sessionID) {
+			continue
+		}
+		current, getErr := api.GetGoal(settlementCtx, protocol.GoalRequest{SessionID: sessionID})
 		if getErr != nil {
 			t.Fatal(getErr)
 		}
 		if current == nil {
+			cleared = true
 			break
 		}
-		if time.Now().After(deadline) {
-			mainCalls, summaryCalls, summaryAtMainCalls, checks := model.Snapshot()
-			runsPage, listErr := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: sessionID})
-			var runOutcome *protocol.RunOutcome
-			var runError *protocol.ProblemData
-			if listErr == nil && len(runsPage.Data) > 0 {
-				runOutcome = runsPage.Data[0].Outcome
-				if runOutcome != nil {
-					runError = runOutcome.Error
-				}
-			}
-			t.Fatalf(
-				"Goal did not settle and clear before %s: status=%s reason=%+v used=%+v main=%d summary=%d boundary=%v checks=%+v runOutcome=%+v runError=%+v listErr=%v",
-				goalSettlementTimeout,
-				current.Status,
-				current.Reason,
-				current.Used,
-				mainCalls,
-				summaryCalls,
-				summaryAtMainCalls,
-				checks,
-				runOutcome,
-				runError,
-				listErr,
-			)
+	}
+	if !cleared {
+		current, readErr := api.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID})
+		runs, listErr := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: sessionID})
+		var outcome *protocol.RunOutcome
+		if listErr == nil && len(runs.Data) > 0 {
+			outcome = runs.Data[0].Outcome
 		}
-		time.Sleep(goalSettlementPollInterval)
+		t.Fatalf("no Goal change reconciled the cleared Goal: stream=%v goal=%+v read=%v outcome=%+v list=%v",
+			settlementCtx.Err(), current, readErr, outcome, listErr)
 	}
 	mainCalls, summaryCalls, summaryAtMainCalls, stateChecks := model.Snapshot()
 	if mainCalls != modelCallsBeforeMidRunCompaction+2 ||
@@ -234,7 +232,6 @@ func createSessionWithInitialPlan(
 
 const (
 	goalAcrossCompactionObjective = "preserve the exact active Goal while replacing the Plan across compaction"
-	goalSettlementPollInterval    = 10 * time.Millisecond
 	stalePlanText                 = "stale frozen Plan"
 	currentPlanText               = "current durable Plan"
 )

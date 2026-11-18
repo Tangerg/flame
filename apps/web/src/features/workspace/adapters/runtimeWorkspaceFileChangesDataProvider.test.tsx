@@ -26,17 +26,6 @@ let client: ReturnType<typeof createFlameClient>;
 
 let unmountHook: (() => void) | undefined;
 
-async function waitForChangesRequest(index: number) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = transport.outbox().filter(({ method }) => method === "workspace.changes.list")[
-      index
-    ];
-    if (request) return request;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`timeout waiting for workspace.changes.list request ${index + 1}`);
-}
-
 function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
@@ -66,12 +55,15 @@ describe("mounted Runtime Workspace-file-changes generation", () => {
       initialProps: { cwd: "/old" },
     });
     unmountHook = hook.unmount;
-    const retired = await waitForChangesRequest(0);
+    const retired = await transport.waitForRequest("workspace.changes.list");
     expect(retired.params).toEqual({ workspace: { path: "/old" } });
 
     hook.rerender({ cwd: "/successor" });
 
-    const successor = await waitForChangesRequest(1);
+    const successor = await transport.waitForRequest(
+      "workspace.changes.list",
+      ({ id }) => id !== retired.id,
+    );
     expect(successor.params).toEqual({ workspace: { path: "/successor" } });
     respondSuccess(transport, successor.id, {
       data: [{ path: "successor.ts", status: "modified", added: 7, removed: 2 }],

@@ -129,11 +129,15 @@ describe("createFlameClient", () => {
     await expect(command).rejects.toBeInstanceOf(RpcProtocolError);
     current = { clientInfo: { name: "replacement", version: "2" } };
     const replay = command.retry();
-    await vi.waitFor(() => expect(transport.outbox()).toHaveLength(2));
-    const retried = transport.outbox()[1]!;
+    const retried = await waitForRequest(
+      transport,
+      "sessions.delete",
+      ({ id }) => id !== original.id,
+    );
     expect(retried.params).toEqual(original.params);
     transport.inject({ jsonrpc: "2.0", id: retried.id, result: {} });
     await expect(replay).resolves.toBeUndefined();
+    expect(transport.outbox()).toHaveLength(2);
     await client.close();
   });
 

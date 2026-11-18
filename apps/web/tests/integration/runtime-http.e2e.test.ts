@@ -33,17 +33,19 @@ import {
 } from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { RpcError } from "@flame/runtime-client";
-import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
+import { asRunId, asSegmentId, asSessionId, type SessionId } from "@flame/runtime-client";
 import { createSidecarClient } from "@flame/runtime-client";
 import { createHttpTransport } from "@flame/runtime-client";
 import { wireMethodRequiresIdempotency, type WireMethodName } from "@flame/runtime-client/methods";
 import {
   PROTOCOL_VERSION,
+  type GoalStatus,
   type MCPServerID,
   type MCPTool,
   type RequestMeta,
   type RunEvent,
   type RuntimeEvent,
+  type RuntimeTopic,
 } from "@flame/runtime-client/wire";
 
 const execFileAsync = promisify(execFile);
@@ -317,9 +319,7 @@ function scriptedReply(body: FakeChatRequest): {
 
   if (
     availableTools.has("report_goal_outcome") &&
-    (((transcript.includes("E2E_GOAL_SETTLEMENT") ||
-      transcript.includes("E2E_GOAL_COMPLETE") ||
-      transcript.includes("E2E_GOAL_STOP")) &&
+    (((transcript.includes("E2E_GOAL_SETTLEMENT") || transcript.includes("E2E_GOAL_STOP")) &&
       !hasToolResult) ||
       (transcript.includes("E2E_GOAL_AFTER_INPUT") && toolResultCount === 1))
   ) {
@@ -736,20 +736,26 @@ describe("Runtime process readiness", () => {
   });
 });
 
-async function nextRuntimeEvent(
+async function observeRuntimeEvent<T>(
   iterator: AsyncIterator<RuntimeEvent>,
-  type: RuntimeEvent["type"],
-): Promise<RuntimeEvent> {
-  const deadline = testDeadline(type);
+  detail: string,
+  observe: (event: RuntimeEvent) => T | undefined | Promise<T | undefined>,
+): Promise<T> {
+  const deadline = testDeadline(detail);
   try {
     while (true) {
       const result = await Promise.race([iterator.next(), deadline.promise]);
-      if (result.done) throw new Error(`runtime event stream ended before ${type}`);
-      if (result.value.type === type) return result.value;
+      if (result.done) throw new Error(`runtime event stream ended before ${detail}`);
+      const observation = await Promise.race([observe(result.value), deadline.promise]);
+      if (observation !== undefined) return observation;
     }
   } finally {
     deadline.release();
   }
+}
+
+function nextRuntimeEvent(iterator: AsyncIterator<RuntimeEvent>, type: RuntimeEvent["type"]) {
+  return observeRuntimeEvent(iterator, type, (event) => (event.type === type ? event : undefined));
 }
 
 async function collectSessionRuntimeEvents(
@@ -779,6 +785,43 @@ async function collectSessionRuntimeEvents(
   } finally {
     deadline.release();
   }
+}
+
+async function watchRuntimeTopic(client: FlameClient, topic: RuntimeTopic) {
+  const controller = new AbortController();
+  const subscription = await client.runtimeEvents.subscribe({ topics: [topic] }, controller.signal);
+  const events = subscription.events[Symbol.asyncIterator]();
+  const close = async () => {
+    controller.abort();
+    await events.return?.();
+  };
+  onTestFinished(close);
+  return { events, close };
+}
+
+async function watchGoal(client: FlameClient, sessionId: SessionId) {
+  const { events } = await watchRuntimeTopic(client, "goals.changed");
+  return (status?: GoalStatus | null) => {
+    const detail = `Goal ${sessionId} change (${status === null ? "cleared" : (status ?? "any status")})`;
+    return observeRuntimeEvent(events, detail, async (event) => {
+      if (event.type !== "goals.changed" || !event.sessionIds?.includes(sessionId)) return;
+      const goal = await client.goals.get(sessionId);
+      if (status === undefined || (goal?.status ?? null) === status) return goal;
+    });
+  };
+}
+
+function waitForUserMCPConnection(
+  client: FlameClient,
+  events: AsyncIterator<RuntimeEvent>,
+  server: string,
+) {
+  const matches = (id: MCPServerID) => id.origin.type === "user" && id.name === server;
+  return observeRuntimeEvent(events, `MCP ${server} connection`, async (event) => {
+    if (event.type !== "mcp.changed" || !event.servers?.some(matches)) return;
+    const { data } = await client.mcp.list();
+    return data.find(({ id, status }) => matches(id) && status.type === "connected");
+  });
 }
 
 async function collectRunEvents(events: AsyncIterable<RunEvent>): Promise<RunEvent[]> {
@@ -3480,83 +3523,29 @@ for await (const line of lines) {
     await expect(client.approval.getMode()).resolves.toEqual(original);
   }, 30_000);
 
-  it("completes a goal through its model-reported outcome", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const session = await client.sessions.create({
-      workspace: { path: root },
-      title: "HTTP goal lifecycle",
-    });
-    const sessionId = asSessionId(session.id);
-    const streamController = new AbortController();
-    const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["goals.changed", "runs.changed"] },
-      streamController.signal,
-    );
-    const runtimeEvents = subscription.events[Symbol.asyncIterator]();
-
-    await expect(
-      client.goals.start({
-        sessionId,
-        objective: "E2E_GOAL_COMPLETE complete one autonomous run.",
-      }),
-    ).resolves.toMatchObject({
-      sessionId: session.id,
-      status: "active",
-      used: { runs: 0 },
-    });
-    await nextRuntimeEvent(runtimeEvents, "goals.changed");
-
-    let current = await client.goals.get(sessionId);
-    for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      current = await client.goals.get(sessionId);
-    }
-    expect(current).toBeNull();
-    await nextRuntimeEvent(runtimeEvents, "goals.changed");
-
-    const runs = await client.runs.list({ sessionId });
-    expect(runs.data).toHaveLength(1);
-    expect(runs.data[0]).toMatchObject({
-      sessionId: session.id,
-      status: "finished",
-      outcome: { type: "completed" },
-    });
-
-    streamController.abort();
-    await runtimeEvents.return?.();
-  }, 30_000);
-
-  it("publishes a readable completing goal while final Run settlement is pending", async () => {
+  it("publishes Goal changes before and after the model-reported outcome settles", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const gate = createProviderGate("E2E_GOAL_SETTLEMENT", { minimumToolResults: 1 });
     providerGate = gate;
-    const streamController = new AbortController();
-    let runtimeEvents: AsyncIterator<RuntimeEvent> | undefined;
     try {
       const session = await client.sessions.create({
         workspace: { path: root },
         title: "HTTP goal settlement lifecycle",
       });
       const sessionId = asSessionId(session.id);
-      const subscription = await client.runtimeEvents.subscribe(
-        { topics: ["goals.changed"] },
-        streamController.signal,
-      );
-      runtimeEvents = subscription.events[Symbol.asyncIterator]();
+      const waitForGoal = await watchGoal(client, sessionId);
 
       await expect(
         client.goals.start({
           sessionId,
           objective: "E2E_GOAL_SETTLEMENT expose the terminal settlement window.",
         }),
-      ).resolves.toMatchObject({ status: "active" });
-      await nextRuntimeEvent(runtimeEvents, "goals.changed");
+      ).resolves.toMatchObject({ sessionId, status: "active", used: { runs: 0 } });
+      await waitForGoal();
 
       await within(gate.arrived.promise, "the post-outcome model request");
-      await nextRuntimeEvent(runtimeEvents, "goals.changed");
-      const completing = await client.goals.get(sessionId);
+      const completing = await waitForGoal("completing");
       expect(completing).toMatchObject({
         sessionId: session.id,
         status: "completing",
@@ -3565,15 +3554,11 @@ for await (const line of lines) {
 
       gate.release.resolve();
       providerGate = undefined;
-      let current = await client.goals.get(sessionId);
-      for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        current = await client.goals.get(sessionId);
-      }
-      expect(current).toBeNull();
+      await waitForGoal(null);
       await expect(client.runs.list({ sessionId })).resolves.toMatchObject({
         data: [
           expect.objectContaining({
+            sessionId,
             status: "finished",
             outcome: { type: "completed" },
           }),
@@ -3582,8 +3567,6 @@ for await (const line of lines) {
     } finally {
       gate.release.resolve();
       providerGate = undefined;
-      streamController.abort();
-      await runtimeEvents?.return?.();
     }
   }, 30_000);
 
@@ -3595,6 +3578,7 @@ for await (const line of lines) {
       title: "HTTP goal HITL lifecycle",
     });
     const sessionId = asSessionId(session.id);
+    const waitForGoal = await watchGoal(client, sessionId);
     await expect(
       client.goals.start({
         sessionId,
@@ -3606,11 +3590,7 @@ for await (const line of lines) {
       used: { runs: 0 },
     });
 
-    let current = await client.goals.get(sessionId);
-    for (let attempt = 0; attempt < 100 && current?.status === "active"; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      current = await client.goals.get(sessionId);
-    }
+    const current = await waitForGoal("paused");
     expect(current).toMatchObject({
       sessionId: session.id,
       status: "paused",
@@ -3671,12 +3651,7 @@ for await (const line of lines) {
       ]),
     });
 
-    current = await client.goals.get(sessionId);
-    for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      current = await client.goals.get(sessionId);
-    }
-    expect(current).toBeNull();
+    await waitForGoal(null);
   }, 30_000);
 
   it("stops an active goal, preserves its unconfirmed run and resumes from durable usage", async () => {
@@ -3716,17 +3691,13 @@ for await (const line of lines) {
         ],
       });
 
+      const waitForGoal = await watchGoal(client, sessionId);
       await expect(client.goals.resume(sessionId)).resolves.toMatchObject({
         sessionId: session.id,
         status: "active",
         used: { runs: 1 },
       });
-      let current = await client.goals.get(sessionId);
-      for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        current = await client.goals.get(sessionId);
-      }
-      expect(current).toBeNull();
+      await waitForGoal(null);
       const runs = await client.runs.list({ sessionId });
       expect(runs.data).toHaveLength(2);
       expect(runs.data.filter((run) => run.outcome?.type === "lost")).toHaveLength(1);
@@ -3961,20 +3932,16 @@ for await (const line of lines) {
 
     await expect(client.mcp.test(candidate)).resolves.toEqual({ outcome: "reachable" });
 
-    const connectController = new AbortController();
-    const connectSubscription = await client.runtimeEvents.subscribe(
-      { topics: ["mcp.changed"] },
-      connectController.signal,
-    );
-    const connectEvents = connectSubscription.events[Symbol.asyncIterator]();
+    const connection = await watchRuntimeTopic(client, "mcp.changed");
     await expect(client.mcp.create(candidate)).resolves.toMatchObject({ id: serverId });
 
-    for (let phase = 0; phase < 2; phase++) {
-      await expect(nextRuntimeEvent(connectEvents, "mcp.changed")).resolves.toMatchObject({
-        type: "mcp.changed",
-        servers: [serverId],
-      });
-    }
+    await expect(
+      waitForUserMCPConnection(client, connection.events, server),
+    ).resolves.toMatchObject({
+      id: serverId,
+      status: { type: "connected", toolCount: 1 },
+    });
+    await connection.close();
 
     await client.approval.setRule({
       tool: { type: "mcp", server: serverId, name: "ping" },
@@ -4005,15 +3972,6 @@ for await (const line of lines) {
       disabledTools: [],
     });
 
-    let connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
-    for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
-      connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
-    }
-    expect(connected).toMatchObject({
-      id: serverId,
-      status: { type: "connected", toolCount: 1 },
-    });
     const allTools = await client.mcp.listTools();
     expect(allTools.data.filter((entry) => entry.server.origin.type === "user")).toMatchObject([
       {
@@ -4070,36 +4028,21 @@ for await (const line of lines) {
         error instanceof RpcError && error.data.type === "mcp_authorization_attempt_not_found",
     );
 
-    connectController.abort();
-    await connectEvents.return?.();
-
-    const reconnectController = new AbortController();
-    const reconnectSubscription = await client.runtimeEvents.subscribe(
-      { topics: ["mcp.changed"] },
-      reconnectController.signal,
-    );
-    const reconnectEvents = reconnectSubscription.events[Symbol.asyncIterator]();
+    const reconnection = await watchRuntimeTopic(client, "mcp.changed");
     await client.mcp.reconnect(serverId);
-    for (let phase = 0; phase < 2; phase++) {
-      await expect(nextRuntimeEvent(reconnectEvents, "mcp.changed")).resolves.toMatchObject({
-        type: "mcp.changed",
-        servers: [serverId],
-      });
-    }
-    await awaitMCPTools(serverId, (tools) => tools.some((tool) => tool.name === "ping"));
+    await waitForUserMCPConnection(client, reconnection.events, server);
+    await reconnection.close();
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
       data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
 
+    const deletion = await watchRuntimeTopic(client, "mcp.changed");
     await client.mcp.delete(serverId);
-    await expect(nextRuntimeEvent(reconnectEvents, "mcp.changed")).resolves.toMatchObject({
+    await expect(nextRuntimeEvent(deletion.events, "mcp.changed")).resolves.toMatchObject({
       type: "mcp.changed",
       servers: [serverId],
     });
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({ data: [] });
-
-    reconnectController.abort();
-    await reconnectEvents.return?.();
   }, 30_000);
 
   it("reconciles skill archive and restore through skills.changed", async () => {
@@ -5156,15 +5099,12 @@ for await (const line of lines) {
       title: "HTTP SIGKILL Goal and HITL durability",
     });
     const goalSessionId = asSessionId(goalSession.id);
+    const waitForGoal = await watchGoal(client, goalSessionId);
     await client.goals.start({
       sessionId: goalSessionId,
       objective: "E2E_HITL preserve this Goal wait across SIGKILL.",
     });
-    let goal = await client.goals.get(goalSessionId);
-    for (let attempt = 0; attempt < 100 && goal?.status === "active"; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      goal = await client.goals.get(goalSessionId);
-    }
+    const goal = await waitForGoal("paused");
     expect(goal).toMatchObject({
       status: "paused",
       reason: { code: "awaitingInput" },
@@ -5306,6 +5246,7 @@ for await (const line of lines) {
     let serverCreated = false;
     providerGate = gate;
     try {
+      const connection = await watchRuntimeTopic(client, "mcp.changed");
       await client.mcp.create({
         connection: {
           type: "stdio",
@@ -5324,12 +5265,12 @@ for await (const line of lines) {
         subject: { type: "all" },
         decision: "allow",
       });
-      let connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
-      for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-        connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
-      }
-      expect(connected).toMatchObject({ status: { type: "connected", toolCount: 1 } });
+      await expect(
+        waitForUserMCPConnection(client, connection.events, server),
+      ).resolves.toMatchObject({
+        status: { type: "connected", toolCount: 1 },
+      });
+      await connection.close();
 
       const session = await client.sessions.create({
         workspace: { path: root },
@@ -5348,33 +5289,19 @@ for await (const line of lines) {
       gate.release.resolve();
       providerGate = undefined;
 
-      for (let attempt = 0; attempt < 200; attempt++) {
-        if (
-          await lstat(toolCallMarker).then(
-            () => true,
-            () => false,
-          )
-        )
+      const deliveredBefore = Date.now() + defaultTestDeadlineMilliseconds;
+      while (true) {
+        try {
+          await lstat(toolCallMarker);
           break;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+          if (Date.now() >= deliveredBefore)
+            throw new Error("MCP peer did not receive the Tool call", { cause: err });
+        }
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
-      await expect(lstat(toolCallMarker)).resolves.toBeDefined();
-
-      let items = await client.items.list({ scope: { type: "run", runId } });
-      for (
-        let attempt = 0;
-        attempt < 200 &&
-        !items.data.some(
-          (item) =>
-            item.type === "toolCall" &&
-            item.status === "running" &&
-            item.tool?.name === killedMCPToolName,
-        );
-        attempt++
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-        items = await client.items.list({ scope: { type: "run", runId } });
-      }
+      const items = await client.items.list({ scope: { type: "run", runId } });
       expect(items.data).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

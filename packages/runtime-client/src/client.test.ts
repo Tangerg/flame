@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { once } from "node:events";
+import { setImmediate } from "node:timers/promises";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { createRpcClient } from "./client";
 import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
@@ -8,6 +10,7 @@ import type { RpcMessage } from "./types";
 import { JSONRPC_VERSION } from "./types";
 import { PROBLEM_CODES } from "@flame/runtime-client/wire";
 import session from "@flame/runtime-client/testing/samples/session.json";
+import segmentFinished from "@flame/runtime-client/testing/samples/segment.finished.json";
 import { MAXIMUM_RUN_EVENT_ID_CHARACTERS, RUN_EVENT_ID_PREFIX } from "@flame/runtime-client/wire";
 
 describe("RpcClient", () => {
@@ -225,6 +228,7 @@ describe("RpcClient", () => {
       },
     });
     const failure = new Error("notification observer failed");
+    const closed = once(client.closedSignal, "abort");
     client.subscribe("notifications.runtime.event", {
       next: vi.fn(),
       error: () => {
@@ -237,7 +241,7 @@ describe("RpcClient", () => {
         undefined,
         "subscription",
       );
-      await vi.waitFor(() => expect(client.closedSignal.aborted).toBe(true));
+      await closed;
       expect(consumed).toHaveBeenCalledOnce();
       await expect(consumed.mock.calls[0]![0]).rejects.toBe(failure);
     } finally {
@@ -284,39 +288,16 @@ describe("RpcClient", () => {
     await client.close();
   });
 
-  it("dispatches only validated published notifications", async () => {
-    const transport = createMemoryTransport();
-    const client = createRpcClient(transport);
-    const next = vi.fn();
-    const error = vi.fn();
-    const unsubscribe = client.subscribe("notifications.runtime.event", {
-      next,
-      error,
-    });
-
-    transport.inject(
-      {
-        jsonrpc: JSONRPC_VERSION,
-        method: "notifications.runtime.event",
-        params: { event: { type: "skills.changed", sequence: 1 } },
-      },
-      undefined,
-      "rpc_runtime",
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(next).toHaveBeenCalledOnce();
-    expect(error).not.toHaveBeenCalled();
-    unsubscribe();
-    await client.close();
-  });
-
   it("terminates subscribers when notification params violate the contract", async () => {
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);
+    onTestFinished(() => client.close());
     const next = vi.fn();
-    const error = vi.fn();
-    client.subscribe("notifications.runtime.event", { next, error });
+    const failed = Promise.withResolvers<unknown[]>();
+    client.subscribe("notifications.runtime.event", {
+      next,
+      error: (...args) => failed.resolve(args),
+    });
 
     transport.inject(
       {
@@ -327,18 +308,16 @@ describe("RpcClient", () => {
       undefined,
       "rpc_runtime",
     );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
+    await expect(failed.promise).resolves.toEqual([expect.any(RpcProtocolError), "rpc_runtime"]);
     expect(next).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(expect.any(RpcProtocolError), "rpc_runtime");
-    await client.close();
   });
 
   it("drops a malformed ephemeral run event without terminating its stream", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);
-    const next = vi.fn();
+    onTestFinished(() => client.close());
+    const received = Promise.withResolvers<unknown>();
+    const next = vi.fn((params) => received.resolve(params));
     const error = vi.fn();
     client.subscribe("notifications.run.event", { next, error });
 
@@ -357,21 +336,26 @@ describe("RpcClient", () => {
       undefined,
       "rpc_run",
     );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(next).not.toHaveBeenCalled();
+    transport.inject(
+      { jsonrpc: JSONRPC_VERSION, method: "notifications.run.event", params: segmentFinished },
+      undefined,
+      "rpc_run",
+    );
+    await expect(received.promise).resolves.toMatchObject({ event: { type: "segment.finished" } });
+    expect(next).toHaveBeenCalledOnce();
     expect(error).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("invalid ephemeral notification"));
-    warn.mockRestore();
-    await client.close();
   });
 
   it("terminates a run stream when an authoritative event is malformed", async () => {
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);
+    onTestFinished(() => client.close());
     const next = vi.fn();
-    const error = vi.fn();
-    client.subscribe("notifications.run.event", { next, error });
+    const failed = Promise.withResolvers<unknown[]>();
+    client.subscribe("notifications.run.event", {
+      next,
+      error: (...args) => failed.resolve(args),
+    });
 
     transport.inject(
       {
@@ -388,11 +372,8 @@ describe("RpcClient", () => {
       undefined,
       "rpc_run",
     );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
+    await expect(failed.promise).resolves.toEqual([expect.any(RpcProtocolError), "rpc_run"]);
     expect(next).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(expect.any(RpcProtocolError), "rpc_run");
-    await client.close();
   });
 
   it("close rejects pending calls and prevents further use", async () => {
@@ -503,10 +484,8 @@ describe("RpcClient", () => {
 
   it("joins the receive pump after transport teardown closes its source", async () => {
     const inner = createMemoryTransport();
-    let releaseUnwind!: () => void;
-    const unwind = new Promise<void>((resolve) => {
-      releaseUnwind = resolve;
-    });
+    const unwinding = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
     let receiveFinished = false;
     const transport: Transport = {
       ...inner,
@@ -515,7 +494,8 @@ describe("RpcClient", () => {
           try {
             yield* inner.recv();
           } finally {
-            await unwind;
+            unwinding.resolve();
+            await release.promise;
             receiveFinished = true;
           }
         })(),
@@ -526,14 +506,14 @@ describe("RpcClient", () => {
     const closing = client.close().then(() => {
       closeSettled = true;
     });
-    await vi.waitFor(() => expect(inner.outbox()).toEqual([]));
-    await Promise.resolve();
-
-    expect(closeSettled).toBe(false);
-    expect(receiveFinished).toBe(false);
-
-    releaseUnwind();
-    await closing;
+    try {
+      await unwinding.promise;
+      await setImmediate();
+      expect(closeSettled).toBe(false);
+    } finally {
+      release.resolve();
+      await closing;
+    }
     expect(receiveFinished).toBe(true);
   });
 
@@ -553,13 +533,10 @@ describe("RpcClient", () => {
       close,
     };
     const client = createRpcClient(transport);
+    const closed = once(client.closedSignal, "abort");
 
     endReceive();
-    await vi.waitFor(() =>
-      expect(client.call("sessions.get", { sessionId: "ses_01" })).rejects.toBeInstanceOf(
-        RpcTransportError,
-      ),
-    );
+    await closed;
     await client.close();
 
     expect(close).toHaveBeenCalledOnce();

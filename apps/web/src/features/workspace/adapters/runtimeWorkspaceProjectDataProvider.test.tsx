@@ -26,15 +26,6 @@ let client: ReturnType<typeof createFlameClient>;
 
 let unmountHook: (() => void) | undefined;
 
-async function waitForProjectRequest(index: number) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = transport.outbox().filter(({ method }) => method === "workspaces.list")[index];
-    if (request) return request;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`timeout waiting for workspaces.list request ${index + 1}`);
-}
-
 function workspace(path: string) {
   return {
     workspace: {
@@ -73,14 +64,17 @@ describe("mounted Runtime Workspace-project generation", () => {
     const send = vi.spyOn(transport, "send");
     const hook = testClient.renderHook(() => useWorkspaceProjects(), { wrapper });
     unmountHook = hook.unmount;
-    const retired = await waitForProjectRequest(0);
+    const retired = await transport.waitForRequest("workspaces.list");
 
     act(() => {
       void queryClient.cancelQueries({ queryKey: [WORKSPACE_PROJECTS_KEY] });
       void queryClient.invalidateQueries({ queryKey: [WORKSPACE_PROJECTS_KEY] });
     });
 
-    const successor = await waitForProjectRequest(1);
+    const successor = await transport.waitForRequest(
+      "workspaces.list",
+      ({ id }) => id !== retired.id,
+    );
     respondSuccess(transport, successor.id, { data: [workspace("/successor")] });
     await waitFor(() => expect(hook.result.current.data?.[0]?.id).toBe("/successor"));
 

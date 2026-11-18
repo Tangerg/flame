@@ -6,18 +6,12 @@ import type { WireMethodName } from "@flame/runtime-client/methods";
 import { RUN_EVENT_METHOD } from "../src/stream";
 import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../src/types";
 
-export async function waitForRequest<M extends WireMethodName>(
+export function waitForRequest<M extends WireMethodName>(
   t: MemoryTransport,
   method: M,
+  matches?: (message: TransportRequest) => boolean,
 ): Promise<TransportRequest & { method: M }> {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const found = t
-      .outbox()
-      .find((message): message is TransportRequest & { method: M } => message.method === method);
-    if (found) return found;
-    await new Promise((r) => setTimeout(r, 0));
-  }
-  throw new Error(`timeout waiting for outbound Request "${method}"`);
+  return t.waitForRequest(method, matches);
 }
 
 export function respondSuccess(t: MemoryTransport, id: RpcId, result: unknown): void {
@@ -97,25 +91,16 @@ export async function respondNotRecorded(
   t: MemoryTransport,
   operation: "start" | "resume" | "steer",
 ): Promise<void> {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = t
-      .outbox()
-      .find(
-        (message) =>
-          message.method === "runs.getAcceptance" &&
-          (message.params as { operation?: string }).operation === operation,
-      );
-    if (request) {
-      respondSuccess(
-        t,
-        request.id,
-        operation === "steer"
-          ? { type: "notRecorded", candidateUserItemId: "item_steer" }
-          : { type: "notRecorded" },
-      );
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error("timeout waiting for run acceptance lookup");
+  const request = await waitForRequest(
+    t,
+    "runs.getAcceptance",
+    (message) => (message.params as { operation?: string }).operation === operation,
+  );
+  respondSuccess(
+    t,
+    request.id,
+    operation === "steer"
+      ? { type: "notRecorded", candidateUserItemId: "item_steer" }
+      : { type: "notRecorded" },
+  );
 }

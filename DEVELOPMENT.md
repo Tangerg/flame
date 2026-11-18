@@ -98,13 +98,13 @@ samples in `runtime/contract/samples`.
 Run `go mod tidy` for dependency changes and inspect every manifest/checksum
 diff. Run `git diff --check`. Do not change global Go/npm configuration.
 
-Use targeted race tests only for changed concurrent ownership. Do not invent multi-Runtime, multi-client, or multi-server coverage when the product path has one Runtime and one CLI. Use real PTY tests only for terminal mode, input decoding, resize, focus, or restoration. The default test suite must remain offline and credential-independent.
+Use targeted race tests only for changed concurrent ownership. Use real PTY tests for terminal mode, input decoding, resize, focus, or restoration.
 
 Use the [UI lab](apps/web/lab/README.md) to inspect components and interactions.
 The Runtime HTTP suite builds and starts local Runtime, CLI and plugin processes
 to verify service behavior. [Runtime HTTP suite](apps/web/tests/integration/runtime-http.e2e.test.ts)
 
-Retain tests that establish a product rule, logical invariant, demonstrated regression or successful distribution. Remove implementation inventories, private representation assertions, duplicate helper tests and speculative scenarios. Compilation and typechecking retain strict type and module checks for distribution. Unused-symbol and style diagnostics stay outside product gates. Use focused tests for owner invariants and deterministic failure ordering, then exercise real lifecycle slices through the public binding or protocol. The high-value matrix is Goal creation and completion, Plan replacement and update, steer while running, interruption and resume, context compaction, long context, long execution, restart, and recovery. Test hard bounds and malformed inputs at their owner rather than padding the suite with implementation inventories.
+Follow the [project test rules](PROJECT_RULES.md#tests) when adding, reviewing, or removing coverage.
 
 `runtime/config/config.yaml` may be loaded through production configuration for an explicitly requested bounded live DeepSeek check. Use the production bootstrap and public binding or protocol, cover both success and provider-error paths, and never print or copy its credential. A scheduled build-cache cleanup is not a product failure; rebuild and continue without investigating it.
 

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
@@ -1449,6 +1450,10 @@ func TestDriverFreshStartReplacesStoppedGoal(t *testing.T) {
 }
 
 func TestDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
+	synctest.Test(t, testDriverStoreFailureRemainsAddressableUntilStop)
+}
+
+func testDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
 	output := captureGoalDiagnostics(t)
 	base := newMemStore()
 	storeErr := errors.New("goal store read failed")
@@ -1474,22 +1479,10 @@ func TestDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
 		t.Fatal("goal supervisor did not encounter the store failure")
 	}
 
-	// The store signal marks the failed read, not the later goalDrive completion
-	// publication. A Start racing that publication may still observe the drive as
-	// active; once published, the failure must remain addressable until Stop.
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		_, err := d.Start(t.Context(), "s1", "replacement", testGoalModelSelection(), run.Capabilities{})
-		if errors.Is(err, storeErr) {
-			break
-		}
-		if !errors.Is(err, goals.ErrGoalActive) {
-			t.Fatalf("Start while supervisor is faulted = %v, want active transition or store error", err)
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("goal supervisor failure did not become addressable")
-		}
-		time.Sleep(time.Millisecond)
+	// The store signal precedes publication of the drive's failure.
+	synctest.Wait()
+	if _, err := d.Start(t.Context(), "s1", "replacement", testGoalModelSelection(), run.Capabilities{}); !errors.Is(err, storeErr) {
+		t.Fatalf("Start while supervisor is faulted = %v, want store error", err)
 	}
 	stopped, err := d.Stop(t.Context(), "s1")
 	if !errors.Is(err, storeErr) {

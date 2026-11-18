@@ -33,18 +33,6 @@ let unmountHook: (() => void) | undefined;
 
 let restoreQueryDefaults: (() => void) | undefined;
 
-async function waitForUsageRequest(
-  index: number,
-  source: ReturnType<typeof createMemoryTransport> = transport,
-) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = source.outbox().filter(({ method }) => method === "usage.session")[index];
-    if (request) return request;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`timeout waiting for usage.session request ${index + 1}`);
-}
-
 function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
@@ -100,7 +88,7 @@ describe("mounted Session usage generation", () => {
       { wrapper },
     );
     unmountHook = hook.unmount;
-    const request = await waitForUsageRequest(0);
+    const request = await transport.waitForRequest("usage.session");
     respondSuccess(transport, request.id, {
       total: { inputTokens: 13, outputTokens: 5 },
       coverage: {
@@ -133,7 +121,7 @@ describe("mounted Session usage generation", () => {
       { wrapper },
     );
     unmountHook = hook.unmount;
-    const first = await waitForUsageRequest(0);
+    const first = await transport.waitForRequest("usage.session");
     const firstSignal = send.mock.calls[0]?.[1];
 
     act(() => {
@@ -147,7 +135,7 @@ describe("mounted Session usage generation", () => {
       });
     });
 
-    const second = await waitForUsageRequest(1);
+    const second = await transport.waitForRequest("usage.session", ({ id }) => id !== first.id);
     respondSuccess(transport, second.id, {
       total: { inputTokens: 21, outputTokens: 8 },
       coverage: {
@@ -190,7 +178,7 @@ describe("mounted Session usage generation", () => {
       { wrapper },
     );
     unmountHook = hook.unmount;
-    const retiredRequest = await waitForUsageRequest(0);
+    const retiredRequest = await transport.waitForRequest("usage.session");
     const retiredSignal = retiredSend.mock.calls[0]?.[1];
 
     const successorTransport = createMemoryTransport();
@@ -205,7 +193,7 @@ describe("mounted Session usage generation", () => {
     restoreGateway?.dispose();
     restoreGateway = undefined;
     try {
-      const successorRequest = await waitForUsageRequest(0, successorTransport);
+      const successorRequest = await successorTransport.waitForRequest("usage.session");
       respondSuccess(successorTransport, successorRequest.id, {
         total: { inputTokens: 34, outputTokens: 13 },
         coverage: {

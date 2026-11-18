@@ -26,15 +26,6 @@ let client: ReturnType<typeof createFlameClient>;
 
 let unmountHook: (() => void) | undefined;
 
-async function waitForSessionRequest(index: number) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = transport.outbox().filter(({ method }) => method === "sessions.list")[index];
-    if (request) return request;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`timeout waiting for sessions.list request ${index + 1}`);
-}
-
 function session(id: string) {
   return {
     id,
@@ -80,12 +71,15 @@ describe("mounted Runtime Session-list generation", () => {
     const hook = testClient.renderHook(() => useAgentSessions(), { wrapper });
     unmountHook = hook.unmount;
 
-    const retiredFirst = await waitForSessionRequest(0);
+    const retiredFirst = await transport.waitForRequest("sessions.list");
     respondSuccess(transport, retiredFirst.id, {
       data: [session("retired-page-1")],
       nextCursor: "retired-page-2",
     });
-    const retiredSecond = await waitForSessionRequest(1);
+    const retiredSecond = await transport.waitForRequest(
+      "sessions.list",
+      ({ id }) => id !== retiredFirst.id,
+    );
     expect(retiredSecond.params).toEqual({ cursor: "retired-page-2" });
 
     act(() => {
@@ -93,7 +87,10 @@ describe("mounted Runtime Session-list generation", () => {
       void queryClient.invalidateQueries({ queryKey: [AGENT_SESSIONS_KEY] });
     });
 
-    const successor = await waitForSessionRequest(2);
+    const successor = await transport.waitForRequest(
+      "sessions.list",
+      ({ id }) => id !== retiredFirst.id && id !== retiredSecond.id,
+    );
     respondSuccess(transport, successor.id, { data: [session("successor")] });
     await waitFor(() =>
       expect(hook.result.current.data?.map(({ id }) => id)).toEqual(["successor"]),

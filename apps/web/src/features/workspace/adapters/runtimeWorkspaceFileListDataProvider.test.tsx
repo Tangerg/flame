@@ -27,17 +27,6 @@ let client: ReturnType<typeof createFlameClient>;
 
 let unmountHook: (() => void) | undefined;
 
-async function waitForFileListRequest(index: number) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const request = transport.outbox().filter(({ method }) => method === "workspace.files.list")[
-      index
-    ];
-    if (request) return request;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`timeout waiting for workspace.files.list request ${index + 1}`);
-}
-
 function file(path: string) {
   return {
     path,
@@ -82,7 +71,7 @@ describe("mounted Runtime directory pages", () => {
       wrapper,
     });
     unmountHook = hook.unmount;
-    const first = await waitForFileListRequest(0);
+    const first = await transport.waitForRequest("workspace.files.list");
     respondSuccess(transport, first.id, page("first.ts", "continuation"));
     await waitFor(() => expect(hook.result.current.data?.data[0]?.path).toBe("first.ts"));
     expect(hook.result.current.data?.complete).toBe(false);
@@ -98,17 +87,23 @@ describe("mounted Runtime directory pages", () => {
       initialProps: { cwd: "/original" },
     });
     unmountHook = hook.unmount;
-    const first = await waitForFileListRequest(0);
+    const first = await transport.waitForRequest("workspace.files.list");
     respondSuccess(transport, first.id, page("old.ts", "next-old"));
     await waitFor(() => expect(hook.result.current.hasNextPage).toBe(true));
     let pending!: ReturnType<typeof hook.result.current.fetchNextPage>;
     act(() => {
       pending = hook.result.current.fetchNextPage();
     });
-    const next = await waitForFileListRequest(1);
+    const next = await transport.waitForRequest(
+      "workspace.files.list",
+      ({ id }) => id !== first.id,
+    );
     expect(next.params).toMatchObject({ workspace: { path: "/original" }, cursor: "next-old" });
     hook.rerender({ cwd: "/successor" });
-    const successor = await waitForFileListRequest(2);
+    const successor = await transport.waitForRequest(
+      "workspace.files.list",
+      ({ id }) => id !== first.id && id !== next.id,
+    );
     respondSuccess(transport, successor.id, page("successor.ts"));
     await waitFor(() =>
       expect(hook.result.current.data?.pages[0]?.data[0]?.path).toBe("successor.ts"),

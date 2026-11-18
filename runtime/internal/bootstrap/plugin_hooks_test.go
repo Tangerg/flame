@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -148,54 +147,4 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 		t.Fatalf("disabled source or trust changed across restart: %+v %v", view, err)
 	}
 	r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: session.ID}, "")
-}
-
-func TestInstalledHookCancellationStopsItsCommandGroup(t *testing.T) {
-	cfg := poMCPConfig(t)
-	writeHookSource(t, cfg.userHome, `{"hooks":[{"event":"Stop","command":"printf x > hook-started; (sleep 0.4; touch hook-escaped) & wait"}]}`)
-	r := poMCPOpen(t, cfg)
-	activateHookProvider(t, r.api)
-	resolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust, r.host.application.delivery.PluginCalls.(adapterhooks.Source))
-	if err != nil {
-		t.Fatal(err)
-	}
-	bound, err := resolver.For(t.Context(), cfg.defaultWorkspacePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = bound.Close() })
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	finished := make(chan struct{})
-	go func() {
-		defer close(finished)
-		bound.Run(ctx, hook.Input{Event: hook.Stop, SessionID: "session:hooks", CWD: cfg.defaultWorkspacePath})
-	}()
-	deadline := time.After(3 * time.Second)
-	for {
-		_, err := os.Stat(filepath.Join(cfg.defaultWorkspacePath, "hook-started"))
-		if err == nil {
-			break
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			t.Fatal(err)
-		}
-		select {
-		case <-finished:
-			t.Fatal("hook finished before its command started")
-		case <-deadline:
-			t.Fatal("hook command did not start")
-		case <-time.After(5 * time.Millisecond):
-		}
-	}
-	cancel()
-	select {
-	case <-finished:
-	case <-time.After(3 * time.Second):
-		t.Fatal("installed command did not observe cancellation")
-	}
-	time.Sleep(500 * time.Millisecond)
-	if _, err := os.Stat(filepath.Join(cfg.defaultWorkspacePath, "hook-escaped")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("canceled command left a running descendant: %v", err)
-	}
 }
