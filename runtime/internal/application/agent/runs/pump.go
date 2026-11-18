@@ -558,13 +558,14 @@ func (s *segmentPump) settleMaintenanceFence() {
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	if err := s.segments.finalizer.Finish(ctx, Finish{
-		SessionID:       s.spec.SessionID,
-		RunID:           s.spec.RunID,
-		WorkspaceCWD:    s.spec.WorkspaceCWD,
-		Parked:          s.routes.root.boundary.parked(),
-		OpeningUserText: s.spec.OpeningUserText,
-	}); err != nil {
+	finish := Finish{
+		SessionID: s.spec.SessionID, RunID: s.spec.RunID, WorkspaceCWD: s.spec.WorkspaceCWD,
+		Parked: s.routes.root.boundary.parked(),
+	}
+	if maintenanceHeld {
+		finish.OpeningUserText = s.spec.OpeningUserText
+	}
+	if err := s.segments.finalizer.Finish(ctx, finish); err != nil {
 		recordRunCleanupError(ctx, err)
 	}
 }

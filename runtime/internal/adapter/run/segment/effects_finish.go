@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -16,11 +17,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// sessionTitles is the Application capability for best-effort initial title
-// generation. It rechecks first-writer semantics through Session behavior.
 type sessionTitles interface {
-	NeedsGeneratedTitle(ctx context.Context, id string) (bool, error)
-	ApplyGeneratedTitle(ctx context.Context, id, title string) error
+	PrepareGeneratedTitle(ctx context.Context, sessionID, runID string) (*sessions.GeneratedTitle, error)
 }
 
 // titleGenerator derives an initial session title from its opening request. It
@@ -114,18 +112,25 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	if !needsTitle {
 		return errors.Join(errs...)
 	}
-	title := func(ctx context.Context) error {
-		return observeSegmentMaintenance(ctx, fin, "title", func(ctx context.Context) error {
-			return f.title(ctx, fin.SessionID, fin.OpeningUserText)
-		})
+	claim, err := f.sessionTitles.PrepareGeneratedTitle(ctx, fin.SessionID, fin.RunID)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("segment: prepare generated title for Session %q: %w", fin.SessionID, err))
+		return errors.Join(errs...)
+	}
+	if claim == nil {
+		return errors.Join(errs...)
 	}
 	if !f.tasks.Start(ctx, func(ctx context.Context) {
+		defer claim.Release()
 		// The async title error has no caller to return to; without this the
 		// span is its only report and reaches no operator.
-		if err := title(ctx); err != nil {
+		if err := observeSegmentMaintenance(ctx, fin, "title", func(ctx context.Context) error {
+			return f.title(ctx, claim, fin.SessionID, fin.OpeningUserText)
+		}); err != nil {
 			slog.WarnContext(ctx, "segment: maintain session title", "run.id", fin.RunID, "error", err)
 		}
 	}) {
+		claim.Release()
 		rejected := fmt.Errorf("segment: maintenance for run %q was rejected during shutdown", fin.RunID)
 		errs = append(errs, observeSegmentMaintenance(ctx, fin, "title", func(context.Context) error { return rejected }))
 	}
@@ -158,43 +163,20 @@ func (f *Finalizer) snapshot(ctx context.Context, sessionID, cwd, runID string) 
 	return nil
 }
 
-// title generates and applies one Session title. NewFinalizer sets the three
-// title ports together or leaves all three unset, and Finish reaches this only
-// when they are set and the opening text has content, so what is left here is
-// the generation itself.
-func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
-	scope, _ := executionctx.Scope(ctx)
-	if scope.SessionID != "" && scope.SessionID != sessionID {
-		return errors.New("segment: title Session differs from captured execution scope")
-	}
-	scope.SessionID = sessionID
-	ctx = executionctx.WithScope(ctx, scope)
-	needed, err := f.sessionTitles.NeedsGeneratedTitle(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("segment: inspect Session %q for title generation: %w", sessionID, err)
-	}
-	if !needed {
-		return nil
-	}
+func (f *Finalizer) title(ctx context.Context, claim *sessions.GeneratedTitle, sessionID, prompt string) error {
 	title, generationErr := f.titles.Generate(ctx, strings.TrimSpace(prompt))
 	title = strings.TrimSpace(title)
-	if title == "" && generationErr == nil {
-		return fmt.Errorf("segment: generated title for session %q is empty", sessionID)
-	}
-	if title != "" {
-		if err := f.sessionTitles.ApplyGeneratedTitle(ctx, sessionID, title); err != nil {
-			applyErr := fmt.Errorf("segment: apply generated title to Session %q: %w", sessionID, err)
-			if generationErr != nil {
-				return errors.Join(
-					fmt.Errorf("segment: generate title for session %q: %w", sessionID, generationErr),
-					applyErr,
-				)
-			}
-			return applyErr
-		}
-	}
 	if generationErr != nil {
-		return fmt.Errorf("segment: generate title for session %q: %w", sessionID, generationErr)
+		generationErr = fmt.Errorf("segment: generate title for session %q: %w", sessionID, generationErr)
 	}
-	return nil
+	if title == "" {
+		if generationErr == nil {
+			return fmt.Errorf("segment: generated title for session %q is empty", sessionID)
+		}
+		return generationErr
+	}
+	if err := claim.Apply(ctx, title); err != nil {
+		return errors.Join(generationErr, fmt.Errorf("segment: apply generated title to Session %q: %w", sessionID, err))
+	}
+	return generationErr
 }

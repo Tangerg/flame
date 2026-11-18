@@ -39,6 +39,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
+			c.retireGeneratedTitle(sessionID)
 			return c.writes.ApplyDelete(commitCtx, deletion)
 		},
 		func(ctx context.Context) error {
@@ -84,6 +85,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	if err != nil {
 		return View{}, err
 	}
+	c.retireGeneratedTitle(sessionID)
 	sessionReplacement, err := c.prepareSessionRestore(ctx, snapshot.Session)
 	if err != nil {
 		return View{}, err

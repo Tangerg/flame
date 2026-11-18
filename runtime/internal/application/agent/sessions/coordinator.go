@@ -235,8 +235,7 @@ type executionReleaser interface {
 // Coordinator executes session/run lifecycle write-sets across the domain
 // stores, coordinates single-writer run admission (the per-session and
 // per-working-tree slots), and tears down the executor behind an abandoned Run.
-// Stateless beyond its collaborators and the in-process admission gates;
-// safe to share.
+// It owns the lifetime of work derived from a Session's current history.
 type Coordinator struct {
 	sessions              Store
 	interrupts            InterruptStore
@@ -268,6 +267,7 @@ type Coordinator struct {
 	// admissions is shared with Runs and owns the process-local session and
 	// working-tree facts.
 	admissions Admissions
+	titles     titleClaims
 	// invalidations tell clients a committed session mutation moved something they hold.
 	// Every notice is published from a post-commit boundary, never from the commit
 	// itself: a signal for a transaction that then rolled back would send every

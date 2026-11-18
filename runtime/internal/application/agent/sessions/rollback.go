@@ -65,6 +65,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			if err := c.sandbox.Discard(sessionID); err != nil {
 				return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
 			}
+			c.retireRolledBackTitle(sessionID, dropRunIDs)
 			return c.writes.ApplyRollback(ctx, rollback)
 		},
 		func(ctx context.Context) error {

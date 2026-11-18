@@ -236,49 +236,6 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 	return updated, nil
 }
 
-// NeedsGeneratedTitle reports whether title generation can still contribute a
-// value. The later write rechecks this condition, so a user rename between the
-// query and generated result always wins.
-func (c *Coordinator) NeedsGeneratedTitle(ctx context.Context, id string) (bool, error) {
-	value, err := c.Get(ctx, id)
-	if err != nil {
-		return false, err
-	}
-	return value.Title() == "", nil
-}
-
-// ApplyGeneratedTitle installs a generated title using Domain first-writer
-// semantics. Concurrent Session edits are retried from their committed value;
-// once a user title exists, the generated title becomes a successful no-op.
-func (c *Coordinator) ApplyGeneratedTitle(ctx context.Context, id, title string) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		current, err := c.Get(ctx, id)
-		if err != nil {
-			return err
-		}
-		updated, changed, err := current.NameIfUntitled(title, c.now())
-		if err != nil {
-			return err
-		}
-		if !changed {
-			return nil
-		}
-		replacement, err := session.NextReplacement(current, updated)
-		if err != nil {
-			return fmt.Errorf("sessions: prepare generated title replacement: %w", err)
-		}
-		if err := c.sessions.Save(ctx, replacement); err == nil {
-			c.publishSessionMoved(id)
-			return nil
-		} else if !errors.Is(err, session.ErrRevisionConflict) {
-			return fmt.Errorf("sessions: save generated title: %w", err)
-		}
-	}
-}
-
 // resolveSessionWorkspace canonicalizes path and requires it to be an existing
 // directory, returning the shared workspace-admission sentinel on failure.
 func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, error) {

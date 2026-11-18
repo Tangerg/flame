@@ -73,6 +73,10 @@ and must be retained separately.
 Post-segment maintenance captures its finishing Session and workspace explicitly.
 A new root opened by another Run's plugin call cannot inherit that caller's
 Session, Goal or physical-model invocation for detached title generation.
+The originating Run reserves title maintenance before releasing its Session
+admission. A Session restore or deletion revokes the reservation even if a
+later import reuses its ID. A history rollback revokes it when the originating
+Run is removed. An explicit title takes precedence over a generated title.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
