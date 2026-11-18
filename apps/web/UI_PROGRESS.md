@@ -38715,10 +38715,58 @@ previews exited, and cleanup removed the two registrations, four private
 Library directories, ten checkout outputs and the scratch tree. VoiceOver and
 live Run execution remain open.
 
-The next observed layout issue is at the end of the narrow reading frame. In
-the 440 px transcript beside Files, Jump to bottom crosses a line of body text
-above the Composer while reading older replies. The next batch will inspect
-the transcript's reading edge and the placement of that control together.
+### Jump to bottom outside the transcript (2026-11-19)
+
+Signed Wails on `e26d80d29` reproduces the overlap at Actual Size with a
+440 CSS px conversation beside Files. One wheel page up puts the viewport
+edge at y832.9 and the Jump button at y791.8–823.8. The button extends 41.1 px
+into the viewport and covers parts of “this paragraph.” Pointer hit testing
+beside the circle still reaches the history. The Legend List migration at
+`c03ffcd92` removed the paint, pointer and end-spacer boundary established
+in `ba4892a7a`.
+
+The floating Composer now turns the Jump size and its existing gaps into one
+fixed layout clearance. Its existing absolute control sits in that space
+above the Composer scrollport. The maximum Composer height accounts for
+both the new space and the existing transcript reserve. Visibility changes
+leave the transcript extent and focus budget stable. The transcript-only
+wrapper provides container-height units for nested reading. The actual
+ChatGPT thread scroll layout and ZCode conversation timeline relate the jump
+action to the Composer and their respective scroll owners. Better Layout
+guides separating the control from the text it navigates.
+
+- ZH/dark/18 px/custom blue/full motion at Actual Size. Native Left tiling and
+  the Files splitter leave a 440 CSS px conversation. The 48 px band places
+  the bottom of the transcript at y784.9 and the visible button at
+  y791.8–823.8. Words and history hit targets end above the button. Opening
+  `reading-guide.md` and pressing Return restores its row at the same
+  11654 px transcript offset. The first native coordinate click reaches
+  checkpoint 40 at a 0 px gap and focuses the actual reader. Both final
+  message actions are fully inside the viewport and accept pointer hits.
+  The draft continues as `跳转净空草稿继续尾段`.
+- EN/light/Flame Orange with motion off. A fresh open starts at a 0 px gap
+  with the complete latest reply and its actions available. In a
+  1513 × 729 CSS px native window, an eleven-line draft leaves a reading
+  viewport from y46 to y412.6. Wheel and Shift+Tab expose and focus Jump
+  while those bounds stay fixed. Enter reaches the physical end on the
+  first activation. The reading cap takes effect after focus passes to
+  the transcript. Returning to the Composer retains all eleven lines
+  and continues as `Draft line 11 retains its place again.`
+- The last question in the captured multi-question workflow also fits in
+  the short native window. A choice and custom text remain in view while
+  Tab reaches Skip and submit, then Submit answers. The question is left
+  unsubmitted.
+
+Scoped formatting, Web typecheck, 89 Web contracts, 937 locale keys in eight
+catalogs, bootstrap, installed plugin resources, 26 bundle checks, module
+linking, `make check-native` and the five-entry Lab gate pass. Three private
+bundles pass strict signature verification. Five launches and three loopback
+previews exited. Cleanup removed the three registrations, six private Library
+directories, ten checkout outputs and the scratch tree. These paths use
+isolated captured data. VoiceOver and live Run execution remain open.
+
+Next inspect the delegated transcript's separate inside-reader placement in
+its retained task pane before choosing a change for that reader.
 
 ## Wide-content breakout in the reading band
 

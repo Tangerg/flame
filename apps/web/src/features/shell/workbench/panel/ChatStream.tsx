@@ -39,6 +39,7 @@ const cst = stylex.create({
     "--transcript-jump-gap": space.s2,
   },
   layoutFrame: { containerType: "size" },
+  transcriptFrame: { containerType: "size" },
   emptyQuery: { containerName: "empty-conversation" },
   rail: {
     position: "absolute",
@@ -245,14 +246,9 @@ export function ChatStream({ onSend }: Props) {
               <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
                 <Slot name="chat.rail.start" />
               </div>
-              <div {...stylex.props(sh.paneAnchored)}>
+              <div {...stylex.props(sh.paneAnchored, cst.transcriptFrame)}>
                 <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
-                  <MessageStream
-                    key={sessionId}
-                    rows={rows}
-                    ctx={ctx}
-                    sessionId={sessionId}
-                  />
+                  <MessageStream key={sessionId} rows={rows} ctx={ctx} sessionId={sessionId} />
                 </ChatErrorBoundary>
               </div>
             </>

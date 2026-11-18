@@ -15,8 +15,12 @@ const fc = stylex.create({
     paddingTop: { default: null, ":has([data-slot=composer-top-tray-surface])": "1px" },
   },
   overlay: {
+    // Keep the reading frame steady as the Jump control appears and disappears.
+    "--transcript-jump-clearance":
+      "calc(max(var(--control-height-md), var(--control-target-min)) + var(--transcript-jump-gap) + var(--layout-control-gap))",
     "--composer-available-height":
-      "calc(var(--composer-frame-height, 100cqh) - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
+      "calc(var(--composer-frame-height, 100cqh) - var(--transcript-jump-clearance) - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
+    marginBlockStart: "var(--transcript-jump-clearance)",
     pointerEvents: "none",
     position: "relative",
     flexShrink: 0,

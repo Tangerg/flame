@@ -477,24 +477,23 @@ pressed target stationary. Release reveals that unit and retains it through
 subsequent resizing; cancellation, outside focus, manual departure or hidden
 content cannot reclaim a retired witness.
 
-The transcript's bottom paint edge and end spacer use that same reading clearance. Its short
-fade ends before the reserved Jump area, and clipping excludes hidden history
-from pointer input there. Masking alone would keep transparent content hittable.
-Jump remains outside this boundary; ordinary paragraphs can still scroll into
-the unchanged readable frame. The complete final message actions can also scroll
-above that edge.
+The Composer reserves a fixed band for Jump to bottom above its scrollport.
+The transcript ends before the band, so words, selection and message actions
+stay inside the reading viewport. The control's visibility follows Legend's
+end state while the band keeps its size. The transcript's own layout container
+supplies the height budget for nested readers.
 
 When a Workspace material hides the conversation, observers, listeners and focus
 witnesses retire. The reading-focus owner freezes the last visible height on the
 retained viewport until attachment releases it back to CSS. This prevents hidden
 window changes from expanding a reader and clamping its native source position.
-The started conversation likewise retains `--composer-overlay` on its existing
-node. The same layout observer publishes the externally sized frame through
-`--composer-frame-height` before measuring the overlay. Its last visible value
-remains while hidden, preventing native layout from clamping the Composer before
-effect cleanup. Visible layout delivery resumes that same publication.
-An empty conversation removes the Composer overlay, and the shared shell's
-notification insets still clear while hidden.
+The started conversation retains the latest visible `--composer-frame-height`
+on its pane. The layout observer publishes that height before measuring the
+Composer and Jump footprint for notifications. The retained height protects
+the Composer's native scroll offset while hidden. Layout delivery resumes
+when the conversation becomes visible. The empty conversation uses the
+centered Composer layout, and hiding the conversation clears the shared
+shell's notification insets.
 
 The conversation keeps its layout while a full-width material makes it inert,
 inaccessible and unpainted. Its compact Plan projection also remains mounted;
