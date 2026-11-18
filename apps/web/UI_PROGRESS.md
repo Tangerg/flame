@@ -38564,9 +38564,42 @@ All ten private app launches exited and the six loopback previews closed.
 Cleanup removed three exact native registrations, six private Library
 directories, ten temporary checkout outputs and the scratch tree.
 
-The long-conversation replay also confirms that all forty turn buttons are
-separate Tab stops between the conversation heading and the scrollable reader.
-Use that measured keyboard path for the next navigation review.
+### Keyboard navigation within the turn rail (2026-11-19)
+
+In signed Wails on `2b1544f30`, Tab from the conversation heading focuses
+turn 1 of 40. Thirty-nine further Tabs reach turn 40 and the next enters the
+transcript viewport. The vertical Base UI Toolbar gives the turn rail one
+sequential focus position and owns focus movement within the rail. Arrow keys
+move the existing preview and shared focus indicator. Activating a turn uses
+the existing Legend List jump. The current turn still describes the visible
+transcript location. [Toolbar keyboard pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/)
+
+In signed English/light/Orange Wails at default zoom, Tab enters the first
+tick and the next Tab reaches the transcript viewport. Shift+Tab returns to
+the rail's recent tick. Up wraps from turn 1 to 40, and Down wraps back to 1.
+The second turn's preview appears while checkpoint 37 stays in the transcript.
+Return lands on checkpoint 2. Space moves from the preview of turn 40 to its
+recorded checkpoint. A native coordinate click then lands on checkpoint 5.
+Escape closes its preview with focus on that tick, and the Composer resumes at
+the same middle caret as `turnkeydraftqxtail`.
+
+At 18 px with Chinese/dark/custom blue and full motion, native left tiling and
+the Files Dock splitter leave 440 px for the conversation. The title controls
+lead directly to the transcript. With the Dock closed and the window widened,
+the named rail again occupies one Tab stop. Up and Down wrap to 40 and back
+to 1. The second preview shows a blue inset focus ring while later transcript
+turns are still visible. Return reads checkpoint 2 and the Composer resumes as
+`回合栏键盘草稿继续尾段`.
+
+The Base UI 1.9.0 vertical Toolbar supplies the keyboard cursor and retains
+the existing labels and RichTooltip trigger. Formatting, Web typecheck,
+89 Web contracts, 937 locale keys across eight locales, bootstrap, installed
+plugin resources, 26 bundle checks, module linking, `make check-native` and the
+five-entry Lab check pass. Both private bundles pass signature verification and
+exit cleanly. The preview closes, and cleanup removes the two native
+registrations, four private Library directories, ten checkout outputs and the
+scratch tree. VoiceOver, live Run execution, browser visual suites and
+benchmarks are outside this qualification.
 
 ## Wide-content breakout in the reading band
 

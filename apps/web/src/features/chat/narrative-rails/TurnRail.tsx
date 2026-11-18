@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { Toolbar } from "@base-ui/react/toolbar";
 import { type CSSProperties } from "react";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/index";
@@ -6,7 +7,7 @@ import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/features/agent/public/conversation";
 import { type Message } from "@/features/agent/public/sessionView";
 
-import { RichTooltip, vocab, ButtonPrimitive } from "@flame/ui";
+import { RichTooltip, vocab } from "@flame/ui";
 import {
   foldExchanges,
   scrollToTurn,
@@ -87,7 +88,8 @@ export function TurnRail() {
     reached === null ? 0 : Math.max(0, 1 - Math.abs(index - reached) / REACH);
 
   return (
-    <nav
+    <Toolbar.Root
+      orientation="vertical"
       aria-label={t("narrative.rail.turns")}
       {...stylex.props(tr.rail)}
       onPointerLeave={() => setReached(null)}
@@ -102,8 +104,9 @@ export function TurnRail() {
             sideOffset={12}
             styles={tr.card}
             trigger={
-              <ButtonPrimitive
+              <Toolbar.Button
                 type="button"
+                data-control="button"
                 data-focus-inset=""
                 aria-current={active ? "true" : undefined}
                 aria-label={turnLabel(t, turn, index, turns.length)}
@@ -122,14 +125,14 @@ export function TurnRail() {
                     } as CSSProperties
                   }
                 />
-              </ButtonPrimitive>
+              </Toolbar.Button>
             }
           >
             <TurnPreview turn={turn} answer={answerAfter(messages, turn.id)} />
           </RichTooltip>
         );
       })}
-    </nav>
+    </Toolbar.Root>
   );
 }
 

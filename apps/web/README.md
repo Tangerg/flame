@@ -528,8 +528,10 @@ Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,
 fallback and delegated preface. The conversation container still supplies
 the width available to outer Markdown code, media and tables in the existing
-breakout range. At wide conversation widths the turn rail sits in the margin,
-where the shared inset focus ring marks the keyboard's current turn button.
+breakout range. At wide conversation widths one Tab stop enters the turn rail
+in the margin. Up and Down move the visible focus ring and preview, wrapping
+between the first and last turns. Enter or Space brings the focused turn into
+the transcript, and Tab continues to the transcript reader.
 
 Each non-commentary message keeps its body and existing actions in one context
 menu trigger. Shift+F10 from an action opens that message's named menu without
