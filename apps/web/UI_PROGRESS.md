@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing is **paused at the user's explicit request (2026-11-17)** in the isolated `codex/flame-ui-reading` worktree. Native access is restored after manual unlock. Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The latest complete frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. The current Context Dock separator and file-reading return are qualified in Wails within the scope recorded under [Native workspace zoom and Dock geometry](#native-workspace-zoom-and-dock-geometry). Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -32,7 +32,7 @@ runtime fallback is an accepted migration state.
 | D2       | React Aria Tree/Virtualizer/TreeLoadMoreItem; Runtime/Query paged directory facts | Integrated with directory cursor and coverage across Runtime, SDK and clients         |
 | D3       | Lexical document/selection/history/typeahead; typed references                    | Integrated; one draft content representation, IndexedDB v1 to v2 upgrade              |
 | D4       | Legend List for all linear reading; normal grid and interaction pinning           | Integrated; Find renders every row while open, turn rail uses list layout; V2 not run |
-| D5       | react-resizable-panels owns fixed workbench layout                                | Integrated; persists requestedLayout snapshots                                        |
+| D5       | react-resizable-panels owns fixed workbench layout                                | Integrated. Dock keyboard resizing and pointer targeting qualified in Wails.          |
 | D6       | react-zoom-pan-pinch owns image/Mermaid/Lab transform                             | Integrated in all three areas; V5 not run                                             |
 | D7       | TanStack Hotkeys owns grammar, matching, recording and display                    | Integrated; combo parser and tinykeys removed                                         |
 | D8       | New dnd-kit internal sorting; PDD external file adapter                           | Integrated                                                                            |
@@ -42347,6 +42347,8 @@ that scale before crossing the existing CSS-pixel boundary, and the native
 fullscreen style mask supplies measured zeroes. Other platforms keep their
 Wails menu implementation. Dependencies and IPC methods are unchanged.
 
+### Before the panel-engine migration
+
 The pinned Wails macOS roles used viewport magnification. Production first
 reproduced an outer scroll area and missing sidebar footer after a single Zoom
 In. Switching to page zoom exposed a second problem: at 200%, a collapsed
@@ -42381,6 +42383,73 @@ provide the callback boundary; the installed beta.29 source establishes the
 actual behavior. The better-layout/accessibility review drove viewport reflow,
 reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
+
+### Dock seam after the panel-engine migration (2026-11-19)
+
+Current-main Wails at `8e674c630` reproduces a misplaced Dock separator.
+Tab focuses **Resize right workspace** near x=278 CSS px while the rendered
+pane boundary is at x=858 CSS px. Left leaves the accessible value at 50.
+Dragging at the visible boundary leaves both widths unchanged. Left-sidebar
+keyboard resizing works as a control.
+
+The Dock separator was still absolutely positioned by a width variable
+removed during the migration. The panel engine derives its separator hit
+regions and keyboard relationships from the physical order of its group
+children. In `apps/web/src/styles/globals.css`, the Dock separator now sits
+between the panel boxes in normal flow. The separator takes no inline space
+from the 440 px conversation and 320 px Dock minimums. Its decorative seam
+and wash follow the same element that owns hit testing. The existing focus
+token and engine-reported hover and active states identify that edge.
+`ChatPanel.tsx` already commits the engine's requested-layout snapshot.
+Workspace navigation determines which material opens and where focus returns.
+
+ZCode's `WorkspaceShellLayout.tsx` demonstrates the value of preserving
+the material while the workspace changes size. The Arc resizable panels
+example distinguishes rest, hover, focus and drag on the same boundary.
+The rendered Alpaca Chat workspace and Marketer Analytics references show
+quiet resting dividers and reserved emphasis for direct manipulation. The
+Window Splitter keyboard model and the Better Interface review guided the
+named focusable edge, ordinary window constraints and immediate feedback.
+The existing Flame type, copy, palette and workbench proportions carry the
+visual hierarchy. [WAI-ARIA Window Splitter](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/)
+[Alpaca Chat](https://acedesign.io/work/alpaca/05.webp)
+[Marketer Analytics](https://acedesign.io/work/marketer/07.webp)
+
+Actual Wails v3.1.0 acceptance uses the existing loopback Lab with isolated
+profiles at Actual Size.
+
+- EN/light/14 px/Flame Orange/full motion: Tab paints focus at the divider
+  and Left changes the Conversation share from 50% to 45%. Home leaves
+  440 px for Conversation. End leaves 320 px for Dock. Wheel scrolling in
+  `reading-guide.md` reaches its nested reading content. Open full width and
+  Open in the context dock retain that file and return to the 320 px split.
+  Back to files focuses the original row. Cmd+L continues the unsent draft.
+- The native Window menu resizes 1440×900 to a settled 1121×950 CSS px
+  window. The visible Dock still measures 320 px. Increasing the left
+  sidebar presents the full-width material entry. Returning to the previous
+  native size restores the split and the Files view.
+- ZH/dark/18 px/`#3B82F6`/motion off: Right changes the Conversation share
+  from 50% to 55%. The blue keyboard focus follows the real divider. The same
+  file returns to its row, and Cmd+L restores the middle caret to produce
+  `保留草稿。已核对。继续这里。`.
+- Real pointer input at x=857.5 now focuses the Dock separator. A separate
+  passive trace in a private Lab records trusted down, move and up events
+  with `buttons=0` for both separators. The engine ends the gesture when a
+  move has no pressed button, so drag-to-resize and interrupted drag remain
+  unqualified. The diagnostic source and output are temporary.
+
+`make check-native`, the canonical Lab build, Web typecheck, 81 schema
+contract tests, and the locale, bootstrap, installed-resource, bundle and
+installed-module checks pass. The Wails fixtures exercise native WebKit
+input and product components against recorded data. Live Runtime execution,
+VoiceOver speech, IME composition, browser visual suites and benchmarks were
+outside this verification. Whole-workspace award-level review remains open.
+
+All four owned app processes exited, both isolated bundle registrations and
+four private WebKit/cache directories were retired, and the loopback listener
+stopped. The disposable bundles, build outputs, pointer trace and isolated
+installation cache were removed. Next inspect the current Dock tab strip at its 320 px limit,
+especially selection, overflow and focus after closing a background tab.
 
 ## Verification checkpoint
 
@@ -50013,7 +50082,7 @@ and native command focus.” Choose fresh task evidence before selecting a repai
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Work on `codex/flame-ui-reading` in its isolated worktree. Commit explicit owned paths, integrate qualified batches into main, push remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
+- Work on `main` in the isolated UI worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Commit explicit owned paths, fast-forward remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
 - Keep user-facing replies in Chinese and repository content in English. Preserve the approved visual direction and task model. Continue evidence-backed UI batches until the user explicitly stops the resumed goal.
 
 ## Milestone closure (2026-10-23)

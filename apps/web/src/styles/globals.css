@@ -407,17 +407,19 @@ body:has([data-slot="notification-toast"])
   background: var(--app-drawer-surface);
 }
 
-.agent-drawer-surface,
-.agent-dock-row[data-dock="open"]::before {
+.agent-drawer-surface {
   box-shadow: var(--app-pane-wash-end) var(--seam-wash);
 }
 
 .agent-seam-rail,
 .agent-pane-resizer {
   position: relative;
-  flex: 0 0 6px;
   cursor: col-resize;
   z-index: var(--layer-resizer);
+}
+
+.agent-seam-rail {
+  flex: 0 0 6px;
 }
 
 @property --shell-boundary {
@@ -475,24 +477,29 @@ body:has([data-slot="notification-toast"])
 }
 
 .agent-pane-resizer {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: var(--dock-layout-width);
-  z-index: var(--layer-resizer);
-  width: 10px;
-  transform: translateX(5px);
-  cursor: col-resize;
-  touch-action: none;
+  /* The group expands this hit region without taking width from either pane. */
+  inline-size: 0;
 }
 
-.agent-dock-row[data-dock="open"]::before {
+.agent-pane-resizer::before {
   content: "";
   position: absolute;
   inset-block: 0;
-  inset-inline-start: 0;
-  inset-inline-end: var(--dock-layout-width);
-  z-index: var(--layer-resizer);
+  inset-inline-end: 0;
+  inline-size: 12px;
+  border-inline-end: 0.5px solid var(--seam-line);
+  box-shadow: var(--app-pane-wash-end) var(--seam-wash);
   pointer-events: none;
+}
+
+@media (hover: hover) {
+  .agent-pane-resizer[data-separator="hover"]::before {
+    border-inline-end-color: var(--boundary-emphasis);
+  }
+}
+
+.agent-pane-resizer[data-separator="active"]::before {
+  border-inline-end: 1px solid var(--boundary-emphasis);
 }
 
 .agent-shell[data-sidebar="collapsed"] .agent-content-card,
@@ -580,10 +587,6 @@ body:has([data-slot="notification-toast"])
 }
 .agent-dock-row[data-dock="collapsed"] .agent-context-dock {
   visibility: hidden;
-}
-
-.agent-dock-row[data-presentation="main"]::before {
-  content: none;
 }
 
 .agent-dock-row[data-dock="collapsed"] .agent-surface-header[data-window-corner] {

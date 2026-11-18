@@ -103,16 +103,11 @@ Unfingerprinted public appearance scripts, focus scripts and fonts remain
 revalidatable. A stale policy or altered registered file is refused; registering
 an arbitrary filename alone does not establish a content fingerprint.
 
-Resize handles preserve the layout owner's pixel limits and 8px/24px/Home/End
-commands. A shared `PointerSession` owns capture and termination. Only a valid
-completed gesture requests a commit. The layout owner alone projects the accepted
-width; the handle owns a separate temporary preview property. CSS derives the
-displayed width from these distinct facts. Completion, cancellation and retirement
-remove that preview without writing or restoring an accepted value. External
-widths, container changes, hidden scopes and unmount revoke the old gesture.
-Keyboard commands request the next width from the same layout owner.
-Modified keys, IME composition and keys already consumed elsewhere retain their
-original owner; only plain resize keys and the existing Shift coarse step apply.
+The sidebar and Context Dock use `react-resizable-panels` for layout and resize
+input. The Dock separator paints the seam at the same edge the group uses for
+the resize target. Its expanded hit region leaves both panel minimums available.
+After a user resize, shell preferences save the group's requested layout when
+available and its settled layout otherwise.
 
 The fixed, clipped application root owns the viewport frame. Reading surfaces own
 their scrolling, so native input focus cannot scroll the application chrome away.
