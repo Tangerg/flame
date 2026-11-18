@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/alibaba"
 	"github.com/Tangerg/scope/models/anthropic"
-	"github.com/Tangerg/scope/models/azureopenai"
 	"github.com/Tangerg/scope/models/deepseek"
 	"github.com/Tangerg/scope/models/fireworks"
 	"github.com/Tangerg/scope/models/google"
@@ -24,6 +23,7 @@ import (
 	"github.com/Tangerg/scope/models/openrouter"
 	"github.com/Tangerg/scope/models/perplexity"
 	anthropicprotocol "github.com/Tangerg/scope/models/protocol/anthropic"
+	openaiprotocol "github.com/Tangerg/scope/models/protocol/openai"
 	"github.com/Tangerg/scope/models/together"
 	"github.com/Tangerg/scope/models/xai"
 	"github.com/Tangerg/scope/models/xiaomi"
@@ -135,9 +135,8 @@ var providers = mustProviderCatalog(
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
 	// the model id is a deployment name. Both are user-supplied.
-	endpointProvider(providerAzureOpenAI, azureMount, true, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return azureopenai.NewChatCompletions(ctx, azureopenai.ChatCompletionsConfig{Config: azureopenai.Config{APIKey: s.connection.APIKey, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient}, DefaultOptions: o})
-	}).withEmbedding("", buildAzureOpenAIEmbeddingModel),
+	endpointProvider(providerAzureOpenAI, azureMount, true, buildAzureOpenAIModel).
+		withEmbedding("", buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(providerOpenAICompatible, apiMount, true, buildOpenAICompatibleModel),
@@ -186,6 +185,20 @@ func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.O
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+	})
+}
+
+func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
+	// The resource catalog proves credential access. The deployment inventory
+	// owns the names used for generation.
+	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatCompletionsConfig{
+		APIKey:         spec.connection.APIKey,
+		DefaultOptions: opts,
+		BaseURL:        spec.connection.BaseURL,
+		HTTPClient:     spec.httpClient,
+	}, openaiprotocol.DialectConfig{
+		Provider:        string(providerAzureOpenAI),
+		TokenLimitField: openaiprotocol.TokenLimitMaxCompletionTokens,
 	})
 }
 

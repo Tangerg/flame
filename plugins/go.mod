@@ -7,7 +7,6 @@ require (
 	cloud.google.com/go/auth v0.24.3 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
 	github.com/Tangerg/scope/mcp v0.62.0 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.62.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/anthropics/anthropic-sdk-go/v2 v2.8.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -88,6 +87,7 @@ require (
 	github.com/Tangerg/scope/models/openrouter v0.62.0
 	github.com/Tangerg/scope/models/perplexity v0.62.0
 	github.com/Tangerg/scope/models/protocol/anthropic v0.62.0
+	github.com/Tangerg/scope/models/protocol/openai v0.62.0
 	github.com/Tangerg/scope/models/together v0.62.0
 	github.com/Tangerg/scope/models/xai v0.62.0
 	github.com/Tangerg/scope/models/xiaomi v0.62.0
