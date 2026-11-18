@@ -61,7 +61,10 @@ export interface ComposerStatePort {
     input: ComposerDraftInput,
     requestConfirmation: RequestDraftReplacementConfirmation,
   ): void;
-  beginDraftReplacement(): ComposerDraftReplacement;
+  beginDraftReplacement(
+    requestConfirmation: RequestDraftReplacementConfirmation,
+    begin: (replace: ComposerDraftReplacement) => boolean,
+  ): void;
   appendText(text: string): void;
   captureAppendText(): (text: string) => boolean;
   useImageAttachments(): readonly ComposerImageAttachment[];

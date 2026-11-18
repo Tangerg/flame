@@ -4,6 +4,7 @@ export {
   forkFromMessage,
   regenerateMessage,
   restoreCheckpoint,
+  type HistoryEditScope,
 } from "@/features/chat/message-actions/application/messageActions";
 export {
   messageActionsVisibility,

@@ -31,7 +31,7 @@ interface ComposerActions {
   clear(): void;
   captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
-  captureDraftReplacement(): ComposerDraftReplacement;
+  captureDraftReplacement(): { current(): boolean; replace: ComposerDraftReplacement };
   addImages(images: readonly Omit<ComposerImage, "id">[]): void;
   addImageFiles(files: File[]): void;
   removeImage(id: string): void;
@@ -298,14 +298,21 @@ export function createComposerStore() {
       captureDraftReplacement: () => {
         const generation = storageGeneration;
         const { activeSessionId: sessionId, draft } = get().composer;
-        return (input) => {
-          if (generation !== storageGeneration) return false;
-          const current = get();
-          if (current.composer.activeSessionId !== sessionId || current.composer.draft !== draft) {
-            return false;
-          }
-          current.replaceDraft(input);
-          return true;
+        const isCurrent = () => {
+          const composer = get().composer;
+          return (
+            generation === storageGeneration &&
+            composer.activeSessionId === sessionId &&
+            composer.draft === draft
+          );
+        };
+        return {
+          current: isCurrent,
+          replace(input) {
+            if (!isCurrent()) return false;
+            get().replaceDraft(input);
+            return true;
+          },
         };
       },
       addImages: (images) =>

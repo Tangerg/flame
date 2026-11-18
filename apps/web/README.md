@@ -350,6 +350,11 @@ Opening a past message for editing asks before replacing a draft with images
 or pasted-text attachments. Cancel returns to the message and preserves the
 draft. Confirmation applies to the captured draft, Session and storage scope.
 The resolved result reaches the existing Composer only after the dialog closes.
+Editing through a history rewind uses the same confirmation before requesting
+rollback. The confirmation describes whether files are restored. The request
+checks the original Session and root Run before launch. When the rollback
+commits, Composer applies the recovered prompt only while the captured draft
+is current.
 
 File suggestions show the filename above its complete wrapping parent directory
 before insertion. Literal path text keeps directory then filename in DOM order,

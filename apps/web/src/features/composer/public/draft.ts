@@ -1,7 +1,10 @@
 import { useComposer, type ComposerAccess } from "@/features/composer/public/composer";
 
 import { type ComposerDraftInput } from "@/features/composer/domain/draft";
-import { type RequestDraftReplacementConfirmation } from "@/features/composer/application/state";
+import {
+  type ComposerDraftReplacement,
+  type RequestDraftReplacementConfirmation,
+} from "@/features/composer/application/state";
 export type { ComposerDraftInput } from "@/features/composer/domain/draft";
 export type { RequestDraftReplacementConfirmation };
 
@@ -31,6 +34,10 @@ export function replaceComposerDraft(
   composerAccess.replaceDraft(input, requestConfirmation);
 }
 
-export function beginComposerDraftReplacement(composerAccess: ComposerAccess) {
-  return composerAccess.beginDraftReplacement();
+export function beginComposerDraftReplacement(
+  composerAccess: ComposerAccess,
+  requestConfirmation: RequestDraftReplacementConfirmation,
+  begin: (replace: ComposerDraftReplacement) => boolean,
+): void {
+  composerAccess.beginDraftReplacement(requestConfirmation, begin);
 }

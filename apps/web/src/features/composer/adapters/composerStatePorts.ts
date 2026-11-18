@@ -56,6 +56,20 @@ export function createComposer(
   };
   // Draft transitions run once in the domain; a mounted editor then shows their result.
   const presentDraft = () => editor?.restore(useComposerStore.getState().composer.draft.content);
+  const withDraftReplacement: ComposerStatePort["beginDraftReplacement"] = (
+    requestConfirmation,
+    begin,
+  ) => {
+    const state = useComposerStore.getState();
+    const { draft } = state.composer;
+    const { current, replace } = state.captureDraftReplacement();
+    const apply = () => current() && begin(replace);
+    if (draft.imageAttachments.length > 0 || draft.pastes.length > 0) {
+      requestConfirmation(apply);
+    } else {
+      apply();
+    }
+  };
   const access: ComposerStatePort = {
     useDraftKey: () =>
       useComposerStore((state) => JSON.stringify([endpoint(), state.composer.activeSessionId])),
@@ -126,37 +140,33 @@ export function createComposer(
         },
       };
     },
-    replaceDraft: (input, requestConfirmation) => {
-      const state = useComposerStore.getState();
-      const { draft } = state.composer;
-      const replace = state.captureDraftReplacement();
-      const apply = () => {
+    replaceDraft: (input, requestConfirmation) =>
+      withDraftReplacement(requestConfirmation, (replace) => {
         if (!replace(input)) return false;
         presentDraft();
         presentFocus(() => focus());
         return true;
-      };
-      if (draft.imageAttachments.length > 0 || draft.pastes.length > 0) {
-        requestConfirmation(apply);
-      } else {
-        apply();
-      }
-    },
-    beginDraftReplacement: () => {
-      const replace = useComposerStore.getState().captureDraftReplacement();
-      const target = focusTarget;
-      presentFocus(() => focus());
-      return (input) => {
-        if (!replace(input)) return false;
-        presentDraft();
-        // A fast rollback can settle before the original presentation request.
-        const element = target?.element;
-        if (target && element && focusTarget === target && document.activeElement === element) {
-          editor?.focus();
-        }
-        return true;
-      };
-    },
+      }),
+    beginDraftReplacement: (requestConfirmation, begin) =>
+      withDraftReplacement(requestConfirmation, (replace) => {
+        const target = focusTarget;
+        const started = begin((input) => {
+          if (!replace(input)) return false;
+          presentDraft();
+          // A fast rollback can settle before the original presentation request.
+          const element = target?.element;
+          if (
+            element &&
+            focusTarget === target &&
+            element.ownerDocument.activeElement === element
+          ) {
+            editor?.focus();
+          }
+          return true;
+        });
+        if (started) presentFocus(() => focus());
+        return started;
+      }),
     captureAppendText: () => {
       const source = inputScope;
       return (text) => {

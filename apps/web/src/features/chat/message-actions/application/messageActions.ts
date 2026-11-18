@@ -66,34 +66,46 @@ export function editMessageInComposer(
   replaceComposerDraft(composerAccess, messageDraftContent(msg), requestConfirmation);
 }
 
+export type HistoryEditScope = Exclude<RestoreType, "files">;
+
 export function editAndRerunMessage(
   notifications: NotificationFeed,
   agentAccess: AgentAccess,
   composerAccess: ComposerAccess,
   msg: Message,
-  opts?: RollbackActionOptions,
+  restoreType: HistoryEditScope,
+  requestConfirmation: (restoreType: HistoryEditScope, apply: () => boolean) => void,
 ): void {
   const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canEditMessage(msg) || !canRollbackMessage(msg, conversation.messages)) {
     return;
   }
-  const replaceDraft = beginComposerDraftReplacement(composerAccess);
-  void agentAccess
-    .rollbackSessionToBeforeRun(
-      conversation.sessionId,
-      msg.runId,
-      opts?.restoreFiles ? "both" : "history",
-    )
-    .then((rollback) => {
-      if (rollback.status !== "committed") return;
-      const draft = rollback.userInput
-        ? agentInputToComposerDraft(rollback.userInput)
-        : messageDraftContent(msg);
-      if (!replaceDraft(draft)) {
-        notifications.notify("info", t("session.editRerun.draftRetained"), { source: "session" });
-      }
-    })
-    .catch((error) => reportRollbackError(notifications, error));
+  const { sessionId } = conversation;
+  const { runId } = msg;
+  beginComposerDraftReplacement(
+    composerAccess,
+    (apply) => requestConfirmation(restoreType, apply),
+    (replaceDraft) => {
+      const active = agentAccess.activeAgentConversation();
+      if (active?.sessionId !== sessionId || !canRollbackMessage(msg, active.messages))
+        return false;
+      void agentAccess
+        .rollbackSessionToBeforeRun(sessionId, runId, restoreType)
+        .then((rollback) => {
+          if (rollback.status !== "committed") return;
+          const draft = rollback.userInput
+            ? agentInputToComposerDraft(rollback.userInput)
+            : messageDraftContent(msg);
+          if (!replaceDraft(draft)) {
+            notifications.notify("info", t("session.editRerun.draftRetained"), {
+              source: "session",
+            });
+          }
+        })
+        .catch((error) => reportRollbackError(notifications, error));
+      return true;
+    },
+  );
 }
 
 export function restoreCheckpoint(

@@ -17,6 +17,7 @@ import { MessageContext } from "@/features/chat/public/messageContext";
 import {
   editMessageInComposer,
   messageActionsVisibility,
+  type HistoryEditScope,
   type MessageActionsVisibility,
 } from "@/features/chat/message-actions/public/messageActions";
 import { useComposer } from "@/features/composer/public/composer";
@@ -39,10 +40,25 @@ import { messageStyles } from "@/features/chat/message/ui/messageStyles";
 import { UserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
 import { SteerInputStatus } from "@/features/chat/message/ui/SteerInputStatus";
 
+type DraftReplacementScope = "draft" | HistoryEditScope;
+
+const draftReplacementCopy = {
+  draft: { body: "msgActions.replaceDraft.body", confirm: "msgActions.replaceDraft.confirm" },
+  history: {
+    body: "msgActions.replaceDraft.historyBody",
+    confirm: "msgActions.replaceDraft.historyConfirm",
+  },
+  both: {
+    body: "msgActions.replaceDraft.historyFilesBody",
+    confirm: "msgActions.replaceDraft.historyFilesConfirm",
+  },
+} satisfies Record<DraftReplacementScope, { body: string; confirm: string }>;
+
 interface DraftReplacement {
   status: "confirming" | "dismissed" | "confirmed" | "ready";
+  scope: DraftReplacementScope;
   origin: HTMLElement | null;
-  replace: () => boolean;
+  apply: () => boolean;
 }
 
 function MessageBlockInner({
@@ -74,7 +90,7 @@ function MessageBlockInner({
     if (draftReplacement?.status !== "ready") return;
     // The closing dialog and its focus manager must be gone before presenting Composer.
     setDraftReplacement(null);
-    if (draftReplacement.replace()) return;
+    if (draftReplacement.apply()) return;
     const origin = draftReplacement.origin?.isConnected
       ? draftReplacement.origin
       : columnRef.current;
@@ -82,17 +98,33 @@ function MessageBlockInner({
       origin.focus({ preventScroll: true });
     messages.notify("info", t("msgActions.replaceDraft.changed"), { source: "composer" });
   }, [draftReplacement, messages, t, visible]);
-  const editInComposer = useCallback(
-    (origin?: HTMLElement) => {
-      editMessageInComposer(composer, msg, (replace) => {
-        setDraftReplacement({ status: "confirming", origin: origin ?? columnRef.current, replace });
+  const confirmDraftReplacement = useCallback(
+    (scope: DraftReplacementScope, apply: () => boolean, origin?: HTMLElement) => {
+      setDraftReplacement({
+        status: "confirming",
+        scope,
+        origin: origin ?? columnRef.current,
+        apply,
       });
     },
-    [composer, msg],
+    [],
+  );
+  const editInComposer = useCallback(
+    (origin?: HTMLElement) => {
+      editMessageInComposer(composer, msg, (apply) =>
+        confirmDraftReplacement("draft", apply, origin),
+      );
+    },
+    [composer, msg, confirmDraftReplacement],
   );
   const messageContext = useMemo(
-    () => ({ sessionId, message: msg, editInComposer }),
-    [sessionId, msg, editInComposer],
+    () => ({
+      sessionId,
+      message: msg,
+      editInComposer,
+      confirmHistoryEdit: confirmDraftReplacement,
+    }),
+    [sessionId, msg, editInComposer, confirmDraftReplacement],
   );
 
   const visibleMaterialOwner = useMemo(
@@ -237,8 +269,8 @@ function MessageBlockInner({
               );
             }}
             title={t("msgActions.replaceDraft.title")}
-            body={t("msgActions.replaceDraft.body")}
-            confirmLabel={t("msgActions.replaceDraft.confirm")}
+            body={t(draftReplacementCopy[draftReplacement.scope].body)}
+            confirmLabel={t(draftReplacementCopy[draftReplacement.scope].confirm)}
             cancelLabel={t("common.cancel")}
             destructive
             finalFocus={

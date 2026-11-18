@@ -14,7 +14,7 @@ import {
   regenerateMessage,
   restoreCheckpoint,
 } from "@/features/chat/message-actions/public/messageActions";
-import { useEditCurrentMessage } from "@/features/chat/public/messageContext";
+import { useMessageContext } from "@/features/chat/public/messageContext";
 import { messageCopyPayloads } from "@/features/chat/message-actions/public/copyPayloads";
 import { messageContextMenuModel } from "@/features/chat/message-actions/public/contextMenu";
 import { writeToClipboard } from "@/lib/clipboard";
@@ -35,7 +35,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
   const agentAccess = useAgent();
   const composerAccess = useComposer();
   const runtimeAccess = useRuntime();
-  const editInComposer = useEditCurrentMessage();
+  const { editInComposer, confirmHistoryEdit } = useMessageContext();
 
   const t = useT();
   const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
@@ -102,7 +102,15 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                 icon="loop"
                 onSelect={() => {
                   selection.current = {
-                    edit: () => editAndRerunMessage(messages, agentAccess, composerAccess, msg),
+                    edit: () =>
+                      editAndRerunMessage(
+                        messages,
+                        agentAccess,
+                        composerAccess,
+                        msg,
+                        "history",
+                        confirmHistoryEdit,
+                      ),
                   };
                 }}
               >
@@ -115,9 +123,14 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                 onSelect={() => {
                   selection.current = {
                     edit: () =>
-                      editAndRerunMessage(messages, agentAccess, composerAccess, msg, {
-                        restoreFiles: true,
-                      }),
+                      editAndRerunMessage(
+                        messages,
+                        agentAccess,
+                        composerAccess,
+                        msg,
+                        "both",
+                        confirmHistoryEdit,
+                      ),
                   };
                 }}
               >

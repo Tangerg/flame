@@ -212,7 +212,14 @@ export const en: Record<string, string> = {
   "msgActions.replaceDraft.body":
     "This will replace the draft and its attachments with the selected message.",
   "msgActions.replaceDraft.confirm": "Replace draft",
-  "msgActions.replaceDraft.changed": "Your draft changed. Open the message again to replace it.",
+  "msgActions.replaceDraft.changed":
+    "Your draft or this message changed. Reopen the message to continue.",
+  "msgActions.replaceDraft.historyBody":
+    "This rewinds the conversation to before the selected message and loads it for editing. The current draft and attachments will be replaced.",
+  "msgActions.replaceDraft.historyConfirm": "Rewind and edit",
+  "msgActions.replaceDraft.historyFilesBody":
+    "This rewinds the conversation and restores files from the preceding checkpoint. The selected message replaces the current draft and attachments.",
+  "msgActions.replaceDraft.historyFilesConfirm": "Restore files and edit",
   "msgActions.editRerun": "Edit & rerun from here",
   "msgActions.editRerunRestore": "Edit & rerun, restore files",
   "msgActions.fork": "Fork up to here",
