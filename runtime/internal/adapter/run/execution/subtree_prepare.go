@@ -27,7 +27,7 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	}
 	session, err := i.session(ref)
 	if errors.Is(err, runs.ErrExecutorNotLive) {
-		if restoreErr := i.restoreWaitingTree(
+		if restoreErr := i.restoreContinuationTree(
 			ctx,
 			ref,
 			continuation,

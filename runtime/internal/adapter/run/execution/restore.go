@@ -13,7 +13,7 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
+func (i *interactionSession) validateContinuationTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.
 	inspection, err := checkpoint.tree.Inspect()
@@ -50,7 +50,8 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 		return fmt.Errorf("%w: waiting Delegate bindings: %w", runs.ErrExecutorStateLost, err)
 	}
 	if accepted {
-		return validateAcceptedPausedTree(checkpoint.handoff, checkpoint.tree, acceptedRetiredProcesses(checkpoint.handoff, checkpoint.tree, children))
+		_, _, err := acceptedReleaseBoundary(checkpoint.handoff, inspection, acceptedRetiredProcesses(checkpoint.handoff, checkpoint.tree, children))
+		return err
 	}
 	return nil
 }
@@ -60,7 +61,7 @@ func (i *interactionSession) restoreContinuationProjection(
 	checkpoint interactionCheckpointState,
 	boundary interactionBoundary,
 ) error {
-	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryAcceptedPaused {
+	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryAccepted {
 		return errors.New("invalid restored Interaction boundary")
 	}
 	inspection, err := checkpoint.tree.Inspect()
@@ -70,14 +71,6 @@ func (i *interactionSession) restoreContinuationProjection(
 	snapshots := make(map[scoperun.ProcessID]scoperun.ProcessInspection, len(inspection.Processes))
 	for _, snapshot := range inspection.Processes {
 		snapshots[snapshot.ID] = snapshot
-	}
-	// The boundary being restored is the checkpoint's, so the checkpoint is what
-	// has to carry it. A live status would describe the tree after restore
-	// rather than the cut this continuation answers.
-	rootSnapshot, captured := snapshots[checkpoint.tree.Root]
-	if !captured ||
-		!isInteractionWaitingBoundary(rootSnapshot.Status) {
-		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
 	}
 	members, err := i.restoredExecutionMembers(continuation, snapshots, checkpoint.tree.Root)
 	if err != nil {
@@ -98,7 +91,9 @@ func (i *interactionSession) restoreContinuationProjection(
 		return runs.ErrExecutionClaimed
 	}
 	i.state.restoreTree = checkpoint.tree
-	i.state.phase = interactionBegun
+	if boundary == interactionBoundaryWaiting {
+		i.state.phase = interactionBegun
+	}
 	i.state.boundary = boundary
 	i.state.dispatchReady = make(chan struct{})
 	i.state.waitingCheckpoint = continuation.Checkpoint.Clone()
@@ -107,6 +102,32 @@ func (i *interactionSession) restoreContinuationProjection(
 	i.state.pendingSteers = checkpoint.pendingSteers
 	i.state.pendingContinuation = checkpoint.pendingContinuation
 	i.state.toolMetadata = checkpoint.toolMetadata
+	return nil
+}
+
+func (i *interactionSession) recoverTree() error {
+	process, err := i.engine.Recover(runExecutionContext(i.lifetime.execution, i.scope, i.start), i.deployment, i.rootID)
+	if err != nil {
+		return fmt.Errorf("execution: recover acknowledged Interaction tree: %w", err)
+	}
+	i.state.mu.Lock()
+	i.state.process = process
+	i.state.restoreTree = scoperun.Log{}
+	i.state.mu.Unlock()
+	return nil
+}
+
+func (i *interactionSession) recoverInputHandoff(ctx context.Context) error {
+	if err := i.recoverTree(); err != nil {
+		return err
+	}
+	unknown, err := i.unknownEffectIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("execution: inspect restored Interaction tree: %w", err)
+	}
+	if len(unknown) != 0 {
+		return fmt.Errorf("%w: restored Interaction has unresolved effects", runs.ErrExecutorStateLost)
+	}
 	return nil
 }
 

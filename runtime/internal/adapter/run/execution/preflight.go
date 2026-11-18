@@ -13,7 +13,7 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// PrepareContinuation reads the acknowledged paused head. It does not assemble
+// PrepareContinuation reads the acknowledged release boundary. It does not assemble
 // resources, claim a local boundary, acquire a writer, or deliver a Signal.
 func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuation runs.ExecutionContinuation, answers []runs.InterruptAnswer, candidates []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
 	if err := ctx.Err(); err != nil {
@@ -53,9 +53,6 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	if err != nil {
 		return nil, err
 	}
-	if err := validateAcceptedPausedTree(checkpoint.handoff, tree, retired); err != nil {
-		return nil, err
-	}
 	members := make(map[scoperun.ProcessID]runs.ExecutionMember)
 	for _, member := range continuation.Members {
 		id, _ := scoperun.ParseProcessID(member.MemberID)
@@ -64,7 +61,7 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
 		return nil, fmt.Errorf("%w: continuation accounting: %w", runs.ErrExecutorStateLost, err)
 	}
-	if _, err := continuationAnswerPlans(checkpoint.handoff, tree, retired, answers); err != nil {
+	if _, err := planContinuationRelease(checkpoint.handoff, tree, retired, answers); err != nil {
 		return nil, err
 	}
 	return i.rememberedApprovalRequests(checkpoint.handoff, tree, retired, candidates)
@@ -146,19 +143,15 @@ func (i *InteractionExecutor) rememberedApprovalRequest(target interactionInputT
 }
 
 func continuationRetiredProcesses(cut interactionHandoff, head scoperun.Log, members []runs.ExecutionMember) (map[scoperun.ProcessID]bool, error) {
-	inspection, err := head.Inspect()
-	if err != nil {
-		return nil, err
-	}
 	survivors := make(map[scoperun.ProcessID]runs.ExecutionMember)
 	for _, member := range members {
 		id, err := scoperun.ParseProcessID(member.MemberID)
 		if err != nil {
 			return nil, err
 		}
-		process, found := inspection.Process(id)
-		if !found || process.Status != scoperun.StatusPaused || cut.progress[id].OwnerID != member.MemberID {
-			return nil, fmt.Errorf("%w: continuation member is not paused", runs.ErrExecutorStateLost)
+		captured := cut.progress[id]
+		if captured.Status != scoperun.StatusPaused || captured.OwnerID != member.MemberID {
+			return nil, fmt.Errorf("%w: continuation member has no captured paused owner", runs.ErrExecutorStateLost)
 		}
 		survivors[id] = member
 	}

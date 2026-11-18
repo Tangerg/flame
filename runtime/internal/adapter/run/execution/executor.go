@@ -639,7 +639,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	} else if !errors.Is(err, runs.ErrExecutorNotLive) {
 		return runs.ExecutorRef{}, err
 	}
-	if err := i.restoreWaitingTree(
+	if err := i.restoreContinuationTree(
 		ctx,
 		ref,
 		continuation,
@@ -650,7 +650,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	return ref, nil
 }
 
-func (i *InteractionExecutor) restoreWaitingTree(
+func (i *InteractionExecutor) restoreContinuationTree(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	continuation runs.ExecutionContinuation,
@@ -680,14 +680,14 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err != nil {
 		return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
 	}
-	inspection, err := checkpoint.tree.Inspect()
-	if err != nil {
-		return err
-	}
-	processSnapshots := inspection.Processes
-	if len(processSnapshots) == 0 || processSnapshots[0].ID != rootID ||
-		!isInteractionWaitingBoundary(processSnapshots[0].Status) {
-		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
+	if boundary == interactionBoundaryWaiting {
+		inspection, err := checkpoint.tree.Inspect()
+		if err != nil {
+			return err
+		}
+		if root, found := inspection.Process(rootID); !found || !isInteractionWaitingBoundary(root.Status) {
+			return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
+		}
 	}
 	start := checkpoint.restoredStart(continuation)
 	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint)
@@ -702,38 +702,27 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if pendingCheckpointSources(session, checkpoint) {
 		return errors.New("execution: required MCP source is still connecting")
 	}
-	if err := session.validateWaitingTree(ctx, continuation, checkpoint, boundary == interactionBoundaryAcceptedPaused); err != nil {
-		return fmt.Errorf("execution: validate waiting tree: %w", err)
+	if err := session.validateContinuationTree(ctx, continuation, checkpoint, boundary == interactionBoundaryAccepted); err != nil {
+		return fmt.Errorf("execution: validate continuation tree: %w", err)
 	}
 	// Recover commits activation without replaying process admission. Its first
 	// Store callback must already see the original product ownership projection.
 	if err := session.restoreContinuationProjection(continuation, checkpoint, boundary); err != nil {
 		return err
 	}
-	process, err := session.engine.Recover(
-		runExecutionContext(session.lifetime.execution, session.scope, session.start),
-		session.deployment,
-		checkpoint.tree.Root,
-	)
-	if err != nil {
-		return fmt.Errorf("execution: restore exact Interaction tree: %w", err)
+	if boundary == interactionBoundaryAccepted {
+		// A partially released tree can drive Scope immediately on Recover.
+		// Begin must attach the product observer before taking its writer.
+		return i.publishInteraction(ctx, session)
 	}
-	session.state.setProcess(process)
-	session.state.mu.Lock()
-	session.state.restoreTree = scoperun.Log{}
-	session.state.mu.Unlock()
-	unknown, err := session.unknownEffectIDs(ctx)
-	if err != nil {
-		return fmt.Errorf("execution: inspect restored Interaction tree: %w", err)
-	}
-	if len(unknown) > 0 {
-		return fmt.Errorf("%w: restored Interaction has unresolved effects", runs.ErrExecutorStateLost)
+	if err := session.recoverInputHandoff(ctx); err != nil {
+		return err
 	}
 	interruptions, err := session.pendingInterruptions(checkpoint.tree)
-	if err != nil || (len(interruptions) == 0 && boundary != interactionBoundaryAcceptedPaused) {
-		if err != nil {
-			return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
-		}
+	if err != nil {
+		return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
+	}
+	if len(interruptions) == 0 {
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
 	if err := i.publishInteraction(ctx, session); err != nil {

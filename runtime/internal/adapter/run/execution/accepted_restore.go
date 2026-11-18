@@ -27,51 +27,58 @@ func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, con
 	} else if !errors.Is(err, runs.ErrExecutorNotLive) {
 		return runs.ExecutorRef{}, err
 	}
-	if err := i.restoreWaitingTree(ctx, ref, continuation, interactionBoundaryAcceptedPaused); err != nil {
+	if err := i.restoreContinuationTree(ctx, ref, continuation, interactionBoundaryAccepted); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
 }
 
-func validateAcceptedPausedTree(cut interactionHandoff, head scoperun.Log, retired map[scoperun.ProcessID]bool) error {
-	expected := 0
+// Scope can acknowledge some Resume controls before a crash. The handoff
+// still owns activation until a survivor prepares a new Effect, which may
+// already have reached its external owner by the time of recovery.
+func acceptedReleaseBoundary(cut interactionHandoff, tree scoperun.TreeInspection, retired map[scoperun.ProcessID]bool) ([]scoperun.ProcessID, bool, error) {
+	if cut.rootID != tree.Root {
+		return nil, false, fmt.Errorf("%w: accepted tree root changed", runs.ErrExecutorStateLost)
+	}
+	unmatched := 0
 	for id := range cut.progress {
 		if !retired[id] {
-			expected++
+			unmatched++
 		}
 	}
-	inspection, err := head.Inspect()
-	if err != nil {
-		return err
-	}
-	current := 0
-	for _, snapshot := range inspection.Processes {
-		if !retired[snapshot.ID] {
-			current++
-		}
-	}
-	if cut.rootID != head.Root || expected != current {
-		return fmt.Errorf("%w: accepted tree membership changed", runs.ErrExecutorStateLost)
-	}
-	for _, snapshot := range inspection.Processes {
+	var paused []scoperun.ProcessID
+	var releaseStarted bool
+	for _, snapshot := range tree.Processes {
 		if retired[snapshot.ID] {
 			continue
 		}
+		unmatched--
 		prior, found := cut.progress[snapshot.ID]
-		if !found || snapshot.Usage.CommittedSteps != prior.CommittedSteps || snapshot.Usage.PreparedEffects != prior.PreparedEffects {
-			return fmt.Errorf("%w: accepted tree advanced beyond its handoff", runs.ErrExecutorStateLost)
+		if !found || snapshot.Usage.PreparedEffects != prior.PreparedEffects || hasUnknownEffects(snapshot) {
+			return nil, false, fmt.Errorf("%w: accepted tree advanced beyond its handoff", runs.ErrExecutorStateLost)
 		}
 		if prior.Status.Terminal() {
 			if snapshot.Status != prior.Status {
-				return fmt.Errorf("%w: terminal accepted member changed", runs.ErrExecutorStateLost)
+				return nil, false, fmt.Errorf("%w: terminal accepted member changed", runs.ErrExecutorStateLost)
 			}
 			continue
 		}
-		if prior.Status != scoperun.StatusPaused || snapshot.Status != scoperun.StatusPaused || hasUnknownEffects(snapshot) {
-			return fmt.Errorf("%w: accepted member is outside its paused handoff", runs.ErrExecutorStateLost)
+		if prior.Status != scoperun.StatusPaused {
+			return nil, false, fmt.Errorf("%w: accepted member was not paused at its handoff", runs.ErrExecutorStateLost)
+		}
+		switch snapshot.Status {
+		case scoperun.StatusPaused:
+			paused = append(paused, snapshot.ID)
+		case scoperun.StatusRunning, scoperun.StatusWaiting:
+			releaseStarted = true
+		default:
+			return nil, false, fmt.Errorf("%w: accepted member is outside its release boundary", runs.ErrExecutorStateLost)
 		}
 	}
-	return nil
+	if unmatched != 0 {
+		return nil, false, fmt.Errorf("%w: accepted tree membership changed", runs.ErrExecutorStateLost)
+	}
+	return paused, releaseStarted, nil
 }
 
 // A committed child cancellation retires its product member before Scope drains

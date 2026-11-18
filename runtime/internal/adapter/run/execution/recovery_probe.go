@@ -110,7 +110,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if pendingCheckpointSources(assembled, state) {
 		return runs.DeferredWaiting(), nil
 	}
-	if err := assembled.validateWaitingTree(ctx, continuation, state, false); err != nil {
+	if err := assembled.validateContinuationTree(ctx, continuation, state, false); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
 			return unresumable(ctx, continuation, run.LossConfigurationChanged, "waiting tree validation failed", err)
 		}

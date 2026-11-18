@@ -33,14 +33,11 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return err
 	}
-	if beginContinuationErr := session.beginContinuation(); beginContinuationErr != nil {
-		return beginContinuationErr
-	}
-	paused, err := session.pausedProcessIDs()
+	restore, err := session.beginContinuation()
 	if err != nil {
-		return fmt.Errorf("execution: inspect paused Interaction members: %w", err)
+		return err
 	}
-	prepared, err := session.prepareContinuationAnswers(ctx, answers)
+	release, err := session.prepareContinuationRelease(ctx, answers)
 	if err != nil {
 		return err
 	}
@@ -48,66 +45,55 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return err
 	}
-	// The previous Agent Process lifetime includes the human wait. Reset the
-	// Segment clock before any answer can make that Process runnable.
+	// The previous Process lifetime includes the human wait.
 	session.segmentClock.start()
-	// Deliver every answer while all recipients stay paused, then resume only the
-	// surviving members, and release dispatch last. No recipient can execute an
-	// answered Tool before the whole set is admitted, so a partial delivery never
-	// runs work ahead of the remaining answers.
-	if err := session.deliverContinuationAnswers(ctx, prepared, committedInput); err != nil {
+	if restore {
+		if err := session.recoverInputHandoff(ctx); err != nil {
+			return err
+		}
+	}
+	// Scope's Signal receipts must cover the whole handoff before dispatch.
+	// The release plan already excludes acknowledged Resume controls.
+	if err := session.deliverContinuationAnswers(ctx, release.answers, committedInput); err != nil {
 		return err
 	}
-	if err := session.proveContinuationDelivery(ctx, prepared); err != nil {
+	if err := session.proveContinuationDelivery(ctx, release.answers); err != nil {
 		return err
 	}
-	if err := session.resumePausedProcesses(ctx, paused); err != nil {
-		return err
+	if len(release.paused) > 0 {
+		if err := session.resumePausedProcesses(ctx, release.paused); err != nil {
+			return err
+		}
 	}
-	session.continuationAccepted()
+	session.releaseContinuation()
+	if restore {
+		session.startWorkers()
+	}
 	return nil
 }
 
-type preparedInteractionAnswer struct {
-	process  *scoperun.Handle[scoperun.Payload]
-	signal   scoperun.Signal
-	admitted bool
+type continuationRelease struct {
+	paused  []scoperun.ProcessID
+	answers []interactionAnswerPlan
 }
 
-// prepareContinuationAnswers reconciles the immutable accepted targets against
-// the latest acknowledged waits and receipts without advancing execution.
-func (i *interactionSession) prepareContinuationAnswers(
+func (i *interactionSession) prepareContinuationRelease(
 	ctx context.Context,
 	answers []runs.InterruptAnswer,
-) ([]preparedInteractionAnswer, error) {
+) (continuationRelease, error) {
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
 	checkpointState, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
-		return nil, fmt.Errorf("%w: decode staged Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
+		return continuationRelease{}, fmt.Errorf("%w: decode staged Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
 	head, err := i.committedTree(ctx, checkpointState.handoff.rootID)
 	if err != nil {
-		return nil, err
+		return continuationRelease{}, err
 	}
 	retired := i.acceptedRetiredProcesses(checkpointState.handoff, head)
-	if err := validateAcceptedPausedTree(checkpointState.handoff, head, retired); err != nil {
-		return nil, err
-	}
-	plans, err := continuationAnswerPlans(checkpointState.handoff, head, retired, answers)
-	if err != nil {
-		return nil, err
-	}
-	prepared := make([]preparedInteractionAnswer, 0, len(plans))
-	for _, plan := range plans {
-		process, found := i.engine.Process(plan.processID)
-		if !found {
-			return nil, fmt.Errorf("%w: answered Interaction input is unavailable", runs.ErrExecutorStateLost)
-		}
-		prepared = append(prepared, preparedInteractionAnswer{process: process, signal: plan.signal, admitted: plan.admitted})
-	}
-	return prepared, nil
+	return planContinuationRelease(checkpointState.handoff, head, retired, answers)
 }
 
 type interactionAnswerPlan struct {
@@ -116,9 +102,23 @@ type interactionAnswerPlan struct {
 	admitted  bool
 }
 
-// Plans are derived only from acknowledged facts. Constructing Signals here
-// validates responses but grants no delivery or writer authority.
-func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, retired map[scoperun.ProcessID]bool, answers []runs.InterruptAnswer) ([]interactionAnswerPlan, error) {
+func planContinuationRelease(cut interactionHandoff, head scoperun.Log, retired map[scoperun.ProcessID]bool, answers []runs.InterruptAnswer) (continuationRelease, error) {
+	inspection, err := head.Inspect()
+	if err != nil {
+		return continuationRelease{}, err
+	}
+	paused, started, err := acceptedReleaseBoundary(cut, inspection, retired)
+	if err != nil {
+		return continuationRelease{}, err
+	}
+	signals, err := continuationAnswerPlans(cut, head, inspection, retired, answers, started)
+	if err != nil {
+		return continuationRelease{}, err
+	}
+	return continuationRelease{paused: paused, answers: signals}, nil
+}
+
+func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspection scoperun.TreeInspection, retired map[scoperun.ProcessID]bool, answers []runs.InterruptAnswer, releaseStarted bool) ([]interactionAnswerPlan, error) {
 	targets := make(map[string]interactionInputTarget)
 	for request, target := range cut.inputs {
 		if !retired[target.processID] {
@@ -134,10 +134,6 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, retired 
 	})
 	if len(ordered) != len(targets) {
 		return nil, fmt.Errorf("%w: answer set does not cover the accepted inputs", runs.ErrExecutorStateLost)
-	}
-	inspection, err := head.Inspect()
-	if err != nil {
-		return nil, err
 	}
 	waits := make(map[inputAddress]scoperun.Wait)
 	for _, process := range inspection.Processes {
@@ -182,6 +178,9 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, retired 
 			return nil, err
 		}
 		if !admitted {
+			if releaseStarted {
+				return nil, fmt.Errorf("%w: release started before every answer was acknowledged", runs.ErrExecutorStateLost)
+			}
 			wait, found := waits[inputAddress{process: target.processID, wait: target.waitKey}]
 			if !found {
 				return nil, fmt.Errorf("%w: accepted answer has neither its receipt nor its wait", runs.ErrExecutorStateLost)
@@ -197,7 +196,7 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, retired 
 
 func (i *interactionSession) deliverContinuationAnswers(
 	ctx context.Context,
-	answers []preparedInteractionAnswer,
+	answers []interactionAnswerPlan,
 	input *pendingInteractionContinuation,
 ) error {
 	deliveryContext := runExecutionContext(ctx, i.scope, i.start)
@@ -228,11 +227,15 @@ func (i *interactionSession) deliverContinuationAnswers(
 		if answer.admitted {
 			continue
 		}
+		process, found := i.engine.Process(answer.processID)
+		if !found {
+			return fmt.Errorf("%w: answered Interaction input is unavailable", runs.ErrExecutorStateLost)
+		}
 		// Scope admits an exact duplicate answer idempotently: false with a nil error
 		// means this Signal's immutable content was already accepted, which a
 		// partial-delivery restart reconciles as success rather than failing. A
 		// conflicting identity or payload returns an error, handled here.
-		if _, err := answer.process.DeliverSignals(deliveryContext, answer.signal); err != nil {
+		if _, err := process.DeliverSignals(deliveryContext, answer.signal); err != nil {
 			return fmt.Errorf("execution: deliver Interaction answer Signal: %w", err)
 		}
 	}
@@ -240,8 +243,6 @@ func (i *interactionSession) deliverContinuationAnswers(
 	return nil
 }
 
-// The paused handoff's committed-step counters prove that an admitted answer
-// has not been consumed. The admission record proves its exact immutable input.
 func exactSignalAdmission(history scoperun.Log, process scoperun.ProcessID, signal scoperun.Signal) (bool, error) {
 	for _, entry := range history.Entries {
 		admission, ok := entry.Record.(scoperun.SignalAdmitted)
@@ -260,27 +261,13 @@ func sameSignal(left, right scoperun.Signal) bool {
 	return left.ID == right.ID && left.Wait == right.Wait && bytes.Equal(left.Payload.JSON(), right.Payload.JSON())
 }
 
-func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answers []preparedInteractionAnswer) error {
-	root := i.state.processHandle()
-	if root == nil {
-		return runs.ErrExecutorNotLive
-	}
-	head, err := i.committedTree(ctx, root.ID())
+func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answers []interactionAnswerPlan) error {
+	head, err := i.committedTree(ctx, i.rootID)
 	if err != nil {
-		return err
-	}
-	i.state.mu.Lock()
-	checkpoint := i.state.waitingCheckpoint.Clone()
-	i.state.mu.Unlock()
-	state, err := decodeExecutorCheckpoint(checkpoint)
-	if err != nil {
-		return err
-	}
-	if err := validateAcceptedPausedTree(state.handoff, head, i.acceptedRetiredProcesses(state.handoff, head)); err != nil {
 		return err
 	}
 	for _, answer := range answers {
-		matched, err := exactSignalAdmission(head, answer.process.ID(), answer.signal)
+		matched, err := exactSignalAdmission(head, answer.processID, answer.signal)
 		if err != nil {
 			return err
 		}
@@ -303,12 +290,8 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {
 		return nil, fmt.Errorf("execution: materialize committed continuation input: %w", err)
 	}
-	process := i.state.processHandle()
-	if process == nil {
-		return nil, runs.ErrExecutorNotLive
-	}
 	return &pendingInteractionContinuation{
-		processID: process.ID(), itemID: input.ItemID,
+		processID: i.rootID, itemID: input.ItemID,
 		content: transcript.CloneContent(input.Content),
 	}, nil
 }

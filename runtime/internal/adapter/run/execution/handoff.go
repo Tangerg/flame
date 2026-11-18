@@ -27,7 +27,6 @@ type interactionProgressWire struct {
 	ParentID        string          `json:"parent_id,omitempty"`
 	OwnerID         string          `json:"owner_id"`
 	Status          scoperun.Status `json:"status"`
-	CommittedSteps  uint64          `json:"committed_steps"`
 	PreparedEffects uint64          `json:"prepared_effects"`
 }
 
@@ -65,7 +64,7 @@ func (i *interactionSession) encodeInteractionHandoff(tree scoperun.Log) (*inter
 			return nil, errors.New("execution: handoff Process has no product owner")
 		}
 		wire.Processes = append(wire.Processes, interactionProgressWire{ProcessID: snapshot.ID.String(), ParentID: parent.String(),
-			OwnerID: owner.MemberID, Status: snapshot.Status, CommittedSteps: snapshot.Usage.CommittedSteps, PreparedEffects: snapshot.Usage.PreparedEffects})
+			OwnerID: owner.MemberID, Status: snapshot.Status, PreparedEffects: snapshot.Usage.PreparedEffects})
 	}
 	slices.SortFunc(wire.Processes, func(a, b interactionProgressWire) int { return strings.Compare(a.ProcessID, b.ProcessID) })
 	inputs, err := i.pendingInputs(tree)

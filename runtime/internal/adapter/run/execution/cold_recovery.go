@@ -182,14 +182,9 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	if err := session.state.begin(interactionBoundaryRecovery); err != nil {
 		return err
 	}
-	process, err := session.engine.Recover(runExecutionContext(session.lifetime.execution, session.scope, session.start), session.deployment, session.state.restoreTree.Root)
-	if err != nil {
-		return fmt.Errorf("execution: restore uncertain tree: %w", err)
+	if err := session.recoverTree(); err != nil {
+		return err
 	}
-	session.state.setProcess(process)
-	session.state.mu.Lock()
-	session.state.restoreTree = scoperun.Log{}
-	session.state.mu.Unlock()
 	session.reportUnknownEffects()
 	session.state.mu.Lock()
 	session.state.continueExecution()

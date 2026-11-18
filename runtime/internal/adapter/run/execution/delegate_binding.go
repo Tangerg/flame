@@ -59,7 +59,7 @@ func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
 	i.state.mu.Lock()
 	var canceled []scoperun.ProcessID
 	switch i.state.boundary {
-	case interactionBoundaryAcceptedPaused:
+	case interactionBoundaryAccepted:
 	case interactionBoundarySubtreePrepared:
 		canceled = i.state.subtreeChange.canceled
 	default:

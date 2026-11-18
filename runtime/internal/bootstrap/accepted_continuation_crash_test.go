@@ -53,7 +53,8 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	if phase == "" {
 		return
 	}
-	if phase == "release" {
+	predicate := acceptedTreeCrashPredicate(phase)
+	if predicate != "" {
 		if err := modernsqlite.RegisterScalarFunction("test_accepted_release_crash", 0, func(_ *modernsqlite.FunctionContext, _ []driver.Value) (driver.Value, error) {
 			os.Exit(commandCrashExit)
 			return nil, nil
@@ -159,7 +160,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 			t.Fatalf("cold waiting head=%t,%v", found, err)
 		}
 	}
-	if phase == "release" {
+	if predicate != "" {
 		directory, err := localruntime.DataDirectoryAt(home)
 		if err != nil {
 			t.Fatal(err)
@@ -168,13 +169,13 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = db.ExecContext(t.Context(), `CREATE TRIGGER accepted_release_crash BEFORE UPDATE ON execution_trees WHEN instr(CAST(OLD.payload AS TEXT), 'answer:') > 0 BEGIN SELECT test_accepted_release_crash(); END`)
+		_, err = db.ExecContext(t.Context(), `CREATE TRIGGER accepted_release_crash BEFORE UPDATE ON execution_trees WHEN `+predicate+` BEGIN SELECT test_accepted_release_crash(); END`)
 		if err := errors.Join(err, db.Close()); err != nil {
 			t.Fatal(err)
 		}
 	}
 	result := endpoint.Invoke(ctx, delivery.RunsResume, acceptedResumeRequest(started.RunID, pending.Data[0].Interrupts[0].ItemID), acceptedCommandOptions())
-	if phase == "release" && result.Failure == nil {
+	if predicate != "" && result.Failure == nil {
 		for _, err := range result.Events {
 			if err != nil {
 				t.Fatal(err)
@@ -182,6 +183,21 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		}
 	}
 	t.Fatalf("accepted crash was not reached: %v", result.Failure)
+}
+
+func acceptedTreeCrashPredicate(phase string) string {
+	const resumeCommitted = `EXISTS (SELECT 1 FROM json_each(CAST(OLD.payload AS TEXT), '$.log.entries')
+		WHERE json_extract(value, '$.kind') = 'control_requested' AND json_extract(value, '$.body.kind') = 'resume')`
+	switch phase {
+	case "release":
+		return `instr(CAST(OLD.payload AS TEXT), 'answer:') > 0`
+	case "resume_committed":
+		return resumeCommitted
+	case "tool_settlement":
+		return resumeCommitted + ` AND json_extract(CAST(NEW.payload AS TEXT), '$.log.entries[#-1].kind') = 'effect_settled'`
+	default:
+		return ""
+	}
 }
 
 const acceptedCommandKey = "resume-crash"
@@ -201,9 +217,41 @@ func acceptedCrashContext(t *testing.T) context.Context {
 }
 
 func TestAcceptedContinuationSurvivesAbruptRestart(t *testing.T) {
-	for _, phase := range []string{"acceptance", "cold_acceptance", "release"} {
+	for _, phase := range []string{"acceptance", "cold_acceptance", "release", "resume_committed"} {
 		t.Run(phase, func(t *testing.T) { testAcceptedContinuationSurvivesRestart(t, phase) })
 	}
+}
+
+func TestAcceptedContinuationDoesNotRepeatAnUnacknowledgedTool(t *testing.T) {
+	home, stores := acceptedCrashStores(t, "tool_settlement")
+	bindings, err := stores.AcceptedContinuations.List(t.Context())
+	if err != nil || len(bindings) != 1 {
+		t.Fatalf("accepted continuation count=%d, error=%v", len(bindings), err)
+	}
+	assertExecutedOnce := func() {
+		t.Helper()
+		content, err := os.ReadFile(filepath.Join(home, "effect.txt"))
+		if err != nil || string(content) != "executed" {
+			t.Fatalf("Tool execution evidence=%q, error=%v", content, err)
+		}
+	}
+	assertExecutedOnce()
+
+	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
+	cfg.approvalMode = approval.ModeSafe
+	host, api := buildProtocolRuntime(t, cfg, home)
+	t.Cleanup(func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	runID := bindings[0].RootRunID()
+	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, runID)
+	result, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: runID})
+	if err != nil || result.Outcome == nil || result.Outcome.Type != protocol.OutcomeLost {
+		t.Fatalf("unacknowledged attempt must conclude as lost: %+v, %v", result, err)
+	}
+	assertExecutedOnce()
 }
 
 func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
@@ -309,7 +357,7 @@ func acceptedCrashStores(t *testing.T, phase string) (string, *persistence.Bundl
 	if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("crash: %v\n%s", err, output)
 	}
-	if phase == "release" {
+	if acceptedTreeCrashPredicate(phase) != "" {
 		directory, err := localruntime.DataDirectoryAt(home)
 		if err != nil {
 			t.Fatal(err)

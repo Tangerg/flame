@@ -120,7 +120,7 @@ const (
 	interactionBoundaryInactive interactionBoundary = iota
 	interactionBoundaryRecovery
 	interactionBoundaryWaiting
-	interactionBoundaryAcceptedPaused
+	interactionBoundaryAccepted
 	interactionBoundarySubtreePreparing
 	interactionBoundarySubtreePrepared
 	interactionBoundarySubtreeApplying
@@ -188,7 +188,7 @@ func (i *interactionState) attachObserver(ctx context.Context) (func(), bool) {
 	if i.observer != nil || i.phase == interactionFinished {
 		return nil, false
 	}
-	if i.phase == interactionBegun && i.boundary != interactionBoundaryAcceptedPaused &&
+	if i.phase == interactionBegun && i.boundary != interactionBoundaryAccepted &&
 		i.boundary != interactionBoundarySubtreePrepared {
 		return nil, false
 	}
@@ -619,27 +619,34 @@ func (i *interactionSession) stageAcceptedContinuation(checkpoint runs.ExecutorC
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
 		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
 	}
-	i.state.boundary = interactionBoundaryAcceptedPaused
+	i.state.boundary = interactionBoundaryAccepted
 	return nil
 }
 
-func (i *interactionSession) beginContinuation() error {
+func (i *interactionSession) beginContinuation() (bool, error) {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.phase == interactionFinished || i.state.process == nil {
-		return runs.ErrExecutorNotLive
+	if i.state.phase == interactionFinished {
+		return false, runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryAcceptedPaused || i.state.observer == nil {
-		return errors.New("execution: Interaction continuation was not staged and observed")
+	if i.state.boundary != interactionBoundaryAccepted || i.state.observer == nil {
+		return false, errors.New("execution: Interaction continuation was not staged and observed")
 	}
-	return nil
+	if i.state.phase == interactionPending {
+		i.state.phase = interactionBegun
+		return true, nil
+	}
+	if i.state.process == nil {
+		return false, runs.ErrExecutorNotLive
+	}
+	return false, nil
 }
 
 func isInteractionWaitingBoundary(status scoperun.Status) bool {
 	return status == scoperun.StatusWaiting || status == scoperun.StatusPaused
 }
 
-func (i *interactionSession) continuationAccepted() {
+func (i *interactionSession) releaseContinuation() {
 	i.state.mu.Lock()
 	i.state.continueExecution()
 	i.state.mu.Unlock()

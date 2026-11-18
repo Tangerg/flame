@@ -137,11 +137,11 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := session.prepareContinuationAnswers(t.Context(), checkpointAnswers(t, checkpoint))
+	release, err := session.prepareContinuationRelease(t.Context(), checkpointAnswers(t, checkpoint))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = session.deliverContinuationAnswers(t.Context(), prepared, nil)
+	err = session.deliverContinuationAnswers(t.Context(), release.answers, nil)
 	t.Fatalf("answer crash was not reached: %v", err)
 }
 
@@ -183,12 +183,12 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			prepared, err := session.prepareContinuationAnswers(t.Context(), answers)
+			release, err := session.prepareContinuationRelease(t.Context(), answers)
 			if err != nil {
 				t.Fatal(err)
 			}
 			admitted := 0
-			for _, answer := range prepared {
+			for _, answer := range release.answers {
 				if answer.admitted {
 					admitted++
 				}

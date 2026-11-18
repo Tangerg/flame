@@ -1487,7 +1487,10 @@ The persisted execution format changes with this contract. Waiting executions
 from an older build must be completed before upgrade or rejected under the
 existing build identity rule; no dual-schema reader is provided. SQLite stores
 Scope's public Log beside Flame's captured provider inputs and product bindings.
-Waiting and accepted continuations restore their original acknowledged boundary.
+Waiting continuations restore their acknowledged barrier. Accepted continuations
+finish delivering answers and releasing paused Processes from the recorded
+Scope head. The first new Effect prepared by a surviving Process ends that
+recovery path, because the Effect might already have reached its external owner.
 Running executions qualify for receipt recovery only when every unresolved Tool
 has its original captured source and invocation evidence; recovery queries the
 original receipt without repeating the uncertain call. Other unfinished work
