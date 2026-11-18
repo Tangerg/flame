@@ -12,10 +12,8 @@ import {
 } from "react";
 import {
   failureText,
-  scrollPositions,
   type ComponentContext,
   type WorkspaceChangesActionInput,
-  type ScrollPosition,
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
@@ -88,10 +86,8 @@ type Selection =
 function restoreFileOverview(
   list: HTMLElement | null,
   search: HTMLInputElement | null,
-  positions: readonly ScrollPosition[],
   selectedPath: string | null,
 ) {
-  for (const position of positions) position.element.scrollTop = position.top;
   const row = Array.from(
     list?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ?? [],
   ).find((item) => item.dataset.diffFile === selectedPath);
@@ -144,12 +140,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   );
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
-  const panel = useRef<HTMLElement>(null);
+  const bodyViewport = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const refreshButton = useRef<HTMLButtonElement>(null);
-  const overviewScroll = useRef<ScrollPosition[]>([]);
+  const overviewScroll = useRef(0);
   const lastFocus = useRef<HTMLElement>(null);
   const pendingFocus = useRef<{
     target: "file" | "list";
@@ -227,11 +223,10 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   function filterFiles(next: string) {
     if (next === filter) return;
     setFilter(next);
-    for (const position of scrollPositions(panel.current))
-      position.element.scrollTop = 0;
+    if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
   }
   function openFile(path: string) {
-    if (!file) overviewScroll.current = scrollPositions(panel.current);
+    if (!file) overviewScroll.current = bodyViewport.current?.scrollTop ?? 0;
     pendingFocus.current = { target: "file", active: document.activeElement };
     setSelection({
       path,
@@ -284,22 +279,18 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     }
     pendingFocus.current = null;
     if (pending.target === "file" && showingReader) {
-      for (const position of scrollPositions(panel.current))
-        position.element.scrollTop = 0;
+      if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
       heading.current?.focus();
     } else {
-      restoreFileOverview(
-        list.current,
-        search.current,
-        overviewScroll.current,
-        selection.path,
-      );
+      if (bodyViewport.current)
+        bodyViewport.current.scrollTop = overviewScroll.current;
+      restoreFileOverview(list.current, search.current, selection.path);
     }
   }, [file, showingReader, accepted, selection, read.error]);
 
   return (
     <Panel
-      ref={panel}
+      bodyViewportRef={bodyViewport}
       label={t("panel.title")}
       onFocusCapture={(event) => {
         lastFocus.current = event.target;
@@ -318,17 +309,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         event.stopPropagation();
         showFiles();
       }}
-      header={
-        <PanelHeader
-          size="md"
-          title={t("panel.title")}
-          context={
-            <Metadata>
-              <DiffFilePath path={workspace.ref.path} />
-            </Metadata>
-          }
-        />
-      }
+      header={<PanelHeader size="md" title={t("panel.title")} />}
       controls={
         <>
           {!showingReader && (
@@ -528,6 +509,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         </>
       }
     >
+      <Metadata>
+        <DiffFilePath path={workspace.ref.path} />
+      </Metadata>
       {read.loading && (
         <Metadata role="status">
           {t("status.reading", {

@@ -4,6 +4,7 @@ import {
   useContext,
   type ComponentPropsWithRef,
   type ReactNode,
+  type Ref,
 } from "react";
 import { CARD_SURFACE } from "./control-surface";
 import { HeadingLevel, useHeadingTag } from "./heading-level";
@@ -53,6 +54,19 @@ const styles = stylex.create({
     gap: layout.contentGap,
     paddingBlock: layout.compactGutter,
   },
+  viewportPanel: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minHeight: 0,
+  },
+  viewportContent: {
+    flex: 1,
+    minHeight: 0,
+    gap: layout.controlGap,
+  },
   header: {
     display: "grid",
     gap: layout.controlGap,
@@ -75,6 +89,12 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: layout.sectionGap,
     minWidth: 0,
+  },
+  bodyViewport: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    overscrollBehaviorY: "contain",
   },
   actions: {
     display: "flex",
@@ -219,6 +239,7 @@ export function Panel({
   label,
   header,
   controls,
+  bodyViewportRef,
   ref,
   className,
   ...props
@@ -227,8 +248,14 @@ export function Panel({
   label: string;
   header?: ReactNode;
   controls?: ReactNode;
+  bodyViewportRef?: Ref<HTMLDivElement>;
 }) {
-  const styled = stylex.props(styles.panel, type.uiMd);
+  const bounded = bodyViewportRef != null;
+  const styled = stylex.props(
+    styles.panel,
+    type.uiMd,
+    bounded && styles.viewportPanel,
+  );
   const compact = useContext(PanelHostContext) === "compact";
   return (
     <section
@@ -239,7 +266,13 @@ export function Panel({
       {...styled}
       className={clsx(styled.className, className)}
     >
-      <div {...stylex.props(styles.content, compact && styles.compactContent)}>
+      <div
+        {...stylex.props(
+          styles.content,
+          compact && styles.compactContent,
+          bounded && styles.viewportContent,
+        )}
+      >
         {header}
         <HeadingLevel>
           {controls != null && (
@@ -247,7 +280,12 @@ export function Panel({
               {controls}
             </div>
           )}
-          <div data-slot="panel-body" {...stylex.props(styles.body)}>
+          <div
+            ref={bodyViewportRef}
+            data-slot="panel-body"
+            tabIndex={bounded ? -1 : undefined}
+            {...stylex.props(styles.body, bounded && styles.bodyViewport)}
+          >
             {children}
           </div>
         </HeadingLevel>

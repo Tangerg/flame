@@ -50,6 +50,10 @@ File rows navigate to one reader;
 they do not expand every file's code into a single report. The comparison and
 refresh controls precede the list filter. In the reader, the current file, position,
 previous/next commands and layout stay in the shared persistent control zone.
+That zone sits above the Diff body viewport in both Dock and full-width
+presentations. The full workspace path stays in the scrolling body. The same
+viewport owns the file overview and the reader's vertical movement, while
+Pierre owns horizontal panning within a file.
 The accepted comparison, file/workspace scope, real baseline and read time stay
 beside that identity in the reader and overview. Read time records client
 acceptance, not a repository revision. A pending or failed request retains these

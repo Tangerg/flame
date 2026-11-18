@@ -135,8 +135,10 @@ The offline consumer derives external dependency selections from the root lock,
 then installs packed artifacts without workspace links or the StyleX compiler.
 
 `Panel` owns the content measure, normal-flow header, controls, body and
-container-responsive gutters. The host owns the scroll viewport. Panel and
-Disclosure do not measure sticky clearances or scroll ancestor elements.
+container-responsive gutters. The host normally owns the scroll viewport.
+A Panel in a bounded flex column can supply `bodyViewportRef` to put the
+header and controls above a single scrolling body. The ref gives the caller
+the exact viewport for explicit reading and return commands.
 `useFieldVisibility` belongs to a form's actual viewport and observes its content.
 It keeps a focused native field visible through reflow by changing only that
 viewport's offset, preserving the browser's value and selection. Deliberate wheel,
@@ -148,7 +150,7 @@ explicit focus handoff before removing an editor or action.
 
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
-Page actions belong to the persistent `Panel.controls` zone, alongside filters.
+Page actions and filters belong in the `Panel.controls` zone.
 `PanelSection` groups one heading, supporting context, filters and content in
 a single vertical flex flow. Wrapped controls keep their natural height when
 retained content moves between main reading and a narrow Dock; the section
