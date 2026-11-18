@@ -140,7 +140,7 @@ var providers = mustProviderCatalog(
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(providerOpenAICompatible, apiMount, true, buildOpenAICompatibleModel),
-	endpointProvider(providerAnthropicCompatible, anthropicMount, true, buildAnthropicModel),
+	endpointProvider(providerAnthropicCompatible, anthropicMount, true, buildAnthropicCompatibleModel),
 )
 
 // anthropicRequestFields are top-level Messages API fields Scope forwards verbatim.
@@ -155,27 +155,37 @@ type anthropicCacheControl struct {
 const anthropicEphemeralCache = "ephemeral"
 
 func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	if Provider(spec.connection.Provider) == providerAnthropic {
-		// Native Messages requires an explicit cache opt-in. A generic compatible
-		// endpoint makes no promise to implement this vendor extension. Use Scope's
-		// public request extension so request overrides retain their normal meaning.
-		defaults := chat.Options{Model: opts.Model}
-		if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, anthropicRequestFields{
-			CacheControl: anthropicCacheControl{Type: anthropicEphemeralCache},
-		}); err != nil {
-			return nil, err
-		}
-		var err error
-		opts, err = defaults.Resolve(opts)
-		if err != nil {
-			return nil, err
-		}
+	// A Scope extension default keeps cache opt-in under normal option precedence.
+	var defaults chat.Options
+	if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, anthropicRequestFields{
+		CacheControl: anthropicCacheControl{Type: anthropicEphemeralCache},
+	}); err != nil {
+		return nil, err
+	}
+	options, err := defaults.Resolve(opts)
+	if err != nil {
+		return nil, err
 	}
 	return anthropic.NewMessages(ctx, anthropic.MessagesConfig{
+		APIKey:         spec.connection.APIKey,
+		DefaultOptions: options,
+		BaseURL:        spec.connection.BaseURL,
+		HTTPClient:     spec.httpClient,
+	})
+}
+
+func buildAnthropicCompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
+	return anthropicprotocol.NewMessages(ctx, anthropicprotocol.MessagesConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+	}, anthropicprotocol.Dialect{
+		Provider:         string(providerAnthropicCompatible),
+		Revision:         anthropicprotocol.MessagesRevision20230601,
+		APIKeyScheme:     anthropicprotocol.APIKeySchemeBearer,
+		SupportsSampling: true,
+		NativeJSONSchema: true,
 	})
 }
 
@@ -203,11 +213,15 @@ func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Optio
 }
 
 func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	return openai.NewChatCompletions(ctx, openai.ChatCompletionsConfig{
+	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatCompletionsConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+	}, openaiprotocol.DialectConfig{
+		Provider:        string(providerOpenAICompatible),
+		TokenLimitField: openaiprotocol.TokenLimitMaxCompletionTokens,
+		PrepareRequest:  openaiprotocol.RequestStreamUsage,
 	})
 }
 

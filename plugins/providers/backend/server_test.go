@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -21,39 +22,35 @@ import (
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
-func connectProvider(t *testing.T, path string) (*store, *sdk.ClientSession, func()) {
+func buildProviderBackend(t *testing.T) string {
 	t.Helper()
-	store, err := openStore(t.Context(), path)
+	binary := filepath.Join(t.TempDir(), "providers")
+	command := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-o", binary, ".")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build provider backend: %v: %s", err, output)
+	}
+	return binary
+}
+
+func connectProvider(t *testing.T, binary, data string) (*sdk.ClientSession, func()) {
+	t.Helper()
+	client, err := pluginmcp.NewProcessClient()
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newServer(store, nil)
+	command := exec.Command(binary)
+	command.Env = []string{pluginprocess.DataVariable + "=" + data}
+	session, err := client.Connect(t.Context(), &sdk.CommandTransport{Command: command}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := sdk.NewClient(&sdk.Implementation{Name: "provider-test", Version: "1"}, nil)
-	if err := pluginmcp.RegisterClient(client); err != nil {
-		t.Fatal(err)
-	}
-	a, b := sdk.NewInMemoryTransports()
-	connection, err := server.Connect(t.Context(), a, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, err := client.Connect(t.Context(), b, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var once sync.Once
-	close := func() {
-		once.Do(func() {
-			if err := errors.Join(session.Close(), connection.Close(), store.Close()); err != nil {
-				t.Error(err)
-			}
-		})
-	}
+	close := sync.OnceFunc(func() {
+		if err := session.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	t.Cleanup(close)
-	return store, session, close
+	return session, close
 }
 
 func providerContext(t *testing.T) context.Context {
@@ -106,6 +103,7 @@ func writeChatReply(w http.ResponseWriter) {
 }
 
 func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
+	binary := buildProviderBackend(t)
 	for _, outcome := range []string{"completed", "reply-lost"} {
 		t.Run(outcome, func(t *testing.T) {
 			var calls atomic.Int32
@@ -127,14 +125,14 @@ func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
 				writeChatReply(w)
 			}))
 			defer upstream.Close()
-			path := filepath.Join(t.TempDir(), "providers.db")
-			_, session, stop := connectProvider(t, path)
+			data := t.TempDir()
+			session, stop := connectProvider(t, binary, data)
 			opened := openChat(t, session, "openai-compatible", upstream.URL)
 			if !opened.Streaming || opened.TokenCounting {
 				t.Fatal("compatible provider invented or lost an optional capability")
 			}
 			stop()
-			_, session, stop = connectProvider(t, path)
+			session, stop = connectProvider(t, binary, data)
 			method, err := modelprovider.CallMethod()
 			if err != nil {
 				t.Fatal(err)
@@ -153,7 +151,7 @@ func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
 				t.Fatalf("lost exchange became confirmed: %+v", result)
 			}
 			stop()
-			_, session, _ = connectProvider(t, path)
+			session, _ = connectProvider(t, binary, data)
 			for range 2 {
 				repeated, err := providerMethod(t, session, method).CallCommand(providerContext(t), "exchange", request)
 				if err != nil || calls.Load() != initialCalls || (repeated.Failure == nil) != (result.Failure == nil) {
