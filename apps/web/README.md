@@ -1060,6 +1060,9 @@ resizes, including Composer clearance changes, re-evaluate the decision.
 The activity disclosure's `preview` is redundant supporting text beside its toggle,
 so arriving reasoning never renames that control. Ordinary `detail` remains part
 of the summary name. Reasoning previews and prose use the existing faint text role.
+Grouped Tool details mount on the first open. Closing a member hides its controls
+from keyboard and accessibility navigation. The result, filter and Arguments
+are retained for the mounted tool row.
 Transcript, reasoning and recorded-output readers delegate virtual rendering,
 end follow and anchoring to Legend. Focus, composition, native selection ranges
 and React portal owners pin their rows through the public alwaysRender API.

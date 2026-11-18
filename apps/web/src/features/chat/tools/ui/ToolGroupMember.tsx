@@ -13,7 +13,7 @@ import {
 } from "@/features/chat/tools/application/toolCardModel";
 import { toolCallIconFor } from "@/features/agent/public/toolIcon";
 import { ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
-import { ToolText } from "@/ui/agent/index";
+import { AgentActivityBody, ToolText } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
 import {
@@ -110,7 +110,7 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
             data-tool={tool.name}
             type="button"
             aria-expanded={expanded}
-            aria-controls={disclosed ? bodyId : undefined}
+            aria-controls={bodyId}
             onClick={() => onExpandedChange(!expanded)}
             className={rowClassName}
           >
@@ -125,9 +125,11 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
       </div>
       <ToolActionFailureLine feedback={feedback} summaryId={summaryId} />
       <ToolFailureLine model={model} />
-      {disclosed && (
-        <div id={bodyId} {...stylex.props(gm.body)}>
-          <ToolPreview tool={tool} />
+      {disclosable && (
+        <div id={bodyId} hidden={!expanded} {...stylex.props(gm.body)}>
+          <AgentActivityBody open={expanded}>
+            <ToolPreview tool={tool} />
+          </AgentActivityBody>
         </div>
       )}
     </div>

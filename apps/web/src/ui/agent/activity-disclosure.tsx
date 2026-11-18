@@ -312,7 +312,7 @@ export function AgentActivityDisclosure({
                 contentClassName,
               )}
             >
-              <ActivityBody open={open}>{children}</ActivityBody>
+              <AgentActivityBody open={open}>{children}</AgentActivityBody>
             </div>
           </div>
         </Collapsible.Panel>
@@ -352,7 +352,7 @@ function TriggerShell({
   );
 }
 
-function ActivityBody({ open, children }: { open: boolean; children: ReactNode }) {
+export function AgentActivityBody({ open, children }: { open: boolean; children: ReactNode }) {
   const [revealed, setRevealed] = useState(open);
   if (open && !revealed) setRevealed(true);
   return revealed ? <ContentVisibility visible={open}>{children}</ContentVisibility> : null;

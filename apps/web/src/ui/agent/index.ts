@@ -1,5 +1,5 @@
 export { AgentAppShell, useAgentShellElement } from "@/ui/agent/app-shell";
-export { AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
+export { AgentActivityBody, AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
 export { AgentComposerChip } from "@/ui/agent/composer-chip";
 export { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent/composer-surface";
 export { AgentComposerTopTraySurface } from "@/ui/agent/composer-top-tray-surface";
