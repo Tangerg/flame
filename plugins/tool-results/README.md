@@ -56,8 +56,9 @@ Output search identifies the current matching line with the
 shared search treatment; Enter and Shift+Enter cycle matching lines. Every query or
 navigation request reveals the selected line, including a sole match after manual
 scrolling and a refined query that still selects the same line. Manual scrolling
-alone keeps the current reading position. Clear empties
-the query and retains search focus; Close and Escape return to the output region.
+alone keeps the current reading position. Clear empties the query and retains
+search focus. Close and Escape focus the output scroll viewport at the current
+reading position so keyboard paging can continue there.
 Ctrl/Cmd+A in a focused result reader selects its content rather than the workspace.
 Paged or filtered rows and collapsed output previews select the presented material.
 Expanded output represents the whole captured log: copying its whole-reader range

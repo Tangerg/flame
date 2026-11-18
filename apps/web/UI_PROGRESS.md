@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33875,6 +33875,45 @@ only the reusable private toolchain remains. User data, root dependencies,
 shared caches, reference sources and parallel work are preserved. Continue from
 fresh content/Dock task evidence; this caption and the earlier Find repair are
 complete within their stated scope, while the whole-product UI goal stays active.
+
+### Focus return from output Find (2026-11-19)
+
+At `6bb9358c1`, actual Wails opens the 50,000-line recorded session-suite
+output and finds line 31415. Escape focuses the outer named container.
+The first Page Up leaves the rendered range at 31387–31431. A further Tab
+focuses the inner container with the same name, where paging moves the
+range. `c03ffcd92` moved scrolling into Legend List and left Find's
+return on the former viewport.
+
+`RecordedOutput` now returns focus to Legend List's actual scroll node.
+Escape and the Close find button share that target with expansion and
+Jump to latest. The expanded output exposes one named reading region.
+The preview retains its own named region and the same nine-line tail.
+Selection, copying and delegation to the captured source keep their
+existing boundaries. Better Accessibility and the read-only ZCode
+`ExecuteOutput` reinforce focus on the element that actually scrolls.
+[Legend List scroll node](https://www.legendapp.com/open-source/list/v3/api/#getscrollablenode)
+
+- EN/light/14 px/Flame Orange/full motion in Wails v3.1.0 at Actual Size.
+  Escape retains the match's reading position and visible focus outline.
+  The first Page Up moves the range to 31385–31430 without another Tab.
+  Jump to latest reaches line 49999 with focus in the reader. Collapse
+  restores the nine-line preview and its expansion control, and closing
+  the command returns to its row. Cmd+L continues the verified draft
+  caret, producing `readqxtail`.
+- ZH/dark/18 px/`#3B82F6`/motion off in the tiled native window.
+  The visible Close find button returns directly to the output. Page
+  Down moves the range from 31402–31438 to 31416–31452. Native wheel
+  scrolling also moves the same reader.
+
+`make check-native`, canonical Lab build, bundle signatures, scoped
+Prettier, plugin/Web typechecks, 20 eight-locale plugin catalogs, 81 Web
+schema contract tests and bootstrap, plugin resource, bundle and plugin
+module checks pass. The publisher regenerates the tracked Tool results
+ESM. This pass covers recorded output. VoiceOver, live Tool execution,
+native clipboard bytes, browser visual suites and benchmarks were outside
+the scope. Both private bundle registrations, processes, previews, caches,
+build outputs and temporary logs are removed.
 
 ### Captured shell page reading after main (2026-11-06)
 

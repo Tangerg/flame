@@ -58,7 +58,6 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const query = finding ? view.query : "";
   const [atEnd, setAtEnd] = useState(true);
   const reader = useRef<ReadingListHandle>(null);
-  const viewport = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const expansion = useRef<{ origin: HTMLElement; source: string } | null>(
     null,
@@ -101,7 +100,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   }, [finding]);
   const closeFind = () => {
     setView(READING);
-    viewport.current?.focus({ preventScroll: true });
+    reader.current?.getScrollableNode()?.focus({ preventScroll: true });
   };
   const previewStart = Math.max(0, lines.length - PREVIEW_LINES);
   const row = useCallback(
@@ -223,14 +222,13 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         </div>
       )}
       <div
-        ref={viewport}
-        role="region"
-        aria-label={t(expanded ? "output.region" : "output.preview")}
-        tabIndex={expanded ? -1 : 0}
+        role={expanded ? undefined : "region"}
+        aria-label={expanded ? undefined : t("output.preview")}
+        tabIndex={expanded ? undefined : 0}
         {...(expanded ? undefined : readerSourceProps)}
         {...TOOL_OUTPUT_QUOTE_SOURCE}
         onKeyDown={(event) => {
-          if (viewport.current) selectAllInReader(event, viewport.current);
+          selectAllInReader(event);
           if (expanded && isFindShortcut(event)) {
             event.preventDefault();
             event.stopPropagation();
@@ -258,7 +256,6 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
       >
         {expanded ? (
           <ReadingList
-            role="group"
             ref={reader}
             data={lineIndices}
             keyExtractor={String}
@@ -266,10 +263,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             onFollowChange={(list, value) => {
               setAtEnd(value);
               const node = list.getScrollableNode();
-              if (node) {
-                node.tabIndex = 0;
-                markReaderSource(node);
-              }
+              if (node) markReaderSource(node);
             }}
             renderItem={row}
           />
