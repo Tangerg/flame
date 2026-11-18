@@ -530,8 +530,9 @@ fallback and delegated preface. The conversation container still supplies
 the width available to outer Markdown code, media and tables in the existing
 breakout range. At wide conversation widths one Tab stop enters the turn rail
 in the margin. Up and Down move the visible focus ring and preview, wrapping
-between the first and last turns. Enter or Space brings the focused turn into
-the transcript, and Tab continues to the transcript reader.
+between the first and last turns. A thicker tick marks the current reading
+position while another tick previews. Enter or Space brings the focused turn
+into the transcript, and Tab continues to the transcript reader.
 
 On first opening the main conversation, the transcript waits for Legend List's
 initial placement and for the list to measure the viewport after Composer draft

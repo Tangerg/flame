@@ -38670,10 +38670,55 @@ registrations, six private Library directories, ten checkout outputs and the
 scratch tree. This pass covers isolated and recorded workflows. VoiceOver and
 live Run execution remain open.
 
-The next observed issue is in the turn rail. In the same native conversation,
-keyboard focus on turn 5 previews its question and answer while the transcript
-stays at the end. The visible emphasis moves away from turn 39 even though
-the rail still exposes turn 39 as the current reading position.
+### Current reading position during turn previews (2026-11-19)
+
+In signed Wails on `630f4a5dc`, pointer and keyboard preview of turn 5 leave
+the transcript at its original reading position. The rail still exposes turn
+39 as current, but its 2 px neutral ink switches to the muted ink used by all
+ordinary ticks. Turn 5 takes the only visible emphasis.
+
+`TurnRail` now gives the scroll-owned current tick a 4 px bar within its
+button's height. The current tick and the preview both use foreground ink.
+The preview's existing width change and the inset keyboard focus outline make
+its role distinct from the thicker reading marker. The actual ChatGPT webview
+rail exposes the current reading state separately from its scrub target.
+HeroUI Tabs separately styles its selected and focus states. Flame uses that
+distinction within the existing Base UI Toolbar and RichTooltip.
+[WAI keyboard interface guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/)
+
+- EN/light with Flame Orange and motion off at Actual Size. A native pointer
+  preview of turn 5 leaves a 16 × 4 px current mark on turn 39 and a 34 × 2 px
+  preview line. The 11703 px transcript offset stays fixed. A coordinate
+  click reads checkpoint 5. Jump to bottom returns to the reading viewport,
+  and Shift+Tab returns to turn 5. Down previews turn 6 while the 10509 px
+  offset and current mark stay fixed. Escape retains focus on turn 6. Enter
+  reads checkpoint 6 and moves the current mark there. The original caret
+  continues as `markerkeepdraftqxtail`.
+- ZH/dark/18 px with custom blue and full motion. At 440 CSS px beside Files,
+  Tab moves through the title controls to the transcript with zero rail
+  stops. Opening and returning from `reading-guide.md` restores the file row
+  at the same 11531 px transcript offset. At 1513 px with the Dock closed,
+  the rail occupies one Tab stop. Up wraps from 1 to 40 and Down back to 1.
+  Turn 2 previews under a blue focus outline while turn 39 retains its
+  17 × 4 px mark. Space reads checkpoint 2. The draft continues as
+  `跳转标记草稿继续尾段`.
+- Computed foreground-to-surface contrast for the marked ticks is 15.80:1 in
+  light and 16.52:1 in dark. The inset focus outline against the same
+  surfaces is 3.82:1 in light and 5.06:1 in dark. These values cover the two
+  inspected native profiles.
+
+Scoped formatting, Web typecheck, 89 Web contracts, 937 locale keys in eight
+catalogs, bootstrap, installed plugin resources, 26 bundle checks, module
+linking, `make check-native` and the five-entry Lab gate pass. Both private
+bundles pass strict signature verification. Three launches and two loopback
+previews exited, and cleanup removed the two registrations, four private
+Library directories, ten checkout outputs and the scratch tree. VoiceOver and
+live Run execution remain open.
+
+The next observed layout issue is at the end of the narrow reading frame. In
+the 440 px transcript beside Files, Jump to bottom crosses a line of body text
+above the Composer while reading older replies. The next batch will inspect
+the transcript's reading edge and the placement of that control together.
 
 ## Wide-content breakout in the reading band
 

@@ -31,7 +31,8 @@ const tr = stylex.create({
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
   },
-  tickLead: { backgroundColor: color.fg },
+  tickCurrent: { height: "4px", maxHeight: "100%" },
+  tickEmphasis: { backgroundColor: color.fg },
   tickRest: { backgroundColor: "color-mix(in oklab, var(--color-text-faint) 55%, transparent)" },
   rail: {
     display: "flex",
@@ -96,7 +97,7 @@ export function TurnRail() {
     >
       {turns.map((turn, index) => {
         const active = turn.id === visibleTurnId;
-        const lead = reached === null ? active : reached === index;
+        const previewed = reached === index;
         return (
           <RichTooltip
             key={turn.id}
@@ -118,7 +119,12 @@ export function TurnRail() {
                 style={{ width: `${TRACK}px` } as CSSProperties}
               >
                 <span
-                  {...stylex.props(tr.tickBar, corner.pill, lead ? tr.tickLead : tr.tickRest)}
+                  {...stylex.props(
+                    tr.tickBar,
+                    corner.pill,
+                    active && tr.tickCurrent,
+                    active || previewed ? tr.tickEmphasis : tr.tickRest,
+                  )}
                   style={
                     {
                       width: `${FLOOR + Math.round(shareOf(turn.id) * SHARE + swell(index) * MAGNIFY)}px`,
