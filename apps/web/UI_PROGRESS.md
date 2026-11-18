@@ -38765,8 +38765,57 @@ previews exited. Cleanup removed the three registrations, six private Library
 directories, ten checkout outputs and the scratch tree. These paths use
 isolated captured data. VoiceOver and live Run execution remain open.
 
-Next inspect the delegated transcript's separate inside-reader placement in
-its retained task pane before choosing a change for that reader.
+### Jump to bottom below delegated task text (2026-11-19)
+
+Signed Wails on `4f0c26adb` reproduces the overlap in completed task 3 of
+4. In a 320 CSS px Dock at Actual Size, the delegated viewport ends at
+y948 and the visible button occupies y898.9–930.9. One native wheel page
+up places a Chinese paragraph under the circle. It extends 49.1 px into
+the viewport, and pointer hit testing beside the circle reaches the history.
+The Legend List migration at `c03ffcd92` removed the old delegated scroller
+and its clearance.
+
+The shared Jump control now supplies a normal-flow footer for the delegated
+reader. Its intrinsic button size and existing gaps reserve space below the
+transcript throughout visibility changes. The main transcript uses its own
+Composer placement. Legend supplies the scroll target and end state in both
+locations. The delegated reader retains its task identity and source link
+through the existing inspection and focus owners. Read-only ZCode’s
+SubagentSessionSidePane and the ChatGPT webview’s actual subagents panel
+inform the task and return boundary. Better Layout guides the separation
+between the command and the content it navigates.
+
+- ZH/dark/18 px/custom blue/full motion, natively left-tiled with a 320 px
+  Dock. The reader ends at y892 and the button starts at y900, yielding
+  zero body overlap and a clear pointer target. After wheel reading, task
+  3 → overview → failed task 2 → overview → task 3 preserves the 3664 px
+  offset and the same subsection with two retained readers. A first
+  native coordinate click reaches within 1 px of the end and focuses the
+  delegated reader. The draft continues as `子任务净空草稿继续尾段`.
+- EN/light/Flame Orange with motion off in a 720 px Dock. Tab reaches
+  `runtime/internal/session/store.go:4` and Enter opens its captured file.
+  Back to task returns to that exact source control and its 0 px offset.
+  A native wheel page up restores the Jump control. Shift+Tab from the
+  Dock toggle reaches Jump, and Enter moves from the visible subsection
+  to within 1 px of the end with focus in the reader. The control remains
+  8 px below the reading edge as its focus tooltip appears. The original
+  draft continues as `delegatededgeqxtail`.
+- A separate signed main conversation opens on checkpoint 40. Native
+  wheel reading exposes Jump to bottom, Shift+Tab reaches it, and Enter
+  restores that reply and focuses the actual main transcript.
+
+Web formatting, typecheck, 89 Web contracts, 937 locale keys, bootstrap,
+installed plugin resources, 26 bundle checks, module linking,
+`make check-native` and the five-entry Lab gate pass. All three private
+bundles pass strict signature verification. Four launches and two loopback
+previews exited. Cleanup removed the three registrations, six private
+Library directories, ten checkout outputs and the scratch tree. The paths
+use captured data. VoiceOver and live Run execution remain open.
+
+Untouched first entry to completed task 3 still opens 312 px from the end in
+the Chinese profile, matching the baseline. The English profile opens 357 px
+from the end. An explicit Jump reaches within 1 px in both. The next batch
+will trace initial placement for the delegated reader.
 
 ## Wide-content breakout in the reading band
 

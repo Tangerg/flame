@@ -58,12 +58,7 @@ const styles = stylex.create({
     paddingBlock: space.s2,
   },
   headLine: { minWidth: 0, flex: 1, alignSelf: "center" },
-  scroller: {
-    paddingBlock: space.s3,
-    scrollPaddingBlockEnd:
-      "calc(var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap))",
-  },
-  overview: { paddingInline: "var(--layout-compact-gutter)" },
+  overview: { paddingBlock: space.s3, paddingInline: "var(--layout-compact-gutter)" },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
   readerSlot: {
@@ -85,11 +80,6 @@ const styles = stylex.create({
   },
   // Keeping the layout box preserves WebKit's retained scroll position.
   inactiveReader: { visibility: "hidden" },
-  transcript: {
-    minWidth: 0,
-    paddingBottom: space.s12,
-    "--reading-gutter": "var(--layout-compact-gutter)",
-  },
   evidence: { marginBottom: space.s6 },
   summary: {
     display: "flex",
@@ -330,7 +320,7 @@ export function SubagentsPanel() {
           key={entries[0]?.narrative.run.sessionId}
           mode={selectedId ? "hidden" : "visible"}
         >
-          <ScrollArea className={stylex.props(styles.scroller, styles.overview).className}>
+          <ScrollArea className={stylex.props(styles.overview).className}>
             {entries.length === 0 ? (
               <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
             ) : (
@@ -468,7 +458,7 @@ function SubagentTranscript({
           reader.current?.getScrollableNode()?.focus({ preventScroll: true });
           void reader.current?.scrollToEnd({ animated: false });
         }}
-        placement="inside-reader"
+        placement="reader-footer"
       />
     </div>
   );
