@@ -30,6 +30,7 @@ import { composerSend } from "@/features/composer/index";
 import { composerToolbar } from "@/features/composer/index";
 import contextUsage from "@/features/chat/context-usage/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
+import chatSearch from "@/features/chat/search/index";
 import { messageCopy } from "@/features/chat/message-actions/index";
 import { messageEdit } from "@/features/chat/message-actions/index";
 import { messageRegenerate } from "@/features/chat/message-actions/index";
@@ -324,6 +325,7 @@ export async function installVisualAgentFixture(
     contextUsage,
     composerSend,
     narrativeRails,
+    chatSearch,
     workbenchChat,
     workbenchSettings(visual.workspace.access),
     shortcutsSettings(visual.workspace.access),

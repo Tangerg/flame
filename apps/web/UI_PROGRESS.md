@@ -13,8 +13,7 @@ conservative selection conclusions. Its 814-line source is read-only under
 `0cc601c3ecd56ae7837263e8191a71fcc514f08e46d9dfe1f42687162ebdc7df`.
 A later observed revision has 887 lines, SHA-256
 `667149b4c1bf6c77bf608574f6cd0d07f4a0607b6263463effa104b2cfb6bc32`.
-Its A1 section 11.1 is unchanged; newly added material awaits reconciliation
-after an explicit resume. The external report remains read-only.
+The 887-line revision is the current target. The external report remains read-only.
 Implementation starts from `0a100056a`. The report's initial code baseline is
 `448e0411f`; its A2UI supplement refers to `805737ee1`. Neither baseline nor
 upstream source review proves that these targets have been integrated here.
@@ -27,23 +26,30 @@ adapter around the old engine or passing old-policy assertions is not completion
 No long-lived feature flag, duplicate writable owner, private API patch or
 runtime fallback is an accepted migration state.
 
-| Decision | Target owner and behavior                                                         | Current migration state                                                       |
-| -------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| D1       | Base UI for ordinary controls, press/focus/dismiss/positioning                    | Retain main line; outer behavior cleanup pending                              |
-| D2       | React Aria Tree/Virtualizer/TreeLoadMoreItem; Runtime/Query paged directory facts | Pending; include protocol/SDK/provider consumers and coverage                 |
-| D3       | Lexical document/selection/history/typeahead; typed references                    | Pending; include drafts, attachments, submission and one-time migration       |
-| D4       | Legend List for all linear reading; normal grid and interaction pinning           | Pending; A2UI model/DOM contracts required before acceptance                  |
-| D5       | react-resizable-panels owns fixed workbench layout                                | Pending; persist final valid layout rather than cancellation rollback         |
-| D6       | react-zoom-pan-pinch owns image/Mermaid/Lab transform                             | Pending; preserve selection, fit and preview-island isolation                 |
-| D7       | TanStack Hotkeys owns grammar, matching, recording and display                    | Read-only inventory complete; full chain pending                              |
-| D8       | New dnd-kit internal sorting; PDD external file adapter                           | Pending; one final order/intake owner per operation                           |
-| D9       | Pierre File/FileDiff/CodeView with one Highlights backend                         | Pending; retire the direct Shiki rendering chain end to end                   |
-| D10      | Public Pierre Highlights ANSI tokens                                              | Pending; one visible-text projection for render/Find/copy                     |
-| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | A1 code migrated, native acceptance partial; other D11 changes pending        |
-| D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Pending; no private repair, splitter or artificial output clock               |
-| D13      | Native fields with CSS field-sizing and explicit capability floor                 | Pending; include actual WKWebView admission and field behavior                |
-| D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Pending audit against the final owners; no new general manager                |
-| D15      | A2UI 1.0 with official React/web_core and trusted Flame catalog                   | Read-only published API/source inventory complete; OpenUI replacement pending |
+| Decision | Target owner and behavior                                                         | Current migration state                                                               |
+| -------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| D1       | Base UI for ordinary controls, press/focus/dismiss/positioning                    | Integrated; no direct Floating UI consumer remains                                    |
+| D2       | React Aria Tree/Virtualizer/TreeLoadMoreItem; Runtime/Query paged directory facts | Integrated with directory cursor and coverage across Runtime, SDK and clients         |
+| D3       | Lexical document/selection/history/typeahead; typed references                    | Integrated; one draft content representation, IndexedDB v1 to v2 upgrade              |
+| D4       | Legend List for all linear reading; normal grid and interaction pinning           | Integrated; Find renders every row while open, turn rail uses list layout; V2 not run |
+| D5       | react-resizable-panels owns fixed workbench layout                                | Integrated; persists requestedLayout snapshots                                        |
+| D6       | react-zoom-pan-pinch owns image/Mermaid/Lab transform                             | Integrated in all three areas; V5 not run                                             |
+| D7       | TanStack Hotkeys owns grammar, matching, recording and display                    | Integrated; combo parser and tinykeys removed                                         |
+| D8       | New dnd-kit internal sorting; PDD external file adapter                           | Integrated                                                                            |
+| D9       | Pierre File/FileDiff/CodeView with the shiki-js baseline                          | Integrated; one shared worker pool for application code readers                       |
+| D10      | Public Pierre Highlights ANSI tokens                                              | Deferred: production CSP grants no Wasm; ANSI parser retained; V3 blocked             |
+| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | Integrated; quote uses context menu and Mod+Shift+Q                                   |
+| D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Integrated as one current document; V4 not run                                        |
+| D13      | Native fields with CSS field-sizing and explicit capability floor                 | field-sizing with rows fallback; V6 and the WKWebView floor not run                   |
+| D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Not separately audited                                                                |
+| D15      | A2UI 1.0 with official React/web_core and trusted Flame catalog                   | Integrated; one shared web_core instance; V1 not run natively                         |
+
+Engines landed in `c03ffcd92`. A later root-cause batch removed regressions that
+batch introduced: Find and the turn rail derived facts from the virtual window,
+GenUI bundled two A2UI cores, Composer writes flattened references and doubled
+restored newlines, history recall reset after one step, saved v1 drafts failed to
+read, and every code block created its own worker. V1–V6 remain unexecuted in the
+native host; none of them is claimed by these integrations.
 
 The first complete cut is **A1 / D11 native focus indication**: retire the
 pre-module modality script, its global attribute, conditional shared selectors
@@ -22975,14 +22981,13 @@ artwork supplies no keyboard evidence.
 
 ## Conversation Find and reading return
 
-The current follow-up fixes normal Find navigation being carried away by a
-pending bottom-follow tick. A passive trace in the existing Lab proves real
-`use-stick-to-bottom` resize/animation writes: the first visible `Runtime` word
-moves from y132 to y-177 while query and counter stay unchanged. The actual
-MessageStream controller now belongs to its Conversation through
-`ui/agent/stream-follow.tsx`. Find and Jump to bottom consume that same controller;
-the former module-global projection is removed. Only a follow destination that
-would hide the current word is stopped. Library follow remains the sole owner.
+An earlier fix stopped a pending bottom-follow tick from carrying normal Find
+navigation away (a Lab trace showed the first visible `Runtime` word moving from
+y132 to y-177). Since the Legend migration the Conversation publishes its
+transcript reader through `ui/agent/transcript-reader.tsx`. Find, Jump to bottom
+and the turn rail consume it. Find renders every row while open, orders matches by
+reader row, reveals through `scrollIndexIntoView` and holds a visible match with
+`anchorVisibleContent`; the list remains the sole scroll owner.
 
 `ChatSearchOverlay.tsx` retains an already-visible current Range through actual
 viewport/content/code-clip changes. Scroll padding and nested clipping determine

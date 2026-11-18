@@ -27,6 +27,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "cwd-missing": "Folder gone",
   delegated: "Delegated tree",
   "long-content": "Long content",
+  "long-conversation": "Long conversation",
   "prose-blocks": "Reading blocks",
   "code-reading": "Code reading",
   "code-history": "Code history",

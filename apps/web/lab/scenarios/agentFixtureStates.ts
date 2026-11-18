@@ -15,6 +15,7 @@ export const VISUAL_AGENT_STATES = [
   "cwd-missing",
   "delegated",
   "long-content",
+  "long-conversation",
   "prose-blocks",
   "code-reading",
   "code-history",

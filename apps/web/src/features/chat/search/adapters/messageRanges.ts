@@ -1,3 +1,4 @@
+import { readingRow, type ReadingListHandle } from "@flame/ui";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
 
 export interface MessageMatch {
@@ -85,14 +86,22 @@ function findFlowRanges(flow: Text[], pattern: RegExp, ranges: Range[]): void {
   }
 }
 
-export function findMessageMatches(query: string, root: ParentNode = document): MessageMatch[] {
-  if (!query) return [];
+// Virtual rows are not kept in document order, so the reader's row order decides.
+export function findMessageMatches(query: string, list: ReadingListHandle): MessageMatch[] {
+  const root = list.getScrollableNode();
+  if (!query || !root) return [];
 
   const pattern = new RegExp(escapeRegExp(query), "gi");
   const matches: MessageMatch[] = [];
-  const messageRoots = root.querySelectorAll<HTMLElement>(MESSAGE_CONTENT_SELECTOR);
+  const messageRoots = [...root.querySelectorAll<HTMLElement>(MESSAGE_CONTENT_SELECTOR)].flatMap(
+    (element) => {
+      const row = readingRow(list, element);
+      return row ? [{ element, index: row.index }] : [];
+    },
+  );
+  messageRoots.sort((a, b) => a.index - b.index);
 
-  for (const messageRoot of messageRoots) {
+  for (const { element: messageRoot } of messageRoots) {
     if (hasHiddenAncestor(messageRoot)) continue;
     const ranges: Range[] = [];
     for (const flow of collectTextFlows(messageRoot)) {

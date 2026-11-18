@@ -13,6 +13,24 @@ import {
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
 export type ReadingListHandle = LegendListRef;
+// Nested readers reuse the row attribute, so a row counts only inside the list's own item.
+export function readingRow(
+  list: ReadingListHandle,
+  node: Node,
+): { index: number; key: string } | undefined {
+  const state = list.getState();
+  for (
+    let row = elementFor(node)?.closest<HTMLElement>("[data-reading-key]");
+    row;
+    row = row.parentElement?.closest<HTMLElement>("[data-reading-key]")
+  ) {
+    const key = row.dataset.readingKey!;
+    const index = state.indexByKey(key);
+    if (index !== undefined && state.elementAtIndex(index)?.contains(row))
+      return { index, key };
+  }
+  return undefined;
+}
 function elementFor(node: Node | null): Element | null {
   if (!node) return null;
   const element = node instanceof Element ? node : node.parentElement;
@@ -51,6 +69,7 @@ export function ReadingList<T>({
   header,
   ref,
   style,
+  renderAll = false,
   onFollowChange,
 }: {
   role?: "region" | "group";
@@ -63,12 +82,19 @@ export function ReadingList<T>({
   header?: ReactNode;
   ref?: Ref<ReadingListHandle>;
   style?: CSSProperties;
+  renderAll?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
 }) {
   const ownerId = useId();
   const rowSelector = `[data-reading-key][data-reading-owner="${CSS.escape(ownerId)}"]`;
   const root = useRef<HTMLDivElement>(null);
   const [list, setList] = useState<ReadingListHandle | null>(null);
+  const currentList = useRef<ReadingListHandle | null>(null);
+  const [windowed, setWindowed] = useState<{
+    generation: number;
+    anchor: { index: number; viewOffset: number } | null;
+  }>({ generation: 0, anchor: null });
+  const renderedAll = useRef(renderAll);
   const [selected, setSelected] = useState<string[]>([]);
   const [focused, setFocused] = useState<string | null>(null);
   const [composing, setComposing] = useState<string | null>(null);
@@ -82,6 +108,7 @@ export function ReadingList<T>({
   );
   const bind = useCallback(
     (value: ReadingListHandle | null) => {
+      currentList.current = value;
       setList(value);
       if (typeof ref === "function") return ref(value);
       if (ref) ref.current = value;
@@ -97,10 +124,31 @@ export function ReadingList<T>({
   useLayoutEffect(() => {
     if (!list || !visible) return;
     return () => {
+      // A replaced windowed list is already unmounted; only the live list settles.
+      if (currentList.current !== list) return;
       list.cancelScroll();
       list.anchorVisibleContent();
     };
   }, [list, visible]);
+  useLayoutEffect(() => {
+    const wasComplete = renderedAll.current;
+    renderedAll.current = renderAll;
+    if (!wasComplete || renderAll || !list) return;
+    // Legend keeps every container it has filled, so ending a complete render
+    // starts a fresh windowed list at the same reading position.
+    const state = list.getState();
+    const anchor = state.isAtEnd
+      ? undefined
+      : list.anchorVisibleContent({ hold: false });
+    const index = anchor && state.indexByKey(anchor.key);
+    setWindowed((previous) => ({
+      generation: previous.generation + 1,
+      anchor:
+        anchor && index !== undefined
+          ? { index, viewOffset: -anchor.offset }
+          : null,
+    }));
+  }, [renderAll, list]);
   const selectionChanged = useEffectEvent(() => {
     const node = root.current;
     if (!list || !node) return;
@@ -212,6 +260,7 @@ export function ReadingList<T>({
       }}
     >
       <LegendList
+        key={windowed.generation}
         ref={bind}
         role={role}
         aria-label={label}
@@ -224,8 +273,9 @@ export function ReadingList<T>({
         recycleItems={false}
         maintainVisibleContentPosition
         maintainScrollAtEnd={{ animated: false }}
-        initialScrollAtEnd
-        alwaysRender={{ keys: pinned }}
+        initialScrollAtEnd={windowed.anchor === null}
+        initialScrollIndex={windowed.anchor ?? undefined}
+        alwaysRender={renderAll ? { top: data.length } : { keys: pinned }}
         style={{ width: "100%", height: "100%", minHeight: 0, flex: 1 }}
         ListHeaderComponent={header ? <>{header}</> : undefined}
         ListFooterComponent={footer ? <>{footer}</> : undefined}

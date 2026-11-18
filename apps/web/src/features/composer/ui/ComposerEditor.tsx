@@ -13,9 +13,7 @@ import {
   type MenuTextMatch,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import {
-  $createParagraphNode,
   $createTextNode,
-  $getRoot,
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_LOW,
@@ -42,7 +40,13 @@ import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 
-import { FileReferenceNode } from "./FileReferenceNode";
+import {
+  $createFileReference,
+  $restoreContent,
+  COMPOSER_NODES,
+  readContent,
+} from "@/features/composer/adapters/composerDocument";
+import { type DraftContent } from "@/features/composer/domain/draft";
 const styles = stylex.create({
   host: { position: "relative" },
   placeholder: {
@@ -82,13 +86,6 @@ const styles = stylex.create({
   },
   selected: { backgroundColor: surface.surface3 },
 });
-function $replaceText(text: string) {
-  const root = $getRoot();
-  root.clear();
-  for (const line of text.split("\n"))
-    root.append($createParagraphNode().append($createTextNode(line)));
-  root.selectEnd();
-}
 class Candidate extends MenuOption {
   constructor(
     readonly kind: "file" | "slash",
@@ -153,7 +150,7 @@ function Suggestions() {
         editor.update(() => {
           const replacement =
             option.kind === "file"
-              ? new FileReferenceNode(option.label).setMode("token")
+              ? $createFileReference(option.label)
               : $createTextNode(option.label);
           if (node) {
             node.replace(replacement);
@@ -236,7 +233,7 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
   const { messages } = useNotifications();
   const t = useT();
   const revision = useRef<object>({});
-  const lastContent = useRef<string | null>(null);
+  const lastContent = useRef<DraftContent | null>(null);
   useEffect(() => {
     editor.setEditable(visible);
   }, [editor, visible]);
@@ -247,16 +244,10 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
       if (!root) return;
       const releaseEditor = access.registerEditor({
         element: root,
-        replace: (text) => editor.update(() => $replaceText(text), { discrete: true }),
-        append: (text) =>
-          editor.update(
-            () => {
-              const root = $getRoot();
-              const selection = root.selectEnd();
-              selection.insertText((root.getTextContent() ? "\n\n" : "") + text);
-            },
-            { discrete: true },
-          ),
+        restore: (content) => {
+          if (readContent(editor.getEditorState()).equals(content)) return;
+          editor.update(() => $restoreContent(content), { discrete: true });
+        },
         focus: () => editor.focus(),
         revision: () => revision.current,
       });
@@ -280,8 +271,6 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
           const binding = lookupExtensionByKey(COMPOSER_KEY_BINDING, composerKeyBindingKey(event));
           if (!binding) return false;
           const handled = binding.handler({
-            value: editor.getEditorState().read(() => $getRoot().getTextContent()),
-            onChange: (text) => editor.update(() => $replaceText(text)),
             submit: () =>
               submitComposer({
                 draft: access.captureSubmission(),
@@ -327,14 +316,11 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
       ignoreSelectionChange
       ignoreHistoryMergeTagChange={false}
       onChange={(state) => {
-        const content = JSON.stringify(state.toJSON());
-        if (content === lastContent.current) return;
+        const content = readContent(state);
+        if (lastContent.current?.equals(content)) return;
         lastContent.current = content;
         revision.current = {};
-        access.checkpointDocument(
-          state.read(() => $getRoot().getTextContent()),
-          content,
-        );
+        access.checkpoint(content);
       }}
     />
   );
@@ -349,16 +335,16 @@ interface EditorProps {
 export function ComposerEditor({ inputRef, ...commands }: EditorProps) {
   const access = useComposer();
   const t = useT();
-  const [initial] = useState(() => access.initialDocument());
+  const [initial] = useState(() => access.initialContent());
   return (
     <LexicalComposer
       initialConfig={{
         namespace: "FlameComposer",
-        nodes: [FileReferenceNode],
+        nodes: COMPOSER_NODES,
         onError: (error) => {
           throw error;
         },
-        editorState: initial.document ?? (() => $replaceText(initial.text)),
+        editorState: () => $restoreContent(initial),
       }}
     >
       <div {...stylex.props(styles.host)}>

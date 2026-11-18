@@ -1,13 +1,13 @@
 import { type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
-import { CodeHighlightProvider, FontScaleProvider, TooltipProvider } from "@flame/ui";
+import { FontScaleProvider, TooltipProvider } from "@flame/ui";
 import { useUiFontSize } from "@/lib/appearance";
 import { createTheme } from "@/features/theme/adapters/theme";
 import { createAppearancePlugins } from "@/features/theme/index";
 import { ThemeProvider } from "@/features/theme/public/theme";
 import { defaultAppearance } from "@/features/theme/kit/appearance";
 import { ApplicationCalloutLabels } from "@/app/calloutLabels";
-import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
+import { CodeHighlighting } from "@/lib/highlight/CodeHighlighting";
 import { i18nPlugin } from "@/features/i18n/index";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { selectLocale } from "@/features/i18n/application/localeSelection";
@@ -73,11 +73,11 @@ function LabPresentation({ children }: { children: ReactNode }) {
   return (
     <MotionConfig reducedMotion="user">
       <FontScaleProvider fontSize={fontSize}>
-        <CodeHighlightProvider component={HighlightedCodeSource}>
+        <CodeHighlighting>
           <TooltipProvider>
             <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
           </TooltipProvider>
-        </CodeHighlightProvider>
+        </CodeHighlighting>
       </FontScaleProvider>
     </MotionConfig>
   );

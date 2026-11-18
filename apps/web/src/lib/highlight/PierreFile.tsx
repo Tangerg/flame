@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
-import { File, WorkerPoolContext, type FileOptions } from "@pierre/diffs/react";
+import { useMemo, useRef, type ClipboardEvent } from "react";
+import { File, useWorkerPool, type FileOptions } from "@pierre/diffs/react";
 import { registerCustomCSSVariableTheme, type FileContents } from "@pierre/diffs";
-import { WorkerPoolManager } from "@pierre/diffs/worker";
-import workerSource from "@pierre/diffs/worker/worker-portable.js?raw";
 import { useScheme } from "@/lib/appearance";
 import { codeSyntaxColors, selectAllInReader } from "@flame/ui";
 
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
-const rendering = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
+export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
 export function PierreFile({
   source,
   language,
@@ -28,6 +26,8 @@ export function PierreFile({
   wrapped?: boolean;
 }) {
   const scheme = useScheme();
+  const pool = useWorkerPool();
+  if (!pool) throw new Error("code rendering requires its shared worker pool");
   const file = useMemo<FileContents>(
     () => ({
       name: path,
@@ -37,44 +37,11 @@ export function PierreFile({
     }),
     [path, language, source],
   );
-  const [prepared, setPrepared] = useState<
-    { file: FileContents; pool: WorkerPoolManager } | { file: FileContents; error: unknown }
-  >();
   const root = useRef<ShadowRoot | null>(null);
   const presentedIntent = useRef<{ file: FileContents; intent: object } | null>(null);
-  useEffect(() => {
-    const pool = new WorkerPoolManager(
-      {
-        poolSize: 1,
-        totalASTLRUCacheSize: 1,
-        workerFactory: () => {
-          const url = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
-          try {
-            return new Worker(url, { type: "module" });
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        },
-      },
-      rendering,
-    );
-    let active = true;
-    void pool.primeFileHighlightCache(file).then(
-      () => {
-        if (active) setPrepared({ file, pool });
-      },
-      (error: unknown) => {
-        if (active) setPrepared({ file, error });
-      },
-    );
-    return () => {
-      active = false;
-      pool.terminate();
-    };
-  }, [file]);
   const options = useMemo<FileOptions<undefined, undefined>>(
     () => ({
-      ...rendering,
+      ...CODE_RENDERING,
       themeType: scheme,
       overflow: wrapped ? "wrap" : "scroll",
       disableFileHeader: true,
@@ -144,8 +111,6 @@ export function PierreFile({
     event.preventDefault();
     event.clipboardData.setData("text/plain", parts.join(""));
   };
-  if (!prepared || prepared.file !== file) return <span role="status" aria-busy="true" />;
-  if ("error" in prepared) throw prepared.error;
   return (
     // Shadow-root selection needs a select-all boundary inside the host reader's tab stop.
     <div
@@ -155,9 +120,7 @@ export function PierreFile({
         if (root.current) selectAllInReader(event, root.current);
       }}
     >
-      <WorkerPoolContext value={prepared.pool}>
-        <File file={file} options={options} />
-      </WorkerPoolContext>
+      <File file={file} options={options} />
     </div>
   );
 }

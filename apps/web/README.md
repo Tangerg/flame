@@ -266,17 +266,21 @@ the unread bytes intact and requires explicit recovery. Copy draft text captures
 the unconfirmed text and separate pasted-text records on request, including
 inactive targets, without copying connection credentials or claiming images are
 durable. A late copy cannot confirm a later draft. Recovery reads its text synchronously
-in the click and starts clipboard I/O in that same activation. Its persistent
-diagnostics and ordinary short copy feedback share `useCopyAttempt` qualification.
+in the click and starts clipboard I/O in that same activation. It reports through
+the same immutable copy receipt as every other copy action.
 The Retry presentation captures its original input on focus and returns it in
 pre-exit layout cleanup only while Retry still holds focus. A stable ref merely
 binds the button; a failed retry or a ref rebind cannot return focus.
 Hiding that presentation or replacing its Composer owner permanently retires the
 capture. After reveal, a new focus entry can capture the original input again.
 
-Draft storage accepts only the current IndexedDB shape. There is no older-format
-reader, import lifecycle or localStorage draft projection. Retain obsolete browser
-data separately when starting with fresh storage.
+Draft storage is IndexedDB schema version 2. Each Session record holds the ordered
+draft content of text and file references plus its paste references. Opening a
+version 1 database converts its records once inside the upgrade transaction: a
+stored editor checkpoint whose every node is understood keeps its file references,
+and any other record keeps its complete text. An unrecognized record stays untouched
+and reading it requires explicit recovery. No runtime reader or localStorage
+projection of an older shape remains.
 
 The page installs an exit warning only while the Composer owner reports
 unconfirmed changes. Cancelling departure and persisted page transitions keep
@@ -325,13 +329,20 @@ input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
 
-Lexical owns the Composer document, selection, composition, undo and typeahead.
-The application checkpoints its serialized document in one direction. Accepted
-file candidates create typed FileReferenceNode tokens; manually authored `@text`
-remains ordinary text. The persistence checkpoint does not overwrite a mounted
-editor. Source changes remount with the captured checkpoint. Submission captures
-a content revision, so a late acceptance cannot clear newer edits. Enter inserts
-a newline, Mod+Enter submits, and Mod+ArrowUp/Down explicitly recalls history.
+A draft has one representation: ordered content of text and file references.
+Its prompt text is a projection, because Runtime input carries text. Lexical owns
+the mounted document, selection, composition, undo and typeahead; plain text is one
+paragraph with line breaks, so a restored newline stays one newline. The editor
+checkpoints its content in one direction. Accepted file candidates create typed
+references; manually authored `@text` remains ordinary text. Commands that change
+the draft (history recall, quoting, restoring a paste, message editing, starting a
+reference or command) run once as a domain transition whether or not an editor is
+mounted, and a mounted editor then presents the result. References therefore
+survive every command, and an unchanged checkpoint is not an edit, so recall keeps
+its place. Composer key bindings receive submission only, never a text writer.
+Source changes remount with the captured checkpoint. Submission captures a content
+revision, so a late acceptance cannot clear newer edits. Enter inserts a newline,
+Mod+Enter submits, and Mod+ArrowUp/Down explicitly recalls history.
 TanStack Hotkeys owns shortcut parsing, recording, matching and display. Commands
 run in the bubble phase and respect defaultPrevented and editable ownership.
 
@@ -938,22 +949,26 @@ captured error or cancellation reason, and unconfirmed effects. The "No messages
 placeholder appears only when the reader would otherwise be empty, with neither
 captured messages nor such run details.
 
-Conversation Find follows rendered message changes while its query is open.
-Refreshes retain the selected occurrence in its message, rebuild current highlight
-ranges and preserve focus and reading position. Earlier details keep a still-rendered
-word current; replaced text uses its message occurrence as the existing fallback.
-Query changes and explicit
-navigation reveal a match. While Find owns focus, reflow retains an already
-visible current word inside its actual transcript and nested code clips. Manual
-scrolling away, later outside focus, hiding and closing retire that reading
+Conversation Find matches rendered text, so while Find is open the transcript
+reader renders every row and the first query already sees all of them. Legend
+keeps every container it has filled, so closing Find starts a fresh windowed list
+at the same reading position, or at the end when it was following. Matches follow the reader's row order rather than virtual container
+order. Refreshes retain the selected occurrence in its message, rebuild current
+highlight ranges and preserve focus and reading position. Earlier details keep a
+still-rendered word current; replaced text uses its message occurrence as the
+existing fallback. Query changes and explicit navigation reveal a match: nested
+row readers scroll natively and the list's public `scrollIndexIntoView` moves the
+transcript. While Find owns focus, a visible current word holds its row through
+reflow and appended output with the same public anchoring a focused row uses.
+Manual scrolling away, later outside focus, hiding and closing retire that reading
 witness. Content-only refresh does not reveal another match.
 
-The Conversation publishes its actual MessageStream follow controller through
-`ui/agent/stream-follow.tsx`; Find and Jump to bottom consume the same scoped
-controller. Find stops pending bottom follow only when its destination would
-hide the current word. There is no global follow registry or second follow mode.
-The Find scope owns Escape and query navigation; zero-result navigation buttons
-keep focus while refusing activation.
+The Conversation publishes its transcript reader, the list handle and its end state,
+through `ui/agent/transcript-reader.tsx`. Find, Jump to bottom and the turn rail
+consume it; none writes the transcript's scroll offset directly. The turn rail takes
+its turns from conversation data and their extents from the list's layout of every
+row, and jumps by message key. The Find scope owns Escape and query navigation;
+zero-result navigation buttons keep focus while refusing activation.
 
 Conversation notices share one named keyboard reader, capped at 40% of their
 conversation pane. Long Run errors, working-directory notices and contributed
@@ -985,25 +1000,16 @@ their existing owners. Save failures lead with the command reason, followed by
 the captured image description, so changing the current image cannot misidentify
 the failed save.
 
-Code highlighting uses one lazily created inline Worker. The host imports only the
-requested immutable grammar data through its existing language loaders; the Worker
-owns grammar registration and synchronous tokenization. Each mounted reader has at
-most one latest waiting request behind the single in-flight job. Changed source,
-language, theme and retired mounts cannot publish old HTML or cache entries. Literal
-code remains readable while the existing debounce and grammar load are pending.
-The same path serves transcript blocks and file readers. The existing HTML LRU stays
-on the host; a Worker does not establish a new cache or a heap-size guarantee.
+Transcript code blocks and file readers render through Pierre File with one shared
+worker pool from Pierre's `WorkerPoolContextProvider`, installed beside the code
+highlight provider in each presentation root. Code appears as literal text at once
+and highlighting follows; changing source updates the same reader instead of
+creating a worker. The pool's workers are Blob module workers, which inherit the
+page CSP.
 
-Streaming Markdown retains parsed stable blocks and reparses its mutable tail.
-Reference definitions, footnotes and multiline math delimiters that can change prior
-context take an explicit whole-document path. Only the mutable tail is repaired for
-streaming presentation. Tag renderers retain their component identity when that
-context changes, keeping an unchanged table's selection and open preview attached
-to its reader. Table copying reads the current block's exact table source.
-Replacements and rollbacks retire cached blocks. Smooth
-reveal retains word segmentation before hard line breaks and a moving word cursor;
-the current line is resegmented through Intl, including contextual scripts and
-punctuation. A single growing paragraph can still require paragraph-sized work.
+Tag renderers retain their component identity across Markdown updates, keeping an
+unchanged table's selection and open preview attached to its reader. Table copying
+reads the current block's exact table source.
 
 Markdown is parsed as one current document by react-markdown/unified. Standard
 CommonMark/GFM structure owns lists, references, tables and fence completion;

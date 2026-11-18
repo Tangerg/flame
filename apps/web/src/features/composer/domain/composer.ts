@@ -1,9 +1,9 @@
 import {
+  DraftContent,
   type ComposerImage,
   type ComposerImageAttachment,
   type ImageReadResult,
   type PastedText,
-  joinDraftParts,
 } from "@/features/composer/domain/draft";
 import { countLines } from "@/features/composer/domain/largePaste";
 export const SCRATCH_SESSION_ID = "";
@@ -11,21 +11,23 @@ export const SCRATCH_SESSION_ID = "";
 const HISTORY_CAP = 50;
 
 export interface ComposerDraftText {
-  value: string;
-  document: string | null;
+  content: DraftContent;
   pastes: readonly Pick<PastedText, "id" | "text">[];
 }
 
 export class ComposerDraft {
-  private static readonly EMPTY = new ComposerDraft("", Object.freeze([]), Object.freeze([]));
+  private static readonly EMPTY = new ComposerDraft(
+    DraftContent.empty(),
+    Object.freeze([]),
+    Object.freeze([]),
+  );
 
   readonly images: readonly ComposerImage[];
 
   private constructor(
-    readonly value: string,
+    readonly content: DraftContent,
     readonly imageAttachments: readonly ComposerImageAttachment[],
     readonly pastes: readonly PastedText[],
-    readonly document: string | null = null,
   ) {
     this.images = imageAttachments.flatMap((attachment) =>
       attachment.status === "ready"
@@ -45,8 +47,12 @@ export class ComposerDraft {
     return ComposerDraft.EMPTY;
   }
 
-  static restoreText(value: string, document: string | null = null): ComposerDraft {
-    return new ComposerDraft(value, [], [], document);
+  static restore(content: DraftContent): ComposerDraft {
+    return new ComposerDraft(content, [], []);
+  }
+
+  get value(): string {
+    return this.content.text;
   }
 
   get attachmentsReady(): boolean {
@@ -55,8 +61,7 @@ export class ComposerDraft {
 
   hasSameText(other: ComposerDraft): boolean {
     return (
-      this.value === other.value &&
-      this.document === other.document &&
+      this.content.equals(other.content) &&
       this.pastes.length === other.pastes.length &&
       this.pastes.every(
         (paste, index) =>
@@ -72,52 +77,43 @@ export class ComposerDraft {
     );
   }
 
-  withValue(value: string): ComposerDraft {
-    return value === this.value && this.document === null
+  withContent(content: DraftContent): ComposerDraft {
+    return content.equals(this.content)
       ? this
-      : new ComposerDraft(value, this.imageAttachments, this.pastes);
-  }
-
-  withDocument(value: string, document: string): ComposerDraft {
-    return value === this.value && document === this.document
-      ? this
-      : new ComposerDraft(value, this.imageAttachments, this.pastes, document);
+      : new ComposerDraft(content, this.imageAttachments, this.pastes);
   }
 
   hydrateText(draft: ComposerDraft): ComposerDraft {
-    return new ComposerDraft(draft.value, this.imageAttachments, draft.pastes, draft.document);
+    return new ComposerDraft(draft.content, this.imageAttachments, draft.pastes);
   }
 
   withImages(images: readonly ComposerImage[]): ComposerDraft {
     return new ComposerDraft(
-      this.value,
+      this.content,
       images.map((image) => ({ ...image, status: "ready" })),
       this.pastes,
-      this.document,
     );
   }
 
   appendImages(images: readonly ComposerImage[]): ComposerDraft {
     return new ComposerDraft(
-      this.value,
+      this.content,
       [
         ...this.imageAttachments,
         ...images.map((image) => ({ ...image, status: "ready" as const })),
       ],
       this.pastes,
-      this.document,
     );
   }
 
   beginImageRead(images: readonly { id: string; name: string }[]): ComposerDraft {
     return new ComposerDraft(
-      this.value,
+      this.content,
       [
         ...this.imageAttachments,
         ...images.map((image) => ({ ...image, status: "pending" as const })),
       ],
       this.pastes,
-      this.document,
     );
   }
 
@@ -129,25 +125,23 @@ export class ComposerDraft {
         ? { ...result.image, id, name: pending.name, status: "ready" }
         : { id, name: pending.name, status: "failed" };
     return new ComposerDraft(
-      this.value,
+      this.content,
       this.imageAttachments.map((attachment) => (attachment === pending ? settled : attachment)),
       this.pastes,
-      this.document,
     );
   }
 
   removeImage(id: string): ComposerDraft {
     if (!this.imageAttachments.some((attachment) => attachment.id === id)) return this;
     return new ComposerDraft(
-      this.value,
+      this.content,
       this.imageAttachments.filter((attachment) => attachment.id !== id),
       this.pastes,
-      this.document,
     );
   }
 
   withPastes(pastes: readonly PastedText[]): ComposerDraft {
-    return new ComposerDraft(this.value, this.imageAttachments, pastes, this.document);
+    return new ComposerDraft(this.content, this.imageAttachments, pastes);
   }
 
   editPaste(id: string, text: string): ComposerDraft {
@@ -160,14 +154,15 @@ export class ComposerDraft {
   restorePaste(id: string, text: string): ComposerDraft {
     if (!this.pastes.some((paste) => paste.id === id)) return this;
     return new ComposerDraft(
-      text.trim() ? joinDraftParts([this.value.trimEnd(), text]) : this.value,
+      text.trim() ? this.content.append(text) : this.content,
       this.imageAttachments,
       this.pastes.filter((paste) => paste.id !== id),
     );
   }
 }
 
-type Recall = { readonly active: false } | { readonly active: true; at: number; saved: string };
+type Recall =
+  { readonly active: false } | { readonly active: true; at: number; saved: DraftContent };
 
 const NOT_RECALLING: Recall = { active: false };
 
@@ -188,7 +183,7 @@ export class Composer {
     for (const [sessionId, text] of texts) {
       drafts.set(
         sessionId,
-        ComposerDraft.restoreText(text.value, text.document).withPastes(
+        ComposerDraft.restore(text.content).withPastes(
           text.pastes.map(({ id, text }) => ({ id, text, lines: countLines(text) })),
         ),
       );
@@ -207,11 +202,10 @@ export class Composer {
   durableDraftTexts(): Map<string, ComposerDraftText> {
     const texts = new Map<string, ComposerDraftText>();
     for (const [sessionId, draft] of this.drafts) {
-      if (!draft.value && draft.pastes.length === 0) continue;
-      // Flattening a paste into value could turn authored content into a slash command.
+      if (draft.content.isEmpty && draft.pastes.length === 0) continue;
+      // Flattening a paste into the content could turn authored text into a slash command.
       texts.set(sessionId, {
-        value: draft.value,
-        document: draft.document,
+        content: draft.content,
         pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
       });
     }
@@ -233,12 +227,14 @@ export class Composer {
     return new Composer(drafts, this.rings, this.activeSessionId, this.recall);
   }
 
+  // An unchanged draft is not an edit, so restoring recalled text into the editor keeps the recall.
   edit(change: (draft: ComposerDraft) => ComposerDraft): Composer {
-    return this.replaceDraft(change(this.draft), NOT_RECALLING);
+    const draft = change(this.draft);
+    return draft === this.draft ? this : this.replaceDraft(draft, NOT_RECALLING);
   }
 
   clear(): Composer {
-    return this.replaceDraft(ComposerDraft.restoreText(""), NOT_RECALLING);
+    return this.replaceDraft(ComposerDraft.empty(), NOT_RECALLING);
   }
 
   settleImageRead(sessionId: string, id: string, result: ImageReadResult): Composer {
@@ -259,7 +255,7 @@ export class Composer {
     const recorded = historyText ? this.record(historyText, sessionId) : this;
     if (this.drafts.get(sessionId) !== draft) return recorded;
     return new Composer(
-      new Map(this.drafts).set(sessionId, ComposerDraft.restoreText("")),
+      new Map(this.drafts).set(sessionId, ComposerDraft.empty()),
       recorded.rings,
       this.activeSessionId,
       sessionId === this.activeSessionId ? NOT_RECALLING : this.recall,
@@ -295,23 +291,29 @@ export class Composer {
     const ring = this.ring();
     if (ring.length === 0) return null;
     const at = this.recall.active ? Math.min(this.recall.at + 1, ring.length - 1) : 0;
-    const saved = this.recall.active ? this.recall.saved : this.draft.value;
-    return this.replaceDraft(this.draft.withValue(ring[ring.length - 1 - at]!), {
-      active: true,
-      at,
-      saved,
-    });
+    const saved = this.recall.active ? this.recall.saved : this.draft.content;
+    return this.replaceDraft(
+      this.draft.withContent(DraftContent.fromText(ring[ring.length - 1 - at]!)),
+      {
+        active: true,
+        at,
+        saved,
+      },
+    );
   }
 
   recallNewer(): Composer | null {
     if (!this.recall.active) return null;
     const at = this.recall.at - 1;
     const ring = this.ring();
-    if (at < 0) return this.replaceDraft(this.draft.withValue(this.recall.saved), NOT_RECALLING);
-    return this.replaceDraft(this.draft.withValue(ring[ring.length - 1 - at]!), {
-      ...this.recall,
-      at,
-    });
+    if (at < 0) return this.replaceDraft(this.draft.withContent(this.recall.saved), NOT_RECALLING);
+    return this.replaceDraft(
+      this.draft.withContent(DraftContent.fromText(ring[ring.length - 1 - at]!)),
+      {
+        ...this.recall,
+        at,
+      },
+    );
   }
 
   private ring(): readonly string[] {

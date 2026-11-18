@@ -22,6 +22,7 @@ import {
   type as typeStep,
 } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
+import { useTranscriptReader } from "@/ui/agent/transcript-reader";
 const tr = stylex.create({
   tickBar: {
     height: "2px",
@@ -72,10 +73,14 @@ const TRACK = FLOOR + SHARE + MAGNIFY;
 export function TurnRail() {
   const t = useT();
   const messages = useActiveConversationMessages();
-  const { visibleTurnId, turns: extents } = useTranscriptMap();
+  const reader = useTranscriptReader();
   const [reached, setReached] = useState<number | null>(null);
   const turns = foldExchanges(messages);
-  if (turns.length < 2) return null;
+  const { visibleTurnId, turns: extents } = useTranscriptMap(
+    reader?.list ?? null,
+    turns.map((turn) => turn.id),
+  );
+  if (turns.length < 2 || !reader) return null;
 
   const shareOf = (id: string) => extents.find((extent) => extent.id === id)?.share ?? 0;
   const swell = (index: number) =>
@@ -105,7 +110,7 @@ export function TurnRail() {
                 onPointerEnter={() => setReached(index)}
                 onFocus={() => setReached(index)}
                 onBlur={() => setReached(null)}
-                onClick={() => scrollToTurn(turn.id)}
+                onClick={() => scrollToTurn(reader.list, turn.id)}
                 {...stylex.props(tr.tick)}
                 style={{ width: `${TRACK}px` } as CSSProperties}
               >

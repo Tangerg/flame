@@ -1,22 +1,83 @@
 import { z } from "zod";
 import { type ComposerDraftText, type ComposerDraft } from "@/features/composer/domain/composer";
+import { DraftContent, type DraftSegment } from "@/features/composer/domain/draft";
 
 const DATABASE = "flame.composer";
+const VERSION = 2;
 const DRAFT_STORE = "drafts";
 const PASTE_STORE = "pastes";
 const STORES = [DRAFT_STORE, PASTE_STORE];
 const pasteReference = z.object({ id: z.string().min(1), record: z.string().min(1) }).strict();
+const pasteReferences = z
+  .array(pasteReference)
+  .refine((pastes) => new Set(pastes.map((paste) => paste.id)).size === pastes.length);
+const draftSegment = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("text"), text: z.string().min(1) }).strict(),
+  z.object({ kind: z.literal("file"), path: z.string().min(1) }).strict(),
+]);
 const draftRecord = z
   .object({
     endpoint: z.string(),
     session: z.string(),
-    value: z.string(),
-    document: z.string().nullable(),
-    pastes: z
-      .array(pasteReference)
-      .refine((pastes) => new Set(pastes.map((paste) => paste.id)).size === pastes.length),
+    content: z.array(draftSegment),
+    pastes: pasteReferences,
   })
   .strict();
+const textDraftRecord = z
+  .object({
+    endpoint: z.string(),
+    session: z.string(),
+    value: z.string(),
+    document: z.string().nullable().optional(),
+    pastes: pasteReferences,
+  })
+  .strict();
+const lexicalNode: z.ZodType<LexicalNode> = z.lazy(() =>
+  z.union([
+    z.object({ type: z.literal("paragraph"), children: z.array(lexicalNode) }),
+    z.object({ type: z.enum(["text", "tab"]), text: z.string() }),
+    z.object({ type: z.literal("linebreak") }),
+    z.object({ type: z.literal("file-reference"), filePath: z.string().min(1) }),
+  ]),
+);
+type LexicalNode =
+  | { type: "paragraph"; children: LexicalNode[] }
+  | { type: "text" | "tab"; text: string }
+  | { type: "linebreak" }
+  | { type: "file-reference"; filePath: string };
+const lexicalDocument = z.object({
+  root: z.object({ children: z.array(lexicalNode) }),
+});
+
+/**
+ * Version 1 kept a text projection beside an optional editor checkpoint. Only a
+ * checkpoint whose every node is understood yields typed references; any other
+ * record keeps its complete text.
+ */
+function upgradedContent(record: z.infer<typeof textDraftRecord>): DraftSegment[] {
+  const parsed = record.document ? lexicalDocument.safeParse(safeJson(record.document)) : null;
+  if (!parsed?.success) return [...DraftContent.fromText(record.value).segments];
+  const segments: DraftSegment[] = [];
+  const visit = (node: LexicalNode) => {
+    if (node.type === "paragraph") node.children.forEach(visit);
+    else if (node.type === "linebreak") segments.push({ kind: "text", text: "\n" });
+    else if (node.type === "file-reference") segments.push({ kind: "file", path: node.filePath });
+    else segments.push({ kind: "text", text: node.text });
+  };
+  parsed.data.root.children.forEach((paragraph, index) => {
+    if (index > 0) segments.push({ kind: "text", text: "\n" });
+    visit(paragraph);
+  });
+  return [...DraftContent.of(segments).segments];
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
 const pasteRecord = z
   .object({
     record: z.string().min(1),
@@ -64,18 +125,33 @@ export class DraftDatabase {
     if (this.closed) return Promise.reject(new Error("draft database is closed"));
     if (!this.connection) {
       this.connection = new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open(DATABASE, 1);
+        const request = indexedDB.open(DATABASE, VERSION);
         let refused = false;
-        request.onupgradeneeded = () => {
+        request.onupgradeneeded = (event) => {
           const db = request.result;
-          db.createObjectStore(DRAFT_STORE, { keyPath: ["endpoint", "session"] }).createIndex(
-            "endpoint",
-            "endpoint",
-          );
-          db.createObjectStore(PASTE_STORE, { keyPath: "record" }).createIndex(
-            "endpoint",
-            "endpoint",
-          );
+          if (event.oldVersion === 0) {
+            db.createObjectStore(DRAFT_STORE, { keyPath: ["endpoint", "session"] }).createIndex(
+              "endpoint",
+              "endpoint",
+            );
+            db.createObjectStore(PASTE_STORE, { keyPath: "record" }).createIndex(
+              "endpoint",
+              "endpoint",
+            );
+            return;
+          }
+          // An unrecognized record stays untouched so reading reports it for recovery.
+          const cursorRequest = request.transaction!.objectStore(DRAFT_STORE).openCursor();
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) return;
+            const record = textDraftRecord.safeParse(cursor.value);
+            if (record.success) {
+              const { endpoint, session, pastes } = record.data;
+              cursor.update({ endpoint, session, content: upgradedContent(record.data), pastes });
+            }
+            cursor.continue();
+          };
         };
         request.onblocked = () => {
           refused = true;
@@ -140,8 +216,7 @@ export class DraftDatabase {
       });
       retained.set(draft.session, attached);
       texts.set(draft.session, {
-        value: draft.value,
-        document: draft.document,
+        content: DraftContent.of(draft.content),
         pastes: attached.map(({ id, text }) => ({ id, text })),
       });
     }
@@ -166,8 +241,7 @@ export class DraftDatabase {
       );
       return {
         session,
-        value: draft.value,
-        document: draft.document,
+        content: draft.content,
         pastes,
         added: pastes.filter((paste) => !previous.includes(paste)),
       };
@@ -181,7 +255,7 @@ export class DraftDatabase {
       failure.cause = cause;
       transaction.abort();
     };
-    for (const { session, value, document, pastes, added } of prepared) {
+    for (const { session, content, pastes, added } of prepared) {
       const request = draftStore.get([endpoint, session]);
       request.onsuccess = () => {
         try {
@@ -203,12 +277,11 @@ export class DraftDatabase {
               pasteStore.delete(reference.record);
           }
           for (const paste of added) pasteStore.add(paste);
-          if (value || pastes.length)
+          if (!content.isEmpty || pastes.length)
             draftStore.put({
               endpoint,
               session,
-              value,
-              document,
+              content: content.segments,
               pastes: pastes.map(({ id, record }) => ({ id, record })),
             });
           else draftStore.delete([endpoint, session]);

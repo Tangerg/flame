@@ -1,6 +1,4 @@
 interface ComposerKeyContext {
-  value: string;
-  onChange: (next: string) => void;
   submit: () => void;
   event: KeyboardEvent;
 }

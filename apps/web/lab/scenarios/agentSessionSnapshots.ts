@@ -1030,6 +1030,24 @@ export const LONG_RESPONSE_MARKDOWN = [
 
 const LONG_RESPONSE = message("agentMessage", "item_long_response", LONG_RESPONSE_MARKDOWN);
 
+// Enough exchanges that most rows sit outside the transcript reader's render window.
+const LONG_CONVERSATION = Array.from({ length: 40 }, (_, index) => {
+  const turn = index + 1;
+  return [
+    message("userMessage", `item_conversation_prompt_${turn}`, `Question ${turn}: what changed?`),
+    message(
+      "agentMessage",
+      `item_conversation_answer_${turn}`,
+      [
+        `Checkpoint ${turn} records the change as marker${turn}.`,
+        "",
+        "The reader keeps this paragraph long enough to give every answer a realistic height,",
+        "so the conversation extends far beyond one viewport and its render window.",
+      ].join("\n"),
+    ),
+  ];
+}).flat();
+
 export const CODE_READING_SOURCE = Array.from(
   { length: 48 },
   (_, index) =>
@@ -1804,6 +1822,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, LONG_RESPONSE],
     pendingInterruptSets: [],
   },
+  "long-conversation": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: LONG_CONVERSATION,
+    pendingInterruptSets: [],
+  },
   "prose-blocks": {
     runs: [
       run("finished", {
@@ -2255,6 +2283,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   recovery: [],
   delegated: [],
   "long-content": [],
+  "long-conversation": [],
   "prose-blocks": [],
   "code-reading": [],
   "code-history": [],

@@ -7,7 +7,6 @@ import {
 } from "@/features/connection/public/services";
 import { type ComposerEditor, type ComposerStatePort } from "@/features/composer/application/state";
 import { createComposerStore } from "@/features/composer/adapters/composerStore";
-import { joinDraftParts } from "@/features/composer/domain/draft";
 export function createComposer(
   sessions: AgentSessions,
   endpoint: () => string,
@@ -55,22 +54,19 @@ export function createComposer(
     if (focusPresentation) focusPresentation.present(focusOriginalTarget);
     else focusOriginalTarget();
   };
-  const replaceEditor = () => editor?.replace(useComposerStore.getState().composer.draft.value);
+  // Draft transitions run once in the domain; a mounted editor then shows their result.
+  const presentDraft = () => editor?.restore(useComposerStore.getState().composer.draft.content);
   const access: ComposerStatePort = {
     useDraftKey: () =>
       useComposerStore((state) => JSON.stringify([endpoint(), state.composer.activeSessionId])),
-    initialDocument: () => {
-      const draft = useComposerStore.getState().composer.draft;
-      return { text: draft.value, document: draft.document };
-    },
+    initialContent: () => useComposerStore.getState().composer.draft.content,
     registerEditor: (value) => {
       editor = value;
       return () => {
         if (editor === value) editor = null;
       };
     },
-    checkpointDocument: (text, document) =>
-      useComposerStore.getState().checkpointDocument(text, document),
+    checkpoint: (content) => useComposerStore.getState().checkpoint(content),
     focus,
     captureFocus: () => {
       const target = focusTarget;
@@ -102,9 +98,15 @@ export function createComposer(
       };
     },
     useText: () => useComposerStore((state) => state.composer.draft.value),
-    useSetText: () => (text) => {
-      if (editor) editor.replace(text);
-      else useComposerStore.getState().setValue(text);
+    startFileReference: () => {
+      useComposerStore.getState().startFileReference();
+      presentDraft();
+      return useComposerStore.getState().composer.draft.value;
+    },
+    startSlashCommand: () => {
+      useComposerStore.getState().startSlashCommand();
+      presentDraft();
+      return useComposerStore.getState().composer.draft.value;
     },
     usePersistenceState: () => useComposerStore((state) => state.persistenceState),
     retryPersistence: owner.retryPersistence,
@@ -119,14 +121,14 @@ export function createComposer(
           if (capturedEditor && editor === capturedEditor && capturedEditor.revision() !== revision)
             return false;
           const consumed = draft.consume(historyText);
-          if (consumed && editor === capturedEditor) editor?.replace("");
+          if (consumed && editor === capturedEditor) presentDraft();
           return consumed;
         },
       };
     },
     replaceDraft: (input) => {
       useComposerStore.getState().replaceDraft(input);
-      replaceEditor();
+      presentDraft();
       presentFocus(() => focus());
     },
     beginDraftReplacement: () => {
@@ -135,7 +137,7 @@ export function createComposer(
       presentFocus(() => focus());
       return (input) => {
         if (!replace(input)) return false;
-        replaceEditor();
+        presentDraft();
         // A fast rollback can settle before the original presentation request.
         const element = target?.element;
         if (target && element && focusTarget === target && document.activeElement === element) {
@@ -153,10 +155,8 @@ export function createComposer(
       };
     },
     appendText: (text) => {
-      const store = useComposerStore.getState();
-      const value = joinDraftParts([store.composer.draft.value.trimEnd(), text]);
-      if (editor) editor.append(text);
-      else store.setValue(value);
+      useComposerStore.getState().appendText(text);
+      presentDraft();
       presentFocus(() => focus());
     },
     useImageAttachments: () => useComposerStore((state) => state.composer.draft.imageAttachments),
@@ -190,23 +190,17 @@ export function createComposer(
     useRemovePaste: () => useComposerStore((state) => state.removePaste),
     useEditPaste: () => useComposerStore((state) => state.editPaste),
     useRestorePaste: () => (id, text) => {
-      const state = useComposerStore.getState();
-      if (!editor) {
-        state.restorePaste(id, text);
-        return;
-      }
-      if (!state.composer.draft.pastes.some((paste) => paste.id === id)) return;
-      state.removePaste(id);
-      if (text.trim()) editor.append(text);
+      useComposerStore.getState().restorePaste(id, text);
+      presentDraft();
     },
     recallPreviousHistory: () => {
       const recalled = useComposerStore.getState().historyPrev();
-      if (recalled) replaceEditor();
+      if (recalled) presentDraft();
       return recalled;
     },
     recallNextHistory: () => {
       const recalled = useComposerStore.getState().historyNext();
-      if (recalled) replaceEditor();
+      if (recalled) presentDraft();
       return recalled;
     },
     getModelPreference: () => {

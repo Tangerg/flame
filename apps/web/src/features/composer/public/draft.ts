@@ -9,10 +9,12 @@ export function useComposerText(): string {
   return composerAccess.useText();
 }
 
-export function useSetComposerText(): (value: string) => void {
-  const composerAccess = useComposer();
+export function startComposerFileReference(composerAccess: ComposerAccess): string {
+  return composerAccess.startFileReference();
+}
 
-  return composerAccess.useSetText();
+export function startComposerSlashCommand(composerAccess: ComposerAccess): string {
+  return composerAccess.startSlashCommand();
 }
 
 export function captureComposerSubmission(composerAccess: ComposerAccess) {

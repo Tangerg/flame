@@ -1,4 +1,5 @@
 import {
+  type DraftContent,
   type ComposerDraftInput,
   type ComposerImage,
   type ComposerImageAttachment,
@@ -31,10 +32,10 @@ export interface ComposerImageIntake {
   addFiles(files: File[]): void;
 }
 
+// The mounted editor owns the live document; the store keeps its checkpoint.
 export interface ComposerEditor {
   readonly element: HTMLElement;
-  replace(text: string): void;
-  append(text: string): void;
+  restore(content: DraftContent): void;
   focus(): void;
   revision(): object;
 }
@@ -45,11 +46,12 @@ export interface ComposerStatePort {
   registerFocusTarget(element: HTMLElement | null): () => void;
   registerFocusPresentation(present: (focus: () => void) => void): () => void;
   useDraftKey(): string;
-  initialDocument(): { text: string; document: string | null };
+  initialContent(): DraftContent;
   registerEditor(editor: ComposerEditor): () => void;
-  checkpointDocument(text: string, document: string): void;
+  checkpoint(content: DraftContent): void;
   useText(): string;
-  useSetText(): (value: string) => void;
+  startFileReference(): string;
+  startSlashCommand(): string;
   usePersistenceState(): ComposerPersistenceState;
   retryPersistence(): void;
   getRecoveryDrafts(): string;

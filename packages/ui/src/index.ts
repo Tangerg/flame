@@ -164,6 +164,10 @@ export {
 
 export { handoffFocus } from "./focus";
 
-export { ReadingList, type ReadingListHandle } from "./reading-list";
+export {
+  ReadingList,
+  readingRow,
+  type ReadingListHandle,
+} from "./reading-list";
 
 export { codeSyntaxColors } from "./code-syntax";

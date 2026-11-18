@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { fileToInputImage } from "@/features/composer/public/input";
 import { countLines } from "@/features/composer/public/largePaste";
 import {
+  DraftContent,
   type ComposerDraftInput,
   type ComposerImage,
   type ImageReadResult,
@@ -22,8 +23,10 @@ interface ComposerState {
   persistenceState: ComposerPersistenceState;
 }
 interface ComposerActions {
-  setValue(value: string): void;
-  checkpointDocument(value: string, document: string): void;
+  checkpoint(content: DraftContent): void;
+  appendText(text: string): void;
+  startFileReference(): void;
+  startSlashCommand(): void;
   setModel(preference: ComposerModelPreference): void;
   clear(): void;
   captureSubmission(): ComposerSubmission;
@@ -245,8 +248,12 @@ export function createComposerStore() {
       );
     return {
       ...current.state,
-      setValue: (value) => edit((draft) => draft.withValue(value)),
-      checkpointDocument: (value, document) => edit((draft) => draft.withDocument(value, document)),
+      checkpoint: (content) => edit((draft) => draft.withContent(content)),
+      appendText: (text) => edit((draft) => draft.withContent(draft.content.append(text))),
+      startFileReference: () =>
+        edit((draft) => draft.withContent(draft.content.startFileReference())),
+      startSlashCommand: () =>
+        edit((draft) => draft.withContent(draft.content.startSlashCommand())),
       setModel: (modelPreference) => publish({ modelPreference }, false),
       clear: () => {
         cancelReads(current, current.state.composer.activeSessionId);
@@ -283,7 +290,10 @@ export function createComposerStore() {
           ...image,
           id: crypto.randomUUID(),
         }));
-        edit(() => ComposerDraft.restoreText(input.text).withImages(images), true);
+        edit(
+          () => ComposerDraft.restore(DraftContent.fromText(input.text)).withImages(images),
+          true,
+        );
       },
       captureDraftReplacement: () => {
         const generation = storageGeneration;

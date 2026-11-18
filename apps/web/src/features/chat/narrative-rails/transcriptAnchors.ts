@@ -1,20 +1,9 @@
 import { useEffect, useState } from "react";
-import { useActiveSessionId } from "@/features/agent/public/session";
-const TURN_ANCHOR_ATTR = "data-turn-id";
-
-const TURN_ROLE_ATTR = "data-turn-role";
-
-const TURN_SELECTOR = `[${TURN_ANCHOR_ATTR}]`;
+import type { ReadingListHandle } from "@flame/ui";
 
 const READING_LINE = 0.35;
 
-function scroller(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(".msg-scroll-viewport");
-}
-
-function turnElements(root: HTMLElement): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>(TURN_SELECTOR)];
-}
+const TURN_CLEARANCE = 24;
 
 interface TurnExtent {
   id: string;
@@ -46,81 +35,73 @@ function sameMap(a: TranscriptMap, b: TranscriptMap): boolean {
   });
 }
 
-export function useTranscriptMap(): TranscriptMap {
+// Unmounted turns have no DOM, so extents come from the list's own layout of every row.
+function measure(list: ReadingListHandle, turnIds: readonly string[]): TranscriptMap {
+  const state = list.getState();
+  const starts = turnIds.flatMap((id) => {
+    const index = state.indexByKey(id);
+    const top = index === undefined ? undefined : state.positionAtIndex(index);
+    return top === undefined ? [] : [{ id, top }];
+  });
+  const extents = starts.map((turn, i) => ({
+    id: turn.id,
+    top: turn.top,
+    height: (starts[i + 1]?.top ?? state.contentLength) - turn.top,
+  }));
+  const tallest = Math.max(1, ...extents.map((turn) => turn.height));
+  const line = state.scroll + state.scrollLength * READING_LINE;
+  let current: string | null = null;
+  for (const turn of extents) {
+    if (turn.top > line) break;
+    current = turn.id;
+  }
+  return {
+    visibleTurnId: current ?? extents[0]?.id ?? null,
+    turns: extents.map((turn) => ({ id: turn.id, share: turn.height / tallest })),
+  };
+}
+
+export function useTranscriptMap(
+  list: ReadingListHandle | null,
+  turnIds: readonly string[],
+): TranscriptMap {
   const [map, setMap] = useState<TranscriptMap>(EMPTY);
-  const sessionId = useActiveSessionId();
+  const identity = turnIds.join("\n");
 
   useEffect(() => {
-    const root = scroller();
-    if (!root) return;
-
+    if (!list) {
+      setMap(EMPTY);
+      return;
+    }
+    const ids = identity ? identity.split("\n") : [];
     let frame = 0;
-    const measure = () => {
+    const update = () => {
       frame = 0;
-      const rootTop = root.getBoundingClientRect().top;
-      const line = rootTop + root.clientHeight * READING_LINE;
-      const contentBottom = rootTop + root.scrollHeight - root.scrollTop;
-      const anchored = turnElements(root).map((element) => ({
-        id: element.getAttribute(TURN_ANCHOR_ATTR) ?? "",
-        role: element.getAttribute(TURN_ROLE_ATTR),
-        top: element.getBoundingClientRect().top,
-      }));
-      const exchanges = foldExchanges(anchored);
-      const measured = exchanges.map((exchange, i) => ({
-        id: exchange.id,
-        top: exchange.top,
-        height: (exchanges[i + 1]?.top ?? contentBottom) - exchange.top,
-      }));
-      const tallest = Math.max(1, ...measured.map((turn) => turn.height));
-
-      let current: string | null = null;
-      for (const turn of measured) {
-        if (turn.top > line) break;
-        current = turn.id;
-      }
-
-      const next: TranscriptMap = {
-        visibleTurnId: current ?? measured[0]?.id ?? null,
-        turns: measured.map((turn) => ({ id: turn.id, share: turn.height / tallest })),
-      };
+      const next = measure(list, ids);
       setMap((previous) => (sameMap(previous, next) ? previous : next));
     };
     const schedule = () => {
-      if (frame === 0) frame = requestAnimationFrame(measure);
+      if (frame === 0) frame = requestAnimationFrame(update);
     };
 
-    measure();
-    root.addEventListener("scroll", schedule, { passive: true });
-    const observer = new ResizeObserver(schedule);
-    observer.observe(root);
-    const mutations = new MutationObserver(schedule);
-    mutations.observe(root, { childList: true, subtree: true });
+    update();
+    const scroller = list.getScrollableNode();
+    scroller?.addEventListener("scroll", schedule, { passive: true });
+    const state = list.getState();
+    const stopPositions = state.listen("lastPositionUpdate", schedule);
+    const stopSize = state.listen("totalSize", schedule);
 
     return () => {
       if (frame !== 0) cancelAnimationFrame(frame);
-      root.removeEventListener("scroll", schedule);
-      observer.disconnect();
-      mutations.disconnect();
+      scroller?.removeEventListener("scroll", schedule);
+      stopPositions();
+      stopSize();
     };
-  }, [sessionId]);
+  }, [list, identity]);
 
   return map;
 }
 
-function scrollIntoTranscript(target: HTMLElement | null): void {
-  const root = scroller();
-  if (!root || !target) return;
-  const offset = target.getBoundingClientRect().top - root.getBoundingClientRect().top;
-  root.scrollTo({ top: root.scrollTop + offset - 24, behavior: "smooth" });
-}
-
-export function scrollToTurn(id: string): void {
-  scrollToAnchored(TURN_ANCHOR_ATTR, id);
-}
-
-function scrollToAnchored(attribute: string, value: string): void {
-  const root = scroller();
-  scrollIntoTranscript(
-    root?.querySelector<HTMLElement>(`[${attribute}="${CSS.escape(value)}"]`) ?? null,
-  );
+export function scrollToTurn(list: ReadingListHandle, id: string): void {
+  void list.scrollToKey({ key: id, animated: true, viewOffset: TURN_CLEARANCE });
 }

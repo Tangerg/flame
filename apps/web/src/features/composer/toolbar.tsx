@@ -26,7 +26,11 @@ import { contributeLayout } from "@/extensions/contributeHelpers";
 import { useT } from "@/lib/i18n/index";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useAddComposerImageFiles } from "@/features/composer/public/attachments";
-import { useComposerText, useSetComposerText } from "@/features/composer/public/draft";
+import {
+  startComposerFileReference,
+  startComposerSlashCommand,
+  useComposerText,
+} from "@/features/composer/public/draft";
 import { focusComposer } from "@/features/composer/public/focus";
 import { ModelPicker } from "@/features/composer/ui/ModelPicker";
 import { ReasoningEffortPill } from "@/features/composer/ui/ReasoningEffortPill";
@@ -38,12 +42,7 @@ function ContextMenuButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const canAttach = useSelectedModel()?.acceptsInput("image") ?? false;
   const value = useComposerText();
-  const setValue = useSetComposerText();
   const insertionFocus = useRef<string | null>(null);
-  const insert = (next: string) => {
-    insertionFocus.current = next;
-    setValue(next);
-  };
 
   return (
     <>
@@ -101,7 +100,9 @@ function ContextMenuButton() {
           </DropdownMenu.Item>
           <DropdownMenu.Item
             layout="glyph"
-            onClick={() => insert(value ? `${value.replace(/\s+$/, "")} @` : "@")}
+            onClick={() => {
+              insertionFocus.current = startComposerFileReference(composerAccess);
+            }}
           >
             <Icon name="file-text" size="md" />
             <span {...stylex.props(vocab.truncate)}>{t("composer.add.file")}</span>
@@ -109,7 +110,9 @@ function ContextMenuButton() {
           <DropdownMenu.Item
             layout="glyph"
             disabled={value.trim() !== ""}
-            onClick={() => insert("/")}
+            onClick={() => {
+              insertionFocus.current = startComposerSlashCommand(composerAccess);
+            }}
           >
             <Icon name="command" size="md" />
             <span {...stylex.props(vocab.min)}>

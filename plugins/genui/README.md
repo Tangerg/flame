@@ -6,6 +6,12 @@ message processor, graph validation, dynamic bindings, functions and surface
 model belong to A2UI. The host renders catalog components with `@flame/ui`.
 Zod 3 is isolated as the `zod3` dependency; other plugins keep Zod 4.
 
+The renderer and this plugin must share one `@a2ui/web_core` instance. The
+released `@a2ui/react` 0.15.0 depends on `@a2ui/markdown-it` 0.2.2, whose stale
+`^0.14.0` peer would otherwise install a second core. That package uses the core
+for types only, so the root manifest overrides only that peer edge to 0.15.0.
+Remove the override when a released `@a2ui/markdown-it` accepts the installed core.
+
 ## Discovery and presentation
 
 `ui_catalog` with `kind: "catalog"` returns the official protocol schema and the

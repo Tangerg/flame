@@ -33,8 +33,6 @@ export function MessageTurn({
   return (
     <motion.div
       {...enterUp}
-      data-turn-id={message.id}
-      data-turn-role={message.role}
       className={cn(
         stylex.props(styles.turn, previous && (continuation ? styles.continuation : styles.next))
           .className,

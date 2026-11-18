@@ -5,7 +5,7 @@ import {
   type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/public/attachments";
-import { formatFileReference } from "@/features/composer/application/draftContext";
+import { formatFileReference } from "@/features/composer/domain/draft";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 import { AgentComposerSurface } from "@/ui/agent/index";

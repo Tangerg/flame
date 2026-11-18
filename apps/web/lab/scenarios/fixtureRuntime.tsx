@@ -24,8 +24,8 @@ import { FIXTURE_DEFAULT_LOCALE, fixtureColors, fixtureTheme } from "../selectio
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import "@flame/ui/styles.css";
-import { CodeHighlightProvider, TooltipProvider, FontScaleProvider } from "@flame/ui";
-import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
+import { TooltipProvider, FontScaleProvider } from "@flame/ui";
+import { CodeHighlighting } from "@/lib/highlight/CodeHighlighting";
 import { queryClient } from "@/lib/queryClient";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -457,9 +457,9 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
           <QueryClientProvider client={queryClient}>
             <MotionConfig reducedMotion="user">
               <FontScaleProvider fontSize={visualClient.theme.store.getState().fontSize ?? 14}>
-                <CodeHighlightProvider component={HighlightedCodeSource}>
+                <CodeHighlighting>
                   <TooltipProvider>{children}</TooltipProvider>
-                </CodeHighlightProvider>
+                </CodeHighlighting>
               </FontScaleProvider>
             </MotionConfig>
           </QueryClientProvider>

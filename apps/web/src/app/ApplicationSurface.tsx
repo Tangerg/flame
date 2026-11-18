@@ -2,13 +2,12 @@ import { type ReactNode } from "react";
 import {
   ClipboardReceiptProvider,
   type CopyReceipt,
-  CodeHighlightProvider,
   FontScaleProvider,
   TooltipProvider,
 } from "@flame/ui";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
-import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
+import { CodeHighlighting } from "@/lib/highlight/CodeHighlighting";
 import { useUiFontSize } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
 import { ApplicationCalloutLabels } from "./calloutLabels";
@@ -32,11 +31,11 @@ export function ApplicationSurface({
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
         <FontScaleProvider fontSize={fontSize}>
-          <CodeHighlightProvider component={HighlightedCodeSource}>
+          <CodeHighlighting>
             <ApplicationCalloutLabels>
               <TooltipProvider>{content}</TooltipProvider>
             </ApplicationCalloutLabels>
-          </CodeHighlightProvider>
+          </CodeHighlighting>
         </FontScaleProvider>
       </MotionConfig>
     </QueryClientProvider>

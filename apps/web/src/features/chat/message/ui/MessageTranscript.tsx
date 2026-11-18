@@ -23,6 +23,7 @@ interface Props {
   listRef?: Ref<ReadingListHandle>;
   header?: ReactNode;
   footer?: ReactNode;
+  renderAll?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
   terminalFooter?: { messageId: string; content: ReactNode };
 }
@@ -80,6 +81,7 @@ export function MessageTranscript({
   listRef,
   header,
   footer,
+  renderAll,
   onFollowChange,
 }: Props) {
   const t = useT();
@@ -94,6 +96,7 @@ export function MessageTranscript({
       label={t("chat.conversation")}
       header={header}
       footer={footer}
+      renderAll={renderAll}
       onFollowChange={onFollowChange}
       renderItem={(row, index) => (
         <TurnErrorBoundary key={row.message.id} resetKey={row.message.id}>

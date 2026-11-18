@@ -32,6 +32,9 @@
   "overrides": {
     "katex": "0.19.1",
     "uuid": "14.0.3",
-    "image-size": "2.1.0"
+    "image-size": "2.1.0",
+    "@a2ui/markdown-it": {
+      "@a2ui/web_core": "0.15.0"
+    }
   }
 }
