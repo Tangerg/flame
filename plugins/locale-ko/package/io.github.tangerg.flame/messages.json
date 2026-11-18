@@ -435,6 +435,7 @@
   "question.action.previous": "이전 질문",
   "question.action.next": "다음 질문",
   "question.action.skip": "건너뛰기",
+  "question.action.skipSubmit": "건너뛰고 제출",
   "question.action.advance": "다음",
   "question.action.submit": "답변 제출",
   "question.settled.asked": "질문함",

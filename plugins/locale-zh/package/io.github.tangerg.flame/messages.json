@@ -467,6 +467,7 @@
   "question.action.previous": "上一个问题",
   "question.action.next": "下一个问题",
   "question.action.skip": "跳过",
+  "question.action.skipSubmit": "跳过并提交",
   "question.action.advance": "下一步",
   "question.action.submit": "提交回答",
   "question.settled.asked": "已询问",

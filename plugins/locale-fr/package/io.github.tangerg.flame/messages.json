@@ -449,6 +449,7 @@
   "question.action.previous": "Question précédente",
   "question.action.next": "Question suivante",
   "question.action.skip": "Ignorer",
+  "question.action.skipSubmit": "Ignorer et envoyer",
   "question.action.advance": "Suivant",
   "question.action.submit": "Envoyer les réponses",
   "question.settled.asked": "Demandé",

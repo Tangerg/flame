@@ -449,6 +449,7 @@
   "question.action.previous": "Pregunta anterior",
   "question.action.next": "Pregunta siguiente",
   "question.action.skip": "Omitir",
+  "question.action.skipSubmit": "Omitir y enviar",
   "question.action.advance": "Siguiente",
   "question.action.submit": "Enviar respuestas",
   "question.settled.asked": "Preguntó",

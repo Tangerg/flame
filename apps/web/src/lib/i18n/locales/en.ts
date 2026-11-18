@@ -510,6 +510,7 @@ export const en: Record<string, string> = {
   "question.action.previous": "Previous question",
   "question.action.next": "Next question",
   "question.action.skip": "Skip",
+  "question.action.skipSubmit": "Skip and submit",
   "question.action.advance": "Next",
   "question.action.submit": "Submit answers",
   "question.settled.asked": "Asked",

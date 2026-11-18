@@ -440,6 +440,7 @@
   "question.action.previous": "上一個問題",
   "question.action.next": "下一個問題",
   "question.action.skip": "略過",
+  "question.action.skipSubmit": "略過並提交",
   "question.action.advance": "下一步",
   "question.action.submit": "提交回答",
   "question.settled.asked": "已詢問",

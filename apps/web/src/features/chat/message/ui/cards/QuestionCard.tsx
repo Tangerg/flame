@@ -438,7 +438,7 @@ export function QuestionCard({
           focusableWhenDisabled={actions.disabled}
           onClick={skipCurrent}
         >
-          {t("question.action.skip")}
+          {t(isLastQuestion ? "question.action.skipSubmit" : "question.action.skip")}
         </Button>
         <Button
           variant="primary"

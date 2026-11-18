@@ -435,6 +435,7 @@
   "question.action.previous": "前の質問",
   "question.action.next": "次の質問",
   "question.action.skip": "スキップ",
+  "question.action.skipSubmit": "スキップして送信",
   "question.action.advance": "次へ",
   "question.action.submit": "回答を送信",
   "question.settled.asked": "質問済み",

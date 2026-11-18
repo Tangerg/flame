@@ -442,6 +442,7 @@
   "question.action.previous": "Vorherige Frage",
   "question.action.next": "Nächste Frage",
   "question.action.skip": "Überspringen",
+  "question.action.skipSubmit": "Überspringen und senden",
   "question.action.advance": "Weiter",
   "question.action.submit": "Antworten senden",
   "question.settled.asked": "Gefragt",
