@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. The current Context Dock separator and file-reading return are qualified in Wails within the scope recorded under [Native workspace zoom and Dock geometry](#native-workspace-zoom-and-dock-geometry). Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure and file-reading return. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -31777,6 +31777,63 @@ side-panel source remains evidence for separate material identity; it is not
 native close-focus proof. Better-series review retains current type, semantic
 surfaces, Orange/custom-blue focus and the same workbench composition. Static
 Ace references supply no keyboard evidence.
+
+### Focus after a tab closes from its menu (2026-11-19)
+
+At published `8562e80db`, a real Wails session with a 320 px Dock reproduces
+a lost focus path. Right-click the background Workspace diff tab while
+`reading-guide.md` is open and scrolled. Choose Close Workspace diff with
+the keyboard. Files and the current document stay visible, but focus falls
+to the document body and the next Tab jumps to the left sidebar. The
+keyboard menu's Close all panels also leaves focus on the body when Browse
+panels is available. The direct Delete and Escape paths return focus
+correctly in the same session.
+
+`AgentDockTabs` in `apps/web/src/ui/agent/context-dock.tsx` now settles a
+menu close against the committed selected tab or the Browse control.
+Base UI hides the surviving controls while the modal is open, and the
+closed tab's trigger can disappear during the menu's retirement. The
+strip captures a return only while the action's popup or the document
+root owns focus. Its single post-action frame checks the same strip,
+the captured menu's retirement and current focus before handing off.
+Hide and unmount cancel the pending frame. The workspace navigator
+chooses the surviving tab. Base UI handles ordinary dismissal.
+
+ZCode's actual side-pane trigger separates background closure from activation.
+HeroUI's overflow example keeps the tab collection within its scroll container.
+The tabs pattern suggests a logical successor after the last tab closes.
+The installed Base UI 1.9.0 focus manager establishes where modal isolation
+and default return enter the actual implementation.
+[WAI-ARIA Tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)
+[Base UI Context Menu](https://base-ui.com/react/components/context-menu)
+
+Wails v3.1.0 at Actual Size qualifies the existing loopback fixture.
+
+- EN/light/14 px/Flame Orange/full motion: the background menu closes
+  Workspace diff and focuses Files. The same paragraph and list headings in
+  `reading-guide.md` remain at the same visual position. The visible focus
+  ring and the next Tab stay in the Dock. Back to files returns to the source
+  row, and the draft accepts `CHECKED ` at its middle caret. Direct Delete
+  focuses the adjacent Session trajectory. Escape returns to its menu
+  opener. Close all panels leaves Browse panels focused in the catalog.
+  A native tile to about 1122×950 CSS px retains that entry, which opens and
+  dismisses the picker.
+- ZH/dark/18 px/`#3B82F6`/motion off: Close other panels retains and visibly
+  focuses Workspace diff. Closing the last tab from its keyboard menu
+  focuses Browse panels. Cmd+L continues
+  `保留中文草稿。已核对。后续继续。`.
+
+`make check-native`, the canonical Lab build, scoped formatting, Web
+typecheck, 81 schema contract tests and all Web distribution gates pass.
+The native tests use recorded data. Live Runtime, VoiceOver, browser
+visual suites, benchmarks and synthesized timing races were outside this
+scope. Three native generations and two loopback previews stopped. Both
+bundle registrations, four isolated profile/cache paths and the owned
+build and installation outputs were removed.
+
+The next Tab after background closure reached the surviving Session
+trajectory AX group while the pointer remained over that row. Inspect the
+actual focus target and composite keyboard order before changing the strip.
 
 ### Current tab visibility after reordering
 

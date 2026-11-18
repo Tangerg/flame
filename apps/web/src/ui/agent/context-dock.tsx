@@ -253,8 +253,17 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
+function dockMenuFocusOwner(menu: HTMLElement): HTMLElement | null {
+  const document = menu.ownerDocument;
+  const focused = document.activeElement;
+  if (focused === document.body) return document.body;
+  if (focused === document.documentElement) return document.documentElement;
+  return menu.contains(focused) ? menu : null;
+}
+
 export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const cancelMenuReturn = useRef<(() => void) | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const visible = useContentVisible();
@@ -266,6 +275,8 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
     active.current = visible;
     return () => {
       active.current = false;
+      cancelMenuReturn.current?.();
+      cancelMenuReturn.current = null;
     };
   }, [visible]);
   useLayoutEffect(() => {
@@ -290,14 +301,9 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
     const message = reorder.onMove(id, index);
     if (message) setAnnouncement(message);
   };
-  const close = (
-    tab: AgentDockTab,
-    source: HTMLElement,
-    action = tab.onClose,
-    keepId?: string | null,
-  ) => {
+  const close = (tab: AgentDockTab, source: HTMLElement) => {
     const index = tabs.findIndex((item) => item.id === tab.id);
-    const nextId = keepId === undefined ? (tabs[index + 1] ?? tabs[index - 1])?.id : keepId;
+    const nextId = (tabs[index + 1] ?? tabs[index - 1])?.id;
     const target =
       [...(rootRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])].find(
         (element) => element.dataset.dockTabId === nextId,
@@ -305,6 +311,31 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
       fallbackFocus?.current ??
       rootRef.current;
     handoffFocus(source, target);
+    tab.onClose();
+  };
+  const closeFromMenu = (source: HTMLElement, action: () => void) => {
+    const menu = source.closest<HTMLElement>("[data-dock-tab-menu]");
+    const root = rootRef.current;
+    const view = menu?.ownerDocument.defaultView;
+    cancelMenuReturn.current?.();
+    cancelMenuReturn.current = null;
+    if (active.current && root && menu && view && dockMenuFocusOwner(menu)) {
+      // The modal hides surviving controls until Base UI releases its accessibility boundary.
+      const frame = view.requestAnimationFrame(() => {
+        cancelMenuReturn.current = null;
+        if (rootRef.current !== root || (menu.isConnected && menu.hasAttribute("data-open")))
+          return;
+        const owner = dockMenuFocusOwner(menu);
+        if (owner)
+          handoffFocus(
+            owner,
+            root.querySelector<HTMLElement>('[data-dock-tab-row][data-active] [role="tab"]') ??
+              fallbackFocus?.current ??
+              root,
+          );
+      });
+      cancelMenuReturn.current = () => view.cancelAnimationFrame(frame);
+    }
     action();
   };
   return (
@@ -386,7 +417,7 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
                 )}
                 <ContextMenu.IconItem
                   icon="x"
-                  onSelect={(event) => close(tab, event.currentTarget)}
+                  onSelect={(event) => closeFromMenu(event.currentTarget, tab.onClose)}
                 >
                   {tab.closeLabel}
                 </ContextMenu.IconItem>
@@ -394,7 +425,7 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
                   <ContextMenu.IconItem
                     icon="close-others"
                     disabled={tabs.length < 2}
-                    onSelect={(event) => close(tab, event.currentTarget, tab.onCloseOthers, tab.id)}
+                    onSelect={(event) => closeFromMenu(event.currentTarget, tab.onCloseOthers!)}
                   >
                     {tab.closeOthersLabel}
                   </ContextMenu.IconItem>
@@ -402,7 +433,7 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
                 {tab.onCloseAll && (
                   <ContextMenu.IconItem
                     icon="close-all"
-                    onSelect={(event) => close(tab, event.currentTarget, tab.onCloseAll, null)}
+                    onSelect={(event) => closeFromMenu(event.currentTarget, tab.onCloseAll!)}
                   >
                     {tab.closeAllLabel}
                   </ContextMenu.IconItem>
