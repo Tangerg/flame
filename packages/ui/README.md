@@ -644,3 +644,7 @@ ReadingList delegates virtualization, following and anchor correction to Legend.
 Its public pinning retains the complete selected range and rows owning native
 focus, composition or a React portal. It exposes only the library handle for
 navigation. Clipboard receipts are projected by each host's existing Toast feed.
+
+When the viewport holds focus and both selection endpoints remain in a separate
+editing host, plain Up and Down use Legend's instant offset command with the
+native WebKit line step. The held editing range remains available on return.

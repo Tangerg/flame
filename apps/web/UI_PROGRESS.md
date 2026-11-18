@@ -38933,6 +38933,57 @@ pressed Up repeatedly. Focus moved to the Composer while the transcript stayed a
 4612 px. The measured clamp path uses a native fractional wheel movement.
 The next batch will isolate who owns the Up key while a reader has focus.
 
+### Reading arrows with a retained draft selection (2026-11-19)
+
+Signed Wails on `f9f6f4d4a` confirms the focus loss with a single key.
+The 320 px delegated reader has DOM focus after a native Jump click. Its
+offset is 4612 px and the held Composer caret is at character 7. An
+unmodified Up reaches the reader, proceeds to WebKit's default action,
+moves focus and the caret to the Composer, and leaves the reader at
+4612 px. Down behaves the same way from 3959 px. Native Page Up moves
+4612 → 3959 px while retaining the reader focus. The English main
+transcript reproduces Up through the same pointer action, with both a
+collapsed caret and a backward draft selection.
+
+`ReadingList` routes plain Up and Down through Legend when the exact
+viewport owns keyboard focus and the live selection is inside another
+editing host. One instant offset command uses WebKit's 40 px line step
+and the physical edges of the viewport. The editor retains its existing
+range. Native Page Up continues to scroll the reader and descendants keep
+their own keyboard handling. Better Accessibility and the WAI scrollable
+content rule guide the focus and keyboard ownership. [WebKit focus and selection report](https://bugs.webkit.org/show_bug.cgi?id=112854#c5) [WebKit line step](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/Scrollbar.h#L48) [WAI scrollable content rule](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/)
+
+- ZH/dark/18 px/custom blue and full motion in the native 320 px Dock.
+  Up and Down move 4612 → 4572 → 4612 px. Another Down at the edge keeps
+  viewport focus and the exact caret at 7. Native Page Up reaches 3959 px.
+  The same offset survives a full-width round trip. The Composer continues
+  as `方向键阅读草稿继续尾段`.
+- EN/light/Flame Orange with motion off. The focused main transcript
+  moves 11757 → 11717 → 11757 px while the draft selection remains
+  backward from 11 to 4. Cmd+L and paste replace exactly the selected
+  word, yielding `mainQXtail`. Find reaches checkpoint 5 and Escape
+  returns to the Composer. Shift+Tab and Enter on Jump restore checkpoint
+  40 and its reading focus. The standard Lab build repeats the pointer
+  Jump, Up, Down and exact `cleanarrowqxtail` continuation.
+- The 50,000-line recorded output receives focus on expansion. Once
+  measured, one Up moves 7994016 → 7993976 px while the Composer caret
+  remains at 15. Local Find reaches its unique line 31415. Escape and
+  Page Up keep focus in the output and show line 31385 at the start of
+  the rendered range. The Composer continues as `outputdirectionqxtail`.
+
+Scoped formatting, the packed UI and Icons consumer, Web typecheck, 89 Web
+contracts, 937 locale keys in eight catalogs, bootstrap, installed plugin
+resources, 26 bundle checks, module linking, `make check-native` and the
+five-entry Lab gate pass. Five private bundles pass strict signature
+verification. Six launches and three loopback previews exit. Cleanup
+removes five registrations, ten private Library directories, ten checkout
+outputs and the scratch tree. The paths use captured data. VoiceOver and
+live Run execution remain open.
+
+During the recorded output's first measurement, Up kept focus and reached
+7993976 px briefly. A later row-size update returned the viewport to its
+7994016 px end. The next batch will isolate this early measurement path.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
