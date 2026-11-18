@@ -14,6 +14,7 @@ import { useT } from "@/lib/i18n/index";
 import { useAppearanceProjection } from "@/lib/appearance";
 import { useRequireCompleteTranscript, useTranscriptReader } from "@/ui/agent/transcript-reader";
 import { useActiveSessionId } from "@/features/agent/public/session";
+import { type ComposerAccess, useComposer } from "@/features/composer/public/composer";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import {
   clearChatSearchHighlights,
@@ -60,19 +61,20 @@ const EMPTY_SEARCH: SearchState = {
 
 function SessionChatSearchOverlay() {
   const appearance = useAppearanceProjection();
+  const composer = useComposer();
   const list = useTranscriptReader()?.list ?? null;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
   useRequireCompleteTranscript(open);
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const focusReturn = useRef<HTMLElement | null>(null);
+  const focusReturn = useRef<(() => boolean) | null>(null);
   const readingWitness = useRef({ visible: false, frame: [] as number[] });
 
   const requestOpen = useEffectEvent(() => {
     // Repeated Find from inside the bar keeps the original opener.
     if (!open || !barRef.current?.contains(document.activeElement)) {
-      focusReturn.current = captureFocusReturn();
+      focusReturn.current = captureFocusReturn(composer);
     }
     if (!open) {
       setOpen(true);
@@ -206,10 +208,10 @@ function SessionChatSearchOverlay() {
     const bar = barRef.current;
     const active = document.activeElement;
     const ownsFocus = !active || active === document.body || !!bar?.contains(active);
-    const target = focusReturn.current;
+    const restore = focusReturn.current;
     const region = owningRegion(bar);
     reset();
-    if (ownsFocus) restoreFocus(target, region);
+    if (ownsFocus && !restore?.()) region?.focus({ preventScroll: true });
   };
 
   const present = (range: Range | undefined) => {
@@ -315,18 +317,17 @@ function owningRegion(bar: HTMLElement | null): HTMLElement | null {
   return bar?.closest<HTMLElement>('[role="region"]') ?? null;
 }
 
-function captureFocusReturn(): HTMLElement | null {
+function captureFocusReturn(composer: ComposerAccess): (() => boolean) | null {
   const element = document.activeElement;
-  return element instanceof HTMLElement && element !== document.body ? element : null;
-}
-
-function restoreFocus(target: HTMLElement | null, region: HTMLElement | null): void {
-  if (target?.isConnected && !target.closest("[hidden], [inert]")) {
-    target.focus({ preventScroll: true });
+  if (!(element instanceof HTMLElement) || element === document.body) return null;
+  const restoreEditor = composer.captureEditorFocusReturn(element);
+  return () => {
+    if (!element.isConnected || element.closest("[hidden], [inert]")) return false;
+    if (restoreEditor) return restoreEditor();
+    element.focus({ preventScroll: true });
     // A focus call on unrendered material is a no-op; only a landed focus counts.
-    if (document.activeElement === target) return;
-  }
-  region?.focus({ preventScroll: true });
+    return document.activeElement === element;
+  };
 }
 
 function animatesReveal(motionScale: number): boolean {

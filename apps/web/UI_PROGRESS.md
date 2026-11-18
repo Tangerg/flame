@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -23540,6 +23540,48 @@ The actual six-source harness, manifest, native qualifications, source freezes,
 cleanup and delivery proofs are retained with that archive. Continue from this
 main revision with a new observed task defect, without repeating the completed
 Find or earlier approval work.
+
+### Composer selection after closing Find (2026-11-19)
+
+On `1da6a4aed`, the ordinary English Wails conversation returns focus to
+Composer on Escape from Find. Placing the caret before `tail` in
+`finddrafttail` gives `finddraftqxtail` without changing focus. Returning from
+Find after navigating to Runtime 2 / 6 gives `qxfinddrafttail`. Pointer Close
+also inserts at the start after opening from a backward selection over `KEEP`
+in `find-draft-KEEP-tail`. The opener is captured as a DOM element. Returning
+focus through that element alone loses the Lexical selection.
+
+Find still decides when the opener owns focus return. Its captured callback
+delegates to Composer for the registered input and its current Session scope.
+The editor retains its latest Lexical range on blur and restores it after
+focus lands. Content revision and both range points must still match the
+mounted document. The editor owns this selection update and its undo history.
+Other openers use ordinary focus return. Better-accessibility and the earlier
+ZCode conversation Find comparison guide the return path.
+[Lexical selection model](https://lexical.dev/docs/concepts/selection)
+
+Signed native Wails uses the canonical Agent and Workspace Lab data at default
+zoom. English light, 14 px and Flame Orange repeat Runtime 2 / 6 and Escape,
+then insert `finddraftqxtail`. With a backward selection, pointer Close then
+Shift+Right and paste produce `find-draft-Kqx-tail`, and one Undo restores
+`find-draft-KEEP-tail`. Editing again while Find remains open and returning
+through the existing search field inserts `latereditingfindqxtail` from the
+latest caret. The first candidate setup showed an empty draft and is excluded
+from the caret comparison. The final run observes the seed before opening Find.
+
+Chinese dark, 18 px and custom `#3B82F6` use the 320 px Files Dock. A no-match
+search returns to the original divider. Repeated Find replaces Runtime with
+Verification at 1 / 1 and Escape restores the exact middle caret, yielding
+`查找前保留草稿继续尾段` beside the open Files panel.
+
+The final candidate builds and checks run after the unrelated `ffee1f0d7`
+Runtime Goal and Desktop Go SDK changes fast-forward main. Web typecheck,
+Prettier, 89 Web contracts, 934 keys across eight locales, bootstrap, 26 bundle
+checks, exact plugin ESM resources, production module linking, native staging,
+Lab builds and signature checks pass. Three private app launches and two
+preview servers exit. Two registrations, four Library paths, ten checkout
+output roots and the scratch tree are removed. Live Runtime, physical IME and
+VoiceOver remain outside this capture.
 
 ### Find follows rendered reply updates
 

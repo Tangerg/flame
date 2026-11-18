@@ -14,11 +14,20 @@ import {
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import {
   $createTextNode,
+  $getNodeByKey,
+  $getPreviousSelection,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
+  $isTextNode,
+  $setSelection,
+  BLUR_COMMAND,
   COMMAND_PRIORITY_LOW,
   KEY_DOWN_COMMAND,
   PASTE_COMMAND,
+  SKIP_SCROLL_INTO_VIEW_TAG,
+  type PointType,
+  type RangeSelection,
 } from "lexical";
 import { isImeKey, useContentVisible, Button, ButtonPrimitive } from "@flame/ui";
 import { useComposer } from "@/features/composer/public/composer";
@@ -225,6 +234,14 @@ function Suggestions() {
     />
   );
 }
+function $pointStillExists(point: PointType): boolean {
+  const node = $getNodeByKey(point.key);
+  if (!node?.isAttached()) return false;
+  return point.type === "text"
+    ? $isTextNode(node) && point.offset <= node.getTextContentSize()
+    : $isElementNode(node) && point.offset <= node.getChildrenSize();
+}
+
 function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProps) {
   const [editor] = useLexicalComposerContext();
   const access = useComposer();
@@ -242,6 +259,20 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
     const stop = editor.registerRootListener((root) => {
       release();
       if (!root) return;
+      let blurredSelection: { range: RangeSelection; revision: object } | null = null;
+      const releaseBlur = editor.registerCommand(
+        BLUR_COMMAND,
+        (event) => {
+          if (event.target !== root) return false;
+          const selection = $getSelection() ?? $getPreviousSelection();
+          blurredSelection =
+            $isRangeSelection(selection) && !editor.isComposing()
+              ? { range: selection.clone(), revision: revision.current }
+              : null;
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
+      );
       const releaseEditor = access.registerEditor({
         element: root,
         restore: (content) => {
@@ -249,12 +280,33 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
           editor.update(() => $restoreContent(content), { discrete: true });
         },
         focus: () => editor.focus(),
+        restoreFocusWithSelection: () => {
+          root.focus({ preventScroll: true });
+          if (root.ownerDocument.activeElement !== root) return false;
+          const snapshot = blurredSelection;
+          if (snapshot && editor.isEditable() && !editor.isComposing()) {
+            editor.update(
+              () => {
+                if (
+                  snapshot.revision === revision.current &&
+                  $pointStillExists(snapshot.range.anchor) &&
+                  $pointStillExists(snapshot.range.focus)
+                ) {
+                  $setSelection(snapshot.range.clone());
+                }
+              },
+              { discrete: true, tag: SKIP_SCROLL_INTO_VIEW_TAG },
+            );
+          }
+          return true;
+        },
         revision: () => revision.current,
       });
       const releaseFocus = access.registerFocusTarget(root);
       release = () => {
         releaseFocus();
         releaseEditor();
+        releaseBlur();
       };
     });
     return () => {

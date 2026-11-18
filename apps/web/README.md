@@ -210,6 +210,9 @@ scrolling. Collapsed, hidden and inert content is excluded regardless of its
 mounting history. Expand a disclosure to include its content; closing it updates
 the count and retires its ranges. Search reads that visibility projection and
 preserves the disclosure and keyboard focus owners.
+Closing Find restores the original Composer's last editing selection when its
+mounted document is still current. The Composer owns that return through
+Lexical, and the search bar retains its ordinary return for other controls.
 
 File reading navigates adjacent bounded line windows using Runtime's served
 start and end coordinates. Earlier pages retain their requested end at the byte

@@ -38,12 +38,14 @@ export interface ComposerEditor {
   readonly element: HTMLElement;
   restore(content: DraftContent): void;
   focus(): void;
+  restoreFocusWithSelection(): boolean;
   revision(): object;
 }
 
 export interface ComposerStatePort {
   focus(): void;
   captureFocus(): () => void;
+  captureEditorFocusReturn(target: HTMLElement): (() => boolean) | null;
   registerFocusTarget(element: HTMLElement | null): () => void;
   registerFocusPresentation(present: (focus: () => void) => void): () => void;
   useDraftKey(): string;

@@ -97,6 +97,18 @@ export function createComposer(
           focus();
       };
     },
+    captureEditorFocusReturn: (target) => {
+      const capturedEditor = editor;
+      const capturedTarget = focusTarget;
+      const source = inputScope;
+      if (capturedEditor?.element !== target || capturedTarget?.element !== target) return null;
+      return () =>
+        !disposed &&
+        inputScope === source &&
+        editor === capturedEditor &&
+        focusTarget === capturedTarget &&
+        capturedEditor.restoreFocusWithSelection();
+    },
     registerFocusTarget: (element) => {
       const target = { element };
       focusTarget = target;
