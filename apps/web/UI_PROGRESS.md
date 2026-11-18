@@ -38817,6 +38817,64 @@ the Chinese profile, matching the baseline. The English profile opens 357 px
 from the end. An explicit Jump reaches within 1 px in both. The next batch
 will trace initial placement for the delegated reader.
 
+### First opening at the latest delegated reply (2026-11-19)
+
+Signed Wails on `eaa5d2cda` opens completed task 3 at a gap of 357 CSS px
+in the English profile and 312 px in the Chinese profile. In the English
+startup trace, the measured assistant row grows from 2606 to 2962 px after
+the first scroll. Legend List 3.7.2 reports readiness at a scroll offset of
+2138 px, a content height of 3228 px and a 733 px viewport. It reports
+end following while its viewport is still short of the end. The
+instrumented run later catches up. The ordinary baseline retains the gap
+until an explicit jump.
+
+The first delegated visit now uses the shared `ReadingList` placement
+handoff. After Legend accepts the viewport height, the handoff checks
+whether it is at the end as well as following the end. A missing condition
+issues one instant end command. The fixed task viewport can enter the
+handoff at mount. The main conversation also waits for Composer draft
+loading. Delegated Jump reads the handle and end state from the same
+publication. Local focus, pointer, wheel, selection and hidden-view changes
+can retire the pending placement. Existing recorded-output expansion takes
+its direct ref at mount.
+[Legend List React chat guidance](https://www.legendapp.com/open-source/list/v3/react/examples/ai-chat/)
+
+- EN/light/Flame Orange with motion off and a 720 px Dock. First entry
+  shows the complete final paragraph with a 0 px end gap. Tab reaches
+  `runtime/internal/session/store.go:4` at offset 66, Enter opens the
+  captured file, and Back to task restores that link and exact offset.
+  After wheel reading, Shift+Tab reaches Jump and Enter returns within
+  1 px of the end with focus in the transcript. The original Composer
+  caret continues as `delegatefinalqxtail`. The standard Lab build also
+  opens directly with the final paragraph and focus on All subagents.
+- ZH/dark/18 px/custom blue with full motion in the natively tiled 320 px
+  Dock. First entry reaches a 0 px gap and shows the complete final
+  paragraph above the footer. After reading earlier, task 3 → overview →
+  failed task 2 → overview → task 3 retains the 3664 px offset and the
+  same subsection. One native pointer click on Jump reaches within 1 px
+  of the end and focuses the transcript. The original caret continues
+  as `子任务首次定位草稿继续尾段`.
+- In a private deferred-callback build, wheel reading before the handoff
+  moves to offset 1456 px. Delivering the held readiness callback preserves
+  the exact offset and its 899 px end gap. The standard main transcript
+  opens on checkpoint 40, finds checkpoint 5, and returns to checkpoint 40
+  by keyboard with transcript focus. Expanding the recorded 50,000-line
+  output focuses its reader immediately. Find reaches line 31415, Escape
+  returns to that reader, and the first Page Up reveals line 31384.
+
+Scoped formatting, the packed UI and Icons consumer, Web typecheck, 89 Web
+contracts, 937 locale keys across eight catalogs, bootstrap, installed
+plugin resources, 26 bundle checks, module linking, `make check-native`
+and the five-entry Lab gate pass. The complete progress ledger has a
+pre-existing format warning. This section passes the scoped format check.
+The artifact policy rejects a preliminary hand-edited measurement document.
+The measured profiles use a built private Lab entry that reads the geometry
+on a native keystroke.
+Five private bundles pass strict signature verification. Seven launches and
+five loopback previews exit. Cleanup removes five registrations, ten private
+Library directories, ten checkout outputs and the scratch tree. This pass
+exercises captured data. VoiceOver and live Run execution remain open.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

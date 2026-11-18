@@ -533,12 +533,14 @@ between the first and last turns. A thicker tick marks the current reading
 position while another tick previews. Enter or Space brings the focused turn
 into the transcript, and Tab continues to the transcript reader.
 
-On first opening the main conversation, the transcript waits for Legend List's
-initial placement and for the list to measure the viewport after Composer draft
-loading. If Legend lost end following, the reader uses its end command once
-before publishing navigation. Local reading input or opening Find releases
-navigation and retires that startup placement. The active Session owns the
-published reader and the request to render all rows for Find.
+On first opening the main conversation or a delegated task, the transcript
+waits for Legend List's initial placement and an accepted viewport measurement.
+The main conversation also waits for Composer draft loading. If the viewport
+still falls short of the end or end following has stopped, the reader uses
+Legend's end command once before publishing navigation. Local reading input,
+hiding the transcript, or opening Find retires that startup placement. The
+active Session owns the published conversation reader and the request to render
+all rows for Find.
 
 Each non-commentary message keeps its body and existing actions in one context
 menu trigger. Shift+F10 from an action opens that message's named menu without
@@ -984,10 +986,9 @@ Later outside focus, hidden views and Session or selection changes remain with
 their existing owners. Unavailable cancellation actions stay focusable and refuse
 activation through the shared disabled-control contract.
 
-A selected subagent reader shows its run details first: current activity, the
-captured error or cancellation reason, and unconfirmed effects. The "No messages"
-placeholder appears only when the reader would otherwise be empty, with neither
-captured messages nor such run details.
+Current activity, the captured error or cancellation reason, and unconfirmed
+effects appear at the start of a subagent transcript. The "No messages"
+placeholder appears when both captured messages and run details are absent.
 
 Conversation Find matches rendered text, so while Find is open the transcript
 reader renders every row and the first query already sees all of them. Legend

@@ -141,11 +141,13 @@ export function ReadingList<T>({
     const viewport = value?.getScrollableNode();
     if (!value || !viewport?.isConnected) return;
     const height = viewport.clientHeight;
-    const { isFollowingEnd, scrollLength } = value.getState();
+    const { isAtEnd, isFollowingEnd, scrollLength } = value.getState();
     // Legend's accepted viewport can lag the host's committed layout.
     if (height === 0 || Math.abs(height - scrollLength) > 1) return;
     releaseInitialEnd();
-    if (!isFollowingEnd) void value.scrollToEnd({ animated: false });
+    // A row can grow after initial scrolling while Legend still intends to follow.
+    if (!isAtEnd || !isFollowingEnd)
+      void value.scrollToEnd({ animated: false });
   }, [releaseInitialEnd]);
   const onInitialEndReady = () => {
     if (!initialEnd.current) return;

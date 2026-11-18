@@ -404,8 +404,7 @@ function SubagentTranscript({
   active: boolean;
 }) {
   const t = useT();
-  const reader = useRef<ReadingListHandle>(null);
-  const [atEnd, setAtEnd] = useState(true);
+  const [reader, setReader] = useState<{ list: ReadingListHandle; atEnd: boolean } | null>(null);
   const expandedIds = useExpandedWorkspaceToolIds();
   const onExpandedChange = useSetWorkspaceToolExpanded();
   const ctx = useMemo<BlockCtx>(
@@ -426,8 +425,8 @@ function SubagentTranscript({
       {...stylex.props(styles.reader, !active && styles.inactiveReader)}
     >
       <MessageTranscript
-        listRef={reader}
-        onFollowChange={(_list, value) => setAtEnd(value)}
+        initialEndLayoutReady
+        onFollowChange={(list, atEnd) => setReader({ list, atEnd })}
         header={
           <>
             {hasRunDetails && (
@@ -453,10 +452,11 @@ function SubagentTranscript({
         isRunning={agentRunIsRunning(narrative.run)}
       />
       <AgentJumpToBottom
-        visible={!atEnd}
+        visible={reader?.atEnd === false}
         onClick={() => {
-          reader.current?.getScrollableNode()?.focus({ preventScroll: true });
-          void reader.current?.scrollToEnd({ animated: false });
+          if (!reader) return;
+          reader.list.getScrollableNode()?.focus({ preventScroll: true });
+          void reader.list.scrollToEnd({ animated: false });
         }}
         placement="reader-footer"
       />
