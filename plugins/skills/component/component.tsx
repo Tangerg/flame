@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { ArrowLeft, BookOpen, Refresh } from "@flame/icons/react";
 import { type ComponentContext, type Translate } from "@flame/component-sdk";
 
@@ -171,7 +171,7 @@ function SkillReadStatus({
 export function Skills({ context }: { context: ComponentContext }) {
   const {
     t,
-    panel,
+    bodyViewport,
     opened,
     review,
     setReview,
@@ -181,7 +181,6 @@ export function Skills({ context }: { context: ComponentContext }) {
     closeDocument,
     target,
     readDocument,
-    heading,
     skillDocument,
     command,
     navigate,
@@ -203,6 +202,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     openDocument,
   } = useSkills(context);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
+  const documentTitleId = useId();
   const instructions = useRef<HTMLElement>(null);
   const feedbackIntent = command?.command.intent ?? notice?.intent;
   const feedbackName =
@@ -224,10 +224,10 @@ export function Skills({ context }: { context: ComponentContext }) {
   );
   return (
     <Panel
-      ref={panel}
+      bodyViewportRef={bodyViewport}
+      bodyViewportLabelledBy={opened ? documentTitleId : undefined}
       label={t("panel.title")}
       onKeyDown={(event) => {
-        // Document entry keeps focus on the heading outside the instruction body.
         if (instructions.current)
           selectAllInReader(event, instructions.current);
         if (
@@ -267,7 +267,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                 <Icon glyph={ArrowLeft} size="sm" />
                 {t("section.available")}
               </Button>
-              <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
+              <PanelTitle id={documentTitleId} size="sm" aria-level={2}>
                 {opened.name}
               </PanelTitle>
               {skillDocument && (

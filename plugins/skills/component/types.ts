@@ -1,5 +1,4 @@
 import { type MutationPromise } from "@flame/runtime-client";
-import type { ScrollPosition } from "@flame/component-sdk";
 import {
   type ManagedSkill,
   type Page,
@@ -25,7 +24,7 @@ export type OpenedDocument = {
   accepted?: SkillDetail;
   error?: string;
 };
-export type CatalogReturn = { opener: HTMLElement; scroll: ScrollPosition[] };
+export type CatalogReturn = { opener: HTMLElement; scrollTop: number };
 export type CommandIntent = {
   action: "approve" | "reject" | "archive" | "restore";
   name: string;

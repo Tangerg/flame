@@ -11,7 +11,6 @@ import {
 import {
   mutationSettlementIsUnknown,
   isErrorType,
-  scrollPositions,
   failureText as failure,
   type ComponentContext,
   useTranslator,
@@ -89,9 +88,8 @@ export function useSkills(context: ComponentContext) {
     );
   };
   const [search, setSearch] = useState("");
-  const panel = useRef<HTMLElement>(null);
+  const bodyViewport = useRef<HTMLDivElement>(null);
   const searchField = useRef<HTMLInputElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [opened, setOpened] = useState<OpenedDocument>();
@@ -256,12 +254,14 @@ export function useSkills(context: ComponentContext) {
   function searchCatalog(next: string) {
     if (next === search) return;
     setSearch(next);
-    for (const position of scrollPositions(panel.current))
-      position.element.scrollTop = 0;
+    if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
   }
   function openDocument(name: string, opener: HTMLElement) {
     if (command || componentSignal.aborted) return;
-    catalogReturn.current = { opener, scroll: scrollPositions(panel.current) };
+    catalogReturn.current = {
+      opener,
+      scrollTop: bodyViewport.current?.scrollTop ?? 0,
+    };
     pendingFocus.current = {
       target: "document",
       active: opener.ownerDocument.activeElement,
@@ -275,7 +275,7 @@ export function useSkills(context: ComponentContext) {
     documentReading.current?.abort();
     pendingFocus.current = {
       target: "catalog",
-      active: panel.current?.ownerDocument.activeElement ?? null,
+      active: bodyViewport.current?.ownerDocument.activeElement ?? null,
     };
     setOpened(undefined);
   }
@@ -283,17 +283,19 @@ export function useSkills(context: ComponentContext) {
     const requested = pendingFocus.current;
     pendingFocus.current = null;
     if (!requested) return;
-    const active = panel.current?.ownerDocument.activeElement;
+    const viewport = bodyViewport.current;
+    const active = viewport?.ownerDocument.activeElement;
     const focusIsUnclaimed =
       active === requested.active || active === active?.ownerDocument.body;
     if (requested.target === "document") {
-      for (const position of scrollPositions(panel.current))
-        position.element.scrollTop = 0;
-      if (focusIsUnclaimed) heading.current?.focus();
+      if (viewport) {
+        viewport.scrollTop = 0;
+        if (focusIsUnclaimed) viewport.focus({ preventScroll: true });
+      }
     } else {
-      for (const position of catalogReturn.current?.scroll ?? [])
-        position.element.scrollTop = position.top;
-      const opener = catalogReturn.current?.opener;
+      const catalog = catalogReturn.current;
+      if (viewport && catalog) viewport.scrollTop = catalog.scrollTop;
+      const opener = catalog?.opener;
       if (focusIsUnclaimed)
         (opener?.isConnected ? opener : searchField.current)?.focus();
     }
@@ -393,7 +395,7 @@ export function useSkills(context: ComponentContext) {
   return {
     canRestoreFocus,
     t,
-    panel,
+    bodyViewport,
     opened,
     review,
     setReview,
@@ -403,7 +405,6 @@ export function useSkills(context: ComponentContext) {
     closeDocument,
     target,
     readDocument,
-    heading,
     skillDocument,
     command,
     navigate,

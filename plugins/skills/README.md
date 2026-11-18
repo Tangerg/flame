@@ -83,17 +83,18 @@ Reading a named document is a child of Available Skills, not another catalog. Th
 catalog keeps its accepted snapshot, query and canonical reads while hidden. The
 catalog begins at its first result when the user changes or clears the query;
 refreshing an unchanged query preserves the current reading position. The
-document header holds Back, the document name and its compact scope; the
+catalog and document share the bounded Panel body. Search and catalog controls
+stay above it. The document header holds Back, the name, scope and Refresh. The
 instructions use `DocumentBody` around `RecordBody`, preserving recorded line breaks.
 Within the open reader, Cmd/Ctrl+A selects only the accepted instructions, including
-when focus remains on the document heading or its controls. Document identity,
+when focus is in the document viewport or on the controls. Document identity,
 description, source metadata and host content stay outside that range. Copy keeps
 the browser's native behavior; editable fields keep their native selection.
 The document has its own read lifetime: returning or choosing another document
 cancels it, a late result is ignored, and a failed refresh keeps only that
 document's accepted read with an explicit label. A first failure names the document
-and claims no retained content. Explicit entry focuses the document heading; a read
-completing later never moves focus. Back or Escape inside the document restores the
+and claims no retained content. Entry focuses the scroll viewport labelled by
+the document title. A later read keeps focus where the user placed it. Back or Escape inside the document restores the
 catalog scroll and focuses the opening row, or the catalog search when a canonical
 read removed that row. Escape in a nonempty catalog search clears that query in
 place; otherwise Escape in the catalog belongs to the host.

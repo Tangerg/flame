@@ -139,6 +139,8 @@ container-responsive gutters. The host normally owns the scroll viewport.
 A Panel in a bounded flex column can supply `bodyViewportRef` to put the
 header and controls above a single scrolling body. The ref gives the caller
 the exact viewport for explicit reading and return commands.
+Supply `bodyViewportLabelledBy` with the visible heading ID to name that region
+and include it in keyboard navigation.
 `useFieldVisibility` belongs to a form's actual viewport and observes its content.
 It keeps a focused native field visible through reflow by changing only that
 viewport's offset, preserving the browser's value and selection. Deliberate wheel,

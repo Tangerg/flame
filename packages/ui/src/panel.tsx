@@ -240,6 +240,7 @@ export function Panel({
   header,
   controls,
   bodyViewportRef,
+  bodyViewportLabelledBy,
   ref,
   className,
   ...props
@@ -249,8 +250,10 @@ export function Panel({
   header?: ReactNode;
   controls?: ReactNode;
   bodyViewportRef?: Ref<HTMLDivElement>;
+  bodyViewportLabelledBy?: string;
 }) {
   const bounded = bodyViewportRef != null;
+  const namedBody = bounded && bodyViewportLabelledBy != null;
   const styled = stylex.props(
     styles.panel,
     type.uiMd,
@@ -283,7 +286,9 @@ export function Panel({
           <div
             ref={bodyViewportRef}
             data-slot="panel-body"
-            tabIndex={bounded ? -1 : undefined}
+            role={namedBody ? "region" : undefined}
+            aria-labelledby={namedBody ? bodyViewportLabelledBy : undefined}
+            tabIndex={bounded ? (namedBody ? 0 : -1) : undefined}
             {...stylex.props(styles.body, bounded && styles.bodyViewport)}
           >
             {children}
